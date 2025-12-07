@@ -1,0 +1,18 @@
+{
+  "name": "mailbox-cdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:serverlessinbox/mailbox-cdk.git",
+  "author": "Joost van der Waal <joost@jvdwaal.nl>",
+  "license": "MIT",
+  "packageManager": "yarn@4.12.0",
+  "workspaces": [
+    "infrastructure",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

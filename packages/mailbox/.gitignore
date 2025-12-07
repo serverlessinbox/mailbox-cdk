@@ -1,0 +1,10 @@
+lib/
+dist/
+node_modules/
+.pnp.*
+*.tsbuildinfo
+*.js
+*.d.ts
+
+# Generated files - never commit
+.yarn/

@@ -1,0 +1,20 @@
+
+# Exclude typescript source and config
+*.ts
+tsconfig.json
+*.tsbuildinfo
+
+# Include javascript files and typescript declarations
+!*.js
+!*.d.ts
+
+# Exclude jsii outdir
+lib
+
+# Include .jsii and .jsii.gz
+!.jsii
+!.jsii.gz
+
+
+# Exclude jsii outdir
+dist
