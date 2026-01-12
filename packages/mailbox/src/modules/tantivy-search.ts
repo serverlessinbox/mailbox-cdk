@@ -6,8 +6,8 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
-import { GoLambda } from '../utils/go-lambda';
-import { ILambdaCodeProvider } from '../utils/lambda-code-provider';
+import { IArtifactResolver } from '../utils/artifact-resolver';
+import { TantivyIndexerLambda } from '../lambdas';
 
 export interface TantivySearchProps {
   /**
@@ -33,7 +33,7 @@ export interface TantivySearchProps {
   /**
    * Lambda code provider for building/downloading lambdas
    */
-  codeProvider: ILambdaCodeProvider;
+  artifactResolver: IArtifactResolver;
 }
 
 /**
@@ -48,41 +48,18 @@ export class TantivySearch extends Construct {
   constructor(scope: Construct, id: string, props: TantivySearchProps) {
     super(scope, id);
 
-    const itemTableName = props.itemTable.tableName;
-    const indexBucketName = props.indexBucket.bucketName;
-    const configTableName = props.configTable.tableName;
-    const changelogTableName = props.changelogTable.tableName;
-
     // Create Tantivy Indexer Lambda
     // Queries DynamoDB for all emails in an account, builds Tantivy index, uploads to S3
     // Triggered by EventBridge every hour
     // Note: Uses Go with CGO bridge to Rust Tantivy library
     // Rust library is pre-built by build-lambdas.sh before deployment
-    this.indexer = new GoLambda(this, 'TantivyIndexer', {
-      lambdaId: 'tantivy-indexer',
-      codeProvider: props.codeProvider,
-      timeout: cdk.Duration.minutes(5),
-      memorySize: 1024, // More memory for faster Tantivy indexing
-      environment: {
-        INDEX_BUCKET_NAME: indexBucketName,
-        ITEM_TABLE_NAME: itemTableName,
-        CONFIG_TABLE_NAME: configTableName,
-        CHANGELOG_TABLE_NAME: changelogTableName,
-      },
+    this.indexer = new TantivyIndexerLambda(this, 'TantivyIndexer', {
+      indexBucket: props.indexBucket,
+      itemTable: props.itemTable,
+      configTable: props.configTable,
+      changelogTable: props.changelogTable,
+      artifactResolver: props.artifactResolver,
     });
-
-    // Grant Indexer Lambda access to S3 (read/write for uploading indexes)
-    props.indexBucket.grantReadWrite(this.indexer);
-
-    // Grant Indexer Lambda access to DynamoDB ItemTable (read only for querying emails)
-    // This will automatically include GSI permissions
-    props.itemTable.grantReadData(this.indexer);
-
-    // Grant Indexer Lambda access to DynamoDB ConfigTable (read only for account config)
-    props.configTable.grantReadData(this.indexer);
-
-    // Grant Indexer Lambda access to DynamoDB ChangelogTable (read/write for tracking changes)
-    props.changelogTable.grantReadWriteData(this.indexer);
 
     // EventBridge rule to trigger indexer every hour
     // In production, this would be per-account with a DynamoDB table tracking accounts

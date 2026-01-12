@@ -2,10 +2,10 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { extractConfig } from './config';
 import { verifyToken, extractToken } from './jwt';
 import { getEmail } from './dynamodb';
-import { 
-  createErrorResponse, 
-  extractDownloadParams, 
-  parseBlobId, 
+import {
+  createErrorResponse,
+  extractDownloadParams,
+  parseBlobId,
   constructS3Key,
   addDownloadHeaders
 } from './utils';
@@ -17,7 +17,7 @@ import {
  * - x-table-name: DynamoDB item table name
  * - x-jwk-cache-table: DynamoDB JWK cache table name  
  * - x-region: AWS region for DynamoDB
- * - x-issuer: Cognito User Pool issuer URL
+ * - Uses the token's `iss` claim and resolves issuer->tenant via config table
  * 
  * JMAP Download URL format (RFC 8620):
  * GET /download?accountId={accountId}&blobId={blobId}&type={type}&name={name}
@@ -35,7 +35,7 @@ import {
  */
 export const handler = async (event: any) => {
   const request = event.Records[0].cf.request;
-  
+
   // Handle OPTIONS preflight requests - bypass authentication
   if (request.method === 'OPTIONS') {
     return {
@@ -65,14 +65,14 @@ export const handler = async (event: any) => {
       },
     };
   }
-  
+
   try {
     // Extract configuration from custom headers
     const config = extractConfig(request);
     if (!config) {
       return createErrorResponse(500, 'Configuration error');
     }
-    
+
     // Initialize DynamoDB client
     const dynamodb = new DynamoDBClient({ region: config.region });
 
@@ -99,7 +99,7 @@ export const handler = async (event: any) => {
 
     // Parallelize JWT verification and email query
     const [userContext, email] = await Promise.all([
-      verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.issuer),
+      verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName),
       getEmail(emailID, dynamodb, config.tableName),
     ]);
 

@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
 import { INamedBucket } from '../utils/named-bucket';
 import { INamedTable } from '../utils/named-table';
@@ -14,6 +15,13 @@ export interface CdnProps {
   jwkCacheTable: INamedTable;
   userPoolIssuer: string;
   allowedOrigins: string[];
+  jwtAlgorithms?: string[];
+
+  /** Optional custom domain name for the CDN distribution (e.g., cdn.example.com). */
+  domainName?: string;
+
+  /** Optional us-east-1 ACM certificate for the custom domain name. */
+  certificate?: acm.ICertificate;
 }
 
 export class Cdn extends Construct {
@@ -45,13 +53,18 @@ export class Cdn extends Construct {
         'x-config-table': props.configTable.tableName,
         'x-jwk-cache-table': props.jwkCacheTable.tableName,
         'x-region': cdk.Stack.of(this).region,
-        'x-issuer': props.userPoolIssuer,
+        // Configurable allowlist for JWT verification (Edge has no env vars)
+        'x-jwt-algorithms': (props.jwtAlgorithms && props.jwtAlgorithms.length > 0) ? props.jwtAlgorithms.join(',') : 'RS256',
+        // Policy-driven auth (audiences + required group) for JMAP downloads
+        'x-auth-policy-name': 'JMAP_API',
       },
     });
 
     // CloudFront distribution with Lambda@Edge authorization
     this.distribution = new cloudfront.Distribution(this, 'BlobDistribution', {
       comment: 'CDN for email blob downloads with Lambda@Edge auth',
+      domainNames: props.domainName && props.certificate ? [props.domainName] : undefined,
+      certificate: props.domainName && props.certificate ? props.certificate : undefined,
       defaultBehavior: {
         origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -93,7 +106,7 @@ export class Cdn extends Construct {
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // US, Canada, Europe
     });
 
-    this.host = `https://${this.distribution.distributionDomainName}`;
+    this.host = `https://${props.domainName && props.certificate ? props.domainName : this.distribution.distributionDomainName}`;
     this.distributionId = this.distribution.distributionId;
   }
 }

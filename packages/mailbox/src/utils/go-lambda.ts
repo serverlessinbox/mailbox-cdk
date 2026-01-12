@@ -7,9 +7,9 @@ import {
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ILambdaCodeProvider } from './lambda-code-provider';
+import { IArtifactResolver } from './artifact-resolver';
 
-export interface GoLambdaProps extends FunctionOptions {
+export interface GoLambda2Props extends FunctionOptions {
   /**
    * Lambda identifier used by code provider (e.g., "authorizer", "api-handler")
    */
@@ -18,35 +18,14 @@ export interface GoLambdaProps extends FunctionOptions {
   /**
    * Code provider for obtaining lambda code asset
    */
-  codeProvider: ILambdaCodeProvider;
+  artifactResolver: IArtifactResolver;
 }
 
-/**
- * CDK Construct for Go Lambda functions
- *
- * Provides sensible defaults for Go binaries:
- * - Runtime: PROVIDED_AL2 (Go AL2 runtime)
- * - Handler: bootstrap (Go's AL2 handler)
- * - Architecture: ARM_64 (cost-effective)
- * - Memory: 640 MB (configurable)
- * - Logging: CloudWatch Logs with 1-month retention
- *
- * Example:
- * ```typescript
- * const authorizer = new GoLambda(this, 'Authorizer', {
- *   lambdaId: 'authorizer',
- *   codeProvider,
- *   memorySize: 256,
- *   timeout: cdk.Duration.seconds(10),
- *   environment: { ... },
- * });
- * ```
- */
 export class GoLambda extends LambdaFunction {
-  constructor(scope: Construct, id: string, props: GoLambdaProps) {
-    const { lambdaId, codeProvider, ...lambdaProps } = props;
+  constructor(scope: Construct, id: string, props: GoLambda2Props) {
+    const { lambdaId, artifactResolver, ...lambdaProps } = props;
 
-    const code = codeProvider.getCode(lambdaId);
+    const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
     super(scope, id, {
       code,

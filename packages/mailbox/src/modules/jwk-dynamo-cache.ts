@@ -5,17 +5,17 @@ import { Trigger } from 'aws-cdk-lib/triggers';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-import { GoLambda } from '../utils/go-lambda';
-import { ILambdaCodeProvider } from '../utils/lambda-code-provider';
+import { JWKCacheUpdaterLambda } from '../lambdas';
+import { IArtifactResolver } from '../utils/artifact-resolver';
 import { INamedTable, StackNamedTable } from '../utils/named-table';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
 export interface JwkDynamoCacheProps {
   issuers: string[];
   /**
-   * Lambda code provider for building/downloading lambdas
+   * Artifact resolver for building/downloading lambdas
    */
-  codeProvider: ILambdaCodeProvider;
+  artifactResolver: IArtifactResolver;
 }
 
 export class JwkDynamoCache extends Construct {
@@ -35,17 +35,11 @@ export class JwkDynamoCache extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
     
-    const handler = new GoLambda(this, 'handler', {
-      lambdaId: 'jwk-dynamo-cache-updater',
-      codeProvider: props.codeProvider,
-      memorySize: 128,
-      environment: {
-        ISSUERS: props.issuers.join(','),
-        TABLE_NAME: table.tableName,          
-      }
+    const handler = new JWKCacheUpdaterLambda(this, 'handler', {
+      jwkCacheTable: table,
+      issuers: props.issuers,
+      artifactResolver: props.artifactResolver,
     });
-
-    table.grantReadWriteData(handler);
 
     this.table = table;
     this.updaterLambda = handler;
@@ -60,3 +54,4 @@ export class JwkDynamoCache extends Construct {
     });
   }
 }
+

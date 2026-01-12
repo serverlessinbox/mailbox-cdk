@@ -19,8 +19,8 @@ import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
  */
 export class ChangelogTable extends StackNamedTable {
 
-  constructor(scope: Construct, id: string = 'ChangelogTable') {
-    super(scope, id, {
+  constructor(scope: Construct) {
+    super(scope, 'changelog-table', {
       partitionKey: {
         name: 'pk',
         type: AttributeType.STRING,

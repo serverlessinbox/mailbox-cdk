@@ -1,0 +1,23 @@
+{
+  "name": "@sipkg/mailbox-tools",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "yarn@4.12.0",
+  "bin": "bin/mailbox-tools.cjs",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "mailbox-tools": "node bin/mailbox-tools.cjs"
+  },
+  "dependencies": {
+    "@sipkg/mailbox": "workspace:*",
+    "aws-cdk-lib": "^2.224.0",
+    "clipanion": "^3.2.1",
+    "constructs": "^10.0.0",
+    "esbuild": "^0.27.1",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.3"
+  }
+}

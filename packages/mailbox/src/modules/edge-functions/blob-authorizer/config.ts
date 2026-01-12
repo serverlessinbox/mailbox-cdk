@@ -7,7 +7,8 @@ export interface Config {
   configTable: string;
   jwkCacheTable: string;
   region: string;
-  issuer: string;
+  jwtAlgorithms?: string[];
+  authPolicyName: string;
 }
 
 /**
@@ -15,7 +16,7 @@ export interface Config {
  */
 export function extractConfig(request: any): Config | null {
   const customHeaders = request.origin?.s3?.customHeaders;
-  
+
   if (!customHeaders) {
     return null;
   }
@@ -24,9 +25,10 @@ export function extractConfig(request: any): Config | null {
   const configTable = customHeaders['x-config-table']?.[0]?.value;
   const jwkCacheTable = customHeaders['x-jwk-cache-table']?.[0]?.value;
   const region = customHeaders['x-region']?.[0]?.value || 'us-east-1';
-  const issuer = customHeaders['x-issuer']?.[0]?.value;
+  const jwtAlgorithmsRaw = customHeaders['x-jwt-algorithms']?.[0]?.value;
+  const authPolicyName = customHeaders['x-auth-policy-name']?.[0]?.value;
 
-  if (!tableName || !configTable || !jwkCacheTable || !issuer) {
+  if (!tableName || !configTable || !jwkCacheTable || !authPolicyName?.trim()) {
     return null;
   }
 
@@ -35,6 +37,12 @@ export function extractConfig(request: any): Config | null {
     configTable,
     jwkCacheTable,
     region,
-    issuer,
+    jwtAlgorithms: jwtAlgorithmsRaw
+      ? jwtAlgorithmsRaw
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean)
+      : undefined,
+    authPolicyName: authPolicyName.trim(),
   };
 }

@@ -7,7 +7,6 @@
   "license": "MIT",
   "packageManager": "yarn@4.12.0",
   "workspaces": [
-    "infrastructure",
     "packages/*"
   ],
   "devDependencies": {

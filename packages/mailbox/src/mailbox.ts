@@ -1,6 +1,4 @@
 import { Construct } from 'constructs';
-import { ILambdaCodeProvider } from './utils/lambda-code-provider';
-import { EmailProcessorLambda } from './lambdas/email-processor';
 import { EmailBucket } from './constructs/email-bucket';
 import { ConfigTable } from './constructs/config-table';
 import { ItemTable } from './constructs/item-table';
@@ -8,104 +6,193 @@ import { ChangelogTable } from './constructs/changelog-table';
 import { JwkDynamoCache } from './modules/jwk-dynamo-cache';
 import { Cdn } from './modules/cdn-construct';
 import { TantivySearch } from './modules/tantivy-search';
-import { PrecompiledS3LambdaCodeProvider } from './utils/precompiled-s3-code-provider';
 import { EmailSending } from './modules/email-sending';
-import { IOAuthHandler, JMapApi } from './modules/api';
+import { SESEventProcessing } from './modules/ses-event-processing';
+import { JMapApi } from './modules/jmap-api';
 import { WebSocketPush } from './modules/websocket';
-
-const precompiledS3Bucket = 'my-precompiled-lambda-bucket';
-const precompiledS3KeyPrefix = 'lambdas/v1.0.0/';
+import { EmailDelivery } from './email-processing/ses-rule';
+import { AdminApi } from './modules/admin-api';
+import { IAuthConfig } from './auth/IAuthConfig';
+import { EmailProcessorLambda } from './lambdas/email-processor';
+import { AuditLogTable } from './constructs/auditlog-table';
+import { MailFeedbackTable } from './constructs/mailfeedback-table';
+import { AuditWriting } from './modules/audit-writing';
+import { createArtifactResolverFromContext } from './utils/artifact-context';
+import { BootstrapTenant } from './modules/bootstrap-tenant';
+import { IAuthClientConfig } from './auth/IAuthConfig';
+import { MailboxDomains } from './domains';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 export interface MailboxProps {
-  codeProvider?: ILambdaCodeProvider;
-  oauthHandler: IOAuthHandler;
+  domainName: string;
+  authConfig: IAuthConfig;
+  allowedOrigins: string[];
+
+  /** Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>). */
+  cloudFrontCertificate?: acm.ICertificate;
+
+  /**
+   * OAuth client config for the Admin UI token exchange flow.
+   * Required: token-exchange reads OAUTH_CLIENT#ADMIN_UI from the config table.
+   */
+  adminUiOAuthClient: IAuthClientConfig;
+
+  /**
+   * Optional token exchange audience parameter (provider-specific).
+   */
+  tokenExchangeAudience?: string;
 }
 
 /**
  * Main Mailbox construct
  */
 export class Mailbox extends Construct {
+  public readonly emailBucket: EmailBucket;
+  public readonly emailProcessorLambda: EmailProcessorLambda;
+  public readonly configTable: ConfigTable;
+  public readonly cdn: Cdn;
+
+  emailDelivery(): EmailDelivery {
+    return {
+      emailBucket: this.emailBucket,
+      emailProcessor: this.emailProcessorLambda,
+      bucketPrefix: 'incoming-emails/',
+    }
+  }
+
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const oauthConfig = props.oauthHandler.getOAuthConfig();
-    const codeProvider = props.codeProvider ?? new PrecompiledS3LambdaCodeProvider({
-      s3Bucket: precompiledS3Bucket,
-      s3KeyPrefix: precompiledS3KeyPrefix,
-    });
+    const mailboxDomains = props.cloudFrontCertificate
+      ? new MailboxDomains({ domainName: props.domainName })
+      : undefined;
+
+    const artifactResolver = createArtifactResolverFromContext(this);
 
     // Configuration constants
-    const DEFAULT_DOMAIN = 'dev.jvdwaal.nl';
-    const ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:4321'];
-    const WEBSOCKET_CAPABILITY_DOMAIN = this.node.tryGetContext('websocketCapabilityDomain') || 'https://jmap.jvdwaal.nl/api/ext/websocket-push';
 
     // S3 bucket for storing incoming emails (also used for Tantivy indexes)
-    const emailBucket = new EmailBucket(this);
+    this.emailBucket = new EmailBucket(this);
 
     const configTable = new ConfigTable(this);
+    this.configTable = configTable;
     const itemTable = new ItemTable(this);
     const changelogTable = new ChangelogTable(this);
+    const auditLogTable = new AuditLogTable(this);
+    const mailFeedbackTable = new MailFeedbackTable(this);
+
+
+    new BootstrapTenant(this, 'bootstrap-tenant', {
+      domain: props.domainName,
+      oidcIssuer: props.authConfig.issuer,
+      configTable: configTable,
+      artifactResolver,
+
+      oidcProvider: {
+        tokenEndpoint: props.authConfig.tokenEndpoint,
+        authorizationEndpoint: props.authConfig.authorizationEndpoint,
+        authMethod: props.authConfig.authMethod,
+        usePkce: props.authConfig.usePkce,
+      },
+      authPolicies: {
+        adminApi: {
+          audiences: props.authConfig.clientIds,
+          requiredGroup: 'admin',
+        },
+        jmapApi: {
+          audiences: props.authConfig.clientIds,
+        },
+      },
+      oauthClients: {
+        adminUi: {
+          requestedAudience: props.tokenExchangeAudience,
+          clientId: props.adminUiOAuthClient.clientId,
+          clientSecret: props.adminUiOAuthClient.clientSecret,
+          scopes: ['openid', 'email', 'profile', ...props.adminUiOAuthClient.requestScopeList],
+          redirectUri: '/dashboard',
+        },
+      },
+    });
+
+    const auditWriting = new AuditWriting(this, 'audit-writing', {
+      auditLogTable,
+      artifactResolver,
+    });
 
     // Lambda function to process incoming emails
-    const emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: emailBucket,
-      codeProvider: codeProvider,
+      emailBucket: this.emailBucket,
+      artifactResolver,
     });
-
-    // new SesRules(this, 'email-rules', {
-    //   emailBucket,
-    //   emailProcessor: emailProcessorLambda
-    // })
 
     // JWK cache updater - writes to DynamoDB for Lambda@Edge
     const jwkCache = new JwkDynamoCache(this, 'jwk-cache', {
-      issuers: [oauthConfig.issuer],
-      codeProvider: props.codeProvider!,
+      issuers: [props.authConfig.issuer],
+      artifactResolver,
     });
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
-      emailBucket,
+      emailBucket: this.emailBucket,
       itemTable,
       configTable,
       jwkCacheTable: jwkCache.table,
-      userPoolIssuer: oauthConfig.issuer,
-      allowedOrigins: ALLOWED_ORIGINS,
+      userPoolIssuer: props.authConfig.issuer,
+      allowedOrigins: props.allowedOrigins,
+      domainName: mailboxDomains?.cdn,
+      certificate: props.cloudFrontCertificate,
     });
 
+    this.cdn = cdnConstruct;
+
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
-    const _tantivySearch = new TantivySearch(this, 'tantivy-search', {
-      indexBucket: emailBucket,
+    new TantivySearch(this, 'tantivy-search', {
+      indexBucket: this.emailBucket,
       itemTable: itemTable,
       configTable: configTable,
       changelogTable: changelogTable,
-      codeProvider: codeProvider,
+      artifactResolver: artifactResolver,
     });
 
-    // Email sending infrastructure (SQS, SNS, Lambda) - must be before API
+    // SES event processing infrastructure (SNS, SQS, Lambda)
+    const sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
+      itemTable: itemTable,
+      mailFeedbackTable: mailFeedbackTable,
+      changelogTable: changelogTable,
+      configTable: configTable,
+      emailBucket: this.emailBucket,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      artifactResolver: artifactResolver,
+    });
+
+
+    // Email sending infrastructure (SQS, Lambda) - must be before API
     const emailSending = new EmailSending(this, 'email-sending', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: emailBucket,
-      codeProvider: codeProvider,
+      emailBucket: this.emailBucket,
+      artifactResolver: artifactResolver,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
     });
 
-    const api = new JMapApi(this, 'admin-api', {
+    const jmapApi = new JMapApi(this, 'jmap-api', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      defaultDomain: DEFAULT_DOMAIN,
-      oauthHandler: props.oauthHandler,
       jwkCacheTable: jwkCache.table,
       cdnHost: cdnConstruct.host,
-      allowedOrigins: ALLOWED_ORIGINS,
-      emailBucket: emailBucket,
+      allowedOrigins: props.allowedOrigins,
+      emailBucket: this.emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
-      codeProvider: codeProvider,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      artifactResolver: artifactResolver,
+      authConfig: props.authConfig,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+
       // WebSocket URL will be passed via environment variable, not here
     });
 
@@ -114,19 +201,29 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      userPoolIssuer: oauthConfig.issuer,
       jwkCacheTable: jwkCache.table,
-      capabilityDomain: WEBSOCKET_CAPABILITY_DOMAIN,
-      authorizerLambda: api.authorizerLambda, // Reuse HTTP API authorizer
-      codeProvider: codeProvider,
+      authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
+      artifactResolver: artifactResolver,
       maxSubscriptions: 10,
       maxPingInterval: 300,
       minPingInterval: 30,
     });
 
-    // Add WebSocket URL to API handler environment
-    api.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);
-    api.apiHandlerLambda.addEnvironment('WEBSOCKET_CAPABILITY_DOMAIN', WEBSOCKET_CAPABILITY_DOMAIN);
+    new AdminApi(this, 'admin-api', {
+      configTable: configTable,
+      itemTable: itemTable,
+      auditLogTable: auditLogTable,
+      changelogTable: changelogTable,
+      mailFeedbackTable: mailFeedbackTable,
+      emailBucket: this.emailBucket,
+      emailSubmissionQueue: emailSending.submissionQueue,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      allowedOrigins: props.allowedOrigins,
+      artifactResolver: artifactResolver,
+      authConfig: props.authConfig,
+    });
 
+    // Add WebSocket URL to API handler environment
+    jmapApi.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);
   }
 }

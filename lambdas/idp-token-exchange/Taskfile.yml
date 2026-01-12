@@ -1,0 +1,37 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build Go binary to ./release directory
+    cmds:
+      - mkdir -p ./release
+      - go build -o ./release/bootstrap .
+    sources:
+      - "**/*.go"
+    generates:
+      - ./release/bootstrap
+
+  clean:
+    desc: Remove release directory
+    cmds:
+      - rm -rf ./release
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  tidy:
+    desc: Tidy Go modules
+    cmds:
+      - go mod tidy
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...

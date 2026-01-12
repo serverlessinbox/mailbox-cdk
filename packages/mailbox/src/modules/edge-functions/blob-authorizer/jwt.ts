@@ -3,7 +3,23 @@ import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 
 // In-memory cache for JWKS (persists across warm Lambda invocations)
-let jwksCache: { keys: any[] } | null = null;
+const jwksCache: Map<string, { keys: any[] }> = new Map();
+
+type IssuerTenantConfig = {
+  tenantId: string;
+  issuer: string;
+};
+
+let issuerConfigCache: { value: IssuerTenantConfig; fetchedAt: number } | null = null;
+
+type AuthPolicyConfig = {
+  audiences: string[];
+  requiredGroup?: string;
+  providerName?: string;
+  issuer?: string;
+};
+
+let authPolicyCache: { key: string; value: AuthPolicyConfig; fetchedAt: number } | null = null;
 
 interface JWK {
   kty: string;
@@ -23,7 +39,7 @@ function jwkToPem(jwk: JWK): string {
     key: jwk as any,
     format: 'jwk',
   });
-  
+
   return key.export({
     type: 'spki',
     format: 'pem',
@@ -38,9 +54,15 @@ async function getJWKS(
   jwkCacheTable: string,
   issuer: string
 ): Promise<{ keys: JWK[] }> {
+  const issuerNorm = normalizeIssuer(issuer);
+  if (!issuerNorm) {
+    throw new Error('issuer is required');
+  }
+
   // Return cached value if available (warm Lambda)
-  if (jwksCache) {
-    return jwksCache;
+  const cached = jwksCache.get(issuerNorm);
+  if (cached) {
+    return cached;
   }
 
   // Get from DynamoDB
@@ -58,11 +80,206 @@ async function getJWKS(
   }
 
   const jwks = JSON.parse(response.Item.value.S);
-  
+
   // Cache for subsequent invocations
-  jwksCache = jwks;
-  
+  jwksCache.set(issuerNorm, jwks);
+
   return jwks;
+}
+
+function normalizeIssuer(issuer: string): string {
+  return (issuer || '').trim().replace(/\/+$/, '');
+}
+
+function extractGroups(payload: jwt.JwtPayload): string[] {
+  const raw = (payload as any)['cognito:groups'] ?? (payload as any).groups ?? (payload as any).roles;
+  if (!raw) {
+    return [];
+  }
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((v) => typeof v === 'string')
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  if (typeof raw === 'string') {
+    const v = raw.trim();
+    if (!v) return [];
+    // Best-effort parsing of stringified arrays like "[a, b]".
+    if (v.startsWith('[') && v.endsWith(']')) {
+      const inner = v.slice(1, -1).trim();
+      if (!inner) return [];
+      return inner
+        .split(',')
+        .map((p) => p.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+    }
+    return [v];
+  }
+  return [];
+}
+
+function hasRequiredGroup(payload: jwt.JwtPayload, requiredGroup?: string): boolean {
+  if (!requiredGroup) {
+    return true;
+  }
+  const required = requiredGroup.trim().toLowerCase();
+  if (!required) {
+    return true;
+  }
+  const groups = extractGroups(payload);
+  return groups.some((g) => g.trim().toLowerCase() === required);
+}
+
+function verifyAudienceLikeGoAuthorizer(payload: jwt.JwtPayload, validAudiences: string[]): boolean {
+  const audiences = new Set(validAudiences.map((a) => (a || '').trim()).filter(Boolean));
+  if (audiences.size === 0) {
+    return false;
+  }
+
+  const clientID = (payload as any).client_id;
+  if (typeof clientID === 'string' && audiences.has(clientID)) {
+    return true;
+  }
+
+  const aud = (payload as any).aud;
+  if (typeof aud === 'string' && audiences.has(aud)) {
+    return true;
+  }
+  if (Array.isArray(aud)) {
+    for (const item of aud) {
+      if (typeof item === 'string' && audiences.has(item)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+async function getIssuerTenantConfig(
+  dynamodb: DynamoDBClient,
+  configTable: string,
+  issuer: string
+): Promise<IssuerTenantConfig> {
+  const issuerNorm = normalizeIssuer(issuer);
+  if (!issuerNorm) {
+    throw new Error('issuer is required');
+  }
+
+  // Warm cache (5 minutes)
+  const ttlMs = 5 * 60 * 1000;
+  if (issuerConfigCache && Date.now() - issuerConfigCache.fetchedAt < ttlMs) {
+    if (issuerConfigCache.value.issuer === issuerNorm) {
+      return issuerConfigCache.value;
+    }
+  }
+
+  const resp = await dynamodb.send(
+    new GetItemCommand({
+      TableName: configTable,
+      Key: {
+        pk: { S: 'SYSTEM#TENANTS' },
+        sk: { S: `ISSUER#${issuerNorm}` },
+      },
+      ProjectionExpression: 'tenantId',
+    })
+  );
+
+  if (!resp.Item || !resp.Item.tenantId?.S) {
+    throw new Error('issuer not configured');
+  }
+
+  const tenantId = resp.Item.tenantId.S.trim();
+  if (!tenantId) {
+    throw new Error('invalid issuer mapping: missing tenantId');
+  }
+
+  const cfg: IssuerTenantConfig = {
+    tenantId,
+    issuer: issuerNorm,
+  };
+
+  issuerConfigCache = { value: cfg, fetchedAt: Date.now() };
+  return cfg;
+}
+
+async function getAuthPolicyConfig(
+  dynamodb: DynamoDBClient,
+  configTable: string,
+  policyName: string
+): Promise<AuthPolicyConfig> {
+  const key = (policyName || '').trim();
+  if (!key) {
+    throw new Error('auth policy name is required');
+  }
+
+  // Warm cache (5 minutes)
+  const ttlMs = 5 * 60 * 1000;
+  if (authPolicyCache && Date.now() - authPolicyCache.fetchedAt < ttlMs && authPolicyCache.key === key) {
+    return authPolicyCache.value;
+  }
+
+  const policyResp = await dynamodb.send(
+    new GetItemCommand({
+      TableName: configTable,
+      Key: {
+        pk: { S: 'SYSTEM#TENANTS' },
+        sk: { S: `AUTH_POLICY#${key}` },
+      },
+      ProjectionExpression: 'providerName, audiences, requiredGroup',
+    })
+  );
+
+  if (!policyResp.Item) {
+    throw new Error(`auth policy not configured: ${key}`);
+  }
+
+  const audiences: string[] = [];
+  const audAttr = policyResp.Item.audiences;
+  if (audAttr && 'L' in audAttr && Array.isArray(audAttr.L)) {
+    for (const item of audAttr.L) {
+      if (item?.S) {
+        const v = item.S.trim();
+        if (v) audiences.push(v);
+      }
+    }
+  }
+
+  const requiredGroup = policyResp.Item.requiredGroup?.S?.trim();
+  const providerNameRaw = policyResp.Item.providerName?.S?.trim();
+  const providerName = providerNameRaw || 'PRIMARY';
+
+  // Resolve provider issuer (optional, used for sanity checking / diagnostics)
+  let providerIssuer: string | undefined;
+  try {
+    const providerResp = await dynamodb.send(
+      new GetItemCommand({
+        TableName: configTable,
+        Key: {
+          pk: { S: 'SYSTEM#TENANTS' },
+          sk: { S: `OIDC_PROVIDER#${providerName}` },
+        },
+        ProjectionExpression: 'issuer',
+      })
+    );
+    providerIssuer = normalizeIssuer(providerResp.Item?.issuer?.S || '');
+    if (!providerIssuer) {
+      providerIssuer = undefined;
+    }
+  } catch {
+    providerIssuer = undefined;
+  }
+
+  const cfg: AuthPolicyConfig = {
+    audiences,
+    ...(requiredGroup ? { requiredGroup } : {}),
+    providerName,
+    ...(providerIssuer ? { issuer: providerIssuer } : {}),
+  };
+
+  authPolicyCache = { key, value: cfg, fetchedAt: Date.now() };
+  return cfg;
 }
 
 /**
@@ -75,12 +292,12 @@ async function getSigningKey(
   issuer: string
 ): Promise<string> {
   const jwks = await getJWKS(dynamodb, jwkCacheTable, issuer);
-  
+
   const key = jwks.keys.find((k: JWK) => k.kid === kid);
   if (!key) {
     throw new Error(`Key with kid ${kid} not found in JWKS`);
   }
-  
+
   return jwkToPem(key);
 }
 
@@ -90,34 +307,16 @@ async function getSigningKey(
 export interface UserContext {
   userId: string;
   accountIds: string[];
+  tenantId: string;
 }
 
 /**
- * Extract stable identifier from JWT claims using configurable priority
- * Stable identifiers (email, username) survive IDP recreation, unlike 'sub' which changes
- * @param verified JWT claims
- * @param priorityList Priority list of claim names (e.g., "email,preferred_username,cognito:username,sub")
- * @returns Stable identifier or empty string if not found
- */
-function extractStableIdentifier(verified: jwt.JwtPayload, priorityList: string): string {
-  const claims = priorityList.split(',').map(c => c.trim());
-  
-  for (const claim of claims) {
-    const value = (verified as any)[claim];
-    if (value && typeof value === 'string' && value.length > 0) {
-      return value;
-    }
-  }
-  
-  return '';
-}
-
-/**
- * Query IDPMapping from DynamoDB to get UserID using stable identifier
+ * Query IDPMapping from DynamoDB to get UserID using OIDC subject (sub)
  */
 async function getIDPMapping(
-  stableId: string,
+  idpUserId: string,
   provider: string,
+  tenantId: string,
   dynamodb: DynamoDBClient,
   configTable: string
 ): Promise<string | null> {
@@ -125,9 +324,10 @@ async function getIDPMapping(
     const command = new GetItemCommand({
       TableName: configTable,
       Key: {
-        PK: { S: `IDP#${provider}#${stableId}` },
-        SK: { S: 'METADATA' },
+        pk: { S: `TENANT#${tenantId}#IDP#${provider}#${idpUserId}` },
+        sk: { S: 'METADATA' },
       },
+      ProjectionExpression: 'userId',
     });
 
     const response = await dynamodb.send(command);
@@ -148,6 +348,7 @@ async function getIDPMapping(
  */
 async function getUserAccounts(
   userId: string,
+  tenantId: string,
   dynamodb: DynamoDBClient,
   configTable: string
 ): Promise<string[]> {
@@ -157,10 +358,11 @@ async function getUserAccounts(
     const command = new QueryCommand({
       TableName: configTable,
       IndexName: 'GSI1',
-      KeyConditionExpression: 'GSI1PK = :pk',
+      KeyConditionExpression: 'gsi1pk = :pk',
       ExpressionAttributeValues: {
-        ':pk': { S: `USER_ACCOUNTS#${userId}` },
+        ':pk': { S: `TENANT#${tenantId}#USER_ACCOUNTS#${userId}` },
       },
+      ProjectionExpression: 'accountId',
     });
 
     const response = await dynamodb.send(command);
@@ -192,25 +394,61 @@ export async function verifyToken(
   dynamodb: DynamoDBClient,
   jwkCacheTable: string,
   configTable: string,
-  issuer: string,
-  stableIdPriority: string = 'email,preferred_username,cognito:username,sub'
+  jwtAlgorithms?: string[],
+  authPolicyName?: string
 ): Promise<UserContext | null> {
   try {
-    // Decode token header to get kid and algorithm
-    const decoded = jwt.decode(token, { complete: true });
-    if (!decoded || !decoded.header.kid || !decoded.header.alg) {
-      console.error('Invalid token: missing kid or alg');
+    // First decode without verification to determine issuer (matches Go authorizer pattern)
+    const unverified = jwt.decode(token, { complete: true });
+    if (!unverified || typeof (unverified as any).payload !== 'object') {
+      console.error('Invalid token: failed to decode payload');
       return null;
     }
 
-    // Get signing key
-    const signingKey = await getSigningKey(decoded.header.kid, dynamodb, jwkCacheTable, issuer);
+    const unverifiedPayload = (unverified as any).payload as jwt.JwtPayload;
+    const issuerFromToken = normalizeIssuer((unverifiedPayload as any).iss);
+    if (!issuerFromToken) {
+      console.error("Token missing required 'iss' claim");
+      return null;
+    }
 
-    // Verify token with algorithm from token header
+    if (!unverified.header?.kid) {
+      console.error('Invalid token: missing kid');
+      return null;
+    }
+
+    // Resolve issuer -> tenant (issuer-mapping record remains the canonical allowlist)
+    const issuerCfg = await getIssuerTenantConfig(dynamodb, configTable, issuerFromToken);
+
+    // Load auth policy (required)
+    const policyName = (authPolicyName || '').trim();
+    if (!policyName) {
+      console.error('Missing auth policy name');
+      return null;
+    }
+    const authPolicy = await getAuthPolicyConfig(dynamodb, configTable, policyName);
+
+    // Get signing key
+    const signingKey = await getSigningKey(unverified.header.kid, dynamodb, jwkCacheTable, issuerCfg.issuer);
+
+    const allowedAlgorithms = (jwtAlgorithms && jwtAlgorithms.length > 0) ? jwtAlgorithms : ['RS256'];
+
+    // Verify token (allowlist) with 5 minute clock skew tolerance (matches Go authorizer)
     const verified = jwt.verify(token, signingKey, {
-      algorithms: [decoded.header.alg as jwt.Algorithm],
-      issuer: issuer,
+      algorithms: allowedAlgorithms as jwt.Algorithm[],
+      issuer: issuerCfg.issuer,
+      clockTolerance: 300,
     }) as jwt.JwtPayload;
+
+    if (!verifyAudienceLikeGoAuthorizer(verified, authPolicy.audiences)) {
+      console.error('Invalid client_id or audience in token');
+      return null;
+    }
+
+    if (!hasRequiredGroup(verified, authPolicy.requiredGroup)) {
+      console.error('Missing required group');
+      return null;
+    }
 
     // Validate required claims
     const sub = verified.sub;
@@ -219,35 +457,22 @@ export async function verifyToken(
       return null;
     }
 
-    // Validate token_use for Cognito (should be "access" for API access)
-    const tokenUse = (verified as any).token_use;
-    if (tokenUse && tokenUse !== 'access') {
-      console.error(`Invalid token_use: expected 'access', got '${tokenUse}'`);
-      return null;
-    }
-
-    // Extract stable identifier (resilient to IDP recreation)
-    const stableId = extractStableIdentifier(verified, stableIdPriority);
-    if (!stableId) {
-      console.error('Token missing stable identifier: could not extract from claims');
-      return null;
-    }
-
-    // Query IDPMapping to get UserID using stable identifier
+    // Query IDPMapping to get UserID using `sub`
     const provider = 'cognito'; // Currently only supporting Cognito
-    const userId = await getIDPMapping(stableId, provider, dynamodb, configTable);
-    
+    const userId = await getIDPMapping(sub, provider, issuerCfg.tenantId, dynamodb, configTable);
+
     if (!userId) {
       console.error('User not found in IDP mapping');
       return null;
     }
 
     // Query user's accounts from database
-    const accountIds = await getUserAccounts(userId, dynamodb, configTable);
+    const accountIds = await getUserAccounts(userId, issuerCfg.tenantId, dynamodb, configTable);
 
     return {
       userId,
       accountIds,
+      tenantId: issuerCfg.tenantId,
     };
   } catch (error) {
     console.error('JWT verification error:', error);
@@ -262,11 +487,11 @@ export function extractToken(authHeader: string | undefined): string | null {
   if (!authHeader) {
     return null;
   }
-  
+
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
     return null;
   }
-  
+
   return parts[1];
 }

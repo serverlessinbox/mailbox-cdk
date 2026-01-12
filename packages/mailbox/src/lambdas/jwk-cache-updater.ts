@@ -1,0 +1,27 @@
+import { GoLambda } from '../utils/go-lambda';
+import { IArtifactResolver } from '../utils/artifact-resolver';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Construct } from 'constructs';
+
+export interface JWKCacheUpdaterLambdaProps {
+  issuers: string[];
+  jwkCacheTable: ITable;
+  artifactResolver: IArtifactResolver;
+}
+
+export class JWKCacheUpdaterLambda extends GoLambda {
+  constructor(scope: Construct, id: string, props: JWKCacheUpdaterLambdaProps) {
+    super(scope, id, {
+      lambdaId: 'jwk-dynamo-cache-updater',
+      artifactResolver: props.artifactResolver,
+      memorySize: 128,
+      environment: {
+        ISSUERS: props.issuers.join(','),
+        TABLE_NAME: props.jwkCacheTable.tableName,
+      },
+    });
+
+    // Grant permissions
+    props.jwkCacheTable.grantReadWriteData(this);
+  }
+}

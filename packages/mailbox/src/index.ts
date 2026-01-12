@@ -3,5 +3,12 @@
  */
 
 export * from './mailbox';
-export * from './utils/lambda-code-provider';
-export * from './utils/local-lambda-code-provider';
+export * from './auth';
+export * from './domains';
+export * from './edge';
+export * from './utils/artifact-resolver';
+export { createArtifactResolverFromContext } from './utils/artifact-context';
+export * from './utils/jmap-scopes';
+export * from './email-processing';
+export { AdminUi, AdminUiProps } from './ui/admin-ui';
+export * from './lambdas';

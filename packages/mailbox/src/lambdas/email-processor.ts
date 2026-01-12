@@ -1,23 +1,23 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { GoLambda } from "../utils/go-lambda";
 import { INamedTable } from "../utils/named-table";
-import { ILambdaCodeProvider } from "../utils/lambda-code-provider";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
+import { IArtifactResolver } from "../utils/artifact-resolver";
 
 export interface EmailProcessorLambdaProps {
   configTable: INamedTable;
   itemTable: INamedTable;
   changelogTable: INamedTable;
   emailBucket: IBucket;
-  codeProvider: ILambdaCodeProvider;
+  artifactResolver: IArtifactResolver;
 }
 
 export class EmailProcessorLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: EmailProcessorLambdaProps) {
     super(scope, id, {
       lambdaId: 'email-processor',
-      codeProvider: props.codeProvider,
+      artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(1),
       memorySize: 1024,
       environment: {
