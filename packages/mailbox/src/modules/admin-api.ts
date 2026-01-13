@@ -1,14 +1,15 @@
 import { Construct } from "constructs";
-import { AdminApiLambda } from "../lambdas";
+import { AdminApiLambda, AuthorizerLambda } from "../lambdas";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { CorsHttpMethod, HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-import { Duration, Lazy } from "aws-cdk-lib";
+import { HttpLambdaAuthorizer, HttpLambdaResponseType } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
+import { Duration } from "aws-cdk-lib";
 import { IQueue } from "aws-cdk-lib/aws-sqs";
 import { IAuthConfig } from "../auth/IAuthConfig";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { IArtifactResolver } from "../utils/artifact-resolver";
+import { AUTH_POLICY_ADMIN_API } from "../auth/tenant-bootstrap";
 
 
 export interface AdminApiProps {
@@ -17,6 +18,7 @@ export interface AdminApiProps {
   auditLogTable: ITable;
   changelogTable: ITable;
   mailFeedbackTable: ITable;
+  jwkCacheTable: ITable;
   emailBucket: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
@@ -54,9 +56,19 @@ export class AdminApi extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    const authorizer = new HttpJwtAuthorizer('admin-jwt-authorizer', props.authConfig.issuer, {
-      identitySource: ['$request.header.Authorization'],
-      jwtAudience: Lazy.list({ produce: () => props.authConfig.clientIds }),
+    const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
+      jwkCacheTable: props.jwkCacheTable,
+      configTable: props.configTable,
+      userPoolIssuer: props.authConfig.issuer,
+      artifactResolver: props.artifactResolver,
+      authPolicyName: AUTH_POLICY_ADMIN_API,
+      allowAnonymous: false,
+    });
+
+    const httpLambdaAuthorize = new HttpLambdaAuthorizer('LambdaAuthorizer', lambdaAuthorizer, {
+      identitySource: [],
+      responseTypes: [HttpLambdaResponseType.SIMPLE],
+      resultsCacheTtl: Duration.minutes(0),
     });
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
@@ -64,7 +76,7 @@ export class AdminApi extends Construct {
       integration: httpLambdaIntegration,
       path: '/{proxy+}',
       methods: [HttpMethod.POST],
-      authorizer,
+      authorizer: httpLambdaAuthorize,
     });
   }
 }

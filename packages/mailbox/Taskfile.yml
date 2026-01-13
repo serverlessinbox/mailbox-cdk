@@ -8,12 +8,12 @@ tasks:
   build:
     desc: Type-check TypeScript sources
     cmds:
-      - tsc --noEmit
+      - yarn exec tsc --noEmit
 
   build:watch:
     desc: Type-check in watch mode
     cmds:
-      - tsc --noEmit --watch
+      - yarn exec tsc --noEmit --watch
 
   build:edge-stack:
     desc: Synthesize CloudFormation template for edge stack
@@ -82,12 +82,12 @@ tasks:
   lint:
     desc: Run ESLint
     cmds:
-      - eslint .
+      - yarn exec eslint .
 
   test:
     desc: Run Jest tests
     cmds:
-      - jest
+      - yarn exec jest
 
   clean:
     desc: Clean build artifacts

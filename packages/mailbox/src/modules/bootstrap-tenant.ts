@@ -3,37 +3,11 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapTenantLambda } from '../lambdas';
 import { IArtifactResolver } from '../utils/artifact-resolver';
-import { SecretValue } from 'aws-cdk-lib';
-
-export interface BootstrapOIDCProviderProps {
-  tokenEndpoint?: string;
-  authorizationEndpoint?: string;
-  authMethod?: 'header' | 'form';
-  usePkce?: boolean;
-}
-
-export interface BootstrapAuthPolicyProps {
-  audiences?: string[];
-  requiredGroup?: string;
-}
-
-export interface BootstrapAuthPoliciesProps {
-  adminApi?: BootstrapAuthPolicyProps;
-  jmapApi?: BootstrapAuthPolicyProps;
-}
-
-export interface BootstrapOAuthClientProps {
-  requestedAudience?: string;
-  clientId?: string;
-  clientSecret?: SecretValue;
-  scopes?: string[];
-  redirectUri?: string;
-}
-
-export interface BootstrapOAuthClientsProps {
-  adminUi: BootstrapOAuthClientProps;
-  jmapUi?: BootstrapOAuthClientProps;
-}
+import {
+  BootstrapAuthPoliciesProps,
+  BootstrapOAuthClientsProps,
+  BootstrapOIDCProviderProps,
+} from '../auth/tenant-bootstrap';
 
 export interface BootstrapTenantProps {
   configTable: ITable;
@@ -156,3 +130,9 @@ export class BootstrapTenant extends Construct {
     props.configTable.grantReadWriteData(handler);
   }
 }
+
+export type {
+  BootstrapOIDCProviderProps,
+  BootstrapAuthPoliciesProps,
+  BootstrapOAuthClientsProps,
+} from '../auth/tenant-bootstrap';

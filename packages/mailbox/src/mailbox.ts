@@ -234,6 +234,7 @@ export class Mailbox extends Construct {
       auditLogTable: auditLogTable,
       changelogTable: changelogTable,
       mailFeedbackTable: mailFeedbackTable,
+      jwkCacheTable: jwkCache.table,
       emailBucket: this.emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
