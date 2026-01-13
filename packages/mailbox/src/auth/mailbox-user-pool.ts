@@ -133,7 +133,7 @@ export class MailboxUserPool extends Construct implements IAuthConfig {
       userPool: this.userPool,
       userPoolClientName: 'mailbox-client-' + params.name,
       authFlows: this.authFlows,
-      generateSecret: params.generateSecret,
+      generateSecret: false,
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
       refreshTokenValidity: cdk.Duration.days(30),
@@ -164,7 +164,6 @@ export class MailboxUserPool extends Construct implements IAuthConfig {
 
     return {
       clientId: client.userPoolClientId,
-      clientSecret: client.userPoolClientSecret,
       requestScopeList: requestedScopeList,
       groups: params.groups,
     };

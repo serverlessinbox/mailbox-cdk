@@ -39,6 +39,21 @@ export interface IArtifactResolver {
    * @param objectPath - Object path
    */
   getArn(packageName: string, objectPath: string): string;
+
+  /**
+   * Get S3 version ID for a package artifact from the version map.
+   * Returns undefined if no version ID is configured for the artifact.
+   * @param packageName - Package name
+   * @param objectPath - Object path
+   */
+  getVersionId(packageName: string, objectPath: string): string | undefined;
+
+  /**
+   * Get the S3 key (full path) for a package artifact.
+   * @param packageName - Package name
+   * @param objectPath - Object path
+   */
+  getKey(packageName: string, objectPath: string): string;
 }
 
 /**
@@ -145,7 +160,7 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
   /**
    * Get the S3 key for an object.
    */
-  private getKey(packageName: string, objectPath: string): string {
+  getKey(packageName: string, objectPath: string): string {
     const prefix = this.getPrefix(packageName);
     return `${prefix}/${objectPath.replace(/^\/+/, '')}`;
   }
@@ -175,6 +190,14 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
     const bucket = this.bucketName();
     const key = this.getKey(packageName, objectPath);
     return `arn:aws:s3:::${bucket}/${key}`;
+  }
+
+  /**
+   * Get S3 version ID for an artifact from the version map.
+   */
+  getVersionId(packageName: string, objectPath: string): string | undefined {
+    const key = this.getKey(packageName, objectPath);
+    return this.versionMap[key];
   }
 
   /**

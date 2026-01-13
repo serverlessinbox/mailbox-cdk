@@ -2,11 +2,10 @@ import * as cdk from 'aws-cdk-lib';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { INamedBucket } from '../utils/named-bucket';
 import { INamedTable } from '../utils/named-table';
-import { createEdgeFunction } from '../utils/edge-function';
-import * as path from 'path';
 
 export interface CdnProps {
   emailBucket: INamedBucket;
@@ -16,6 +15,9 @@ export interface CdnProps {
   userPoolIssuer: string;
   allowedOrigins: string[];
   jwtAlgorithms?: string[];
+
+  /** Pre-deployed Lambda@Edge version (us-east-1). */
+  blobAuthorizerVersion: lambda.IVersion;
 
   /** Optional custom domain name for the CDN distribution (e.g., cdn.example.com). */
   domainName?: string;
@@ -31,19 +33,6 @@ export class Cdn extends Construct {
 
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
-
-    // Lambda@Edge function for blob authorization
-    // Verifies JWT token and checks user access via DynamoDB
-    const blobAuthFunction = createEdgeFunction(this, 'BlobAuthEdge', {
-      entry: path.join(__dirname, 'edge-functions/blob-authorizer/index.ts'),
-      memorySize: 128,
-      timeout: cdk.Duration.seconds(5),
-    });
-
-    // Grant DynamoDB read access
-    props.itemTable.grantReadData(blobAuthFunction);
-    props.configTable.grantReadData(blobAuthFunction);
-    props.jwkCacheTable.grantReadData(blobAuthFunction);
 
     // Create custom origin with configuration headers
     // (Lambda@Edge doesn't support environment variables)
@@ -98,7 +87,7 @@ export class Cdn extends Construct {
         // Lambda@Edge runs at viewer-request (before cache lookup)
         edgeLambdas: [
           {
-            functionVersion: blobAuthFunction.currentVersion,
+            functionVersion: props.blobAuthorizerVersion,
             eventType: cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
           },
         ],

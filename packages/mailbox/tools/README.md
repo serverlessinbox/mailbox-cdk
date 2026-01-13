@@ -23,7 +23,7 @@ Bucket: `mailbox-artifacts-eu-west-1`
 Runs local CDK synth for the edge stack and uploads the template + a minimal manifest.
 
 ```sh
-yarn workspace @sipkg/mailbox publish:edge-template \
+yarn workspace @sipkg/mailbox publish:edge-stack \
   --bucketBase mailbox-artifacts \
   --region us-east-1 \
   --mode dev \
@@ -33,19 +33,19 @@ yarn workspace @sipkg/mailbox publish:edge-template \
   --prefix mailbox
 ```
 
-## Publish a Node lambda zip
+## Publish TypeScript lambdas
 
-Bundles a TS/JS entrypoint with esbuild, zips it, and uploads to S3.
+Bundles all TS/JS lambdas in `src/ts-lambdas/` with esbuild, zips them, and uploads to S3.
+
+Auto-discovers any subdirectory with an `index.ts` file.
 
 ```sh
-yarn workspace @sipkg/mailbox publish:node-lambda \
+yarn workspace @sipkg/mailbox publish:ts-lambdas \
   --bucketBase mailbox-artifacts \
   --region eu-west-1 \
   --mode dev \
   --version 1.0.0 \
-  --devTag joost \
-  --entry src/edge/mailbox-edge-deployer.handler.ts \
-  --key regional/lambdas/mailbox-edge-deployer.zip
+  --devTag joost
 ```
 
 Notes:

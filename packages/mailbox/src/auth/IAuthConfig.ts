@@ -4,7 +4,6 @@ import { Permission } from "../utils/jmap-scopes";
 export interface IGenerateClientParams {
   name: string;
   groups: string[];
-  generateSecret: boolean;
   permissions: Permission[];
   callbackUrls: string[];
   logoutUrls: string[];

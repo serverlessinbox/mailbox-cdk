@@ -42,7 +42,7 @@ export class PublishFolderZipCommand extends Command {
 
   regions = Option.String('--regions', {
     description:
-      'Comma-separated regions to publish into (release mode only). Defaults to publish config release regions.',
+      'Comma-separated regions to publish into. Defaults to publish config regions for the mode.',
   });
 
   releaseDir = Option.String('--releaseDir', {

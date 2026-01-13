@@ -22,8 +22,11 @@ import { BootstrapTenant } from './modules/bootstrap-tenant';
 import { IAuthClientConfig } from './auth/IAuthConfig';
 import { MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { MailboxEdgeDeployer } from './edge';
+import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 
 export interface MailboxProps {
+  hostedZone?: IHostedZone;
   domainName: string;
   authConfig: IAuthConfig;
   allowedOrigins: string[];
@@ -52,6 +55,8 @@ export class Mailbox extends Construct {
   public readonly configTable: ConfigTable;
   public readonly cdn: Cdn;
 
+  public readonly edgeCertificate?: acm.ICertificate;
+
   emailDelivery(): EmailDelivery {
     return {
       emailBucket: this.emailBucket,
@@ -63,9 +68,7 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const mailboxDomains = props.cloudFrontCertificate
-      ? new MailboxDomains({ domainName: props.domainName })
-      : undefined;
+    const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
 
     const artifactResolver = createArtifactResolverFromContext(this);
 
@@ -81,6 +84,27 @@ export class Mailbox extends Construct {
     const auditLogTable = new AuditLogTable(this);
     const mailFeedbackTable = new MailFeedbackTable(this);
 
+    // JWK cache updater - writes to DynamoDB for Lambda@Edge
+    const jwkCache = new JwkDynamoCache(this, 'jwk-cache', {
+      issuers: [props.authConfig.issuer],
+      artifactResolver,
+    });
+
+    const edgeStack = new MailboxEdgeDeployer(this, 'edge-deployer', {
+      domainName: props.domainName,
+      artifactResolver: artifactResolver,
+      prefix: mailboxDomains.prefix,
+      hostedZoneId: props.hostedZone?.hostedZoneId,
+      hostedZoneName: props.hostedZone?.zoneName,
+      itemTableArn: itemTable.tableArn,
+      configTableArn: configTable.tableArn,
+      jwkCacheTableArn: jwkCache.table.tableArn,
+    });
+
+    this.edgeCertificate = edgeStack.edgeCertificate;
+
+    const hasHostedZone = Boolean(props.hostedZone?.hostedZoneId && props.hostedZone?.zoneName);
+    const useCustomCdnDomain = Boolean(props.cloudFrontCertificate || hasHostedZone);
 
     new BootstrapTenant(this, 'bootstrap-tenant', {
       domain: props.domainName,
@@ -128,12 +152,6 @@ export class Mailbox extends Construct {
       artifactResolver,
     });
 
-    // JWK cache updater - writes to DynamoDB for Lambda@Edge
-    const jwkCache = new JwkDynamoCache(this, 'jwk-cache', {
-      issuers: [props.authConfig.issuer],
-      artifactResolver,
-    });
-
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
       emailBucket: this.emailBucket,
@@ -142,8 +160,9 @@ export class Mailbox extends Construct {
       jwkCacheTable: jwkCache.table,
       userPoolIssuer: props.authConfig.issuer,
       allowedOrigins: props.allowedOrigins,
-      domainName: mailboxDomains?.cdn,
-      certificate: props.cloudFrontCertificate,
+      blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
+      domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
+      certificate: hasHostedZone ? edgeStack.edgeCertificate : props.cloudFrontCertificate,
     });
 
     this.cdn = cdnConstruct;
@@ -225,5 +244,6 @@ export class Mailbox extends Construct {
 
     // Add WebSocket URL to API handler environment
     jmapApi.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);
+
   }
 }

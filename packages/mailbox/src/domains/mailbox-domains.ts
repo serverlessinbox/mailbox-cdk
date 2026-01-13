@@ -101,6 +101,7 @@ export class MailboxDomains implements MailboxDomainNames {
 
   constructor(props: MailboxDomainNamesProps) {
     this.domainName = normalizeDomainName(props.domainName);
+
     this.prefix = normalizePrefix(props.prefix);
 
     const base = this.prefix ? `${this.prefix}.${this.domainName}` : this.domainName;

@@ -12,21 +12,22 @@
   "types": "src/index.ts",
   "packageManager": "yarn@4.12.0",
   "scripts": {
-    "build": "tsc --noEmit",
-    "build:watch": "tsc --noEmit --watch",
+    "build": "task build",
+    "build:watch": "task build:watch",
+    "build:edge-stack": "task build:edge-stack",
     "jsii:build": "jsii",
     "jsii:package": "jsii-pacmak",
     "prepack": "jsii",
     "postpack": "rm -rf lib dist",
-    "lint": "eslint .",
-    "test": "jest",
-    "dev": "yarn build:watch",
-    "publish:edge-template": "ts-node tools/publish-edge-template.ts",
-    "publish:node-lambda": "ts-node tools/publish-node-lambda.ts",
-    "publish:dev": "ts-node tools/publish-dev.ts",
-    "publish:go-lambdas": "yarn workspace @sipkg/mailbox-tools mailbox-tools publish go-lambdas",
-    "publish:go-lambdas:dev": "yarn workspace @sipkg/mailbox-tools mailbox-tools publish go-lambdas --mode dev",
-    "publish:go-lambdas:release": "yarn workspace @sipkg/mailbox-tools mailbox-tools publish go-lambdas --mode release"
+    "lint": "task lint",
+    "test": "task test",
+    "dev": "task build:watch",
+    "publish:edge:dev": "task publish:edge:dev",
+    "publish:edge:release": "task publish:edge:release",
+    "publish:regional:dev": "task publish:regional:dev",
+    "publish:regional:release": "task publish:regional:release",
+    "publish:dev": "task publish:dev",
+    "publish:release": "task publish:release"
   },
   "publishConfig": {
     "main": "lib/index.js",
@@ -81,7 +82,9 @@
   },
   "dependencies": {
     "@aws-cdk/aws-lambda-go-alpha": "^2.214.1-alpha.0",
+    "@aws-sdk/client-cloudformation": "^3.946.0",
     "@aws-sdk/client-dynamodb": "^3.946.0",
+    "@aws-sdk/client-sfn": "^3.946.0",
     "@aws-sdk/util-dynamodb": "^3.946.0",
     "jsonwebtoken": "^9.0.3"
   },

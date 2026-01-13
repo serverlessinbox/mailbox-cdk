@@ -6,9 +6,12 @@ import { awsProfileArgs, run, trimCsv } from './common';
 export type PublishMode = 'channel' | 'release';
 
 export function resolveRegions(mode: PublishMode, regionsCsv?: string): string[] {
+  if (regionsCsv) {
+    return trimCsv(regionsCsv);
+  }
   return mode === 'channel'
     ? publishConfig.channel.regions.slice()
-    : trimCsv(regionsCsv ?? publishConfig.release.regions.join(','));
+    : trimCsv(publishConfig.release.regions.join(','));
 }
 
 export function resolveTarget(mode: PublishMode, opts: { version?: string; channel?: string }): PublishTarget {
