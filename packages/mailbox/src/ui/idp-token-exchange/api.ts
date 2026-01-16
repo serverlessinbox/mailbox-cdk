@@ -4,7 +4,12 @@ import { IdpTokenExchangeLambda } from "../../lambdas";
 import { IArtifactResolver } from "../../utils/artifact-resolver";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { AuthPolicyName, OAuthClientName } from "../../auth/tenant-bootstrap";
+import {
+  AuthPolicyName,
+  OAuthClientName,
+  AUTH_POLICY_ADMIN_API,
+  OAUTH_CLIENT_ADMIN_UI,
+} from "../../auth/types";
 
 export interface IdpTokenExchangeApiProps {
   artifactResolver: IArtifactResolver;
@@ -34,8 +39,8 @@ export class IdpTokenExchangeApi extends Construct {
 
     const apiHandlerLambda = new IdpTokenExchangeLambda(this, 'idp-token-exchange-lambda', {
       configTable: props.configTable,
-      authPolicyName: props.authPolicyName ?? 'ADMIN_API',
-      oauthClientName: props.oauthClientName ?? 'ADMIN_UI',
+      authPolicyName: props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
+      oauthClientName: props.oauthClientName ?? OAUTH_CLIENT_ADMIN_UI,
       artifactResolver: props.artifactResolver,
     });
 

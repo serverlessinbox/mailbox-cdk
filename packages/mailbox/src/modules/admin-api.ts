@@ -1,15 +1,23 @@
 import { Construct } from "constructs";
 import { AdminApiLambda, AuthorizerLambda } from "../lambdas";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { CorsHttpMethod, HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
+import {
+  ApiMapping,
+  CorsHttpMethod,
+  DomainName,
+  EndpointType,
+  HttpApi,
+  HttpMethod,
+  SecurityPolicy,
+} from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { HttpLambdaAuthorizer, HttpLambdaResponseType } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { Duration } from "aws-cdk-lib";
 import { IQueue } from "aws-cdk-lib/aws-sqs";
-import { IAuthConfig } from "../auth/IAuthConfig";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { IArtifactResolver } from "../utils/artifact-resolver";
-import { AUTH_POLICY_ADMIN_API } from "../auth/tenant-bootstrap";
+import { AUTH_POLICY_ADMIN_API, AuthConfig } from "../auth/types";
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 
 export interface AdminApiProps {
@@ -22,12 +30,22 @@ export interface AdminApiProps {
   emailBucket: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
-  allowedOrigins: string[];
+  allowedOrigins?: string[];
   artifactResolver: IArtifactResolver;
-  authConfig: IAuthConfig;
+  authConfig: AuthConfig;
+
+  /** Optional custom domain name for this API (e.g. api.example.com). */
+  domainName?: string;
+
+  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
+  certificate?: acm.ICertificate;
 }
 
 export class AdminApi extends Construct {
+  public readonly url: string;
+  /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
+  public readonly domainTarget?: string;
+
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
 
@@ -35,14 +53,40 @@ export class AdminApi extends Construct {
     const api = new HttpApi(this, 'admin-api', {
       apiName: 'Mailbox Service Admin API',
       description: 'This service serves mailbox admin api endpoints.',
-      corsPreflight: {
-        allowOrigins: props.allowedOrigins,
-        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-        allowHeaders: ['Content-Type', 'Authorization', 'webrpc'],
-        allowCredentials: true,
-        maxAge: Duration.hours(1),
-      },
+      corsPreflight: props.allowedOrigins && props.allowedOrigins.length > 0
+        ? {
+          allowOrigins: props.allowedOrigins,
+          allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+          allowHeaders: ['Content-Type', 'Authorization', 'webrpc'],
+          allowCredentials: true,
+          maxAge: Duration.hours(1),
+        }
+        : undefined,
     });
+
+    if (props.domainName) {
+      if (!props.certificate) {
+        throw new Error('AdminApi: certificate is required when domainName is provided');
+      }
+
+      const domain = new DomainName(this, 'domain', {
+        domainName: props.domainName,
+        certificate: props.certificate,
+        endpointType: EndpointType.REGIONAL,
+        securityPolicy: SecurityPolicy.TLS_1_2,
+      });
+
+      new ApiMapping(this, 'mapping', {
+        api,
+        domainName: domain,
+        stage: api.defaultStage!,
+      });
+
+      this.url = `https://${props.domainName}`;
+      this.domainTarget = domain.regionalDomainName;
+    } else {
+      this.url = api.apiEndpoint;
+    }
 
     const apiHandlerLambda = new AdminApiLambda(this, 'api-handler', {
       configTable: props.configTable,

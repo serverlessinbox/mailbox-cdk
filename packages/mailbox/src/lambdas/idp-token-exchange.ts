@@ -2,7 +2,7 @@ import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../utils/artifact-resolver';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { AuthPolicyName, OAuthClientName } from '../auth/tenant-bootstrap';
+import { AuthPolicyName, OAuthClientName } from '../auth/types';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: ITable;

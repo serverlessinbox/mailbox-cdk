@@ -1,15 +1,10 @@
-import { Construct } from "constructs";
-import { Bucket, BlockPublicAccess } from "aws-cdk-lib/aws-s3";
-import { Distribution, OriginAccessIdentity, ViewerProtocolPolicy, CachePolicy, ResponseHeadersPolicy, HeadersFrameOption, HeadersReferrerPolicy, AllowedMethods, OriginRequestPolicy, Function as CloudFrontFunction, FunctionCode, FunctionEventType } from "aws-cdk-lib/aws-cloudfront";
-import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
-import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
-import { Fn, RemovalPolicy, Duration } from "aws-cdk-lib";
-import { IdpTokenExchangeApi } from "./idp-token-exchange/api";
-import { IArtifactResolver } from "../utils/artifact-resolver";
-import { IAuthConfig } from "../auth/IAuthConfig";
+import { Construct } from 'constructs';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
+import { AUTH_POLICY_ADMIN_API, AuthClientConfig, AuthConfig, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { createArtifactResolverFromContext } from "../utils/artifact-context";
+import { MailboxUi } from './mailbox-ui';
 
 export interface AdminUiProps {
   /**
@@ -23,12 +18,11 @@ export interface AdminUiProps {
    */
   certificate?: acm.ICertificate;
 
-  authConfig: IAuthConfig
-
-  /**
-   * Shared config table used by token exchange API.
-   */
+  /** Shared config table used by token exchange API. */
   configTable: ITable;
+
+  /** Auth provider used to generate the OAuth client for this UI. */
+  authConfig: AuthConfig;
 
   /**
    * Content Security Policy header value
@@ -37,6 +31,9 @@ export interface AdminUiProps {
    * Optional - if not provided, a basic CSP will be used
    */
   cspPolicy?: string;
+
+  /** Base URL for the Admin UI's backend API. Written into `/config/config.json`. */
+  apiUrl?: string;
 }
 
 /**
@@ -65,156 +62,39 @@ export class AdminUi extends Construct {
   readonly bucket: Bucket;
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
+  readonly oauthClient: AuthClientConfig;
+  readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
     super(scope, id);
 
-    const artifactResolver = createArtifactResolverFromContext(this);
-    
-
-    // Create S3 bucket for UI assets
-    this.bucket = new Bucket(this, 'ui-bucket', {
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-    });
-
-    // Create Origin Access Identity for CloudFront to access S3
-    const originAccessIdentity = new OriginAccessIdentity(this, 'oai', {
-      comment: `OAI for Admin UI distribution`,
-    });
-
-    // Grant CloudFront access to S3 bucket
-    this.bucket.grantRead(originAccessIdentity);
-
-    // Create CloudFront distribution
-    this.distribution = new Distribution(this, 'distribution', {
-      defaultRootObject: 'index.html',
-      domainNames: props.certificate ? [props.domainName] : undefined,
+    const ui = new MailboxUi(this, 'ui', {
+      label: 'Admin UI',
+      domainName: props.domainName,
       certificate: props.certificate,
-      defaultBehavior: {
-        origin: S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
-          originAccessIdentity,
-        }),
-        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
-        compress: true,
-        // responseHeadersPolicy: this.defaultResponseHeadersPolicy(props.cspPolicy),
+      configTable: props.configTable,
+      authPolicyName: AUTH_POLICY_ADMIN_API,
+      oauthClientName: OAUTH_CLIENT_ADMIN_UI,
+      uiBundle: {
+        packageName: 'mailbox-admin-ui',
+        objectPath: 'admin-ui.zip',
       },
-      errorResponses: [
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: undefined,
-        },
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: undefined,
-        },
-      ],
+      uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
     });
 
-    this.addAuthBehaviror(this.distribution, artifactResolver, props.configTable);
-
-    this.distributionDomainName = props.certificate
-      ? props.domainName
-      : this.distribution.distributionDomainName;
-  }
-
-  addAuthBehaviror(distribution: Distribution, artifactResolver: IArtifactResolver, configTable: ITable) {
-    const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
-      artifactResolver,
-      configTable,
-      authPolicyName: 'ADMIN_API',
-      oauthClientName: 'ADMIN_UI',
+    const uiHost = ui.distributionDomainName;
+    this.oauthClient = props.authConfig.generateClient({
+      flow: 'authorization_code',
+      name: OAUTH_CLIENT_ADMIN_UI,
+      permissions: [],
+      callbackUrls: [`https://${uiHost}/auth/callback`],
+      logoutUrls: [`https://${uiHost}/`],
     });
 
+    this.oauthRedirectUri = '/dashboard';
 
-    // Parse OAuth API URL to create origin
-    // apiEndpoint format: https://abc123.execute-api.eu-west-1.amazonaws.com/
-    // We need to extract just the hostname: abc123.execute-api.eu-west-1.amazonaws.com
-    const hostname = Fn.select(1, Fn.split('://', tokenExchange.api.apiEndpoint));
-    const oauthOrigin = new HttpOrigin(hostname, {
-      originPath: '',
-    });
-
-    // Create CloudFront function to add X-Forwarded-Host header
-    const authViewerRequestFunction = new CloudFrontFunction(this, 'auth-viewer-request', {
-      code: FunctionCode.fromInline(`function handler(event) {
-  var req = event.request;
-  var host = req.headers.host.value;
-  req.headers['x-forwarded-host'] = { value: host };
-  return req;
-}`),
-    });
-
-    distribution.addBehavior('/auth/*', oauthOrigin, {
-      viewerProtocolPolicy: ViewerProtocolPolicy.HTTPS_ONLY,
-      cachePolicy: CachePolicy.CACHING_DISABLED,
-      originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-      functionAssociations: [
-        {
-          function: authViewerRequestFunction,
-          eventType: FunctionEventType.VIEWER_REQUEST,
-        }
-      ],
-      compress: false,
-      allowedMethods: AllowedMethods.ALLOW_ALL,
-    });
-
-  }
-
-  defaultResponseHeadersPolicy(cspPolicy?: string): ResponseHeadersPolicy {
-    // Create Response Headers Policy with CSP and security headers
-    const defaultCspPolicy = [
-      "default-src 'none'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "connect-src https: 'self'",
-      "img-src 'self' data:",
-      "font-src 'self'",
-      "form-action 'none'",
-      "base-uri 'none'",
-      "upgrade-insecure-requests",
-      "frame-ancestors 'none'",
-    ].join('; ');
-
-    const responseHeadersPolicy = new ResponseHeadersPolicy(this, 'security-headers-policy', {
-      securityHeadersBehavior: {
-        contentSecurityPolicy: {
-          override: true,
-          contentSecurityPolicy: cspPolicy || defaultCspPolicy,
-        },
-        contentTypeOptions: {
-          override: true,
-        },
-        frameOptions: {
-          frameOption: HeadersFrameOption.DENY,
-          override: true,
-        },
-        referrerPolicy: {
-          referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-          override: true,
-        },
-        strictTransportSecurity: {
-          accessControlMaxAge: Duration.seconds(31536000),
-          includeSubdomains: true,
-          override: true,
-        },
-      },
-      customHeadersBehavior: {
-        customHeaders: [
-          {
-            header: 'X-XSS-Protection',
-            value: '1; mode=block',
-            override: true,
-          },
-        ],
-      },
-    });
-    return responseHeadersPolicy;
+    this.bucket = ui.bucket;
+    this.distribution = ui.distribution;
+    this.distributionDomainName = ui.distributionDomainName;
   }
 }

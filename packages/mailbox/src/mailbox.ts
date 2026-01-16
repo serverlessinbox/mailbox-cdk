@@ -12,38 +12,68 @@ import { JMapApi } from './modules/jmap-api';
 import { WebSocketPush } from './modules/websocket';
 import { EmailDelivery } from './email-processing/ses-rule';
 import { AdminApi } from './modules/admin-api';
-import { IAuthConfig } from './auth/IAuthConfig';
+import {
+  AuthClientConfig,
+  AuthConfig,
+  OAUTH_CLIENT_ADMIN_HEADLESS,
+  OAUTH_CLIENT_JMAP_HEADLESS,
+} from './auth/types';
+import { Permission } from './utils/jmap-scopes';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { AuditLogTable } from './constructs/auditlog-table';
 import { MailFeedbackTable } from './constructs/mailfeedback-table';
 import { AuditWriting } from './modules/audit-writing';
 import { createArtifactResolverFromContext } from './utils/artifact-context';
 import { BootstrapTenant } from './modules/bootstrap-tenant';
-import { IAuthClientConfig } from './auth/IAuthConfig';
-import { MailboxDomains } from './domains';
+import { MailboxDns, MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
 import { IHostedZone } from 'aws-cdk-lib/aws-route53';
+import { AdminUi } from './ui/admin-ui';
+import { WebmailUi } from './ui/webmail-ui';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 
 export interface MailboxProps {
   hostedZone?: IHostedZone;
   domainName: string;
-  authConfig: IAuthConfig;
-  allowedOrigins: string[];
+  authConfig: AuthConfig;
+
+  /** Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically. */
+  extraAllowedOrigins?: string[];
 
   /** Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>). */
   cloudFrontCertificate?: acm.ICertificate;
 
   /**
-   * OAuth client config for the Admin UI token exchange flow.
-   * Required: token-exchange reads OAUTH_CLIENT#ADMIN_UI from the config table.
+   * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
+   * Defaults to true.
    */
-  adminUiOAuthClient: IAuthClientConfig;
+  createAdminUi?: boolean;
 
   /**
-   * Optional token exchange audience parameter (provider-specific).
+   * Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap).
+   * Defaults to true.
    */
-  tokenExchangeAudience?: string;
+  createWebmailUi?: boolean;
+
+  /**
+   * Whether to create headless (client_credentials) OAuth clients for machine-to-machine usage.
+   * Defaults to false.
+   */
+  createHeadlessClients?: boolean;
+
+  /** Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. */
+  adminUiCertificate?: acm.ICertificate;
+
+  /** Optional us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name. */
+  webmailUiCertificate?: acm.ICertificate;
+
+  /** Optional regional ACM certificate for api.<domain> (Admin API custom domain). */
+  apiCertificate?: acm.ICertificate;
+
+  /** Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain). */
+  jmapCertificate?: acm.ICertificate;
 }
 
 /**
@@ -55,7 +85,23 @@ export class Mailbox extends Construct {
   public readonly configTable: ConfigTable;
   public readonly cdn: Cdn;
 
+  /** Admin UI resources (when `createAdminUi !== false`). */
+  public readonly adminUiBucket?: IBucket;
+  public readonly adminUiDistribution?: IDistribution;
+
+  /** Webmail UI resources (when `createWebmailUi !== false`). */
+  public readonly webmailUiBucket?: IBucket;
+  public readonly webmailUiDistribution?: IDistribution;
+
   public readonly edgeCertificate?: acm.ICertificate;
+
+  /** OAuth clients created by this construct (only when enabled). */
+  public readonly oauthClients: {
+    adminUi?: AuthClientConfig;
+    jmapUi?: AuthClientConfig;
+    adminHeadless?: AuthClientConfig;
+    jmapHeadless?: AuthClientConfig;
+  } = {};
 
   emailDelivery(): EmailDelivery {
     return {
@@ -67,6 +113,10 @@ export class Mailbox extends Construct {
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
+
+    const createAdminUi = props.createAdminUi ?? true;
+    const createWebmailUi = props.createWebmailUi ?? true;
+    const createHeadlessClients = props.createHeadlessClients ?? false;
 
     const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
 
@@ -106,6 +156,105 @@ export class Mailbox extends Construct {
     const hasHostedZone = Boolean(props.hostedZone?.hostedZoneId && props.hostedZone?.zoneName);
     const useCustomCdnDomain = Boolean(props.cloudFrontCertificate || hasHostedZone);
 
+    const defaultUiCertificate = hasHostedZone ? edgeStack.edgeCertificate : undefined;
+    if (hasHostedZone && !defaultUiCertificate) {
+      throw new Error('hostedZone was provided but edge certificate was not created');
+    }
+
+    // Regional ACM certificates for regional services (API Gateway).
+    // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
+    // Prefer a single SAN certificate for both api.<domain> and jmap.<domain> when *neither* is provided.
+    // If only one is provided, we still auto-create a certificate for the missing hostname so the API works.
+    const providedApiCertificate = props.apiCertificate;
+    const providedJmapCertificate = props.jmapCertificate;
+
+    // If either API certificate is missing and we have Route53, create a single SAN cert
+    // that covers both names and use it to fill the gaps.
+    const regionalSanCertificate = (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate))
+      ? new acm.Certificate(this, 'regional-api-certificate', {
+        domainName: mailboxDomains.api,
+        subjectAlternativeNames: [mailboxDomains.jmap],
+        validation: acm.CertificateValidation.fromDns(props.hostedZone!),
+      })
+      : undefined;
+
+    const apiCertificate = providedApiCertificate
+      ?? regionalSanCertificate;
+
+    const jmapCertificate = providedJmapCertificate
+      ?? regionalSanCertificate;
+
+    const allPermissions = Object.values(Permission);
+
+    if (createHeadlessClients) {
+      this.oauthClients.adminHeadless = props.authConfig.generateClient({
+        flow: 'client_credentials',
+        name: OAUTH_CLIENT_ADMIN_HEADLESS,
+        permissions: [],
+      });
+
+      this.oauthClients.jmapHeadless = props.authConfig.generateClient({
+        flow: 'client_credentials',
+        name: OAUTH_CLIENT_JMAP_HEADLESS,
+        permissions: allPermissions,
+      });
+    }
+
+    const adminUiOrigins: string[] = [];
+    const webmailUiOrigins: string[] = [];
+
+    let adminUiRedirectUri: string | undefined;
+    let webmailUiRedirectUri: string | undefined;
+
+    let adminUiCnameTarget: string | undefined;
+    let webmailUiCnameTarget: string | undefined;
+
+    if (createAdminUi) {
+      const adminUi = new AdminUi(this, 'admin-ui', {
+        domainName: mailboxDomains.admin,
+        certificate: props.adminUiCertificate ?? defaultUiCertificate,
+        configTable: this.configTable,
+        authConfig: props.authConfig,
+        apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
+      });
+
+      this.adminUiBucket = adminUi.bucket;
+      this.adminUiDistribution = adminUi.distribution;
+
+      this.oauthClients.adminUi = adminUi.oauthClient;
+      adminUiRedirectUri = adminUi.oauthRedirectUri;
+
+      adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
+      adminUiCnameTarget = adminUi.distribution.distributionDomainName;
+    }
+
+    if (createWebmailUi) {
+      const webmailUi = new WebmailUi(this, 'webmail-ui', {
+        domainName: mailboxDomains.webmail,
+        certificate: props.webmailUiCertificate ?? defaultUiCertificate,
+        configTable: this.configTable,
+        authConfig: props.authConfig,
+        apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
+      });
+
+      this.webmailUiBucket = webmailUi.bucket;
+      this.webmailUiDistribution = webmailUi.distribution;
+
+      this.oauthClients.jmapUi = webmailUi.oauthClient;
+      webmailUiRedirectUri = webmailUi.oauthRedirectUri;
+
+      webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
+      webmailUiCnameTarget = webmailUi.distribution.distributionDomainName;
+    }
+
+    const extraOrigins = props.extraAllowedOrigins ?? [];
+    const allowedOriginsForAdminApi = [...adminUiOrigins, ...extraOrigins];
+    const allowedOriginsForJmapApi = [...webmailUiOrigins, ...extraOrigins];
+    const allowedOriginsForCdn = [...adminUiOrigins, ...webmailUiOrigins, ...extraOrigins];
+
+    const adminRequiredGroup = this.oauthClients.adminUi?.groups?.[0]
+      ?? this.oauthClients.adminHeadless?.groups?.[0];
+
     new BootstrapTenant(this, 'bootstrap-tenant', {
       domain: props.domainName,
       oidcIssuer: props.authConfig.issuer,
@@ -121,21 +270,34 @@ export class Mailbox extends Construct {
       authPolicies: {
         adminApi: {
           audiences: props.authConfig.clientIds,
-          requiredGroup: 'admin',
+          requiredGroup: adminRequiredGroup,
         },
         jmapApi: {
           audiences: props.authConfig.clientIds,
         },
       },
-      oauthClients: {
-        adminUi: {
-          requestedAudience: props.tokenExchangeAudience,
-          clientId: props.adminUiOAuthClient.clientId,
-          clientSecret: props.adminUiOAuthClient.clientSecret,
-          scopes: ['openid', 'email', 'profile', ...props.adminUiOAuthClient.requestScopeList],
-          redirectUri: '/dashboard',
-        },
-      },
+      oauthClients: (this.oauthClients.adminUi || this.oauthClients.jmapUi)
+        ? {
+          adminUi: this.oauthClients.adminUi
+            ? {
+              flow: 'authorization_code',
+              clientId: this.oauthClients.adminUi.clientId,
+              clientSecret: this.oauthClients.adminUi.clientSecret,
+              scopes: ['openid', 'email', 'profile', ...this.oauthClients.adminUi.requestScopeList],
+              redirectUri: adminUiRedirectUri ?? '/dashboard',
+            }
+            : undefined,
+          jmapUi: this.oauthClients.jmapUi
+            ? {
+              flow: 'authorization_code',
+              clientId: this.oauthClients.jmapUi.clientId,
+              clientSecret: this.oauthClients.jmapUi.clientSecret,
+              scopes: ['openid', 'email', 'profile', ...this.oauthClients.jmapUi.requestScopeList],
+              redirectUri: webmailUiRedirectUri ?? '/',
+            }
+            : undefined,
+        }
+        : undefined,
     });
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
@@ -159,13 +321,15 @@ export class Mailbox extends Construct {
       configTable,
       jwkCacheTable: jwkCache.table,
       userPoolIssuer: props.authConfig.issuer,
-      allowedOrigins: props.allowedOrigins,
+      allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
       certificate: hasHostedZone ? edgeStack.edgeCertificate : props.cloudFrontCertificate,
     });
 
     this.cdn = cdnConstruct;
+
+    // DNS is created later, once all endpoint targets are known.
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     new TantivySearch(this, 'tantivy-search', {
@@ -204,13 +368,16 @@ export class Mailbox extends Construct {
       changelogTable: changelogTable,
       jwkCacheTable: jwkCache.table,
       cdnHost: cdnConstruct.host,
-      allowedOrigins: props.allowedOrigins,
+      allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
       emailBucket: this.emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
       authConfig: props.authConfig,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+
+      domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
+      certificate: jmapCertificate,
 
       // WebSocket URL will be passed via environment variable, not here
     });
@@ -228,7 +395,7 @@ export class Mailbox extends Construct {
       minPingInterval: 30,
     });
 
-    new AdminApi(this, 'admin-api', {
+    const adminApi = new AdminApi(this, 'admin-api', {
       configTable: configTable,
       itemTable: itemTable,
       auditLogTable: auditLogTable,
@@ -238,13 +405,30 @@ export class Mailbox extends Construct {
       emailBucket: this.emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
-      allowedOrigins: props.allowedOrigins,
+      allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver: artifactResolver,
       authConfig: props.authConfig,
+
+      domainName: apiCertificate ? mailboxDomains.api : undefined,
+      certificate: apiCertificate,
     });
 
     // Add WebSocket URL to API handler environment
     jmapApi.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);
+
+    if (hasHostedZone) {
+      new MailboxDns(this, 'dns', {
+        names: mailboxDomains,
+        hostedZone: props.hostedZone,
+        cnameTargets: {
+          admin: adminUiCnameTarget,
+          webmail: webmailUiCnameTarget,
+          cdn: cdnConstruct.distribution.distributionDomainName,
+          api: adminApi.domainTarget,
+          jmap: jmapApi.domainTarget,
+        },
+      });
+    }
 
   }
 }

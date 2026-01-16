@@ -4,10 +4,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapTenantLambda } from '../lambdas';
 import { IArtifactResolver } from '../utils/artifact-resolver';
 import {
-  BootstrapAuthPoliciesProps,
-  BootstrapOAuthClientsProps,
-  BootstrapOIDCProviderProps,
-} from '../auth/tenant-bootstrap';
+  AuthPoliciesConfig,
+  OAuthClientsConfig,
+  OAuthAuthorizationCodeClientConfig,
+  OidcProviderConfig,
+} from '../auth/types';
 
 export interface BootstrapTenantProps {
   configTable: ITable;
@@ -18,57 +19,11 @@ export interface BootstrapTenantProps {
   oidcIssuer: string;
   oidcProviderName?: string;
 
-  oidcProvider?: BootstrapOIDCProviderProps;
-  authPolicies?: BootstrapAuthPoliciesProps;
-  oauthClients: BootstrapOAuthClientsProps;
+  oidcProvider?: OidcProviderConfig;
+  authPolicies?: AuthPoliciesConfig;
+  oauthClients?: OAuthClientsConfig;
 
   artifactResolver: IArtifactResolver;
-}
-
-interface CustomResourceRequestOIDCProvider {
-  tokenEndpoint?: string;
-  authorizationEndpoint?: string;
-  authMethod?: 'header' | 'form';
-  usePkce?: boolean;
-}
-
-interface CustomResourceRequestAuthPolicy {
-  audiences?: string[];
-  requiredGroup?: string;
-}
-
-interface CustomResourceRequestAuthPolicies {
-  adminApi?: CustomResourceRequestAuthPolicy;
-  jmapApi?: CustomResourceRequestAuthPolicy;
-}
-
-interface CustomResourceRequestOAuthClient {
-  requestedAudience?: string;
-  clientId?: string;
-  clientSecret?: string;
-  scopes?: string[];
-  redirectUri?: string;
-}
-
-interface CustomResourceRequestOAuthClients {
-  adminUi: CustomResourceRequestOAuthClient;
-  jmapUi?: CustomResourceRequestOAuthClient;
-}
-
-interface CustomResourceRequestProperties {
-  tenantName: string;
-  defaultLocalPart: string;
-  domain: string;
-  oidcIssuer: string;
-  oidcProviderName?: string;
-
-  // Forces CloudFormation to run the custom resource on every deploy.
-  // Useful in dev when the config table can be cleared out-of-band.
-  bootstrapNonce: string;
-
-  oidcProvider?: CustomResourceRequestOIDCProvider;
-  authPolicies?: CustomResourceRequestAuthPolicies;
-  oauthClients: CustomResourceRequestOAuthClients;
 }
 
 /**
@@ -84,6 +39,14 @@ interface CustomResourceRequestProperties {
 export class BootstrapTenant extends Construct {
   constructor(scope: Construct, id: string, props: BootstrapTenantProps) {
     super(scope, id);
+
+    const toRequestOAuthClient = (client: OAuthAuthorizationCodeClientConfig) => ({
+      requestedAudience: client.requestedAudience ?? client.clientId,
+      clientId: client.clientId,
+      clientSecret: client.clientSecret?.unsafeUnwrap(),
+      scopes: client.scopes,
+      redirectUri: client.redirectUri,
+    });
 
     const handler = new BootstrapTenantLambda(this, 'handler', {
       configTable: props.configTable,
@@ -102,29 +65,13 @@ export class BootstrapTenant extends Construct {
 
         oidcProvider: props.oidcProvider,
         authPolicies: props.authPolicies,
-        oauthClients: {
-          adminUi: {
-            requestedAudience: props.oauthClients.adminUi.requestedAudience,
-            clientId: props.oauthClients.adminUi.clientId,
-            clientSecret: props.oauthClients.adminUi.clientSecret
-              ? props.oauthClients.adminUi.clientSecret.unsafeUnwrap()
-              : undefined,
-            scopes: props.oauthClients.adminUi.scopes,
-            redirectUri: props.oauthClients.adminUi.redirectUri,
-          },
-          jmapUi: props.oauthClients.jmapUi
-            ? {
-              requestedAudience: props.oauthClients.jmapUi.requestedAudience,
-              clientId: props.oauthClients.jmapUi.clientId,
-              clientSecret: props.oauthClients.jmapUi.clientSecret
-                ? props.oauthClients.jmapUi.clientSecret.unsafeUnwrap()
-                : undefined,
-              scopes: props.oauthClients.jmapUi.scopes,
-              redirectUri: props.oauthClients.jmapUi.redirectUri,
-            }
-            : undefined,
-        },
-      } as CustomResourceRequestProperties,
+        oauthClients: props.oauthClients
+          ? {
+            adminUi: props.oauthClients.adminUi ? toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
+            jmapUi: props.oauthClients.jmapUi ? toRequestOAuthClient(props.oauthClients.jmapUi) : undefined,
+          }
+          : undefined,
+      },
     });
 
     props.configTable.grantReadWriteData(handler);
@@ -132,7 +79,7 @@ export class BootstrapTenant extends Construct {
 }
 
 export type {
-  BootstrapOIDCProviderProps,
-  BootstrapAuthPoliciesProps,
-  BootstrapOAuthClientsProps,
-} from '../auth/tenant-bootstrap';
+  OidcProviderConfig,
+  AuthPoliciesConfig,
+  OAuthClientsConfig,
+} from '../auth/types';

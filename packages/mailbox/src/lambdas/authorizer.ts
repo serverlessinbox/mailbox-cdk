@@ -2,7 +2,7 @@ import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../utils/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
-import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/tenant-bootstrap';
+import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
 
 export interface AuthorizerLambdaProps {
   jwkCacheTable: ITable;

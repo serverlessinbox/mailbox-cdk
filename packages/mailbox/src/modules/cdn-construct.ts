@@ -13,7 +13,7 @@ export interface CdnProps {
   configTable: INamedTable;
   jwkCacheTable: INamedTable;
   userPoolIssuer: string;
-  allowedOrigins: string[];
+  allowedOrigins?: string[];
   jwtAlgorithms?: string[];
 
   /** Pre-deployed Lambda@Edge version (us-east-1). */
@@ -33,6 +33,21 @@ export class Cdn extends Construct {
 
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
+
+    const responseHeadersPolicy = props.allowedOrigins && props.allowedOrigins.length > 0
+      ? new cloudfront.ResponseHeadersPolicy(this, 'BlobResponseHeadersPolicy', {
+        responseHeadersPolicyName: 'MailboxBlobResponseHeaders',
+        comment: 'CORS policy for email blob downloads',
+        corsBehavior: {
+          accessControlAllowOrigins: props.allowedOrigins,
+          accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
+          accessControlAllowHeaders: ['Authorization', 'Content-Type'],
+          accessControlAllowCredentials: true,
+          accessControlMaxAge: cdk.Duration.hours(1),
+          originOverride: true,
+        },
+      })
+      : undefined;
 
     // Create custom origin with configuration headers
     // (Lambda@Edge doesn't support environment variables)
@@ -72,18 +87,7 @@ export class Cdn extends Construct {
           enableAcceptEncodingGzip: true,
           enableAcceptEncodingBrotli: true,
         }),
-        responseHeadersPolicy: new cloudfront.ResponseHeadersPolicy(this, 'BlobResponseHeadersPolicy', {
-          responseHeadersPolicyName: 'MailboxBlobResponseHeaders',
-          comment: 'CORS policy for email blob downloads',
-          corsBehavior: {
-            accessControlAllowOrigins: props.allowedOrigins,
-            accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
-            accessControlAllowHeaders: ['Authorization', 'Content-Type'],
-            accessControlAllowCredentials: true,
-            accessControlMaxAge: cdk.Duration.hours(1),
-            originOverride: true,
-          },
-        }),
+        responseHeadersPolicy,
         // Lambda@Edge runs at viewer-request (before cache lookup)
         edgeLambdas: [
           {

@@ -5,8 +5,6 @@ CDK Construct Library for Mailbox Infrastructure
 ## Installation
 
 ```bash
-npm install @mailbox/cdk
-# or
 yarn add @mailbox/cdk
 ```
 
@@ -30,6 +28,32 @@ new MailboxStack(app, 'MailboxStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
+});
+```
+
+### Mailbox UI defaults
+
+By default, the `Mailbox` construct provisions both UIs:
+- Admin UI (`admin.<domain>`)
+- Webmail UI (`webmail.<domain>`)
+
+You can opt out per UI, and optionally opt in to headless OAuth clients:
+
+```ts
+new Mailbox(this, 'mailbox', {
+  domainName: 'example.com',
+  authConfig,
+
+  // Optional: add extra origins (e.g., local dev). UI origins are derived automatically.
+  // Note: Admin API CORS allows the Admin UI origin; JMAP API CORS allows the Webmail UI origin.
+  extraAllowedOrigins: ['http://localhost:3000'],
+
+  // Defaults: true
+  createAdminUi: true,
+  createWebmailUi: true,
+
+  // Default: false
+  createHeadlessClients: false,
 });
 ```
 
@@ -67,5 +91,4 @@ yarn build
 
 ```bash
 yarn build
-npm publish
 ```

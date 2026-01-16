@@ -5,7 +5,15 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
 import { JMAP_SCOPE_DESCRIPTIONS, Permission } from '../utils/jmap-scopes';
-import { IAuthClientConfig, IAuthConfig, IGenerateClientParams } from './IAuthConfig';
+import {
+  AuthClientConfig,
+  AuthConfig,
+  GenerateClientParams,
+  OAUTH_CLIENT_ADMIN_HEADLESS,
+  OAUTH_CLIENT_ADMIN_UI,
+  OAUTH_CLIENT_JMAP_HEADLESS,
+  OAUTH_CLIENT_JMAP_UI,
+} from './types';
 import { PermissionToCognitoScope } from './scopemaps/cognito';
 
 /**
@@ -35,18 +43,6 @@ export interface MailboxUserPoolCustomDomain {
 export type MailboxUserPoolDomain = MailboxUserPoolCognitoDomain | MailboxUserPoolCustomDomain;
 
 export interface MailboxUserPoolProps {
-  /**
-   * OAuth callback URLs for your application
-   * @example ['https://example.com/auth/callback', 'http://localhost:3000/']
-   */
-  callbackUrls: string[];
-
-  /**
-   * OAuth logout URLs for your application
-   * @example ['https://example.com/', 'http://localhost:3000/']
-   */
-  logoutUrls: string[];
-
   /**
    * Domain configuration - either Cognito-managed or custom
    * @example { type: 'cognito', cognitoDomainPrefix: 'my-auth' }
@@ -78,13 +74,10 @@ export interface MailboxUserPoolProps {
  * - Sensible password policy & MFA configuration
  *
  * Requires user to provide:
- * - Callback and logout URLs (no hardcoded defaults)
  * - Domain configuration (Cognito-managed or custom)
  * @example
  * ```typescript
  * new MailboxUserPool(this, 'Auth', {
- *   callbackUrls: ['https://example.com/auth/callback'],
- *   logoutUrls: ['https://example.com/'],
  *   domain: { type: 'cognito', cognitoDomainPrefix: 'my-mailbox-auth' },
  * });
  * ```
@@ -92,16 +85,12 @@ export interface MailboxUserPoolProps {
  * @example
  * ```typescript
  * new MailboxUserPool(this, 'Auth', {
- *   callbackUrls: ['https://example.com/auth/callback'],
- *   logoutUrls: ['https://example.com/'],
  *   domain: { type: 'custom', domainName: 'auth.example.com', certificate: cert },
  * });
  * ```
  */
-export class MailboxUserPool extends Construct implements IAuthConfig {
+export class MailboxUserPool extends Construct implements AuthConfig {
   public readonly userPool: cognito.UserPool;
-  public readonly webmailUserPoolClient: cognito.UserPoolClient;
-  public readonly adminUserPoolClient: cognito.UserPoolClient;
   public readonly userPoolDomain: cognito.UserPoolDomain;
   private readonly jmapScopes: Permission[];
   private readonly resourceServerIdentifier: string = 'si';
@@ -123,34 +112,41 @@ export class MailboxUserPool extends Construct implements IAuthConfig {
     return `https://${this.oauthDomain}/oauth2/authorize`;
   }
 
-  generateClient(params: IGenerateClientParams): IAuthClientConfig {
+  generateClient(params: GenerateClientParams): AuthClientConfig {
     const scopes = params.permissions.map((scope: Permission) => ({
         scopeName: `${this.resourceServerIdentifier}/${PermissionToCognitoScope[scope]}`,
         scopeDescription: JMAP_SCOPE_DESCRIPTIONS[scope],
     }))
 
+    const isClientCredentials = params.flow === 'client_credentials';
+
     const client = new cognito.UserPoolClient(this, 'UserPoolClient-' + params.name, {
       userPool: this.userPool,
       userPoolClientName: 'mailbox-client-' + params.name,
       authFlows: this.authFlows,
-      generateSecret: false,
+      generateSecret: isClientCredentials,
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
       refreshTokenValidity: cdk.Duration.days(30),
       preventUserExistenceErrors: true,
       oAuth: {
         flows: {
-          authorizationCodeGrant: true,
+          authorizationCodeGrant: !isClientCredentials,
           implicitCodeGrant: false,
+          clientCredentials: isClientCredentials,
         },
         scopes: [
-          cognito.OAuthScope.OPENID,
-          cognito.OAuthScope.EMAIL,
-          cognito.OAuthScope.PROFILE,
+          ...(isClientCredentials
+            ? []
+            : [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE]),
           ...scopes,
         ],
-        callbackUrls: params.callbackUrls,
-        logoutUrls: params.logoutUrls,
+        ...(isClientCredentials
+          ? {}
+          : {
+            callbackUrls: params.callbackUrls,
+            logoutUrls: params.logoutUrls,
+          }),
       },
     });
 
@@ -164,9 +160,23 @@ export class MailboxUserPool extends Construct implements IAuthConfig {
 
     return {
       clientId: client.userPoolClientId,
+      clientSecret: isClientCredentials ? client.userPoolClientSecret ?? undefined : undefined,
       requestScopeList: requestedScopeList,
-      groups: params.groups,
+      groups: params.groups ?? this.defaultGroupsForClient(params.name),
     };
+  }
+
+  private defaultGroupsForClient(clientName: string): string[] {
+    switch (clientName) {
+      case OAUTH_CLIENT_ADMIN_UI:
+      case OAUTH_CLIENT_ADMIN_HEADLESS:
+        return ['admin'];
+      case OAUTH_CLIENT_JMAP_UI:
+      case OAUTH_CLIENT_JMAP_HEADLESS:
+        return ['user'];
+      default:
+        return [];
+    }
   }
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
@@ -220,77 +230,13 @@ export class MailboxUserPool extends Construct implements IAuthConfig {
 
     // Create JMAP Resource Server with fine-grained scopes
     // Note: Cognito requires scope names to use "." instead of "/" (e.g., "mail.read" not "mail/read")
-    const jmapResourceServer = this.userPool.addResourceServer('JMapResourceServer', {
+    this.userPool.addResourceServer('JMapResourceServer', {
       identifier: this.resourceServerIdentifier,
       userPoolResourceServerName: 'JMAP API',
       scopes: this.jmapScopes.map((scope: Permission) => ({
         scopeName: scope.replace(/\//g, '.'),  // Convert "/" to "." for Cognito
         scopeDescription: JMAP_SCOPE_DESCRIPTIONS[scope],
       })),
-    });
-
-    // Create User Pool Client with JMAP OAuth scopes
-    const jmapOAuthScopes = this.jmapScopes.map((scope: Permission) =>
-      cognito.OAuthScope.resourceServer(jmapResourceServer, {
-        scopeName: scope.replace(/\//g, '.'),  // Convert "/" to "." for Cognito
-        scopeDescription: JMAP_SCOPE_DESCRIPTIONS[scope],
-      })
-    );
-
-    this.webmailUserPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
-      userPool: this.userPool,
-      userPoolClientName: 'mailbox-client',
-      authFlows: {
-        userPassword: true,
-        userSrp: true,
-      },
-      generateSecret: false,
-      accessTokenValidity: cdk.Duration.hours(1),
-      idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(30),
-      preventUserExistenceErrors: true,
-      oAuth: {
-        flows: {
-          authorizationCodeGrant: true,
-          implicitCodeGrant: false,
-        },
-        scopes: [
-          cognito.OAuthScope.OPENID,
-          cognito.OAuthScope.EMAIL,
-          cognito.OAuthScope.PROFILE,
-          ...jmapOAuthScopes,
-        ],
-        callbackUrls: props.callbackUrls,
-        logoutUrls: props.logoutUrls,
-      },
-    });
-
-    // Create Admin User Pool Client (confidential client with client secret)
-    this.adminUserPoolClient = new cognito.UserPoolClient(this, 'AdminUserPoolClient', {
-      userPool: this.userPool,
-      userPoolClientName: 'mailbox-admin-client',
-      authFlows: {
-        userPassword: false,
-        userSrp: false,
-      },
-      generateSecret: true, // Confidential client with secret
-      accessTokenValidity: cdk.Duration.hours(1),
-      idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(7), // Shorter refresh for admin
-      preventUserExistenceErrors: true,
-      oAuth: {
-        flows: {
-          authorizationCodeGrant: true, // Only authorization code grant
-          implicitCodeGrant: false,
-        },
-        scopes: [
-          cognito.OAuthScope.OPENID,
-          cognito.OAuthScope.EMAIL,
-          cognito.OAuthScope.PROFILE,
-        ],
-        callbackUrls: props.callbackUrls,
-        logoutUrls: props.logoutUrls,
-      },
     });
 
     // Add domain (Cognito-managed or custom)
