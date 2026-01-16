@@ -36,6 +36,12 @@ export interface MailboxEdgeDeployerProps {
 
   /** DynamoDB JWK cache table ARN (regional) used by blob-authorizer */
   readonly jwkCacheTableArn: string;
+
+  /** Optional product/stack version used for tagging edge resources. */
+  readonly productVersion?: string;
+
+  /** Optional deployer label used for tagging (default: 'cfn'). */
+  readonly deployer?: 'cdk' | 'cfn' | 'marketplace';
 }
 
 /**
@@ -307,6 +313,8 @@ export class MailboxEdgeDeployer extends Construct {
     const blobAuthorizerKey = props.artifactResolver.getKey('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
     const blobAuthorizerVersionId = props.artifactResolver.getVersionId('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
 
+    const deployer = props.deployer ?? 'cfn';
+
     const cfnParameters: Record<string, string> = {
       DomainName: props.domainName,
       ArtifactBucket: 'mailbox-artifacts-us-east-1',
@@ -314,6 +322,12 @@ export class MailboxEdgeDeployer extends Construct {
       ItemTableArn: props.itemTableArn,
       ConfigTableArn: props.configTableArn,
       JwkCacheTableArn: props.jwkCacheTableArn,
+
+      // Tagging/back-reference parameters (consumed by the edge stack template)
+      OriginDeployment: Aws.STACK_NAME,
+      OriginRegion: Stack.of(this).region,
+      ProductVersion: props.productVersion ?? 'unknown',
+      Deployer: deployer,
     };
 
     // Include version ID if available in artifact resolver

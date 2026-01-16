@@ -2,6 +2,12 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
 import { type ArtifactReference } from '../utils/artifact-prefix';
+import {
+  applyServerlessInboxBaseTags,
+  applyServerlessInboxComponentTag,
+  applyServerlessInboxEdgeTags,
+  type ServerlessInboxDeployer,
+} from '../utils/serverless-inbox-tags';
 
 export interface MailboxEdgeStackProps extends cdk.StackProps {
   // No additional props - configuration comes from CloudFormation parameters
@@ -18,6 +24,42 @@ export class MailboxEdgeStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: MailboxEdgeStackProps) {
     super(scope, id, props);
+
+    const originDeploymentParam = new cdk.CfnParameter(this, 'OriginDeployment', {
+      type: 'String',
+      description: 'Originating CloudFormation stack name (regional stack that created this edge stack)',
+    });
+
+    const originRegionParam = new cdk.CfnParameter(this, 'OriginRegion', {
+      type: 'String',
+      description: 'Originating AWS region (regional stack region that created this edge stack)',
+    });
+
+    const productVersionParam = new cdk.CfnParameter(this, 'ProductVersion', {
+      type: 'String',
+      description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
+      default: 'unknown',
+    });
+
+    const deployerParam = new cdk.CfnParameter(this, 'Deployer', {
+      type: 'String',
+      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+      default: 'cfn',
+      allowedValues: ['cdk', 'cfn', 'marketplace'],
+    });
+
+    // Apply product/deployment tags to everything in this edge stack, and add origin back-references.
+    applyServerlessInboxBaseTags(this, {
+      product: 'mailbox',
+      // In the edge stack, deployment is the edge stack name (AWS::StackName).
+      version: productVersionParam.valueAsString,
+      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
+    });
+    applyServerlessInboxComponentTag(this, 'edge');
+    applyServerlessInboxEdgeTags(this, {
+      originDeployment: originDeploymentParam.valueAsString,
+      originRegion: originRegionParam.valueAsString,
+    });
 
     // Define CloudFormation parameters so the template is configurable
     const domainNameParam = new cdk.CfnParameter(this, 'DomainName', {
