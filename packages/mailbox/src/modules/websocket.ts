@@ -12,6 +12,8 @@ import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { IArtifactResolver } from "../utils/artifact-resolver";
+import { StackNamedTable } from "../utils/named-table";
+import { Aws } from "aws-cdk-lib";
 
 export interface WebSocketPushProps {
   configTable: ITable;
@@ -36,8 +38,7 @@ export class WebSocketPush extends Construct {
     const maxSubscriptions = props.maxSubscriptions ?? 10;
 
     // DynamoDB table for WebSocket connections
-    this.connectionsTable = new Table(this, 'ConnectionsTable', {
-      tableName: 'jmap-websocket-connections',
+    this.connectionsTable = new StackNamedTable(this, 'ws-connections', {
       partitionKey: { name: 'connectionId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY, // Development mode - destroy on stack delete
@@ -52,12 +53,12 @@ export class WebSocketPush extends Construct {
     });
 
     // WebSocket API
-    const webSocketApi = new WebSocketApi(this, 'WebSocketApi', {
-      apiName: 'JMAP WebSocket Push',
+    const webSocketApi = new WebSocketApi(this, 'websocket-api', {
+      apiName: `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
       description: 'WebSocket API for JMAP Push State notifications',
     });
 
-    const stage = new WebSocketStage(this, 'WebSocketStage', {
+    const stage = new WebSocketStage(this, 'websocket-stage', {
       webSocketApi,
       stageName: 'prod',
       autoDeploy: true,
@@ -75,7 +76,7 @@ export class WebSocketPush extends Construct {
     });
 
     // Lambda: $connect - Store connection (auth already done by authorizer)
-    const connectLambda = new WebSocketConnectLambda(this, 'ConnectHandler', {
+    const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.connectionsTable,
       jwkCacheTable: props.jwkCacheTable,
       configTable: props.configTable,
@@ -84,13 +85,13 @@ export class WebSocketPush extends Construct {
     });
 
     // Lambda: $disconnect - Cleanup connection
-    const disconnectLambda = new WebSocketDisconnectLambda(this, 'DisconnectHandler', {
+    const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
       connectionsTable: this.connectionsTable,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: $default - Handle messages (PushSubscribe)
-    const messageLambda = new WebSocketMessageLambda(this, 'MessageHandler', {
+    const messageLambda = new WebSocketMessageLambda(this, 'message-handler', {
       connectionsTable: this.connectionsTable,
       configTable: props.configTable,
       maxSubscriptions: maxSubscriptions,
@@ -99,7 +100,7 @@ export class WebSocketPush extends Construct {
     });
 
     // Lambda: broadcast - Send StateChange notifications
-    this.broadcastLambda = new WebSocketBroadcastLambda(this, 'BroadcastHandler', {
+    this.broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.connectionsTable,
       websocketApiId: webSocketApi.apiId,
       websocketStageName: stage.stageName,
@@ -108,16 +109,16 @@ export class WebSocketPush extends Construct {
 
     // Add routes to WebSocket API
     webSocketApi.addRoute('$connect', {
-      integration: new WebSocketLambdaIntegration('ConnectIntegration', connectLambda),
+      integration: new WebSocketLambdaIntegration('connect-integration', connectLambda),
       authorizer: webSocketAuthorizer,
     });
 
     webSocketApi.addRoute('$disconnect', {
-      integration: new WebSocketLambdaIntegration('DisconnectIntegration', disconnectLambda),
+      integration: new WebSocketLambdaIntegration('disconnect-integration', disconnectLambda),
     });
 
     webSocketApi.addRoute('$default', {
-      integration: new WebSocketLambdaIntegration('MessageIntegration', messageLambda),
+      integration: new WebSocketLambdaIntegration('message-integration', messageLambda),
     });
   }
 }

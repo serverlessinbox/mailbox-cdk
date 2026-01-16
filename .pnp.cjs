@@ -19,6 +19,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:packages/mailbox"\
     },\
     {\
+      "name": "@sipkg/mailbox-cognito",\
+      "reference": "workspace:packages/mailbox-cognito"\
+    },\
+    {\
       "name": "@sipkg/mailbox-tools",\
       "reference": "workspace:packages/mailbox-tools"\
     }\
@@ -27,7 +31,8 @@ const RAW_RUNTIME_STATE =
   "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)",\
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
-    ["@sipkg/mailbox", ["virtual:24b23109ea1f407f46ca33ca9611519049a7110b997f4c2322f517cf5b2ee1d48f8e1b738ca41fc2a1dc6840daf4e8727aca88e7c48da04d801edb28a530dcb3#workspace:packages/mailbox", "workspace:packages/mailbox"]],\
+    ["@sipkg/mailbox", ["virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox", "workspace:packages/mailbox"]],\
+    ["@sipkg/mailbox-cognito", ["workspace:packages/mailbox-cognito"]],\
     ["@sipkg/mailbox-tools", ["workspace:packages/mailbox-tools"]],\
     ["mailbox-cdk", ["workspace:."]]\
   ],\
@@ -284,6 +289,57 @@ const RAW_RUNTIME_STATE =
           ["@smithy/util-stream", "npm:4.5.10"],\
           ["@smithy/util-utf8", "npm:4.2.0"],\
           ["@smithy/util-waiter", "npm:4.2.8"],\
+          ["tslib", "npm:2.8.1"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@aws-sdk/client-cloudwatch-logs", [\
+      ["npm:3.970.0", {\
+        "packageLocation": "../../../.yarn/berry/cache/@aws-sdk-client-cloudwatch-logs-npm-3.970.0-887b094adb-10c0.zip/node_modules/@aws-sdk/client-cloudwatch-logs/",\
+        "packageDependencies": [\
+          ["@aws-crypto/sha256-browser", "npm:5.2.0"],\
+          ["@aws-crypto/sha256-js", "npm:5.2.0"],\
+          ["@aws-sdk/client-cloudwatch-logs", "npm:3.970.0"],\
+          ["@aws-sdk/core", "npm:3.970.0"],\
+          ["@aws-sdk/credential-provider-node", "npm:3.970.0"],\
+          ["@aws-sdk/middleware-host-header", "npm:3.969.0"],\
+          ["@aws-sdk/middleware-logger", "npm:3.969.0"],\
+          ["@aws-sdk/middleware-recursion-detection", "npm:3.969.0"],\
+          ["@aws-sdk/middleware-user-agent", "npm:3.970.0"],\
+          ["@aws-sdk/region-config-resolver", "npm:3.969.0"],\
+          ["@aws-sdk/types", "npm:3.969.0"],\
+          ["@aws-sdk/util-endpoints", "npm:3.970.0"],\
+          ["@aws-sdk/util-user-agent-browser", "npm:3.969.0"],\
+          ["@aws-sdk/util-user-agent-node", "virtual:301233b096db7b0d72fae0d4390775035bfc9fdc11de5c5a2c59d229b0476929190133d936111a23d95e5d99f026af91dd03bb0c4f71ecd8a72bf860a3f301ad#npm:3.970.0"],\
+          ["@smithy/config-resolver", "npm:4.4.6"],\
+          ["@smithy/core", "npm:3.20.6"],\
+          ["@smithy/eventstream-serde-browser", "npm:4.2.8"],\
+          ["@smithy/eventstream-serde-config-resolver", "npm:4.3.8"],\
+          ["@smithy/eventstream-serde-node", "npm:4.2.8"],\
+          ["@smithy/fetch-http-handler", "npm:5.3.9"],\
+          ["@smithy/hash-node", "npm:4.2.8"],\
+          ["@smithy/invalid-dependency", "npm:4.2.8"],\
+          ["@smithy/middleware-content-length", "npm:4.2.8"],\
+          ["@smithy/middleware-endpoint", "npm:4.4.7"],\
+          ["@smithy/middleware-retry", "npm:4.4.23"],\
+          ["@smithy/middleware-serde", "npm:4.2.9"],\
+          ["@smithy/middleware-stack", "npm:4.2.8"],\
+          ["@smithy/node-config-provider", "npm:4.3.8"],\
+          ["@smithy/node-http-handler", "npm:4.4.8"],\
+          ["@smithy/protocol-http", "npm:5.3.8"],\
+          ["@smithy/smithy-client", "npm:4.10.8"],\
+          ["@smithy/types", "npm:4.12.0"],\
+          ["@smithy/url-parser", "npm:4.2.8"],\
+          ["@smithy/util-base64", "npm:4.3.0"],\
+          ["@smithy/util-body-length-browser", "npm:4.2.0"],\
+          ["@smithy/util-body-length-node", "npm:4.2.1"],\
+          ["@smithy/util-defaults-mode-browser", "npm:4.3.22"],\
+          ["@smithy/util-defaults-mode-node", "npm:4.2.25"],\
+          ["@smithy/util-endpoints", "npm:3.2.8"],\
+          ["@smithy/util-middleware", "npm:4.2.8"],\
+          ["@smithy/util-retry", "npm:4.2.8"],\
+          ["@smithy/util-utf8", "npm:4.2.0"],\
           ["tslib", "npm:2.8.1"]\
         ],\
         "linkType": "HARD"\
@@ -4161,18 +4217,19 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@sipkg/mailbox", [\
-      ["virtual:24b23109ea1f407f46ca33ca9611519049a7110b997f4c2322f517cf5b2ee1d48f8e1b738ca41fc2a1dc6840daf4e8727aca88e7c48da04d801edb28a530dcb3#workspace:packages/mailbox", {\
-        "packageLocation": "./.yarn/__virtual__/@sipkg-mailbox-virtual-ef690f5748/1/packages/mailbox/",\
+      ["virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox", {\
+        "packageLocation": "./.yarn/__virtual__/@sipkg-mailbox-virtual-09b5b90556/1/packages/mailbox/",\
         "packageDependencies": [\
           ["@aws-cdk/aws-lambda-go-alpha", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.214.1-alpha.0"],\
           ["@aws-sdk/client-cloudformation", "npm:3.966.0"],\
           ["@aws-sdk/client-cloudfront", "npm:3.970.0"],\
+          ["@aws-sdk/client-cloudwatch-logs", "npm:3.970.0"],\
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.947.0"],\
           ["@aws-sdk/client-dynamodb", "npm:3.946.0"],\
           ["@aws-sdk/client-s3", "npm:3.969.0"],\
           ["@aws-sdk/client-sfn", "npm:3.966.0"],\
           ["@aws-sdk/util-dynamodb", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:3.946.0"],\
-          ["@sipkg/mailbox", "virtual:24b23109ea1f407f46ca33ca9611519049a7110b997f4c2322f517cf5b2ee1d48f8e1b738ca41fc2a1dc6840daf4e8727aca88e7c48da04d801edb28a530dcb3#workspace:packages/mailbox"],\
+          ["@sipkg/mailbox", "virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox"],\
           ["@types/aws-cdk-lib", null],\
           ["@types/aws-custom-resources", null],\
           ["@types/aws-lambda", "npm:8.10.159"],\
@@ -4200,12 +4257,14 @@ const RAW_RUNTIME_STATE =
           ["unzipper", "npm:0.12.3"]\
         ],\
         "packagePeers": [\
+          "@aws-sdk/client-cognito-identity-provider",\
           "@types/aws-cdk-lib",\
           "@types/aws-custom-resources",\
           "@types/aws-sdk__client-cognito-identity-provider",\
           "@types/constructs",\
           "@types/esbuild",\
           "aws-cdk-lib",\
+          "aws-custom-resources",\
           "constructs",\
           "esbuild"\
         ],\
@@ -4217,6 +4276,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-cdk/aws-lambda-go-alpha", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.214.1-alpha.0"],\
           ["@aws-sdk/client-cloudformation", "npm:3.966.0"],\
           ["@aws-sdk/client-cloudfront", "npm:3.970.0"],\
+          ["@aws-sdk/client-cloudwatch-logs", "npm:3.970.0"],\
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.947.0"],\
           ["@aws-sdk/client-dynamodb", "npm:3.946.0"],\
           ["@aws-sdk/client-s3", "npm:3.969.0"],\
@@ -4247,11 +4307,37 @@ const RAW_RUNTIME_STATE =
         "linkType": "SOFT"\
       }]\
     ]],\
+    ["@sipkg/mailbox-cognito", [\
+      ["workspace:packages/mailbox-cognito", {\
+        "packageLocation": "./packages/mailbox-cognito/",\
+        "packageDependencies": [\
+          ["@aws-sdk/client-cognito-identity-provider", "npm:3.947.0"],\
+          ["@sipkg/mailbox", "virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox"],\
+          ["@sipkg/mailbox-cognito", "workspace:packages/mailbox-cognito"],\
+          ["@types/aws-lambda", "npm:8.10.159"],\
+          ["@types/node", "npm:20.19.25"],\
+          ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\
+          ["aws-custom-resources", "npm:0.0.4"],\
+          ["constructs", "npm:10.4.3"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["eslint", "npm:8.57.1"],\
+          ["jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.7.0"],\
+          ["jsii", "npm:5.9.14"],\
+          ["jsii-pacmak", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:1.120.0"],\
+          ["jsii-rosetta", "npm:5.9.15"],\
+          ["ts-jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.4.6"],\
+          ["ts-node", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:10.9.2"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
+          ["unzipper", "npm:0.12.3"]\
+        ],\
+        "linkType": "SOFT"\
+      }]\
+    ]],\
     ["@sipkg/mailbox-tools", [\
       ["workspace:packages/mailbox-tools", {\
         "packageLocation": "./packages/mailbox-tools/",\
         "packageDependencies": [\
-          ["@sipkg/mailbox", "virtual:24b23109ea1f407f46ca33ca9611519049a7110b997f4c2322f517cf5b2ee1d48f8e1b738ca41fc2a1dc6840daf4e8727aca88e7c48da04d801edb28a530dcb3#workspace:packages/mailbox"],\
+          ["@sipkg/mailbox", "virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox"],\
           ["@sipkg/mailbox-tools", "workspace:packages/mailbox-tools"],\
           ["@types/node", "npm:20.19.25"],\
           ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\

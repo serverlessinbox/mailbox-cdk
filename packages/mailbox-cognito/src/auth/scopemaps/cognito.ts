@@ -1,4 +1,4 @@
-import { Permission } from "../../utils/jmap-scopes";
+import { Permission } from '@sipkg/mailbox';
 
 export enum CognitoScope {
   MAIL_READ = 'mail.read',
@@ -20,7 +20,7 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.ALIAS_WRITE]: [Permission.ALIAS_WRITE],
   [CognitoScope.USER_READ]: [Permission.USER_READ],
   [CognitoScope.ADMIN]: [Permission.ADMIN],
-}
+};
 
 export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.MAIL_READ]: CognitoScope.MAIL_READ,
@@ -31,5 +31,4 @@ export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.ALIAS_WRITE]: CognitoScope.ALIAS_WRITE,
   [Permission.USER_READ]: CognitoScope.USER_READ,
   [Permission.ADMIN]: CognitoScope.ADMIN,
-}
-
+};

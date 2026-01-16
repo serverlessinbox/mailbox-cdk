@@ -23,6 +23,8 @@ export type SfnInvokeEvent = {
   mode: 'start' | 'check';
   cfn: CfnEnvelope;
   op: OperationInput;
+  /** Polling iteration counter injected by the Step Functions workflow. */
+  attempt?: number;
 };
 
 export type CfnCustomResourceEvent = {

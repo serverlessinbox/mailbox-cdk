@@ -19,6 +19,9 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { createHash } from 'crypto';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import { createArtifactResolverFromContext } from '../utils/artifact-context';
+import { StackNamedBucket } from '../utils/named-bucket';
+import { Aws } from 'aws-cdk-lib';
+import { slugifyLabel } from '../utils/resource-names';
 import { IArtifactResolver } from '../utils/artifact-resolver';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
@@ -70,18 +73,35 @@ export class MailboxUi extends Construct {
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
 
+  private getOrCreateUiDeployer(artifactResolver: IArtifactResolver): TypeScriptLambda {
+    const stack = Stack.of(this);
+    const existing = stack.node.tryFindChild('mailbox-ui-deployer');
+    if (existing) {
+      return existing as TypeScriptLambda;
+    }
+
+    return new TypeScriptLambda(stack, 'mailbox-ui-deployer', {
+      lambdaId: 'ui-deployer',
+      artifactResolver,
+      packageName: 'mailbox-cdk',
+      handler: 'index.handler',
+      timeout: Duration.minutes(15),
+      memorySize: 1024,
+    });
+  }
+
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
     super(scope, id);
 
     const artifactResolver = createArtifactResolverFromContext(this);
 
-    this.bucket = new Bucket(this, 'ui-bucket', {
+    this.bucket = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const originAccessIdentity = new OriginAccessIdentity(this, 'oai', {
-      comment: `OAI for ${props.label} distribution`,
+    const originAccessIdentity = new OriginAccessIdentity(this, 'origin-access-identity', {
+      comment: `Mailbox ${Aws.STACK_NAME} ${props.label} OAI`,
     });
 
     this.bucket.grantRead(originAccessIdentity);
@@ -97,6 +117,7 @@ export class MailboxUi extends Construct {
     });
 
     this.distribution = new Distribution(this, 'distribution', {
+      comment: `Mailbox ${props.label} UI`,
       defaultRootObject: 'index.html',
       domainNames: props.certificate ? [props.domainName] : undefined,
       certificate: props.certificate,
@@ -148,14 +169,7 @@ export class MailboxUi extends Construct {
   }
 
   private addUiDeployment(artifactResolver: IArtifactResolver, props: MailboxUiProps): void {
-    const deployer = new TypeScriptLambda(this, 'ui-deployer', {
-      lambdaId: 'ui-deployer',
-      artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.handler',
-      timeout: Duration.minutes(15),
-      memorySize: 1024,
-    });
+    const deployer = this.getOrCreateUiDeployer(artifactResolver);
 
     // Read UI bundle artifact from regional publication bucket.
     // ArtifactResolver may be configured with a different region than the current stack

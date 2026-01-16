@@ -35,8 +35,7 @@ export class Cdn extends Construct {
     super(scope, id);
 
     const responseHeadersPolicy = props.allowedOrigins && props.allowedOrigins.length > 0
-      ? new cloudfront.ResponseHeadersPolicy(this, 'BlobResponseHeadersPolicy', {
-        responseHeadersPolicyName: 'MailboxBlobResponseHeaders',
+      ? new cloudfront.ResponseHeadersPolicy(this, 'blob-response-headers-policy', {
         comment: 'CORS policy for email blob downloads',
         corsBehavior: {
           accessControlAllowOrigins: props.allowedOrigins,
@@ -65,7 +64,7 @@ export class Cdn extends Construct {
     });
 
     // CloudFront distribution with Lambda@Edge authorization
-    this.distribution = new cloudfront.Distribution(this, 'BlobDistribution', {
+    this.distribution = new cloudfront.Distribution(this, 'blob-distribution', {
       comment: 'CDN for email blob downloads with Lambda@Edge auth',
       domainNames: props.domainName && props.certificate ? [props.domainName] : undefined,
       certificate: props.domainName && props.certificate ? props.certificate : undefined,
@@ -75,8 +74,7 @@ export class Cdn extends Construct {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
         compress: true,
-        cachePolicy: new cloudfront.CachePolicy(this, 'BlobCachePolicy', {
-          cachePolicyName: 'MailboxBlobCachePolicy',
+        cachePolicy: new cloudfront.CachePolicy(this, 'blob-cache-policy', {
           comment: 'Cache policy for email blobs with auth',
           defaultTtl: cdk.Duration.hours(24),
           maxTtl: cdk.Duration.days(365),

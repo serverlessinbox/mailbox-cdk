@@ -16,28 +16,24 @@ export interface BootstrapUserProperties {
   groups: string[];
 }
 
-export const handler = wrapHandler(async event => {
+export const handler = wrapHandler(async (event: any) => {
   const props = event.ResourceProperties as BootstrapUserProperties;
   const { userPoolId, username, email, groups } = props;
 
   if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-    // Create user if it doesn't exist
     try {
       await cognito.send(
         new AdminCreateUserCommand({
           UserPoolId: userPoolId,
           Username: username,
           DesiredDeliveryMediums: ['EMAIL'],
-          UserAttributes: [
-            { Name: 'email', Value: email },
-          ],
-        })
+          UserAttributes: [{ Name: 'email', Value: email }],
+        }),
       );
       console.log(`Created user: ${username}`);
     } catch (error) {
       if (error instanceof UsernameExistsException) {
         console.log(`User already exists: ${username}, updating email`);
-        // Update email if user already exists
         await cognito.send(
           new AdminUpdateUserAttributesCommand({
             UserPoolId: userPoolId,
@@ -46,7 +42,7 @@ export const handler = wrapHandler(async event => {
               { Name: 'email', Value: email },
               { Name: 'email_verified', Value: 'true' },
             ],
-          })
+          }),
         );
       } else {
         console.error(`Error creating user ${username}:`, error);
@@ -54,14 +50,13 @@ export const handler = wrapHandler(async event => {
       }
     }
 
-    // Add user to groups
     for (const group of groups) {
       await cognito.send(
         new AdminAddUserToGroupCommand({
           UserPoolId: userPoolId,
           Username: username,
           GroupName: group,
-        })
+        }),
       );
       console.log(`Added ${username} to group: ${group}`);
     }

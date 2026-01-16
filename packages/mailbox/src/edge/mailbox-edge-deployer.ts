@@ -75,6 +75,17 @@ export class MailboxEdgeDeployer extends Construct {
       resourceName: `${edgeStackName}/*`,
     });
 
+    // CloudFormation (when called without a RoleArn) uses the caller's permissions to create/delete
+    // resources. Since the edge template creates CloudWatch Log Groups with RemovalPolicy.DESTROY,
+    // the deployer needs explicit permissions to delete those log groups during stack deletion.
+    const edgeLogGroupArnPrefix = stack.formatArn({
+      service: 'logs',
+      region: 'us-east-1',
+      resource: 'log-group',
+      // CDK-generated LogGroup names are prefixed with the stack name.
+      resourceName: `${edgeStackName}*`,
+    });
+
     // IMPORTANT: CDK-generated physical names for resources created by the edge stack template
     // are typically prefixed with the *stack name* (AWS::StackName) plus the logical id.
     // Since our deployer itself runs in a regional stack, and we want a synthesized template to work
@@ -114,7 +125,7 @@ export class MailboxEdgeDeployer extends Construct {
     const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
     const stateMachineName = Fn.join('', ['MailboxEdgeDeployer-', stackGuid]);
 
-    const workflow = new MailboxEdgeDeployerWorkflow(this, 'MailboxEdgeDeployerWorkflow', {
+    const workflow = new MailboxEdgeDeployerWorkflow(this, 'workflow', {
       handler: worker,
       checkInterval: Duration.seconds(20),
       timeout: Duration.minutes(90),
@@ -301,6 +312,56 @@ export class MailboxEdgeDeployer extends Construct {
     worker.addToRolePolicy(
       new PolicyStatement({
         actions: [
+          'logs:DeleteLogGroup',
+          'logs:PutRetentionPolicy',
+          // CloudFormation uses TagResource/UntagResource when creating Log Groups with tags.
+          'logs:TagResource',
+          'logs:UntagResource',
+          // Backwards-compatible explicit log-group tagging APIs.
+          'logs:TagLogGroup',
+          'logs:UntagLogGroup',
+        ],
+        resources: [
+          edgeLogGroupArnPrefix,
+          // Some APIs (and some error reporting paths) refer to the log-stream ARN shape.
+          `${edgeLogGroupArnPrefix}:log-stream:*`,
+          // Some IAM evaluations use an extra suffix segment.
+          `${edgeLogGroupArnPrefix}:*`,
+        ],
+      })
+    );
+
+    // Some CloudWatch Logs tagging calls are evaluated against resource "*" (or against an ARN shape
+    // that doesn't match our prefix), which manifests as a missing logs:TagResource permission.
+    // Keep this narrowly scoped to tagging operations only.
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['logs:TagResource', 'logs:UntagResource'],
+        resources: ['*'],
+      })
+    );
+
+    // CloudFormation rollback/delete has repeatedly evaluated DeleteLogGroup in ways that don't match
+    // our intended ARN prefix (notably showing a log-stream-shaped ARN in the error message).
+    // To stop manual cleanups, allow DeleteLogGroup broadly for this worker.
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['logs:DeleteLogGroup'],
+        resources: ['*'],
+      })
+    );
+
+    // CreateLogGroup is typically evaluated against resource "*".
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['logs:CreateLogGroup'],
+        resources: ['*'],
+      })
+    );
+
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: [
           'route53:ChangeResourceRecordSets',
           'route53:ListResourceRecordSets',
           'route53:GetChange',
@@ -316,34 +377,34 @@ export class MailboxEdgeDeployer extends Construct {
     const deployer = props.deployer ?? 'cfn';
 
     const cfnParameters: Record<string, string> = {
-      DomainName: props.domainName,
-      ArtifactBucket: 'mailbox-artifacts-us-east-1',
-      BlobAuthorizerKey: blobAuthorizerKey,
-      ItemTableArn: props.itemTableArn,
-      ConfigTableArn: props.configTableArn,
-      JwkCacheTableArn: props.jwkCacheTableArn,
+      domainName: props.domainName,
+      artifactBucket: 'mailbox-artifacts-us-east-1',
+      blobAuthorizerKey: blobAuthorizerKey,
+      itemTableArn: props.itemTableArn,
+      configTableArn: props.configTableArn,
+      jwkCacheTableArn: props.jwkCacheTableArn,
 
       // Tagging/back-reference parameters (consumed by the edge stack template)
-      OriginDeployment: Aws.STACK_NAME,
-      OriginRegion: Stack.of(this).region,
-      ProductVersion: props.productVersion ?? 'unknown',
-      Deployer: deployer,
+      originDeployment: Aws.STACK_NAME,
+      originRegion: Stack.of(this).region,
+      productVersion: props.productVersion ?? 'unknown',
+      deployer: deployer,
     };
 
     // Include version ID if available in artifact resolver
     if (blobAuthorizerVersionId) {
-      cfnParameters.BlobAuthorizerS3VersionId = blobAuthorizerVersionId;
+      cfnParameters.blobAuthorizerS3VersionId = blobAuthorizerVersionId;
     }
 
     // Edge template expects a dot-wrapped prefix: "." for no prefix, or ".{label}.".
     // Accept callers passing either raw label or dot-wrapped form and normalize.
     const rawPrefix = (props.prefix ?? '').trim();
     const normalizedPrefixLabel = rawPrefix.replace(/^\.+/, '').replace(/\.+$/, '');
-    cfnParameters.Prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
+    cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
 
     if (props.hostedZoneId && props.hostedZoneName) {
-      cfnParameters.HostedZoneId = props.hostedZoneId;
-      cfnParameters.HostedZoneName = props.hostedZoneName;
+      cfnParameters.hostedZoneId = props.hostedZoneId;
+      cfnParameters.hostedZoneName = props.hostedZoneName;
     }
 
     this.resource = new CustomResource(this, 'resource', {
@@ -366,12 +427,12 @@ export class MailboxEdgeDeployer extends Construct {
     this.blobAuthorizerVersion = lambda.Version.fromVersionArn(
       this,
       'blob-authorizer-version',
-      this.getOutput('BlobAuthorizerVersionArn'),
+      this.getOutput('blobAuthorizerVersionArn'),
     );
 
     const hasHostedZone = Boolean(props.hostedZoneId && props.hostedZoneName);
     if (hasHostedZone) {
-      const certificateArn = this.getOutput('EdgeCertificateArn');
+      const certificateArn = this.getOutput('edgeCertificateArn');
       this.edgeCertificate = acm.Certificate.fromCertificateArn(
         this,
         'edge-certificate',

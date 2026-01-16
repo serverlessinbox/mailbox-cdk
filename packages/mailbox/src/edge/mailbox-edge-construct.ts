@@ -1,5 +1,5 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { Fn } from 'aws-cdk-lib';
+import { Aws, Fn } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -93,6 +93,7 @@ export class MailboxEdgeConstruct extends Construct {
         new iam.ServicePrincipal('lambda.amazonaws.com'),
         new iam.ServicePrincipal('edgelambda.amazonaws.com'),
       ),
+      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
@@ -109,6 +110,11 @@ export class MailboxEdgeConstruct extends Construct {
         props.blobAuthorizerReference.s3VersionId,
       ),
       role: blobAuthorizerRole,
+      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge (${Aws.STACK_NAME})`,
+      // logGroup: new LogGroup(this, 'blob-authorizer-log-group', {
+      //   retention: RetentionDays.ONE_MONTH,
+      //   removalPolicy: RemovalPolicy.RETAIN,
+      // }),
     });
 
     this.blobAuthorizerFunction = blobAuthorizerFunction;

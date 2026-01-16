@@ -18,6 +18,7 @@ import { IBucket } from "aws-cdk-lib/aws-s3";
 import { IArtifactResolver } from "../utils/artifact-resolver";
 import { AUTH_POLICY_ADMIN_API, AuthConfig } from "../auth/types";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { Aws } from 'aws-cdk-lib';
 
 
 export interface AdminApiProps {
@@ -51,7 +52,7 @@ export class AdminApi extends Construct {
 
 
     const api = new HttpApi(this, 'admin-api', {
-      apiName: 'Mailbox Service Admin API',
+      apiName: `Mailbox ${Aws.STACK_NAME} Admin API`,
       description: 'This service serves mailbox admin api endpoints.',
       corsPreflight: props.allowedOrigins && props.allowedOrigins.length > 0
         ? {
@@ -75,6 +76,9 @@ export class AdminApi extends Construct {
         endpointType: EndpointType.REGIONAL,
         securityPolicy: SecurityPolicy.TLS_1_2,
       });
+
+      // Be explicit: the domain must be deleted before the certificate.
+      domain.node.addDependency(props.certificate);
 
       new ApiMapping(this, 'mapping', {
         api,

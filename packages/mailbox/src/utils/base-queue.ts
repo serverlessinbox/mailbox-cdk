@@ -1,6 +1,7 @@
 import { Construct } from 'constructs';
 import { Queue, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
+import { makePhysicalName } from './resource-names';
 
 export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {
   /**
@@ -29,9 +30,12 @@ export class BaseQueue extends Queue {
       ...rest
     } = props || {};
 
+    const queueName = rest.queueName ?? makePhysicalName(scope, id, { maxLength: 80 });
+
     super(scope, id, {
       visibilityTimeout,
       receiveMessageWaitTime,
+      queueName,
       ...rest,
     });
   }

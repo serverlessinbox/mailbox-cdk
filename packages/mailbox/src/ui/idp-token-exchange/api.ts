@@ -10,6 +10,7 @@ import {
   AUTH_POLICY_ADMIN_API,
   OAUTH_CLIENT_ADMIN_UI,
 } from "../../auth/types";
+import { Aws } from 'aws-cdk-lib';
 
 export interface IdpTokenExchangeApiProps {
   artifactResolver: IArtifactResolver;
@@ -33,7 +34,7 @@ export class IdpTokenExchangeApi extends Construct {
     super(scope, id);
 
     this.api = new HttpApi(this, 'idp-token-exchange-api', {
-      apiName: 'Mailbox IDP Token Exchange API',
+      apiName: `Mailbox ${Aws.STACK_NAME} IDP Token Exchange API`,
       description: 'This service serves IDP token exchange endpoints.',
     });
 

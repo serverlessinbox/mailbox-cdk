@@ -18,7 +18,7 @@ import {
   OAUTH_CLIENT_ADMIN_HEADLESS,
   OAUTH_CLIENT_JMAP_HEADLESS,
 } from './auth/types';
-import { Permission } from './utils/jmap-scopes';
+import { Permission } from './auth/jmap-scopes';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { AuditLogTable } from './constructs/auditlog-table';
 import { MailFeedbackTable } from './constructs/mailfeedback-table';
@@ -412,7 +412,6 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(emailSending, 'email');
 
     const jmapApi = new JMapApi(this, 'jmap-api', {
-        applyServerlessInboxComponentTag(jmapApi, 'api');
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
@@ -431,10 +430,10 @@ export class Mailbox extends Construct {
 
       // WebSocket URL will be passed via environment variable, not here
     });
+    applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
     const webSocketPush = new WebSocketPush(this, 'websocket-push', {
-        applyServerlessInboxComponentTag(webSocketPush, 'messaging');
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
@@ -445,9 +444,9 @@ export class Mailbox extends Construct {
       maxPingInterval: 300,
       minPingInterval: 30,
     });
+    applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
     const adminApi = new AdminApi(this, 'admin-api', {
-        applyServerlessInboxComponentTag(adminApi, 'api');
       configTable: configTable,
       itemTable: itemTable,
       auditLogTable: auditLogTable,
@@ -464,6 +463,7 @@ export class Mailbox extends Construct {
       domainName: apiCertificate ? mailboxDomains.api : undefined,
       certificate: apiCertificate,
     });
+    applyServerlessInboxComponentTag(adminApi, 'api');
 
     // Add WebSocket URL to API handler environment
     jmapApi.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);

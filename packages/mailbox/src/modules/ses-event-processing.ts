@@ -11,6 +11,7 @@ import { BaseQueue } from '../utils/base-queue';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IArtifactResolver } from '../utils/artifact-resolver';
+import { makePhysicalName } from '../utils/resource-names';
 
 export interface SESEventProcessingProps {
   itemTable: ITable;
@@ -41,15 +42,12 @@ export class SESEventProcessing extends Construct {
     super(scope, id);
 
     // SNS topic for SES notifications (bounce, complaint, delivery, send, reject)
-    this.sesNotificationsTopic = new Topic(this, 'SESNotificationsTopic', {
-      topicName: 'mailbox-ses-notifications',
+    this.sesNotificationsTopic = new Topic(this, 'ses-notifications-topic', {
       displayName: 'Mailbox SES Notifications',
     });
 
     // SQS queue to consume SNS notifications
-    this.sesNotificationsQueue = new BaseQueue(this, 'SESNotificationsQueue', {
-      queueName: 'mailbox-ses-notifications-queue',
-    });
+    this.sesNotificationsQueue = new BaseQueue(this, 'ses-notifications-queue');
 
     // Subscribe the queue to the SNS topic
     this.sesNotificationsTopic.addSubscription(
@@ -59,13 +57,13 @@ export class SESEventProcessing extends Construct {
     );
 
     // SES Configuration Set for bounce/complaint/delivery notifications
-    const cfnConfigSet = new CfnConfigurationSet(this, 'SESConfigurationSet', {
-      name: 'mailbox-ses-config',
+    const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {
+      name: makePhysicalName(this, 'ses-config', { maxLength: 64 }),
     });
     this.sesConfigSetName = cfnConfigSet.ref;
 
     // Add SNS event destination for SES notifications (bounce, complaint, delivery, send, reject)
-    new CfnConfigurationSetEventDestination(this, 'SESNotificationDestination', {
+    new CfnConfigurationSetEventDestination(this, 'ses-notification-destination', {
       configurationSetName: this.sesConfigSetName,
       eventDestination: {
         snsDestination: {
@@ -87,7 +85,7 @@ export class SESEventProcessing extends Construct {
     });
 
     // SES Event Processor Lambda - processes SES notifications from SQS
-    this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'SESEventProcessorLambda', {
+    this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,

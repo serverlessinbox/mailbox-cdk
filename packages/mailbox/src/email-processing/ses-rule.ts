@@ -21,7 +21,6 @@ export class SesRules extends Construct {
     super(scope, id);
    // SES receipt rule set
     const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {
-      receiptRuleSetName: 'mailbox-rules',
     });
 
     // SES receipt rule to store emails in S3

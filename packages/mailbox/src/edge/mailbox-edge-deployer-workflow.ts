@@ -47,6 +47,15 @@ export function createMailboxEdgeDeployerStateMachine(
   const checkInterval = props.checkInterval ?? Duration.seconds(20);
   const timeout = props.timeout ?? Duration.minutes(90);
 
+  // Track polling iterations so the worker can implement bounded retries.
+  const init = new sfn.Pass(scope, 'Init', {
+    parameters: {
+      'cfn.$': '$.cfn',
+      'op.$': '$.op',
+      attempt: 0,
+    },
+  });
+
   const startOp = new tasks.LambdaInvoke(scope, 'StartEdgeStackOperation', {
     lambdaFunction: props.handler,
     payloadResponseOnly: true,
@@ -55,6 +64,7 @@ export function createMailboxEdgeDeployerStateMachine(
       mode: 'start',
       cfn: sfn.JsonPath.objectAt('$.cfn'),
       op: sfn.JsonPath.objectAt('$.op'),
+      attempt: sfn.JsonPath.numberAt('$.attempt'),
     }),
   });
 
@@ -70,7 +80,18 @@ export function createMailboxEdgeDeployerStateMachine(
       mode: 'check',
       cfn: sfn.JsonPath.objectAt('$.cfn'),
       op: sfn.JsonPath.objectAt('$.op'),
+      attempt: sfn.JsonPath.numberAt('$.attempt'),
     }),
+  });
+
+  const incrementAttempt = new sfn.Pass(scope, 'IncrementAttempt', {
+    parameters: {
+      'cfn.$': '$.cfn',
+      'op.$': '$.op',
+      'start.$': '$.start',
+      'check.$': '$.check',
+      'attempt.$': 'States.MathAdd($.attempt, 1)',
+    },
   });
 
   const done = new sfn.Succeed(scope, 'Done');
@@ -80,18 +101,19 @@ export function createMailboxEdgeDeployerStateMachine(
     .otherwise(wait);
 
   // Loop: Wait -> Check -> Choice (done? else Wait)
-  wait.next(checkOp).next(checkChoice);
+  wait.next(checkOp).next(incrementAttempt).next(checkChoice);
 
   const startChoice = new sfn.Choice(scope, 'StartedOk?')
     // If start already finalized (e.g. early failure), stop the workflow.
     .when(sfn.Condition.booleanEquals('$.start.done', true), done)
     .otherwise(wait);
 
-  const definition = startOp.next(startChoice);
+  const definition = init.next(startOp).next(startChoice);
 
   return new sfn.StateMachine(scope, id, {
     definitionBody: sfn.DefinitionBody.fromChainable(definition),
     timeout,
+    comment: 'Serverless Inbox Mailbox: edge stack deployer workflow',
     ...(props.stateMachineName ? { stateMachineName: props.stateMachineName } : {}),
   });
 }

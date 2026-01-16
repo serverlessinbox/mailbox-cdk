@@ -1,5 +1,5 @@
 import { SecretValue } from 'aws-cdk-lib';
-import { Permission } from '../utils/jmap-scopes';
+import { Permission } from './jmap-scopes';
 
 // ---- Names / keys used in the config table ----
 
@@ -106,7 +106,7 @@ export interface AuthClientConfig extends OAuthClientCredentials {
 
 /**
  * Authentication configuration for the Mailbox construct.
- * Implemented by Cognito (`MailboxUserPool`) and can be implemented by external IdPs.
+ * Implemented by Cognito (`MailboxUserPool` from `@sipkg/mailbox-cognito`) and can be implemented by external IdPs.
  */
 export interface AuthConfig {
   readonly issuer: string;

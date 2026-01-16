@@ -25,28 +25,32 @@ export class MailboxEdgeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxEdgeStackProps) {
     super(scope, id, props);
 
-    const originDeploymentParam = new cdk.CfnParameter(this, 'OriginDeployment', {
+    const originDeploymentParam = new cdk.CfnParameter(this, 'origin-deployment', {
       type: 'String',
       description: 'Originating CloudFormation stack name (regional stack that created this edge stack)',
     });
+    originDeploymentParam.overrideLogicalId('originDeployment');
 
-    const originRegionParam = new cdk.CfnParameter(this, 'OriginRegion', {
+    const originRegionParam = new cdk.CfnParameter(this, 'origin-region', {
       type: 'String',
       description: 'Originating AWS region (regional stack region that created this edge stack)',
     });
+    originRegionParam.overrideLogicalId('originRegion');
 
-    const productVersionParam = new cdk.CfnParameter(this, 'ProductVersion', {
+    const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
       type: 'String',
       description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
       default: 'unknown',
     });
+    productVersionParam.overrideLogicalId('productVersion');
 
-    const deployerParam = new cdk.CfnParameter(this, 'Deployer', {
+    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
       type: 'String',
       description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
       default: 'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
+    deployerParam.overrideLogicalId('deployer');
 
     // Apply product/deployment tags to everything in this edge stack, and add origin back-references.
     applyServerlessInboxBaseTags(this, {
@@ -62,15 +66,16 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
 
     // Define CloudFormation parameters so the template is configurable
-    const domainNameParam = new cdk.CfnParameter(this, 'DomainName', {
+    const domainNameParam = new cdk.CfnParameter(this, 'domain-name', {
       type: 'String',
       description: 'Base domain name (e.g. example.com)',
       // Match ACM domain validation (no trailing dot, no underscores, etc.).
       allowedPattern: '^(\\*\\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$',
       constraintDescription: 'Must be a valid DNS name like example.com (no trailing dot).',
     });
+    domainNameParam.overrideLogicalId('domainName');
 
-    const prefixParam = new cdk.CfnParameter(this, 'Prefix', {
+    const prefixParam = new cdk.CfnParameter(this, 'prefix', {
       type: 'String',
       description: 'Prefix with dots: "." for no prefix, or ".{prefix}." for a prefix',
       default: '.',
@@ -79,56 +84,66 @@ export class MailboxEdgeStack extends cdk.Stack {
       allowedPattern: '^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$',
       constraintDescription: 'Must be "." or a dot-wrapped DNS label like ".mailbox."',
     });
+    prefixParam.overrideLogicalId('prefix');
 
-    const hostedZoneIdParam = new cdk.CfnParameter(this, 'HostedZoneId', {
+    const hostedZoneIdParam = new cdk.CfnParameter(this, 'hosted-zone-id', {
       type: 'String',
       description: 'Route53 hosted zone ID for DNS validation (optional)',
       default: '',
     });
+    hostedZoneIdParam.overrideLogicalId('hostedZoneId');
 
-    const hostedZoneNameParam = new cdk.CfnParameter(this, 'HostedZoneName', {
+    const hostedZoneNameParam = new cdk.CfnParameter(this, 'hosted-zone-name', {
       type: 'String',
       description: 'Route53 hosted zone name (required if HostedZoneId is provided)',
       default: '',
     });
+    hostedZoneNameParam.overrideLogicalId('hostedZoneName');
 
-    const hasHostedZone = new cdk.CfnCondition(this, 'HasHostedZone', {
+    const hasHostedZone = new cdk.CfnCondition(this, 'has-hosted-zone', {
       expression: cdk.Fn.conditionAnd(
         cdk.Fn.conditionNot(cdk.Fn.conditionEquals(hostedZoneIdParam.valueAsString, '')),
         cdk.Fn.conditionNot(cdk.Fn.conditionEquals(hostedZoneNameParam.valueAsString, '')),
       ),
     });
+    hasHostedZone.overrideLogicalId('hasHostedZone');
 
-    const artifactBucketParam = new cdk.CfnParameter(this, 'ArtifactBucket', {
+    const artifactBucketParam = new cdk.CfnParameter(this, 'artifact-bucket', {
       type: 'String',
       description: 'S3 bucket containing artifacts',
     });
+    artifactBucketParam.overrideLogicalId('artifactBucket');
 
-    const blobAuthorizerKeyParam = new cdk.CfnParameter(this, 'BlobAuthorizerKey', {
+    const blobAuthorizerKeyParam = new cdk.CfnParameter(this, 'blob-authorizer-key', {
       type: 'String',
       description: 'S3 key for blob-authorizer Lambda code (full path including artifact prefix)',
     });
+    blobAuthorizerKeyParam.overrideLogicalId('blobAuthorizerKey');
 
-    const blobAuthorizerS3VersionIdParam = new cdk.CfnParameter(this, 'BlobAuthorizerS3VersionId', {
+    const blobAuthorizerS3VersionIdParam = new cdk.CfnParameter(this, 'blob-authorizer-s3-version-id', {
       type: 'String',
       description: 'S3 object version ID for blob-authorizer Lambda code (optional)',
       default: '',
     });
+    blobAuthorizerS3VersionIdParam.overrideLogicalId('blobAuthorizerS3VersionId');
 
-    const itemTableArnParam = new cdk.CfnParameter(this, 'ItemTableArn', {
+    const itemTableArnParam = new cdk.CfnParameter(this, 'item-table-arn', {
       type: 'String',
       description: 'DynamoDB item table ARN (regional) used by blob-authorizer',
     });
+    itemTableArnParam.overrideLogicalId('itemTableArn');
 
-    const configTableArnParam = new cdk.CfnParameter(this, 'ConfigTableArn', {
+    const configTableArnParam = new cdk.CfnParameter(this, 'config-table-arn', {
       type: 'String',
       description: 'DynamoDB config table ARN (regional) used by blob-authorizer',
     });
+    configTableArnParam.overrideLogicalId('configTableArn');
 
-    const jwkCacheTableArnParam = new cdk.CfnParameter(this, 'JwkCacheTableArn', {
+    const jwkCacheTableArnParam = new cdk.CfnParameter(this, 'jwk-cache-table-arn', {
       type: 'String',
       description: 'DynamoDB JWK cache table ARN (regional) used by blob-authorizer',
     });
+    jwkCacheTableArnParam.overrideLogicalId('jwkCacheTableArn');
 
     // Build artifact reference from parameters
     const blobAuthorizerReference: ArtifactReference = {
@@ -160,7 +175,7 @@ export class MailboxEdgeStack extends cdk.Stack {
 
     // Always expose the output key so the regional stack can safely `GetAtt` it.
     // When HasHostedZone is false, the output value is an empty string.
-    new cdk.CfnOutput(this, 'EdgeCertificateArn', {
+    const edgeCertificateArnOutput = new cdk.CfnOutput(this, 'edge-certificate-arn', {
       value: cdk.Fn.conditionIf(
         hasHostedZone.logicalId,
         this.construct.certificate.certificateArn,
@@ -168,10 +183,12 @@ export class MailboxEdgeStack extends cdk.Stack {
       ).toString(),
       description: 'ARN of the ACM certificate for CloudFront/Lambda@Edge (empty when no hosted zone configured)',
     });
+    edgeCertificateArnOutput.overrideLogicalId('edgeCertificateArn');
 
-    new cdk.CfnOutput(this, 'BlobAuthorizerVersionArn', {
+    const blobAuthorizerVersionArnOutput = new cdk.CfnOutput(this, 'blob-authorizer-version-arn', {
       value: this.construct.blobAuthorizerVersion.functionArn,
       description: 'ARN of the published blob-authorizer Lambda@Edge version',
     });
+    blobAuthorizerVersionArnOutput.overrideLogicalId('blobAuthorizerVersionArn');
   }
 }

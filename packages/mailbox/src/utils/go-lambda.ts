@@ -4,10 +4,11 @@ import {
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from './artifact-resolver';
+import { LogGroupRetention } from './log-group-retention';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -19,11 +20,19 @@ export interface GoLambda2Props extends FunctionOptions {
    * Code provider for obtaining lambda code asset
    */
   artifactResolver: IArtifactResolver;
+
+  /**
+   * Log retention policy for the lambda's default log group.
+   * Set to `false` to skip log retention management.
+   *
+   * Default: ONE_MONTH.
+   */
+  logGroupRetention?: RetentionDays | false;
 }
 
 export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
-    const { lambdaId, artifactResolver, ...lambdaProps } = props;
+    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, ...lambdaProps } = props;
 
     const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
@@ -33,11 +42,17 @@ export class GoLambda extends LambdaFunction {
       handler: 'bootstrap',
       architecture: Architecture.ARM_64,
       memorySize: 640,
-      logGroup: new LogGroup(scope, `${id}-LogGroup`, {
-        retention: RetentionDays.ONE_MONTH,
-        removalPolicy: RemovalPolicy.DESTROY,
-      }),
+      ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
+      description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...lambdaProps,
     });
+
+    if (logGroupRetention !== false) {
+      new LogGroupRetention(this, 'log-retention', {
+        artifactResolver,
+        lambdaFunction: this,
+        retention: logGroupRetention,
+      });
+    }
   }
 }

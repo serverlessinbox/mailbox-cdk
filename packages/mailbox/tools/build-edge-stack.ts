@@ -42,13 +42,13 @@ async function main() {
   // eslint-disable-next-line no-console
   console.log(`  Parameters:`);
   // eslint-disable-next-line no-console
-  console.log(`    - DomainName (required)`);
+  console.log(`    - domainName (required)`);
   // eslint-disable-next-line no-console
-  console.log(`    - Prefix (optional)`);
+  console.log(`    - prefix (optional)`);
   // eslint-disable-next-line no-console
-  console.log(`    - HostedZoneId (optional)`);
+  console.log(`    - hostedZoneId (optional)`);
   // eslint-disable-next-line no-console
-  console.log(`    - HostedZoneName (optional, required if HostedZoneId is set)`);
+  console.log(`    - hostedZoneName (optional, required if hostedZoneId is set)`);
 }
 
 main().catch((err) => {

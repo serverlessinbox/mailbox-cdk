@@ -4,7 +4,7 @@ import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, AuthConfig, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
-import { Permission } from '../utils/jmap-scopes';
+import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
 
 export interface WebmailUiProps {

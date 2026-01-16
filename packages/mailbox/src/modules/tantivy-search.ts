@@ -4,10 +4,10 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../utils/artifact-resolver';
 import { TantivyIndexerLambda } from '../lambdas';
+import { BaseQueue } from '../utils/base-queue';
 
 export interface TantivySearchProps {
   /**
@@ -53,7 +53,7 @@ export class TantivySearch extends Construct {
     // Triggered by EventBridge every hour
     // Note: Uses Go with CGO bridge to Rust Tantivy library
     // Rust library is pre-built by build-lambdas.sh before deployment
-    this.indexer = new TantivyIndexerLambda(this, 'TantivyIndexer', {
+    this.indexer = new TantivyIndexerLambda(this, 'tantivy-indexer', {
       indexBucket: props.indexBucket,
       itemTable: props.itemTable,
       configTable: props.configTable,
@@ -64,7 +64,7 @@ export class TantivySearch extends Construct {
     // EventBridge rule to trigger indexer every hour
     // In production, this would be per-account with a DynamoDB table tracking accounts
     // For now, we trigger once per stack
-    const indexingSchedule = new events.Rule(this, 'TantivyIndexingSchedule', {
+    const indexingSchedule = new events.Rule(this, 'tantivy-indexing-schedule', {
       schedule: events.Schedule.rate(cdk.Duration.hours(1)),
       description: 'Trigger Tantivy indexing every hour',
     });
@@ -72,8 +72,7 @@ export class TantivySearch extends Construct {
     // Add target to EventBridge rule: invoke the indexer Lambda
     indexingSchedule.addTarget(
       new targets.LambdaFunction(this.indexer, {
-        deadLetterQueue: new sqs.Queue(this, 'IndexingScheduleDLQ', {
-          queueName: 'tantivy-indexing-schedule-dlq',
+        deadLetterQueue: new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
           retentionPeriod: cdk.Duration.days(14),
         }),
       })

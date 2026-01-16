@@ -25,6 +25,7 @@ function formatAwsError(err: any): string {
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean }> {
   const { mode, cfn, op } = event;
+  const attempt = typeof (event as any)?.attempt === 'number' ? (event as any).attempt : 0;
 
   console.log('Edge deployer op:', JSON.stringify({
     mode,
@@ -95,6 +96,26 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     if (isTerminalFailure(status)) {
       const failures = await describeRecentFailureEvents(op.stackName, 8);
       const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
+
+      const combinedReason = String(stack.StackStatusReason ?? '') + ' ' + failures.join(' | ');
+      const looksLikeReplicatedLambdaFailure = combinedReason.toLowerCase().includes('replicated function')
+        || combinedReason.includes('Deleting Lambda@Edge Functions and Replicas')
+        || combinedReason.includes('Lambda was unable to delete');
+
+      // Lambda@Edge deletion is eventually consistent: even after CloudFront detaches the association,
+      // Lambda can still refuse DeleteFunction for a while because replicas are draining.
+      // Retry DeleteStack a bounded number of times to allow automatic cleanup.
+      const maxDeleteRetries = 180; // ~60 min with 20s interval
+      if (looksLikeReplicatedLambdaFailure && attempt < maxDeleteRetries) {
+        console.log(`Edge stack delete failed due to replicated Lambda@Edge; retrying delete (attempt=${attempt}/${maxDeleteRetries}).`);
+        try {
+          await deleteStackIfExists(op.stackName);
+        } catch (err: any) {
+          console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
+        }
+        return { done: false };
+      }
+
       // Safety net: don't block parent delete/rollback on edge stack delete failure.
       await putCfnResponse({
         cfn,

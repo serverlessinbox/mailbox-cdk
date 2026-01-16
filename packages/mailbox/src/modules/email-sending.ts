@@ -31,15 +31,13 @@ export class EmailSending extends Construct {
     super(scope, id);
 
     // Dead Letter Queue for failed email submissions
-    this.submissionDlq = new BaseQueue(this, 'SubmissionDLQ', {
-      queueName: 'mailbox-email-submissions-dlq',
+    this.submissionDlq = new BaseQueue(this, 'email-submissions-dlq', {
       // Override retention period for DLQ
       retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
     });
 
     // Main queue for email submissions
-    this.submissionQueue = new BaseQueue(this, 'SubmissionQueue', {
-      queueName: 'mailbox-email-submissions',
+    this.submissionQueue = new BaseQueue(this, 'email-submissions', {
       deadLetterQueue: {
         queue: this.submissionDlq,
         maxReceiveCount: 5, // Retry up to 5 times before sending to DLQ
@@ -47,7 +45,7 @@ export class EmailSending extends Construct {
     });
 
     // Email Sender Lambda - processes submissions from SQS and sends via SES
-    this.emailSenderLambda = new EmailSenderLambda(this, 'EmailSenderLambda', {
+    this.emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
       configTable: props.configTable,
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,

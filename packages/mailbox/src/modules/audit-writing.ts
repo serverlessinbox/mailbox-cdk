@@ -25,20 +25,18 @@ export class AuditWriting extends Construct {
   constructor(scope: Construct, id: string, props: AuditWritingProps) {
     super(scope, id);
 
-    this.auditEventsDlq = new BaseQueue(this, 'AuditEventsDLQ', {
-      queueName: 'mailbox-audit-events-dlq',
+    this.auditEventsDlq = new BaseQueue(this, 'audit-events-dlq', {
       retentionPeriod: Duration.days(14),
     });
 
-    this.auditEventsQueue = new BaseQueue(this, 'AuditEventsQueue', {
-      queueName: 'mailbox-audit-events',
+    this.auditEventsQueue = new BaseQueue(this, 'audit-events', {
       deadLetterQueue: {
         queue: this.auditEventsDlq,
         maxReceiveCount: 5,
       },
     });
 
-    this.auditWriterLambda = new AuditWriterLambda(this, 'AuditWriterLambda', {
+    this.auditWriterLambda = new AuditWriterLambda(this, 'audit-writer', {
       auditLogTable: props.auditLogTable,
       artifactResolver: props.artifactResolver,
     });

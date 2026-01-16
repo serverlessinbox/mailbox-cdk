@@ -24,7 +24,6 @@ export class JwkDynamoCache extends Construct {
 
   constructor(scope: Construct, id: string, props: JwkDynamoCacheProps) {
     super(scope, id);
-    this.tableName = 'mailbox-jwks-cache';
     const table = new StackNamedTable(this, 'jwks-cache', {
       removalPolicy: RemovalPolicy.DESTROY,
       partitionKey: {
@@ -41,6 +40,7 @@ export class JwkDynamoCache extends Construct {
     });
 
     this.table = table;
+    this.tableName = table.tableName;
     this.updaterLambda = handler;
 
     // Keep the cache fresh for key rotation.

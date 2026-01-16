@@ -4,10 +4,11 @@ import {
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from './artifact-resolver';
+import { LogGroupRetention } from './log-group-retention';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
@@ -29,6 +30,14 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
    * Lambda entry point handler (defaults to 'index.handler')
    */
   handler?: string;
+
+  /**
+   * Log retention policy for the lambda's default log group.
+   * Set to `false` to skip log retention management.
+   *
+   * Default: ONE_MONTH.
+   */
+  logGroupRetention?: RetentionDays | false;
 }
 
 /**
@@ -57,7 +66,14 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
  */
 export class TypeScriptLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: TypeScriptLambdaProps) {
-    const { lambdaId, artifactResolver, packageName = 'mailbox-cdk', handler = 'index.handler', ...lambdaProps } = props;
+    const {
+      lambdaId,
+      artifactResolver,
+      packageName = 'mailbox-cdk',
+      handler = 'index.handler',
+      logGroupRetention = RetentionDays.ONE_MONTH,
+      ...lambdaProps
+    } = props;
 
     const code = artifactResolver.getCode(packageName, `lambdas/${lambdaId}.zip`);
 
@@ -67,11 +83,17 @@ export class TypeScriptLambda extends LambdaFunction {
       handler,
       architecture: Architecture.ARM_64,
       memorySize: 512,
-      logGroup: new LogGroup(scope, `${id}-LogGroup`, {
-        retention: RetentionDays.ONE_MONTH,
-        removalPolicy: RemovalPolicy.DESTROY,
-      }),
+      ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
+      description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...lambdaProps,
     });
+
+    if (logGroupRetention !== false) {
+      new LogGroupRetention(this, 'log-retention', {
+        artifactResolver,
+        lambdaFunction: this,
+        retention: logGroupRetention,
+      });
+    }
   }
 }

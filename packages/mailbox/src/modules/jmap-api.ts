@@ -19,6 +19,7 @@ import { IArtifactResolver } from "../utils/artifact-resolver";
 import { AuthConfig } from "../auth/types";
 import { GoLambda } from "../utils/go-lambda";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { Aws } from 'aws-cdk-lib';
 
 export interface JMapApiProps {
   configTable: ITable;
@@ -68,7 +69,7 @@ export class JMapApi extends Construct {
 
     // Example API Gateway
     const api = new HttpApi(this, 'jmap-api', {
-      apiName: 'Mailbox Service',
+      apiName: `Mailbox ${Aws.STACK_NAME} JMAP API`,
       description: 'This service serves mailbox operations.',
       corsPreflight: props.allowedOrigins && props.allowedOrigins.length > 0
         ? {
@@ -92,6 +93,9 @@ export class JMapApi extends Construct {
         endpointType: EndpointType.REGIONAL,
         securityPolicy: SecurityPolicy.TLS_1_2,
       });
+
+      // Be explicit: the domain must be deleted before the certificate.
+      domain.node.addDependency(props.certificate);
 
       new ApiMapping(this, 'mapping', {
         api,
