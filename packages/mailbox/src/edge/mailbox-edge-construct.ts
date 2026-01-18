@@ -6,7 +6,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { type ArtifactReference } from '../utils/artifact-prefix';
+import { type ArtifactReference } from '../artifacts/artifact-prefix';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */

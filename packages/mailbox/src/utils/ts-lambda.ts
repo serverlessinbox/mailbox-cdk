@@ -7,8 +7,8 @@ import {
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from './artifact-resolver';
-import { LogGroupRetention } from './log-group-retention';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import { LogGroupRetention } from '../features/observability/log-group-retention';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**

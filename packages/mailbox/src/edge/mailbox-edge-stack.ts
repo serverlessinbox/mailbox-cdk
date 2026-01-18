@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
-import { type ArtifactReference } from '../utils/artifact-prefix';
+import { type ArtifactReference } from '../artifacts/artifact-prefix';
 import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,

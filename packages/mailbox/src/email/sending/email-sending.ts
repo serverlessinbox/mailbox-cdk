@@ -1,11 +1,11 @@
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { EmailSenderLambda } from '../lambdas';
+import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseQueue } from '../utils/base-queue';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { BaseQueue } from '../../utils/base-queue';
+import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 
 export interface EmailSendingProps {
   configTable: ITable;
@@ -18,7 +18,7 @@ export interface EmailSendingProps {
 
 /**
  * Email Sending Infrastructure
- * 
+ *
  * Creates the SQS queue for email submissions with a DLQ.
  * SES event processing is handled by the separate SESEventProcessing module.
  */

@@ -5,7 +5,7 @@ import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { JWKCacheUpdaterLambda } from '../lambdas';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { INamedTable, StackNamedTable } from '../utils/named-table';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 

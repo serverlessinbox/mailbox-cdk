@@ -1,13 +1,13 @@
-import { Aws } from "aws-cdk-lib";
-import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { IFunction } from "aws-cdk-lib/aws-lambda";
-import { IBucket } from "aws-cdk-lib/aws-s3";
-import { ReceiptRule, ReceiptRuleSet, TlsPolicy } from "aws-cdk-lib/aws-ses";
-import { S3, Lambda, LambdaInvocationType } from "aws-cdk-lib/aws-ses-actions";
-import { Construct } from "constructs";
+import { Aws } from 'aws-cdk-lib';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
+import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
+import { Construct } from 'constructs';
 
 export interface EmailDelivery {
-  emailBucket: IBucket
+  emailBucket: IBucket;
   emailProcessor: IFunction;
   bucketPrefix: string;
 }
@@ -19,9 +19,9 @@ export interface SesRulesProps {
 export class SesRules extends Construct {
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
-   // SES receipt rule set
-    const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {
-    });
+
+    // SES receipt rule set
+    const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {});
 
     // SES receipt rule to store emails in S3
     new ReceiptRule(this, 'email-rule', {
@@ -31,11 +31,11 @@ export class SesRules extends Construct {
           bucket: props.delivery.emailBucket,
           objectKeyPrefix: 'incoming-emails/',
           topic: undefined, // We'll use S3 notifications instead of SNS
-        }),      
+        }),
         new Lambda({
           function: props.delivery.emailProcessor,
           invocationType: LambdaInvocationType.EVENT,
-        })
+        }),
       ],
       enabled: true,
       scanEnabled: true,

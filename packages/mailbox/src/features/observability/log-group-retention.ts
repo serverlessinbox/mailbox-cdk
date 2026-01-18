@@ -3,8 +3,8 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from './artifact-resolver';
-import { TypeScriptLambda } from './ts-lambda';
+import { IArtifactResolver } from '../../artifacts/artifact-resolver';
+import { TypeScriptLambda } from '../../utils/ts-lambda';
 
 export interface LogGroupRetentionProps {
   /**

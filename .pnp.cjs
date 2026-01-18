@@ -23,6 +23,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:packages/mailbox-cognito"\
     },\
     {\
+      "name": "@sipkg/mailbox-cognito-identity-center",\
+      "reference": "workspace:packages/mailbox-cognito-identity-center"\
+    },\
+    {\
       "name": "@sipkg/mailbox-tools",\
       "reference": "workspace:packages/mailbox-tools"\
     }\
@@ -32,7 +36,8 @@ const RAW_RUNTIME_STATE =
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
     ["@sipkg/mailbox", ["virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox", "workspace:packages/mailbox"]],\
-    ["@sipkg/mailbox-cognito", ["workspace:packages/mailbox-cognito"]],\
+    ["@sipkg/mailbox-cognito", ["virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#workspace:packages/mailbox-cognito", "workspace:packages/mailbox-cognito"]],\
+    ["@sipkg/mailbox-cognito-identity-center", ["workspace:packages/mailbox-cognito-identity-center"]],\
     ["@sipkg/mailbox-tools", ["workspace:packages/mailbox-tools"]],\
     ["mailbox-cdk", ["workspace:."]]\
   ],\
@@ -4308,6 +4313,44 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@sipkg/mailbox-cognito", [\
+      ["virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#workspace:packages/mailbox-cognito", {\
+        "packageLocation": "./.yarn/__virtual__/@sipkg-mailbox-cognito-virtual-fc8f0332c8/1/packages/mailbox-cognito/",\
+        "packageDependencies": [\
+          ["@aws-sdk/client-cognito-identity-provider", "npm:3.947.0"],\
+          ["@sipkg/mailbox", "virtual:3dcdc9ad1d03fce6a75d3ae93703963549cb2dfb5003f4566b72ab8a7f3b043b2ca3923dcf7d6797587c00a090460d16ada8122a6e3d9fd1e1c1d1afcde981a1#workspace:packages/mailbox"],\
+          ["@sipkg/mailbox-cognito", "virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#workspace:packages/mailbox-cognito"],\
+          ["@types/aws-cdk-lib", null],\
+          ["@types/aws-custom-resources", null],\
+          ["@types/aws-lambda", "npm:8.10.159"],\
+          ["@types/aws-sdk__client-cognito-identity-provider", null],\
+          ["@types/constructs", null],\
+          ["@types/esbuild", null],\
+          ["@types/node", "npm:20.19.25"],\
+          ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\
+          ["aws-custom-resources", "npm:0.0.4"],\
+          ["constructs", "npm:10.4.3"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["eslint", "npm:8.57.1"],\
+          ["jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.7.0"],\
+          ["jsii", "npm:5.9.14"],\
+          ["jsii-pacmak", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:1.120.0"],\
+          ["jsii-rosetta", "npm:5.9.15"],\
+          ["ts-jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.4.6"],\
+          ["ts-node", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:10.9.2"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
+          ["unzipper", "npm:0.12.3"]\
+        ],\
+        "packagePeers": [\
+          "@types/aws-cdk-lib",\
+          "@types/aws-custom-resources",\
+          "@types/aws-sdk__client-cognito-identity-provider",\
+          "@types/constructs",\
+          "@types/esbuild",\
+          "aws-cdk-lib",\
+          "constructs"\
+        ],\
+        "linkType": "SOFT"\
+      }],\
       ["workspace:packages/mailbox-cognito", {\
         "packageLocation": "./packages/mailbox-cognito/",\
         "packageDependencies": [\
@@ -4329,6 +4372,27 @@ const RAW_RUNTIME_STATE =
           ["ts-node", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:10.9.2"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
           ["unzipper", "npm:0.12.3"]\
+        ],\
+        "linkType": "SOFT"\
+      }]\
+    ]],\
+    ["@sipkg/mailbox-cognito-identity-center", [\
+      ["workspace:packages/mailbox-cognito-identity-center", {\
+        "packageLocation": "./packages/mailbox-cognito-identity-center/",\
+        "packageDependencies": [\
+          ["@sipkg/mailbox-cognito", "virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#workspace:packages/mailbox-cognito"],\
+          ["@sipkg/mailbox-cognito-identity-center", "workspace:packages/mailbox-cognito-identity-center"],\
+          ["@types/node", "npm:20.19.25"],\
+          ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\
+          ["constructs", "npm:10.4.3"],\
+          ["eslint", "npm:8.57.1"],\
+          ["jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.7.0"],\
+          ["jsii", "npm:5.9.14"],\
+          ["jsii-pacmak", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:1.120.0"],\
+          ["jsii-rosetta", "npm:5.9.15"],\
+          ["ts-jest", "virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#npm:29.4.6"],\
+          ["ts-node", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:10.9.2"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\
       }]\
@@ -10943,6 +11007,56 @@ const RAW_RUNTIME_STATE =
           ["ts-jest", "npm:29.4.6"]\
         ],\
         "linkType": "SOFT"\
+      }],\
+      ["virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#npm:29.4.6", {\
+        "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-d7acf80b2f/4/.yarn/berry/cache/ts-jest-npm-29.4.6-a9cc323ce9-10c0.zip/node_modules/ts-jest/",\
+        "packageDependencies": [\
+          ["@babel/core", null],\
+          ["@jest/transform", null],\
+          ["@jest/types", null],\
+          ["@types/babel-jest", null],\
+          ["@types/babel__core", null],\
+          ["@types/esbuild", null],\
+          ["@types/jest", null],\
+          ["@types/jest-util", null],\
+          ["@types/jest__transform", null],\
+          ["@types/jest__types", null],\
+          ["@types/typescript", null],\
+          ["babel-jest", null],\
+          ["bs-logger", "npm:0.2.6"],\
+          ["esbuild", null],\
+          ["fast-json-stable-stringify", "npm:2.1.0"],\
+          ["handlebars", "npm:4.7.8"],\
+          ["jest", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.7.0"],\
+          ["jest-util", null],\
+          ["json5", "npm:2.2.3"],\
+          ["lodash.memoize", "npm:4.1.2"],\
+          ["make-error", "npm:1.3.6"],\
+          ["semver", "npm:7.7.3"],\
+          ["ts-jest", "virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#npm:29.4.6"],\
+          ["type-fest", "npm:4.41.0"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
+          ["yargs-parser", "npm:21.1.1"]\
+        ],\
+        "packagePeers": [\
+          "@babel/core",\
+          "@jest/transform",\
+          "@jest/types",\
+          "@types/babel-jest",\
+          "@types/babel__core",\
+          "@types/esbuild",\
+          "@types/jest-util",\
+          "@types/jest",\
+          "@types/jest__transform",\
+          "@types/jest__types",\
+          "@types/typescript",\
+          "babel-jest",\
+          "esbuild",\
+          "jest-util",\
+          "jest",\
+          "typescript"\
+        ],\
+        "linkType": "HARD"\
       }],\
       ["virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:29.4.6", {\
         "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-2cbbe4b251/4/.yarn/berry/cache/ts-jest-npm-29.4.6-a9cc323ce9-10c0.zip/node_modules/ts-jest/",\

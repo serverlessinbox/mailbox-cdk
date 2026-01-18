@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 
 export interface BootstrapTenantLambdaProps {
   configTable: ITable;

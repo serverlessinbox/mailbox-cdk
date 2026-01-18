@@ -1,6 +1,6 @@
-import { Construct } from "constructs";
-import { AdminApiLambda, AuthorizerLambda } from "../lambdas";
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import { Construct } from 'constructs';
+import { AdminApiLambda, AuthorizerLambda } from '../lambdas';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -9,17 +9,15 @@ import {
   HttpApi,
   HttpMethod,
   SecurityPolicy,
-} from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-import { Duration } from "aws-cdk-lib";
-import { IQueue } from "aws-cdk-lib/aws-sqs";
-import { IBucket } from "aws-cdk-lib/aws-s3";
-import { IArtifactResolver } from "../utils/artifact-resolver";
-import { AUTH_POLICY_ADMIN_API, AuthConfig } from "../auth/types";
+} from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { Duration, Aws } from 'aws-cdk-lib';
+import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import { AUTH_POLICY_ADMIN_API, AuthConfig } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { Aws } from 'aws-cdk-lib';
-
 
 export interface AdminApiProps {
   configTable: ITable;
@@ -50,19 +48,19 @@ export class AdminApi extends Construct {
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
 
-
     const api = new HttpApi(this, 'admin-api', {
       apiName: `Mailbox ${Aws.STACK_NAME} Admin API`,
       description: 'This service serves mailbox admin api endpoints.',
-      corsPreflight: props.allowedOrigins && props.allowedOrigins.length > 0
-        ? {
-          allowOrigins: props.allowedOrigins,
-          allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-          allowHeaders: ['Content-Type', 'Authorization', 'webrpc'],
-          allowCredentials: true,
-          maxAge: Duration.hours(1),
-        }
-        : undefined,
+      corsPreflight:
+        props.allowedOrigins && props.allowedOrigins.length > 0
+          ? {
+              allowOrigins: props.allowedOrigins,
+              allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+              allowHeaders: ['Content-Type', 'Authorization', 'webrpc'],
+              allowCredentials: true,
+              maxAge: Duration.hours(1),
+            }
+          : undefined,
     });
 
     if (props.domainName) {

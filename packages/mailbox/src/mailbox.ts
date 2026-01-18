@@ -1,17 +1,18 @@
 import { Construct } from 'constructs';
-import { EmailBucket } from './constructs/email-bucket';
-import { ConfigTable } from './constructs/config-table';
-import { ItemTable } from './constructs/item-table';
-import { ChangelogTable } from './constructs/changelog-table';
-import { JwkDynamoCache } from './modules/jwk-dynamo-cache';
-import { Cdn } from './modules/cdn-construct';
-import { TantivySearch } from './modules/tantivy-search';
-import { EmailSending } from './modules/email-sending';
-import { SESEventProcessing } from './modules/ses-event-processing';
-import { JMapApi } from './modules/jmap-api';
-import { WebSocketPush } from './modules/websocket';
-import { EmailDelivery } from './email-processing/ses-rule';
-import { AdminApi } from './modules/admin-api';
+import {
+  AuditLogTable,
+  ChangelogTable,
+  ConfigTable,
+  EmailBucket,
+  ItemTable,
+  MailFeedbackTable,
+} from './resources';
+import { JwkDynamoCache } from './features/jwk-dynamo-cache';
+import { Cdn } from './features/cdn-construct';
+import { TantivySearch } from './search';
+import { EmailSending, SESEventProcessing } from './email';
+import { AdminApi, JMapApi, WebSocketPush } from './api';
+import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
   AuthConfig,
@@ -20,11 +21,9 @@ import {
 } from './auth/types';
 import { Permission } from './auth/jmap-scopes';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { AuditLogTable } from './constructs/auditlog-table';
-import { MailFeedbackTable } from './constructs/mailfeedback-table';
-import { AuditWriting } from './modules/audit-writing';
-import { createArtifactResolverFromContext } from './utils/artifact-context';
-import { BootstrapTenant } from './modules/bootstrap-tenant';
+import { AuditWriting } from './features/audit-writing';
+import { createArtifactResolverFromContext } from './artifacts/artifact-context';
+import { BootstrapTenant } from './features/bootstrap-tenant';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';

@@ -5,7 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue } from '../utils/base-queue';
 import { AuditWriterLambda } from '../lambdas';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 
 export interface AuditWritingProps {
   auditLogTable: ITable;

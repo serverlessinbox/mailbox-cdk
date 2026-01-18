@@ -18,11 +18,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { createHash } from 'crypto';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import { createArtifactResolverFromContext } from '../utils/artifact-context';
+import { createArtifactResolverFromContext } from '../artifacts/artifact-context';
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 

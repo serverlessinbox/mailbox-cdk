@@ -1,7 +1,7 @@
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import { IdpTokenExchangeLambda } from "../../lambdas";
-import { IArtifactResolver } from "../../utils/artifact-resolver";
+import { IArtifactResolver } from "../../artifacts/artifact-resolver";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import {

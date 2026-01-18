@@ -5,7 +5,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { TantivyIndexerLambda } from '../lambdas';
 import { BaseQueue } from '../utils/base-queue';
 
@@ -75,7 +75,7 @@ export class TantivySearch extends Construct {
         deadLetterQueue: new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
           retentionPeriod: cdk.Duration.days(14),
         }),
-      })
+      }),
     );
   }
 

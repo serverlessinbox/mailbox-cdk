@@ -3530,7 +3530,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sipkg/mailbox-cognito@workspace:packages/mailbox-cognito":
+"@sipkg/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center":
+  version: 0.0.0-use.local
+  resolution: "@sipkg/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center"
+  dependencies:
+    "@sipkg/mailbox-cognito": "workspace:*"
+    "@types/node": "npm:^20.0.0"
+    aws-cdk-lib: "npm:^2.224.0"
+    constructs: "npm:^10.0.0"
+    eslint: "npm:^8.0.0"
+    jest: "npm:^29.0.0"
+    jsii: "npm:^5.3.0"
+    jsii-pacmak: "npm:*"
+    jsii-rosetta: "npm:^5.9.15"
+    ts-jest: "npm:^29.0.0"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.9.3"
+  peerDependencies:
+    aws-cdk-lib: ^2.224.0
+    constructs: ^10.0.0
+  languageName: unknown
+  linkType: soft
+
+"@sipkg/mailbox-cognito@workspace:*, @sipkg/mailbox-cognito@workspace:packages/mailbox-cognito":
   version: 0.0.0-use.local
   resolution: "@sipkg/mailbox-cognito@workspace:packages/mailbox-cognito"
   dependencies:

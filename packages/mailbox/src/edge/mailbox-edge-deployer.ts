@@ -4,7 +4,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from '../utils/ts-lambda';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { MailboxEdgeDeployerWorkflow } from './mailbox-edge-deployer-workflow';
 
 export interface MailboxEdgeDeployerProps {
@@ -266,6 +266,29 @@ export class MailboxEdgeDeployer extends Construct {
           'iam:ListAttachedRolePolicies',
         ],
         resources: [edgeRoleArnPrefix],
+      })
+    );
+
+    // CreateRole is sometimes evaluated against resource "*" (not the role ARN) which would bypass
+    // the ARN-scoped statement above. Allow it explicitly.
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['iam:CreateRole'],
+        resources: ['*'],
+      })
+    );
+
+    // Some IAM tagging paths are also evaluated against resource "*".
+    // Keep this safe by constraining the allowed role name prefix.
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['iam:TagRole', 'iam:UntagRole'],
+        resources: ['*'],
+        conditions: {
+          StringLike: {
+            'iam:RoleName': `${Aws.STACK_NAME}-*`,
+          },
+        },
       })
     );
 

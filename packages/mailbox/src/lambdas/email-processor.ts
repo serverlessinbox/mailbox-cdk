@@ -3,7 +3,7 @@ import { GoLambda } from "../utils/go-lambda";
 import { INamedTable } from "../utils/named-table";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
-import { IArtifactResolver } from "../utils/artifact-resolver";
+import { IArtifactResolver } from "../artifacts/artifact-resolver";
 
 export interface EmailProcessorLambdaProps {
   configTable: INamedTable;

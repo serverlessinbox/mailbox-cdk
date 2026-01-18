@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Type-check TypeScript sources
+    cmds:
+      - yarn exec tsc --noEmit
+
+  build:watch:
+    desc: Type-check in watch mode
+    cmds:
+      - yarn exec tsc --noEmit --watch
+
+  lint:
+    desc: Run ESLint
+    cmds:
+      - yarn exec eslint .
+
+  test:
+    desc: Run Jest tests
+    cmds:
+      - yarn exec jest
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf dist lib

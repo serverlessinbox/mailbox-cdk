@@ -1,19 +1,18 @@
-import { Construct } from "constructs";
+import { Construct } from 'constructs';
 import {
   WebSocketConnectLambda,
   WebSocketDisconnectLambda,
   WebSocketMessageLambda,
   WebSocketBroadcastLambda,
-} from "../lambdas";
-import { WebSocketApi, WebSocketStage } from "aws-cdk-lib/aws-apigatewayv2";
-import { WebSocketLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import { WebSocketLambdaAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { RemovalPolicy } from "aws-cdk-lib";
-import { IArtifactResolver } from "../utils/artifact-resolver";
-import { StackNamedTable } from "../utils/named-table";
-import { Aws } from "aws-cdk-lib";
+} from '../lambdas';
+import { WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2';
+import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { RemovalPolicy, Aws } from 'aws-cdk-lib';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import { StackNamedTable } from '../utils/named-table';
 
 export interface WebSocketPushProps {
   configTable: ITable;
@@ -41,9 +40,9 @@ export class WebSocketPush extends Construct {
     this.connectionsTable = new StackNamedTable(this, 'ws-connections', {
       partitionKey: { name: 'connectionId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY, // Development mode - destroy on stack delete
-      timeToLiveAttribute: 'ttl', // Auto-cleanup stale connections
-      pointInTimeRecovery: false, // No need for PITR in dev
+      removalPolicy: RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl',
+      pointInTimeRecovery: false,
     });
 
     // GSI for querying by userId
@@ -75,7 +74,7 @@ export class WebSocketPush extends Construct {
       ],
     });
 
-    // Lambda: $connect - Store connection (auth already done by authorizer)
+    // Lambda: $connect
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.connectionsTable,
       jwkCacheTable: props.jwkCacheTable,
@@ -84,13 +83,13 @@ export class WebSocketPush extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    // Lambda: $disconnect - Cleanup connection
+    // Lambda: $disconnect
     const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
       connectionsTable: this.connectionsTable,
       artifactResolver: props.artifactResolver,
     });
 
-    // Lambda: $default - Handle messages (PushSubscribe)
+    // Lambda: $default
     const messageLambda = new WebSocketMessageLambda(this, 'message-handler', {
       connectionsTable: this.connectionsTable,
       configTable: props.configTable,
@@ -99,7 +98,7 @@ export class WebSocketPush extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    // Lambda: broadcast - Send StateChange notifications
+    // Lambda: broadcast
     this.broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.connectionsTable,
       websocketApiId: webSocketApi.apiId,
@@ -107,7 +106,7 @@ export class WebSocketPush extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    // Add routes to WebSocket API
+    // Routes
     webSocketApi.addRoute('$connect', {
       integration: new WebSocketLambdaIntegration('connect-integration', connectLambda),
       authorizer: webSocketAuthorizer,

@@ -1,0 +1,62 @@
+{
+  "name": "@sipkg/mailbox-cognito-identity-center",
+  "version": "1.0.0",
+  "author": "Joost van der Waal",
+  "repository": {
+    "url": "https://github.com/serverlessinbox/mailbox-cdk",
+    "type": "git"
+  },
+  "license": "Apache-2.0",
+  "description": "AWS IAM Identity Center (SAML) federation addon for @sipkg/mailbox-cognito",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "packageManager": "yarn@4.12.0",
+  "scripts": {
+    "build": "task build",
+    "build:watch": "task build:watch",
+    "jsii:build": "jsii",
+    "jsii:package": "jsii-pacmak",
+    "prepack": "jsii",
+    "postpack": "rm -rf lib dist",
+    "lint": "task lint",
+    "test": "task test",
+    "dev": "task build:watch"
+  },
+  "publishConfig": {
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts"
+  },
+  "jsii": {
+    "outdir": "dist",
+    "tsconfig": "tsconfig.json",
+    "targets": {
+      "go": {
+        "moduleName": "github.com/serverlessinbox/mailbox-cognito-identity-center-go"
+      }
+    }
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.224.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk-lib": "^2.224.0",
+    "constructs": "^10.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "jsii": "^5.3.0",
+    "jsii-pacmak": "*",
+    "jsii-rosetta": "^5.9.15",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@sipkg/mailbox-cognito": "workspace:*"
+  },
+  "files": [
+    "src",
+    "lib"
+  ]
+}

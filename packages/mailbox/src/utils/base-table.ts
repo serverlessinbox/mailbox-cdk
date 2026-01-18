@@ -1,7 +1,7 @@
-import { RemovalPolicy } from 'aws-cdk-lib';
 import { BillingMode, GlobalSecondaryIndexProps, Table, TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, Grant, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import { removalPolicyForRetainedResources } from './development-mode';
 
 /**
  * Base DynamoDB table construct with on-demand billing by default
@@ -19,7 +19,7 @@ export class BaseTable extends Table {
       ...props,
       // Default to on-demand billing
       billingMode: props.billingMode ?? BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+      removalPolicy: props.removalPolicy ?? removalPolicyForRetainedResources(scope),
     });
   }
 

@@ -2,7 +2,7 @@ import { CustomResource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapTenantLambda } from '../lambdas';
-import { IArtifactResolver } from '../utils/artifact-resolver';
+import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,
