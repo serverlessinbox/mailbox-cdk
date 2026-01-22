@@ -19,6 +19,8 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { AUTH_POLICY_ADMIN_API, AuthConfig } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
+import type { AdminApiAddon } from './addons';
+
 export interface AdminApiProps {
   configTable: ITable;
   itemTable: ITable;
@@ -32,6 +34,9 @@ export interface AdminApiProps {
   allowedOrigins?: string[];
   artifactResolver: IArtifactResolver;
   authConfig: AuthConfig;
+
+  /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
+  addons?: AdminApiAddon[];
 
   /** Optional custom domain name for this API (e.g. api.example.com). */
   domainName?: string;
@@ -55,8 +60,8 @@ export class AdminApi extends Construct {
         props.allowedOrigins && props.allowedOrigins.length > 0
           ? {
               allowOrigins: props.allowedOrigins,
-              allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-              allowHeaders: ['Content-Type', 'Authorization', 'webrpc'],
+              allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+              allowHeaders: ['Content-Type', 'Authorization'],
               allowCredentials: true,
               maxAge: Duration.hours(1),
             }
@@ -116,6 +121,10 @@ export class AdminApi extends Construct {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
       resultsCacheTtl: Duration.minutes(0),
     });
+
+    for (const addon of props.addons ?? []) {
+      addon.addRoutes(api, httpLambdaAuthorize);
+    }
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
     api.addRoutes({

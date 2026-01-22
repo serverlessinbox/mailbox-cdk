@@ -1,5 +1,6 @@
 import { SecretValue } from 'aws-cdk-lib';
 import { Permission } from './jmap-scopes';
+import type { AdminApiAddonProvider } from '../api/addons';
 
 // ---- Names / keys used in the config table ----
 
@@ -119,3 +120,16 @@ export interface AuthConfig {
 
   generateClient(params: GenerateClientParams): AuthClientConfig;
 }
+
+/** Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`). */
+export interface AdminUiConfigProvider {
+  getAdminUiConfig(): Record<string, unknown>;
+}
+
+/**
+ * Auth provider contract expected by the top-level Mailbox construct.
+ *
+ * Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).
+ * They can optionally supply Admin API addons (provider-specific admin endpoints).
+ */
+export type MailboxAuthProvider = AuthConfig & Partial<AdminApiAddonProvider & AdminUiConfigProvider>;

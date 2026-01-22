@@ -34,6 +34,9 @@ export interface AdminUiProps {
 
   /** Base URL for the Admin UI's backend API. Written into `/config/config.json`. */
   apiUrl?: string;
+
+  /** Additional runtime config written into `/config/config.json` (e.g. feature flags / IdP user management config). */
+  uiConfig?: Record<string, unknown>;
 }
 
 /**
@@ -68,6 +71,11 @@ export class AdminUi extends Construct {
   constructor(scope: Construct, id: string, props: AdminUiProps) {
     super(scope, id);
 
+    const mergedUiConfig = {
+      ...(props.uiConfig ?? {}),
+      ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
+    };
+
     const ui = new MailboxUi(this, 'ui', {
       label: 'Admin UI',
       domainName: props.domainName,
@@ -79,7 +87,7 @@ export class AdminUi extends Construct {
         packageName: 'mailbox-admin-ui',
         objectPath: 'admin-ui.zip',
       },
-      uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
+      uiConfig: Object.keys(mergedUiConfig).length > 0 ? mergedUiConfig : undefined,
     });
 
     const uiHost = ui.distributionDomainName;

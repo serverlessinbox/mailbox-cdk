@@ -1,0 +1,16 @@
+{
+  "name": "@sipkg/mailbox-admin-api",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "yarn@4.12.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "task build",
+    "lint": "task lint"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "typescript": "^5.9.3"
+  }
+}

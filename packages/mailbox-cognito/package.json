@@ -37,8 +37,8 @@
   },
   "peerDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
+    "@aws-sdk/client-sqs": "^3.947.0",
     "aws-cdk-lib": "^2.224.0",
-    "aws-custom-resources": "^0.0.4",
     "constructs": "^10.0.0",
     "esbuild": "^0.24.0"
   },
@@ -46,7 +46,7 @@
     "@aws-sdk/client-cognito-identity-provider": {
       "optional": true
     },
-    "aws-custom-resources": {
+    "@aws-sdk/client-sqs": {
       "optional": true
     },
     "esbuild": {
@@ -55,10 +55,10 @@
   },
   "devDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
+    "@aws-sdk/client-sqs": "^3.947.0",
     "@types/aws-lambda": "^8.10.159",
     "@types/node": "^20.0.0",
     "aws-cdk-lib": "^2.224.0",
-    "aws-custom-resources": "^0.0.4",
     "constructs": "^10.0.0",
     "esbuild": "^0.27.1",
     "eslint": "^8.0.0",
@@ -71,7 +71,9 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.2.3",
     "@sipkg/mailbox": "workspace:*",
+    "@sipkg/mailbox-admin-api": "workspace:*",
     "unzipper": "^0.12.3"
   },
   "files": [

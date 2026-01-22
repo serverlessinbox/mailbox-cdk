@@ -1,10 +1,67 @@
 version: '3'
 
 tasks:
+  generate:proto:idp-users:
+    desc: Generate TypeScript types + client for IdP Users admin API (buf). Generated output is committed.
+    cmds:
+      - rm -rf {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+      - mkdir -p {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+      - |
+        set -euo pipefail
+        cd {{.TASKFILE_DIR}}/../../remote-git/mailbox-idl/admin-api
+        (cd tools/protoc-gen-ts-client && go build -o protoc-gen-ts-client .)
+        buf generate --template buf.gen.ts.yaml --path proto/idp_users.proto -o {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+
+  verify:proto:idp-users:
+    desc: Regenerate and fail if idp-users generated output differs from what is committed
+    cmds:
+      - task: generate:proto:idp-users
+      - git diff --exit-code -- {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+
   build:
     desc: Type-check TypeScript sources
     cmds:
       - yarn exec tsc --noEmit
+
+  # Regional artifact publishing
+  bundle:idp-users-api:
+    desc: Bundle cognito idp-users API lambda zip to /tmp
+    cmds:
+      - task: generate:proto:idp-users
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node20
+
+  bundle:custom-message:
+    desc: Bundle cognito custom-message trigger lambda zip to /tmp
+    cmds:
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node20
+
+  bundle:bootstrap-user:
+    desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
+    cmds:
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node20
+
+  publish:dev:
+    desc: Publish cognito regional ts-lambdas to dev channel
+    cmds:
+      - task: bundle:idp-users-api
+      - task: bundle:custom-message
+      - task: bundle:bootstrap-user
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-idp-users-api.zip --objectName lambdas/cognito-idp-users-api.zip --awsProfile serverlessinbox-dev
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-custom-message.zip --objectName lambdas/cognito-custom-message.zip --awsProfile serverlessinbox-dev
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-bootstrap-user.zip --objectName lambdas/cognito-bootstrap-user.zip --awsProfile serverlessinbox-dev
+
+  publish:release:
+    desc: Publish cognito regional ts-lambdas to release version
+    requires:
+      vars:
+        - VERSION
+    cmds:
+      - task: bundle:idp-users-api
+      - task: bundle:custom-message
+      - task: bundle:bootstrap-user
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-idp-users-api.zip --objectName lambdas/cognito-idp-users-api.zip
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-custom-message.zip --objectName lambdas/cognito-custom-message.zip
+      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-bootstrap-user.zip --objectName lambdas/cognito-bootstrap-user.zip
 
   build:watch:
     desc: Type-check in watch mode

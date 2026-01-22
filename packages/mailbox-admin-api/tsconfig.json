@@ -1,0 +1,9 @@
+{
+  "extends": "../mailbox/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "src",
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

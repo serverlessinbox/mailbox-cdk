@@ -12,6 +12,7 @@ import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
 import { AdminApi, JMapApi, WebSocketPush } from './api';
+import type { AdminApiAddon, AdminApiAddonContext } from './api';
 import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
@@ -19,6 +20,7 @@ import {
   OAUTH_CLIENT_ADMIN_HEADLESS,
   OAUTH_CLIENT_JMAP_HEADLESS,
 } from './auth/types';
+import type { MailboxAuthProvider } from './auth/types';
 import { Permission } from './auth/jmap-scopes';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { AuditWriting } from './features/audit-writing';
@@ -42,7 +44,12 @@ import {
 export interface MailboxProps {
   hostedZone?: IHostedZone;
   domainName: string;
-  authConfig: AuthConfig;
+
+  /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
+  authProvider?: MailboxAuthProvider;
+
+  /** Legacy: raw auth config object (no addons). Prefer `authProvider`. */
+  authConfig?: AuthConfig;
 
   /** Optional deployer label used for tagging (default: 'cfn'). */
   deployer?: ServerlessInboxDeployer;
@@ -125,6 +132,12 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
+    const authProvider: MailboxAuthProvider = (props.authProvider ?? props.authConfig) as MailboxAuthProvider;
+
+    if (!authProvider) {
+      throw new Error('Mailbox: either authProvider or authConfig must be provided');
+    }
+
     const deployer = props.deployer ?? 'cfn';
 
     // Tag everything under this construct so customers can easily slice cost/usage.
@@ -171,7 +184,7 @@ export class Mailbox extends Construct {
 
     // JWK cache updater - writes to DynamoDB for Lambda@Edge
     const jwkCache = new JwkDynamoCache(this, 'jwk-cache', {
-      issuers: [props.authConfig.issuer],
+      issuers: [authProvider.issuer],
       artifactResolver,
     });
     applyServerlessInboxComponentTag(jwkCache, 'auth');
@@ -226,13 +239,13 @@ export class Mailbox extends Construct {
     const allPermissions = Object.values(Permission);
 
     if (createHeadlessClients) {
-      this.oauthClients.adminHeadless = props.authConfig.generateClient({
+      this.oauthClients.adminHeadless = authProvider.generateClient({
         flow: 'client_credentials',
         name: OAUTH_CLIENT_ADMIN_HEADLESS,
         permissions: [],
       });
 
-      this.oauthClients.jmapHeadless = props.authConfig.generateClient({
+      this.oauthClients.jmapHeadless = authProvider.generateClient({
         flow: 'client_credentials',
         name: OAUTH_CLIENT_JMAP_HEADLESS,
         permissions: allPermissions,
@@ -249,12 +262,15 @@ export class Mailbox extends Construct {
     let webmailUiCnameTarget: string | undefined;
 
     if (createAdminUi) {
+      const providerAdminUiConfig = authProvider.getAdminUiConfig?.();
+
       const adminUi = new AdminUi(this, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.adminUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
-        authConfig: props.authConfig,
+        authConfig: authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
+        uiConfig: providerAdminUiConfig,
       });
       applyServerlessInboxComponentTag(adminUi, 'ui');
 
@@ -273,7 +289,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.webmail,
         certificate: props.webmailUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
-        authConfig: props.authConfig,
+        authConfig: authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
       });
       applyServerlessInboxComponentTag(webmailUi, 'ui');
@@ -298,23 +314,23 @@ export class Mailbox extends Construct {
 
     new BootstrapTenant(this, 'bootstrap-tenant', {
       domain: props.domainName,
-      oidcIssuer: props.authConfig.issuer,
+      oidcIssuer: authProvider.issuer,
       configTable: configTable,
       artifactResolver,
 
       oidcProvider: {
-        tokenEndpoint: props.authConfig.tokenEndpoint,
-        authorizationEndpoint: props.authConfig.authorizationEndpoint,
-        authMethod: props.authConfig.authMethod,
-        usePkce: props.authConfig.usePkce,
+        tokenEndpoint: authProvider.tokenEndpoint,
+        authorizationEndpoint: authProvider.authorizationEndpoint,
+        authMethod: authProvider.authMethod,
+        usePkce: authProvider.usePkce,
       },
       authPolicies: {
         adminApi: {
-          audiences: props.authConfig.clientIds,
+          audiences: authProvider.clientIds,
           requiredGroup: adminRequiredGroup,
         },
         jmapApi: {
-          audiences: props.authConfig.clientIds,
+          audiences: authProvider.clientIds,
         },
       },
       oauthClients: (this.oauthClients.adminUi || this.oauthClients.jmapUi)
@@ -364,7 +380,7 @@ export class Mailbox extends Construct {
       itemTable,
       configTable,
       jwkCacheTable: jwkCache.table,
-      userPoolIssuer: props.authConfig.issuer,
+      userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
@@ -421,7 +437,7 @@ export class Mailbox extends Construct {
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
-      authConfig: props.authConfig,
+      authConfig: authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
 
       domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
@@ -445,6 +461,17 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
+    const adminApiAddons: AdminApiAddon[] = (() => {
+      if (typeof authProvider.createAdminApiAddons !== 'function') return [];
+
+      const ctx: AdminApiAddonContext = {
+        artifactResolver,
+        auditEventsQueue: auditWriting.auditEventsQueue,
+      };
+
+      return authProvider.createAdminApiAddons(this, ctx);
+    })();
+
     const adminApi = new AdminApi(this, 'admin-api', {
       configTable: configTable,
       itemTable: itemTable,
@@ -457,7 +484,9 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver: artifactResolver,
-      authConfig: props.authConfig,
+      authConfig: authProvider,
+
+      addons: adminApiAddons,
 
       domainName: apiCertificate ? mailboxDomains.api : undefined,
       certificate: apiCertificate,

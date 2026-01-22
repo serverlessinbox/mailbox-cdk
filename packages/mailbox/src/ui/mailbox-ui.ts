@@ -56,7 +56,9 @@ export interface MailboxUiProps {
   /** Optional UI runtime config written to `s3://<ui-bucket>/config/config.json` via custom resource. */
   uiConfig?: {
     /** Base URL for the UI's backend API (whatever the frontend consumes). */
-    apiUrl: string;
+    apiUrl?: string;
+    /** Additional provider-/deployment-specific config for the UI. */
+    [key: string]: unknown;
   };
 }
 
