@@ -3,13 +3,16 @@ import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseQueue } from '../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 import { AuditWriterLambda } from '../lambdas';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 
 export interface AuditWritingProps {
   auditLogTable: ITable;
   artifactResolver: IArtifactResolver;
+
+  /** Optional default props applied to all queues created by this construct (e.g. encryption). */
+  queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -25,11 +28,15 @@ export class AuditWriting extends Construct {
   constructor(scope: Construct, id: string, props: AuditWritingProps) {
     super(scope, id);
 
+    const queueProps = props.queueProps ?? {};
+
     this.auditEventsDlq = new BaseQueue(this, 'audit-events-dlq', {
+      ...queueProps,
       retentionPeriod: Duration.days(14),
     });
 
     this.auditEventsQueue = new BaseQueue(this, 'audit-events', {
+      ...queueProps,
       deadLetterQueue: {
         queue: this.auditEventsDlq,
         maxReceiveCount: 5,

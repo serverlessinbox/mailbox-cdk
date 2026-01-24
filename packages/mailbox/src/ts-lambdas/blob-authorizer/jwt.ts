@@ -14,7 +14,7 @@ let issuerConfigCache: { value: IssuerTenantConfig; fetchedAt: number } | null =
 
 type AuthPolicyConfig = {
   audiences: string[];
-  requiredGroup?: string;
+  requireAnyOfGroups?: string[];
   providerName?: string;
   issuer?: string;
 };
@@ -119,16 +119,15 @@ function extractGroups(payload: jwt.JwtPayload): string[] {
   return [];
 }
 
-function hasRequiredGroup(payload: jwt.JwtPayload, requiredGroup?: string): boolean {
-  if (!requiredGroup) {
+function hasAnyOfRequiredGroups(payload: jwt.JwtPayload, requiredGroups?: string[]): boolean {
+  const normalizedRequired = (requiredGroups ?? [])
+    .map((g) => (g || '').trim().toLowerCase())
+    .filter(Boolean);
+  if (normalizedRequired.length === 0) {
     return true;
   }
-  const required = requiredGroup.trim().toLowerCase();
-  if (!required) {
-    return true;
-  }
-  const groups = extractGroups(payload);
-  return groups.some((g) => g.trim().toLowerCase() === required);
+  const groups = extractGroups(payload).map((g) => (g || '').trim().toLowerCase()).filter(Boolean);
+  return normalizedRequired.some((req) => groups.includes(req));
 }
 
 function verifyAudienceLikeGoAuthorizer(payload: jwt.JwtPayload, validAudiences: string[]): boolean {
@@ -227,7 +226,7 @@ async function getAuthPolicyConfig(
         pk: { S: 'SYSTEM#TENANTS' },
         sk: { S: `AUTH_POLICY#${key}` },
       },
-      ProjectionExpression: 'providerName, audiences, requiredGroup',
+      ProjectionExpression: 'providerName, audiences, requireAnyOfGroups',
     })
   );
 
@@ -246,7 +245,17 @@ async function getAuthPolicyConfig(
     }
   }
 
-  const requiredGroup = policyResp.Item.requiredGroup?.S?.trim();
+  const requireAnyOfGroups: string[] = [];
+  const groupsAttr = policyResp.Item.requireAnyOfGroups;
+  if (groupsAttr && 'L' in groupsAttr && Array.isArray(groupsAttr.L)) {
+    for (const item of groupsAttr.L) {
+      if (item?.S) {
+        const v = item.S.trim();
+        if (v) requireAnyOfGroups.push(v);
+      }
+    }
+  }
+
   const providerNameRaw = policyResp.Item.providerName?.S?.trim();
   const providerName = providerNameRaw || 'PRIMARY';
 
@@ -273,7 +282,7 @@ async function getAuthPolicyConfig(
 
   const cfg: AuthPolicyConfig = {
     audiences,
-    ...(requiredGroup ? { requiredGroup } : {}),
+    ...(requireAnyOfGroups.length > 0 ? { requireAnyOfGroups } : {}),
     providerName,
     ...(providerIssuer ? { issuer: providerIssuer } : {}),
   };
@@ -445,7 +454,7 @@ export async function verifyToken(
       return null;
     }
 
-    if (!hasRequiredGroup(verified, authPolicy.requiredGroup)) {
+    if (!hasAnyOfRequiredGroups(verified, authPolicy.requireAnyOfGroups)) {
       console.error('Missing required group');
       return null;
     }

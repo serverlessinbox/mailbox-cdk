@@ -1,6 +1,7 @@
 import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 export interface ApiHandlerLambdaProps {
@@ -15,6 +16,7 @@ export interface ApiHandlerLambdaProps {
   apiBaseUrl: string;
   sesConfigSetName: string;
   artifactResolver: IArtifactResolver;
+  userProvisionionFunction: IFunction;
 }
 
 export class ApiHandlerLambda extends GoLambda {
@@ -34,6 +36,7 @@ export class ApiHandlerLambda extends GoLambda {
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
+        USER_PROVISIONER_FUNCTION_NAME: props.userProvisionionFunction.functionName,
       },
     });
 
@@ -51,5 +54,8 @@ export class ApiHandlerLambda extends GoLambda {
 
     // Grant SQS permissions to send audit events
     props.auditEventsQueue.grantSendMessages(this);
+
+    // Grant the User provisioning function to be invoked
+    props.userProvisionionFunction.grantInvoke(this);
   }
 }

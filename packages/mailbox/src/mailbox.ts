@@ -16,12 +16,8 @@ import type { AdminApiAddon, AdminApiAddonContext } from './api';
 import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
-  AuthConfig,
-  OAUTH_CLIENT_ADMIN_HEADLESS,
-  OAUTH_CLIENT_JMAP_HEADLESS,
 } from './auth/types';
 import type { MailboxAuthProvider } from './auth/types';
-import { Permission } from './auth/jmap-scopes';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
@@ -40,16 +36,18 @@ import {
   applyServerlessInboxComponentTag,
   type ServerlessInboxDeployer,
 } from './utils/serverless-inbox-tags';
+import type { MailboxKmsConfig } from './utils/kms';
+import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 
 export interface MailboxProps {
   hostedZone?: IHostedZone;
   domainName: string;
 
-  /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
-  authProvider?: MailboxAuthProvider;
+  /** Optional KMS configuration for at-rest encryption of core resources. */
+  kms?: MailboxKmsConfig;
 
-  /** Legacy: raw auth config object (no addons). Prefer `authProvider`. */
-  authConfig?: AuthConfig;
+  /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
+  authProvider: MailboxAuthProvider;
 
   /** Optional deployer label used for tagging (default: 'cfn'). */
   deployer?: ServerlessInboxDeployer;
@@ -74,12 +72,6 @@ export interface MailboxProps {
    * Defaults to true.
    */
   createWebmailUi?: boolean;
-
-  /**
-   * Whether to create headless (client_credentials) OAuth clients for machine-to-machine usage.
-   * Defaults to false.
-   */
-  createHeadlessClients?: boolean;
 
   /** Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. */
   adminUiCertificate?: acm.ICertificate;
@@ -117,8 +109,6 @@ export class Mailbox extends Construct {
   public readonly oauthClients: {
     adminUi?: AuthClientConfig;
     jmapUi?: AuthClientConfig;
-    adminHeadless?: AuthClientConfig;
-    jmapHeadless?: AuthClientConfig;
   } = {};
 
   emailDelivery(): EmailDelivery {
@@ -132,11 +122,7 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const authProvider: MailboxAuthProvider = (props.authProvider ?? props.authConfig) as MailboxAuthProvider;
-
-    if (!authProvider) {
-      throw new Error('Mailbox: either authProvider or authConfig must be provided');
-    }
+    const authProvider: MailboxAuthProvider = props.authProvider;
 
     const deployer = props.deployer ?? 'cfn';
 
@@ -158,7 +144,6 @@ export class Mailbox extends Construct {
 
     const createAdminUi = props.createAdminUi ?? true;
     const createWebmailUi = props.createWebmailUi ?? true;
-    const createHeadlessClients = props.createHeadlessClients ?? false;
 
     const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
 
@@ -166,20 +151,22 @@ export class Mailbox extends Construct {
 
     // Configuration constants
 
+    const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
+
     // S3 bucket for storing incoming emails (also used for Tantivy indexes)
-    this.emailBucket = new EmailBucket(this);
+    this.emailBucket = new EmailBucket(this, encryptionPlan.emailBucket);
     applyServerlessInboxComponentTag(this.emailBucket, 'email');
 
-    const configTable = new ConfigTable(this);
+    const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
     this.configTable = configTable;
     applyServerlessInboxComponentTag(configTable, 'storage');
-    const itemTable = new ItemTable(this);
+    const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(itemTable, 'storage');
-    const changelogTable = new ChangelogTable(this);
+    const changelogTable = new ChangelogTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(changelogTable, 'storage');
-    const auditLogTable = new AuditLogTable(this);
+    const auditLogTable = new AuditLogTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(auditLogTable, 'storage');
-    const mailFeedbackTable = new MailFeedbackTable(this);
+    const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(mailFeedbackTable, 'storage');
 
     // JWK cache updater - writes to DynamoDB for Lambda@Edge
@@ -236,22 +223,6 @@ export class Mailbox extends Construct {
     const jmapCertificate = providedJmapCertificate
       ?? regionalSanCertificate;
 
-    const allPermissions = Object.values(Permission);
-
-    if (createHeadlessClients) {
-      this.oauthClients.adminHeadless = authProvider.generateClient({
-        flow: 'client_credentials',
-        name: OAUTH_CLIENT_ADMIN_HEADLESS,
-        permissions: [],
-      });
-
-      this.oauthClients.jmapHeadless = authProvider.generateClient({
-        flow: 'client_credentials',
-        name: OAUTH_CLIENT_JMAP_HEADLESS,
-        permissions: allPermissions,
-      });
-    }
-
     const adminUiOrigins: string[] = [];
     const webmailUiOrigins: string[] = [];
 
@@ -263,14 +234,29 @@ export class Mailbox extends Construct {
 
     if (createAdminUi) {
       const providerAdminUiConfig = authProvider.getAdminUiConfig?.();
+      const providerAuthz = authProvider.getAuthorizationConfig?.();
+
+      const mergedAdminUiConfig = {
+        ...(providerAdminUiConfig ?? {}),
+        ...(providerAuthz
+          ? {
+            authorization: {
+              roles: {
+                adminGroups: providerAuthz.adminGroups,
+                userGroups: providerAuthz.userGroups,
+              },
+            },
+          }
+          : {}),
+      };
 
       const adminUi = new AdminUi(this, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.adminUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
-        authConfig: authProvider,
+        authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
-        uiConfig: providerAdminUiConfig,
+        uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
       });
       applyServerlessInboxComponentTag(adminUi, 'ui');
 
@@ -289,7 +275,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.webmail,
         certificate: props.webmailUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
-        authConfig: authProvider,
+        authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
       });
       applyServerlessInboxComponentTag(webmailUi, 'ui');
@@ -309,8 +295,9 @@ export class Mailbox extends Construct {
     const allowedOriginsForJmapApi = [...webmailUiOrigins, ...extraOrigins];
     const allowedOriginsForCdn = [...adminUiOrigins, ...webmailUiOrigins, ...extraOrigins];
 
-    const adminRequiredGroup = this.oauthClients.adminUi?.groups?.[0]
-      ?? this.oauthClients.adminHeadless?.groups?.[0];
+    const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
+      ?? this.oauthClients.adminUi?.groups
+      ?? undefined;
 
     new BootstrapTenant(this, 'bootstrap-tenant', {
       domain: props.domainName,
@@ -326,11 +313,11 @@ export class Mailbox extends Construct {
       },
       authPolicies: {
         adminApi: {
-          audiences: authProvider.clientIds,
-          requiredGroup: adminRequiredGroup,
+          audiences: authProvider.policies.adminApi.audiences,
+          requireAnyOfGroups: adminRequiredGroups,
         },
         jmapApi: {
-          audiences: authProvider.clientIds,
+          audiences: authProvider.policies.jmapApi.audiences,
         },
       },
       oauthClients: (this.oauthClients.adminUi || this.oauthClients.jmapUi)
@@ -361,6 +348,7 @@ export class Mailbox extends Construct {
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable,
       artifactResolver,
+      queueProps: encryptionPlan.queues,
     });
     applyServerlessInboxComponentTag(auditWriting, 'api');
 
@@ -399,6 +387,7 @@ export class Mailbox extends Construct {
       configTable: configTable,
       changelogTable: changelogTable,
       artifactResolver: artifactResolver,
+      queueProps: encryptionPlan.queues,
     });
     applyServerlessInboxComponentTag(this.node.findChild('tantivy-search'), 'search');
 
@@ -411,6 +400,7 @@ export class Mailbox extends Construct {
       emailBucket: this.emailBucket,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
+      queueProps: encryptionPlan.queues,
     });
     applyServerlessInboxComponentTag(sesEventProcessing, 'email');
 
@@ -423,6 +413,7 @@ export class Mailbox extends Construct {
       emailBucket: this.emailBucket,
       artifactResolver: artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      queueProps: encryptionPlan.queues,
     });
     applyServerlessInboxComponentTag(emailSending, 'email');
 
@@ -437,7 +428,7 @@ export class Mailbox extends Construct {
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
-      authConfig: authProvider,
+      authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
 
       domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
@@ -484,7 +475,7 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver: artifactResolver,
-      authConfig: authProvider,
+      authProvider,
 
       addons: adminApiAddons,
 

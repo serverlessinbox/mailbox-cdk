@@ -1,6 +1,7 @@
 import { Construct } from 'constructs';
 import { StackNamedTable } from '../utils/named-table';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import type { TableProps } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
  * DynamoDB table for changelog and state management
@@ -19,7 +20,7 @@ import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
  */
 export class ChangelogTable extends StackNamedTable {
 
-  constructor(scope: Construct) {
+  constructor(scope: Construct, props: Partial<TableProps> = {}) {
     super(scope, 'changelog-table', {
       partitionKey: {
         name: 'pk',
@@ -31,6 +32,7 @@ export class ChangelogTable extends StackNamedTable {
       },
       timeToLiveAttribute: 'x', // TTL on 'x' (expiresAt) field
       pointInTimeRecovery: true,
+      ...props,
     });
   }
 }

@@ -16,7 +16,7 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import { AUTH_POLICY_ADMIN_API, AuthConfig } from '../auth/types';
+import { AUTH_POLICY_ADMIN_API, MailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { AdminApiAddon } from './addons';
@@ -33,7 +33,7 @@ export interface AdminApiProps {
   auditEventsQueue: IQueue;
   allowedOrigins?: string[];
   artifactResolver: IArtifactResolver;
-  authConfig: AuthConfig;
+  authProvider: MailboxAuthProvider;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   addons?: AdminApiAddon[];
@@ -110,7 +110,7 @@ export class AdminApi extends Construct {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       jwkCacheTable: props.jwkCacheTable,
       configTable: props.configTable,
-      userPoolIssuer: props.authConfig.issuer,
+      userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       authPolicyName: AUTH_POLICY_ADMIN_API,
       allowAnonymous: false,

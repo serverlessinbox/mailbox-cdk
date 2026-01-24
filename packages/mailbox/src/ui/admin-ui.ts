@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
-import { AUTH_POLICY_ADMIN_API, AuthClientConfig, AuthConfig, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
+import { AUTH_POLICY_ADMIN_API, AuthClientConfig, MailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxUi } from './mailbox-ui';
@@ -21,8 +21,8 @@ export interface AdminUiProps {
   /** Shared config table used by token exchange API. */
   configTable: ITable;
 
-  /** Auth provider used to generate the OAuth client for this UI. */
-  authConfig: AuthConfig;
+  /** Auth provider used to provision the OAuth client for this UI. */
+  authProvider: MailboxAuthProvider;
 
   /**
    * Content Security Policy header value
@@ -91,10 +91,7 @@ export class AdminUi extends Construct {
     });
 
     const uiHost = ui.distributionDomainName;
-    this.oauthClient = props.authConfig.generateClient({
-      flow: 'authorization_code',
-      name: OAUTH_CLIENT_ADMIN_UI,
-      permissions: [],
+    this.oauthClient = props.authProvider.provisionAdminUiClient({
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],
     });

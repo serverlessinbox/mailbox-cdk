@@ -1,14 +1,16 @@
 import { AttributeType } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import { StackNamedTable } from "../utils/named-table";
+import type { TableProps } from 'aws-cdk-lib/aws-dynamodb';
 
 export class ItemTable extends StackNamedTable {
 
-  constructor(scope: Construct) {
+  constructor(scope: Construct, props: Partial<TableProps> = {}) {
     super(scope, `item-table`, {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       // billing mode inherited from BaseTable (on-demand by default)
+      ...props,
     });
     this.addGlobalSecondaryIndex({
       indexName: 'gsi1',

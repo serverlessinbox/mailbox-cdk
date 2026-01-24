@@ -57,6 +57,14 @@ class LogGroupRetentionProvider extends Construct {
 
     this.handler.addToRolePolicy(
       new PolicyStatement({
+        // CreateLogGroup is typically evaluated against resource "*".
+        actions: ['logs:CreateLogGroup'],
+        resources: ['*'],
+      }),
+    );
+
+    this.handler.addToRolePolicy(
+      new PolicyStatement({
         actions: ['logs:PutRetentionPolicy'],
         resources: [lambdaLogGroupsArn, `${lambdaLogGroupsArn}:*`],
       }),

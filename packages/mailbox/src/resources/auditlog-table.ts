@@ -2,6 +2,7 @@ import { Construct } from 'constructs';
 import { StackNamedTable } from '../utils/named-table';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { TableProps } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
  * DynamoDB table for audit log
@@ -15,7 +16,7 @@ import { IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
  */
 export class AuditLogTable extends StackNamedTable {
 
-  constructor(scope: Construct) {
+  constructor(scope: Construct, props: Partial<TableProps> = {}) {
     super(scope, 'auditlog-table', {
       partitionKey: {
         name: 'pk',
@@ -25,6 +26,7 @@ export class AuditLogTable extends StackNamedTable {
         name: 'sk',
         type: AttributeType.STRING,
       },
+      ...props,
     });
 
     this.addGlobalSecondaryIndex({

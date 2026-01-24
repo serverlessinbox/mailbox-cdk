@@ -17,5 +17,6 @@ export { WebmailUi, WebmailUiProps } from './ui/webmail-ui';
 export * from './lambdas';
 
 export * from './utils/development-mode';
+export * from './utils/kms';
 
 

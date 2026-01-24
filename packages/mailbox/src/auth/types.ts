@@ -13,15 +13,9 @@ export type AuthPolicyName = typeof AUTH_POLICY_ADMIN_API | typeof AUTH_POLICY_J
 export const OAUTH_CLIENT_ADMIN_UI = 'ADMIN_UI' as const;
 export const OAUTH_CLIENT_JMAP_UI = 'JMAP_UI' as const;
 
-// Headless (API-only) OAuth clients. These are typically confidential clients using client_credentials.
-export const OAUTH_CLIENT_ADMIN_HEADLESS = 'ADMIN_HEADLESS' as const;
-export const OAUTH_CLIENT_JMAP_HEADLESS = 'JMAP_HEADLESS' as const;
-
 export type OAuthClientName =
   | typeof OAUTH_CLIENT_ADMIN_UI
-  | typeof OAUTH_CLIENT_JMAP_UI
-  | typeof OAUTH_CLIENT_ADMIN_HEADLESS
-  | typeof OAUTH_CLIENT_JMAP_HEADLESS;
+  | typeof OAUTH_CLIENT_JMAP_UI;
 
 export type AuthMethod = 'header' | 'form';
 
@@ -36,13 +30,20 @@ export interface OidcProviderConfig {
 /** Policy configuration for authorizers (audiences + optional group requirement). */
 export interface AuthPolicyConfig {
   audiences: string[];
-  requiredGroup?: string;
+  /** Require membership in ANY of these groups/roles. Empty/undefined means no restriction. */
+  requireAnyOfGroups?: string[];
 }
 
 export interface AuthPoliciesConfig {
   adminApi?: AuthPolicyConfig;
   jmapApi?: AuthPolicyConfig;
 }
+
+/** Concrete, policy-split auth configuration used by mailbox components. */
+export type MailboxAuthPolicies = {
+  adminApi: AuthPolicyConfig;
+  jmapApi: AuthPolicyConfig;
+};
 
 /** Shared OAuth client credentials (clientId + optional secret). */
 export interface OAuthClientCredentials {
@@ -106,24 +107,48 @@ export interface AuthClientConfig extends OAuthClientCredentials {
 }
 
 /**
- * Authentication configuration for the Mailbox construct.
- * Implemented by Cognito (`MailboxUserPool` from `@sipkg/mailbox-cognito`) and can be implemented by external IdPs.
+ * Auth provider contract expected by the top-level Mailbox construct.
+ *
+ * Key properties:
+ * - `policies` explicitly separates Admin vs JMAP audiences.
+ * - UI OAuth clients are provisioned only when the corresponding UI is created,
+ *   because callback/logout URLs are not known up-front.
  */
-export interface AuthConfig {
+export interface MailboxAuthProviderBase {
   readonly issuer: string;
-  readonly clientIds: string[];
   readonly tokenEndpoint: string;
   readonly authorizationEndpoint: string;
   readonly authMethod: AuthMethod;
   readonly usePkce: boolean;
   readonly scopeMap: { [key: string]: Permission[] };
 
-  generateClient(params: GenerateClientParams): AuthClientConfig;
+  /** Policy configuration consumed by authorizers (audiences + optional group requirement). */
+  readonly policies: MailboxAuthPolicies;
+
+  /** Provision the OAuth client used by the Admin UI (authorization_code). */
+  provisionAdminUiClient(params: { callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig;
+
+  /** Provision the OAuth client used by the Webmail/JMAP UI (authorization_code). */
+  provisionJmapUiClient(params: { callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig;
 }
 
 /** Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`). */
 export interface AdminUiConfigProvider {
   getAdminUiConfig(): Record<string, unknown>;
+}
+
+/** Standard roles understood by mailbox components. */
+export type MailboxRole = 'admin' | 'user';
+
+/** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
+export type MailboxAuthorizationConfig = {
+  adminGroups: string[];
+  userGroups: string[];
+};
+
+/** Optional hook for providers to publish an authorization mapping (e.g. which groups grant admin). */
+export interface MailboxAuthorizationConfigProvider {
+  getAuthorizationConfig(): MailboxAuthorizationConfig;
 }
 
 /**
@@ -132,4 +157,8 @@ export interface AdminUiConfigProvider {
  * Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).
  * They can optionally supply Admin API addons (provider-specific admin endpoints).
  */
-export type MailboxAuthProvider = AuthConfig & Partial<AdminApiAddonProvider & AdminUiConfigProvider>;
+export type MailboxAuthProvider = MailboxAuthProviderBase & Partial<
+  AdminApiAddonProvider &
+  AdminUiConfigProvider &
+  MailboxAuthorizationConfigProvider
+>;

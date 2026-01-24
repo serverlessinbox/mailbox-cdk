@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { AuthorizerLambda, ApiHandlerLambda } from '../lambdas';
+import { AuthorizerLambda, ApiHandlerLambda, UserProvisionerLambda } from '../lambdas';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -16,7 +16,7 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import { AuthConfig } from '../auth/types';
+import { MailboxAuthProvider } from '../auth/types';
 import { GoLambda } from '../utils/go-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
@@ -36,7 +36,7 @@ export interface JMapApiProps {
   webSocketCapabilityDomain?: string;
 
   artifactResolver: IArtifactResolver;
-  authConfig: AuthConfig;
+  authProvider: MailboxAuthProvider;
 
   sesConfigSetName: string;
 
@@ -60,7 +60,7 @@ export class JMapApi extends Construct {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       jwkCacheTable: props.jwkCacheTable,
       configTable: props.configTable,
-      userPoolIssuer: props.authConfig.issuer,
+      userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
     });
 
@@ -108,6 +108,14 @@ export class JMapApi extends Construct {
       this.url = api.apiEndpoint;
     }
 
+    const userProvisionerLambda = new UserProvisionerLambda(this, 'user-provisioner', {
+      configTable: props.configTable,
+      itemTable: props.itemTable,
+      changelogTable: props.changelogTable,
+      auditEventsQueue: props.auditEventsQueue,
+      artifactResolver: props.artifactResolver,
+    });
+
     const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
       configTable: props.configTable,
       itemTable: props.itemTable,
@@ -120,6 +128,7 @@ export class JMapApi extends Construct {
       apiBaseUrl: this.url,
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
+      userProvisionionFunction: userProvisionerLambda,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 

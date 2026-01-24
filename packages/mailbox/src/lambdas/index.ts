@@ -54,3 +54,6 @@ export { AuditWriterLambda } from './audit-writer';
 export type { AuditWriterLambdaProps } from './audit-writer';
 export { BootstrapTenantLambda } from './bootstrap-tenant';
 export type { BootstrapTenantLambdaProps } from './bootstrap-tenant';
+
+export { UserProvisionerLambda } from './user-provisioner';
+export type { UserProvisionerLambdaProps } from './user-provisioner';

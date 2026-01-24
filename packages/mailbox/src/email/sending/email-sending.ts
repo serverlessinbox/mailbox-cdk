@@ -4,7 +4,7 @@ import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseQueue } from '../../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 
 export interface EmailSendingProps {
@@ -14,6 +14,9 @@ export interface EmailSendingProps {
   emailBucket: IBucket;
   artifactResolver: IArtifactResolver;
   sesConfigSetName: string;
+
+  /** Optional default props applied to all queues created by this construct (e.g. encryption). */
+  queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -30,14 +33,18 @@ export class EmailSending extends Construct {
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
 
+    const queueProps = props.queueProps ?? {};
+
     // Dead Letter Queue for failed email submissions
     this.submissionDlq = new BaseQueue(this, 'email-submissions-dlq', {
+      ...queueProps,
       // Override retention period for DLQ
       retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
     });
 
     // Main queue for email submissions
     this.submissionQueue = new BaseQueue(this, 'email-submissions', {
+      ...queueProps,
       deadLetterQueue: {
         queue: this.submissionDlq,
         maxReceiveCount: 5, // Retry up to 5 times before sending to DLQ

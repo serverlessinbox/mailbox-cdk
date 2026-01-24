@@ -7,11 +7,13 @@ import { SESEventProcessorLambda } from '../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseQueue } from '../utils/base-queue';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
+import { IQueue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { makePhysicalName } from '../utils/resource-names';
+import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Stack } from 'aws-cdk-lib';
 
 export interface SESEventProcessingProps {
   itemTable: ITable;
@@ -21,6 +23,9 @@ export interface SESEventProcessingProps {
   emailBucket: IBucket;
   auditEventsQueue: IQueue;
   artifactResolver: IArtifactResolver;
+
+  /** Optional default props applied to all queues created by this construct (e.g. encryption). */
+  queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -41,13 +46,24 @@ export class SESEventProcessing extends Construct {
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
     super(scope, id);
 
+    const queueProps = props.queueProps ?? {};
+
     // SNS topic for SES notifications (bounce, complaint, delivery, send, reject)
     this.sesNotificationsTopic = new Topic(this, 'ses-notifications-topic', {
       displayName: 'Mailbox SES Notifications',
     });
 
     // SQS queue to consume SNS notifications
-    this.sesNotificationsQueue = new BaseQueue(this, 'ses-notifications-queue');
+    // NOTE: SNS -> SQS does NOT work with SQS queues encrypted using the AWS-managed KMS key (alias/aws/sqs),
+    // because we can't grant SNS permission to use that key.
+    // Default to UNENCRYPTED for this specific queue unless the user supplies a customer-managed CMK.
+    const sesNotificationsQueueEncryption = queueProps.encryption
+      ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
+
+    this.sesNotificationsQueue = new BaseQueue(this, 'ses-notifications-queue', {
+      ...queueProps,
+      encryption: sesNotificationsQueueEncryption,
+    });
 
     // Subscribe the queue to the SNS topic
     this.sesNotificationsTopic.addSubscription(
@@ -55,6 +71,33 @@ export class SESEventProcessing extends Construct {
         rawMessageDelivery: true, // Deliver the SES notification JSON directly
       })
     );
+
+    // If the queue is encrypted with a customer-managed CMK, allow SNS to use the key.
+    // (Imported keys may not support policy edits; in that case the user must configure the key policy themselves.)
+    const keyAny = queueProps.encryptionMasterKey as unknown as { addToResourcePolicy?: (s: PolicyStatement) => unknown };
+    if (sesNotificationsQueueEncryption === QueueEncryption.KMS && queueProps.encryptionMasterKey && typeof keyAny?.addToResourcePolicy === 'function') {
+      keyAny.addToResourcePolicy(
+        new PolicyStatement({
+          actions: [
+            'kms:Decrypt',
+            'kms:Encrypt',
+            'kms:ReEncrypt*',
+            'kms:GenerateDataKey*',
+            'kms:DescribeKey',
+          ],
+          principals: [new ServicePrincipal('sns.amazonaws.com')],
+          resources: ['*'],
+          conditions: {
+            StringEquals: {
+              'aws:SourceAccount': Stack.of(this).account,
+            },
+            ArnEquals: {
+              'aws:SourceArn': this.sesNotificationsTopic.topicArn,
+            },
+          },
+        })
+      );
+    }
 
     // SES Configuration Set for bounce/complaint/delivery notifications
     const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {

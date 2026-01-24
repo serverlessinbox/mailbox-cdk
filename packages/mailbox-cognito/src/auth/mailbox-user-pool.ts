@@ -7,12 +7,12 @@ import { Construct } from 'constructs';
 
 import {
   AuthClientConfig,
-  AuthConfig,
+  AuthPolicyConfig,
+  MailboxAuthPolicies,
+  MailboxAuthProviderBase,
   GenerateClientParams,
   JMAP_SCOPE_DESCRIPTIONS,
-  OAUTH_CLIENT_ADMIN_HEADLESS,
   OAUTH_CLIENT_ADMIN_UI,
-  OAUTH_CLIENT_JMAP_HEADLESS,
   OAUTH_CLIENT_JMAP_UI,
   Permission,
   isDevelopmentMode,
@@ -73,6 +73,26 @@ export interface MailboxUserPoolProps {
    */
   createDefaultGroups?: boolean;
 
+  /**
+    * Whether to create headless (client_credentials) OAuth clients for machine-to-machine usage.
+    *
+    * - 'admin': headless client can call Admin API.
+    * - 'jmap': headless client can call JMAP API.
+    * - 'both': two separate headless clients (one for each API).
+    * - 'combined': one headless client included in both audiences.
+    * @default false
+   */
+  headlessClients?: false | 'admin' | 'jmap' | 'both' | 'combined';
+
+  /**
+   * Authorization mapping used by mailbox components.
+   * Defaults to admin=['admin'], user=['user'].
+   */
+  authorization?: {
+    adminGroups?: string[];
+    userGroups?: string[];
+  };
+
   authFlows?: cdk.aws_cognito.AuthFlow;
 
   /**
@@ -91,7 +111,7 @@ export interface MailboxUserPoolProps {
 /**
  * Opinionated JMAP user pool construct for mailbox servers.
  */
-export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAddonProvider {
+export class MailboxUserPool extends Construct implements MailboxAuthProviderBase, AdminApiAddonProvider {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolDomain: cognito.UserPoolDomain;
   public readonly customMessageLambda?: CognitoCustomMessageLambda;
@@ -106,12 +126,18 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
 
   private authFlows: cdk.aws_cognito.AuthFlow;
 
+  private readonly authzConfig: { adminGroups: string[]; userGroups: string[] };
+
   public readonly scopeMap: Record<string, Permission[]>;
   public readonly oauthDomain: string;
   public readonly issuer: string;
   public readonly authMethod = 'form';
   public readonly usePkce = true;
-  public readonly clientIds: string[] = [];
+
+  public readonly policies: MailboxAuthPolicies;
+
+  private adminUiClient?: AuthClientConfig;
+  private jmapUiClient?: AuthClientConfig;
 
   get userPoolId(): string {
     return this.userPool.userPoolId;
@@ -138,7 +164,7 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
     return `https://${this.oauthDomain}/oauth2/authorize`;
   }
 
-  generateClient(params: GenerateClientParams): AuthClientConfig {
+  private createOAuthClient(params: GenerateClientParams): AuthClientConfig {
     const scopes = params.permissions.map((scope: Permission) => ({
       scopeName: `${this.resourceServerIdentifier}/${PermissionToCognitoScope[scope]}`,
       scopeDescription: JMAP_SCOPE_DESCRIPTIONS[scope],
@@ -170,16 +196,14 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
         ...(isClientCredentials
           ? {}
           : {
-              callbackUrls: params.callbackUrls,
-              logoutUrls: params.logoutUrls,
-            }),
+            callbackUrls: params.callbackUrls,
+            logoutUrls: params.logoutUrls,
+          }),
       },
     });
 
     // Ensure resource server exists before client scopes are validated.
     client.node.addDependency(this.jmapResourceServer);
-
-    this.clientIds.push(client.userPoolClientId);
 
     const requestedScopeList = params.permissions.map((permission: Permission) => {
       const scopeNameForOAuth = PermissionToCognitoScope[permission].replace(/\//g, '.');
@@ -190,8 +214,52 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
       clientId: client.userPoolClientId,
       clientSecret: isClientCredentials ? client.userPoolClientSecret ?? undefined : undefined,
       requestScopeList: requestedScopeList,
-      groups: params.groups ?? this.defaultGroupsForClient(params.name),
+      groups: params.groups ?? [],
     };
+  }
+
+  private addAudience(policy: AuthPolicyConfig, clientId: string): void {
+    if (!policy.audiences.includes(clientId)) {
+      policy.audiences.push(clientId);
+    }
+  }
+
+  provisionAdminUiClient(params: { callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig {
+    if (this.adminUiClient) {
+      return this.adminUiClient;
+    }
+
+    const client = this.createOAuthClient({
+      flow: 'authorization_code',
+      name: OAUTH_CLIENT_ADMIN_UI,
+      permissions: [],
+      groups: this.authzConfig.adminGroups,
+      callbackUrls: params.callbackUrls,
+      logoutUrls: params.logoutUrls,
+    });
+
+    this.addAudience(this.policies.adminApi, client.clientId);
+    this.adminUiClient = client;
+    return client;
+  }
+
+  provisionJmapUiClient(params: { callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig {
+    if (this.jmapUiClient) {
+      return this.jmapUiClient;
+    }
+
+    const client = this.createOAuthClient({
+      flow: 'authorization_code',
+      name: OAUTH_CLIENT_JMAP_UI,
+      permissions: params.permissions,
+      groups: this.authzConfig.userGroups,
+      callbackUrls: params.callbackUrls,
+      logoutUrls: params.logoutUrls,
+    });
+
+    this.addAudience(this.policies.jmapApi, client.clientId);
+    this.jmapUiClient = client;
+    return client;
   }
 
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): AdminApiAddon[] {
@@ -205,24 +273,30 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
   }
 
   getAdminUiConfig(): Record<string, unknown> {
-    return { idp: 'cognito' };
+    return { idp: { type: 'cognito' } };
   }
 
-  private defaultGroupsForClient(clientName: string): string[] {
-    switch (clientName) {
-      case OAUTH_CLIENT_ADMIN_UI:
-      case OAUTH_CLIENT_ADMIN_HEADLESS:
-        return ['admin'];
-      case OAUTH_CLIENT_JMAP_UI:
-      case OAUTH_CLIENT_JMAP_HEADLESS:
-        return ['user'];
-      default:
-        return [];
-    }
+  getAuthorizationConfig(): { adminGroups: string[]; userGroups: string[] } {
+    return this.authzConfig;
   }
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
     super(scope, id);
+
+    this.authzConfig = {
+      adminGroups: props.authorization?.adminGroups ?? ['admin'],
+      userGroups: props.authorization?.userGroups ?? ['user'],
+    };
+
+    this.policies = {
+      adminApi: {
+        audiences: [],
+        requireAnyOfGroups: this.authzConfig.adminGroups,
+      },
+      jmapApi: {
+        audiences: [],
+      },
+    };
 
     this.authFlows = props.authFlows ?? {
       userPassword: false,
@@ -309,6 +383,40 @@ export class MailboxUserPool extends Construct implements AuthConfig, AdminApiAd
     if (createGroups) {
       this.userPool.addGroup('admin', { groupName: 'admin' });
       this.userPool.addGroup('user', { groupName: 'user' });
+    }
+
+    const headless = props.headlessClients ?? false;
+
+    if (headless === 'admin' || headless === 'both') {
+      const client = this.createOAuthClient({
+        flow: 'client_credentials',
+        name: 'ADMIN_HEADLESS',
+        groups: this.authzConfig.adminGroups,
+        permissions: [],
+      });
+      this.addAudience(this.policies.adminApi, client.clientId);
+    }
+
+    if (headless === 'jmap' || headless === 'both') {
+      const client = this.createOAuthClient({
+        flow: 'client_credentials',
+        name: 'JMAP_HEADLESS',
+        groups: this.authzConfig.userGroups,
+        permissions: this.jmapScopes,
+      });
+      this.addAudience(this.policies.jmapApi, client.clientId);
+    }
+
+    if (headless === 'combined') {
+      const combinedGroups = Array.from(new Set([...this.authzConfig.adminGroups, ...this.authzConfig.userGroups]));
+      const client = this.createOAuthClient({
+        flow: 'client_credentials',
+        name: 'HEADLESS',
+        groups: combinedGroups,
+        permissions: this.jmapScopes,
+      });
+      this.addAudience(this.policies.adminApi, client.clientId);
+      this.addAudience(this.policies.jmapApi, client.clientId);
     }
   }
 

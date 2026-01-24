@@ -19,6 +19,7 @@ export interface CognitoIdpUsersAdminApiAddonProps {
   pool: {
     userPoolId: string;
     grantAdminAccess(fn: IFunction): void;
+    getAuthorizationConfig?(): { adminGroups: string[]; userGroups: string[] };
   };
 
   /** Optional base path; defaults to `/idp-users`. */
@@ -64,6 +65,12 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements AdminApiA
       userPoolId: props.pool.userPoolId,
       auditEventsQueueUrl: props.auditEventsQueue.queueUrl,
     });
+
+    const authz = props.pool.getAuthorizationConfig?.();
+    if (authz) {
+      this.lambda.function.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
+      this.lambda.function.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
+    }
 
     props.pool.grantAdminAccess(this.lambda.fn);
     props.auditEventsQueue.grantSendMessages(this.lambda.fn);

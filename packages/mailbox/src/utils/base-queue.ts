@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { Queue, QueueProps } from 'aws-cdk-lib/aws-sqs';
+import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
 import { makePhysicalName } from './resource-names';
 
@@ -32,10 +32,14 @@ export class BaseQueue extends Queue {
 
     const queueName = rest.queueName ?? makePhysicalName(scope, id, { maxLength: 80 });
 
+    const encryption = rest.encryption
+      ?? (rest.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.KMS_MANAGED);
+
     super(scope, id, {
       visibilityTimeout,
       receiveMessageWaitTime,
       queueName,
+      encryption,
       ...rest,
     });
   }

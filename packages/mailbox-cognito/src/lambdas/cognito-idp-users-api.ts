@@ -23,6 +23,7 @@ export interface CognitoIdpUsersApiLambdaProps {
  * with handler: `index.handler`.
  */
 export class CognitoIdpUsersApiLambda extends Construct {
+  public readonly function: LambdaFunction;
   public readonly fn: IFunction;
 
   constructor(scope: Construct, id: string, props: CognitoIdpUsersApiLambdaProps) {
@@ -30,7 +31,7 @@ export class CognitoIdpUsersApiLambda extends Construct {
 
     const code: Code = props.artifactResolver.getCode(COGNITO_LAMBDAS_ARTIFACT_PACKAGE, 'lambdas/cognito-idp-users-api.zip');
 
-    this.fn = new LambdaFunction(this, 'function', {
+    this.function = new LambdaFunction(this, 'function', {
       code,
       runtime: Runtime.NODEJS_20_X,
       architecture: Architecture.ARM_64,
@@ -43,5 +44,7 @@ export class CognitoIdpUsersApiLambda extends Construct {
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
       },
     });
+
+    this.fn = this.function;
   }
 }

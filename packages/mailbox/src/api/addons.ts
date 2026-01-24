@@ -8,6 +8,9 @@ import type { IArtifactResolver } from '../artifacts/artifact-resolver';
 export interface AdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
+
+  /** Optional UI config fragment to be merged into the Admin UI `/config/config.json`. */
+  uiConfig?: Record<string, unknown>;
 }
 
 export type AdminApiAddonContext = {
@@ -16,7 +19,7 @@ export type AdminApiAddonContext = {
 };
 
 /**
- * Optional capability for an AuthConfig implementation (e.g. Cognito) to register
+ * Optional capability for an auth provider implementation (e.g. Cognito) to register
  * additional Admin API routes without the core package knowing provider specifics.
  */
 export interface AdminApiAddonProvider {

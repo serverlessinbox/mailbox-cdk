@@ -3,7 +3,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, AuthConfig, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
+import { AUTH_POLICY_JMAP_API, AuthClientConfig, MailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
 import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
 
@@ -24,8 +24,8 @@ export interface WebmailUiProps {
    */
   configTable: ITable;
 
-  /** Auth provider used to generate the OAuth client for this UI. */
-  authConfig: AuthConfig;
+  /** Auth provider used to provision the OAuth client for this UI. */
+  authProvider: MailboxAuthProvider;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   uiBundle?: UiBundleSource;
@@ -57,9 +57,7 @@ export class WebmailUi extends Construct {
 
     const uiHost = ui.distributionDomainName;
     const allPermissions = Object.values(Permission);
-    this.oauthClient = props.authConfig.generateClient({
-      flow: 'authorization_code',
-      name: OAUTH_CLIENT_JMAP_UI,
+    this.oauthClient = props.authProvider.provisionJmapUiClient({
       permissions: allPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],

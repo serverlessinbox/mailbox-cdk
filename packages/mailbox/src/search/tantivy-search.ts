@@ -7,7 +7,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { TantivyIndexerLambda } from '../lambdas';
-import { BaseQueue } from '../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 
 export interface TantivySearchProps {
   /**
@@ -34,6 +34,9 @@ export interface TantivySearchProps {
    * Lambda code provider for building/downloading lambdas
    */
   artifactResolver: IArtifactResolver;
+
+  /** Optional default props applied to queues created by this construct (e.g. encryption). */
+  queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -47,6 +50,8 @@ export class TantivySearch extends Construct {
 
   constructor(scope: Construct, id: string, props: TantivySearchProps) {
     super(scope, id);
+
+    const queueProps = props.queueProps ?? {};
 
     // Create Tantivy Indexer Lambda
     // Queries DynamoDB for all emails in an account, builds Tantivy index, uploads to S3
@@ -73,6 +78,7 @@ export class TantivySearch extends Construct {
     indexingSchedule.addTarget(
       new targets.LambdaFunction(this.indexer, {
         deadLetterQueue: new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
+          ...queueProps,
           retentionPeriod: cdk.Duration.days(14),
         }),
       }),

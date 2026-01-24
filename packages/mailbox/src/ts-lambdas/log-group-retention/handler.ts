@@ -1,5 +1,9 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { CloudWatchLogsClient, PutRetentionPolicyCommand } from '@aws-sdk/client-cloudwatch-logs';
+import {
+  CloudWatchLogsClient,
+  CreateLogGroupCommand,
+  PutRetentionPolicyCommand,
+} from '@aws-sdk/client-cloudwatch-logs';
 
 export interface LogGroupRetentionResourceProperties {
   LogGroupName: string;
@@ -30,6 +34,21 @@ export const handler = wrapHandler(async (event) => {
         Message: 'Log group retained on delete',
       },
     };
+  }
+
+  // New Lambda functions may not have emitted any logs yet, meaning their default
+  // log group doesn't exist. Create it idempotently before setting retention.
+  try {
+    await logsClient.send(
+      new CreateLogGroupCommand({
+        logGroupName,
+      }),
+    );
+  } catch (err) {
+    const name = (err as any)?.name;
+    if (name !== 'ResourceAlreadyExistsException') {
+      throw err;
+    }
   }
 
   await logsClient.send(

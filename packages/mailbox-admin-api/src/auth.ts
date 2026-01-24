@@ -11,6 +11,7 @@ export type AdminAuthContext = {
   username?: string;
   groups: string[];
   isAdmin: boolean;
+  roles: string[];
   scopes: string[];
 
   /** Raw authorizer context payload for debugging/extensibility */
@@ -64,6 +65,12 @@ function toScopes(value: unknown): string[] {
 export type ExtractAuthOptions = {
   /** Group/role name that grants admin privileges (default: 'admin'). */
   adminGroupName?: string;
+
+  /** Group names that map to admin role (preferred; overrides adminGroupName when provided). */
+  adminGroups?: string[];
+
+  /** Group names that map to user role. */
+  userGroups?: string[];
 
   /** If true, require `sub` when authType=authenticated (default: true). */
   requireSub?: boolean;
@@ -125,7 +132,24 @@ export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: 
     ...toStringArray(raw['roles']),
   ].filter(Boolean);
 
-  const isAdmin = groups.some((g) => g.toLowerCase() === adminGroupName);
+  const normalizedGroups = groups.map((g) => g.toLowerCase());
+  const configuredAdminGroups = (options?.adminGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
+  const configuredUserGroups = (options?.userGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
+
+  const isAdmin = configuredAdminGroups.length > 0
+    ? configuredAdminGroups.some((g) => normalizedGroups.includes(g))
+    : normalizedGroups.includes(adminGroupName);
+
+  const roles: string[] = [];
+  if (isAdmin) roles.push('admin');
+  if (configuredUserGroups.length > 0) {
+    if (configuredUserGroups.some((g) => normalizedGroups.includes(g))) {
+      roles.push('user');
+    }
+  } else {
+    // Best-effort: if authenticated and not admin, still treat as user.
+    if (authType === 'authenticated') roles.push('user');
+  }
 
   const scopes = [
     ...toScopes(raw['scope']),
@@ -140,6 +164,7 @@ export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: 
     username,
     groups,
     isAdmin,
+    roles,
     scopes,
     raw,
   };
