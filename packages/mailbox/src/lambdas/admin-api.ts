@@ -19,11 +19,23 @@ export interface AdminApiLambdaProps {
 }
 
 export class AdminApiLambda extends GoLambda {
+  private grantStatusAccess() {
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: [
+        "lambda:GetAccountSettings",
+        "sts:GetCallerIdentity",
+      ],
+      resources: ["*"],
+    }));
+  }
+
   private grantSesAccess() {
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
+        "ses:GetAccount",
         "ses:CreateEmailIdentity",
         "ses:GetEmailIdentity",
+        "ses:GetSendStatistics",
         "ses:ListEmailIdentities",
         "ses:DeleteEmailIdentity",
         "ses:PutEmailIdentityDkimSigningAttributes",
@@ -61,6 +73,7 @@ export class AdminApiLambda extends GoLambda {
     });
 
     // Grant permissions BEFORE the Lambda is used by API Gateway
+    this.grantStatusAccess();
     this.grantSesAccess();
     this.grantRoute53Access();
 

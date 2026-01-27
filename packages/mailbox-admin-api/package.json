@@ -9,6 +9,9 @@
     "build": "task build",
     "lint": "task lint"
   },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.2.3"
+  },
   "devDependencies": {
     "eslint": "^8.0.0",
     "typescript": "^5.9.3"

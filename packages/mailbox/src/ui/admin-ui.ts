@@ -3,6 +3,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, MailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxUi } from './mailbox-ui';
 
@@ -20,6 +21,9 @@ export interface AdminUiProps {
 
   /** Shared config table used by token exchange API. */
   configTable: ITable;
+
+  /** Optional audit events queue for admin login audit records. */
+  auditEventsQueue?: IQueue;
 
   /** Auth provider used to provision the OAuth client for this UI. */
   authProvider: MailboxAuthProvider;
@@ -81,6 +85,7 @@ export class AdminUi extends Construct {
       domainName: props.domainName,
       certificate: props.certificate,
       configTable: props.configTable,
+      auditEventsQueue: props.auditEventsQueue,
       authPolicyName: AUTH_POLICY_ADMIN_API,
       oauthClientName: OAUTH_CLIENT_ADMIN_UI,
       uiBundle: {

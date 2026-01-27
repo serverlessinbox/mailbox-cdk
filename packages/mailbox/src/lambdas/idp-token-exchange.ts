@@ -2,10 +2,12 @@ import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: ITable;
+  auditEventsQueue?: IQueue;
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
   artifactResolver: IArtifactResolver;
@@ -21,9 +23,14 @@ export class IdpTokenExchangeLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         AUTH_POLICY_NAME: props.authPolicyName ?? 'ADMIN_API',
         OAUTH_CLIENT_NAME: props.oauthClientName ?? 'ADMIN_UI',
+        ...(props.auditEventsQueue ? { AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl } : {}),
       },
     });
 
     props.configTable.grantReadData(this);
+
+    if (props.auditEventsQueue) {
+      props.auditEventsQueue.grantSendMessages(this);
+    }
   }
 }

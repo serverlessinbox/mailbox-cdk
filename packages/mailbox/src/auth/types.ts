@@ -32,6 +32,9 @@ export interface AuthPolicyConfig {
   audiences: string[];
   /** Require membership in ANY of these groups/roles. Empty/undefined means no restriction. */
   requireAnyOfGroups?: string[];
+
+  /** Require ALL of these OAuth scopes. Empty/undefined means no scope restriction. */
+  requireAllScopes?: string[];
 }
 
 export interface AuthPoliciesConfig {

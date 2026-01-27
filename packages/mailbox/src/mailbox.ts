@@ -166,6 +166,13 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(changelogTable, 'storage');
     const auditLogTable = new AuditLogTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(auditLogTable, 'storage');
+
+    const auditWriting = new AuditWriting(this, 'audit-writing', {
+      auditLogTable,
+      artifactResolver,
+      queueProps: encryptionPlan.queues,
+    });
+    applyServerlessInboxComponentTag(auditWriting, 'api');
     const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(mailFeedbackTable, 'storage');
 
@@ -254,6 +261,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.admin,
         certificate: props.adminUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
+        auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
         uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
@@ -275,6 +283,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.webmail,
         certificate: props.webmailUiCertificate ?? defaultUiCertificate,
         configTable: this.configTable,
+        auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
       });
@@ -315,9 +324,11 @@ export class Mailbox extends Construct {
         adminApi: {
           audiences: authProvider.policies.adminApi.audiences,
           requireAnyOfGroups: adminRequiredGroups,
+          requireAllScopes: authProvider.policies.adminApi.requireAllScopes,
         },
         jmapApi: {
           audiences: authProvider.policies.jmapApi.audiences,
+          requireAllScopes: authProvider.policies.jmapApi.requireAllScopes,
         },
       },
       oauthClients: (this.oauthClients.adminUi || this.oauthClients.jmapUi)
@@ -344,13 +355,6 @@ export class Mailbox extends Construct {
         : undefined,
     });
     applyServerlessInboxComponentTag(this.node.findChild('bootstrap-tenant'), 'auth');
-
-    const auditWriting = new AuditWriting(this, 'audit-writing', {
-      auditLogTable,
-      artifactResolver,
-      queueProps: encryptionPlan.queues,
-    });
-    applyServerlessInboxComponentTag(auditWriting, 'api');
 
     // Lambda function to process incoming emails
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {

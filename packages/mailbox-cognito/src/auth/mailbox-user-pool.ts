@@ -74,17 +74,6 @@ export interface MailboxUserPoolProps {
   createDefaultGroups?: boolean;
 
   /**
-    * Whether to create headless (client_credentials) OAuth clients for machine-to-machine usage.
-    *
-    * - 'admin': headless client can call Admin API.
-    * - 'jmap': headless client can call JMAP API.
-    * - 'both': two separate headless clients (one for each API).
-    * - 'combined': one headless client included in both audiences.
-    * @default false
-   */
-  headlessClients?: false | 'admin' | 'jmap' | 'both' | 'combined';
-
-  /**
    * Authorization mapping used by mailbox components.
    * Defaults to admin=['admin'], user=['user'].
    */
@@ -224,6 +213,28 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     }
   }
 
+  provisionHeadlessClient(params: {
+    name: string;
+    audiences: Array<'adminApi' | 'jmapApi'>;
+    permissions: Permission[];
+  }): AuthClientConfig {
+    const client = this.createOAuthClient({
+      flow: 'client_credentials',
+      name: params.name,
+      permissions: params.permissions,
+    });
+
+    for (const audience of params.audiences) {
+      if (audience === 'adminApi') {
+        this.addAudience(this.policies.adminApi, client.clientId);
+      } else {
+        this.addAudience(this.policies.jmapApi, client.clientId);
+      }
+    }
+
+    return client;
+  }
+
   provisionAdminUiClient(params: { callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig {
     if (this.adminUiClient) {
       return this.adminUiClient;
@@ -232,7 +243,7 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     const client = this.createOAuthClient({
       flow: 'authorization_code',
       name: OAUTH_CLIENT_ADMIN_UI,
-      permissions: [],
+      permissions: [Permission.ADMIN],
       groups: this.authzConfig.adminGroups,
       callbackUrls: params.callbackUrls,
       logoutUrls: params.logoutUrls,
@@ -292,9 +303,11 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       adminApi: {
         audiences: [],
         requireAnyOfGroups: this.authzConfig.adminGroups,
+        requireAllScopes: [],
       },
       jmapApi: {
         audiences: [],
+        requireAllScopes: [],
       },
     };
 
@@ -307,6 +320,10 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     const createGroups = props.createDefaultGroups ?? true;
 
     this.scopeMap = this.buildScopeMap();
+
+    // Admin API: always require admin scope. Group enforcement is applied for user tokens only
+    // (client_credentials tokens don't carry groups).
+    this.policies.adminApi.requireAllScopes = [this.toOAuthScope(Permission.ADMIN)];
 
     this.userPool = new cognito.UserPool(this, 'user-pool', {
       userPoolName: makePhysicalName(this, 'users', { maxLength: 128 }),
@@ -385,39 +402,11 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       this.userPool.addGroup('user', { groupName: 'user' });
     }
 
-    const headless = props.headlessClients ?? false;
+  }
 
-    if (headless === 'admin' || headless === 'both') {
-      const client = this.createOAuthClient({
-        flow: 'client_credentials',
-        name: 'ADMIN_HEADLESS',
-        groups: this.authzConfig.adminGroups,
-        permissions: [],
-      });
-      this.addAudience(this.policies.adminApi, client.clientId);
-    }
-
-    if (headless === 'jmap' || headless === 'both') {
-      const client = this.createOAuthClient({
-        flow: 'client_credentials',
-        name: 'JMAP_HEADLESS',
-        groups: this.authzConfig.userGroups,
-        permissions: this.jmapScopes,
-      });
-      this.addAudience(this.policies.jmapApi, client.clientId);
-    }
-
-    if (headless === 'combined') {
-      const combinedGroups = Array.from(new Set([...this.authzConfig.adminGroups, ...this.authzConfig.userGroups]));
-      const client = this.createOAuthClient({
-        flow: 'client_credentials',
-        name: 'HEADLESS',
-        groups: combinedGroups,
-        permissions: this.jmapScopes,
-      });
-      this.addAudience(this.policies.adminApi, client.clientId);
-      this.addAudience(this.policies.jmapApi, client.clientId);
-    }
+  private toOAuthScope(permission: Permission): string {
+    const scopeNameForOAuth = PermissionToCognitoScope[permission].replace(/\//g, '.');
+    return `${this.resourceServerIdentifier}/${scopeNameForOAuth}`;
   }
 
   private buildScopeMap(): Record<string, Permission[]> {

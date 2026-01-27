@@ -3818,6 +3818,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sipkg/mailbox-admin-api@workspace:packages/mailbox-admin-api"
   dependencies:
+    "@bufbuild/protobuf": "npm:^2.2.3"
     eslint: "npm:^8.0.0"
     typescript: "npm:^5.9.3"
   languageName: unknown
@@ -3857,7 +3858,6 @@ __metadata:
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^20.0.0"
     aws-cdk-lib: "npm:^2.224.0"
-    aws-custom-resources: "npm:^0.0.4"
     constructs: "npm:^10.0.0"
     esbuild: "npm:^0.27.1"
     eslint: "npm:^8.0.0"
@@ -3873,15 +3873,12 @@ __metadata:
     "@aws-sdk/client-cognito-identity-provider": ^3.947.0
     "@aws-sdk/client-sqs": ^3.947.0
     aws-cdk-lib: ^2.224.0
-    aws-custom-resources: ^0.0.4
     constructs: ^10.0.0
     esbuild: ^0.24.0
   peerDependenciesMeta:
     "@aws-sdk/client-cognito-identity-provider":
       optional: true
     "@aws-sdk/client-sqs":
-      optional: true
-    aws-custom-resources:
       optional: true
     esbuild:
       optional: true

@@ -4561,7 +4561,6 @@ const RAW_RUNTIME_STATE =
           "@types/constructs",\
           "@types/esbuild",\
           "aws-cdk-lib",\
-          "aws-custom-resources",\
           "constructs",\
           "esbuild"\
         ],\
@@ -4608,6 +4607,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:packages/mailbox-admin-api", {\
         "packageLocation": "./packages/mailbox-admin-api/",\
         "packageDependencies": [\
+          ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@sipkg/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["eslint", "npm:8.57.1"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
@@ -4626,7 +4626,6 @@ const RAW_RUNTIME_STATE =
           ["@sipkg/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@sipkg/mailbox-cognito", "virtual:6f981102138212751294ce35af8d33b67d104e473c0a13e34a07abf60e63ef65bb6304312ea3d1d4f16ac0b9886cdf9d332c2a809dfe797d0152762ba9223e25#workspace:packages/mailbox-cognito"],\
           ["@types/aws-cdk-lib", null],\
-          ["@types/aws-custom-resources", null],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/aws-sdk__client-cognito-identity-provider", null],\
           ["@types/aws-sdk__client-sqs", null],\
@@ -4634,7 +4633,6 @@ const RAW_RUNTIME_STATE =
           ["@types/esbuild", null],\
           ["@types/node", "npm:20.19.25"],\
           ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\
-          ["aws-custom-resources", "npm:0.0.4"],\
           ["constructs", "npm:10.4.3"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
@@ -4649,7 +4647,6 @@ const RAW_RUNTIME_STATE =
         ],\
         "packagePeers": [\
           "@types/aws-cdk-lib",\
-          "@types/aws-custom-resources",\
           "@types/aws-sdk__client-cognito-identity-provider",\
           "@types/aws-sdk__client-sqs",\
           "@types/constructs",\
@@ -4671,7 +4668,6 @@ const RAW_RUNTIME_STATE =
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/node", "npm:20.19.25"],\
           ["aws-cdk-lib", "virtual:8d8045e8b49ffc548380a2607d3b114bcd32cf8ebdf2dc3c383b065d41375423e2e6f5b922bd237e4c6f5008bafdc08263ee0f2be4054801a6101523d6574a9a#npm:2.230.0"],\
-          ["aws-custom-resources", "npm:0.0.4"],\
           ["constructs", "npm:10.4.3"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\

@@ -16,6 +16,7 @@ import {
 import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { createHash } from 'crypto';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import { createArtifactResolverFromContext } from '../artifacts/artifact-context';
@@ -46,6 +47,9 @@ export interface MailboxUiProps {
 
   /** Which OAuth client record to use for token exchange. */
   oauthClientName: OAuthClientName;
+
+  /** Optional audit events queue for publishing audit logs from token exchange. */
+  auditEventsQueue?: IQueue;
 
   /** Human-friendly label used for CloudFront comments. */
   label: string;
@@ -159,6 +163,7 @@ export class MailboxUi extends Construct {
       this.distribution,
       artifactResolver,
       props.configTable,
+      props.auditEventsQueue,
       props.authPolicyName,
       props.oauthClientName,
     );
@@ -252,12 +257,14 @@ export class MailboxUi extends Construct {
     distribution: Distribution,
     artifactResolver: IArtifactResolver,
     configTable: ITable,
+    auditEventsQueue: IQueue | undefined,
     authPolicyName: AuthPolicyName,
     oauthClientName: OAuthClientName,
   ): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver,
       configTable,
+      auditEventsQueue,
       authPolicyName,
       oauthClientName,
     });
