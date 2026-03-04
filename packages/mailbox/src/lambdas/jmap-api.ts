@@ -3,6 +3,15 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
+import type { MailboxAuthProviderBase } from '../auth/types';
+
+export type JmapOAuthHandlerConfig = {
+  issuer: string;
+  tokenEndpoint: string;
+  authorizationEndpoint: string;
+  clientId: string;
+  scopeMap: MailboxAuthProviderBase['scopeMap'];
+};
 
 export interface ApiHandlerLambdaProps {
   configTable: ITable;
@@ -17,6 +26,8 @@ export interface ApiHandlerLambdaProps {
   sesConfigSetName: string;
   artifactResolver: IArtifactResolver;
   userProvisionionFunction: IFunction;
+  /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
+  oauthHandlerConfig: JmapOAuthHandlerConfig;
 }
 
 export class ApiHandlerLambda extends GoLambda {
@@ -37,12 +48,20 @@ export class ApiHandlerLambda extends GoLambda {
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
         USER_PROVISIONER_FUNCTION_NAME: props.userProvisionionFunction.functionName,
+        OAUTH_HANDLER_CONFIG: JSON.stringify({
+          issuer: props.oauthHandlerConfig.issuer,
+          tokenEndpoint: props.oauthHandlerConfig.tokenEndpoint,
+          authorizationEndpoint: props.oauthHandlerConfig.authorizationEndpoint,
+          clientId: props.oauthHandlerConfig.clientId,
+          // Go expects map[string][]string; Permission[] is string[] at runtime.
+          scopeMap: props.oauthHandlerConfig.scopeMap,
+        }),
       },
     });
 
     // Grant the Lambda function read permissions to the config table
     props.configTable.grantReadData(this);
-    
+
     // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWriteData(this);
     props.changelogTable.grantReadWriteData(this);

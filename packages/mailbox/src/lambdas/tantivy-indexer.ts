@@ -32,6 +32,6 @@ export class TantivyIndexerLambda extends GoLambda {
     props.indexBucket.grantReadWrite(this);
     props.itemTable.grantReadData(this);
     props.configTable.grantReadData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.changelogTable.grantReadData(this);
   }
 }

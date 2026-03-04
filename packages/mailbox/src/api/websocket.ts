@@ -5,7 +5,14 @@ import {
   WebSocketMessageLambda,
   WebSocketBroadcastLambda,
 } from '../lambdas';
-import { WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2';
+import {
+  ApiMapping,
+  DomainName,
+  EndpointType,
+  SecurityPolicy,
+  WebSocketApi,
+  WebSocketStage,
+} from 'aws-cdk-lib/aws-apigatewayv2';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
@@ -13,42 +20,73 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { RemovalPolicy, Aws } from 'aws-cdk-lib';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { StackNamedTable } from '../utils/named-table';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
+
+export interface WebSocketBroadcastPublisher {
+  readonly functionName: string;
+  grantInvoke(grantee: IGrantable): void;
+}
+
+class WebSocketBroadcastPublisherImpl implements WebSocketBroadcastPublisher {
+  constructor(private readonly fn: lambda.Function) { }
+
+  public get functionName(): string {
+    return this.fn.functionName;
+  }
+
+  public grantInvoke(grantee: IGrantable): void {
+    this.fn.grantInvoke(grantee);
+  }
+}
 
 export interface WebSocketPushProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
   jwkCacheTable: ITable;
-  authorizerLambda: any; // Lambda function for WebSocket authorization
+  authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
   artifactResolver: IArtifactResolver;
   maxSubscriptions?: number;
-  maxPingInterval?: number;
-  minPingInterval?: number;
+
+  /** Optional custom domain name (e.g. ws.example.com). When set, a domain mapping is created. */
+  domainName?: string;
+
+  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
+  certificate?: acm.ICertificate;
 }
 
 export class WebSocketPush extends Construct {
   public readonly webSocketUrl: string;
+  /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
+  public readonly domainTarget?: string;
   public readonly connectionsTable: Table;
-  public readonly broadcastLambda: any;
+  private readonly broadcastLambda: lambda.Function;
+  public readonly broadcaster: WebSocketBroadcastPublisher;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
 
     const maxSubscriptions = props.maxSubscriptions ?? 10;
 
-    // DynamoDB table for WebSocket connections
-    this.connectionsTable = new StackNamedTable(this, 'ws-connections', {
-      partitionKey: { name: 'connectionId', type: AttributeType.STRING },
+    // DynamoDB table for WebSocket connections + subscriptions (single-table design)
+    this.connectionsTable = new StackNamedTable(this, 'websocket', {
+      // IMPORTANT: Uses shared base repository key names so lambdas can use DynamoBaseRepository
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       timeToLiveAttribute: 'ttl',
       pointInTimeRecovery: false,
     });
 
-    // GSI for querying by userId
+    // GSI1 for broadcasting by account (subscription items only)
+    // Matches shared base repository naming: indexName=gsi1, keys gsi1pk/gsi1sk
     this.connectionsTable.addGlobalSecondaryIndex({
-      indexName: 'userId-index',
-      partitionKey: { name: 'userId', type: AttributeType.STRING },
+      indexName: 'gsi1',
+      partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
+      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
     });
 
     // WebSocket API
@@ -63,13 +101,38 @@ export class WebSocketPush extends Construct {
       autoDeploy: true,
     });
 
-    this.webSocketUrl = stage.url;
+    // Optional custom domain mapping.
+    if (props.domainName) {
+      if (!props.certificate) {
+        throw new Error('WebSocketPush: certificate is required when domainName is provided');
+      }
+
+      const domain = new DomainName(this, 'domain', {
+        domainName: props.domainName,
+        certificate: props.certificate,
+        endpointType: EndpointType.REGIONAL,
+        securityPolicy: SecurityPolicy.TLS_1_2,
+      });
+
+      // Be explicit: the domain must be deleted before the certificate.
+      domain.node.addDependency(props.certificate);
+
+      // Preserve the existing stage-in-path URL shape.
+      new ApiMapping(this, 'mapping', {
+        api: webSocketApi,
+        domainName: domain,
+        stage,
+      });
+
+      this.domainTarget = domain.regionalDomainName;
+      this.webSocketUrl = `wss://${props.domainName}`;
+    } else {
+      this.webSocketUrl = stage.url;
+    }
 
     // WebSocket Lambda Authorizer (reuses existing HTTP API authorizer)
     const webSocketAuthorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authorizerLambda, {
       identitySource: [
-        'route.request.querystring.token',
-        'route.request.header.Authorization',
         'route.request.header.Sec-WebSocket-Protocol',
       ],
     });
@@ -86,6 +149,7 @@ export class WebSocketPush extends Construct {
     // Lambda: $disconnect
     const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
       connectionsTable: this.connectionsTable,
+      configTable: props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
@@ -93,18 +157,23 @@ export class WebSocketPush extends Construct {
     const messageLambda = new WebSocketMessageLambda(this, 'message-handler', {
       connectionsTable: this.connectionsTable,
       configTable: props.configTable,
+      itemTable: props.itemTable,
       maxSubscriptions: maxSubscriptions,
       websocketApiId: webSocketApi.apiId,
+      websocketStageName: stage.stageName,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: broadcast
     this.broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.connectionsTable,
+      configTable: props.configTable,
       websocketApiId: webSocketApi.apiId,
       websocketStageName: stage.stageName,
       artifactResolver: props.artifactResolver,
     });
+
+    this.broadcaster = new WebSocketBroadcastPublisherImpl(this.broadcastLambda);
 
     // Routes
     webSocketApi.addRoute('$connect', {

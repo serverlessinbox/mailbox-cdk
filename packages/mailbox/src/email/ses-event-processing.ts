@@ -14,6 +14,7 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { makePhysicalName } from '../utils/resource-names';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';
+import type { WebSocketBroadcastPublisher } from '../api/websocket';
 
 export interface SESEventProcessingProps {
   itemTable: ITable;
@@ -40,7 +41,7 @@ export interface SESEventProcessingProps {
 export class SESEventProcessing extends Construct {
   public readonly sesNotificationsTopic: Topic;
   public readonly sesNotificationsQueue: BaseQueue;
-  public readonly sesEventProcessorLambda: lambda.IFunction;
+  public readonly sesEventProcessorLambda: lambda.Function;
   public readonly sesConfigSetName: string;
 
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
@@ -119,7 +120,7 @@ export class SESEventProcessing extends Construct {
           'delivery',
           'send',
           'reject',
-          'DELIVERY_DELAY',         
+          'DELIVERY_DELAY',
           // Uncomment below if you want to track opens and clicks
           // 'open',
           // 'click',
@@ -147,5 +148,10 @@ export class SESEventProcessing extends Construct {
         maxBatchingWindow: Duration.seconds(30),
       })
     );
+  }
+
+  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+    this.sesEventProcessorLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this.sesEventProcessorLambda);
   }
 }

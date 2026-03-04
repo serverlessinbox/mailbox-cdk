@@ -1,8 +1,8 @@
 export { AuditWriting } from './audit-writing';
 export type { AuditWritingProps } from './audit-writing';
 
-export { BootstrapTenant } from './bootstrap-tenant';
-export type { BootstrapTenantProps } from './bootstrap-tenant';
+export { Bootstrap } from './bootstrap';
+export type { BootstrapProps } from './bootstrap';
 
 export { Cdn } from './cdn-construct';
 export type { CdnProps } from './cdn-construct';

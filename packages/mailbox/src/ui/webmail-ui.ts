@@ -63,6 +63,7 @@ export class WebmailUi extends Construct {
     const uiHost = ui.distributionDomainName;
     const allPermissions = Object.values(Permission);
     this.oauthClient = props.authProvider.provisionJmapUiClient({
+      name: 'integrated',
       permissions: allPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],

@@ -55,6 +55,16 @@ export class AdminApiLambda extends GoLambda {
     }));
   }
 
+  private grantServiceQuotasAccess() {
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: [
+        "servicequotas:ListServiceQuotas",
+        "servicequotas:RequestServiceQuotaIncrease",
+      ],
+      resources: ["*"],
+    }));
+  }
+
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
       lambdaId: 'admin-api',
@@ -76,6 +86,7 @@ export class AdminApiLambda extends GoLambda {
     this.grantStatusAccess();
     this.grantSesAccess();
     this.grantRoute53Access();
+    this.grantServiceQuotasAccess();
 
     props.auditLogTable.grantReadData(this);
     props.mailFeedbackTable.grantReadData(this);

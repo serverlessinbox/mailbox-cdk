@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 
 export interface WebSocketDisconnectLambdaProps {
   connectionsTable: ITable;
+  configTable: ITable;
   artifactResolver: IArtifactResolver;
 }
 
@@ -18,10 +19,12 @@ export class WebSocketDisconnectLambda extends GoLambda {
       memorySize: 128,
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
+        CONFIG_TABLE_NAME: props.configTable.tableName,
       },
     });
 
     // Grant permissions
-    props.connectionsTable.grantWriteData(this);
+    props.connectionsTable.grantReadWriteData(this);
+    props.configTable.grantReadData(this);
   }
 }

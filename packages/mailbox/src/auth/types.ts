@@ -129,10 +129,10 @@ export interface MailboxAuthProviderBase {
   readonly policies: MailboxAuthPolicies;
 
   /** Provision the OAuth client used by the Admin UI (authorization_code). */
-  provisionAdminUiClient(params: { callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig;
+  provisionAdminUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig;
 
   /** Provision the OAuth client used by the Webmail/JMAP UI (authorization_code). */
-  provisionJmapUiClient(params: { callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig;
+  provisionJmapUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig;
 }
 
 /** Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`). */

@@ -21,7 +21,7 @@ import type { MailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
-import { BootstrapTenant } from './features/bootstrap-tenant';
+import { Bootstrap } from './features/bootstrap';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
@@ -84,6 +84,9 @@ export interface MailboxProps {
 
   /** Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain). */
   jmapCertificate?: acm.ICertificate;
+
+  /** Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain). */
+  wsCertificate?: acm.ICertificate;
 }
 
 /**
@@ -94,6 +97,7 @@ export class Mailbox extends Construct {
   public readonly emailProcessorLambda: EmailProcessorLambda;
   public readonly configTable: ConfigTable;
   public readonly cdn: Cdn;
+  private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `createAdminUi !== false`). */
   public readonly adminUiBucket?: IBucket;
@@ -116,6 +120,7 @@ export class Mailbox extends Construct {
       emailBucket: this.emailBucket,
       emailProcessor: this.emailProcessorLambda,
       bucketPrefix: 'incoming-emails/',
+      queueProps: this.emailQueueProps,
     }
   }
 
@@ -152,6 +157,7 @@ export class Mailbox extends Construct {
     // Configuration constants
 
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
+    this.emailQueueProps = encryptionPlan.queues;
 
     // S3 bucket for storing incoming emails (also used for Tantivy indexes)
     this.emailBucket = new EmailBucket(this, encryptionPlan.emailBucket);
@@ -213,13 +219,14 @@ export class Mailbox extends Construct {
     // If only one is provided, we still auto-create a certificate for the missing hostname so the API works.
     const providedApiCertificate = props.apiCertificate;
     const providedJmapCertificate = props.jmapCertificate;
+    const providedWsCertificate = props.wsCertificate;
 
     // If either API certificate is missing and we have Route53, create a single SAN cert
     // that covers both names and use it to fill the gaps.
     const regionalSanCertificate = (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate))
       ? new acm.Certificate(this, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
-        subjectAlternativeNames: [mailboxDomains.jmap],
+        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws],
         validation: acm.CertificateValidation.fromDns(props.hostedZone!),
       })
       : undefined;
@@ -228,6 +235,11 @@ export class Mailbox extends Construct {
       ?? regionalSanCertificate;
 
     const jmapCertificate = providedJmapCertificate
+      ?? regionalSanCertificate;
+
+    // WebSocket push should not create a third certificate.
+    // Use an explicit override when provided; otherwise only reuse the auto-created regional SAN cert.
+    const wsCertificate = providedWsCertificate
       ?? regionalSanCertificate;
 
     const adminUiOrigins: string[] = [];
@@ -308,7 +320,7 @@ export class Mailbox extends Construct {
       ?? this.oauthClients.adminUi?.groups
       ?? undefined;
 
-    new BootstrapTenant(this, 'bootstrap-tenant', {
+    new Bootstrap(this, 'bootstrap', {
       domain: props.domainName,
       oidcIssuer: authProvider.issuer,
       configTable: configTable,
@@ -354,7 +366,7 @@ export class Mailbox extends Construct {
         }
         : undefined,
     });
-    applyServerlessInboxComponentTag(this.node.findChild('bootstrap-tenant'), 'auth');
+    applyServerlessInboxComponentTag(this.node.findChild('bootstrap'), 'auth');
 
     // Lambda function to process incoming emails
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
@@ -385,7 +397,7 @@ export class Mailbox extends Construct {
     // DNS is created later, once all endpoint targets are known.
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
-    new TantivySearch(this, 'tantivy-search', {
+    const tantivySearch = new TantivySearch(this, 'tantivy-search', {
       indexBucket: this.emailBucket,
       itemTable: itemTable,
       configTable: configTable,
@@ -393,7 +405,7 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
     });
-    applyServerlessInboxComponentTag(this.node.findChild('tantivy-search'), 'search');
+    applyServerlessInboxComponentTag(tantivySearch, 'search');
 
     // SES event processing infrastructure (SNS, SQS, Lambda)
     const sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
@@ -421,6 +433,16 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(emailSending, 'email');
 
+    // JMAP must always advertise the JMAP_UI OAuth client in its session response.
+    // That client is provisioned when the Webmail UI is enabled.
+    const jmapOAuthClientId = this.oauthClients.jmapUi?.clientId;
+    if (!jmapOAuthClientId) {
+      throw new Error(
+        'JMAP API requires the JMAP_UI OAuth client (for session OAuth2 metadata). ' +
+        'Enable the Webmail UI, or adjust the auth provider to provision JMAP_UI independently.',
+      );
+    }
+
     const jmapApi = new JMapApi(this, 'jmap-api', {
       configTable: configTable,
       itemTable: itemTable,
@@ -434,6 +456,8 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+
+      oauthClientId: jmapOAuthClientId,
 
       domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
       certificate: jmapCertificate,
@@ -451,8 +475,9 @@ export class Mailbox extends Construct {
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver: artifactResolver,
       maxSubscriptions: 10,
-      maxPingInterval: 300,
-      minPingInterval: 30,
+
+      domainName: (hasHostedZone && wsCertificate) ? mailboxDomains.ws : undefined,
+      certificate: hasHostedZone ? wsCertificate : undefined,
     });
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
@@ -488,8 +513,14 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
 
-    // Add WebSocket URL to API handler environment
-    jmapApi.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketPush.webSocketUrl);
+    jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
+    adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
+
+    // Enable WebSocket push emission from the ChangeTracker.
+    // This must be wired into every Lambda that records changelog state.
+    this.emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
+    emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
+    sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
 
     if (hasHostedZone) {
       new MailboxDns(this, 'dns', {
@@ -501,6 +532,7 @@ export class Mailbox extends Construct {
           cdn: cdnConstruct.distribution.distributionDomainName,
           api: adminApi.domainTarget,
           jmap: jmapApi.domainTarget,
+          ws: webSocketPush.domainTarget,
         },
       });
       applyServerlessInboxComponentTag(this.node.findChild('dns'), 'edge');

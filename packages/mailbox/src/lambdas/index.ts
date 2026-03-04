@@ -52,8 +52,9 @@ export type { JWKCacheUpdaterLambdaProps } from './jwk-cache-updater';
 
 export { AuditWriterLambda } from './audit-writer';
 export type { AuditWriterLambdaProps } from './audit-writer';
-export { BootstrapTenantLambda } from './bootstrap-tenant';
-export type { BootstrapTenantLambdaProps } from './bootstrap-tenant';
+
+export { BootstrapLambda } from './bootstrap';
+export type { BootstrapLambdaProps } from './bootstrap';
 
 export { UserProvisionerLambda } from './user-provisioner';
 export type { UserProvisionerLambdaProps } from './user-provisioner';

@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
 import { AuthorizerLambda, ApiHandlerLambda, UserProvisionerLambda } from '../lambdas';
+import type { JmapOAuthHandlerConfig } from '../lambdas/jmap-api';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -11,7 +12,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
@@ -19,6 +20,7 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { MailboxAuthProvider } from '../auth/types';
 import { GoLambda } from '../utils/go-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type { WebSocketBroadcastPublisher } from './websocket';
 
 export interface JMapApiProps {
   configTable: ITable;
@@ -28,6 +30,9 @@ export interface JMapApiProps {
   emailBucket: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
+
+  /** OAuth clientId to advertise in the JMAP session response (must be JMAP_UI). */
+  oauthClientId: string;
 
   cdnHost: string;
   allowedOrigins?: string[];
@@ -72,12 +77,12 @@ export class JMapApi extends Construct {
       corsPreflight:
         props.allowedOrigins && props.allowedOrigins.length > 0
           ? {
-              allowOrigins: props.allowedOrigins,
-              allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-              allowHeaders: ['Content-Type', 'Authorization'],
-              allowCredentials: true,
-              maxAge: Duration.hours(1),
-            }
+            allowOrigins: props.allowedOrigins,
+            allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+            allowHeaders: ['Content-Type', 'Authorization'],
+            allowCredentials: true,
+            maxAge: Duration.hours(1),
+          }
           : undefined,
     });
 
@@ -129,14 +134,17 @@ export class JMapApi extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
       userProvisionionFunction: userProvisionerLambda,
+      oauthHandlerConfig: {
+        issuer: props.authProvider.issuer,
+        tokenEndpoint: props.authProvider.tokenEndpoint,
+        authorizationEndpoint: props.authProvider.authorizationEndpoint,
+        clientId: props.oauthClientId,
+        scopeMap: props.authProvider.scopeMap,
+      } satisfies JmapOAuthHandlerConfig,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 
-    const httpLambdaAuthorize = new HttpLambdaAuthorizer('LambdaAuthorizer', lambdaAuthorizer, {
-      identitySource: [],
-      responseTypes: [HttpLambdaResponseType.SIMPLE],
-      resultsCacheTtl: Duration.minutes(0),
-    });
+    const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
     this.authorizerLambda = lambdaAuthorizer;
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
@@ -159,5 +167,12 @@ export class JMapApi extends Construct {
       authorizer: httpLambdaAuthorize,
       integration: httpLambdaIntegration,
     });
+  }
+
+  public enableWebSocketPublishing(webSocketUrl: string, broadcaster: WebSocketBroadcastPublisher): void {
+    this.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketUrl);
+
+    this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this.apiHandlerLambda);
   }
 }

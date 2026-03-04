@@ -7,6 +7,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export interface WebSocketBroadcastLambdaProps {
   connectionsTable: ITable;
+  configTable: ITable;
   websocketApiId: string;
   websocketStageName: string;
   artifactResolver: IArtifactResolver;
@@ -15,7 +16,7 @@ export interface WebSocketBroadcastLambdaProps {
 export class WebSocketBroadcastLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketBroadcastLambdaProps) {
     const stack = Stack.of(scope);
-    
+
     super(scope, id, {
       lambdaId: 'websocket-broadcast',
       artifactResolver: props.artifactResolver,
@@ -23,12 +24,14 @@ export class WebSocketBroadcastLambda extends GoLambda {
       memorySize: 512,
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
+        CONFIG_TABLE_NAME: props.configTable.tableName,
         WEBSOCKET_API_ENDPOINT: `https://${props.websocketApiId}.execute-api.${stack.region}.amazonaws.com/${props.websocketStageName}`,
       },
     });
 
     // Grant permissions
     props.connectionsTable.grantReadWriteData(this);
+    props.configTable.grantReadData(this);
 
     // Grant API Gateway Management API permissions
     this.addToRolePolicy(new PolicyStatement({

@@ -50,8 +50,6 @@ tasks:
       - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip --awsProfile serverlessinbox-dev
       - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip --awsProfile serverlessinbox-dev
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/log-group-retention/index.ts --out /tmp/log-group-retention.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/log-group-retention.zip --objectName lambdas/log-group-retention.zip --awsProfile serverlessinbox-dev
 
   publish:regional:release:
     desc: Publish regional ts-lambdas to release version
@@ -63,8 +61,6 @@ tasks:
       - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip
       - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/log-group-retention/index.ts --out /tmp/log-group-retention.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/log-group-retention.zip --objectName lambdas/log-group-retention.zip
 
   # Combined publish targets
   publish:dev:

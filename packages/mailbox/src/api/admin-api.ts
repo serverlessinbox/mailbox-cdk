@@ -11,7 +11,7 @@ import {
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -20,6 +20,7 @@ import { AUTH_POLICY_ADMIN_API, MailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { AdminApiAddon } from './addons';
+import type { WebSocketBroadcastPublisher } from './websocket';
 
 export interface AdminApiProps {
   configTable: ITable;
@@ -49,6 +50,7 @@ export class AdminApi extends Construct {
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
+  private readonly apiHandlerLambda: AdminApiLambda;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -59,12 +61,12 @@ export class AdminApi extends Construct {
       corsPreflight:
         props.allowedOrigins && props.allowedOrigins.length > 0
           ? {
-              allowOrigins: props.allowedOrigins,
-              allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-              allowHeaders: ['Content-Type', 'Authorization'],
-              allowCredentials: true,
-              maxAge: Duration.hours(1),
-            }
+            allowOrigins: props.allowedOrigins,
+            allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+            allowHeaders: ['Content-Type', 'Authorization'],
+            allowCredentials: true,
+            maxAge: Duration.hours(1),
+          }
           : undefined,
     });
 
@@ -106,6 +108,7 @@ export class AdminApi extends Construct {
       auditEventsQueue: props.auditEventsQueue,
       artifactResolver: props.artifactResolver,
     });
+    this.apiHandlerLambda = apiHandlerLambda;
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       jwkCacheTable: props.jwkCacheTable,
@@ -116,11 +119,7 @@ export class AdminApi extends Construct {
       allowAnonymous: false,
     });
 
-    const httpLambdaAuthorize = new HttpLambdaAuthorizer('LambdaAuthorizer', lambdaAuthorizer, {
-      identitySource: [],
-      responseTypes: [HttpLambdaResponseType.SIMPLE],
-      resultsCacheTtl: Duration.minutes(0),
-    });
+    const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
 
     for (const addon of props.addons ?? []) {
       addon.addRoutes(api, httpLambdaAuthorize);
@@ -133,5 +132,10 @@ export class AdminApi extends Construct {
       methods: [HttpMethod.POST],
       authorizer: httpLambdaAuthorize,
     });
+  }
+
+  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+    this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this.apiHandlerLambda);
   }
 }

@@ -6,6 +6,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
+import type { WebSocketBroadcastPublisher } from '../../api/websocket';
 
 export interface EmailSendingProps {
   configTable: ITable;
@@ -28,7 +29,7 @@ export interface EmailSendingProps {
 export class EmailSending extends Construct {
   public readonly submissionQueue: BaseQueue;
   public readonly submissionDlq: BaseQueue;
-  public readonly emailSenderLambda: lambda.IFunction;
+  public readonly emailSenderLambda: lambda.Function;
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
@@ -60,5 +61,10 @@ export class EmailSending extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
     });
+  }
+
+  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+    this.emailSenderLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this.emailSenderLambda);
   }
 }

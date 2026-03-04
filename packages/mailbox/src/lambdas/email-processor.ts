@@ -4,6 +4,7 @@ import { INamedTable } from "../utils/named-table";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
 import { IArtifactResolver } from "../artifacts/artifact-resolver";
+import type { WebSocketBroadcastPublisher } from "../api/websocket";
 
 export interface EmailProcessorLambdaProps {
   configTable: INamedTable;
@@ -34,6 +35,11 @@ export class EmailProcessorLambda extends GoLambda {
     props.changelogTable.grantReadWriteData(this);
 
     // Grant the Lambda function permissions to read from the S3 bucket
-    props.emailBucket.grantReadWrite(this);    
+    props.emailBucket.grantReadWrite(this);
+  }
+
+  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

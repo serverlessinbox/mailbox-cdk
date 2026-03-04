@@ -8,13 +8,17 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 export interface WebSocketMessageLambdaProps {
   connectionsTable: ITable;
   configTable: ITable;
+  itemTable: ITable;
   maxSubscriptions: number;
   websocketApiId: string;
+  websocketStageName: string;
   artifactResolver: IArtifactResolver;
 }
 
 export class WebSocketMessageLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketMessageLambdaProps) {
+    const stack = Stack.of(scope);
+
     super(scope, id, {
       lambdaId: 'websocket-message',
       artifactResolver: props.artifactResolver,
@@ -23,16 +27,18 @@ export class WebSocketMessageLambda extends GoLambda {
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
+        ITEM_TABLE_NAME: props.itemTable.tableName,
         MAX_SUBSCRIPTIONS: props.maxSubscriptions.toString(),
+        WEBSOCKET_API_ENDPOINT: `https://${props.websocketApiId}.execute-api.${stack.region}.amazonaws.com/${props.websocketStageName}`,
       },
     });
 
     // Grant permissions
     props.connectionsTable.grantReadWriteData(this);
     props.configTable.grantReadData(this);
+    props.itemTable.grantReadData(this);
 
     // Grant API Gateway Management API permissions
-    const stack = Stack.of(this);
     this.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ['execute-api:ManageConnections'],

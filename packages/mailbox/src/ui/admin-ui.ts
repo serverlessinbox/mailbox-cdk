@@ -97,6 +97,7 @@ export class AdminUi extends Construct {
 
     const uiHost = ui.distributionDomainName;
     this.oauthClient = props.authProvider.provisionAdminUiClient({
+      name: 'integrated',
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],
     });

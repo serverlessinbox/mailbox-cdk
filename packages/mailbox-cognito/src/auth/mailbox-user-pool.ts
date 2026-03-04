@@ -125,8 +125,9 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
 
   public readonly policies: MailboxAuthPolicies;
 
-  private adminUiClient?: AuthClientConfig;
-  private jmapUiClient?: AuthClientConfig;
+  private readonly adminUiClients = new Map<string, AuthClientConfig>();
+  private readonly jmapUiClients = new Map<string, AuthClientConfig>();
+  private readonly headlessClients = new Map<string, AuthClientConfig>();
 
   get userPoolId(): string {
     return this.userPool.userPoolId;
@@ -218,6 +219,19 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     audiences: Array<'adminApi' | 'jmapApi'>;
     permissions: Permission[];
   }): AuthClientConfig {
+    const existing = this.headlessClients.get(params.name);
+    if (existing) {
+      for (const audience of params.audiences) {
+        if (audience === 'adminApi') {
+          this.addAudience(this.policies.adminApi, existing.clientId);
+        } else {
+          this.addAudience(this.policies.jmapApi, existing.clientId);
+        }
+      }
+
+      return existing;
+    }
+
     const client = this.createOAuthClient({
       flow: 'client_credentials',
       name: params.name,
@@ -232,17 +246,20 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       }
     }
 
+    this.headlessClients.set(params.name, client);
     return client;
   }
 
-  provisionAdminUiClient(params: { callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig {
-    if (this.adminUiClient) {
-      return this.adminUiClient;
+  provisionAdminUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig {
+    const resolvedName = `${OAUTH_CLIENT_ADMIN_UI}_${params.name}`;
+    const existing = this.adminUiClients.get(resolvedName);
+    if (existing) {
+      return existing;
     }
 
     const client = this.createOAuthClient({
       flow: 'authorization_code',
-      name: OAUTH_CLIENT_ADMIN_UI,
+      name: resolvedName,
       permissions: [Permission.ADMIN],
       groups: this.authzConfig.adminGroups,
       callbackUrls: params.callbackUrls,
@@ -250,18 +267,25 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     });
 
     this.addAudience(this.policies.adminApi, client.clientId);
-    this.adminUiClient = client;
+    this.adminUiClients.set(resolvedName, client);
     return client;
   }
 
-  provisionJmapUiClient(params: { callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig {
-    if (this.jmapUiClient) {
-      return this.jmapUiClient;
+  provisionJmapUiClient(params: {
+    name: string;
+    callbackUrls: string[];
+    logoutUrls: string[];
+    permissions: Permission[];
+  }): AuthClientConfig {
+    const resolvedName = `${OAUTH_CLIENT_JMAP_UI}_${params.name}`;
+    const existing = this.jmapUiClients.get(resolvedName);
+    if (existing) {
+      return existing;
     }
 
     const client = this.createOAuthClient({
       flow: 'authorization_code',
-      name: OAUTH_CLIENT_JMAP_UI,
+      name: resolvedName,
       permissions: params.permissions,
       groups: this.authzConfig.userGroups,
       callbackUrls: params.callbackUrls,
@@ -269,7 +293,7 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     });
 
     this.addAudience(this.policies.jmapApi, client.clientId);
-    this.jmapUiClient = client;
+    this.jmapUiClients.set(resolvedName, client);
     return client;
   }
 

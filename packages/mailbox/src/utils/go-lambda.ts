@@ -4,11 +4,10 @@ import {
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { CfnLogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import { LogGroupRetention } from '../features/observability/log-group-retention';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -48,11 +47,8 @@ export class GoLambda extends LambdaFunction {
     });
 
     if (logGroupRetention !== false) {
-      new LogGroupRetention(this, 'log-retention', {
-        artifactResolver,
-        lambdaFunction: this,
-        retention: logGroupRetention,
-      });
+      const cfnLogGroup = this.logGroup.node.defaultChild as CfnLogGroup;
+      cfnLogGroup.retentionInDays = logGroupRetention;
     }
   }
 }
