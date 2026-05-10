@@ -1,6 +1,7 @@
 import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 export interface JWKCacheUpdaterLambdaProps {
@@ -15,6 +16,7 @@ export class JWKCacheUpdaterLambda extends GoLambda {
       lambdaId: 'jwk-dynamo-cache-updater',
       artifactResolver: props.artifactResolver,
       memorySize: 128,
+      timeout: Duration.seconds(30),
       environment: {
         ISSUERS: props.issuers.join(','),
         TABLE_NAME: props.jwkCacheTable.tableName,

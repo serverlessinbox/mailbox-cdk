@@ -1,6 +1,7 @@
 import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
 
@@ -23,6 +24,7 @@ export class AuthorizerLambda extends GoLambda {
       lambdaId: 'authorizer',
       artifactResolver: props.artifactResolver,
       memorySize: 256,
+      timeout: Duration.seconds(30),
       environment: {
         JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,

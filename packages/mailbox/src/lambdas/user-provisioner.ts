@@ -2,6 +2,8 @@ import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { Duration } from 'aws-cdk-lib';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface UserProvisionerLambdaProps {
@@ -18,6 +20,7 @@ export class UserProvisionerLambda extends GoLambda {
       lambdaId: 'user-provisioner',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
+      timeout: Duration.seconds(30),
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
@@ -33,5 +36,11 @@ export class UserProvisionerLambda extends GoLambda {
 
     // Audit events emitted during provisioning
     props.auditEventsQueue.grantSendMessages(this);
+
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['execute-api:Invoke'],
+      resources: ['*'],
+    }));
   }
 }

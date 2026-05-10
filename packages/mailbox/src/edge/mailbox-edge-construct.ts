@@ -1,4 +1,5 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as cdk from 'aws-cdk-lib';
 import { Aws, Fn } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -121,6 +122,11 @@ export class MailboxEdgeConstruct extends Construct {
 
     // CloudFront Lambda@Edge requires a published version.
     this.blobAuthorizerVersion = blobAuthorizerFunction.currentVersion;
+
+    // Force a new AWS::Lambda::Version resource (replacement) whenever the S3 version ID changes.
+    // Without this, CFn updates $LATEST but the immutable version resource stays the same.
+    const cfnVersion = this.blobAuthorizerVersion.node.defaultChild as cdk.CfnResource;
+    cfnVersion.addPropertyOverride('Description', props.blobAuthorizerReference.s3VersionId ?? '');
 
     // Lambda@Edge needs explicit IAM permissions; it can't assume it has access to regional DynamoDB tables.
     // Grant only read access to the required tables (+ index access for Query).

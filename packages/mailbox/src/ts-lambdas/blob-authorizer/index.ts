@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { extractConfig } from './config';
 import { verifyToken, extractToken } from './jwt';
-import { getEmail } from './dynamodb';
+import { getEmail, getContactCard, getPrincipal } from './dynamodb';
 import {
   createErrorResponse,
   extractDownloadParams,
@@ -88,7 +88,6 @@ export const handler = async (event: any) => {
     if (!parsed) {
       return createErrorResponse(400, 'Invalid blobId format');
     }
-    const { emailID, path } = parsed;
 
     // Extract JWT token
     const authHeader = request.headers.authorization?.[0]?.value;
@@ -97,20 +96,12 @@ export const handler = async (event: any) => {
       return createErrorResponse(401, 'Missing or invalid Authorization header');
     }
 
-    // Parallelize JWT verification and email query
-    const [userContext, email] = await Promise.all([
-      verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName),
-      getEmail(emailID, dynamodb, config.tableName),
-    ]);
+    // Verify JWT first to get tenantId, then query the entity with the correct tenant-scoped key
+    const userContext = await verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName);
 
     // Verify JWT token is valid
     if (!userContext) {
       return createErrorResponse(401, 'Invalid token');
-    }
-
-    // Verify email exists
-    if (!email) {
-      return createErrorResponse(404, 'Email not found');
     }
 
     // Verify user has access to requested account
@@ -118,14 +109,41 @@ export const handler = async (event: any) => {
       return createErrorResponse(403, 'Access denied: account not authorized');
     }
 
-    // Verify email belongs to requested account
-    // (User access to account was already verified above)
-    if (email.accountId !== params.accountId) {
-      return createErrorResponse(403, 'Access denied: email does not belong to requested account');
+    // Resolve entity, verify ownership, and derive S3 key based on blob type.
+    let s3Key: string;
+
+    if (parsed.type === 'email') {
+      const email = await getEmail(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+      if (!email) {
+        return createErrorResponse(404, 'Email not found');
+      }
+      if (email.accountId !== params.accountId) {
+        return createErrorResponse(403, 'Access denied: email does not belong to requested account');
+      }
+      s3Key = constructS3Key(userContext.tenantId, email.accountId, parsed);
+
+    } else if (parsed.type === 'contact') {
+      const contact = await getContactCard(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+      if (!contact) {
+        return createErrorResponse(404, 'Contact not found');
+      }
+      if (contact.accountId !== params.accountId) {
+        return createErrorResponse(403, 'Access denied: contact does not belong to requested account');
+      }
+      s3Key = constructS3Key(userContext.tenantId, contact.accountId, parsed);
+
+    } else {
+      // principal
+      const principal = await getPrincipal(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+      if (!principal) {
+        return createErrorResponse(404, 'Principal not found');
+      }
+      if (principal.primaryAccountId !== params.accountId) {
+        return createErrorResponse(403, 'Access denied: principal does not belong to requested account');
+      }
+      s3Key = constructS3Key(userContext.tenantId, principal.primaryAccountId, parsed);
     }
 
-    // Construct S3 key and modify request
-    const s3Key = constructS3Key(email.accountId, emailID, path);
     request.uri = `/${s3Key}`;
     delete request.querystring;
 

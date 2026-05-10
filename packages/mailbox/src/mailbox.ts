@@ -13,15 +13,19 @@ import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
 import { AdminApi, JMapApi, WebSocketPush } from './api';
 import type { AdminApiAddon, AdminApiAddonContext } from './api';
-import type { EmailDelivery } from './email/receiving/ses-rules';
+import { SesRules } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
 } from './auth/types';
 import type { MailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
+import { CertWaiterLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
+import type { IArtifactResolver } from './artifacts/artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
+import { CertificateWaiter } from './features/certificate-waiter';
+import { LicenseRefresh } from './features/license-refresh';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
@@ -87,6 +91,13 @@ export interface MailboxProps {
 
   /** Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain). */
   wsCertificate?: acm.ICertificate;
+
+  /**
+   * When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt
+   * rule set. Only one rule set can be active per account per region — this is an explicit operator
+   * decision.
+   */
+  activateReceiving?: boolean;
 }
 
 /**
@@ -97,6 +108,7 @@ export class Mailbox extends Construct {
   public readonly emailProcessorLambda: EmailProcessorLambda;
   public readonly configTable: ConfigTable;
   public readonly cdn: Cdn;
+  private readonly artifactResolver: IArtifactResolver;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `createAdminUi !== false`). */
@@ -114,15 +126,6 @@ export class Mailbox extends Construct {
     adminUi?: AuthClientConfig;
     jmapUi?: AuthClientConfig;
   } = {};
-
-  emailDelivery(): EmailDelivery {
-    return {
-      emailBucket: this.emailBucket,
-      emailProcessor: this.emailProcessorLambda,
-      bucketPrefix: 'incoming-emails/',
-      queueProps: this.emailQueueProps,
-    }
-  }
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
@@ -152,7 +155,8 @@ export class Mailbox extends Construct {
 
     const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
 
-    const artifactResolver = artifactResolverForTags;
+    this.artifactResolver = artifactResolverForTags;
+    const artifactResolver = this.artifactResolver;
 
     // Configuration constants
 
@@ -298,6 +302,7 @@ export class Mailbox extends Construct {
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
+        uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       });
       applyServerlessInboxComponentTag(webmailUi, 'ui');
 
@@ -320,11 +325,38 @@ export class Mailbox extends Construct {
       ?? this.oauthClients.adminUi?.groups
       ?? undefined;
 
-    new Bootstrap(this, 'bootstrap', {
+    new LicenseRefresh(this, 'license-refresh', {
+      configTable: configTable,
+      artifactResolver,
+    });
+
+    // Lambda function to process incoming emails
+    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+      configTable: configTable,
+      itemTable: itemTable,
+      changelogTable: changelogTable,
+      emailBucket: this.emailBucket,
+      artifactResolver,
+    });
+    applyServerlessInboxComponentTag(this.emailProcessorLambda, 'email');
+
+    const sesRules = new SesRules(this, 'ses-rules', {
+      delivery: {
+        emailBucket: this.emailBucket,
+        emailProcessor: this.emailProcessorLambda,
+        bucketPrefix: 'incoming-emails/',
+        artifactResolver,
+        queueProps: this.emailQueueProps,
+      },
+    });
+    applyServerlessInboxComponentTag(sesRules, 'email');
+
+    const bootstrap = new Bootstrap(this, 'bootstrap', {
       domain: props.domainName,
       oidcIssuer: authProvider.issuer,
       configTable: configTable,
       artifactResolver,
+      sesRuleSetName: props.activateReceiving ? sesRules.ruleSetName : undefined,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,
@@ -368,15 +400,19 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(this.node.findChild('bootstrap'), 'auth');
 
-    // Lambda function to process incoming emails
-    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
-      emailBucket: this.emailBucket,
-      artifactResolver,
-    });
-    applyServerlessInboxComponentTag(this.emailProcessorLambda, 'email');
+    // If a regional SAN cert was auto-created, insert a waiter custom resource.
+    // On deletion, the waiter polls ACM DescribeCertificate until InUseBy is empty,
+    // preventing the "Certificate is in use" CloudFormation error.
+    let certWaiter: CertificateWaiter | undefined;
+    if (regionalSanCertificate) {
+      const certWaiterLambda = new CertWaiterLambda(this, 'cert-waiter-lambda', {
+        artifactResolver,
+      });
+      certWaiter = new CertificateWaiter(this, 'regional-cert-waiter', {
+        certificate: regionalSanCertificate,
+        certWaiterLambda,
+      });
+    }
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
@@ -512,6 +548,12 @@ export class Mailbox extends Construct {
       certificate: apiCertificate,
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
+
+    if (certWaiter) {
+      jmapApi.node.addDependency(certWaiter);
+      webSocketPush.node.addDependency(certWaiter);
+      adminApi.node.addDependency(certWaiter);
+    }
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);

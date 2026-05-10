@@ -2,8 +2,10 @@ import { GoLambda } from '../utils/go-lambda';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { MailboxAuthProviderBase } from '../auth/types';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -36,6 +38,7 @@ export class ApiHandlerLambda extends GoLambda {
       lambdaId: 'jmap-api',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
+      timeout: Duration.seconds(30),
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
@@ -76,5 +79,11 @@ export class ApiHandlerLambda extends GoLambda {
 
     // Grant the User provisioning function to be invoked
     props.userProvisionionFunction.grantInvoke(this);
+
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['execute-api:Invoke'],
+      resources: ['*'],
+    }));
   }
 }

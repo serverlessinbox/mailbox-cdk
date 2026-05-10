@@ -25,6 +25,8 @@ export type SfnInvokeEvent = {
   op: OperationInput;
   /** Polling iteration counter injected by the Step Functions workflow. */
   attempt?: number;
+  /** Number of DeleteStack retries triggered by Lambda@Edge replica-drain failures. */
+  deleteRetryCount?: number;
 };
 
 export type CfnCustomResourceEvent = {

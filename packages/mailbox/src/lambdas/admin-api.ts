@@ -3,6 +3,7 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
@@ -65,11 +66,19 @@ export class AdminApiLambda extends GoLambda {
     }));
   }
 
+  private grantLicenseApiAccess() {
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["execute-api:Invoke"],
+      resources: ["*"],
+    }));
+  }
+
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
       lambdaId: 'admin-api',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
+      timeout: Duration.seconds(30),
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
@@ -87,6 +96,7 @@ export class AdminApiLambda extends GoLambda {
     this.grantSesAccess();
     this.grantRoute53Access();
     this.grantServiceQuotasAccess();
+    this.grantLicenseApiAccess();
 
     props.auditLogTable.grantReadData(this);
     props.mailFeedbackTable.grantReadData(this);

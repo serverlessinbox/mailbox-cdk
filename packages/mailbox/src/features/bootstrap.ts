@@ -1,4 +1,5 @@
 import { CustomResource } from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda } from '../lambdas';
@@ -24,12 +25,16 @@ export interface BootstrapProps {
   oauthClients?: OAuthClientsConfig;
 
   artifactResolver: IArtifactResolver;
+  sesRuleSetName?: string;
 }
 
 /**
  * CDK Construct for bootstrapping a new tenant.
  */
 export class Bootstrap extends Construct {
+  /** The Lambda function backing the bootstrap custom resource. */
+  readonly handler: BootstrapLambda;
+
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
 
@@ -45,6 +50,7 @@ export class Bootstrap extends Construct {
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
     });
+    this.handler = handler;
 
     new CustomResource(this, id, {
       serviceToken: handler.functionArn,
@@ -69,6 +75,14 @@ export class Bootstrap extends Construct {
     });
 
     props.configTable.grantReadWriteData(handler);
+
+    if (props.sesRuleSetName) {
+      handler.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
+      handler.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['ses:SetActiveReceiptRuleSet'],
+        resources: ['*'],
+      }));
+    }
   }
 }
 

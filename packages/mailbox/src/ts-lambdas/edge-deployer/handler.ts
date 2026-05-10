@@ -26,6 +26,7 @@ function formatAwsError(err: any): string {
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean }> {
   const { mode, cfn, op } = event;
   const attempt = typeof (event as any)?.attempt === 'number' ? (event as any).attempt : 0;
+  const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
 
   console.log('Edge deployer op:', JSON.stringify({
     mode,
@@ -106,14 +107,14 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       // Lambda can still refuse DeleteFunction for a while because replicas are draining.
       // Retry DeleteStack a bounded number of times to allow automatic cleanup.
       const maxDeleteRetries = 180; // ~60 min with 20s interval
-      if (looksLikeReplicatedLambdaFailure && attempt < maxDeleteRetries) {
-        console.log(`Edge stack delete failed due to replicated Lambda@Edge; retrying delete (attempt=${attempt}/${maxDeleteRetries}).`);
+      if (looksLikeReplicatedLambdaFailure && deleteRetryCount < maxDeleteRetries) {
+        console.log(`Edge stack delete failed due to replicated Lambda@Edge; retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}).`);
         try {
           await deleteStackIfExists(op.stackName);
         } catch (err: any) {
           console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
         }
-        return { done: false };
+        return { done: false, deleteRetryCount: deleteRetryCount + 1 };
       }
 
       // Safety net: don't block parent delete/rollback on edge stack delete failure.
@@ -127,7 +128,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       return { done: true };
     }
 
-    return { done: false };
+    return { done: false, deleteRetryCount };
   }
 
   if (!stack) {
@@ -176,7 +177,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     return { done: true };
   }
 
-  return { done: false };
+  return { done: false, deleteRetryCount };
 }
 
 async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<void> {
@@ -295,13 +296,4 @@ export const workerHandler = async (event: any, context: any): Promise<any> => {
   return handleSfn(event as SfnInvokeEvent, context);
 };
 
-// Backwards compatible entrypoint: routes based on payload shape.
-export const handler = async (event: any, context: any): Promise<any> => {
-  console.log('Event:', JSON.stringify(event, null, 2));
 
-  if (event && typeof event === 'object' && (event as SfnInvokeEvent).mode) {
-    return workerHandler(event, context);
-  }
-
-  return starterHandler(event, context);
-};

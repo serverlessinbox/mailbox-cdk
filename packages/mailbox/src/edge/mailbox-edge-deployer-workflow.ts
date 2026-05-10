@@ -53,6 +53,7 @@ export function createMailboxEdgeDeployerStateMachine(
       'cfn.$': '$.cfn',
       'op.$': '$.op',
       attempt: 0,
+      deleteRetryCount: 0,
     },
   });
 
@@ -81,6 +82,7 @@ export function createMailboxEdgeDeployerStateMachine(
       cfn: sfn.JsonPath.objectAt('$.cfn'),
       op: sfn.JsonPath.objectAt('$.op'),
       attempt: sfn.JsonPath.numberAt('$.attempt'),
+      deleteRetryCount: sfn.JsonPath.numberAt('$.deleteRetryCount'),
     }),
   });
 
@@ -91,6 +93,7 @@ export function createMailboxEdgeDeployerStateMachine(
       'start.$': '$.start',
       'check.$': '$.check',
       'attempt.$': 'States.MathAdd($.attempt, 1)',
+      'deleteRetryCount.$': '$.check.deleteRetryCount',
     },
   });
 

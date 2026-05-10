@@ -57,20 +57,40 @@ function sendResponse(event: CloudFormationCustomResourceEvent, response: CloudF
 
 const cognito = new CognitoIdentityProviderClient({});
 
+/**
+ * Default one-time bootstrap password used when neither `temporaryPassword` nor `email` is configured.
+ * The user is created in FORCE_CHANGE_PASSWORD state and must change this on first login.
+ * See documentation for the well-known default value.
+ */
+const DEFAULT_TEMPORARY_PASSWORD = 'Mailbox-Admin-1!';
+
 type BootstrapUserProperties = {
   userPoolId: string;
-  username: string;
-  email: string;
+  /** Defaults to `"admin"` if not provided. */
+  username?: string;
+  /** Email address for the bootstrap user. Optional. */
+  email?: string;
   groups?: string[];
+
+  /**
+   * One-time temporary bootstrap password (FORCE_CHANGE_PASSWORD mode).
+   * This is a temporary credential only — never use for permanent passwords.
+   */
+  temporaryPassword?: string;
 
   /** If true, Cognito will send an invite email. Default: false (SUPPRESS). */
   sendInvite?: boolean;
 };
 
 async function ensureUser(props: BootstrapUserProperties): Promise<void> {
-  const { userPoolId, username, email } = props;
+  const { userPoolId, email } = props;
+  const username = props.username ?? 'admin';
+  const temporaryPassword = props.temporaryPassword ?? (!email ? DEFAULT_TEMPORARY_PASSWORD : undefined);
   const sendInvite = props.sendInvite ?? false;
   const groups = (props.groups ?? []).filter(Boolean);
+  const emailAttributes = email
+    ? [{ Name: 'email', Value: email }, { Name: 'email_verified', Value: 'true' }]
+    : [];
 
   try {
     await cognito.send(
@@ -78,24 +98,23 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
         UserPoolId: userPoolId,
         Username: username,
         ...(sendInvite ? { DesiredDeliveryMediums: ['EMAIL'] } : { MessageAction: 'SUPPRESS' }),
-        UserAttributes: [
-          { Name: 'email', Value: email },
-          { Name: 'email_verified', Value: 'true' },
-        ],
+        ...(emailAttributes.length > 0 ? { UserAttributes: emailAttributes } : {}),
+        ...(temporaryPassword ? { TemporaryPassword: temporaryPassword } : {}),
       }),
     );
   } catch (err: any) {
     if (err instanceof UsernameExistsException || err?.name === 'UsernameExistsException') {
-      await cognito.send(
-        new AdminUpdateUserAttributesCommand({
-          UserPoolId: userPoolId,
-          Username: username,
-          UserAttributes: [
-            { Name: 'email', Value: email },
-            { Name: 'email_verified', Value: 'true' },
-          ],
-        }),
-      );
+      // Only update attributes if email was provided; do NOT re-set temp password
+      // (the user may have already changed it).
+      if (emailAttributes.length > 0) {
+        await cognito.send(
+          new AdminUpdateUserAttributesCommand({
+            UserPoolId: userPoolId,
+            Username: username,
+            UserAttributes: emailAttributes,
+          }),
+        );
+      }
     } else {
       throw err;
     }
@@ -119,15 +138,21 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
 export const handler = async (event: CloudFormationCustomResourceEvent): Promise<void> => {
   const props = event.ResourceProperties as BootstrapUserProperties;
 
-  const physicalResourceId = `BootstrapUser:${props.userPoolId}:${props.username}`;
+  const physicalResourceId = `BootstrapUser:${props.userPoolId}:${props.username ?? 'admin'}`;
+
+  // CDK CustomResource serializes all properties as strings — coerce booleans explicitly.
+  const normalizedProps: BootstrapUserProperties = {
+    ...props,
+    sendInvite: props.sendInvite === true || (props.sendInvite as any) === 'true',
+  };
 
   try {
-    if (!props?.userPoolId || !props?.username || !props?.email) {
-      throw new Error('Missing required properties: userPoolId, username, email');
+    if (!props?.userPoolId) {
+      throw new Error('Missing required property: userPoolId');
     }
 
     if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-      await ensureUser(props);
+      await ensureUser(normalizedProps);
     }
 
     await sendResponse(event, {

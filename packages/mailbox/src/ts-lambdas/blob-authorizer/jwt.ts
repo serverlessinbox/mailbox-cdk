@@ -336,16 +336,16 @@ async function getIDPMapping(
         pk: { S: `TENANT#${tenantId}#IDP#${provider}#${idpUserId}` },
         sk: { S: 'METADATA' },
       },
-      ProjectionExpression: 'userId',
+      ProjectionExpression: 'principalId',
     });
 
     const response = await dynamodb.send(command);
 
-    if (!response.Item || !response.Item.userId?.S) {
+    if (!response.Item || !response.Item.principalId?.S) {
       return null;
     }
 
-    return response.Item.userId.S;
+    return response.Item.principalId.S;
   } catch (error) {
     console.error('Error querying IDP mapping:', error);
     return null;
@@ -354,6 +354,7 @@ async function getIDPMapping(
 
 /**
  * Query User's accounts from DynamoDB
+ * Combines owned accounts (GSI1) and shared account memberships (GSI2).
  */
 async function getUserAccounts(
   userId: string,
@@ -362,29 +363,40 @@ async function getUserAccounts(
   configTable: string
 ): Promise<string[]> {
   try {
-    // Query GSI1 for user's accounts
-    // GSI1: PK=USER_ACCOUNTS#{userId}, SK={name}#{accountId}
-    const command = new QueryCommand({
-      TableName: configTable,
-      IndexName: 'GSI1',
-      KeyConditionExpression: 'gsi1pk = :pk',
-      ExpressionAttributeValues: {
-        ':pk': { S: `TENANT#${tenantId}#USER_ACCOUNTS#${userId}` },
-      },
-      ProjectionExpression: 'accountId',
-    });
+    const [ownedResponse, membershipResponse] = await Promise.all([
+      // GSI1: owned accounts — gsi1pk = TENANT#{tenantId}#PRINCIPAL_ACCOUNTS#{userId}
+      dynamodb.send(new QueryCommand({
+        TableName: configTable,
+        IndexName: 'gsi1',
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': { S: `TENANT#${tenantId}#PRINCIPAL_ACCOUNTS#${userId}` },
+        },
+        ProjectionExpression: 'accountId',
+      })),
+      // GSI2: shared account memberships — gsi2pk = TENANT#{tenantId}#USER_ACCOUNT_MEMBERSHIPS#{userId}
+      dynamodb.send(new QueryCommand({
+        TableName: configTable,
+        IndexName: 'gsi2',
+        KeyConditionExpression: 'gsi2pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': { S: `TENANT#${tenantId}#USER_ACCOUNT_MEMBERSHIPS#${userId}` },
+        },
+        ProjectionExpression: 'AccountID',
+      })),
+    ]);
 
-    const response = await dynamodb.send(command);
-
-    if (!response.Items) {
-      return [];
-    }
-
-    // Extract account IDs from entities
     const accountIds: string[] = [];
-    for (const item of response.Items) {
+
+    for (const item of ownedResponse.Items ?? []) {
       if (item.accountId?.S) {
         accountIds.push(item.accountId.S);
+      }
+    }
+
+    for (const item of membershipResponse.Items ?? []) {
+      if (item.AccountID?.S && !accountIds.includes(item.AccountID.S)) {
+        accountIds.push(item.AccountID.S);
       }
     }
 

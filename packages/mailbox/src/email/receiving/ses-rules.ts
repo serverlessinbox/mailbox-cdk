@@ -1,36 +1,37 @@
-import { Aws, Duration } from 'aws-cdk-lib';
+import { Aws, CfnOutput, Duration } from 'aws-cdk-lib';
 import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
-import { Sns, S3 } from 'aws-cdk-lib/aws-ses-actions';
-import { Topic } from 'aws-cdk-lib/aws-sns';
-import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
+import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
+import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 
 export interface EmailDelivery {
   emailBucket: IBucket;
   emailProcessor: IFunction;
   bucketPrefix: string;
+  artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
   queueProps?: Partial<BaseQueueProps>;
 }
 
 export interface SesRulesProps {
   delivery: EmailDelivery;
+  activateReceiving?: boolean;
 }
 
 export class SesRules extends Construct {
+  /** The name of the SES receipt rule set created by this construct. */
+  readonly ruleSetName: string;
+
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
 
-    // Resolve queue encryption. SNS cannot publish to AWS-managed KMS queues because
-    // the key policy is not customer-controllable. When a CMK is provided we use it and
-    // grant SNS the necessary permissions; otherwise we fall back to SSE-SQS (SQS_MANAGED)
-    // which is SNS-compatible and free.
     const queueEncryptionProps: Partial<BaseQueueProps> = (() => {
       const masterKey = props.delivery.queueProps?.encryptionMasterKey;
       if (masterKey) {
@@ -40,13 +41,13 @@ export class SesRules extends Construct {
     })();
 
     // DLQ for emails that fail processing after all retries
-    const dlq = new BaseQueue(this, 'email-processor-dlq', {
+    const dlq = new BaseQueue(this, 'email-processing-dlq', {
       ...queueEncryptionProps,
       retentionPeriod: Duration.days(14),
     });
 
     // SQS queue for email processing; visibility timeout must exceed Lambda timeout (1 min)
-    const queue = new BaseQueue(this, 'email-processor-queue', {
+    const queue = new BaseQueue(this, 'email-processing-queue', {
       ...queueEncryptionProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {
@@ -55,23 +56,20 @@ export class SesRules extends Construct {
       },
     });
 
-    // SNS topic receives SES delivery notifications and fans out to SQS
-    const topic = new Topic(this, 'email-delivery-topic');
-
-    // When using a CMK, SNS needs kms:GenerateDataKey* and kms:Decrypt to publish
-    const masterKey = props.delivery.queueProps?.encryptionMasterKey;
-    if (masterKey) {
-      masterKey.grant(new ServicePrincipal('sns.amazonaws.com'),
-        'kms:GenerateDataKey*',
-        'kms:Decrypt',
-      );
-    }
-    topic.addSubscription(new SqsSubscription(queue));
+    // Forwarder Lambda: receives the SES receipt notification and enqueues it on SQS.
+    // This replaces the SNS action which has a hard 150 KB inbound email size limit.
+    // SES invokes this asynchronously (InvocationType.EVENT) so a transient failure
+    // does NOT bounce the email — the MIME is already safely stored in S3.
+    const forwarder = new SesReceiptForwarderLambda(this, 'ses-receipt-forwarder', {
+      emailProcessorQueue: queue,
+      artifactResolver: props.delivery.artifactResolver,
+    });
 
     // SES receipt rule set
     const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {});
+    this.ruleSetName = ruleSet.receiptRuleSetName;
 
-    // SES receipt rule: store email in S3, then notify via SNS → SQS → Lambda
+    // SES receipt rule: store email in S3, then notify via Lambda → SQS → email-processor
     new ReceiptRule(this, 'email-rule', {
       ruleSet: ruleSet,
       actions: [
@@ -79,7 +77,10 @@ export class SesRules extends Construct {
           bucket: props.delivery.emailBucket,
           objectKeyPrefix: 'incoming-emails/',
         }),
-        new Sns({ topic }),
+        new Lambda({
+          function: forwarder,
+          invocationType: LambdaInvocationType.EVENT, // async — SES does not wait for the result
+        }),
       ],
       enabled: true,
       scanEnabled: true,
@@ -107,5 +108,10 @@ export class SesRules extends Construct {
     });
 
     props.delivery.emailBucket.addToResourcePolicy(sesS3Policy);
+
+    new CfnOutput(this, 'SesReceiptRuleSetName', {
+      value: ruleSet.receiptRuleSetName,
+      exportName: 'SesReceiptRuleSetName',
+    });
   }
 }

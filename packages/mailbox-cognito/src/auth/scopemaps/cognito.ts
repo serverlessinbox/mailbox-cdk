@@ -8,6 +8,8 @@ export enum CognitoScope {
   ALIAS_READ = 'alias.read',
   ALIAS_WRITE = 'alias.write',
   USER_READ = 'user.read',
+  CONTACTS_READ = 'contacts.read',
+  CONTACTS_WRITE = 'contacts.write',
   ADMIN = 'admin',
 }
 
@@ -19,6 +21,8 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.ALIAS_READ]: [Permission.ALIAS_READ],
   [CognitoScope.ALIAS_WRITE]: [Permission.ALIAS_WRITE],
   [CognitoScope.USER_READ]: [Permission.USER_READ],
+  [CognitoScope.CONTACTS_READ]: [Permission.CONTACTS_READ],
+  [CognitoScope.CONTACTS_WRITE]: [Permission.CONTACTS_WRITE],
   [CognitoScope.ADMIN]: [Permission.ADMIN],
 };
 
@@ -30,5 +34,7 @@ export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.ALIAS_READ]: CognitoScope.ALIAS_READ,
   [Permission.ALIAS_WRITE]: CognitoScope.ALIAS_WRITE,
   [Permission.USER_READ]: CognitoScope.USER_READ,
+  [Permission.CONTACTS_READ]: CognitoScope.CONTACTS_READ,
+  [Permission.CONTACTS_WRITE]: CognitoScope.CONTACTS_WRITE,
   [Permission.ADMIN]: CognitoScope.ADMIN,
 };

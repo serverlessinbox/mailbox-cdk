@@ -11,6 +11,8 @@ export enum Permission {
   ALIAS_READ = 'alias/read',
   ALIAS_WRITE = 'alias/write',
   USER_READ = 'user/read',
+  CONTACTS_READ = 'contacts/read',
+  CONTACTS_WRITE = 'contacts/write',
 
   ADMIN = 'admin',
 }
@@ -26,5 +28,7 @@ export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.ALIAS_READ]: 'Read aliases',
   [Permission.ALIAS_WRITE]: 'Write aliases',
   [Permission.USER_READ]: 'Read user',
+  [Permission.CONTACTS_READ]: 'Read contacts',
+  [Permission.CONTACTS_WRITE]: 'Write contacts',
   [Permission.ADMIN]: 'Admin access',
 };

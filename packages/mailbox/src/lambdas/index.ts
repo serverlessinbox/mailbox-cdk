@@ -58,3 +58,9 @@ export type { BootstrapLambdaProps } from './bootstrap';
 
 export { UserProvisionerLambda } from './user-provisioner';
 export type { UserProvisionerLambdaProps } from './user-provisioner';
+
+export { LicenseRefresherLambda } from './license-refresher';
+export type { LicenseRefresherLambdaProps } from './license-refresher';
+
+export { CertWaiterLambda } from './cert-waiter';
+export type { CertWaiterLambdaProps } from './cert-waiter';
