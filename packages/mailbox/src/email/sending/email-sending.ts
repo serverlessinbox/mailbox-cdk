@@ -4,6 +4,7 @@ import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 import type { WebSocketBroadcastPublisher } from '../../api/websocket';
@@ -61,6 +62,10 @@ export class EmailSending extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
     });
+
+    this.emailSenderLambda.addEventSource(
+      new SqsEventSource(this.submissionQueue, { batchSize: 1 })
+    );
   }
 
   public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
