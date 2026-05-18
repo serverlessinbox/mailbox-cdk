@@ -1,8 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
 import { extractConfig } from './config';
-import { verifyToken, verifyJWTSignatureOnly, extractToken } from './jwt';
-import { getEmail, getContactCard, getPrincipal } from './dynamodb';
+import { verifyJWTSignatureOnly, extractToken } from './jwt';
 import {
   createErrorResponse,
   extractDownloadParams,
@@ -11,15 +10,24 @@ import {
   addDownloadHeaders
 } from './utils';
 
+// Module-level DynamoDB client (lazy init — region is fixed per CloudFront distribution)
+let _dynamodbClient: DynamoDBClient | null = null;
+function getDynamoDBClient(region: string): DynamoDBClient {
+  if (!_dynamodbClient) {
+    _dynamodbClient = new DynamoDBClient({ region });
+  }
+  return _dynamodbClient;
+}
+
 /**
  * Verify an HMAC auth token and return the decoded payload, or null if invalid.
  * Token format: base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload))
- * Payload format: "{tenantId}:{accountId1,accountId2,...}" (accountIds sorted)
+ * Payload: "{tenantId}|{issuer}|{audience}|{sortedAccounts,comma,joined}"
  */
 function verifyBlobAuthToken(
   token: string,
   secret: string,
-): { tenantId: string; accountIds: string[] } | null {
+): { tenantId: string; accountIds: string[]; issuer: string; audience: string } | null {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
 
@@ -42,24 +50,30 @@ function verifyBlobAuthToken(
     return null;
   }
 
-  const colonIdx = payloadStr.indexOf(':');
-  if (colonIdx === -1) return null;
-  const tenantId = payloadStr.substring(0, colonIdx);
-  const accountsStr = payloadStr.substring(colonIdx + 1);
+  const firstPipe = payloadStr.indexOf('|');
+  if (firstPipe === -1) return null;
+  const tenantId = payloadStr.substring(0, firstPipe);
+  const afterTenant = payloadStr.substring(firstPipe + 1);
+  const secondPipe = afterTenant.indexOf('|');
+  if (secondPipe === -1) return null;
+  const issuer = afterTenant.substring(0, secondPipe);
+  const afterIssuer = afterTenant.substring(secondPipe + 1);
+  const thirdPipe = afterIssuer.indexOf('|');
+  if (thirdPipe === -1) return null;
+  const audience = afterIssuer.substring(0, thirdPipe);
+  const accountsStr = afterIssuer.substring(thirdPipe + 1);
   const accountIds = accountsStr ? accountsStr.split(',').filter(Boolean) : [];
   if (!tenantId) return null;
-
-  return { tenantId, accountIds };
+  return { tenantId, accountIds, issuer, audience };
 }
 
 /**
  * Lambda@Edge function to authorize blob downloads (JMAP spec compliant)
  * 
  * Configuration is passed via custom origin headers:
- * - x-table-name: DynamoDB item table name
- * - x-jwk-cache-table: DynamoDB JWK cache table name  
+ * - x-jwk-cache-table: DynamoDB JWK cache table name
  * - x-region: AWS region for DynamoDB
- * - Uses the token's `iss` claim and resolves issuer->tenant via config table
+ * - x-hmac-secret: HMAC signing key for auth token verification
  * 
  * JMAP Download URL format (RFC 8620):
  * GET /download?accountId={accountId}&blobId={blobId}&type={type}&name={name}
@@ -115,8 +129,7 @@ export const handler = async (event: any) => {
       return createErrorResponse(500, 'Configuration error');
     }
 
-    // Initialize DynamoDB client
-    const dynamodb = new DynamoDBClient({ region: config.region });
+    const dynamodb = getDynamoDBClient(config.region);
 
     // Extract and validate JMAP download parameters
     const queryString = request.querystring || '';
@@ -138,81 +151,36 @@ export const handler = async (event: any) => {
       return createErrorResponse(401, 'Missing or invalid Authorization header');
     }
 
-    // HMAC fast path: skip all DDB account lookups
     const urlParams = new URLSearchParams(queryString);
     const authToken = urlParams.get('auth');
-
-    let s3Key: string;
-
-    if (authToken && config.hmacSecret) {
-      const jwtResult = await verifyJWTSignatureOnly(
-        token, dynamodb, config.jwkCacheTable, config.configTable,
-        config.jwtAlgorithms, config.authPolicyName,
-      );
-      if (!jwtResult) {
-        return createErrorResponse(401, 'Unauthorized');
-      }
-
-      const hmacPayload = verifyBlobAuthToken(authToken, config.hmacSecret);
-      if (!hmacPayload) {
-        return createErrorResponse(403, 'Access denied: invalid auth token');
-      }
-
-      if (parsed.type !== 'principal') {
-        if (!hmacPayload.accountIds.includes(params.accountId)) {
-          return createErrorResponse(403, 'Access denied: account not authorized');
-        }
-      }
-
-      s3Key = constructS3Key(hmacPayload.tenantId, params.accountId, parsed);
-    } else {
-      // Legacy DDB path (backward compatibility when auth= is absent)
-      // Verify JWT first to get tenantId, then query the entity with the correct tenant-scoped key
-      const userContext = await verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName);
-
-      // Verify JWT token is valid
-      if (!userContext) {
-        return createErrorResponse(401, 'Invalid token');
-      }
-
-      // Verify user has access to requested account
-      if (!userContext.accountIds.includes(params.accountId)) {
-        return createErrorResponse(403, 'Access denied: account not authorized');
-      }
-
-      // Resolve entity, verify ownership, and derive S3 key based on blob type.
-      if (parsed.type === 'email') {
-        const email = await getEmail(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-        if (!email) {
-          return createErrorResponse(404, 'Email not found');
-        }
-        if (email.accountId !== params.accountId) {
-          return createErrorResponse(403, 'Access denied: email does not belong to requested account');
-        }
-        s3Key = constructS3Key(userContext.tenantId, email.accountId, parsed);
-
-      } else if (parsed.type === 'contact') {
-        const contact = await getContactCard(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-        if (!contact) {
-          return createErrorResponse(404, 'Contact not found');
-        }
-        if (contact.accountId !== params.accountId) {
-          return createErrorResponse(403, 'Access denied: contact does not belong to requested account');
-        }
-        s3Key = constructS3Key(userContext.tenantId, contact.accountId, parsed);
-
-      } else {
-        // principal
-        const principal = await getPrincipal(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-        if (!principal) {
-          return createErrorResponse(404, 'Principal not found');
-        }
-        if (principal.primaryAccountId !== params.accountId) {
-          return createErrorResponse(403, 'Access denied: principal does not belong to requested account');
-        }
-        s3Key = constructS3Key(userContext.tenantId, principal.primaryAccountId, parsed);
-      }
+    if (!authToken || !config.hmacSecret) {
+      return createErrorResponse(401, 'Unauthorized');
     }
+
+    const jwtResult = await verifyJWTSignatureOnly(
+      token, dynamodb, config.jwkCacheTable, config.jwtAlgorithms,
+    );
+    if (!jwtResult) {
+      return createErrorResponse(401, 'Unauthorized');
+    }
+
+    const hmacPayload = verifyBlobAuthToken(authToken, config.hmacSecret);
+    if (!hmacPayload) {
+      return createErrorResponse(403, 'Access denied: invalid auth token');
+    }
+
+    if (parsed.type !== 'principal' && !hmacPayload.accountIds.includes(params.accountId)) {
+      return createErrorResponse(403, 'Access denied: account not authorized');
+    }
+
+    if (jwtResult.issuer && hmacPayload.issuer !== jwtResult.issuer) {
+      return createErrorResponse(403, 'Access denied: issuer mismatch');
+    }
+    if (jwtResult.audience && hmacPayload.audience !== jwtResult.audience) {
+      return createErrorResponse(403, 'Access denied: audience mismatch');
+    }
+
+    const s3Key = constructS3Key(hmacPayload.tenantId, params.accountId, parsed);
 
     request.uri = `/${s3Key}`;
     delete request.querystring;

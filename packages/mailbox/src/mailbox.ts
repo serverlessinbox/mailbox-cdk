@@ -418,8 +418,6 @@ export class Mailbox extends Construct {
     const blobHmacKey = bootstrap.hmacKey;
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
       emailBucket: this.emailBucket,
-      itemTable,
-      configTable,
       jwkCacheTable: jwkCache.table,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,

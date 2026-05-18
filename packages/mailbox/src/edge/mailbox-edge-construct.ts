@@ -111,6 +111,7 @@ export class MailboxEdgeConstruct extends Construct {
         props.blobAuthorizerReference.s3VersionId,
       ),
       role: blobAuthorizerRole,
+      memorySize: 512,
       description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge (${Aws.STACK_NAME})`,
       // logGroup: new LogGroup(this, 'blob-authorizer-log-group', {
       //   retention: RetentionDays.ONE_MONTH,
