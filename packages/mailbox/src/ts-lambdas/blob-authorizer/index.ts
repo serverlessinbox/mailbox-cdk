@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import * as crypto from 'crypto';
 import { extractConfig } from './config';
-import { verifyToken, extractToken } from './jwt';
+import { verifyToken, verifyJWTSignatureOnly, extractToken } from './jwt';
 import { getEmail, getContactCard, getPrincipal } from './dynamodb';
 import {
   createErrorResponse,
@@ -9,6 +10,47 @@ import {
   constructS3Key,
   addDownloadHeaders
 } from './utils';
+
+/**
+ * Verify an HMAC auth token and return the decoded payload, or null if invalid.
+ * Token format: base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload))
+ * Payload format: "{tenantId}:{accountId1,accountId2,...}" (accountIds sorted)
+ */
+function verifyBlobAuthToken(
+  token: string,
+  secret: string,
+): { tenantId: string; accountIds: string[] } | null {
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  let payloadStr: string;
+  try {
+    payloadStr = Buffer.from(parts[0], 'base64url').toString('utf8');
+  } catch {
+    return null;
+  }
+
+  let providedSig: Buffer;
+  try {
+    providedSig = Buffer.from(parts[1], 'base64url');
+  } catch {
+    return null;
+  }
+
+  const expectedSig = crypto.createHmac('sha256', secret).update(payloadStr).digest();
+  if (expectedSig.length !== providedSig.length || !crypto.timingSafeEqual(expectedSig, providedSig)) {
+    return null;
+  }
+
+  const colonIdx = payloadStr.indexOf(':');
+  if (colonIdx === -1) return null;
+  const tenantId = payloadStr.substring(0, colonIdx);
+  const accountsStr = payloadStr.substring(colonIdx + 1);
+  const accountIds = accountsStr ? accountsStr.split(',').filter(Boolean) : [];
+  if (!tenantId) return null;
+
+  return { tenantId, accountIds };
+}
 
 /**
  * Lambda@Edge function to authorize blob downloads (JMAP spec compliant)
@@ -96,52 +138,80 @@ export const handler = async (event: any) => {
       return createErrorResponse(401, 'Missing or invalid Authorization header');
     }
 
-    // Verify JWT first to get tenantId, then query the entity with the correct tenant-scoped key
-    const userContext = await verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName);
+    // HMAC fast path: skip all DDB account lookups
+    const urlParams = new URLSearchParams(queryString);
+    const authToken = urlParams.get('auth');
 
-    // Verify JWT token is valid
-    if (!userContext) {
-      return createErrorResponse(401, 'Invalid token');
-    }
-
-    // Verify user has access to requested account
-    if (!userContext.accountIds.includes(params.accountId)) {
-      return createErrorResponse(403, 'Access denied: account not authorized');
-    }
-
-    // Resolve entity, verify ownership, and derive S3 key based on blob type.
     let s3Key: string;
 
-    if (parsed.type === 'email') {
-      const email = await getEmail(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-      if (!email) {
-        return createErrorResponse(404, 'Email not found');
+    if (authToken && config.hmacSecret) {
+      const jwtResult = await verifyJWTSignatureOnly(
+        token, dynamodb, config.jwkCacheTable, config.configTable,
+        config.jwtAlgorithms, config.authPolicyName,
+      );
+      if (!jwtResult) {
+        return createErrorResponse(401, 'Unauthorized');
       }
-      if (email.accountId !== params.accountId) {
-        return createErrorResponse(403, 'Access denied: email does not belong to requested account');
-      }
-      s3Key = constructS3Key(userContext.tenantId, email.accountId, parsed);
 
-    } else if (parsed.type === 'contact') {
-      const contact = await getContactCard(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-      if (!contact) {
-        return createErrorResponse(404, 'Contact not found');
+      const hmacPayload = verifyBlobAuthToken(authToken, config.hmacSecret);
+      if (!hmacPayload) {
+        return createErrorResponse(403, 'Access denied: invalid auth token');
       }
-      if (contact.accountId !== params.accountId) {
-        return createErrorResponse(403, 'Access denied: contact does not belong to requested account');
-      }
-      s3Key = constructS3Key(userContext.tenantId, contact.accountId, parsed);
 
+      if (parsed.type !== 'principal') {
+        if (!hmacPayload.accountIds.includes(params.accountId)) {
+          return createErrorResponse(403, 'Access denied: account not authorized');
+        }
+      }
+
+      s3Key = constructS3Key(hmacPayload.tenantId, params.accountId, parsed);
     } else {
-      // principal
-      const principal = await getPrincipal(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
-      if (!principal) {
-        return createErrorResponse(404, 'Principal not found');
+      // Legacy DDB path (backward compatibility when auth= is absent)
+      // Verify JWT first to get tenantId, then query the entity with the correct tenant-scoped key
+      const userContext = await verifyToken(token, dynamodb, config.jwkCacheTable, config.configTable, config.jwtAlgorithms, config.authPolicyName);
+
+      // Verify JWT token is valid
+      if (!userContext) {
+        return createErrorResponse(401, 'Invalid token');
       }
-      if (principal.primaryAccountId !== params.accountId) {
-        return createErrorResponse(403, 'Access denied: principal does not belong to requested account');
+
+      // Verify user has access to requested account
+      if (!userContext.accountIds.includes(params.accountId)) {
+        return createErrorResponse(403, 'Access denied: account not authorized');
       }
-      s3Key = constructS3Key(userContext.tenantId, principal.primaryAccountId, parsed);
+
+      // Resolve entity, verify ownership, and derive S3 key based on blob type.
+      if (parsed.type === 'email') {
+        const email = await getEmail(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+        if (!email) {
+          return createErrorResponse(404, 'Email not found');
+        }
+        if (email.accountId !== params.accountId) {
+          return createErrorResponse(403, 'Access denied: email does not belong to requested account');
+        }
+        s3Key = constructS3Key(userContext.tenantId, email.accountId, parsed);
+
+      } else if (parsed.type === 'contact') {
+        const contact = await getContactCard(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+        if (!contact) {
+          return createErrorResponse(404, 'Contact not found');
+        }
+        if (contact.accountId !== params.accountId) {
+          return createErrorResponse(403, 'Access denied: contact does not belong to requested account');
+        }
+        s3Key = constructS3Key(userContext.tenantId, contact.accountId, parsed);
+
+      } else {
+        // principal
+        const principal = await getPrincipal(parsed.entityId, userContext.tenantId, dynamodb, config.tableName);
+        if (!principal) {
+          return createErrorResponse(404, 'Principal not found');
+        }
+        if (principal.primaryAccountId !== params.accountId) {
+          return createErrorResponse(403, 'Access denied: principal does not belong to requested account');
+        }
+        s3Key = constructS3Key(userContext.tenantId, principal.primaryAccountId, parsed);
+      }
     }
 
     request.uri = `/${s3Key}`;

@@ -502,6 +502,55 @@ export async function verifyToken(
 }
 
 /**
+ * Verify JWT signature and claims without performing any IDP or account DDB lookups.
+ * Used in the HMAC fast path where tenant/account identity comes from the auth token.
+ */
+export async function verifyJWTSignatureOnly(
+  token: string,
+  dynamodb: DynamoDBClient,
+  jwkCacheTable: string,
+  configTable: string,
+  jwtAlgorithms?: string[],
+  authPolicyName?: string,
+): Promise<{ sub: string } | null> {
+  try {
+    const unverified = jwt.decode(token, { complete: true });
+    if (!unverified || typeof unverified.payload !== 'object') return null;
+    const unverifiedPayload = unverified.payload as jwt.JwtPayload;
+    const issuerFromToken = normalizeIssuer(unverifiedPayload.iss ?? '');
+    if (!issuerFromToken) return null;
+    if (!unverified.header?.kid) return null;
+
+    const policyName = (authPolicyName ?? '').trim();
+    if (!policyName) return null;
+
+    // Both of these are warm-cached after first cold-start
+    const [signingKey, authPolicy] = await Promise.all([
+      getSigningKey(unverified.header.kid, dynamodb, jwkCacheTable, issuerFromToken),
+      getAuthPolicyConfig(dynamodb, configTable, policyName),
+    ]);
+
+    const allowedAlgorithms: jwt.Algorithm[] = (jwtAlgorithms && jwtAlgorithms.length > 0)
+      ? jwtAlgorithms as jwt.Algorithm[]
+      : ['RS256'];
+
+    const verified = jwt.verify(token, signingKey, {
+      algorithms: allowedAlgorithms,
+      clockTolerance: 300,
+    }) as jwt.JwtPayload;
+
+    if (!verifyAudienceLikeGoAuthorizer(verified, authPolicy.audiences)) return null;
+    if (!hasAnyOfRequiredGroups(verified, authPolicy.requireAnyOfGroups)) return null;
+
+    const sub = verified.sub;
+    if (!sub) return null;
+    return { sub };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extract token from Authorization header
  */
 export function extractToken(authHeader: string | undefined): string | null {

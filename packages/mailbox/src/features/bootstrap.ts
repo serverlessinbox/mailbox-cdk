@@ -34,6 +34,8 @@ export interface BootstrapProps {
 export class Bootstrap extends Construct {
   /** The Lambda function backing the bootstrap custom resource. */
   readonly handler: BootstrapLambda;
+  /** Stable HMAC key returned by the bootstrap custom resource. */
+  readonly hmacKey: string;
 
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
@@ -52,7 +54,7 @@ export class Bootstrap extends Construct {
     });
     this.handler = handler;
 
-    new CustomResource(this, id, {
+    const cr = new CustomResource(this, id, {
       serviceToken: handler.functionArn,
       properties: {
         bootstrapNonce: Date.now().toString(),
@@ -73,6 +75,7 @@ export class Bootstrap extends Construct {
           : undefined,
       },
     });
+    this.hmacKey = cr.getAttString('blobHmacKey');
 
     props.configTable.grantReadWriteData(handler);
 

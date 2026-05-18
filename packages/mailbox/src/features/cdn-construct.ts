@@ -16,6 +16,8 @@ export interface CdnProps {
   allowedOrigins?: string[];
   jwtAlgorithms?: string[];
 
+  blobHmacKey: string;
+
   /** Pre-deployed Lambda@Edge version (us-east-1). */
   blobAuthorizerVersion: lambda.IVersion;
 
@@ -60,6 +62,7 @@ export class Cdn extends Construct {
         'x-jwt-algorithms': (props.jwtAlgorithms && props.jwtAlgorithms.length > 0) ? props.jwtAlgorithms.join(',') : 'RS256',
         // Policy-driven auth (audiences + required group) for JMAP downloads
         'x-auth-policy-name': 'JMAP_API',
+        'x-hmac-secret': props.blobHmacKey,
       },
     });
 
