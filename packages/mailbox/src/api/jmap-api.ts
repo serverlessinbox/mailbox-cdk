@@ -45,8 +45,6 @@ export interface JMapApiProps {
 
   sesConfigSetName: string;
 
-  blobHmacKey: string;
-
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
   domainName?: string;
 
@@ -136,7 +134,6 @@ export class JMapApi extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
       userProvisionionFunction: userProvisionerLambda,
-      blobHmacKey: props.blobHmacKey,
       oauthHandlerConfig: {
         issuer: props.authProvider.issuer,
         tokenEndpoint: props.authProvider.tokenEndpoint,

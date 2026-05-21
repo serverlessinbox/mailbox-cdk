@@ -355,6 +355,7 @@ export class Mailbox extends Construct {
       domain: props.domainName,
       oidcIssuer: authProvider.issuer,
       configTable: configTable,
+      jwkCacheTable: jwkCache.table,
       artifactResolver,
       sesRuleSetName: props.activateReceiving ? sesRules.ruleSetName : undefined,
 
@@ -415,14 +416,12 @@ export class Mailbox extends Construct {
     }
 
     // CloudFront CDN for blob downloads with Lambda@Edge
-    const blobHmacKey = bootstrap.hmacKey;
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
       emailBucket: this.emailBucket,
       jwkCacheTable: jwkCache.table,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
-      blobHmacKey,
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
       certificate: hasHostedZone ? edgeStack.edgeCertificate : props.cloudFrontCertificate,
     });
@@ -492,8 +491,6 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
-
-      blobHmacKey,
 
       oauthClientId: jmapOAuthClientId,
 

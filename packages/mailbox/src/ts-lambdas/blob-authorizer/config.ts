@@ -6,7 +6,6 @@ export interface Config {
   jwkCacheTable: string;
   region: string;
   jwtAlgorithms?: string[];
-  hmacSecret: string;
 }
 
 /**
@@ -22,9 +21,8 @@ export function extractConfig(request: any): Config | null {
   const jwkCacheTable = customHeaders['x-jwk-cache-table']?.[0]?.value;
   const region = customHeaders['x-region']?.[0]?.value || 'us-east-1';
   const jwtAlgorithmsRaw = customHeaders['x-jwt-algorithms']?.[0]?.value;
-  const hmacSecret = customHeaders['x-hmac-secret']?.[0]?.value;
 
-  if (!jwkCacheTable || !hmacSecret) {
+  if (!jwkCacheTable) {
     return null;
   }
 
@@ -37,6 +35,5 @@ export function extractConfig(request: any): Config | null {
         .map((s: string) => s.trim())
         .filter(Boolean)
       : undefined,
-    hmacSecret,
   };
 }

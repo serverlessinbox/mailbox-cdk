@@ -20,6 +20,7 @@ export class JWKCacheUpdaterLambda extends GoLambda {
       environment: {
         ISSUERS: props.issuers.join(','),
         TABLE_NAME: props.jwkCacheTable.tableName,
+        HMAC_KEY_ROTATION_DAYS: '30',
       },
     });
 

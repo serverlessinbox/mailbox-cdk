@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
 import { extractConfig } from './config';
-import { verifyJWTSignatureOnly, extractToken } from './jwt';
+import { verifyJWTSignatureOnly, extractToken, getHmacKeys } from './jwt';
 import {
   createErrorResponse,
   extractDownloadParams,
@@ -153,7 +153,7 @@ export const handler = async (event: any) => {
 
     const urlParams = new URLSearchParams(queryString);
     const authToken = urlParams.get('auth');
-    if (!authToken || !config.hmacSecret) {
+    if (!authToken) {
       return createErrorResponse(401, 'Unauthorized');
     }
 
@@ -164,7 +164,12 @@ export const handler = async (event: any) => {
       return createErrorResponse(401, 'Unauthorized');
     }
 
-    const hmacPayload = verifyBlobAuthToken(authToken, config.hmacSecret);
+    const hmacKeys = await getHmacKeys(dynamodb, config.jwkCacheTable);
+    if (!hmacKeys) {
+      return createErrorResponse(401, 'Unauthorized');
+    }
+    const hmacPayload = verifyBlobAuthToken(authToken, hmacKeys.current)
+      ?? verifyBlobAuthToken(authToken, hmacKeys.previous ?? '');
     if (!hmacPayload) {
       return createErrorResponse(403, 'Access denied: invalid auth token');
     }

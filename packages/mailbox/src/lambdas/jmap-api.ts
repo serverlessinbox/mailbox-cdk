@@ -30,7 +30,6 @@ export interface ApiHandlerLambdaProps {
   userProvisionionFunction: IFunction;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;
-  blobHmacKey: string;
 }
 
 export class ApiHandlerLambda extends GoLambda {
@@ -60,12 +59,12 @@ export class ApiHandlerLambda extends GoLambda {
           // Go expects map[string][]string; Permission[] is string[] at runtime.
           scopeMap: props.oauthHandlerConfig.scopeMap,
         }),
-        BLOB_HMAC_KEY: props.blobHmacKey,
       },
     });
 
     // Grant the Lambda function read permissions to the config table
     props.configTable.grantReadData(this);
+    props.jwkCacheTable.grantReadData(this);
 
     // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWriteData(this);

@@ -1,8 +1,13 @@
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
 
-// In-memory cache for JWKS (persists across warm Lambda invocations)
-const jwksCache: Map<string, { keys: any[] }> = new Map();
+// In-memory cache for all DynamoDB cache items (persists across warm Lambda invocations)
+interface CacheItems {
+  jwks: Map<string, { keys: any[] }>;  // key = normalized issuer
+  hmacKeys: { current: string; previous?: string } | null;
+}
+const cacheItems: CacheItems = { jwks: new Map(), hmacKeys: null };
+let cacheLoaded = false;
 
 interface JWK {
   kty: string;
@@ -11,6 +16,28 @@ interface JWK {
   n: string;
   e: string;
   alg?: string;
+}
+
+async function loadAllCacheItems(dynamodb: DynamoDBClient, jwkCacheTable: string): Promise<void> {
+  const command = new QueryCommand({
+    TableName: jwkCacheTable,
+    KeyConditionExpression: 'pk = :pk',
+    ExpressionAttributeValues: { ':pk': { S: 'cache' } },
+  });
+
+  const response = await dynamodb.send(command);
+
+  for (const item of response.Items ?? []) {
+    const sk = item.sk?.S;
+    const value = item.value?.S;
+    if (!sk || !value) continue;
+    if (sk.startsWith('https://')) {
+      const jwks = JSON.parse(value);
+      cacheItems.jwks.set(normalizeIssuer(sk), jwks);
+    } else if (sk === 'hmac:keys') {
+      cacheItems.hmacKeys = JSON.parse(value);
+    }
+  }
 }
 
 /**
@@ -26,32 +53,32 @@ async function getJWKS(
     throw new Error('issuer is required');
   }
 
-  // Return cached value if available (warm Lambda)
-  const cached = jwksCache.get(issuerNorm);
-  if (cached) {
-    return cached;
+  if (!cacheLoaded) {
+    await loadAllCacheItems(dynamodb, jwkCacheTable);
+    cacheLoaded = true;
   }
 
-  // Get from DynamoDB
-  const command = new GetItemCommand({
-    TableName: jwkCacheTable,
-    Key: {
-      id: { S: issuer },
-    },
-  });
-
-  const response = await dynamodb.send(command);
-
-  if (!response.Item || !response.Item.value?.S) {
+  const jwks = cacheItems.jwks.get(issuerNorm);
+  if (!jwks) {
     throw new Error('JWKS not found in cache');
   }
 
-  const jwks = JSON.parse(response.Item.value.S);
-
-  // Cache for subsequent invocations
-  jwksCache.set(issuerNorm, jwks);
-
   return jwks;
+}
+
+/**
+ * Get HMAC keys from DynamoDB (with in-memory caching)
+ */
+export async function getHmacKeys(
+  dynamodb: DynamoDBClient,
+  jwkCacheTable: string,
+): Promise<{ current: string; previous?: string } | null> {
+  if (!cacheLoaded) {
+    await loadAllCacheItems(dynamodb, jwkCacheTable);
+    cacheLoaded = true;
+  }
+
+  return cacheItems.hmacKeys;
 }
 
 function normalizeIssuer(issuer: string): string {

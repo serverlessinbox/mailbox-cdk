@@ -13,6 +13,7 @@ import {
 
 export interface BootstrapProps {
   configTable: ITable;
+  jwkCacheTable: ITable;
 
   tenantName?: string;
   defaultLocalPart?: string;
@@ -34,8 +35,6 @@ export interface BootstrapProps {
 export class Bootstrap extends Construct {
   /** The Lambda function backing the bootstrap custom resource. */
   readonly handler: BootstrapLambda;
-  /** Stable HMAC key returned by the bootstrap custom resource. */
-  readonly hmacKey: string;
 
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
@@ -50,6 +49,7 @@ export class Bootstrap extends Construct {
 
     const handler = new BootstrapLambda(this, 'handler', {
       configTable: props.configTable,
+      jwkCacheTable: props.jwkCacheTable,
       artifactResolver: props.artifactResolver,
     });
     this.handler = handler;
@@ -75,7 +75,6 @@ export class Bootstrap extends Construct {
           : undefined,
       },
     });
-    this.hmacKey = cr.getAttString('blobHmacKey');
 
     props.configTable.grantReadWriteData(handler);
 

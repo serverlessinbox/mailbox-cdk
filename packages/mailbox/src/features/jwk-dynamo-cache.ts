@@ -27,7 +27,11 @@ export class JwkDynamoCache extends Construct {
     const table = new StackNamedTable(this, 'jwks-cache', {
       removalPolicy: RemovalPolicy.DESTROY,
       partitionKey: {
-        name: 'id',
+        name: 'pk',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'sk',
         type: AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST,
