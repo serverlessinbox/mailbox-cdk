@@ -26,7 +26,7 @@ export interface JMapApiProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   emailBucket: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
@@ -63,7 +63,7 @@ export class JMapApi extends Construct {
     super(scope, id);
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
-      jwkCacheTable: props.jwkCacheTable,
+      authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
@@ -125,7 +125,7 @@ export class JMapApi extends Construct {
       configTable: props.configTable,
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
-      jwkCacheTable: props.jwkCacheTable,
+      authKeyStoreTable: props.authKeyStoreTable,
       emailBucket: props.emailBucket,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue: props.auditEventsQueue,

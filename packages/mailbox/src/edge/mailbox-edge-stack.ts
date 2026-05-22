@@ -139,11 +139,11 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     configTableArnParam.overrideLogicalId('configTableArn');
 
-    const jwkCacheTableArnParam = new cdk.CfnParameter(this, 'jwk-cache-table-arn', {
+    const authKeyStoreTableArnParam = new cdk.CfnParameter(this, 'auth-key-store-table-arn', {
       type: 'String',
-      description: 'DynamoDB JWK cache table ARN (regional) used by blob-authorizer',
+      description: 'DynamoDB auth key store table ARN (regional) used by blob-authorizer',
     });
-    jwkCacheTableArnParam.overrideLogicalId('jwkCacheTableArn');
+    authKeyStoreTableArnParam.overrideLogicalId('authKeyStoreTableArn');
 
     // Build artifact reference from parameters
     const blobAuthorizerReference: ArtifactReference = {
@@ -163,7 +163,7 @@ export class MailboxEdgeStack extends cdk.Stack {
       blobAuthorizerReference,
       itemTableArn: itemTableArnParam.valueAsString,
       configTableArn: configTableArnParam.valueAsString,
-      jwkCacheTableArn: jwkCacheTableArnParam.valueAsString,
+      authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
     };
 
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);

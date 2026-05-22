@@ -28,7 +28,7 @@ export interface AdminApiProps {
   auditLogTable: ITable;
   changelogTable: ITable;
   mailFeedbackTable: ITable;
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   emailBucket: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
@@ -111,7 +111,7 @@ export class AdminApi extends Construct {
     this.apiHandlerLambda = apiHandlerLambda;
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
-      jwkCacheTable: props.jwkCacheTable,
+      authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,

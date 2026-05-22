@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
 
 export interface AuthorizerLambdaProps {
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   configTable: ITable;
   userPoolIssuer: string;
   artifactResolver: IArtifactResolver;
@@ -26,7 +26,7 @@ export class AuthorizerLambda extends GoLambda {
       memorySize: 256,
       timeout: Duration.seconds(30),
       environment: {
-        JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
+        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         USER_POOL_ISSUER: props.userPoolIssuer,
         AUTH_POLICY_NAME: props.authPolicyName ?? AUTH_POLICY_JMAP_API,
@@ -34,7 +34,7 @@ export class AuthorizerLambda extends GoLambda {
       },
     });
 
-    props.jwkCacheTable.grantReadData(this);
+    props.authKeyStoreTable.grantReadData(this);
     props.configTable.grantReadData(this);
   }
 }

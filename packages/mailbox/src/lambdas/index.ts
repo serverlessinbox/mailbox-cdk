@@ -47,8 +47,8 @@ export type { EmailSenderLambdaProps } from './email-sender';
 export { TantivyIndexerLambda } from './tantivy-indexer';
 export type { TantivyIndexerLambdaProps } from './tantivy-indexer';
 
-export { JWKCacheUpdaterLambda } from './jwk-cache-updater';
-export type { JWKCacheUpdaterLambdaProps } from './jwk-cache-updater';
+export { AuthKeyStoreUpdaterLambda } from './auth-key-store-updater';
+export type { AuthKeyStoreUpdaterLambdaProps } from './auth-key-store-updater';
 
 export { AuditWriterLambda } from './audit-writer';
 export type { AuditWriterLambdaProps } from './audit-writer';

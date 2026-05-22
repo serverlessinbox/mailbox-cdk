@@ -38,8 +38,8 @@ export interface MailboxEdgeConstructProps {
   /** DynamoDB config table ARN (regional) used by blob-authorizer */
   readonly configTableArn: string;
 
-  /** DynamoDB JWK cache table ARN (regional) used by blob-authorizer */
-  readonly jwkCacheTableArn: string;
+  /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
+  readonly authKeyStoreTableArn: string;
 }
 
 /**
@@ -134,10 +134,10 @@ export class MailboxEdgeConstruct extends Construct {
     const dynamoResourceArns = [
       props.itemTableArn,
       props.configTableArn,
-      props.jwkCacheTableArn,
+      props.authKeyStoreTableArn,
       Fn.join('', [props.itemTableArn, '/index/*']),
       Fn.join('', [props.configTableArn, '/index/*']),
-      Fn.join('', [props.jwkCacheTableArn, '/index/*']),
+      Fn.join('', [props.authKeyStoreTableArn, '/index/*']),
     ];
 
     this.blobAuthorizerFunction.addToRolePolicy(

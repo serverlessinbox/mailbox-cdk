@@ -34,8 +34,8 @@ export interface MailboxEdgeDeployerProps {
   /** DynamoDB config table ARN (regional) used by blob-authorizer */
   readonly configTableArn: string;
 
-  /** DynamoDB JWK cache table ARN (regional) used by blob-authorizer */
-  readonly jwkCacheTableArn: string;
+  /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
+  readonly authKeyStoreTableArn: string;
 
   /** Optional product/stack version used for tagging edge resources. */
   readonly productVersion?: string;
@@ -405,7 +405,7 @@ export class MailboxEdgeDeployer extends Construct {
       blobAuthorizerKey: blobAuthorizerKey,
       itemTableArn: props.itemTableArn,
       configTableArn: props.configTableArn,
-      jwkCacheTableArn: props.jwkCacheTableArn,
+      authKeyStoreTableArn: props.authKeyStoreTableArn,
 
       // Tagging/back-reference parameters (consumed by the edge stack template)
       originDeployment: Aws.STACK_NAME,

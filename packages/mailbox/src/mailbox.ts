@@ -7,25 +7,21 @@ import {
   ItemTable,
   MailFeedbackTable,
 } from './resources';
-import { JwkDynamoCache } from './features/jwk-dynamo-cache';
+import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
 import { AdminApi, JMapApi, WebSocketPush } from './api';
 import type { AdminApiAddon, AdminApiAddonContext } from './api';
-import { SesRules } from './email/receiving/ses-rules';
+import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
 } from './auth/types';
 import type { MailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { CertWaiterLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
-import type { IArtifactResolver } from './artifacts/artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
-import { CertificateWaiter } from './features/certificate-waiter';
-import { LicenseRefresh } from './features/license-refresh';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
@@ -91,13 +87,6 @@ export interface MailboxProps {
 
   /** Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain). */
   wsCertificate?: acm.ICertificate;
-
-  /**
-   * When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt
-   * rule set. Only one rule set can be active per account per region — this is an explicit operator
-   * decision.
-   */
-  activateReceiving?: boolean;
 }
 
 /**
@@ -108,7 +97,6 @@ export class Mailbox extends Construct {
   public readonly emailProcessorLambda: EmailProcessorLambda;
   public readonly configTable: ConfigTable;
   public readonly cdn: Cdn;
-  private readonly artifactResolver: IArtifactResolver;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `createAdminUi !== false`). */
@@ -126,6 +114,15 @@ export class Mailbox extends Construct {
     adminUi?: AuthClientConfig;
     jmapUi?: AuthClientConfig;
   } = {};
+
+  emailDelivery(): EmailDelivery {
+    return {
+      emailBucket: this.emailBucket,
+      emailProcessor: this.emailProcessorLambda,
+      bucketPrefix: 'incoming-emails/',
+      queueProps: this.emailQueueProps,
+    }
+  }
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
@@ -155,8 +152,7 @@ export class Mailbox extends Construct {
 
     const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
 
-    this.artifactResolver = artifactResolverForTags;
-    const artifactResolver = this.artifactResolver;
+    const artifactResolver = artifactResolverForTags;
 
     // Configuration constants
 
@@ -186,12 +182,12 @@ export class Mailbox extends Construct {
     const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(mailFeedbackTable, 'storage');
 
-    // JWK cache updater - writes to DynamoDB for Lambda@Edge
-    const jwkCache = new JwkDynamoCache(this, 'jwk-cache', {
+    // Auth key store - writes to DynamoDB for Lambda@Edge
+    const authKeyStore = new AuthKeyStore(this, 'auth-key-store', {
       issuers: [authProvider.issuer],
       artifactResolver,
     });
-    applyServerlessInboxComponentTag(jwkCache, 'auth');
+    applyServerlessInboxComponentTag(authKeyStore, 'auth');
 
     const edgeStack = new MailboxEdgeDeployer(this, 'edge-deployer', {
       domainName: props.domainName,
@@ -201,7 +197,7 @@ export class Mailbox extends Construct {
       hostedZoneName: props.hostedZone?.zoneName,
       itemTableArn: itemTable.tableArn,
       configTableArn: configTable.tableArn,
-      jwkCacheTableArn: jwkCache.table.tableArn,
+      authKeyStoreTableArn: authKeyStore.table.tableArn,
       productVersion: stackVersion,
       deployer,
     });
@@ -302,7 +298,6 @@ export class Mailbox extends Construct {
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
-        uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       });
       applyServerlessInboxComponentTag(webmailUi, 'ui');
 
@@ -325,39 +320,11 @@ export class Mailbox extends Construct {
       ?? this.oauthClients.adminUi?.groups
       ?? undefined;
 
-    new LicenseRefresh(this, 'license-refresh', {
-      configTable: configTable,
-      artifactResolver,
-    });
-
-    // Lambda function to process incoming emails
-    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
-      emailBucket: this.emailBucket,
-      artifactResolver,
-    });
-    applyServerlessInboxComponentTag(this.emailProcessorLambda, 'email');
-
-    const sesRules = new SesRules(this, 'ses-rules', {
-      delivery: {
-        emailBucket: this.emailBucket,
-        emailProcessor: this.emailProcessorLambda,
-        bucketPrefix: 'incoming-emails/',
-        artifactResolver,
-        queueProps: this.emailQueueProps,
-      },
-    });
-    applyServerlessInboxComponentTag(sesRules, 'email');
-
-    const bootstrap = new Bootstrap(this, 'bootstrap', {
+    new Bootstrap(this, 'bootstrap', {
       domain: props.domainName,
       oidcIssuer: authProvider.issuer,
       configTable: configTable,
-      jwkCacheTable: jwkCache.table,
       artifactResolver,
-      sesRuleSetName: props.activateReceiving ? sesRules.ruleSetName : undefined,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,
@@ -401,24 +368,22 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(this.node.findChild('bootstrap'), 'auth');
 
-    // If a regional SAN cert was auto-created, insert a waiter custom resource.
-    // On deletion, the waiter polls ACM DescribeCertificate until InUseBy is empty,
-    // preventing the "Certificate is in use" CloudFormation error.
-    let certWaiter: CertificateWaiter | undefined;
-    if (regionalSanCertificate) {
-      const certWaiterLambda = new CertWaiterLambda(this, 'cert-waiter-lambda', {
-        artifactResolver,
-      });
-      certWaiter = new CertificateWaiter(this, 'regional-cert-waiter', {
-        certificate: regionalSanCertificate,
-        certWaiterLambda,
-      });
-    }
+    // Lambda function to process incoming emails
+    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+      configTable: configTable,
+      itemTable: itemTable,
+      changelogTable: changelogTable,
+      emailBucket: this.emailBucket,
+      artifactResolver,
+    });
+    applyServerlessInboxComponentTag(this.emailProcessorLambda, 'email');
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
       emailBucket: this.emailBucket,
-      jwkCacheTable: jwkCache.table,
+      itemTable,
+      configTable,
+      authKeyStoreTable: authKeyStore.table,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
@@ -482,7 +447,7 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      jwkCacheTable: jwkCache.table,
+      authKeyStoreTable: authKeyStore.table,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
       emailBucket: this.emailBucket,
@@ -506,7 +471,7 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      jwkCacheTable: jwkCache.table,
+      authKeyStoreTable: authKeyStore.table,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver: artifactResolver,
       maxSubscriptions: 10,
@@ -533,7 +498,7 @@ export class Mailbox extends Construct {
       auditLogTable: auditLogTable,
       changelogTable: changelogTable,
       mailFeedbackTable: mailFeedbackTable,
-      jwkCacheTable: jwkCache.table,
+      authKeyStoreTable: authKeyStore.table,
       emailBucket: this.emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
@@ -547,12 +512,6 @@ export class Mailbox extends Construct {
       certificate: apiCertificate,
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
-
-    if (certWaiter) {
-      jmapApi.node.addDependency(certWaiter);
-      webSocketPush.node.addDependency(certWaiter);
-      adminApi.node.addDependency(certWaiter);
-    }
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);

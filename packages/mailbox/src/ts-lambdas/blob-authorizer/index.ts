@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import * as crypto from 'crypto';
 import { extractConfig } from './config';
-import { verifyJWTSignatureOnly, extractToken, getHmacKeys } from './jwt';
+import { verifyToken, extractToken } from './jwt';
+import { getEmail } from './dynamodb';
 import {
   createErrorResponse,
   extractDownloadParams,
@@ -9,74 +9,19 @@ import {
   constructS3Key,
   addDownloadHeaders
 } from './utils';
-
-// Module-level DynamoDB client (lazy init — region is fixed per CloudFront distribution)
-let _dynamodbClient: DynamoDBClient | null = null;
-function getDynamoDBClient(region: string): DynamoDBClient {
-  if (!_dynamodbClient) {
-    _dynamodbClient = new DynamoDBClient({ region });
-  }
-  return _dynamodbClient;
-}
-
-/**
- * Verify an HMAC auth token and return the decoded payload, or null if invalid.
- * Token format: base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload))
- * Payload: "{tenantId}|{issuer}|{audience}|{sortedAccounts,comma,joined}"
- */
-function verifyBlobAuthToken(
-  token: string,
-  secret: string,
-): { tenantId: string; accountIds: string[]; issuer: string; audience: string } | null {
-  const parts = token.split('.');
-  if (parts.length !== 2) return null;
-
-  let payloadStr: string;
-  try {
-    payloadStr = Buffer.from(parts[0], 'base64url').toString('utf8');
-  } catch {
-    return null;
-  }
-
-  let providedSig: Buffer;
-  try {
-    providedSig = Buffer.from(parts[1], 'base64url');
-  } catch {
-    return null;
-  }
-
-  const expectedSig = crypto.createHmac('sha256', secret).update(payloadStr).digest();
-  if (expectedSig.length !== providedSig.length || !crypto.timingSafeEqual(expectedSig, providedSig)) {
-    return null;
-  }
-
-  const firstPipe = payloadStr.indexOf('|');
-  if (firstPipe === -1) return null;
-  const tenantId = payloadStr.substring(0, firstPipe);
-  const afterTenant = payloadStr.substring(firstPipe + 1);
-  const secondPipe = afterTenant.indexOf('|');
-  if (secondPipe === -1) return null;
-  const issuer = afterTenant.substring(0, secondPipe);
-  const afterIssuer = afterTenant.substring(secondPipe + 1);
-  const thirdPipe = afterIssuer.indexOf('|');
-  if (thirdPipe === -1) return null;
-  const audience = afterIssuer.substring(0, thirdPipe);
-  const accountsStr = afterIssuer.substring(thirdPipe + 1);
-  const accountIds = accountsStr ? accountsStr.split(',').filter(Boolean) : [];
-  if (!tenantId) return null;
-  return { tenantId, accountIds, issuer, audience };
-}
+import { verifyHmacTokenWithRotation } from './hmac';
 
 /**
  * Lambda@Edge function to authorize blob downloads (JMAP spec compliant)
  * 
  * Configuration is passed via custom origin headers:
- * - x-jwk-cache-table: DynamoDB JWK cache table name
+ * - x-table-name: DynamoDB item table name
+ * - x-auth-key-store-table: DynamoDB auth key store table name
  * - x-region: AWS region for DynamoDB
- * - x-hmac-secret: HMAC signing key for auth token verification
+ * - Uses the token's `iss` claim and resolves issuer->tenant via config table
  * 
  * JMAP Download URL format (RFC 8620):
- * GET /download?accountId={accountId}&blobId={blobId}&type={type}&name={name}
+ * GET /download?accountId={accountId}&blobId={blobId}&type={type}&name={name}&auth={hmac-token}
  * Authorization: Bearer <JWT token>
  * 
  * Flow:
@@ -84,10 +29,11 @@ function verifyBlobAuthToken(
  * 2. Parse blobId to get emailID and path
  * 3. Verify JWT token and extract user context (userId, accountIds)
  * 4. Verify requested accountId is in user's allowed accountIds
- * 5. Query DynamoDB to get email entity
- * 6. Verify email's accountId matches requested accountId
- * 7. Construct S3 key and add content headers
- * 8. Forward request to S3 origin
+ * 5. Verify HMAC auth= token (tenant + account binding)
+ * 6. Query DynamoDB to get email entity
+ * 7. Verify email's accountId matches requested accountId
+ * 8. Construct S3 key and add content headers
+ * 9. Forward request to S3 origin
  */
 export const handler = async (event: any) => {
   const request = event.Records[0].cf.request;
@@ -129,7 +75,8 @@ export const handler = async (event: any) => {
       return createErrorResponse(500, 'Configuration error');
     }
 
-    const dynamodb = getDynamoDBClient(config.region);
+    // Initialize DynamoDB client
+    const dynamodb = new DynamoDBClient({ region: config.region });
 
     // Extract and validate JMAP download parameters
     const queryString = request.querystring || '';
@@ -138,11 +85,18 @@ export const handler = async (event: any) => {
       return createErrorResponse(400, 'Missing required parameters: accountId and blobId');
     }
 
+    // Extract auth= query param (HMAC blob auth token)
+    const auth = new URLSearchParams(queryString).get('auth');
+    if (!auth) {
+      return createErrorResponse(403, 'Missing auth parameter');
+    }
+
     // Parse blob ID
     const parsed = parseBlobId(params.blobId);
     if (!parsed) {
       return createErrorResponse(400, 'Invalid blobId format');
     }
+    const { emailID, path } = parsed;
 
     // Extract JWT token
     const authHeader = request.headers.authorization?.[0]?.value;
@@ -151,42 +105,47 @@ export const handler = async (event: any) => {
       return createErrorResponse(401, 'Missing or invalid Authorization header');
     }
 
-    const urlParams = new URLSearchParams(queryString);
-    const authToken = urlParams.get('auth');
-    if (!authToken) {
-      return createErrorResponse(401, 'Unauthorized');
+    // Parallelize JWT verification and email query
+    const [userContext, email] = await Promise.all([
+      verifyToken(token, dynamodb, config.authKeyStoreTable, config.configTable, config.jwtAlgorithms, config.authPolicyName),
+      getEmail(emailID, dynamodb, config.tableName),
+    ]);
+
+    // Verify JWT token is valid
+    if (!userContext) {
+      return createErrorResponse(401, 'Invalid token');
     }
 
-    const jwtResult = await verifyJWTSignatureOnly(
-      token, dynamodb, config.jwkCacheTable, config.jwtAlgorithms,
-    );
-    if (!jwtResult) {
-      return createErrorResponse(401, 'Unauthorized');
+    // Verify email exists
+    if (!email) {
+      return createErrorResponse(404, 'Email not found');
     }
 
-    const hmacKeys = await getHmacKeys(dynamodb, config.jwkCacheTable);
-    if (!hmacKeys) {
-      return createErrorResponse(401, 'Unauthorized');
-    }
-    const hmacPayload = verifyBlobAuthToken(authToken, hmacKeys.current)
-      ?? verifyBlobAuthToken(authToken, hmacKeys.previous ?? '');
-    if (!hmacPayload) {
-      return createErrorResponse(403, 'Access denied: invalid auth token');
-    }
-
-    if (parsed.type !== 'principal' && !hmacPayload.accountIds.includes(params.accountId)) {
+    // Verify user has access to requested account
+    if (!userContext.accountIds.includes(params.accountId)) {
       return createErrorResponse(403, 'Access denied: account not authorized');
     }
 
-    if (jwtResult.issuer && hmacPayload.issuer !== jwtResult.issuer) {
-      return createErrorResponse(403, 'Access denied: issuer mismatch');
+    // Verify HMAC auth= token: tenant binding and account binding
+    const hmacPayload = await verifyHmacTokenWithRotation(auth, dynamodb, config.authKeyStoreTable);
+    if (hmacPayload === null) {
+      return createErrorResponse(403, 'Access denied: invalid auth token');
     }
-    if (jwtResult.audience && hmacPayload.audience !== jwtResult.audience) {
-      return createErrorResponse(403, 'Access denied: audience mismatch');
+    if (hmacPayload.tenantId !== userContext.tenantId) {
+      return createErrorResponse(403, 'Access denied: tenant mismatch');
+    }
+    if (!hmacPayload.accountIds.includes(params.accountId)) {
+      return createErrorResponse(403, 'Access denied: account not in auth token');
     }
 
-    const s3Key = constructS3Key(hmacPayload.tenantId, params.accountId, parsed);
+    // Verify email belongs to requested account
+    // (User access to account was already verified above)
+    if (email.accountId !== params.accountId) {
+      return createErrorResponse(403, 'Access denied: email does not belong to requested account');
+    }
 
+    // Construct S3 key and modify request
+    const s3Key = constructS3Key(email.accountId, emailID, path);
     request.uri = `/${s3Key}`;
     delete request.querystring;
 

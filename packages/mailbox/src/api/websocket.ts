@@ -45,7 +45,7 @@ export interface WebSocketPushProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
   artifactResolver: IArtifactResolver;
   maxSubscriptions?: number;
@@ -140,7 +140,7 @@ export class WebSocketPush extends Construct {
     // Lambda: $connect
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.connectionsTable,
-      jwkCacheTable: props.jwkCacheTable,
+      authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
       maxSubscriptions: maxSubscriptions,
       artifactResolver: props.artifactResolver,

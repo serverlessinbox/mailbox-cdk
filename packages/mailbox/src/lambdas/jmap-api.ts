@@ -19,7 +19,7 @@ export interface ApiHandlerLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   emailBucket: any;
   emailSubmissionQueue: any;
   auditEventsQueue: any;
@@ -43,7 +43,7 @@ export class ApiHandlerLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
+        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CDN_HOST: props.cdnHost,
         API_BASE_URL: props.apiBaseUrl,
         EMAIL_BUCKET_NAME: props.emailBucket.bucketName,

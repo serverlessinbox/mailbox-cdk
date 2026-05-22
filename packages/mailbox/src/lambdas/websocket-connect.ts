@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 
 export interface WebSocketConnectLambdaProps {
   connectionsTable: ITable;
-  jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   configTable: ITable;
   maxSubscriptions: number;
   artifactResolver: IArtifactResolver;
@@ -21,7 +21,7 @@ export class WebSocketConnectLambda extends GoLambda {
       memorySize: 256,
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
+        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         MAX_SUBSCRIPTIONS: props.maxSubscriptions.toString(),
       },
@@ -29,7 +29,7 @@ export class WebSocketConnectLambda extends GoLambda {
 
     // Grant permissions
     props.connectionsTable.grantWriteData(this);
-    props.jwkCacheTable.grantReadData(this);
+    props.authKeyStoreTable.grantReadData(this);
     props.configTable.grantReadData(this);
   }
 }
