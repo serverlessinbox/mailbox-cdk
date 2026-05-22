@@ -14,6 +14,7 @@ import {
 export interface BootstrapProps {
   configTable: ITable;
   jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
 
   tenantName?: string;
   defaultLocalPart?: string;
@@ -50,6 +51,7 @@ export class Bootstrap extends Construct {
     const handler = new BootstrapLambda(this, 'handler', {
       configTable: props.configTable,
       jwkCacheTable: props.jwkCacheTable,
+      authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
     });
     this.handler = handler;

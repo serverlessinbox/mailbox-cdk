@@ -8,6 +8,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 export interface BootstrapLambdaProps {
   configTable: ITable;
   jwkCacheTable: ITable;
+  authKeyStoreTable: ITable;
   artifactResolver: IArtifactResolver;
 }
 
@@ -20,6 +21,7 @@ export class BootstrapLambda extends GoLambda {
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
+        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
       },
     });
 
@@ -39,6 +41,7 @@ export class BootstrapLambda extends GoLambda {
 
     props.configTable.grantReadWriteData(this);
     props.jwkCacheTable.grantReadWriteData(this);
+    props.authKeyStoreTable.grantReadWriteData(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({

@@ -64,7 +64,7 @@ export class ApiHandlerLambda extends GoLambda {
 
     // Grant the Lambda function read permissions to the config table
     props.configTable.grantReadData(this);
-    props.jwkCacheTable.grantReadData(this);
+    props.authKeyStoreTable.grantReadData(this);
 
     // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWriteData(this);

@@ -9,7 +9,6 @@ import { INamedTable } from '../utils/named-table';
 
 export interface CdnProps {
   emailBucket: INamedBucket;
-  itemTable: INamedTable;
   configTable: INamedTable;
   authKeyStoreTable: INamedTable;
   userPoolIssuer: string;
@@ -52,7 +51,6 @@ export class Cdn extends Construct {
     // (Lambda@Edge doesn't support environment variables)
     const s3Origin = new origins.S3Origin(props.emailBucket, {
       customHeaders: {
-        'x-table-name': props.itemTable.tableName,
         'x-config-table': props.configTable.tableName,
         'x-auth-key-store-table': props.authKeyStoreTable.tableName,
         'x-region': cdk.Stack.of(this).region,

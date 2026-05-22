@@ -73,6 +73,7 @@
   "dependencies": {
     "@bufbuild/protobuf": "^2.2.3",
     "@sipkg/mailbox": "workspace:*",
+    "@sipkg/mailbox-admin-api": "workspace:*",
     "unzipper": "^0.12.3"
   },
   "files": [

@@ -1,25 +1,11 @@
-import { DynamoDBClient, GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
-import * as jwt from 'jsonwebtoken';
+import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
 
-// In-memory cache for JWKS (persists across warm Lambda invocations)
-const jwksCache: Map<string, { keys: any[] }> = new Map();
-
-type IssuerTenantConfig = {
-  tenantId: string;
-  issuer: string;
-};
-
-let issuerConfigCache: { value: IssuerTenantConfig; fetchedAt: number } | null = null;
-
-type AuthPolicyConfig = {
-  audiences: string[];
-  requireAnyOfGroups?: string[];
-  providerName?: string;
-  issuer?: string;
-};
-
-let authPolicyCache: { key: string; value: AuthPolicyConfig; fetchedAt: number } | null = null;
+// In-memory cache for JWKs (persists across warm Lambda invocations)
+interface JwkCacheEntry {
+  keys: JWK[];
+}
+const jwksCache: Map<string, JwkCacheEntry> = new Map();  // key = normalizedIssuer
 
 interface JWK {
   kty: string;
@@ -31,461 +17,201 @@ interface JWK {
 }
 
 /**
- * Convert JWK to PEM format for jsonwebtoken library
- */
-function jwkToPem(jwk: JWK): string {
-  // jsonwebtoken will accept the JWK directly, but we need to format it properly
-  const key = crypto.createPublicKey({
-    key: jwk as any,
-    format: 'jwk',
-  });
-
-  return key.export({
-    type: 'spki',
-    format: 'pem',
-  }) as string;
-}
-
-/**
  * Get JWKS from DynamoDB (with in-memory caching)
  */
 async function getJWKS(
   dynamodb: DynamoDBClient,
-  jwkCacheTable: string,
-  issuer: string
-): Promise<{ keys: JWK[] }> {
+  authKeyStoreTable: string,
+  issuer: string,
+): Promise<JwkCacheEntry> {
   const issuerNorm = normalizeIssuer(issuer);
-  if (!issuerNorm) {
-    throw new Error('issuer is required');
-  }
+  if (!issuerNorm) throw new Error('issuer is required');
 
-  // Return cached value if available (warm Lambda)
   const cached = jwksCache.get(issuerNorm);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
-  // Get from DynamoDB
-  const command = new GetItemCommand({
-    TableName: jwkCacheTable,
-    Key: {
-      pk: { S: 'cache' },
-      sk: { S: issuerNorm },
-    },
-  });
-
-  const response = await dynamodb.send(command);
+  const response = await dynamodb.send(
+    new GetItemCommand({
+      TableName: authKeyStoreTable,
+      Key: {
+        pk: { S: 'jwks' },
+        sk: { S: issuerNorm },
+      },
+    }),
+  );
 
   if (!response.Item || !response.Item.jwks?.S) {
-    throw new Error('JWKS not found in cache');
+    throw new Error(`JWKS not found in store for issuer: ${issuerNorm}`);
   }
 
-  const jwks = JSON.parse(response.Item.jwks.S);
-
-  // Cache for subsequent invocations
-  jwksCache.set(issuerNorm, jwks);
-
-  return jwks;
+  const entry: JwkCacheEntry = JSON.parse(response.Item.jwks.S);
+  jwksCache.set(issuerNorm, entry);
+  return entry;
 }
 
 function normalizeIssuer(issuer: string): string {
   return (issuer || '').trim().replace(/\/+$/, '');
 }
 
-function extractGroups(payload: jwt.JwtPayload): string[] {
-  const raw = (payload as any)['cognito:groups'] ?? (payload as any).groups ?? (payload as any).roles;
-  if (!raw) {
-    return [];
-  }
-  if (Array.isArray(raw)) {
-    return raw
-      .filter((v) => typeof v === 'string')
-      .map((v) => v.trim())
-      .filter(Boolean);
-  }
-  if (typeof raw === 'string') {
-    const v = raw.trim();
-    if (!v) return [];
-    // Best-effort parsing of stringified arrays like "[a, b]".
-    if (v.startsWith('[') && v.endsWith(']')) {
-      const inner = v.slice(1, -1).trim();
-      if (!inner) return [];
-      return inner
-        .split(',')
-        .map((p) => p.trim().replace(/^['"]|['"]$/g, ''))
-        .filter(Boolean);
-    }
-    return [v];
-  }
-  return [];
-}
+// Local JWT types (replaces jsonwebtoken types)
+type JwtPayload = Record<string, any> & {
+  sub?: string;
+  iss?: string;
+  aud?: string | string[];
+  exp?: number;
+  nbf?: number;
+  iat?: number;
+};
 
-function hasAnyOfRequiredGroups(payload: jwt.JwtPayload, requiredGroups?: string[]): boolean {
-  const normalizedRequired = (requiredGroups ?? [])
-    .map((g) => (g || '').trim().toLowerCase())
-    .filter(Boolean);
-  if (normalizedRequired.length === 0) {
-    return true;
-  }
-  const groups = extractGroups(payload).map((g) => (g || '').trim().toLowerCase()).filter(Boolean);
-  return normalizedRequired.some((req) => groups.includes(req));
-}
+type JwtHeader = {
+  alg: string;
+  kid?: string;
+  typ?: string;
+};
 
-function verifyAudienceLikeGoAuthorizer(payload: jwt.JwtPayload, validAudiences: string[]): boolean {
-  const audiences = new Set(validAudiences.map((a) => (a || '').trim()).filter(Boolean));
-  if (audiences.size === 0) {
-    return false;
-  }
+// Cache for imported CryptoKey objects (persists across warm invocations — avoids re-import)
+const cryptoKeyCache: Map<string, any> = new Map();
 
-  const clientID = (payload as any).client_id;
-  if (typeof clientID === 'string' && audiences.has(clientID)) {
-    return true;
-  }
-
-  const aud = (payload as any).aud;
-  if (typeof aud === 'string' && audiences.has(aud)) {
-    return true;
-  }
-  if (Array.isArray(aud)) {
-    for (const item of aud) {
-      if (typeof item === 'string' && audiences.has(item)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-async function getIssuerTenantConfig(
-  dynamodb: DynamoDBClient,
-  configTable: string,
-  issuer: string
-): Promise<IssuerTenantConfig> {
-  const issuerNorm = normalizeIssuer(issuer);
-  if (!issuerNorm) {
-    throw new Error('issuer is required');
-  }
-
-  // Warm cache (5 minutes)
-  const ttlMs = 5 * 60 * 1000;
-  if (issuerConfigCache && Date.now() - issuerConfigCache.fetchedAt < ttlMs) {
-    if (issuerConfigCache.value.issuer === issuerNorm) {
-      return issuerConfigCache.value;
-    }
-  }
-
-  const resp = await dynamodb.send(
-    new GetItemCommand({
-      TableName: configTable,
-      Key: {
-        pk: { S: 'SYSTEM#TENANTS' },
-        sk: { S: `ISSUER#${issuerNorm}` },
-      },
-      ProjectionExpression: 'tenantId',
-    })
-  );
-
-  if (!resp.Item || !resp.Item.tenantId?.S) {
-    throw new Error('issuer not configured');
-  }
-
-  const tenantId = resp.Item.tenantId.S.trim();
-  if (!tenantId) {
-    throw new Error('invalid issuer mapping: missing tenantId');
-  }
-
-  const cfg: IssuerTenantConfig = {
-    tenantId,
-    issuer: issuerNorm,
-  };
-
-  issuerConfigCache = { value: cfg, fetchedAt: Date.now() };
-  return cfg;
-}
-
-async function getAuthPolicyConfig(
-  dynamodb: DynamoDBClient,
-  configTable: string,
-  policyName: string
-): Promise<AuthPolicyConfig> {
-  const key = (policyName || '').trim();
-  if (!key) {
-    throw new Error('auth policy name is required');
-  }
-
-  // Warm cache (5 minutes)
-  const ttlMs = 5 * 60 * 1000;
-  if (authPolicyCache && Date.now() - authPolicyCache.fetchedAt < ttlMs && authPolicyCache.key === key) {
-    return authPolicyCache.value;
-  }
-
-  const policyResp = await dynamodb.send(
-    new GetItemCommand({
-      TableName: configTable,
-      Key: {
-        pk: { S: 'SYSTEM#TENANTS' },
-        sk: { S: `AUTH_POLICY#${key}` },
-      },
-      ProjectionExpression: 'providerName, audiences, requireAnyOfGroups',
-    })
-  );
-
-  if (!policyResp.Item) {
-    throw new Error(`auth policy not configured: ${key}`);
-  }
-
-  const audiences: string[] = [];
-  const audAttr = policyResp.Item.audiences;
-  if (audAttr && 'L' in audAttr && Array.isArray(audAttr.L)) {
-    for (const item of audAttr.L) {
-      if (item?.S) {
-        const v = item.S.trim();
-        if (v) audiences.push(v);
-      }
-    }
-  }
-
-  const requireAnyOfGroups: string[] = [];
-  const groupsAttr = policyResp.Item.requireAnyOfGroups;
-  if (groupsAttr && 'L' in groupsAttr && Array.isArray(groupsAttr.L)) {
-    for (const item of groupsAttr.L) {
-      if (item?.S) {
-        const v = item.S.trim();
-        if (v) requireAnyOfGroups.push(v);
-      }
-    }
-  }
-
-  const providerNameRaw = policyResp.Item.providerName?.S?.trim();
-  const providerName = providerNameRaw || 'PRIMARY';
-
-  // Resolve provider issuer (optional, used for sanity checking / diagnostics)
-  let providerIssuer: string | undefined;
+/**
+ * Parse a JWT into its constituent parts without verification.
+ */
+function parseJWT(token: string): {
+  header: JwtHeader;
+  payload: JwtPayload;
+  signingInput: string;
+  signature: Buffer;
+} | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
   try {
-    const providerResp = await dynamodb.send(
-      new GetItemCommand({
-        TableName: configTable,
-        Key: {
-          pk: { S: 'SYSTEM#TENANTS' },
-          sk: { S: `OIDC_PROVIDER#${providerName}` },
-        },
-        ProjectionExpression: 'issuer',
-      })
-    );
-    providerIssuer = normalizeIssuer(providerResp.Item?.issuer?.S || '');
-    if (!providerIssuer) {
-      providerIssuer = undefined;
-    }
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')) as JwtHeader;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as JwtPayload;
+    return {
+      header,
+      payload,
+      signingInput: `${parts[0]}.${parts[1]}`,
+      signature: Buffer.from(parts[2], 'base64url'),
+    };
   } catch {
-    providerIssuer = undefined;
-  }
-
-  const cfg: AuthPolicyConfig = {
-    audiences,
-    ...(requireAnyOfGroups.length > 0 ? { requireAnyOfGroups } : {}),
-    providerName,
-    ...(providerIssuer ? { issuer: providerIssuer } : {}),
-  };
-
-  authPolicyCache = { key, value: cfg, fetchedAt: Date.now() };
-  return cfg;
-}
-
-/**
- * Get signing key by kid (key ID)
- */
-async function getSigningKey(
-  kid: string,
-  dynamodb: DynamoDBClient,
-  jwkCacheTable: string,
-  issuer: string
-): Promise<string> {
-  const jwks = await getJWKS(dynamodb, jwkCacheTable, issuer);
-
-  const key = jwks.keys.find((k: JWK) => k.kid === kid);
-  if (!key) {
-    throw new Error(`Key with kid ${kid} not found in JWKS`);
-  }
-
-  return jwkToPem(key);
-}
-
-/**
- * User context extracted from JWT token
- */
-export interface UserContext {
-  userId: string;
-  accountIds: string[];
-  tenantId: string;
-}
-
-/**
- * Query IDPMapping from DynamoDB to get UserID using OIDC subject (sub)
- */
-async function getIDPMapping(
-  idpUserId: string,
-  provider: string,
-  tenantId: string,
-  dynamodb: DynamoDBClient,
-  configTable: string
-): Promise<string | null> {
-  try {
-    const command = new GetItemCommand({
-      TableName: configTable,
-      Key: {
-        pk: { S: `TENANT#${tenantId}#IDP#${provider}#${idpUserId}` },
-        sk: { S: 'METADATA' },
-      },
-      ProjectionExpression: 'userId',
-    });
-
-    const response = await dynamodb.send(command);
-
-    if (!response.Item || !response.Item.userId?.S) {
-      return null;
-    }
-
-    return response.Item.userId.S;
-  } catch (error) {
-    console.error('Error querying IDP mapping:', error);
     return null;
   }
 }
 
 /**
- * Query User's accounts from DynamoDB
+ * Import a JWK as a CryptoKey for use with crypto.subtle.verify.
+ * Result is cached per kid to avoid re-import on warm invocations.
  */
-async function getUserAccounts(
-  userId: string,
-  tenantId: string,
-  dynamodb: DynamoDBClient,
-  configTable: string
-): Promise<string[]> {
+async function importCryptoKey(jwk: JWK, alg: string): Promise<any> {
+  const cached = cryptoKeyCache.get(jwk.kid);
+  if (cached) return cached;
+
+  const subtle = (crypto as any).webcrypto.subtle as any;
+  let key: any;
+
+  if (alg === 'RS256' || alg === 'RS384' || alg === 'RS512') {
+    const hash = alg === 'RS256' ? 'SHA-256' : alg === 'RS384' ? 'SHA-384' : 'SHA-512';
+    key = await subtle.importKey('jwk', jwk as any, { name: 'RSASSA-PKCS1-v1_5', hash }, false, ['verify']);
+  } else if (alg === 'ES256') {
+    key = await subtle.importKey('jwk', jwk as any, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  } else if (alg === 'ES384') {
+    key = await subtle.importKey('jwk', jwk as any, { name: 'ECDSA', namedCurve: 'P-384' }, false, ['verify']);
+  } else {
+    throw new Error(`Unsupported algorithm: ${alg}`);
+  }
+
+  cryptoKeyCache.set(jwk.kid, key);
+  return key;
+}
+
+/**
+ * Verify a JWT signature using crypto.subtle.
+ */
+async function verifyJWTSignature(
+  signingInput: string,
+  signature: Buffer,
+  key: any,
+  alg: string,
+): Promise<boolean> {
   try {
-    // Query GSI1 for user's accounts
-    // GSI1: PK=USER_ACCOUNTS#{userId}, SK={name}#{accountId}
-    const command = new QueryCommand({
-      TableName: configTable,
-      IndexName: 'GSI1',
-      KeyConditionExpression: 'gsi1pk = :pk',
-      ExpressionAttributeValues: {
-        ':pk': { S: `TENANT#${tenantId}#USER_ACCOUNTS#${userId}` },
-      },
-      ProjectionExpression: 'accountId',
-    });
-
-    const response = await dynamodb.send(command);
-
-    if (!response.Items) {
-      return [];
+    const subtle = (crypto as any).webcrypto.subtle as any;
+    if (alg === 'RS256' || alg === 'RS384' || alg === 'RS512') {
+      return await subtle.verify('RSASSA-PKCS1-v1_5', key, signature, Buffer.from(signingInput)) as boolean;
+    } else if (alg === 'ES256' || alg === 'ES384') {
+      const hash = alg === 'ES256' ? 'SHA-256' : 'SHA-384';
+      return await subtle.verify({ name: 'ECDSA', hash }, key, signature, Buffer.from(signingInput)) as boolean;
     }
-
-    // Extract account IDs from entities
-    const accountIds: string[] = [];
-    for (const item of response.Items) {
-      if (item.accountId?.S) {
-        accountIds.push(item.accountId.S);
-      }
-    }
-
-    return accountIds;
-  } catch (error) {
-    console.error('Error querying user accounts:', error);
-    return [];
+    return false;
+  } catch {
+    return false;
   }
 }
 
 /**
- * Verify JWT token and extract user context by querying database
+ * Validate standard JWT claims (exp, nbf, iss).
  */
-export async function verifyToken(
+function validateClaims(payload: JwtPayload, options: { issuer?: string; clockTolerance?: number }): boolean {
+  const now = Math.floor(Date.now() / 1000);
+  const tol = options.clockTolerance ?? 0;
+  if (typeof payload.exp === 'number' && now > payload.exp + tol) return false;
+  if (typeof payload.nbf === 'number' && now < payload.nbf - tol) return false;
+  if (options.issuer && normalizeIssuer(payload.iss ?? '') !== options.issuer) return false;
+  return true;
+}
+
+/**
+ * Get signing key by kid (key ID), as a CryptoKey ready for crypto.subtle.verify.
+ */
+async function getSigningKey(
+  kid: string,
+  alg: string,
+  dynamodb: DynamoDBClient,
+  authKeyStoreTable: string,
+  issuer: string,
+): Promise<any> {
+  const jwks = await getJWKS(dynamodb, authKeyStoreTable, issuer);
+  const key = jwks.keys.find((k: JWK) => k.kid === kid);
+  if (!key) {
+    throw new Error(`Key with kid ${kid} not found in JWKS`);
+  }
+  return importCryptoKey(key, alg);
+}
+
+/**
+ * Verify JWT signature and claims without performing any IDP or account DDB lookups.
+ * Used in the HMAC path where tenant/account identity comes from the auth token.
+ */
+export async function verifyJWTSignatureOnly(
   token: string,
   dynamodb: DynamoDBClient,
-  jwkCacheTable: string,
-  configTable: string,
+  authKeyStoreTable: string,
   jwtAlgorithms?: string[],
-  authPolicyName?: string
-): Promise<UserContext | null> {
+): Promise<{ sub: string; issuer: string; audience: string } | null> {
   try {
-    // First decode without verification to determine issuer (matches Go authorizer pattern)
-    const unverified = jwt.decode(token, { complete: true });
-    if (!unverified || typeof (unverified as any).payload !== 'object') {
-      console.error('Invalid token: failed to decode payload');
-      return null;
-    }
+    const parsed = parseJWT(token);
+    if (!parsed) return null;
+    const { header, payload, signingInput, signature } = parsed;
 
-    const unverifiedPayload = (unverified as any).payload as jwt.JwtPayload;
-    const issuerFromToken = normalizeIssuer((unverifiedPayload as any).iss);
-    if (!issuerFromToken) {
-      console.error("Token missing required 'iss' claim");
-      return null;
-    }
-
-    if (!unverified.header?.kid) {
-      console.error('Invalid token: missing kid');
-      return null;
-    }
-
-    // Resolve issuer -> tenant (issuer-mapping record remains the canonical allowlist)
-    const issuerCfg = await getIssuerTenantConfig(dynamodb, configTable, issuerFromToken);
-
-    // Load auth policy (required)
-    const policyName = (authPolicyName || '').trim();
-    if (!policyName) {
-      console.error('Missing auth policy name');
-      return null;
-    }
-    const authPolicy = await getAuthPolicyConfig(dynamodb, configTable, policyName);
-
-    // Get signing key
-    const signingKey = await getSigningKey(unverified.header.kid, dynamodb, jwkCacheTable, issuerCfg.issuer);
+    const issuerFromToken = normalizeIssuer((payload.iss as string | undefined) ?? '');
+    if (!issuerFromToken) return null;
+    if (!header.kid) return null;
 
     const allowedAlgorithms = (jwtAlgorithms && jwtAlgorithms.length > 0) ? jwtAlgorithms : ['RS256'];
+    if (!allowedAlgorithms.includes(header.alg)) return null;
 
-    // Verify token (allowlist) with 5 minute clock skew tolerance (matches Go authorizer)
-    const verified = jwt.verify(token, signingKey, {
-      algorithms: allowedAlgorithms as jwt.Algorithm[],
-      issuer: issuerCfg.issuer,
-      clockTolerance: 300,
-    }) as jwt.JwtPayload;
+    const cryptoKey = await getSigningKey(header.kid, header.alg, dynamodb, authKeyStoreTable, issuerFromToken);
+    const valid = await verifyJWTSignature(signingInput, signature, cryptoKey, header.alg);
+    if (!valid) return null;
 
-    if (!verifyAudienceLikeGoAuthorizer(verified, authPolicy.audiences)) {
-      console.error('Invalid client_id or audience in token');
-      return null;
-    }
+    if (!validateClaims(payload, { clockTolerance: 300 })) return null;
 
-    if (!hasAnyOfRequiredGroups(verified, authPolicy.requireAnyOfGroups)) {
-      console.error('Missing required group');
-      return null;
-    }
+    const sub = payload.sub;
+    if (!sub) return null;
 
-    // Validate required claims
-    const sub = verified.sub;
-    if (!sub) {
-      console.error('Token missing required sub claim');
-      return null;
-    }
+    const audience = (payload.client_id as string | undefined)?.trim() ||
+      (Array.isArray(payload.aud) ? payload.aud[0] : payload.aud as string | undefined) || '';
 
-    // Query IDPMapping to get UserID using `sub`
-    const provider = 'cognito'; // Currently only supporting Cognito
-    const userId = await getIDPMapping(sub, provider, issuerCfg.tenantId, dynamodb, configTable);
-
-    if (!userId) {
-      console.error('User not found in IDP mapping');
-      return null;
-    }
-
-    // Query user's accounts from database
-    const accountIds = await getUserAccounts(userId, issuerCfg.tenantId, dynamodb, configTable);
-
-    return {
-      userId,
-      accountIds,
-      tenantId: issuerCfg.tenantId,
-    };
-  } catch (error) {
-    console.error('JWT verification error:', error);
+    return { sub, issuer: issuerFromToken, audience };
+  } catch {
     return null;
   }
 }

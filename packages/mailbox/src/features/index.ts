@@ -12,3 +12,9 @@ export type { DomainResolverProps } from './domain-resolver';
 
 export { AuthKeyStore } from './auth-key-store';
 export type { AuthKeyStoreProps } from './auth-key-store';
+
+export { CertificateWaiter } from './certificate-waiter';
+export type { CertificateWaiterProps } from './certificate-waiter';
+
+export { LicenseRefresh } from './license-refresh';
+export type { LicenseRefreshProps } from './license-refresh';
