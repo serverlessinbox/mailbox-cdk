@@ -3,6 +3,7 @@ import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 import { LicenseRefresherLambda } from '../lambdas';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
@@ -13,6 +14,9 @@ export interface LicenseRefreshProps {
 }
 
 export class LicenseRefresh extends Construct {
+  /** Exposed for constructs that need to gate on the license function (e.g. McpApi). */
+  public readonly licenseFunction: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: LicenseRefreshProps) {
     super(scope, id);
 
@@ -20,6 +24,8 @@ export class LicenseRefresh extends Construct {
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
     });
+
+    this.licenseFunction = handler;
 
     // Randomized daily refresh time — computed once at synth, unique per deployment
     // to avoid thundering herd across all customer stacks.

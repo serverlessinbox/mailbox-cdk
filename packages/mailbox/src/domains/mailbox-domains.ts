@@ -8,6 +8,7 @@ export const MAILBOX_ENDPOINTS = [
   'webmail',
   'admin',
   'auth',
+  'mcp',
 ] as const;
 
 export type MailboxEndpoint = typeof MAILBOX_ENDPOINTS[number];
@@ -31,6 +32,7 @@ export interface MailboxDomainNames {
   readonly webmail: string;
   readonly admin: string;
   readonly auth: string;
+  readonly mcp: string;
 
   fqdn(endpoint: MailboxEndpoint): string;
   all(): Record<MailboxEndpoint, string>;
@@ -98,6 +100,7 @@ export class MailboxDomains implements MailboxDomainNames {
   public readonly webmail: string;
   public readonly admin: string;
   public readonly auth: string;
+  public readonly mcp: string;
 
   constructor(props: MailboxDomainNamesProps) {
     this.domainName = normalizeDomainName(props.domainName);
@@ -113,6 +116,7 @@ export class MailboxDomains implements MailboxDomainNames {
     this.webmail = `webmail.${base}`;
     this.admin = `admin.${base}`;
     this.auth = `auth.${base}`;
+    this.mcp = `mcp.${base}`;
   }
 
   public fqdn(endpoint: MailboxEndpoint): string {
@@ -128,6 +132,7 @@ export class MailboxDomains implements MailboxDomainNames {
       webmail: this.webmail,
       admin: this.admin,
       auth: this.auth,
+      mcp: this.mcp,
     };
   }
 }

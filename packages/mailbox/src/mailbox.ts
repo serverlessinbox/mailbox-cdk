@@ -12,6 +12,7 @@ import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
 import { AdminApi, JMapApi, WebSocketPush } from './api';
+import { McpApi } from './api/mcp-api';
 import type { AdminApiAddon, AdminApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
 import type { EmailDelivery } from './email/receiving/ses-rules';
@@ -78,6 +79,12 @@ export interface MailboxProps {
    */
   createWebmailUi?: boolean;
 
+  /**
+   * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>.
+   * Requires an Advanced license tier. Defaults to false.
+   */
+  activateMcp?: boolean;
+
   /** Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. */
   adminUiCertificate?: acm.ICertificate;
 
@@ -121,6 +128,12 @@ export class Mailbox extends Construct {
   public readonly webmailUiDistribution?: IDistribution;
 
   public readonly edgeCertificate?: acm.ICertificate;
+
+  /** Regional SAN certificate (when auto-created). Exposed for add-on constructs such as McpApi. */
+  public readonly regionalCertificate?: acm.ICertificate;
+
+  /** The JMAP API construct. Exposed for add-on constructs that need authorizerLambda / httpApi. */
+  public readonly jmapApi: JMapApi;
 
   /** OAuth clients created by this construct (only when enabled). */
   public readonly oauthClients: {
@@ -241,10 +254,11 @@ export class Mailbox extends Construct {
     const regionalSanCertificate = (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate))
       ? new acm.Certificate(this, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
-        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws],
+        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${props.domainName}`],
         validation: acm.CertificateValidation.fromDns(props.hostedZone!),
       })
       : undefined;
+    this.regionalCertificate = regionalSanCertificate;
 
     const apiCertificate = providedApiCertificate
       ?? regionalSanCertificate;
@@ -491,7 +505,7 @@ export class Mailbox extends Construct {
       );
     }
 
-    const jmapApi = new JMapApi(this, 'jmap-api', {
+    this.jmapApi = new JMapApi(this, 'jmap-api', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
@@ -512,6 +526,7 @@ export class Mailbox extends Construct {
 
       // WebSocket URL will be passed via environment variable, not here
     });
+    const jmapApi = this.jmapApi;
     applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
@@ -561,6 +576,15 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
 
+    const mcpApi = props.activateMcp ? new McpApi(this, 'McpApi', {
+      configTable: this.configTable,
+      jmapApiGateway: this.jmapApi.httpApi,
+      authorizerLambda: this.jmapApi.authorizerLambda,
+      certificate: this.regionalCertificate!,
+      domainName: props.domainName,
+      scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
+    }) : undefined;
+
     if (certWaiter) {
       jmapApi.node.addDependency(certWaiter);
       webSocketPush.node.addDependency(certWaiter);
@@ -587,6 +611,7 @@ export class Mailbox extends Construct {
           api: adminApi.domainTarget,
           jmap: jmapApi.domainTarget,
           ws: webSocketPush.domainTarget,
+          mcp: mcpApi?.domainTarget,
         },
       });
       applyServerlessInboxComponentTag(this.node.findChild('dns'), 'edge');

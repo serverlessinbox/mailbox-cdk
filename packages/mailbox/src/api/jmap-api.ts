@@ -58,6 +58,8 @@ export class JMapApi extends Construct {
   public readonly domainTarget?: string;
   authorizerLambda: GoLambda; // Exposed for reuse in WebSocket API
   apiHandlerLambda: GoLambda; // Exposed to add WebSocket URL env var
+  /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
+  public readonly httpApi: HttpApi;
 
   constructor(scope: Construct, id: string, props: JMapApiProps) {
     super(scope, id);
@@ -112,6 +114,8 @@ export class JMapApi extends Construct {
     } else {
       this.url = api.apiEndpoint;
     }
+
+    this.httpApi = api;
 
     const userProvisionerLambda = new UserProvisionerLambda(this, 'user-provisioner', {
       configTable: props.configTable,
