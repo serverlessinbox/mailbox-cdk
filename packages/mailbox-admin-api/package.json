@@ -1,6 +1,7 @@
 {
   "name": "@serverlessinbox/mailbox-admin-api",
-  "version": "1.0.0",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "main": "src/index.ts",

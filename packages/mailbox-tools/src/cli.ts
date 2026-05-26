@@ -7,7 +7,7 @@ export async function runCli(argv: string[]) {
   const cli = new Cli({
     binaryLabel: 'mailbox-tools',
     binaryName: 'mailbox-tools',
-    binaryVersion: '1.0.0',
+    binaryVersion: process.env.npm_package_version ?? '0.0.0-local',
   });
 
   cli.register(Builtins.HelpCommand);
