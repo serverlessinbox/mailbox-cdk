@@ -1,5 +1,5 @@
-import type { AdminAuthContext, AuditContext, ServiceSpec } from '@sipkg/mailbox-admin-api';
-import { createServiceSpecFromRuntime } from '@sipkg/mailbox-admin-api';
+import type { AdminAuthContext, AuditContext, ServiceSpec } from '@serverlessinbox/mailbox-admin-api';
+import { createServiceSpecFromRuntime } from '@serverlessinbox/mailbox-admin-api';
 
 import { IdpUsersServiceRuntime, type IdpUsersServiceHandlers } from './generated/idp_users_service';
 

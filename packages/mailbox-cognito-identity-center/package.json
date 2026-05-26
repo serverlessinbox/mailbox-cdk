@@ -1,5 +1,5 @@
 {
-  "name": "@sipkg/mailbox-cognito-identity-center",
+  "name": "@serverlessinbox/mailbox-cognito-identity-center",
   "version": "1.0.0",
   "author": "Joost van der Waal",
   "repository": {
@@ -7,7 +7,7 @@
     "type": "git"
   },
   "license": "Apache-2.0",
-  "description": "AWS IAM Identity Center (SAML) federation addon for @sipkg/mailbox-cognito",
+  "description": "AWS IAM Identity Center (SAML) federation addon for @serverlessinbox/mailbox-cognito",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "packageManager": "yarn@4.12.0",
@@ -53,7 +53,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@sipkg/mailbox-cognito": "workspace:*"
+    "@serverlessinbox/mailbox-cognito": "workspace:*"
   },
   "files": [
     "src",

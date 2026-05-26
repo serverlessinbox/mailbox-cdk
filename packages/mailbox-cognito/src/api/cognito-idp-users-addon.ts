@@ -5,7 +5,7 @@ import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { AdminApiAddon, IArtifactResolver } from '@sipkg/mailbox';
+import { AdminApiAddon, IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
 

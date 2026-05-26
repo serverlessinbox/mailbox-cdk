@@ -1,7 +1,7 @@
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 
-import { MailboxUserPool } from '@sipkg/mailbox-cognito';
+import { MailboxUserPool } from '@serverlessinbox/mailbox-cognito';
 
 export type IdentityCenterSamlMetadata =
   | {

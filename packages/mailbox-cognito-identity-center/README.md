@@ -1,10 +1,10 @@
-# @sipkg/mailbox-cognito-identity-center
+# @serverlessinbox/mailbox-cognito-identity-center
 
-Addon package to attach AWS IAM Identity Center (SAML) as a federated identity provider to a Cognito User Pool created by `@sipkg/mailbox-cognito`.
+Addon package to attach AWS IAM Identity Center (SAML) as a federated identity provider to a Cognito User Pool created by `@serverlessinbox/mailbox-cognito`.
 
 ## Usage
 
-- Create `MailboxUserPool` from `@sipkg/mailbox-cognito`
+- Create `MailboxUserPool` from `@serverlessinbox/mailbox-cognito`
 - Attach Identity Center federation with `IdentityCenterSamlFederation`
 - Provide SAML metadata via URL or local metadata XML file path
 - Cognito remains the OIDC issuer; Identity Center is used for Hosted UI login.
@@ -12,8 +12,8 @@ Addon package to attach AWS IAM Identity Center (SAML) as a federated identity p
 ### Example (metadata URL)
 
 ```ts
-import { MailboxUserPool } from '@sipkg/mailbox-cognito';
-import { IdentityCenterSamlFederation } from '@sipkg/mailbox-cognito-identity-center';
+import { MailboxUserPool } from '@serverlessinbox/mailbox-cognito';
+import { IdentityCenterSamlFederation } from '@serverlessinbox/mailbox-cognito-identity-center';
 
 const userPool = new MailboxUserPool(this, 'auth', {
 	domain: { type: 'cognito', cognitoDomainPrefix: 'my-auth-domain' },

@@ -1,6 +1,6 @@
 import { create } from '@bufbuild/protobuf';
 
-import { createValidator, InvalidInputError } from '@sipkg/mailbox-admin-api';
+import { createValidator, InvalidInputError } from '@serverlessinbox/mailbox-admin-api';
 
 import type { CreateIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest } from './generated/idp_users_pb';
 import { CreateIdpUserRequestSchema, GetIdpUserRequestSchema, ListIdpUsersRequestSchema, SetIdpUserEnabledRequestSchema, SetIdpUserPasswordRequestSchema } from './generated/idp_users_pb';

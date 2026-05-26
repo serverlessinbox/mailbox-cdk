@@ -4,7 +4,7 @@ import {
 	ServiceRegistry,
 	type AdminAuthContext,
 	type AuditContext,
-} from '@sipkg/mailbox-admin-api';
+} from '@serverlessinbox/mailbox-admin-api';
 
 import { SqsAuditEmitter } from './audit';
 import { createCognitoIdpUsersServiceSpec } from './service';

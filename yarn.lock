@@ -3789,34 +3789,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinclair/typebox@npm:^0.27.8":
-  version: 0.27.8
-  resolution: "@sinclair/typebox@npm:0.27.8"
-  checksum: 10c0/ef6351ae073c45c2ac89494dbb3e1f87cc60a93ce4cde797b782812b6f97da0d620ae81973f104b43c9b7eaa789ad20ba4f6a1359f1cc62f63729a55a7d22d4e
-  languageName: node
-  linkType: hard
-
-"@sinonjs/commons@npm:^3.0.0":
-  version: 3.0.1
-  resolution: "@sinonjs/commons@npm:3.0.1"
-  dependencies:
-    type-detect: "npm:4.0.8"
-  checksum: 10c0/1227a7b5bd6c6f9584274db996d7f8cee2c8c350534b9d0141fc662eaf1f292ea0ae3ed19e5e5271c8fd390d27e492ca2803acd31a1978be2cdc6be0da711403
-  languageName: node
-  linkType: hard
-
-"@sinonjs/fake-timers@npm:^10.0.2":
-  version: 10.3.0
-  resolution: "@sinonjs/fake-timers@npm:10.3.0"
-  dependencies:
-    "@sinonjs/commons": "npm:^3.0.0"
-  checksum: 10c0/2e2fb6cc57f227912814085b7b01fede050cd4746ea8d49a1e44d5a0e56a804663b0340ae2f11af7559ea9bf4d087a11f2f646197a660ea3cb04e19efc04aa63
-  languageName: node
-  linkType: hard
-
-"@sipkg/mailbox-admin-api@workspace:*, @sipkg/mailbox-admin-api@workspace:packages/mailbox-admin-api":
+"@serverlessinbox/mailbox-admin-api@workspace:*, @serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api":
   version: 0.0.0-use.local
-  resolution: "@sipkg/mailbox-admin-api@workspace:packages/mailbox-admin-api"
+  resolution: "@serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.2.3"
     eslint: "npm:^8.0.0"
@@ -3824,11 +3799,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sipkg/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center":
+"@serverlessinbox/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center":
   version: 0.0.0-use.local
-  resolution: "@sipkg/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center"
+  resolution: "@serverlessinbox/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center"
   dependencies:
-    "@sipkg/mailbox-cognito": "workspace:*"
+    "@serverlessinbox/mailbox-cognito": "workspace:*"
     "@types/node": "npm:^20.0.0"
     aws-cdk-lib: "npm:^2.224.0"
     constructs: "npm:^10.0.0"
@@ -3846,15 +3821,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sipkg/mailbox-cognito@workspace:*, @sipkg/mailbox-cognito@workspace:packages/mailbox-cognito":
+"@serverlessinbox/mailbox-cognito@workspace:*, @serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito":
   version: 0.0.0-use.local
-  resolution: "@sipkg/mailbox-cognito@workspace:packages/mailbox-cognito"
+  resolution: "@serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito"
   dependencies:
     "@aws-sdk/client-cognito-identity-provider": "npm:^3.947.0"
     "@aws-sdk/client-sqs": "npm:^3.947.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
-    "@sipkg/mailbox": "workspace:*"
-    "@sipkg/mailbox-admin-api": "workspace:*"
+    "@serverlessinbox/mailbox": "workspace:*"
+    "@serverlessinbox/mailbox-admin-api": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^20.0.0"
     aws-cdk-lib: "npm:^2.224.0"
@@ -3885,11 +3860,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sipkg/mailbox-tools@workspace:packages/mailbox-tools":
+"@serverlessinbox/mailbox-tools@workspace:packages/mailbox-tools":
   version: 0.0.0-use.local
-  resolution: "@sipkg/mailbox-tools@workspace:packages/mailbox-tools"
+  resolution: "@serverlessinbox/mailbox-tools@workspace:packages/mailbox-tools"
   dependencies:
-    "@sipkg/mailbox": "workspace:*"
+    "@serverlessinbox/mailbox": "workspace:*"
     "@types/node": "npm:^20.0.0"
     aws-cdk-lib: "npm:^2.224.0"
     clipanion: "npm:^3.2.1"
@@ -3902,9 +3877,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sipkg/mailbox@workspace:*, @sipkg/mailbox@workspace:packages/mailbox":
+"@serverlessinbox/mailbox@workspace:*, @serverlessinbox/mailbox@workspace:packages/mailbox":
   version: 0.0.0-use.local
-  resolution: "@sipkg/mailbox@workspace:packages/mailbox"
+  resolution: "@serverlessinbox/mailbox@workspace:packages/mailbox"
   dependencies:
     "@aws-cdk/aws-lambda-go-alpha": "npm:^2.214.1-alpha.0"
     "@aws-sdk/client-cloudformation": "npm:^3.946.0"
@@ -3950,6 +3925,31 @@ __metadata:
       optional: true
   languageName: unknown
   linkType: soft
+
+"@sinclair/typebox@npm:^0.27.8":
+  version: 0.27.8
+  resolution: "@sinclair/typebox@npm:0.27.8"
+  checksum: 10c0/ef6351ae073c45c2ac89494dbb3e1f87cc60a93ce4cde797b782812b6f97da0d620ae81973f104b43c9b7eaa789ad20ba4f6a1359f1cc62f63729a55a7d22d4e
+  languageName: node
+  linkType: hard
+
+"@sinonjs/commons@npm:^3.0.0":
+  version: 3.0.1
+  resolution: "@sinonjs/commons@npm:3.0.1"
+  dependencies:
+    type-detect: "npm:4.0.8"
+  checksum: 10c0/1227a7b5bd6c6f9584274db996d7f8cee2c8c350534b9d0141fc662eaf1f292ea0ae3ed19e5e5271c8fd390d27e492ca2803acd31a1978be2cdc6be0da711403
+  languageName: node
+  linkType: hard
+
+"@sinonjs/fake-timers@npm:^10.0.2":
+  version: 10.3.0
+  resolution: "@sinonjs/fake-timers@npm:10.3.0"
+  dependencies:
+    "@sinonjs/commons": "npm:^3.0.0"
+  checksum: 10c0/2e2fb6cc57f227912814085b7b01fede050cd4746ea8d49a1e44d5a0e56a804663b0340ae2f11af7559ea9bf4d087a11f2f646197a660ea3cb04e19efc04aa63
+  languageName: node
+  linkType: hard
 
 "@smithy/abort-controller@npm:^4.2.5":
   version: 4.2.5

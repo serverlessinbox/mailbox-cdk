@@ -1,5 +1,5 @@
 /**
- * Default artifact package name for runtime lambdas owned by @sipkg/mailbox-cognito.
+ * Default artifact package name for runtime lambdas owned by @serverlessinbox/mailbox-cognito.
  *
  * Published to S3 as: packages/<packageName>/(channels/<channel>|v<version>)/lambdas/*.zip
  */

@@ -17,9 +17,9 @@ import {
   Permission,
   isDevelopmentMode,
   createArtifactResolverFromContext,
-} from '@sipkg/mailbox';
+} from '@serverlessinbox/mailbox';
 
-import type { AdminApiAddon, AdminApiAddonContext, AdminApiAddonProvider } from '@sipkg/mailbox';
+import type { AdminApiAddon, AdminApiAddonContext, AdminApiAddonProvider } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
 

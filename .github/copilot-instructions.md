@@ -6,15 +6,15 @@
 
 ## Build / typecheck commands
 - Preferred build command:
-  - `yarn --cwd /Users/joost/Development/serverlessinbox/mailbox-cdk workspace @sipkg/mailbox build`
+  - `yarn --cwd /Users/joost/Development/serverlessinbox/mailbox-cdk workspace @serverlessinbox/mailbox build`
 
 ## Workspace structure notes
 - This is a Yarn workspaces monorepo; prefer `yarn workspace ...` style commands when working on a specific package.
 
 ## Architecture / intent (important)
-- `@sipkg/mailbox` is the **core**: it defines stable interfaces/types (e.g. `AuthConfig`) and higher-level constructs.
-- Provider implementations belong in **plugin packages** (e.g. `@sipkg/mailbox-cognito`). Prefer adding new auth providers as separate packages (e.g. `@sipkg/mailbox-auth0`).
-- Provider-specific integrations that *attach to* a provider (e.g. IAM Identity Center federating into Cognito) should be **addon packages** (e.g. `@sipkg/mailbox-cognito-identity-center`) rather than bloating the core plugin.
+- `@serverlessinbox/mailbox` is the **core**: it defines stable interfaces/types (e.g. `AuthConfig`) and higher-level constructs.
+- Provider implementations belong in **plugin packages** (e.g. `@serverlessinbox/mailbox-cognito`). Prefer adding new auth providers as separate packages (e.g. `@serverlessinbox/mailbox-auth0`).
+- Provider-specific integrations that *attach to* a provider (e.g. IAM Identity Center federating into Cognito) should be **addon packages** (e.g. `@serverlessinbox/mailbox-cognito-identity-center`) rather than bloating the core plugin.
 
 ## AWS operational constraints
 - Assume deployments must work in constrained accounts (e.g. SES sandbox, minimal pre-verified identities/recipients). Avoid designs that require SES verification to function unless explicitly gated/optional.

@@ -3,7 +3,7 @@ import { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
-import { IArtifactResolver, createArtifactResolverFromContext } from '@sipkg/mailbox';
+import { IArtifactResolver, createArtifactResolverFromContext } from '@serverlessinbox/mailbox';
 
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
 

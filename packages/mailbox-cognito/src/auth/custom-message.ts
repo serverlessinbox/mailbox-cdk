@@ -1,7 +1,7 @@
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 
-import { IArtifactResolver, createArtifactResolverFromContext } from '@sipkg/mailbox';
+import { IArtifactResolver, createArtifactResolverFromContext } from '@serverlessinbox/mailbox';
 
 import { CognitoCustomMessageLambda } from '../lambdas/cognito-custom-message';
 

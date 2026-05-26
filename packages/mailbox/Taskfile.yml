@@ -27,10 +27,10 @@ tasks:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json --awsProfile serverlessinbox-dev
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json --awsProfile serverlessinbox-dev
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip --awsProfile serverlessinbox-dev
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip --awsProfile serverlessinbox-dev
 
   publish:edge:release:
     desc: Publish edge stack template and lambdas to release version
@@ -39,19 +39,19 @@ tasks:
         - VERSION
     cmds:
       - task: build:edge-stack
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip
 
   # Regional artifact publishing
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip --awsProfile serverlessinbox-dev
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip --awsProfile serverlessinbox-dev
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip --awsProfile serverlessinbox-dev
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip --awsProfile serverlessinbox-dev
 
   publish:regional:release:
     desc: Publish regional ts-lambdas to release version
@@ -59,10 +59,10 @@ tasks:
       vars:
         - VERSION
     cmds:
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn workspace @sipkg/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip
 
   # Combined publish targets
   publish:dev:

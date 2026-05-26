@@ -1,8 +1,8 @@
 import type { AdminGetUserCommandOutput, UserType } from '@aws-sdk/client-cognito-identity-provider';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminGetUserCommand, AdminSetUserPasswordCommand, CognitoIdentityProviderClient, ListUsersCommand } from '@aws-sdk/client-cognito-identity-provider';
 
-import type { AdminAuthContext, AuditContext, HandlerContext } from '@sipkg/mailbox-admin-api';
-import { ConflictError, NotFoundError } from '@sipkg/mailbox-admin-api';
+import type { AdminAuthContext, AuditContext, HandlerContext } from '@serverlessinbox/mailbox-admin-api';
+import { ConflictError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
 
 import type { CreateIdpUserRequest, CreateIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
 import type { IdpUser } from './generated/idp_users_pb';

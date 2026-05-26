@@ -2,7 +2,7 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { IArtifactResolver } from '@sipkg/mailbox';
+import { IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { COGNITO_LAMBDAS_ARTIFACT_PACKAGE } from '../artifacts';
 

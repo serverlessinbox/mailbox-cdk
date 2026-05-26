@@ -1,4 +1,4 @@
-import { Permission } from '@sipkg/mailbox';
+import { Permission } from '@serverlessinbox/mailbox';
 
 export enum CognitoScope {
   MAIL_READ = 'mail.read',

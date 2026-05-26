@@ -3,7 +3,7 @@ import { Architecture, Runtime, Function as LambdaFunction, IFunction } from 'aw
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-import { IArtifactResolver } from '@sipkg/mailbox';
+import { IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { COGNITO_LAMBDAS_ARTIFACT_PACKAGE } from '../artifacts';
 

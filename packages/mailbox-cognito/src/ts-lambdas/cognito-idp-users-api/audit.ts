@@ -1,6 +1,6 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
-import type { AuditEvent } from '@sipkg/mailbox-admin-api';
+import type { AuditEvent } from '@serverlessinbox/mailbox-admin-api';
 
 export interface AuditEmitter {
   emit(evt: AuditEvent): Promise<void>;
