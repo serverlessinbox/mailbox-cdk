@@ -5,6 +5,12 @@ export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 
 export type MailboxKmsResource = 's3' | 'dynamodb' | 'sqs';
 
+export interface MailboxKmsPerResourceConfig {
+  readonly emailBucket?: kms.IKey;
+  readonly dynamoTables?: kms.IKey;
+  readonly queues?: kms.IKey;
+}
+
 export interface MailboxKmsConfig {
   /**
    * Default: 'aws-managed'
@@ -16,9 +22,9 @@ export interface MailboxKmsConfig {
 
   /**
    * Exclude specific resources from KMS usage.
-   * Example: { mode: 'aws-managed', except: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.
+   * Example: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.
    */
-  readonly except?: MailboxKmsResource[];
+  readonly excluded?: MailboxKmsResource[];
 
   /**
    * Optional “one key for core resources” (regional).
@@ -27,11 +33,7 @@ export interface MailboxKmsConfig {
   readonly key?: kms.IKey;
 
   /** Optional per-resource overrides. */
-  readonly perResource?: {
-    readonly emailBucket?: kms.IKey;
-    readonly dynamoTables?: kms.IKey;
-    readonly queues?: kms.IKey;
-  };
+  readonly perResource?: MailboxKmsPerResourceConfig;
 }
 
 export function mailboxKmsMode(config?: MailboxKmsConfig): MailboxKmsMode {
@@ -46,7 +48,7 @@ export function mailboxKmsDisabled(config?: MailboxKmsConfig): boolean {
 
 export function mailboxKmsExcluded(resource: MailboxKmsResource, config?: MailboxKmsConfig): boolean {
   if (mailboxKmsDisabled(config)) return true;
-  return (config?.except ?? []).includes(resource);
+  return (config?.excluded ?? []).includes(resource);
 }
 
 function awsManagedAlias(scope: Construct, id: string, aliasName: string): kms.IKey {

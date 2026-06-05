@@ -4,13 +4,13 @@ export interface MailboxDomainContextProps {
   readonly domains: MailboxDomains;
 
   /** Which endpoints are considered part of this rollout (synth-time). Default: all endpoints. */
-  readonly enabledEndpoints?: readonly MailboxEndpoint[];
+  readonly enabledEndpoints?: MailboxEndpoint[];
 
   /** Which enabled endpoints should be allowed as browser origins (https://...). Default: webmail + admin. */
-  readonly uiEndpoints?: readonly MailboxEndpoint[];
+  readonly uiEndpoints?: MailboxEndpoint[];
 
   /** Extra origins not derived from mailbox domains. */
-  readonly extraAllowedOrigins?: readonly string[];
+  readonly extraAllowedOrigins?: string[];
 }
 
 const DEFAULT_UI_ENDPOINTS: readonly MailboxEndpoint[] = ['webmail', 'admin'];

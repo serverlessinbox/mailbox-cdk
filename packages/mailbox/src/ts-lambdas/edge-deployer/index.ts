@@ -1,1 +1,1 @@
-export { handler, starterHandler, workerHandler } from './handler';
+export { starterHandler, workerHandler } from './handler';

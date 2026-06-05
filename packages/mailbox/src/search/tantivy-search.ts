@@ -13,30 +13,30 @@ export interface TantivySearchProps {
   /**
    * S3 bucket where indexed emails are stored (shared with incoming emails)
    */
-  indexBucket: s3.IBucket;
+  readonly indexBucket: s3.IBucket;
 
   /**
    * DynamoDB ItemTable for querying emails
    */
-  itemTable: dynamodb.ITable;
+  readonly itemTable: dynamodb.ITable;
 
   /**
    * DynamoDB ConfigTable for account and mailbox configuration
    */
-  configTable: dynamodb.ITable;
+  readonly configTable: dynamodb.ITable;
 
   /**
    * DynamoDB ChangelogTable for tracking state changes
    */
-  changelogTable: dynamodb.ITable;
+  readonly changelogTable: dynamodb.ITable;
 
   /**
    * Lambda code provider for building/downloading lambdas
    */
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
 
   /** Optional default props applied to queues created by this construct (e.g. encryption). */
-  queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Partial<BaseQueueProps>;
 }
 
 /**

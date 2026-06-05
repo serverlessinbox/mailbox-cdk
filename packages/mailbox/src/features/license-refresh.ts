@@ -9,8 +9,8 @@ import { LicenseRefresherLambda } from '../lambdas';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 
 export interface LicenseRefreshProps {
-  configTable: ITable;
-  artifactResolver: IArtifactResolver;
+  readonly configTable: ITable;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 export class LicenseRefresh extends Construct {

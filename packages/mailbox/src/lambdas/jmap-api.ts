@@ -4,7 +4,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { MailboxAuthProviderBase } from '../auth/types';
+import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export type JmapOAuthHandlerConfig = {
@@ -12,7 +12,7 @@ export type JmapOAuthHandlerConfig = {
   tokenEndpoint: string;
   authorizationEndpoint: string;
   clientId: string;
-  scopeMap: MailboxAuthProviderBase['scopeMap'];
+  scopeMap: IMailboxAuthProviderBase['scopeMap'];
 };
 
 export interface ApiHandlerLambdaProps {

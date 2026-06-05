@@ -5,9 +5,10 @@ import {
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
 import { CfnLogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { Aws } from 'aws-cdk-lib';
+import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import artifactVersions from '../../../../artifact-versions.json';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -29,6 +30,7 @@ export interface GoLambda2Props extends FunctionOptions {
   logGroupRetention?: RetentionDays | false;
 }
 
+/** @internal */
 export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
     const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, ...lambdaProps } = props;
@@ -45,6 +47,9 @@ export class GoLambda extends LambdaFunction {
       description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...lambdaProps,
     });
+
+    Tags.of(this).add('mailbox:artifact-name', lambdaId);
+    Tags.of(this).add('mailbox:artifact-version', artifactVersions['mailbox-go']);
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = this.logGroup.node.defaultChild as CfnLogGroup;

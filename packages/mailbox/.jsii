@@ -6,7 +6,6 @@
     ]
   },
   "dependencies": {
-    "@aws-cdk/aws-lambda-go-alpha": "^2.214.1-alpha.0",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0"
   },
@@ -60,39 +59,6 @@
         "python": {
           "distName": "aws-cdk.asset-node-proxy-agent-v6",
           "module": "aws_cdk.asset_node_proxy_agent_v6"
-        }
-      }
-    },
-    "@aws-cdk/aws-lambda-go-alpha": {
-      "targets": {
-        "dotnet": {
-          "assemblyOriginatorKeyFile": "../../key.snk",
-          "iconUrl": "https://raw.githubusercontent.com/aws/aws-cdk/main/logo/default-256-dark.png",
-          "namespace": "Amazon.CDK.AWS.Lambda.Go.Alpha",
-          "packageId": "Amazon.CDK.AWS.Lambda.Go.Alpha",
-          "signAssembly": true
-        },
-        "go": {
-          "moduleName": "github.com/aws/aws-cdk-go",
-          "packageName": "awscdklambdagoalpha"
-        },
-        "java": {
-          "maven": {
-            "artifactId": "lambda-go-alpha",
-            "groupId": "software.amazon.awscdk"
-          },
-          "package": "software.amazon.awscdk.services.lambda.go.alpha"
-        },
-        "js": {
-          "npm": "@aws-cdk/aws-lambda-go-alpha"
-        },
-        "python": {
-          "classifiers": [
-            "Framework :: AWS CDK",
-            "Framework :: AWS CDK :: 2"
-          ],
-          "distName": "aws-cdk.aws-lambda-go-alpha",
-          "module": "aws_cdk.aws_lambda_go_alpha"
         }
       }
     },
@@ -8441,7 +8407,7 @@
   },
   "description": "CDK construct library for Mailbox infrastructure",
   "homepage": "https://github.com/serverlessinbox/mailbox-cdk",
-  "jsiiVersion": "5.9.14 (build 9fc28bd)",
+  "jsiiVersion": "5.9.44 (build 150b837)",
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
@@ -8449,11 +8415,11 @@
         "hasDefaultInterfaces": true
       }
     },
-    "tscRootDir": "/Users/joost/Development/serverlessinbox/mailbox-cdk/packages/mailbox/src"
+    "tscRootDir": "/Users/joost/Development/serverlessinbox/mailbox-lambdas/remote-git/mailbox-cdk/packages/mailbox/src"
   },
-  "name": "@mailbox/cdk",
+  "name": "@serverlessinbox/mailbox",
   "readme": {
-    "markdown": "# @mailbox/cdk\n\nCDK Construct Library for Mailbox Infrastructure\n\n## Installation\n\n```bash\nnpm install @mailbox/cdk\n# or\nyarn add @mailbox/cdk\n```\n\n## Peer Dependencies\n\nThis library requires:\n- `aws-cdk-lib` >= 2.224.0\n- `constructs` >= 10.0.0\n\n## Usage\n\n### Basic Stack\n\n```typescript\nimport { MailboxStack } from '@mailbox/cdk';\nimport { App } from 'aws-cdk-lib';\n\nconst app = new App();\nnew MailboxStack(app, 'MailboxStack', {\n  env: {\n    account: process.env.CDK_DEFAULT_ACCOUNT,\n    region: process.env.CDK_DEFAULT_REGION,\n  },\n});\n```\n\n### Lambda Code Providers\n\n#### Local Development\n\n```typescript\nimport { LocalLambdaCodeProvider } from '@mailbox/cdk';\n\nconst provider = new LocalLambdaCodeProvider({\n  basePath: './dist/lambdas',\n});\n```\n\n#### Production (S3)\n\n```typescript\nimport { UrlLambdaCodeProvider } from '@mailbox/cdk';\n\nconst provider = new UrlLambdaCodeProvider({\n  s3Bucket: 'my-lambda-bucket',\n  s3KeyPrefix: 'lambdas/v1.0.0/',\n});\n```\n\n## Building\n\n```bash\nyarn install\nyarn build\n```\n\n## Publishing\n\n```bash\nyarn build\nnpm publish\n```\n"
+    "markdown": "# @mailbox/cdk\n\nCDK Construct Library for Mailbox Infrastructure\n\n## Installation\n\n```bash\nyarn add @mailbox/cdk\n```\n\n## Peer Dependencies\n\nThis library requires:\n- `aws-cdk-lib` >= 2.224.0\n- `constructs` >= 10.0.0\n\n## Usage\n\n### Basic Stack\n\n```typescript\nimport { MailboxStack } from '@mailbox/cdk';\nimport { App } from 'aws-cdk-lib';\n\nconst app = new App();\nnew MailboxStack(app, 'MailboxStack', {\n  env: {\n    account: process.env.CDK_DEFAULT_ACCOUNT,\n    region: process.env.CDK_DEFAULT_REGION,\n  },\n});\n```\n\n### Mailbox UI defaults\n\nBy default, the `Mailbox` construct provisions both UIs:\n- Admin UI (`admin.<domain>`)\n- Webmail UI (`webmail.<domain>`)\n\nYou can opt out per UI:\n\n```ts\nnew Mailbox(this, 'mailbox', {\n  domainName: 'example.com',\n  authProvider,\n\n  // Optional: add extra origins (e.g., local dev). UI origins are derived automatically.\n  // Note: Admin API CORS allows the Admin UI origin; JMAP API CORS allows the Webmail UI origin.\n  extraAllowedOrigins: ['http://localhost:3000'],\n\n  // Defaults: true\n  createAdminUi: true,\n  createWebmailUi: true,\n});\n\n### KMS encryption (optional)\n\nBy default, core storage uses AWS-managed KMS keys for at-rest encryption:\n- Email bucket: SSE-KMS with the AWS-managed S3 key\n- Core DynamoDB tables: AWS-managed KMS\n- Core SQS queues: SSE-KMS with the AWS-managed SQS key\n\nNote: the SES notifications queue is subscribed to an SNS topic. AWS-managed SQS KMS keys can't be used with SNS subscriptions,\nso that specific queue defaults to unencrypted unless you provide a customer-managed CMK.\n\nYou can optionally provide a customer-managed KMS key (CMK) for stricter control:\n\n```ts\nimport * as kms from 'aws-cdk-lib/aws-kms';\n\nconst mailboxKey = new kms.Key(this, 'mailbox-kms-key', {\n  enableKeyRotation: true,\n});\n\nnew Mailbox(this, 'mailbox', {\n  domainName: 'example.com',\n  authProvider,\n  kms: {\n    mode: 'customer-managed',\n    key: mailboxKey,\n  },\n});\n```\n\nYou can also disable KMS usage (where applicable) or exclude specific resources:\n\n```ts\n// No KMS for S3/SQS; DynamoDB uses AWS-owned encryption.\nnew Mailbox(this, 'mailbox', {\n  domainName: 'example.com',\n  authProvider,\n  kms: { mode: 'none' },\n});\n\n// Use AWS-managed KMS for DynamoDB+SQS, but keep S3 on SSE-S3.\nnew Mailbox(this, 'mailbox', {\n  domainName: 'example.com',\n  authProvider,\n  kms: { mode: 'aws-managed', except: ['s3'] },\n});\n```\n```\n\n### Lambda Code Providers\n\n#### Local Development\n\n```typescript\nimport { LocalLambdaCodeProvider } from '@mailbox/cdk';\n\nconst provider = new LocalLambdaCodeProvider({\n  basePath: './dist/lambdas',\n});\n```\n\n#### Production (S3)\n\n```typescript\nimport { UrlLambdaCodeProvider } from '@mailbox/cdk';\n\nconst provider = new UrlLambdaCodeProvider({\n  s3Bucket: 'my-lambda-bucket',\n  s3KeyPrefix: 'lambdas/v1.0.0/',\n});\n```\n\n## Building\n\n```bash\nyarn install\nyarn build\n```\n\n## Publishing\n\n```bash\nyarn build\n```\n"
   },
   "repository": {
     "type": "git",
@@ -8465,138 +8431,1326 @@
       "moduleName": "github.com/serverlessinbox/mailbox-cdk-go"
     },
     "js": {
-      "npm": "@mailbox/cdk"
+      "npm": "@serverlessinbox/mailbox"
     }
   },
   "types": {
-    "@mailbox/cdk.ILambdaCodeProvider": {
-      "assembly": "@mailbox/cdk",
-      "docs": {
-        "summary": "Interface for providing Lambda code."
-      },
-      "fqn": "@mailbox/cdk.ILambdaCodeProvider",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/utils/lambda-code-provider.ts",
-        "line": 6
-      },
-      "methods": [
-        {
-          "abstract": true,
-          "locationInModule": {
-            "filename": "src/utils/lambda-code-provider.ts",
-            "line": 7
-          },
-          "name": "getCode",
-          "parameters": [
-            {
-              "name": "lambdaId",
-              "type": {
-                "primitive": "string"
-              }
-            }
-          ],
-          "returns": {
-            "type": {
-              "fqn": "aws-cdk-lib.aws_lambda.Code"
-            }
-          }
-        }
-      ],
-      "name": "ILambdaCodeProvider",
-      "symbolId": "src/utils/lambda-code-provider:ILambdaCodeProvider"
-    },
-    "@mailbox/cdk.LocalLambdaCodeProvider": {
-      "assembly": "@mailbox/cdk",
-      "docs": {
-        "summary": "Provides Lambda code from local filesystem Useful for development."
-      },
-      "fqn": "@mailbox/cdk.LocalLambdaCodeProvider",
-      "initializer": {
-        "locationInModule": {
-          "filename": "src/utils/local-lambda-code-provider.ts",
-          "line": 16
-        },
-        "parameters": [
-          {
-            "name": "config",
-            "type": {
-              "fqn": "@mailbox/cdk.LocalLambdaCodeProviderConfig"
-            }
-          }
-        ]
-      },
-      "interfaces": [
-        "@mailbox/cdk.ILambdaCodeProvider"
-      ],
-      "kind": "class",
-      "locationInModule": {
-        "filename": "src/utils/local-lambda-code-provider.ts",
-        "line": 13
-      },
-      "methods": [
-        {
-          "locationInModule": {
-            "filename": "src/utils/local-lambda-code-provider.ts",
-            "line": 20
-          },
-          "name": "getCode",
-          "overrides": "@mailbox/cdk.ILambdaCodeProvider",
-          "parameters": [
-            {
-              "name": "lambdaId",
-              "type": {
-                "primitive": "string"
-              }
-            }
-          ],
-          "returns": {
-            "type": {
-              "fqn": "aws-cdk-lib.aws_lambda.Code"
-            }
-          }
-        }
-      ],
-      "name": "LocalLambdaCodeProvider",
-      "symbolId": "src/utils/local-lambda-code-provider:LocalLambdaCodeProvider"
-    },
-    "@mailbox/cdk.LocalLambdaCodeProviderConfig": {
-      "assembly": "@mailbox/cdk",
+    "@serverlessinbox/mailbox.AdminApiAddonContext": {
+      "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
-      "fqn": "@mailbox/cdk.LocalLambdaCodeProviderConfig",
+      "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext",
       "kind": "interface",
       "locationInModule": {
-        "filename": "src/utils/local-lambda-code-provider.ts",
-        "line": 5
+        "filename": "src/api/addons.ts",
+        "line": 17
       },
-      "name": "LocalLambdaCodeProviderConfig",
+      "name": "AdminApiAddonContext",
       "properties": [
         {
           "abstract": true,
           "immutable": true,
           "locationInModule": {
-            "filename": "src/utils/local-lambda-code-provider.ts",
-            "line": 6
+            "filename": "src/api/addons.ts",
+            "line": 18
           },
-          "name": "basePath",
+          "name": "artifactResolver",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 19
+          },
+          "name": "auditEventsQueue",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_sqs.IQueue"
+          }
+        }
+      ],
+      "symbolId": "src/api/addons:AdminApiAddonContext"
+    },
+    "@serverlessinbox/mailbox.ArtifactReference": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.ArtifactReference",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-prefix.ts",
+        "line": 9
+      },
+      "name": "ArtifactReference",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Artifact path relative to the publish target prefix, e.g. \"template.json\" or \"lambdas/blob-authorizer.zip\"."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-prefix.ts",
+            "line": 11
+          },
+          "name": "key",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional S3 object version ID."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-prefix.ts",
+            "line": 14
+          },
+          "name": "s3VersionId",
+          "optional": true,
           "type": {
             "primitive": "string"
           }
         }
       ],
-      "symbolId": "src/utils/local-lambda-code-provider:LocalLambdaCodeProviderConfig"
+      "symbolId": "src/artifacts/artifact-prefix:ArtifactReference"
     },
-    "@mailbox/cdk.Mailbox": {
-      "assembly": "@mailbox/cdk",
+    "@serverlessinbox/mailbox.ArtifactResolver": {
+      "assembly": "@serverlessinbox/mailbox",
+      "base": "constructs.Construct",
+      "docs": {
+        "remarks": "Pure data structure—no AWS SDK calls. Versioning is handled offline via manifest.",
+        "summary": "Resolves pre-published artifact locations from S3."
+      },
+      "fqn": "@serverlessinbox/mailbox.ArtifactResolver",
+      "initializer": {
+        "locationInModule": {
+          "filename": "src/artifacts/artifact-resolver.ts",
+          "line": 125
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "type": {
+              "fqn": "constructs.IConstruct"
+            }
+          },
+          {
+            "name": "config",
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.ArtifactResolverConfig"
+            }
+          }
+        ]
+      },
+      "interfaces": [
+        "@serverlessinbox/mailbox.IArtifactResolver"
+      ],
+      "kind": "class",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 118
+      },
+      "methods": [
+        {
+          "docs": {
+            "summary": "Get S3 ARN for an object."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 254
+          },
+          "name": "getArn",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
+            "remarks": "Constructs use this to wire Lambda code from artifacts.",
+            "summary": "Get Lambda Code for an object."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 272
+          },
+          "name": "getCode",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "aws-cdk-lib.aws_lambda.Code"
+            }
+          }
+        },
+        {
+          "docs": {
+            "summary": "Get the S3 key for an object."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 228
+          },
+          "name": "getKey",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
+            "summary": "Get S3 URL, optionally with version ID from versionMap (for channels)."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 236
+          },
+          "name": "getUrl",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "region",
+              "optional": true,
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
+            "summary": "Get S3 version ID for an artifact from the version map."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 263
+          },
+          "name": "getVersionId",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "optional": true,
+            "type": {
+              "primitive": "string"
+            }
+          }
+        }
+      ],
+      "name": "ArtifactResolver",
+      "properties": [
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 119
+          },
+          "name": "bucketBase",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 120
+          },
+          "name": "packages",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "union": {
+                  "types": [
+                    {
+                      "fqn": "@serverlessinbox/mailbox.ReleaseTarget"
+                    },
+                    {
+                      "fqn": "@serverlessinbox/mailbox.ChannelTarget"
+                    },
+                    {
+                      "fqn": "@serverlessinbox/mailbox.TrackTarget"
+                    }
+                  ]
+                }
+              },
+              "kind": "map"
+            }
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 121
+          },
+          "name": "region",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 122
+          },
+          "name": "versionMap",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "map"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/artifact-resolver:ArtifactResolver"
+    },
+    "@serverlessinbox/mailbox.ArtifactResolverConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Configuration for ArtifactResolver."
+      },
+      "fqn": "@serverlessinbox/mailbox.ArtifactResolverConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 89
+      },
+      "name": "ArtifactResolverConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Per-package targets: { packageName: target }."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 99
+          },
+          "name": "packages",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "union": {
+                  "types": [
+                    {
+                      "fqn": "@serverlessinbox/mailbox.ReleaseTarget"
+                    },
+                    {
+                      "fqn": "@serverlessinbox/mailbox.ChannelTarget"
+                    },
+                    {
+                      "fqn": "@serverlessinbox/mailbox.TrackTarget"
+                    }
+                  ]
+                }
+              },
+              "kind": "map"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Artifact bucket base name (e.g. 'mailbox-artifacts'). Defaults to 'mailbox-artifacts'."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 94
+          },
+          "name": "bucketBase",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Defaults to stack region.",
+            "summary": "AWS region."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 104
+          },
+          "name": "region",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Structure: { \"packages/packageName/channels/channelName/objectPath\": \"versionId\" }\nUsed for versioned URLs in channels (from offline manifest).",
+            "summary": "Optional pre-computed version ID map for channels."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 111
+          },
+          "name": "versionMap",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "map"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/artifact-resolver:ArtifactResolverConfig"
+    },
+    "@serverlessinbox/mailbox.AuthClientConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "remarks": "Used by constructs to pass a concrete clientId (+ optional secret) and the scopes/groups it should request.",
+        "summary": "Result of generating/providing an OAuth client for mailbox usage."
+      },
+      "fqn": "@serverlessinbox/mailbox.AuthClientConfig",
+      "interfaces": [
+        "@serverlessinbox/mailbox.OAuthClientCredentials"
+      ],
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 108
+      },
+      "name": "AuthClientConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 110
+          },
+          "name": "groups",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 109
+          },
+          "name": "requestScopeList",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:AuthClientConfig"
+    },
+    "@serverlessinbox/mailbox.AuthPoliciesConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.AuthPoliciesConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 41
+      },
+      "name": "AuthPoliciesConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 42
+          },
+          "name": "adminApi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthPolicyConfig"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 43
+          },
+          "name": "jmapApi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthPolicyConfig"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:AuthPoliciesConfig"
+    },
+    "@serverlessinbox/mailbox.AuthPolicyConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Policy configuration for authorizers (audiences + optional group requirement)."
+      },
+      "fqn": "@serverlessinbox/mailbox.AuthPolicyConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 32
+      },
+      "name": "AuthPolicyConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 33
+          },
+          "name": "audiences",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Empty/undefined means no scope restriction.",
+            "summary": "Require ALL of these OAuth scopes."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 38
+          },
+          "name": "requireAllScopes",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Empty/undefined means no restriction.",
+            "summary": "Require membership in ANY of these groups/roles."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 35
+          },
+          "name": "requireAnyOfGroups",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:AuthPolicyConfig"
+    },
+    "@serverlessinbox/mailbox.ChannelTarget": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "A mutable channel (e.g. \"dev\", \"stable\")."
+      },
+      "fqn": "@serverlessinbox/mailbox.ChannelTarget",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 17
+      },
+      "name": "ChannelTarget",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 19
+          },
+          "name": "channel",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 18
+          },
+          "name": "kind",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/artifact-resolver:ChannelTarget"
+    },
+    "@serverlessinbox/mailbox.IAdminApiAddon": {
+      "assembly": "@serverlessinbox/mailbox",
+      "fqn": "@serverlessinbox/mailbox.IAdminApiAddon",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/api/addons.ts",
+        "line": 8
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Mount additional routes on the Admin API behind the same authorizer."
+          },
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 10
+          },
+          "name": "addRoutes",
+          "parameters": [
+            {
+              "name": "api",
+              "type": {
+                "fqn": "aws-cdk-lib.aws_apigatewayv2.HttpApi"
+              }
+            },
+            {
+              "name": "authorizer",
+              "type": {
+                "fqn": "aws-cdk-lib.aws_apigatewayv2_authorizers.HttpLambdaAuthorizer"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "IAdminApiAddon",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional UI config fragment to be merged into the Admin UI `/config/config.json`."
+          },
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 13
+          },
+          "name": "uiConfig",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "any"
+              },
+              "kind": "map"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/api/addons:IAdminApiAddon"
+    },
+    "@serverlessinbox/mailbox.IAdminApiAddonProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "Optional capability for an auth provider implementation (e.g. Cognito) to register additional Admin API routes without the core package knowing provider specifics."
+      },
+      "fqn": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/api/addons.ts",
+        "line": 26
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 27
+          },
+          "name": "createAdminApiAddons",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        }
+      ],
+      "name": "IAdminApiAddonProvider",
+      "symbolId": "src/api/addons:IAdminApiAddonProvider"
+    },
+    "@serverlessinbox/mailbox.IAdminUiConfigProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`)."
+      },
+      "fqn": "@serverlessinbox/mailbox.IAdminUiConfigProvider",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 156
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 157
+          },
+          "name": "adminUiConfig",
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "primitive": "any"
+                },
+                "kind": "map"
+              }
+            }
+          }
+        }
+      ],
+      "name": "IAdminUiConfigProvider",
+      "symbolId": "src/auth/types:IAdminUiConfigProvider"
+    },
+    "@serverlessinbox/mailbox.IArtifactResolver": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Constructs depend on this interface, not the implementation.",
+        "summary": "Interface for resolving pre-published artifact locations."
+      },
+      "fqn": "@serverlessinbox/mailbox.IArtifactResolver",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 47
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Get S3 ARN for a package artifact."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 68
+          },
+          "name": "getArn",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- Package name."
+              },
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Object path."
+              },
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Get Lambda Code for a package artifact."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 53
+          },
+          "name": "getCode",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- Package name (e.g., 'mailbox-go')."
+              },
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Object path within the package (e.g., 'lambdas/handler.zip')."
+              },
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "aws-cdk-lib.aws_lambda.Code"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Get the S3 key (full path) for a package artifact."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 83
+          },
+          "name": "getKey",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- Package name."
+              },
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Object path."
+              },
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Get S3 URL for a package artifact."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 61
+          },
+          "name": "getUrl",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- Package name."
+              },
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Object path."
+              },
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Optional region override."
+              },
+              "name": "region",
+              "optional": true,
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Returns undefined if no version ID is configured for the artifact.",
+            "summary": "Get S3 version ID for a package artifact from the version map."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 76
+          },
+          "name": "getVersionId",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- Package name."
+              },
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "- Object path."
+              },
+              "name": "objectPath",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "optional": true,
+            "type": {
+              "primitive": "string"
+            }
+          }
+        }
+      ],
+      "name": "IArtifactResolver",
+      "symbolId": "src/artifacts/artifact-resolver:IArtifactResolver"
+    },
+    "@serverlessinbox/mailbox.IMailboxAuthProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).\nThey can optionally supply Admin API addons (provider-specific admin endpoints).",
+        "summary": "Auth provider contract expected by the top-level Mailbox construct."
+      },
+      "fqn": "@serverlessinbox/mailbox.IMailboxAuthProvider",
+      "interfaces": [
+        "@serverlessinbox/mailbox.IMailboxAuthProviderBase"
+      ],
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 182
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional: supply Admin UI runtime config."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 186
+          },
+          "name": "adminUiConfig",
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "primitive": "any"
+                },
+                "kind": "map"
+              }
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional: publish an authorization mapping."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 188
+          },
+          "name": "authorizationConfig",
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.MailboxAuthorizationConfig"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional: register additional Admin API routes (provider-specific)."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 184
+          },
+          "name": "createAdminApiAddons",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        }
+      ],
+      "name": "IMailboxAuthProvider",
+      "symbolId": "src/auth/types:IMailboxAuthProvider"
+    },
+    "@serverlessinbox/mailbox.IMailboxAuthProviderBase": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Key properties:\n- `policies` explicitly separates Admin vs JMAP audiences.\n- UI OAuth clients are provisioned only when the corresponding UI is created,\n  because callback/logout URLs are not known up-front.",
+        "summary": "Auth provider contract expected by the top-level Mailbox construct."
+      },
+      "fqn": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 136
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Provision the OAuth client used by the Admin UI (authorization_code)."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 148
+          },
+          "name": "provisionAdminUiClient",
+          "parameters": [
+            {
+              "name": "config",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.ProvisionAdminUiClientParams"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.AuthClientConfig"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Provision the OAuth client used by the Webmail/JMAP UI (authorization_code)."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 151
+          },
+          "name": "provisionJmapUiClient",
+          "parameters": [
+            {
+              "name": "config",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.ProvisionJmapUiClientParams"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.AuthClientConfig"
+            }
+          }
+        }
+      ],
+      "name": "IMailboxAuthProviderBase",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 140
+          },
+          "name": "authMethod",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 139
+          },
+          "name": "authorizationEndpoint",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 137
+          },
+          "name": "issuer",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Policy configuration consumed by authorizers (audiences + optional group requirement)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 145
+          },
+          "name": "policies",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxAuthPolicies"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 142
+          },
+          "name": "scopeMap",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "collection": {
+                  "elementtype": {
+                    "fqn": "@serverlessinbox/mailbox.Permission"
+                  },
+                  "kind": "array"
+                }
+              },
+              "kind": "map"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 138
+          },
+          "name": "tokenEndpoint",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 141
+          },
+          "name": "usePkce",
+          "type": {
+            "primitive": "boolean"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:IMailboxAuthProviderBase"
+    },
+    "@serverlessinbox/mailbox.IMailboxAuthorizationConfigProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "Optional hook for providers to publish an authorization mapping (e.g. which groups grant admin)."
+      },
+      "fqn": "@serverlessinbox/mailbox.IMailboxAuthorizationConfigProvider",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 171
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 172
+          },
+          "name": "authorizationConfig",
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.MailboxAuthorizationConfig"
+            }
+          }
+        }
+      ],
+      "name": "IMailboxAuthorizationConfigProvider",
+      "symbolId": "src/auth/types:IMailboxAuthorizationConfigProvider"
+    },
+    "@serverlessinbox/mailbox.Mailbox": {
+      "assembly": "@serverlessinbox/mailbox",
       "base": "constructs.Construct",
       "docs": {
         "summary": "Main Mailbox construct."
       },
-      "fqn": "@mailbox/cdk.Mailbox",
+      "fqn": "@serverlessinbox/mailbox.Mailbox",
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 10
+          "line": 163
         },
         "parameters": [
           {
@@ -8614,7 +9768,7 @@
           {
             "name": "props",
             "type": {
-              "fqn": "@mailbox/cdk.MailboxProps"
+              "fqn": "@serverlessinbox/mailbox.MailboxProps"
             }
           }
         ]
@@ -8622,24 +9776,1228 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 9
+        "line": 121
       },
       "name": "Mailbox",
+      "properties": [
+        {
+          "docs": {
+            "summary": "OAuth clients created by this construct (only when enabled)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 150
+          },
+          "name": "oauthClients",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxOAuthClients"
+          }
+        },
+        {
+          "docs": {
+            "summary": "Admin UI resources (when `createAdminUi !== false`)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 134
+          },
+          "name": "adminUiBucket",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_s3.IBucket"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 135
+          },
+          "name": "adminUiDistribution",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_cloudfront.IDistribution"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 141
+          },
+          "name": "edgeCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "docs": {
+            "remarks": "Exposed for add-on constructs such as McpApi.",
+            "summary": "Regional SAN certificate (when auto-created)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 144
+          },
+          "name": "regionalCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "docs": {
+            "summary": "Webmail UI resources (when `createWebmailUi !== false`)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 138
+          },
+          "name": "webmailUiBucket",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_s3.IBucket"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 139
+          },
+          "name": "webmailUiDistribution",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_cloudfront.IDistribution"
+          }
+        }
+      ],
       "symbolId": "src/mailbox:Mailbox"
     },
-    "@mailbox/cdk.MailboxProps": {
-      "assembly": "@mailbox/cdk",
+    "@serverlessinbox/mailbox.MailboxAuthPolicies": {
+      "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
-      "fqn": "@mailbox/cdk.MailboxProps",
+      "docs": {
+        "summary": "Concrete, policy-split auth configuration used by mailbox components."
+      },
+      "fqn": "@serverlessinbox/mailbox.MailboxAuthPolicies",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 47
+      },
+      "name": "MailboxAuthPolicies",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 48
+          },
+          "name": "adminApi",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthPolicyConfig"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 49
+          },
+          "name": "jmapApi",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthPolicyConfig"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:MailboxAuthPolicies"
+    },
+    "@serverlessinbox/mailbox.MailboxAuthorizationConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles."
+      },
+      "fqn": "@serverlessinbox/mailbox.MailboxAuthorizationConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 165
+      },
+      "name": "MailboxAuthorizationConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 166
+          },
+          "name": "adminGroups",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 167
+          },
+          "name": "userGroups",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:MailboxAuthorizationConfig"
+    },
+    "@serverlessinbox/mailbox.MailboxKmsConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxKmsConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/utils/kms.ts",
+        "line": 14
+      },
+      "name": "MailboxKmsConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Example: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.",
+            "summary": "Exclude specific resources from KMS usage."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 27
+          },
+          "name": "excluded",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Used when mode='customer-managed' and a perResource key isn't set.",
+            "summary": "Optional “one key for core resources” (regional)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 33
+          },
+          "name": "key",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_kms.IKey"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "DynamoDB uses AWS-owned encryption.\n- 'aws-managed': use AWS-managed keys (e.g. alias/aws/s3)\n- 'customer-managed': use customer-managed CMK(s) provided below",
+            "summary": "Default: 'aws-managed' - 'none': do not use KMS for resources that support disabling it (S3/SQS);"
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 21
+          },
+          "name": "mode",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional per-resource overrides."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 36
+          },
+          "name": "perResource",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxKmsPerResourceConfig"
+          }
+        }
+      ],
+      "symbolId": "src/utils/kms:MailboxKmsConfig"
+    },
+    "@serverlessinbox/mailbox.MailboxKmsPerResourceConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxKmsPerResourceConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/utils/kms.ts",
+        "line": 8
+      },
+      "name": "MailboxKmsPerResourceConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 10
+          },
+          "name": "dynamoTables",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_kms.IKey"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 9
+          },
+          "name": "emailBucket",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_kms.IKey"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/kms.ts",
+            "line": 11
+          },
+          "name": "queues",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_kms.IKey"
+          }
+        }
+      ],
+      "symbolId": "src/utils/kms:MailboxKmsPerResourceConfig"
+    },
+    "@serverlessinbox/mailbox.MailboxOAuthClients": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxOAuthClients",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 3
+        "line": 113
+      },
+      "name": "MailboxOAuthClients",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 114
+          },
+          "name": "adminUi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthClientConfig"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 115
+          },
+          "name": "jmapUi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.AuthClientConfig"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxOAuthClients"
+    },
+    "@serverlessinbox/mailbox.MailboxProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 50
       },
       "name": "MailboxProps",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 58
+          },
+          "name": "authProvider",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IMailboxAuthProvider"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 52
+          },
+          "name": "domainName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced license tier. Defaults to false."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 88
+          },
+          "name": "activateMcp",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Only one rule set can be active per account per region — this is an explicit operator\ndecision.",
+            "summary": "When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt rule set."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 110
+          },
+          "name": "activateReceiving",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 91
+          },
+          "name": "adminUiCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional regional ACM certificate for api.<domain> (Admin API custom domain)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 97
+          },
+          "name": "apiCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 70
+          },
+          "name": "cloudFrontCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Defaults to true.",
+            "summary": "Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 76
+          },
+          "name": "createAdminUi",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Defaults to true.",
+            "summary": "Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 82
+          },
+          "name": "createWebmailUi",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional deployer label used for tagging (default: 'cfn')."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 61
+          },
+          "name": "deployer",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 67
+          },
+          "name": "extraAllowedOrigins",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional extra tags applied to all taggable resources in this construct."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 64
+          },
+          "name": "extraTags",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "map"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 51
+          },
+          "name": "hostedZone",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_route53.IHostedZone"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 100
+          },
+          "name": "jmapCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional KMS configuration for at-rest encryption of core resources."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 55
+          },
+          "name": "kms",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxKmsConfig"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 94
+          },
+          "name": "webmailUiCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 103
+          },
+          "name": "wsCertificate",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        }
+      ],
       "symbolId": "src/mailbox:MailboxProps"
+    },
+    "@serverlessinbox/mailbox.OAuthAuthorizationCodeClientConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "remarks": "Note: `requestedAudience` is optional; when omitted, we default to `clientId`.\nSome providers treat audience and clientId as the same concept, while others don't.",
+        "summary": "OAuth client config to bootstrap into the config table."
+      },
+      "fqn": "@serverlessinbox/mailbox.OAuthAuthorizationCodeClientConfig",
+      "interfaces": [
+        "@serverlessinbox/mailbox.OAuthClientCredentials"
+      ],
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 66
+      },
+      "name": "OAuthAuthorizationCodeClientConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 67
+          },
+          "name": "flow",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 70
+          },
+          "name": "redirectUri",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 69
+          },
+          "name": "scopes",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 68
+          },
+          "name": "requestedAudience",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:OAuthAuthorizationCodeClientConfig"
+    },
+    "@serverlessinbox/mailbox.OAuthClientCredentials": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Shared OAuth client credentials (clientId + optional secret)."
+      },
+      "fqn": "@serverlessinbox/mailbox.OAuthClientCredentials",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 53
+      },
+      "name": "OAuthClientCredentials",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 54
+          },
+          "name": "clientId",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 55
+          },
+          "name": "clientSecret",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.SecretValue"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:OAuthClientCredentials"
+    },
+    "@serverlessinbox/mailbox.OAuthClientCredentialsClientConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.OAuthClientCredentialsClientConfig",
+      "interfaces": [
+        "@serverlessinbox/mailbox.OAuthClientCredentials"
+      ],
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 73
+      },
+      "name": "OAuthClientCredentialsClientConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 74
+          },
+          "name": "flow",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 76
+          },
+          "name": "scopes",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 75
+          },
+          "name": "requestedAudience",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:OAuthClientCredentialsClientConfig"
+    },
+    "@serverlessinbox/mailbox.OAuthClientsConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.OAuthClientsConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 81
+      },
+      "name": "OAuthClientsConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 82
+          },
+          "name": "adminUi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.OAuthAuthorizationCodeClientConfig"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 83
+          },
+          "name": "jmapUi",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.OAuthAuthorizationCodeClientConfig"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:OAuthClientsConfig"
+    },
+    "@serverlessinbox/mailbox.OidcProviderConfig": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "OIDC provider configuration needed by the token exchange + UI flows."
+      },
+      "fqn": "@serverlessinbox/mailbox.OidcProviderConfig",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 24
+      },
+      "name": "OidcProviderConfig",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 27
+          },
+          "name": "authMethod",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 26
+          },
+          "name": "authorizationEndpoint",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 25
+          },
+          "name": "tokenEndpoint",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 28
+          },
+          "name": "usePkce",
+          "type": {
+            "primitive": "boolean"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:OidcProviderConfig"
+    },
+    "@serverlessinbox/mailbox.Permission": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "JMAP API scope definitions for Cognito resource server https://jmap.io/."
+      },
+      "fqn": "@serverlessinbox/mailbox.Permission",
+      "kind": "enum",
+      "locationInModule": {
+        "filename": "src/auth/jmap-scopes.ts",
+        "line": 6
+      },
+      "members": [
+        {
+          "name": "MAIL_READ"
+        },
+        {
+          "name": "MAIL_WRITE"
+        },
+        {
+          "name": "MAIL_SEND"
+        },
+        {
+          "name": "ACCOUNT_READ"
+        },
+        {
+          "name": "ALIAS_READ"
+        },
+        {
+          "name": "ALIAS_WRITE"
+        },
+        {
+          "name": "USER_READ"
+        },
+        {
+          "name": "CONTACTS_READ"
+        },
+        {
+          "name": "CONTACTS_WRITE"
+        },
+        {
+          "name": "ADMIN"
+        }
+      ],
+      "name": "Permission",
+      "symbolId": "src/auth/jmap-scopes:Permission"
+    },
+    "@serverlessinbox/mailbox.ProvisionAdminUiClientParams": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Parameters for provisioning the Admin UI OAuth client."
+      },
+      "fqn": "@serverlessinbox/mailbox.ProvisionAdminUiClientParams",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 114
+      },
+      "name": "ProvisionAdminUiClientParams",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 116
+          },
+          "name": "callbackUrls",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 117
+          },
+          "name": "logoutUrls",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 115
+          },
+          "name": "name",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:ProvisionAdminUiClientParams"
+    },
+    "@serverlessinbox/mailbox.ProvisionJmapUiClientParams": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Parameters for provisioning the JMAP UI OAuth client."
+      },
+      "fqn": "@serverlessinbox/mailbox.ProvisionJmapUiClientParams",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/types.ts",
+        "line": 121
+      },
+      "name": "ProvisionJmapUiClientParams",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 123
+          },
+          "name": "callbackUrls",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 124
+          },
+          "name": "logoutUrls",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 122
+          },
+          "name": "name",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 125
+          },
+          "name": "permissions",
+          "type": {
+            "collection": {
+              "elementtype": {
+                "fqn": "@serverlessinbox/mailbox.Permission"
+              },
+              "kind": "array"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/auth/types:ProvisionJmapUiClientParams"
+    },
+    "@serverlessinbox/mailbox.ReleaseTarget": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "A specific published version."
+      },
+      "fqn": "@serverlessinbox/mailbox.ReleaseTarget",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 9
+      },
+      "name": "ReleaseTarget",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 10
+          },
+          "name": "kind",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 11
+          },
+          "name": "version",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/artifact-resolver:ReleaseTarget"
+    },
+    "@serverlessinbox/mailbox.TrackTarget": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "remarks": "Examples: \"1.x\" (latest of major 1) or \"1.2.x\" (latest of 1.2.x patch series).\n\nResolution requires a context key `mailbox-track:<packageName>:<track>` in cdk.context.json.\nRun the following to populate it before synthesising:\n\n```sh\nTRACK=1.x PACKAGE=mailbox-go\nVERSION=$(aws s3 cp s3://mailbox-artifacts-eu-west-1/packages/${PACKAGE}/v1/latest-stable.json - | jq -r .version)\n# then add to cdk.context.json: { \"mailbox-track:${PACKAGE}:${TRACK}\": \"${VERSION}\" }\n```",
+        "summary": "A semver track pointer resolved at synth time via CDK context."
+      },
+      "fqn": "@serverlessinbox/mailbox.TrackTarget",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/artifact-resolver.ts",
+        "line": 35
+      },
+      "name": "TrackTarget",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 36
+          },
+          "name": "kind",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Semver track, e.g. \"1.x\" or \"1.2.x\"."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 38
+          },
+          "name": "track",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/artifact-resolver:TrackTarget"
     }
   },
-  "version": "1.0.0",
-  "fingerprint": "ipae2QYJswPSisi7D2gWUSAX3aht1JAC7yQG0L4ie14="
+  "version": "0.0.1",
+  "fingerprint": "rTA0w2zJDAFygU/ms+gJUTrGnSQnG+65n5M92TMwgSA="
 }

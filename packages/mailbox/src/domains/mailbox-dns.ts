@@ -1,12 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
-import { MAILBOX_ENDPOINTS, MailboxDomainNames, MailboxEndpoint } from './mailbox-domains';
+import { MAILBOX_ENDPOINTS, IMailboxDomainNames, MailboxEndpoint } from './mailbox-domains';
 
 export type MailboxDnsCnameTargets = Partial<Record<MailboxEndpoint, string>>;
 
 export interface MailboxDnsProps {
-  readonly names: MailboxDomainNames;
+  readonly names: IMailboxDomainNames;
 
   /**
    * If provided, Route53 CNAME records will be created.

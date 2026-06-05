@@ -9,19 +9,22 @@ import {
   AuthClientConfig,
   AuthPolicyConfig,
   MailboxAuthPolicies,
-  MailboxAuthProviderBase,
+  IMailboxAuthProviderBase,
   GenerateClientParams,
   JMAP_SCOPE_DESCRIPTIONS,
   OAUTH_CLIENT_ADMIN_UI,
   OAUTH_CLIENT_JMAP_UI,
   Permission,
+  ProvisionAdminUiClientParams,
+  ProvisionJmapUiClientParams,
   isDevelopmentMode,
   createArtifactResolverFromContext,
 } from '@serverlessinbox/mailbox';
 
-import type { AdminApiAddon, AdminApiAddonContext, AdminApiAddonProvider } from '@serverlessinbox/mailbox';
+import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider } from '@serverlessinbox/mailbox';
 
-import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
+import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
+
 
 import { makePhysicalName, slugifyLabel } from '../utils/resource-names';
 import { PermissionToCognitoScope } from './scopemaps/cognito';
@@ -31,20 +34,20 @@ import { CognitoCustomMessageLambda } from '../lambdas/cognito-custom-message';
  * Cognito-managed domain configuration
  */
 export interface MailboxUserPoolCognitoDomain {
-  type: 'cognito';
+  readonly kind: 'cognito';
   /** Domain prefix (globally unique across AWS) */
-  cognitoDomainPrefix: string;
+  readonly cognitoDomainPrefix: string;
 }
 
 /**
  * Custom domain configuration with certificate
  */
 export interface MailboxUserPoolCustomDomain {
-  type: 'custom';
+  readonly kind: 'custom';
   /** Custom domain name */
-  domainName: string;
+  readonly domainName: string;
   /** ACM certificate for the domain */
-  certificate: acm.ICertificate;
+  readonly certificate: acm.ICertificate;
 }
 
 /**
@@ -53,57 +56,68 @@ export interface MailboxUserPoolCustomDomain {
  */
 export type MailboxUserPoolDomain = MailboxUserPoolCognitoDomain | MailboxUserPoolCustomDomain;
 
+export interface MailboxUserPoolAuthorizationConfig {
+  readonly adminGroups?: string[];
+  readonly userGroups?: string[];
+}
+
+export interface MailboxUserPoolCustomMessageConfig {
+  readonly loginUrl?: string;
+  readonly supportText?: string;
+}
+
+export interface ProvisionHeadlessClientConfig {
+  readonly name: string;
+  readonly audiences: Array<'adminApi' | 'jmapApi'>;
+  readonly permissions: Permission[];
+}
+
+
 export interface MailboxUserPoolProps {
   /**
    * Domain configuration - either Cognito-managed or custom
    * @example { type: 'cognito', cognitoDomainPrefix: 'my-auth' }
    * @example { type: 'custom', domainName: 'auth.example.com', certificate: cert }
    */
-  domain: MailboxUserPoolDomain;
+  readonly domain: MailboxUserPoolDomain;
 
   /**
    * JMAP scopes to enable on this user pool
    * @default Object.values(Permission)
    */
-  jmapScopes?: Permission[];
+  readonly jmapScopes?: Permission[];
 
   /**
    * Whether to add admin and user groups
    * @default true
    */
-  createDefaultGroups?: boolean;
+  readonly createDefaultGroups?: boolean;
 
   /**
    * Authorization mapping used by mailbox components.
    * Defaults to admin=['admin'], user=['user'].
    */
-  authorization?: {
-    adminGroups?: string[];
-    userGroups?: string[];
-  };
+  readonly authorization?: MailboxUserPoolAuthorizationConfig;
 
-  authFlows?: cdk.aws_cognito.AuthFlow;
+
+  readonly authFlows?: cdk.aws_cognito.AuthFlow;
 
   /**
    * Custom message templates for Cognito emails (Custom Message trigger).
    * If provided, the trigger is attached automatically to this user pool.
    */
-  customMessage?: {
-    /** Optional login URL to include in the message (also used for sign-in link). */
-    loginUrl?: string;
+  readonly customMessage?: MailboxUserPoolCustomMessageConfig;
 
-    /** Optional support/contact text appended to the email. */
-    supportText?: string;
-  };
 }
 
 /**
  * Opinionated JMAP user pool construct for mailbox servers.
  */
-export class MailboxUserPool extends Construct implements MailboxAuthProviderBase, AdminApiAddonProvider {
+export class MailboxUserPool extends Construct implements IMailboxAuthProviderBase, IAdminApiAddonProvider {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolDomain: cognito.UserPoolDomain;
-  public readonly customMessageLambda?: CognitoCustomMessageLambda;
+  /** The underlying CDK construct wrapping the custom message Lambda, if configured. */
+  public readonly customMessageLambda?: Construct;
   private readonly jmapResourceServer: cognito.UserPoolResourceServer;
   private readonly jmapScopes: Permission[];
   private readonly resourceServerIdentifier: string = 'si';
@@ -214,14 +228,11 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     }
   }
 
-  provisionHeadlessClient(params: {
-    name: string;
-    audiences: Array<'adminApi' | 'jmapApi'>;
-    permissions: Permission[];
-  }): AuthClientConfig {
-    const existing = this.headlessClients.get(params.name);
+  provisionHeadlessClient(config: ProvisionHeadlessClientConfig): AuthClientConfig {
+
+    const existing = this.headlessClients.get(config.name);
     if (existing) {
-      for (const audience of params.audiences) {
+      for (const audience of config.audiences) {
         if (audience === 'adminApi') {
           this.addAudience(this.policies.adminApi, existing.clientId);
         } else {
@@ -234,11 +245,11 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
 
     const client = this.createOAuthClient({
       flow: 'client_credentials',
-      name: params.name,
-      permissions: params.permissions,
+      name: config.name,
+      permissions: config.permissions,
     });
 
-    for (const audience of params.audiences) {
+    for (const audience of config.audiences) {
       if (audience === 'adminApi') {
         this.addAudience(this.policies.adminApi, client.clientId);
       } else {
@@ -246,12 +257,13 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       }
     }
 
-    this.headlessClients.set(params.name, client);
+    this.headlessClients.set(config.name, client);
     return client;
   }
 
-  provisionAdminUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig {
-    const resolvedName = `${OAUTH_CLIENT_ADMIN_UI}_${params.name}`;
+  provisionAdminUiClient(config: ProvisionAdminUiClientParams): AuthClientConfig {
+
+    const resolvedName = `${OAUTH_CLIENT_ADMIN_UI}_${config.name}`;
     const existing = this.adminUiClients.get(resolvedName);
     if (existing) {
       return existing;
@@ -262,8 +274,8 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       name: resolvedName,
       permissions: [Permission.ADMIN],
       groups: this.authzConfig.adminGroups,
-      callbackUrls: params.callbackUrls,
-      logoutUrls: params.logoutUrls,
+      callbackUrls: config.callbackUrls,
+      logoutUrls: config.logoutUrls,
     });
 
     this.addAudience(this.policies.adminApi, client.clientId);
@@ -271,13 +283,9 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     return client;
   }
 
-  provisionJmapUiClient(params: {
-    name: string;
-    callbackUrls: string[];
-    logoutUrls: string[];
-    permissions: Permission[];
-  }): AuthClientConfig {
-    const resolvedName = `${OAUTH_CLIENT_JMAP_UI}_${params.name}`;
+  provisionJmapUiClient(config: ProvisionJmapUiClientParams): AuthClientConfig {
+
+    const resolvedName = `${OAUTH_CLIENT_JMAP_UI}_${config.name}`;
     const existing = this.jmapUiClients.get(resolvedName);
     if (existing) {
       return existing;
@@ -286,10 +294,10 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     const client = this.createOAuthClient({
       flow: 'authorization_code',
       name: resolvedName,
-      permissions: params.permissions,
+      permissions: config.permissions,
       groups: this.authzConfig.userGroups,
-      callbackUrls: params.callbackUrls,
-      logoutUrls: params.logoutUrls,
+      callbackUrls: config.callbackUrls,
+      logoutUrls: config.logoutUrls,
     });
 
     this.addAudience(this.policies.jmapApi, client.clientId);
@@ -297,7 +305,7 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     return client;
   }
 
-  createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): AdminApiAddon[] {
+  createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
         artifactResolver: ctx.artifactResolver,
@@ -307,11 +315,15 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
     ];
   }
 
-  getAdminUiConfig(): Record<string, unknown> {
+  adminUiConfig(): Record<string, unknown> {
     return { idp: { type: 'cognito' } };
   }
 
-  getAuthorizationConfig(): { adminGroups: string[]; userGroups: string[] } {
+  authorizationConfig(): CognitoIdpUsersAuthorizationConfig {
+    return this.authzConfig;
+  }
+
+  fetchAuthorizationConfig(): CognitoIdpUsersAuthorizationConfig {
     return this.authzConfig;
   }
 
@@ -323,11 +335,15 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       userGroups: props.authorization?.userGroups ?? ['user'],
     };
 
+    this.scopeMap = this.buildScopeMap();
+
+    // Admin API: always require admin scope. Group enforcement is applied for user tokens only
+    // (client_credentials tokens don't carry groups).
     this.policies = {
       adminApi: {
         audiences: [],
         requireAnyOfGroups: this.authzConfig.adminGroups,
-        requireAllScopes: [],
+        requireAllScopes: [this.toOAuthScope(Permission.ADMIN)],
       },
       jmapApi: {
         audiences: [],
@@ -342,12 +358,6 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
 
     this.jmapScopes = props.jmapScopes ?? Object.values(Permission);
     const createGroups = props.createDefaultGroups ?? true;
-
-    this.scopeMap = this.buildScopeMap();
-
-    // Admin API: always require admin scope. Group enforcement is applied for user tokens only
-    // (client_credentials tokens don't carry groups).
-    this.policies.adminApi.requireAllScopes = [this.toOAuthScope(Permission.ADMIN)];
 
     this.userPool = new cognito.UserPool(this, 'user-pool', {
       userPoolName: makePhysicalName(this, 'users', { maxLength: 128 }),
@@ -383,14 +393,14 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
 
     if (props.customMessage) {
       const artifactResolver = createArtifactResolverFromContext(this);
-
-      this.customMessageLambda = new CognitoCustomMessageLambda(this, 'custom-message', {
+      const customMessageConstruct = new CognitoCustomMessageLambda(this, 'custom-message', {
         artifactResolver,
         loginUrl: props.customMessage.loginUrl,
         supportText: props.customMessage.supportText,
       });
+      (this as { customMessageLambda?: Construct }).customMessageLambda = customMessageConstruct;
 
-      this.userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, this.customMessageLambda.fn);
+      this.userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, customMessageConstruct.fn);
     }
 
     this.issuer = `https://cognito-idp.${cdk.Stack.of(this).region}.amazonaws.com/${this.userPool.userPoolId}`;
@@ -404,7 +414,7 @@ export class MailboxUserPool extends Construct implements MailboxAuthProviderBas
       })),
     });
 
-    if (props.domain.type === 'custom') {
+    if (props.domain.kind === 'custom') {
       this.userPoolDomain = this.userPool.addDomain('user-pool-domain', {
         customDomain: {
           domainName: props.domain.domainName,

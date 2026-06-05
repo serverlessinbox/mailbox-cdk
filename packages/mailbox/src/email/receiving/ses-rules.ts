@@ -12,17 +12,17 @@ import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 
 export interface EmailDelivery {
-  emailBucket: IBucket;
-  emailProcessor: IFunction;
-  bucketPrefix: string;
-  artifactResolver: IArtifactResolver;
+  readonly emailBucket: IBucket;
+  readonly emailProcessor: IFunction;
+  readonly bucketPrefix: string;
+  readonly artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
-  queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Partial<BaseQueueProps>;
 }
 
 export interface SesRulesProps {
-  delivery: EmailDelivery;
-  activateReceiving?: boolean;
+  readonly delivery: EmailDelivery;
+  readonly activateReceiving?: boolean;
 }
 
 export class SesRules extends Construct {

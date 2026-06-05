@@ -24,12 +24,13 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 
-export interface WebSocketBroadcastPublisher {
+export interface IWebSocketBroadcastPublisher {
   readonly functionName: string;
   grantInvoke(grantee: IGrantable): void;
 }
 
-class WebSocketBroadcastPublisherImpl implements WebSocketBroadcastPublisher {
+
+class WebSocketBroadcastPublisherImpl implements IWebSocketBroadcastPublisher {
   constructor(private readonly fn: lambda.Function) { }
 
   public get functionName(): string {
@@ -42,19 +43,19 @@ class WebSocketBroadcastPublisherImpl implements WebSocketBroadcastPublisher {
 }
 
 export interface WebSocketPushProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
-  authKeyStoreTable: ITable;
-  authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
-  artifactResolver: IArtifactResolver;
-  maxSubscriptions?: number;
+  readonly configTable: ITable;
+  readonly itemTable: ITable;
+  readonly changelogTable: ITable;
+  readonly authKeyStoreTable: ITable;
+  readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
+  readonly artifactResolver: IArtifactResolver;
+  readonly maxSubscriptions?: number;
 
   /** Optional custom domain name (e.g. ws.example.com). When set, a domain mapping is created. */
-  domainName?: string;
+  readonly domainName?: string;
 
   /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 }
 
 export class WebSocketPush extends Construct {
@@ -63,7 +64,7 @@ export class WebSocketPush extends Construct {
   public readonly domainTarget?: string;
   public readonly connectionsTable: Table;
   private readonly broadcastLambda: lambda.Function;
-  public readonly broadcaster: WebSocketBroadcastPublisher;
+  public readonly broadcaster: IWebSocketBroadcastPublisher;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);

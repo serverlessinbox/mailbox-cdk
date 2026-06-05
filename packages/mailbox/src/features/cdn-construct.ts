@@ -8,21 +8,21 @@ import { INamedBucket } from '../utils/named-bucket';
 import { INamedTable } from '../utils/named-table';
 
 export interface CdnProps {
-  emailBucket: INamedBucket;
-  configTable: INamedTable;
-  authKeyStoreTable: INamedTable;
-  userPoolIssuer: string;
-  allowedOrigins?: string[];
-  jwtAlgorithms?: string[];
+  readonly emailBucket: INamedBucket;
+  readonly configTable: INamedTable;
+  readonly authKeyStoreTable: INamedTable;
+  readonly userPoolIssuer: string;
+  readonly allowedOrigins?: string[];
+  readonly jwtAlgorithms?: string[];
 
   /** Pre-deployed Lambda@Edge version (us-east-1). */
-  blobAuthorizerVersion: lambda.IVersion;
+  readonly blobAuthorizerVersion: lambda.IVersion;
 
   /** Optional custom domain name for the CDN distribution (e.g., cdn.example.com). */
-  domainName?: string;
+  readonly domainName?: string;
 
   /** Optional us-east-1 ACM certificate for the custom domain name. */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 }
 
 export class Cdn extends Construct {

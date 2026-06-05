@@ -1,0 +1,9 @@
+/* eslint-disable */
+//prettier-ignore
+module.exports = {
+name: "prepare-manifest",
+factory: function (require) {
+var plugin=(()=>{var f=Object.defineProperty;var u=Object.getOwnPropertyDescriptor;var w=Object.getOwnPropertyNames;var l=Object.prototype.hasOwnProperty;var e=(i=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(i,{get:(t,o)=>(typeof require<"u"?require:t)[o]}):i)(function(i){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+i+'" is not supported')});var h=(i,t)=>{for(var o in t)f(i,o,{get:t[o],enumerable:!0})},k=(i,t,o,a)=>{if(t&&typeof t=="object"||typeof t=="function")for(let r of w(t))!l.call(i,r)&&r!==o&&f(i,r,{get:()=>t[r],enumerable:!(a=u(t,r))||a.enumerable});return i};var x=i=>k(f({},"__esModule",{value:!0}),i);var j={};h(j,{default:()=>y});var g=e("@yarnpkg/cli"),c=e("@yarnpkg/core"),s=e("clipanion"),p=e("fs/promises"),d=e("path"),n=class extends g.BaseCommand{static paths=[["prepare-manifest"]];static usage=s.Command.Usage({description:"run a command with the generated package manifest",details:""});commandName=s.Option.String();args=s.Option.Proxy();async execute(){let t=await c.Configuration.find(this.context.cwd,this.context.plugins),{workspace:o}=await c.Project.find(t,this.context.cwd);if(o)try{let a=await this.genPackageManifest(o),r=(0,d.join)(o.cwd,"package.json");await(0,p.writeFile)(r,JSON.stringify(a,null,2),"utf-8");let m=await this.cli.run([this.commandName,...this.args],{cwd:o.cwd,stdout:process.stdout,stderr:process.stderr});if(m!==0)throw new Error(`Error during execution.Error code: ${m}`);return m}finally{await o.persistManifest()}}async genPackageManifest(t){let o=JSON.parse(JSON.stringify(t.manifest.raw));return await t.project.configuration.triggerHook(a=>a.beforeWorkspacePacking,t,o),o}};var P={commands:[n]},y=P;return x(j);})();
+return plugin;
+}
+};

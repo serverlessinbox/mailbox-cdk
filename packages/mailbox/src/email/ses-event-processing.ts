@@ -14,19 +14,19 @@ import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { makePhysicalName } from '../utils/resource-names';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';
-import type { WebSocketBroadcastPublisher } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher } from '../api/websocket';
 
 export interface SESEventProcessingProps {
-  itemTable: ITable;
-  changelogTable: ITable;
-  mailFeedbackTable: ITable;
-  configTable: ITable;
-  emailBucket: IBucket;
-  auditEventsQueue: IQueue;
-  artifactResolver: IArtifactResolver;
+  readonly itemTable: ITable;
+  readonly changelogTable: ITable;
+  readonly mailFeedbackTable: ITable;
+  readonly configTable: ITable;
+  readonly emailBucket: IBucket;
+  readonly auditEventsQueue: IQueue;
+  readonly artifactResolver: IArtifactResolver;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
-  queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -150,7 +150,7 @@ export class SESEventProcessing extends Construct {
     );
   }
 
-  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.sesEventProcessorLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this.sesEventProcessorLambda);
   }

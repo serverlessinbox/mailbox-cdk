@@ -7,17 +7,18 @@ import { CognitoCustomMessageLambda } from '../lambdas/cognito-custom-message';
 
 export interface MailboxCognitoCustomMessageProps {
   /** The Cognito user pool to attach the trigger to. */
-  userPool: cognito.UserPool;
+  readonly userPool: cognito.UserPool;
 
   /** Optional artifact resolver (defaults to context via `createArtifactResolverFromContext`). */
-  artifactResolver?: IArtifactResolver;
+  readonly artifactResolver?: IArtifactResolver;
 
   /** Optional login URL to include in templates. */
-  loginUrl?: string;
+  readonly loginUrl?: string;
 
   /** Optional support/contact line appended to emails. */
-  supportText?: string;
+  readonly supportText?: string;
 }
+
 
 /**
  * Attaches the built-in artifact-based Custom Message trigger to a Cognito User Pool.
@@ -25,19 +26,24 @@ export interface MailboxCognitoCustomMessageProps {
  * This is an addon construct (keeps `MailboxUserPool` focused on user pool concerns).
  */
 export class MailboxCognitoCustomMessage extends Construct {
-  public readonly lambda: CognitoCustomMessageLambda;
+  /** @internal */
+  private readonly _lambdaConstruct: CognitoCustomMessageLambda;
+
+  /** The underlying CDK construct wrapping the Lambda function. */
+  public readonly lambdaFunction: Construct;
 
   constructor(scope: Construct, id: string, props: MailboxCognitoCustomMessageProps) {
     super(scope, id);
 
     const artifactResolver = props.artifactResolver ?? createArtifactResolverFromContext(this);
 
-    this.lambda = new CognitoCustomMessageLambda(this, 'lambda', {
+    this._lambdaConstruct = new CognitoCustomMessageLambda(this, 'lambda', {
       artifactResolver,
       loginUrl: props.loginUrl,
       supportText: props.supportText,
     });
+    this.lambdaFunction = this._lambdaConstruct;
 
-    props.userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, this.lambda.fn);
+    props.userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, this._lambdaConstruct.fn);
   }
 }

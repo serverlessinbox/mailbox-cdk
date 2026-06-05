@@ -1,6 +1,7 @@
 import { SecretValue } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 import { Permission } from './jmap-scopes';
-import type { AdminApiAddonProvider } from '../api/addons';
+import type { AdminApiAddonContext, IAdminApiAddon } from '../api/addons';
 
 // ---- Names / keys used in the config table ----
 
@@ -21,37 +22,37 @@ export type AuthMethod = 'header' | 'form';
 
 /** OIDC provider configuration needed by the token exchange + UI flows. */
 export interface OidcProviderConfig {
-  tokenEndpoint: string;
-  authorizationEndpoint: string;
-  authMethod: AuthMethod;
-  usePkce: boolean;
+  readonly tokenEndpoint: string;
+  readonly authorizationEndpoint: string;
+  readonly authMethod: AuthMethod;
+  readonly usePkce: boolean;
 }
 
 /** Policy configuration for authorizers (audiences + optional group requirement). */
 export interface AuthPolicyConfig {
-  audiences: string[];
+  readonly audiences: string[];
   /** Require membership in ANY of these groups/roles. Empty/undefined means no restriction. */
-  requireAnyOfGroups?: string[];
+  readonly requireAnyOfGroups?: string[];
 
   /** Require ALL of these OAuth scopes. Empty/undefined means no scope restriction. */
-  requireAllScopes?: string[];
+  readonly requireAllScopes?: string[];
 }
 
 export interface AuthPoliciesConfig {
-  adminApi?: AuthPolicyConfig;
-  jmapApi?: AuthPolicyConfig;
+  readonly adminApi?: AuthPolicyConfig;
+  readonly jmapApi?: AuthPolicyConfig;
 }
 
 /** Concrete, policy-split auth configuration used by mailbox components. */
-export type MailboxAuthPolicies = {
-  adminApi: AuthPolicyConfig;
-  jmapApi: AuthPolicyConfig;
-};
+export interface MailboxAuthPolicies {
+  readonly adminApi: AuthPolicyConfig;
+  readonly jmapApi: AuthPolicyConfig;
+}
 
 /** Shared OAuth client credentials (clientId + optional secret). */
 export interface OAuthClientCredentials {
-  clientId: string;
-  clientSecret?: SecretValue;
+  readonly clientId: string;
+  readonly clientSecret?: SecretValue;
 }
 
 export type OAuthFlow = 'authorization_code' | 'client_credentials';
@@ -63,23 +64,23 @@ export type OAuthFlow = 'authorization_code' | 'client_credentials';
  * Some providers treat audience and clientId as the same concept, while others don't.
  */
 export interface OAuthAuthorizationCodeClientConfig extends OAuthClientCredentials {
-  flow: 'authorization_code';
-  requestedAudience?: string;
-  scopes: string[];
-  redirectUri: string;
+  readonly flow: 'authorization_code';
+  readonly requestedAudience?: string;
+  readonly scopes: string[];
+  readonly redirectUri: string;
 }
 
 export interface OAuthClientCredentialsClientConfig extends OAuthClientCredentials {
-  flow: 'client_credentials';
-  requestedAudience?: string;
-  scopes: string[];
+  readonly flow: 'client_credentials';
+  readonly requestedAudience?: string;
+  readonly scopes: string[];
 }
 
 export type OAuthClientConfig = OAuthAuthorizationCodeClientConfig | OAuthClientCredentialsClientConfig;
 
 export interface OAuthClientsConfig {
-  adminUi?: OAuthAuthorizationCodeClientConfig;
-  jmapUi?: OAuthAuthorizationCodeClientConfig;
+  readonly adminUi?: OAuthAuthorizationCodeClientConfig;
+  readonly jmapUi?: OAuthAuthorizationCodeClientConfig;
 }
 
 // ---- Provider/construct-level auth config (replaces IAuthConfig.ts) ----
@@ -109,6 +110,21 @@ export interface AuthClientConfig extends OAuthClientCredentials {
   readonly groups: string[];
 }
 
+/** Parameters for provisioning the Admin UI OAuth client. */
+export interface ProvisionAdminUiClientParams {
+  readonly name: string;
+  readonly callbackUrls: string[];
+  readonly logoutUrls: string[];
+}
+
+/** Parameters for provisioning the JMAP UI OAuth client. */
+export interface ProvisionJmapUiClientParams {
+  readonly name: string;
+  readonly callbackUrls: string[];
+  readonly logoutUrls: string[];
+  readonly permissions: Permission[];
+}
+
 /**
  * Auth provider contract expected by the top-level Mailbox construct.
  *
@@ -117,7 +133,7 @@ export interface AuthClientConfig extends OAuthClientCredentials {
  * - UI OAuth clients are provisioned only when the corresponding UI is created,
  *   because callback/logout URLs are not known up-front.
  */
-export interface MailboxAuthProviderBase {
+export interface IMailboxAuthProviderBase {
   readonly issuer: string;
   readonly tokenEndpoint: string;
   readonly authorizationEndpoint: string;
@@ -129,30 +145,33 @@ export interface MailboxAuthProviderBase {
   readonly policies: MailboxAuthPolicies;
 
   /** Provision the OAuth client used by the Admin UI (authorization_code). */
-  provisionAdminUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[] }): AuthClientConfig;
+  provisionAdminUiClient(config: ProvisionAdminUiClientParams): AuthClientConfig;
 
   /** Provision the OAuth client used by the Webmail/JMAP UI (authorization_code). */
-  provisionJmapUiClient(params: { name: string; callbackUrls: string[]; logoutUrls: string[]; permissions: Permission[] }): AuthClientConfig;
+  provisionJmapUiClient(config: ProvisionJmapUiClientParams): AuthClientConfig;
 }
 
+
 /** Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`). */
-export interface AdminUiConfigProvider {
-  getAdminUiConfig(): Record<string, unknown>;
+export interface IAdminUiConfigProvider {
+  adminUiConfig(): Record<string, unknown>;
 }
+
 
 /** Standard roles understood by mailbox components. */
 export type MailboxRole = 'admin' | 'user';
 
 /** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
-export type MailboxAuthorizationConfig = {
-  adminGroups: string[];
-  userGroups: string[];
-};
+export interface MailboxAuthorizationConfig {
+  readonly adminGroups: string[];
+  readonly userGroups: string[];
+}
 
 /** Optional hook for providers to publish an authorization mapping (e.g. which groups grant admin). */
-export interface MailboxAuthorizationConfigProvider {
-  getAuthorizationConfig(): MailboxAuthorizationConfig;
+export interface IMailboxAuthorizationConfigProvider {
+  authorizationConfig(): MailboxAuthorizationConfig;
 }
+
 
 /**
  * Auth provider contract expected by the top-level Mailbox construct.
@@ -160,8 +179,12 @@ export interface MailboxAuthorizationConfigProvider {
  * Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).
  * They can optionally supply Admin API addons (provider-specific admin endpoints).
  */
-export type MailboxAuthProvider = MailboxAuthProviderBase & Partial<
-  AdminApiAddonProvider &
-  AdminUiConfigProvider &
-  MailboxAuthorizationConfigProvider
->;
+export interface IMailboxAuthProvider extends IMailboxAuthProviderBase {
+  /** Optional: register additional Admin API routes (provider-specific). */
+  createAdminApiAddons?(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[];
+  /** Optional: supply Admin UI runtime config. */
+  adminUiConfig?(): Record<string, unknown>;
+  /** Optional: publish an authorization mapping. */
+  authorizationConfig?(): MailboxAuthorizationConfig;
+}
+

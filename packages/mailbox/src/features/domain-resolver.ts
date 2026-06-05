@@ -1,6 +1,6 @@
 export {
   MailboxDomains,
-  MailboxDomainNames,
+  IMailboxDomainNames,
   MailboxDomainNamesProps,
   MailboxDomainContext,
   MailboxDomainContextProps,

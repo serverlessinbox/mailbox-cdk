@@ -1,6 +1,6 @@
 {
   "name": "@serverlessinbox/mailbox-cognito",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Joost van der Waal",
   "repository": {
     "url": "https://github.com/serverlessinbox/mailbox-cdk",
@@ -16,7 +16,7 @@
     "build:watch": "task build:watch",
     "jsii:build": "jsii",
     "jsii:package": "jsii-pacmak",
-    "prepack": "jsii",
+    "prepack": "yarn prepare-manifest jsii:build",
     "postpack": "rm -rf lib dist",
     "lint": "task lint",
     "test": "task test",
@@ -24,7 +24,8 @@
   },
   "publishConfig": {
     "main": "lib/index.js",
-    "types": "lib/index.d.ts"
+    "types": "lib/index.d.ts",
+    "access": "public"
   },
   "jsii": {
     "outdir": "dist",
@@ -36,34 +37,23 @@
     }
   },
   "peerDependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
-    "@aws-sdk/client-sqs": "^3.947.0",
     "aws-cdk-lib": "^2.224.0",
-    "constructs": "^10.0.0",
-    "esbuild": "^0.24.0"
-  },
-  "peerDependenciesMeta": {
-    "@aws-sdk/client-cognito-identity-provider": {
-      "optional": true
-    },
-    "@aws-sdk/client-sqs": {
-      "optional": true
-    },
-    "esbuild": {
-      "optional": true
-    }
+    "constructs": "^10.0.0"
   },
   "devDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
     "@aws-sdk/client-sqs": "^3.947.0",
+    "@bufbuild/protobuf": "^2.2.3",
+    "@serverlessinbox/mailbox": "workspace:*",
+    "@serverlessinbox/mailbox-admin-api": "workspace:*",
     "@types/aws-lambda": "^8.10.159",
-    "@types/node": "^20.0.0",
+    "@types/node": "^24.10.1",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0",
     "esbuild": "^0.27.1",
     "eslint": "^8.0.0",
     "jest": "^29.0.0",
-    "jsii": "^5.3.0",
+    "jsii": "^5.9.44",
     "jsii-pacmak": "*",
     "jsii-rosetta": "^5.9.15",
     "ts-jest": "^29.0.0",
@@ -71,10 +61,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.2.3",
-    "@serverlessinbox/mailbox": "workspace:*",
-    "@serverlessinbox/mailbox-admin-api": "workspace:*",
-    "unzipper": "^0.12.3"
+    "@serverlessinbox/mailbox": "workspace:*"
   },
   "files": [
     "src",

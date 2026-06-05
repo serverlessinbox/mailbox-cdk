@@ -5,7 +5,7 @@ import type { Construct } from 'constructs';
 
 import type { IArtifactResolver } from '../artifacts/artifact-resolver';
 
-export interface AdminApiAddon {
+export interface IAdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
 
@@ -13,15 +13,17 @@ export interface AdminApiAddon {
   uiConfig?: Record<string, unknown>;
 }
 
-export type AdminApiAddonContext = {
-  artifactResolver: IArtifactResolver;
-  auditEventsQueue: IQueue;
-};
+
+export interface AdminApiAddonContext {
+  readonly artifactResolver: IArtifactResolver;
+  readonly auditEventsQueue: IQueue;
+}
 
 /**
  * Optional capability for an auth provider implementation (e.g. Cognito) to register
  * additional Admin API routes without the core package knowing provider specifics.
  */
-export interface AdminApiAddonProvider {
-  createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): AdminApiAddon[];
+export interface IAdminApiAddonProvider {
+  createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[];
 }
+

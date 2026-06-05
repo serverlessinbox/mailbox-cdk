@@ -16,34 +16,34 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import { AUTH_POLICY_ADMIN_API, MailboxAuthProvider } from '../auth/types';
+import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
-import type { AdminApiAddon } from './addons';
-import type { WebSocketBroadcastPublisher } from './websocket';
+import type { IAdminApiAddon } from './addons';
+import type { IWebSocketBroadcastPublisher } from './websocket';
 
 export interface AdminApiProps {
-  configTable: ITable;
-  itemTable: ITable;
-  auditLogTable: ITable;
-  changelogTable: ITable;
-  mailFeedbackTable: ITable;
-  authKeyStoreTable: ITable;
-  emailBucket: IBucket;
-  emailSubmissionQueue: IQueue;
-  auditEventsQueue: IQueue;
-  allowedOrigins?: string[];
-  artifactResolver: IArtifactResolver;
-  authProvider: MailboxAuthProvider;
+  readonly configTable: ITable;
+  readonly itemTable: ITable;
+  readonly auditLogTable: ITable;
+  readonly changelogTable: ITable;
+  readonly mailFeedbackTable: ITable;
+  readonly authKeyStoreTable: ITable;
+  readonly emailBucket: IBucket;
+  readonly emailSubmissionQueue: IQueue;
+  readonly auditEventsQueue: IQueue;
+  readonly allowedOrigins?: string[];
+  readonly artifactResolver: IArtifactResolver;
+  readonly authProvider: IMailboxAuthProvider;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
-  addons?: AdminApiAddon[];
+  readonly addons?: IAdminApiAddon[];
 
   /** Optional custom domain name for this API (e.g. api.example.com). */
-  domainName?: string;
+  readonly domainName?: string;
 
   /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 }
 
 export class AdminApi extends Construct {
@@ -134,7 +134,7 @@ export class AdminApi extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this.apiHandlerLambda);
   }

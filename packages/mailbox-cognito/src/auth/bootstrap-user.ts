@@ -8,25 +8,25 @@ import { IArtifactResolver, createArtifactResolverFromContext } from '@serverles
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
 
 export interface BootstrapUserProps {
-  userPool: IUserPool;
+  readonly userPool: IUserPool;
   /** Defaults to `"admin"` if not provided. */
-  username?: string;
+  readonly username?: string;
   /** Email address for the bootstrap user. Required unless `temporaryPassword` is set. */
-  email?: string;
-  groups: string[];
+  readonly email?: string;
+  readonly groups: string[];
 
   /**
    * One-time temporary bootstrap password. When set, the user is created in
    * FORCE_CHANGE_PASSWORD state and must change it on first login.
    * This is a temporary credential only — never use for permanent passwords.
    */
-  temporaryPassword?: string;
+  readonly temporaryPassword?: string;
 
   /** Optional artifact resolver (defaults to context via `createArtifactResolverFromContext`). */
-  artifactResolver?: IArtifactResolver;
+  readonly artifactResolver?: IArtifactResolver;
 
   /** If true, Cognito will send an invite email (default: false / SUPPRESS). */
-  sendInvite?: boolean;
+  readonly sendInvite?: boolean;
 }
 
 export class BootstrapUser extends Construct {

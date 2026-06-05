@@ -11,15 +11,17 @@ import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
-import { AdminApi, JMapApi, WebSocketPush } from './api';
+import { AdminApi } from './api/admin-api';
+import { JMapApi } from './api/jmap-api';
+import { WebSocketPush } from './api/websocket';
 import { McpApi } from './api/mcp-api';
-import type { AdminApiAddon, AdminApiAddonContext } from './api';
+import type { IAdminApiAddon, AdminApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
 import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
 } from './auth/types';
-import type { MailboxAuthProvider } from './auth/types';
+import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { CertWaiterLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
@@ -46,76 +48,85 @@ import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 
 export interface MailboxProps {
-  hostedZone?: IHostedZone;
-  domainName: string;
+  readonly hostedZone?: IHostedZone;
+  readonly domainName: string;
 
   /** Optional KMS configuration for at-rest encryption of core resources. */
-  kms?: MailboxKmsConfig;
+  readonly kms?: MailboxKmsConfig;
 
   /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
-  authProvider: MailboxAuthProvider;
+  readonly authProvider: IMailboxAuthProvider;
 
   /** Optional deployer label used for tagging (default: 'cfn'). */
-  deployer?: ServerlessInboxDeployer;
+  readonly deployer?: ServerlessInboxDeployer;
 
   /** Optional extra tags applied to all taggable resources in this construct. */
-  extraTags?: Record<string, string>;
+  readonly extraTags?: Record<string, string>;
 
   /** Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically. */
-  extraAllowedOrigins?: string[];
+  readonly extraAllowedOrigins?: string[];
 
   /** Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>). */
-  cloudFrontCertificate?: acm.ICertificate;
+  readonly cloudFrontCertificate?: acm.ICertificate;
 
   /**
    * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
    */
-  createAdminUi?: boolean;
+  readonly createAdminUi?: boolean;
 
   /**
    * Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
    */
-  createWebmailUi?: boolean;
+  readonly createWebmailUi?: boolean;
 
   /**
    * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>.
    * Requires an Advanced license tier. Defaults to false.
    */
-  activateMcp?: boolean;
+  readonly activateMcp?: boolean;
 
   /** Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. */
-  adminUiCertificate?: acm.ICertificate;
+  readonly adminUiCertificate?: acm.ICertificate;
 
   /** Optional us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name. */
-  webmailUiCertificate?: acm.ICertificate;
+  readonly webmailUiCertificate?: acm.ICertificate;
 
   /** Optional regional ACM certificate for api.<domain> (Admin API custom domain). */
-  apiCertificate?: acm.ICertificate;
+  readonly apiCertificate?: acm.ICertificate;
 
   /** Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain). */
-  jmapCertificate?: acm.ICertificate;
+  readonly jmapCertificate?: acm.ICertificate;
 
   /** Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain). */
-  wsCertificate?: acm.ICertificate;
+  readonly wsCertificate?: acm.ICertificate;
 
   /**
    * When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt
    * rule set. Only one rule set can be active per account per region — this is an explicit operator
    * decision.
    */
-  activateReceiving?: boolean;
+  readonly activateReceiving?: boolean;
+}
+
+export interface MailboxOAuthClients {
+  readonly adminUi?: AuthClientConfig;
+  readonly jmapUi?: AuthClientConfig;
 }
 
 /**
  * Main Mailbox construct
  */
 export class Mailbox extends Construct {
-  public readonly emailBucket: EmailBucket;
-  public readonly emailProcessorLambda: EmailProcessorLambda;
-  public readonly configTable: ConfigTable;
-  public readonly cdn: Cdn;
+  /** @internal */
+  public readonly _emailBucket: EmailBucket;
+  /** @internal */
+  public readonly _emailProcessorLambda: EmailProcessorLambda;
+  /** @internal */
+  public readonly _configTable: ConfigTable;
+  /** @internal */
+  public readonly _cdn: Cdn;
   private readonly artifactResolver: IArtifactResolver;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
@@ -132,19 +143,17 @@ export class Mailbox extends Construct {
   /** Regional SAN certificate (when auto-created). Exposed for add-on constructs such as McpApi. */
   public readonly regionalCertificate?: acm.ICertificate;
 
-  /** The JMAP API construct. Exposed for add-on constructs that need authorizerLambda / httpApi. */
-  public readonly jmapApi: JMapApi;
+  /** @internal */
+  public readonly _jmapApi: JMapApi;
 
   /** OAuth clients created by this construct (only when enabled). */
-  public readonly oauthClients: {
-    adminUi?: AuthClientConfig;
-    jmapUi?: AuthClientConfig;
-  } = {};
+  public readonly oauthClients: MailboxOAuthClients = {};
 
-  emailDelivery(): EmailDelivery {
+  /** @internal */
+  _emailDelivery(): EmailDelivery {
     return {
-      emailBucket: this.emailBucket,
-      emailProcessor: this.emailProcessorLambda,
+      emailBucket: this._emailBucket,
+      emailProcessor: this._emailProcessorLambda,
       bucketPrefix: 'incoming-emails/',
       artifactResolver: createArtifactResolverFromContext(this),
       queueProps: this.emailQueueProps,
@@ -154,7 +163,7 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const authProvider: MailboxAuthProvider = props.authProvider;
+    const authProvider: IMailboxAuthProvider = props.authProvider;
 
     const deployer = props.deployer ?? 'cfn';
 
@@ -163,7 +172,7 @@ export class Mailbox extends Construct {
     const artifactResolverForTags = createArtifactResolverFromContext(this);
     const mailboxCdkTarget = artifactResolverForTags.packages?.['mailbox-cdk'];
     const stackVersion = mailboxCdkTarget
-      ? (mailboxCdkTarget.kind === 'release' ? mailboxCdkTarget.version : `channel:${mailboxCdkTarget.channel}`)
+      ? (mailboxCdkTarget.kind === 'release' ? mailboxCdkTarget.version : mailboxCdkTarget.kind === 'channel' ? `channel:${mailboxCdkTarget.channel}` : `track:${mailboxCdkTarget.track}`)
       : 'unknown';
 
     applyServerlessInboxBaseTags(this, {
@@ -188,11 +197,11 @@ export class Mailbox extends Construct {
     this.emailQueueProps = encryptionPlan.queues;
 
     // S3 bucket for storing incoming emails (also used for Tantivy indexes)
-    this.emailBucket = new EmailBucket(this, encryptionPlan.emailBucket);
-    applyServerlessInboxComponentTag(this.emailBucket, 'email');
+    this._emailBucket = new EmailBucket(this, encryptionPlan.emailBucket);
+    applyServerlessInboxComponentTag(this._emailBucket, 'email');
 
     const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
-    this.configTable = configTable;
+    this._configTable = configTable;
     applyServerlessInboxComponentTag(configTable, 'storage');
     const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
     applyServerlessInboxComponentTag(itemTable, 'storage');
@@ -281,8 +290,8 @@ export class Mailbox extends Construct {
     let webmailUiCnameTarget: string | undefined;
 
     if (createAdminUi) {
-      const providerAdminUiConfig = authProvider.getAdminUiConfig?.();
-      const providerAuthz = authProvider.getAuthorizationConfig?.();
+      const providerAdminUiConfig = authProvider.adminUiConfig?.();
+      const providerAuthz = authProvider.authorizationConfig?.();
 
       const mergedAdminUiConfig = {
         ...(providerAdminUiConfig ?? {}),
@@ -301,7 +310,7 @@ export class Mailbox extends Construct {
       const adminUi = new AdminUi(this, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.adminUiCertificate ?? defaultUiCertificate,
-        configTable: this.configTable,
+        configTable: this._configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
@@ -312,7 +321,7 @@ export class Mailbox extends Construct {
       this.adminUiBucket = adminUi.bucket;
       this.adminUiDistribution = adminUi.distribution;
 
-      this.oauthClients.adminUi = adminUi.oauthClient;
+      (this.oauthClients as { adminUi?: AuthClientConfig }).adminUi = adminUi.oauthClient;
       adminUiRedirectUri = adminUi.oauthRedirectUri;
 
       adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
@@ -323,7 +332,7 @@ export class Mailbox extends Construct {
       const webmailUi = new WebmailUi(this, 'webmail-ui', {
         domainName: mailboxDomains.webmail,
         certificate: props.webmailUiCertificate ?? defaultUiCertificate,
-        configTable: this.configTable,
+        configTable: this._configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
@@ -334,7 +343,7 @@ export class Mailbox extends Construct {
       this.webmailUiBucket = webmailUi.bucket;
       this.webmailUiDistribution = webmailUi.distribution;
 
-      this.oauthClients.jmapUi = webmailUi.oauthClient;
+      (this.oauthClients as { jmapUi?: AuthClientConfig }).jmapUi = webmailUi.oauthClient;
       webmailUiRedirectUri = webmailUi.oauthRedirectUri;
 
       webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
@@ -356,19 +365,19 @@ export class Mailbox extends Construct {
     });
 
     // Lambda function to process incoming emails
-    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+    this._emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       artifactResolver,
     });
-    applyServerlessInboxComponentTag(this.emailProcessorLambda, 'email');
+    applyServerlessInboxComponentTag(this._emailProcessorLambda, 'email');
 
     const sesRules = new SesRules(this, 'ses-rules', {
       delivery: {
-        emailBucket: this.emailBucket,
-        emailProcessor: this.emailProcessorLambda,
+        emailBucket: this._emailBucket,
+        emailProcessor: this._emailProcessorLambda,
         bucketPrefix: 'incoming-emails/',
         artifactResolver,
         queueProps: this.emailQueueProps,
@@ -443,7 +452,7 @@ export class Mailbox extends Construct {
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       configTable,
       authKeyStoreTable: authKeyStore.table,
       userPoolIssuer: authProvider.issuer,
@@ -454,13 +463,13 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(cdnConstruct, 'edge');
 
-    this.cdn = cdnConstruct;
+    this._cdn = cdnConstruct;
 
     // DNS is created later, once all endpoint targets are known.
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(this, 'tantivy-search', {
-      indexBucket: this.emailBucket,
+      indexBucket: this._emailBucket,
       itemTable: itemTable,
       configTable: configTable,
       changelogTable: changelogTable,
@@ -475,7 +484,7 @@ export class Mailbox extends Construct {
       mailFeedbackTable: mailFeedbackTable,
       changelogTable: changelogTable,
       configTable: configTable,
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
@@ -488,7 +497,7 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       artifactResolver: artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
@@ -505,14 +514,14 @@ export class Mailbox extends Construct {
       );
     }
 
-    this.jmapApi = new JMapApi(this, 'jmap-api', {
+    this._jmapApi = new JMapApi(this, 'jmap-api', {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
       authKeyStoreTable: authKeyStore.table,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
@@ -526,7 +535,7 @@ export class Mailbox extends Construct {
 
       // WebSocket URL will be passed via environment variable, not here
     });
-    const jmapApi = this.jmapApi;
+    const jmapApi = this._jmapApi;
     applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
@@ -544,7 +553,7 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
-    const adminApiAddons: AdminApiAddon[] = (() => {
+    const adminApiAddons: IAdminApiAddon[] = (() => {
       if (typeof authProvider.createAdminApiAddons !== 'function') return [];
 
       const ctx: AdminApiAddonContext = {
@@ -562,7 +571,7 @@ export class Mailbox extends Construct {
       changelogTable: changelogTable,
       mailFeedbackTable: mailFeedbackTable,
       authKeyStoreTable: authKeyStore.table,
-      emailBucket: this.emailBucket,
+      emailBucket: this._emailBucket,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
@@ -577,9 +586,9 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(adminApi, 'api');
 
     const mcpApi = props.activateMcp ? new McpApi(this, 'McpApi', {
-      configTable: this.configTable,
-      jmapApiGateway: this.jmapApi.httpApi,
-      authorizerLambda: this.jmapApi.authorizerLambda,
+      configTable: this._configTable,
+      jmapApiGateway: this._jmapApi.httpApi,
+      authorizerLambda: this._jmapApi.authorizerLambda,
       certificate: this.regionalCertificate!,
       domainName: props.domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
@@ -596,7 +605,7 @@ export class Mailbox extends Construct {
 
     // Enable WebSocket push emission from the ChangeTracker.
     // This must be wired into every Lambda that records changelog state.
-    this.emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
+    this._emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
     emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
     sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
 

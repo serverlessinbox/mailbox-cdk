@@ -5,28 +5,37 @@ import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { AdminApiAddon, IArtifactResolver } from '@serverlessinbox/mailbox';
+import { IAdminApiAddon, IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
 
+export interface CognitoIdpUsersAuthorizationConfig {
+  readonly adminGroups: string[];
+  readonly userGroups: string[];
+}
+
+export interface ICognitoIdpUsersPoolConfig {
+  readonly userPoolId: string;
+  grantAdminAccess(fn: IFunction): void;
+  fetchAuthorizationConfig?(): CognitoIdpUsersAuthorizationConfig;
+}
+
 export interface CognitoIdpUsersAdminApiAddonProps {
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
+
 
   /** Audit events queue used by the existing audit-writer lambda. */
-  auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IQueue;
 
   /** Cognito pool integration (used for pool id + granting permissions). */
-  pool: {
-    userPoolId: string;
-    grantAdminAccess(fn: IFunction): void;
-    getAuthorizationConfig?(): { adminGroups: string[]; userGroups: string[] };
-  };
+  readonly pool: ICognitoIdpUsersPoolConfig;
+
 
   /** Optional base path; defaults to `/idp-users`. */
-  basePath?: string;
+  readonly basePath?: string;
 
   /** Optional UI config to be merged into admin-ui config.json. */
-  uiConfig?: Record<string, unknown>;
+  readonly uiConfig?: Record<string, unknown>;
 }
 
 /**
@@ -36,11 +45,15 @@ export interface CognitoIdpUsersAdminApiAddonProps {
  *
  * The actual handler logic lives in a provider-owned Lambda (TypeScript/Node.js, artifact-based).
  */
-export class CognitoIdpUsersAdminApiAddon extends Construct implements AdminApiAddon {
+export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApiAddon {
   public readonly basePath: string;
-  public readonly uiConfig?: Record<string, unknown>;
+  public uiConfig?: Record<string, unknown>;
 
-  public readonly lambda: CognitoIdpUsersApiLambda;
+  /** @internal */
+  private readonly _lambdaConstruct: CognitoIdpUsersApiLambda;
+
+  /** The underlying CDK construct wrapping the Lambda function. */
+  public readonly lambdaFunction: Construct;
 
   constructor(scope: Construct, id: string, props: CognitoIdpUsersAdminApiAddonProps) {
     super(scope, id);
@@ -60,27 +73,28 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements AdminApiA
         },
       } as const);
 
-    this.lambda = new CognitoIdpUsersApiLambda(this, 'idp-users', {
+    this._lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
       auditEventsQueueUrl: props.auditEventsQueue.queueUrl,
     });
+    this.lambdaFunction = this._lambdaConstruct;
 
-    const authz = props.pool.getAuthorizationConfig?.();
+    const authz = props.pool.fetchAuthorizationConfig?.();
     if (authz) {
-      this.lambda.function.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
-      this.lambda.function.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
+      this._lambdaConstruct.function.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
+      this._lambdaConstruct.function.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
     }
 
-    props.pool.grantAdminAccess(this.lambda.fn);
-    props.auditEventsQueue.grantSendMessages(this.lambda.fn);
+    props.pool.grantAdminAccess(this._lambdaConstruct.fn);
+    props.auditEventsQueue.grantSendMessages(this._lambdaConstruct.fn);
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
       path: `${this.basePath}/{proxy+}`,
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('cognito-idp-users', this.lambda.fn),
+      integration: new HttpLambdaIntegration('cognito-idp-users', this._lambdaConstruct.fn),
       authorizer,
     });
   }

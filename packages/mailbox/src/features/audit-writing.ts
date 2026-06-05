@@ -8,11 +8,11 @@ import { AuditWriterLambda } from '../lambdas';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 
 export interface AuditWritingProps {
-  auditLogTable: ITable;
-  artifactResolver: IArtifactResolver;
+  readonly auditLogTable: ITable;
+  readonly artifactResolver: IArtifactResolver;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
-  queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Partial<BaseQueueProps>;
 }
 
 /**

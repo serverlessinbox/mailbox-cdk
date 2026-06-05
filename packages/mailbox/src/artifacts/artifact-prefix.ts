@@ -28,6 +28,10 @@ export function getArtifactPrefix(target: PublishTarget, packageName: string = '
     return `packages/${packageName}/v${target.version}`;
   }
 
+  if (target.kind === 'track') {
+    throw new Error('track targets must be resolved to a version before computing an artifact prefix');
+  }
+
   const channel = target.channel.trim();
   if (!channel) {
     throw new Error('channel is required when kind=channel');

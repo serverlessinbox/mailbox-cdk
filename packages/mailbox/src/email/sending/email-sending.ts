@@ -7,18 +7,18 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
-import type { WebSocketBroadcastPublisher } from '../../api/websocket';
+import type { IWebSocketBroadcastPublisher } from '../../api/websocket';
 
 export interface EmailSendingProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
-  emailBucket: IBucket;
-  artifactResolver: IArtifactResolver;
-  sesConfigSetName: string;
+  readonly configTable: ITable;
+  readonly itemTable: ITable;
+  readonly changelogTable: ITable;
+  readonly emailBucket: IBucket;
+  readonly artifactResolver: IArtifactResolver;
+  readonly sesConfigSetName: string;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
-  queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Partial<BaseQueueProps>;
 }
 
 /**
@@ -68,7 +68,7 @@ export class EmailSending extends Construct {
     );
   }
 
-  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.emailSenderLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this.emailSenderLambda);
   }

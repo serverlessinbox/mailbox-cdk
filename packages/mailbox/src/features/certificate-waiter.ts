@@ -6,9 +6,9 @@ import { CertWaiterLambda } from '../lambdas';
 
 export interface CertificateWaiterProps {
   /** The certificate to wait for disassociation on delete. */
-  certificate: ICertificate;
+  readonly certificate: ICertificate;
   /** The cert-waiter Lambda function to use as the custom resource service token. */
-  certWaiterLambda: CertWaiterLambda;
+  readonly certWaiterLambda: CertWaiterLambda;
 }
 
 export class CertificateWaiter extends Construct {

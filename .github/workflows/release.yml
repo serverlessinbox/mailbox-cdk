@@ -54,6 +54,33 @@ jobs:
         with:
           name: gitversion-packed
           path: gitversion.out/
+      - name: Configure AWS credentials (release)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
+          aws-region: eu-west-1
+      - name: Verify component latest-stable pointers exist
+        run: |
+          BUCKET=mailbox-artifacts-eu-west-1
+          for pkg in mailbox-go mailbox-admin-ui mailbox-webmail-ui; do
+            aws s3 ls "s3://${BUCKET}/packages/${pkg}/latest-stable.json" || \
+              (echo "ERROR: latest-stable.json missing for ${pkg}" && exit 1)
+          done
+      - run: yarn resolve-artifacts
+      - run: yarn gitversion bump
+      - run: yarn build
+      - run: yarn gitversion pack
+      - name: Embed component versions in package.json
+        run: |
+          GO_VERSION=$(jq -r '.["mailbox-go"]' artifact-versions.json)
+          ADMIN_UI_VERSION=$(jq -r '.["mailbox-admin-ui"]' artifact-versions.json)
+          WEBMAIL_VERSION=$(jq -r '.["mailbox-webmail-ui"]' artifact-versions.json)
+          for pkg in packages/mailbox packages/mailbox-cognito; do
+            jq --arg go "$GO_VERSION" --arg adminui "$ADMIN_UI_VERSION" --arg webmail "$WEBMAIL_VERSION" \
+              '.serverlessinbox = { components: { "mailbox-go": { version: $go }, "mailbox-admin-ui": { version: $adminui }, "mailbox-webmail-ui": { version: $webmail } } }' \
+              "$pkg/package.json" > /tmp/pkg.json && mv /tmp/pkg.json "$pkg/package.json"
+          done
       - run: yarn gitversion publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: node scripts/publish-cdk-artifacts.js

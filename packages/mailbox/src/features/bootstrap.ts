@@ -12,22 +12,22 @@ import {
 } from '../auth/types';
 
 export interface BootstrapProps {
-  configTable: ITable;
-  jwkCacheTable: ITable;
-  authKeyStoreTable: ITable;
+  readonly configTable: ITable;
+  readonly jwkCacheTable: ITable;
+  readonly authKeyStoreTable: ITable;
 
-  tenantName?: string;
-  defaultLocalPart?: string;
-  domain: string;
-  oidcIssuer: string;
-  oidcProviderName?: string;
+  readonly tenantName?: string;
+  readonly defaultLocalPart?: string;
+  readonly domain: string;
+  readonly oidcIssuer: string;
+  readonly oidcProviderName?: string;
 
-  oidcProvider?: OidcProviderConfig;
-  authPolicies?: AuthPoliciesConfig;
-  oauthClients?: OAuthClientsConfig;
+  readonly oidcProvider?: OidcProviderConfig;
+  readonly authPolicies?: AuthPoliciesConfig;
+  readonly oauthClients?: OAuthClientsConfig;
 
-  artifactResolver: IArtifactResolver;
-  sesRuleSetName?: string;
+  readonly artifactResolver: IArtifactResolver;
+  readonly sesRuleSetName?: string;
 }
 
 /**
@@ -56,7 +56,7 @@ export class Bootstrap extends Construct {
     });
     this.handler = handler;
 
-    const cr = new CustomResource(this, id, {
+    new CustomResource(this, id, {
       serviceToken: handler.functionArn,
       properties: {
         bootstrapNonce: Date.now().toString(),

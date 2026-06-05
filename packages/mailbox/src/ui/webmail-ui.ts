@@ -4,7 +4,7 @@ import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, MailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
+import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
 import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
 
@@ -12,30 +12,30 @@ export interface WebmailUiProps {
   /**
    * Domain name for the CloudFront distribution (e.g., webmail.example.com)
    */
-  domainName: string;
+  readonly domainName: string;
 
   /**
    * Optional ACM certificate for `domainName`.
    * When provided, the CloudFront distribution will be configured with an alternate domain name.
    */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 
   /**
    * Shared config table used by token exchange API.
    */
-  configTable: ITable;
+  readonly configTable: ITable;
 
   /** Auth provider used to provision the OAuth client for this UI. */
-  authProvider: MailboxAuthProvider;
+  readonly authProvider: IMailboxAuthProvider;
 
   /** Optional audit events queue for publishing audit logs from token exchange. */
-  auditEventsQueue?: IQueue;
+  readonly auditEventsQueue?: IQueue;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
-  uiBundle?: UiBundleSource;
+  readonly uiBundle?: UiBundleSource;
 
   /** Base URL for the Webmail UI's backend API. Written into `/config/config.json`. */
-  apiUrl?: string;
+  readonly apiUrl?: string;
 }
 
 export class WebmailUi extends Construct {

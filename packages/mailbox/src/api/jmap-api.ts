@@ -17,39 +17,39 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import { MailboxAuthProvider } from '../auth/types';
+import { IMailboxAuthProvider } from '../auth/types';
 import { GoLambda } from '../utils/go-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { WebSocketBroadcastPublisher } from './websocket';
+import type { IWebSocketBroadcastPublisher } from './websocket';
 
 export interface JMapApiProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
-  authKeyStoreTable: ITable;
-  emailBucket: IBucket;
-  emailSubmissionQueue: IQueue;
-  auditEventsQueue: IQueue;
+  readonly configTable: ITable;
+  readonly itemTable: ITable;
+  readonly changelogTable: ITable;
+  readonly authKeyStoreTable: ITable;
+  readonly emailBucket: IBucket;
+  readonly emailSubmissionQueue: IQueue;
+  readonly auditEventsQueue: IQueue;
 
   /** OAuth clientId to advertise in the JMAP session response (must be JMAP_UI). */
-  oauthClientId: string;
+  readonly oauthClientId: string;
 
-  cdnHost: string;
-  allowedOrigins?: string[];
+  readonly cdnHost: string;
+  readonly allowedOrigins?: string[];
 
-  webSocketUrl?: string;
-  webSocketCapabilityDomain?: string;
+  readonly webSocketUrl?: string;
+  readonly webSocketCapabilityDomain?: string;
 
-  artifactResolver: IArtifactResolver;
-  authProvider: MailboxAuthProvider;
+  readonly artifactResolver: IArtifactResolver;
+  readonly authProvider: IMailboxAuthProvider;
 
-  sesConfigSetName: string;
+  readonly sesConfigSetName: string;
 
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
-  domainName?: string;
+  readonly domainName?: string;
 
   /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 }
 
 export class JMapApi extends Construct {
@@ -173,7 +173,7 @@ export class JMapApi extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(webSocketUrl: string, broadcaster: WebSocketBroadcastPublisher): void {
+  public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketUrl);
 
     this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);

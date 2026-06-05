@@ -10,11 +10,11 @@ import { INamedTable, StackNamedTable } from '../utils/named-table';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
 export interface AuthKeyStoreProps {
-  issuers: string[];
+  readonly issuers: string[];
   /**
    * Artifact resolver for building/downloading lambdas
    */
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 export class AuthKeyStore extends Construct {

@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
-import { AUTH_POLICY_ADMIN_API, AuthClientConfig, MailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
+import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -11,22 +11,22 @@ export interface AdminUiProps {
   /**
    * Domain name for the CloudFront distribution (e.g., admin.example.com)
    */
-  domainName: string;
+  readonly domainName: string;
 
   /**
    * Optional ACM certificate for `domainName`.
    * When provided, the CloudFront distribution will be configured with an alternate domain name.
    */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 
   /** Shared config table used by token exchange API. */
-  configTable: ITable;
+  readonly configTable: ITable;
 
   /** Optional audit events queue for admin login audit records. */
-  auditEventsQueue?: IQueue;
+  readonly auditEventsQueue?: IQueue;
 
   /** Auth provider used to provision the OAuth client for this UI. */
-  authProvider: MailboxAuthProvider;
+  readonly authProvider: IMailboxAuthProvider;
 
   /**
    * Content Security Policy header value
@@ -34,13 +34,13 @@ export interface AdminUiProps {
    * Example: "default-src 'none'; script-src 'self' sha256-abc123...; ..."
    * Optional - if not provided, a basic CSP will be used
    */
-  cspPolicy?: string;
+  readonly cspPolicy?: string;
 
   /** Base URL for the Admin UI's backend API. Written into `/config/config.json`. */
-  apiUrl?: string;
+  readonly apiUrl?: string;
 
   /** Additional runtime config written into `/config/config.json` (e.g. feature flags / IdP user management config). */
-  uiConfig?: Record<string, unknown>;
+  readonly uiConfig?: Record<string, unknown>;
 }
 
 /**

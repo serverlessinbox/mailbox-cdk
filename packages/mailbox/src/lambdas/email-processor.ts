@@ -4,7 +4,7 @@ import { INamedTable } from "../utils/named-table";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
 import { IArtifactResolver } from "../artifacts/artifact-resolver";
-import type { WebSocketBroadcastPublisher } from "../api/websocket";
+import type { IWebSocketBroadcastPublisher } from "../api/websocket";
 
 export interface EmailProcessorLambdaProps {
   configTable: INamedTable;
@@ -38,7 +38,7 @@ export class EmailProcessorLambda extends GoLambda {
     props.emailBucket.grantReadWrite(this);
   }
 
-  public enableWebSocketPublishing(broadcaster: WebSocketBroadcastPublisher): void {
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this);
   }

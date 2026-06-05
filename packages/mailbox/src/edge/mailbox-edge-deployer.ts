@@ -182,8 +182,8 @@ export class MailboxEdgeDeployer extends Construct {
           's3:GetObjectVersion',
         ],
         resources: [
-          'arn:aws:s3:::mailbox-artifacts-us-east-1/packages/mailbox-cdk-edge/channels/dev/template.json',
-          'arn:aws:s3:::mailbox-artifacts-us-east-1/packages/mailbox-cdk-edge/channels/dev/lambdas/blob-authorizer.zip',
+          props.artifactResolver.getArn('mailbox-cdk-edge', 'template.json'),
+          props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
         ],
       })
     );

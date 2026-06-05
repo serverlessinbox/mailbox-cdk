@@ -21,7 +21,7 @@ export interface MailboxDomainNamesProps {
   readonly prefix?: string;
 }
 
-export interface MailboxDomainNames {
+export interface IMailboxDomainNames {
   readonly domainName: string;
   readonly prefix?: string;
 
@@ -89,7 +89,7 @@ function normalizePrefix(prefix?: string): string | undefined {
   return normalized;
 }
 
-export class MailboxDomains implements MailboxDomainNames {
+export class MailboxDomains implements IMailboxDomainNames {
   public readonly domainName: string;
   public readonly prefix?: string;
 

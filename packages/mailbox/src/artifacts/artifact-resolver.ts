@@ -3,15 +3,42 @@ import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
 import { Stack } from 'aws-cdk-lib';
 import { Construct, IConstruct } from 'constructs';
 
-export type PublishTarget =
-  | {
-    kind: 'release';
-    version: string;
-  }
-  | {
-    kind: 'channel';
-    channel: string;
-  };
+/**
+ * A specific published version.
+ */
+export interface ReleaseTarget {
+  readonly kind: 'release';
+  readonly version: string;
+}
+
+/**
+ * A mutable channel (e.g. "dev", "stable").
+ */
+export interface ChannelTarget {
+  readonly kind: 'channel';
+  readonly channel: string;
+}
+
+/**
+ * A semver track pointer resolved at synth time via CDK context.
+ * Examples: "1.x" (latest of major 1) or "1.2.x" (latest of 1.2.x patch series).
+ *
+ * Resolution requires a context key `mailbox-track:<packageName>:<track>` in cdk.context.json.
+ * Run the following to populate it before synthesising:
+ *
+ * ```sh
+ * TRACK=1.x PACKAGE=mailbox-go
+ * VERSION=$(aws s3 cp s3://mailbox-artifacts-eu-west-1/packages/${PACKAGE}/v1/latest-stable.json - | jq -r .version)
+ * # then add to cdk.context.json: { "mailbox-track:${PACKAGE}:${TRACK}": "${VERSION}" }
+ * ```
+ */
+export interface TrackTarget {
+  readonly kind: 'track';
+  /** Semver track, e.g. "1.x" or "1.2.x" */
+  readonly track: string;
+}
+
+export type PublishTarget = ReleaseTarget | ChannelTarget | TrackTarget;
 
 /**
  * Interface for resolving pre-published artifact locations.
@@ -64,24 +91,24 @@ export interface ArtifactResolverConfig {
    * Artifact bucket base name (e.g. 'mailbox-artifacts').
    * Defaults to 'mailbox-artifacts'.
    */
-  bucketBase?: string;
+  readonly bucketBase?: string;
 
   /**
    * Per-package targets: { packageName: target }
    */
-  packages: Record<string, PublishTarget>;
+  readonly packages: { [key: string]: PublishTarget };
 
   /**
    * AWS region. Defaults to stack region.
    */
-  region?: string;
+  readonly region?: string;
 
   /**
    * Optional pre-computed version ID map for channels.
    * Structure: { "packages/packageName/channels/channelName/objectPath": "versionId" }
    * Used for versioned URLs in channels (from offline manifest).
    */
-  versionMap?: Record<string, string>;
+  readonly versionMap?: { [key: string]: string };
 }
 
 /**
@@ -134,6 +161,41 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
   }
 
   /**
+   * Resolve a track specifier ("1.x" or "1.2.x") to a concrete version string
+   * by reading from CDK context.
+   *
+   * The context key `mailbox-track:<packageName>:<track>` must be present in
+   * cdk.context.json (or passed via `-c`). If absent, a descriptive error is
+   * thrown at synth time with instructions for populating the value.
+   *
+   * Track-to-S3-path mapping:
+   *   "1.x"   -> packages/<pkg>/v1/latest-stable.json
+   *   "1.2.x" -> packages/<pkg>/v1.2/latest-stable.json
+   */
+  private resolveTrack(packageName: string, track: string): string {
+    const contextKey = `mailbox-track:${packageName}:${track}`;
+    const cached = this.node.tryGetContext(contextKey);
+    if (cached) {
+      return cached as string;
+    }
+
+    // Compute the S3 path so we can show it in the error message.
+    const trackPath = track.replace(/\.x$/, '');
+    const s3Prefix = `v${trackPath}`;
+    const s3Key = `packages/${packageName}/${s3Prefix}/latest-stable.json`;
+    const bucket = `${this.bucketBase}-${this.region}`;
+
+    throw new Error(
+      `Track "${track}" for package "${packageName}" is not resolved.\n` +
+      `Add the resolved version to cdk.context.json:\n` +
+      `  1. Fetch the latest stable version:\n` +
+      `     aws s3 cp s3://${bucket}/${s3Key} - | jq -r .version\n` +
+      `  2. Add to cdk.context.json:\n` +
+      `     { "${contextKey}": "<version>" }`,
+    );
+  }
+
+  /**
    * Compute the S3 prefix for a package.
    */
   private getPrefix(packageName: string): string {
@@ -147,6 +209,9 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
       if (!version) {
         throw new Error('version is required when target.kind=release');
       }
+      return `packages/${packageName}/v${version}`;
+    } else if (target.kind === 'track') {
+      const version = this.resolveTrack(packageName, target.track);
       return `packages/${packageName}/v${version}`;
     } else {
       const channel = target.channel.trim();

@@ -1,6 +1,5 @@
 import { Builtins, Cli } from 'clipanion';
 import { BundleJsZipCommand } from './commands/bundle-js-zip';
-import { PublishFileCommand } from './commands/publish-file';
 import { PublishFolderZipCommand } from './commands/publish-folder-zip';
 
 export async function runCli(argv: string[]) {
@@ -14,7 +13,6 @@ export async function runCli(argv: string[]) {
   cli.register(Builtins.VersionCommand);
 
   cli.register(BundleJsZipCommand);
-  cli.register(PublishFileCommand);
   cli.register(PublishFolderZipCommand);
 
   // Yarn scripts may inject a standalone `--` when forwarding args.

@@ -23,9 +23,8 @@ function formatAwsError(err: any): string {
   return meta ? `${name}: ${message} (${meta})` : `${name}: ${message}`;
 }
 
-async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean }> {
+async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number }> {
   const { mode, cfn, op } = event;
-  const attempt = typeof (event as any)?.attempt === 'number' ? (event as any).attempt : 0;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
 
   console.log('Edge deployer op:', JSON.stringify({
