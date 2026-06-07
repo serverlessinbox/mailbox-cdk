@@ -1,6 +1,6 @@
 {
   "name": "@serverlessinbox/mailbox-cognito-identity-center",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "author": "Joost van der Waal",
   "repository": {
     "url": "https://github.com/serverlessinbox/mailbox-cdk",

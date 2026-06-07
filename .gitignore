@@ -8,3 +8,4 @@ cdk.out
 lib
 dist
 release
+gitversion.out

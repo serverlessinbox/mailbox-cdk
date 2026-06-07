@@ -2131,9 +2131,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jwpkg/gitversion@npm:1.4.0-pack-order.0":
-  version: 1.4.0-pack-order.0
-  resolution: "@jwpkg/gitversion@npm:1.4.0-pack-order.0"
+"@jwpkg/gitversion@npm:1.4.0-pack-order.1":
+  version: 1.4.0-pack-order.1
+  resolution: "@jwpkg/gitversion@npm:1.4.0-pack-order.1"
   dependencies:
     "@yarnpkg/cli": "npm:^4.1.0"
     "@yarnpkg/core": "npm:^4.0.3"
@@ -2152,7 +2152,7 @@ __metadata:
     typanion: "npm:^3.14.0"
   bin:
     gitversion: bin/index.js
-  checksum: 10c0/d6602f9bdc61e6caec00d1bed85c2bd50a8b07716de9a8e6b896142728c3e8fd811db204a62456740b36f127f877b394dc97de8e4813775dc1af1264ad977875
+  checksum: 10c0/a8f7b06d8cf984bde3d677f288327b6e6b9eb524eb03a75d4a37356e5db53e205b4958e6ffaa39ba28fed2d6d105f8c118ec7375f9be11ccaa4bafe1ad76c95f
   languageName: node
   linkType: hard
 
@@ -2241,20 +2241,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-tools@portal:../gitversion-plugin-s3::locator=mailbox-cdk%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "@serverlessinbox/artifact-tools@portal:../gitversion-plugin-s3::locator=mailbox-cdk%40workspace%3A."
+"@serverlessinbox/artifact-tools@npm:^0.0.10":
+  version: 0.0.10
+  resolution: "@serverlessinbox/artifact-tools@npm:0.0.10"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     clipanion: "npm:^3.2.1"
     esbuild: "npm:^0.27.1"
     semver: "npm:^7.8.1"
   peerDependencies:
-    "@jwpkg/gitversion": ^1
+    "@jwpkg/gitversion": 1.4.0-pack-order.1
   bin:
     artifact-tools: dist/cli-entry.js
+  checksum: 10c0/92193fde6c061237e5a6a6fdfae12089266bbd9c07a5e6d2d6870cbe3f7a53ddcef3342b16c169df198337055022532ce265e3995bbba49737f8e2862dd4358e
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@serverlessinbox/mailbox-admin-api@workspace:*, @serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api":
   version: 0.0.0-use.local
@@ -7029,8 +7030,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "mailbox-cdk@workspace:."
   dependencies:
-    "@jwpkg/gitversion": "npm:1.4.0-pack-order.0"
-    "@serverlessinbox/artifact-tools": "portal:../gitversion-plugin-s3"
+    "@jwpkg/gitversion": "npm:1.4.0-pack-order.1"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.10"
     "@types/node": "npm:^24.10.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"

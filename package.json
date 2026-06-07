@@ -1,6 +1,6 @@
 {
   "name": "mailbox-cdk",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "main": "index.js",
   "repository": "git@github.com:serverlessinbox/mailbox-cdk.git",
   "author": "Joost van der Waal <joost@jvdwaal.nl>",
