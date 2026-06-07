@@ -29,10 +29,6 @@ const RAW_RUNTIME_STATE =
     {\
       "name": "@serverlessinbox/mailbox-cognito-identity-center",\
       "reference": "workspace:packages/mailbox-cognito-identity-center"\
-    },\
-    {\
-      "name": "@serverlessinbox/mailbox-tools",\
-      "reference": "workspace:packages/mailbox-tools"\
     }\
   ],\
   "enableTopLevelFallback": true,\
@@ -43,7 +39,6 @@ const RAW_RUNTIME_STATE =
     ["@serverlessinbox/mailbox-admin-api", ["workspace:packages/mailbox-admin-api"]],\
     ["@serverlessinbox/mailbox-cognito", ["virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#workspace:packages/mailbox-cognito", "workspace:packages/mailbox-cognito"]],\
     ["@serverlessinbox/mailbox-cognito-identity-center", ["workspace:packages/mailbox-cognito-identity-center"]],\
-    ["@serverlessinbox/mailbox-tools", ["workspace:packages/mailbox-tools"]],\
     ["mailbox-cdk", ["workspace:."]]\
   ],\
   "fallbackPool": [\
@@ -3113,23 +3108,6 @@ const RAW_RUNTIME_STATE =
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
           ["ts-jest", "virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#npm:29.4.6"],\
-          ["ts-node", "virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#npm:10.9.2"],\
-          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
-        ],\
-        "linkType": "SOFT"\
-      }]\
-    ]],\
-    ["@serverlessinbox/mailbox-tools", [\
-      ["workspace:packages/mailbox-tools", {\
-        "packageLocation": "./packages/mailbox-tools/",\
-        "packageDependencies": [\
-          ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
-          ["@serverlessinbox/mailbox-tools", "workspace:packages/mailbox-tools"],\
-          ["@types/node", "npm:20.19.25"],\
-          ["aws-cdk-lib", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:2.230.0"],\
-          ["clipanion", "virtual:65c17050b7add7e1146723b1829857a0ab9c84ad8e045c9d00dfc478c3e69e6f4e10424c7b61d69d3c74a2e040864ddb74baf6301b1b5770c5ad9920234e1bca#npm:3.2.1"],\
-          ["constructs", "npm:10.4.3"],\
-          ["esbuild", "npm:0.27.1"],\
           ["ts-node", "virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#npm:10.9.2"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\

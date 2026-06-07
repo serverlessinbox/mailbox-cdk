@@ -2317,23 +2317,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@serverlessinbox/mailbox-tools@workspace:packages/mailbox-tools":
-  version: 0.0.0-use.local
-  resolution: "@serverlessinbox/mailbox-tools@workspace:packages/mailbox-tools"
-  dependencies:
-    "@serverlessinbox/mailbox": "workspace:*"
-    "@types/node": "npm:^20.0.0"
-    aws-cdk-lib: "npm:^2.224.0"
-    clipanion: "npm:^3.2.1"
-    constructs: "npm:^10.0.0"
-    esbuild: "npm:^0.27.1"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.9.3"
-  bin:
-    mailbox-tools: bin/mailbox-tools.cjs
-  languageName: unknown
-  linkType: soft
-
 "@serverlessinbox/mailbox@workspace:*, @serverlessinbox/mailbox@workspace:packages/mailbox":
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox@workspace:packages/mailbox"
