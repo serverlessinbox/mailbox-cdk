@@ -27,10 +27,10 @@ tasks:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json --awsProfile serverlessinbox-dev
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk-edge --channel dev --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip --awsProfile serverlessinbox-dev
+      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/edge-stack-template.json s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/template.json --region us-east-1
+      - yarn aws s3 cp /tmp/blob-authorizer.zip s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/lambdas/blob-authorizer.zip --region us-east-1
 
   publish:edge:release:
     desc: Publish edge stack template and lambdas to release version
@@ -39,19 +39,19 @@ tasks:
         - VERSION
     cmds:
       - task: build:edge-stack
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file {{.USER_WORKING_DIR}}/dist/edge-stack-template.json --objectName template.json
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node20 --external aws-sdk
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk-edge --version {{.VERSION}} --regions us-east-1 --file /tmp/blob-authorizer.zip --objectName lambdas/blob-authorizer.zip
+      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/edge-stack-template.json s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/{{.VERSION}}/template.json --region us-east-1
+      - yarn aws s3 cp /tmp/blob-authorizer.zip s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/{{.VERSION}}/lambdas/blob-authorizer.zip --region us-east-1
 
   # Regional artifact publishing
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip --awsProfile serverlessinbox-dev
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cdk --channel dev --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip --awsProfile serverlessinbox-dev
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn aws s3 cp /tmp/edge-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/edge-deployer.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/ui-deployer.zip --region eu-west-1
 
   publish:regional:release:
     desc: Publish regional ts-lambdas to release version
@@ -59,10 +59,10 @@ tasks:
       vars:
         - VERSION
     cmds:
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/edge-deployer.zip --objectName lambdas/edge-deployer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cdk --version {{.VERSION}} --file /tmp/ui-deployer.zip --objectName lambdas/ui-deployer.zip
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn aws s3 cp /tmp/edge-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/{{.VERSION}}/lambdas/edge-deployer.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/{{.VERSION}}/lambdas/ui-deployer.zip --region eu-west-1
 
   # Combined publish targets
   publish:dev:

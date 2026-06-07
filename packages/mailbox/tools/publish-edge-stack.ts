@@ -20,7 +20,7 @@ function synthEdgeTemplate(): any {
   return artifact.template;
 }
 
-// Output the template to stdout for use with mailbox-tools publish-file
+// Output the template to stdout for use with artifact-tools publish
 const template = synthEdgeTemplate();
 console.log(JSON.stringify(template, null, 2));
 

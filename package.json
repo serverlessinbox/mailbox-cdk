@@ -9,11 +9,6 @@
   "workspaces": [
     "packages/*"
   ],
-  "scripts": {
-    "gitversion:bump": "gitversion bump",
-    "gitversion:pack": "gitversion pack",
-    "gitversion:publish": "gitversion publish"
-  },
   "devDependencies": {
     "@jwpkg/gitversion": "1.4.0-pack-order.1",
     "@serverlessinbox/artifact-tools": "^0.0.10",

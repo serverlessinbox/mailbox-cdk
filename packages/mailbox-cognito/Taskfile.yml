@@ -28,17 +28,17 @@ tasks:
     desc: Bundle cognito idp-users API lambda zip to /tmp
     cmds:
       - task: generate:proto:idp-users
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node20
+      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node22
 
   bundle:custom-message:
     desc: Bundle cognito custom-message trigger lambda zip to /tmp
     cmds:
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node20
+      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node22
 
   bundle:bootstrap-user:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
     cmds:
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node20
+      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node22
 
   publish:dev:
     desc: Publish cognito regional ts-lambdas to dev channel
@@ -46,9 +46,9 @@ tasks:
       - task: bundle:idp-users-api
       - task: bundle:custom-message
       - task: bundle:bootstrap-user
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-idp-users-api.zip --objectName lambdas/cognito-idp-users-api.zip --awsProfile serverlessinbox-dev
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-custom-message.zip --objectName lambdas/cognito-custom-message.zip --awsProfile serverlessinbox-dev
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode channel --package mailbox-cognito-lambdas --channel dev --file /tmp/cognito-bootstrap-user.zip --objectName lambdas/cognito-bootstrap-user.zip --awsProfile serverlessinbox-dev
+      - yarn aws s3 cp /tmp/cognito-idp-users-api.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-idp-users-api.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/cognito-custom-message.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-custom-message.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/cognito-bootstrap-user.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-bootstrap-user.zip --region eu-west-1
 
   publish:release:
     desc: Publish cognito regional ts-lambdas to release version
@@ -59,9 +59,9 @@ tasks:
       - task: bundle:idp-users-api
       - task: bundle:custom-message
       - task: bundle:bootstrap-user
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-idp-users-api.zip --objectName lambdas/cognito-idp-users-api.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-custom-message.zip --objectName lambdas/cognito-custom-message.zip
-      - yarn workspace @serverlessinbox/mailbox-tools mailbox-tools publish file --mode release --package mailbox-cognito-lambdas --version {{.VERSION}} --file /tmp/cognito-bootstrap-user.zip --objectName lambdas/cognito-bootstrap-user.zip
+      - yarn aws s3 cp /tmp/cognito-idp-users-api.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-idp-users-api.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/cognito-custom-message.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-custom-message.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/cognito-bootstrap-user.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-bootstrap-user.zip --region eu-west-1
 
   build:watch:
     desc: Type-check in watch mode
