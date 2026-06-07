@@ -10,14 +10,13 @@
     "packages/*"
   ],
   "scripts": {
-    "resolve-artifacts": "ts-node scripts/resolve-artifact-versions.ts",
     "gitversion:bump": "gitversion bump",
     "gitversion:pack": "gitversion pack",
     "gitversion:publish": "gitversion publish"
   },
   "devDependencies": {
-    "@jwpkg/gitversion": "1.4.0-pack-order.0",
-    "@serverlessinbox/artifact-tools": "portal:../gitversion-plugin-s3",
+    "@jwpkg/gitversion": "1.4.0-pack-order.1",
+    "@serverlessinbox/artifact-tools": "^0.0.10",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
