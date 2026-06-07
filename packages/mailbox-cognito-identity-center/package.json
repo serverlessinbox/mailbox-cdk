@@ -12,11 +12,11 @@
   "types": "src/index.ts",
   "packageManager": "yarn@4.12.0",
   "scripts": {
-    "build": "task build",
+    "build": "jsii",
     "build:watch": "task build:watch",
     "jsii:build": "jsii",
     "jsii:package": "jsii-pacmak",
-    "prepack": "yarn prepare-manifest jsii:build",
+    "prepack": "yarn prepare-manifest build",
     "postpack": "rm -rf lib dist",
     "lint": "task lint",
     "test": "task test",

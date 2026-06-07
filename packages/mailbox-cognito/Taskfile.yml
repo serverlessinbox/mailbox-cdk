@@ -18,27 +18,28 @@ tasks:
       - task: generate:proto:idp-users
       - git diff --exit-code -- {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
 
-  build:
-    desc: Type-check TypeScript sources
-    cmds:
-      - yarn exec tsc --noEmit
-
   # Regional artifact publishing
   bundle:idp-users-api:
     desc: Bundle cognito idp-users API lambda zip to /tmp
     cmds:
-      - task: generate:proto:idp-users
-      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node22
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node22
 
   bundle:custom-message:
     desc: Bundle cognito custom-message trigger lambda zip to /tmp
     cmds:
-      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node22
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node22
 
   bundle:bootstrap-user:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
     cmds:
-      - yarn artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node22
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node22
+
+  bundle:
+    desc: Bundle all cognito lambdas to /tmp/*.zip
+    cmds:
+      - task: bundle:idp-users-api
+      - task: bundle:custom-message
+      - task: bundle:bootstrap-user
 
   publish:dev:
     desc: Publish cognito regional ts-lambdas to dev channel
@@ -49,36 +50,3 @@ tasks:
       - yarn aws s3 cp /tmp/cognito-idp-users-api.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-idp-users-api.zip --region eu-west-1
       - yarn aws s3 cp /tmp/cognito-custom-message.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-custom-message.zip --region eu-west-1
       - yarn aws s3 cp /tmp/cognito-bootstrap-user.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-bootstrap-user.zip --region eu-west-1
-
-  publish:release:
-    desc: Publish cognito regional ts-lambdas to release version
-    requires:
-      vars:
-        - VERSION
-    cmds:
-      - task: bundle:idp-users-api
-      - task: bundle:custom-message
-      - task: bundle:bootstrap-user
-      - yarn aws s3 cp /tmp/cognito-idp-users-api.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-idp-users-api.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/cognito-custom-message.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-custom-message.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/cognito-bootstrap-user.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/{{.VERSION}}/lambdas/cognito-bootstrap-user.zip --region eu-west-1
-
-  build:watch:
-    desc: Type-check in watch mode
-    cmds:
-      - yarn exec tsc --noEmit --watch
-
-  lint:
-    desc: Run ESLint
-    cmds:
-      - yarn exec eslint .
-
-  test:
-    desc: Run Jest tests
-    cmds:
-      - yarn exec jest
-
-  clean:
-    desc: Clean build artifacts
-    cmds:
-      - rm -rf dist lib

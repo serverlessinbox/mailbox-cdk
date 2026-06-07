@@ -5,16 +5,6 @@ vars:
   CDK_DEFAULT_ACCOUNT: '000000000000'
 
 tasks:
-  build:
-    desc: Type-check TypeScript sources
-    cmds:
-      - yarn exec tsc --noEmit
-
-  build:watch:
-    desc: Type-check in watch mode
-    cmds:
-      - yarn exec tsc --noEmit --watch
-
   build:edge-stack:
     desc: Synthesize CloudFormation template for edge stack
     cmds:
@@ -22,47 +12,31 @@ tasks:
     generates:
       - dist/edge-stack-template.json
 
+  bundle:
+    desc: Bundle all TypeScript lambdas to /tmp/*.zip
+    cmds:
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+
   # Edge artifact publishing (us-east-1 only)
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
       - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/edge-stack-template.json s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/template.json --region us-east-1
       - yarn aws s3 cp /tmp/blob-authorizer.zip s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/lambdas/blob-authorizer.zip --region us-east-1
-
-  publish:edge:release:
-    desc: Publish edge stack template and lambdas to release version
-    requires:
-      vars:
-        - VERSION
-    cmds:
-      - task: build:edge-stack
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
-      - du -sh /tmp/blob-authorizer.zip
-      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/edge-stack-template.json s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/{{.VERSION}}/template.json --region us-east-1
-      - yarn aws s3 cp /tmp/blob-authorizer.zip s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/{{.VERSION}}/lambdas/blob-authorizer.zip --region us-east-1
 
   # Regional artifact publishing
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn aws s3 cp /tmp/edge-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/edge-deployer.zip --region eu-west-1
       - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/ui-deployer.zip --region eu-west-1
-
-  publish:regional:release:
-    desc: Publish regional ts-lambdas to release version
-    requires:
-      vars:
-        - VERSION
-    cmds:
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
-      - yarn artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn aws s3 cp /tmp/edge-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/{{.VERSION}}/lambdas/edge-deployer.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/{{.VERSION}}/lambdas/ui-deployer.zip --region eu-west-1
 
   # Combined publish targets
   publish:dev:
@@ -70,32 +44,3 @@ tasks:
     cmds:
       - task: publish:edge:dev
       - task: publish:regional:dev
-
-  publish:release:
-    desc: Publish all artifacts (edge + regional) to release version
-    requires:
-      vars:
-        - VERSION
-    cmds:
-      - task: publish:edge:release
-        vars:
-          VERSION: '{{.VERSION}}'
-      - task: publish:regional:release
-        vars:
-          VERSION: '{{.VERSION}}'
-
-  # Utilities
-  lint:
-    desc: Run ESLint
-    cmds:
-      - yarn exec eslint .
-
-  test:
-    desc: Run Jest tests
-    cmds:
-      - yarn exec jest
-
-  clean:
-    desc: Clean build artifacts
-    cmds:
-      - rm -rf dist lib

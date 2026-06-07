@@ -12,15 +12,16 @@
   "types": "src/index.ts",
   "packageManager": "yarn@4.12.0",
   "scripts": {
-    "build": "task build",
-    "build:watch": "task build:watch",
-    "jsii:build": "jsii",
-    "jsii:package": "jsii-pacmak",
-    "prepack": "yarn prepare-manifest jsii:build",
-    "postpack": "rm -rf lib dist",
-    "lint": "task lint",
-    "test": "task test",
-    "dev": "task build:watch"
+    "build": "jsii --tsconfig tsconfig.build.json",
+    "build:watch": "tsc --watch",
+    "prepack": "yarn prepare-manifest build && yarn bundle",
+    "postpack": "yarn clean",
+    "lint": "eslint .",
+    "test": "jest",
+    "clean": "rm -rf dist lib",
+    "dev": "task build:watch",
+    "bundle": "task bundle",
+    "publish:dev": "task publish:dev"
   },
   "publishConfig": {
     "main": "lib/index.js",
