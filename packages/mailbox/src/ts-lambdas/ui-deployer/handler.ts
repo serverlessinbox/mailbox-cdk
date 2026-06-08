@@ -5,14 +5,32 @@ import { normalizePrefix } from './paths';
 import { deletePrefix, deployZipToPrefix, writeConfigJson } from './s3-ops';
 import type { UiDeployerResourceProperties } from './types';
 
+function isUiDeployerResourceProperties(
+  v: unknown
+): v is UiDeployerResourceProperties {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as Record<string, unknown>).targetBucket === 'string'
+  );
+}
+
 export const handler = wrapHandler(async (event, context) => {
-  const props = (event.ResourceProperties ?? {}) as UiDeployerResourceProperties;
+  const resourceProps = event.ResourceProperties ?? {};
+  if (!isUiDeployerResourceProperties(resourceProps)) {
+    throw new Error(
+      'Invalid ResourceProperties: missing or invalid targetBucket'
+    );
+  }
+  const props = resourceProps;
 
   const targetBucket = String(props.targetBucket ?? '').trim();
   if (!targetBucket) throw new Error('Missing required property: targetBucket');
 
   const physicalResourceId =
-    event.PhysicalResourceId ?? `ui-assets:${event.StackId}:${event.LogicalResourceId}`;
+    event.RequestType !== 'Create'
+      ? event.PhysicalResourceId
+      : `ui-assets:${event.StackId}:${event.LogicalResourceId}`;
 
   if (event.RequestType === 'Delete') {
     const clearAllOnDelete = Boolean(props.clearAllOnDelete);
