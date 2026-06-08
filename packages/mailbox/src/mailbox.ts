@@ -1,12 +1,4 @@
 import { Construct } from 'constructs';
-import {
-  AuditLogTable,
-  ChangelogTable,
-  ConfigTable,
-  EmailBucket,
-  ItemTable,
-  MailFeedbackTable,
-} from './resources';
 import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
@@ -37,8 +29,13 @@ import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
+import { MailboxDataDeployer } from './data';
+import type { MailboxDataStackRef } from './data';
 import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
@@ -108,6 +105,18 @@ export interface MailboxProps {
    * decision.
    */
   readonly activateReceiving?: boolean;
+
+  /**
+   * Reference to an externally-managed MailboxDataStack.
+   *
+   * When omitted, a `MailboxDataDeployer` custom resource automatically creates and manages
+   * a data stack named `${AWS::StackName}-data`. The data stack is never deleted when the
+   * mailbox stack is deleted — retained resources survive.
+   *
+   * When provided, resources are imported from the referenced stack via SSM parameters
+   * resolved at CloudFormation deploy time. The data stack must already be deployed.
+   */
+  readonly dataStack?: MailboxDataStackRef;
 }
 
 export interface MailboxOAuthClients {
@@ -120,11 +129,11 @@ export interface MailboxOAuthClients {
  */
 export class Mailbox extends Construct {
   /** @internal */
-  public readonly _emailBucket: EmailBucket;
+  public readonly _blobStore: IBucket;
   /** @internal */
   public readonly _emailProcessorLambda: EmailProcessorLambda;
   /** @internal */
-  public readonly _configTable: ConfigTable;
+  public readonly _configTable: ITable;
   /** @internal */
   public readonly _cdn: Cdn;
   private readonly artifactResolver: IArtifactResolver;
@@ -152,7 +161,7 @@ export class Mailbox extends Construct {
   /** @internal */
   _emailDelivery(): EmailDelivery {
     return {
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       emailProcessor: this._emailProcessorLambda,
       bucketPrefix: 'incoming-emails/',
       artifactResolver: createArtifactResolverFromContext(this),
@@ -196,19 +205,52 @@ export class Mailbox extends Construct {
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
     this.emailQueueProps = encryptionPlan.queues;
 
-    // S3 bucket for storing incoming emails (also used for Tantivy indexes)
-    this._emailBucket = new EmailBucket(this, encryptionPlan.emailBucket);
-    applyServerlessInboxComponentTag(this._emailBucket, 'email');
+    // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
+    let dataStackRef: MailboxDataStackRef;
+    let dataDeployer: MailboxDataDeployer | undefined;
+    if (props.dataStack) {
+      dataStackRef = props.dataStack;
+    } else {
+      dataDeployer = new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
+      dataStackRef = dataDeployer.dataStackRef;
+    }
 
-    const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
+    this._blobStore = s3.Bucket.fromBucketArn(
+      this,
+      'blob-store',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.blobStoreArnParam),
+    );
+
+    const configTable = Table.fromTableArn(
+      this,
+      'config-table',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.configTableArnParam),
+    );
     this._configTable = configTable;
-    applyServerlessInboxComponentTag(configTable, 'storage');
-    const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
-    applyServerlessInboxComponentTag(itemTable, 'storage');
-    const changelogTable = new ChangelogTable(this, encryptionPlan.dynamoTables);
-    applyServerlessInboxComponentTag(changelogTable, 'storage');
-    const auditLogTable = new AuditLogTable(this, encryptionPlan.dynamoTables);
-    applyServerlessInboxComponentTag(auditLogTable, 'storage');
+
+    const itemTable = Table.fromTableArn(
+      this,
+      'item-table',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.itemTableArnParam),
+    );
+
+    const changelogTable = Table.fromTableArn(
+      this,
+      'changelog-table',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.changelogTableArnParam),
+    );
+
+    const auditLogTable = Table.fromTableArn(
+      this,
+      'audit-log-table',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.auditLogTableArnParam),
+    );
+
+    const mailFeedbackTable = Table.fromTableArn(
+      this,
+      'mailfeedback-table',
+      ssm.StringParameter.valueForStringParameter(this, dataStackRef.mailFeedbackTableArnParam),
+    );
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable,
@@ -216,8 +258,6 @@ export class Mailbox extends Construct {
       queueProps: encryptionPlan.queues,
     });
     applyServerlessInboxComponentTag(auditWriting, 'api');
-    const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
-    applyServerlessInboxComponentTag(mailFeedbackTable, 'storage');
 
     // Auth key store - writes to DynamoDB for Lambda@Edge
     const authKeyStore = new AuthKeyStore(this, 'auth-key-store', {
@@ -226,7 +266,7 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(authKeyStore, 'auth');
 
-    const edgeStack = new MailboxEdgeDeployer(this, 'edge-deployer', {
+    const edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
       domainName: props.domainName,
       artifactResolver: artifactResolver,
       prefix: mailboxDomains.prefix,
@@ -369,14 +409,14 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       artifactResolver,
     });
     applyServerlessInboxComponentTag(this._emailProcessorLambda, 'email');
 
     const sesRules = new SesRules(this, 'ses-rules', {
       delivery: {
-        emailBucket: this._emailBucket,
+        blobStore: this._blobStore,
         emailProcessor: this._emailProcessorLambda,
         bucketPrefix: 'incoming-emails/',
         artifactResolver,
@@ -452,7 +492,7 @@ export class Mailbox extends Construct {
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       configTable,
       authKeyStoreTable: authKeyStore.table,
       userPoolIssuer: authProvider.issuer,
@@ -469,7 +509,7 @@ export class Mailbox extends Construct {
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(this, 'tantivy-search', {
-      indexBucket: this._emailBucket,
+      indexBucket: this._blobStore,
       itemTable: itemTable,
       configTable: configTable,
       changelogTable: changelogTable,
@@ -484,7 +524,7 @@ export class Mailbox extends Construct {
       mailFeedbackTable: mailFeedbackTable,
       changelogTable: changelogTable,
       configTable: configTable,
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
@@ -497,7 +537,7 @@ export class Mailbox extends Construct {
       configTable: configTable,
       itemTable: itemTable,
       changelogTable: changelogTable,
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       artifactResolver: artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
@@ -521,7 +561,7 @@ export class Mailbox extends Construct {
       authKeyStoreTable: authKeyStore.table,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
@@ -571,7 +611,7 @@ export class Mailbox extends Construct {
       changelogTable: changelogTable,
       mailFeedbackTable: mailFeedbackTable,
       authKeyStoreTable: authKeyStore.table,
-      emailBucket: this._emailBucket,
+      blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,

@@ -4,7 +4,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-export interface MailboxEdgeDeployerWorkflowProps {
+export interface MailboxStackDeployerWorkflowProps {
   readonly handler: IFunction;
   /** How long to wait between checks (default: 20s). */
   readonly checkInterval?: Duration;
@@ -15,23 +15,23 @@ export interface MailboxEdgeDeployerWorkflowProps {
 }
 
 /**
- * CDK Construct wrapper for the edge deployer Step Functions workflow.
+ * CDK Construct wrapper for the stack deployer Step Functions workflow.
  *
  * Exposes the created `stateMachine` so other constructs can wire permissions/env vars
  * without having to think in terms of "loose" factory functions.
  */
-export class MailboxEdgeDeployerWorkflow extends Construct {
+export class MailboxStackDeployerWorkflow extends Construct {
   public readonly stateMachine: sfn.StateMachine;
 
-  constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkflowProps) {
+  constructor(scope: Construct, id: string, props: MailboxStackDeployerWorkflowProps) {
     super(scope, id);
 
-    this.stateMachine = createMailboxEdgeDeployerStateMachine(this, 'StateMachine', props);
+    this.stateMachine = createMailboxStackDeployerStateMachine(this, 'StateMachine', props);
   }
 }
 
 /**
- * Creates the Step Functions workflow that drives the long-running edge stack deployment.
+ * Creates the Step Functions workflow that drives the long-running stack deployment.
  *
  * Input shape:
  * {
@@ -39,10 +39,10 @@ export class MailboxEdgeDeployerWorkflow extends Construct {
  *   op:  { requestType, stackName, templateUrl, parameters, terminationProtection }
  * }
  */
-export function createMailboxEdgeDeployerStateMachine(
+export function createMailboxStackDeployerStateMachine(
   scope: Construct,
   id: string,
-  props: MailboxEdgeDeployerWorkflowProps
+  props: MailboxStackDeployerWorkflowProps
 ): sfn.StateMachine {
   const checkInterval = props.checkInterval ?? Duration.seconds(20);
   const timeout = props.timeout ?? Duration.minutes(90);
@@ -57,7 +57,7 @@ export function createMailboxEdgeDeployerStateMachine(
     },
   });
 
-  const startOp = new tasks.LambdaInvoke(scope, 'StartEdgeStackOperation', {
+  const startOp = new tasks.LambdaInvoke(scope, 'StartStackOperation', {
     lambdaFunction: props.handler,
     payloadResponseOnly: true,
     resultPath: '$.start',
@@ -73,7 +73,7 @@ export function createMailboxEdgeDeployerStateMachine(
     time: sfn.WaitTime.duration(checkInterval),
   });
 
-  const checkOp = new tasks.LambdaInvoke(scope, 'CheckEdgeStackOperation', {
+  const checkOp = new tasks.LambdaInvoke(scope, 'CheckStackOperation', {
     lambdaFunction: props.handler,
     payloadResponseOnly: true,
     resultPath: '$.check',
@@ -116,7 +116,7 @@ export function createMailboxEdgeDeployerStateMachine(
   return new sfn.StateMachine(scope, id, {
     definitionBody: sfn.DefinitionBody.fromChainable(definition),
     timeout,
-    comment: 'Serverless Inbox Mailbox: edge stack deployer workflow',
+    comment: 'Serverless Inbox Mailbox: stack deployer workflow',
     ...(props.stateMachineName ? { stateMachineName: props.stateMachineName } : {}),
   });
 }

@@ -1,16 +1,16 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
+import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { GoLambda } from "../utils/go-lambda";
-import { INamedTable } from "../utils/named-table";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
 import { IArtifactResolver } from "../artifacts/artifact-resolver";
 import type { IWebSocketBroadcastPublisher } from "../api/websocket";
 
 export interface EmailProcessorLambdaProps {
-  configTable: INamedTable;
-  itemTable: INamedTable;
-  changelogTable: INamedTable;
-  emailBucket: IBucket;
+  configTable: ITable;
+  itemTable: ITable;
+  changelogTable: ITable;
+  blobStore: IBucket;
   artifactResolver: IArtifactResolver;
 }
 
@@ -22,7 +22,7 @@ export class EmailProcessorLambda extends GoLambda {
       timeout: Duration.minutes(1),
       memorySize: 1024,
       environment: {
-        EMAIL_BUCKET_NAME: props.emailBucket.bucketName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
@@ -35,7 +35,7 @@ export class EmailProcessorLambda extends GoLambda {
     props.changelogTable.grantReadWriteData(this);
 
     // Grant the Lambda function permissions to read from the S3 bucket
-    props.emailBucket.grantReadWrite(this);
+    props.blobStore.grantReadWrite(this);
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {

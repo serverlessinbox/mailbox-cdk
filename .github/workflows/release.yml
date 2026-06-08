@@ -35,6 +35,8 @@ jobs:
         run: yarn embed-component-versions
       - name: Build edge stack
         run: yarn workspace @serverlessinbox/mailbox build:edge-stack
+      - name: Build data stack
+        run: yarn workspace @serverlessinbox/mailbox build:data-stack
       - run: yarn gitversion pack
       - name: Start npm stub registry
         run: |

@@ -12,7 +12,7 @@ import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import { IArtifactResolver } from '../../artifacts/artifact-resolver';
 
 export interface EmailDelivery {
-  readonly emailBucket: IBucket;
+  readonly blobStore: IBucket;
   readonly emailProcessor: IFunction;
   readonly bucketPrefix: string;
   readonly artifactResolver: IArtifactResolver;
@@ -74,7 +74,7 @@ export class SesRules extends Construct {
       ruleSet: ruleSet,
       actions: [
         new S3({
-          bucket: props.delivery.emailBucket,
+          bucket: props.delivery.blobStore,
           objectKeyPrefix: 'incoming-emails/',
         }),
         new Lambda({
@@ -99,7 +99,7 @@ export class SesRules extends Construct {
       effect: Effect.ALLOW,
       principals: [new ServicePrincipal('ses.amazonaws.com')],
       actions: ['s3:PutObject'],
-      resources: [`${props.delivery.emailBucket.bucketArn}/${props.delivery.bucketPrefix}*`],
+      resources: [`${props.delivery.blobStore.bucketArn}/${props.delivery.bucketPrefix}*`],
       conditions: {
         StringEquals: {
           'aws:SourceAccount': Aws.ACCOUNT_ID,
@@ -107,7 +107,7 @@ export class SesRules extends Construct {
       },
     });
 
-    props.delivery.emailBucket.addToResourcePolicy(sesS3Policy);
+    props.delivery.blobStore.addToResourcePolicy(sesS3Policy);
 
     new CfnOutput(this, 'SesReceiptRuleSetName', {
       value: ruleSet.receiptRuleSetName,

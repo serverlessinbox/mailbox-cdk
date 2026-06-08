@@ -20,7 +20,7 @@ export interface ApiHandlerLambdaProps {
   itemTable: ITable;
   changelogTable: ITable;
   authKeyStoreTable: ITable;
-  emailBucket: any;
+  blobStore: any;
   emailSubmissionQueue: any;
   auditEventsQueue: any;
   cdnHost: string;
@@ -46,7 +46,7 @@ export class ApiHandlerLambda extends GoLambda {
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CDN_HOST: props.cdnHost,
         API_BASE_URL: props.apiBaseUrl,
-        EMAIL_BUCKET_NAME: props.emailBucket.bucketName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
@@ -70,7 +70,7 @@ export class ApiHandlerLambda extends GoLambda {
     props.itemTable.grantReadWriteData(this);
     props.changelogTable.grantReadWriteData(this);
     // Grant S3 write permissions for blob uploads
-    props.emailBucket.grantReadWrite(this);
+    props.blobStore.grantReadWrite(this);
 
     // Grant SQS permissions to send email submission messages
     props.emailSubmissionQueue.grantSendMessages(this);

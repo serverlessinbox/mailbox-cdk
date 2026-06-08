@@ -1,4 +1,4 @@
-export interface MailboxEdgeDeployerProperties {
+export interface StackDeployerProperties {
   stackName: string;
   templateUrl: string;
   /** CloudFormation stack parameters for the edge stack */
@@ -15,8 +15,12 @@ export type CfnEnvelope = {
   ResourceType?: string;
 };
 
-export type OperationInput = MailboxEdgeDeployerProperties & {
+export type OperationInput = StackDeployerProperties & {
   requestType: 'Create' | 'Update' | 'Delete';
+  /** Target region for CloudFormation API calls. Defaults to AWS_REGION when absent. Edge deployer passes 'us-east-1'. */
+  region?: string;
+  /** When true, Delete handler skips DeleteStack and returns SUCCESS immediately. Used by data deployer to preserve retained resources. */
+  preserveOnDelete?: boolean;
 };
 
 export type SfnInvokeEvent = {
@@ -36,5 +40,5 @@ export type CfnCustomResourceEvent = {
   RequestId: string;
   LogicalResourceId: string;
   ResourceType?: string;
-  ResourceProperties: MailboxEdgeDeployerProperties;
+  ResourceProperties: StackDeployerProperties;
 };

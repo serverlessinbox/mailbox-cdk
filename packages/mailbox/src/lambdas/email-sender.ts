@@ -10,7 +10,7 @@ export interface EmailSenderLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  emailBucket: IBucket;
+  blobStore: IBucket;
   sesConfigSetName: string;
   artifactResolver: IArtifactResolver;
 }
@@ -23,7 +23,7 @@ export class EmailSenderLambda extends GoLambda {
       timeout: Duration.minutes(5),
       memorySize: 512,
       environment: {
-        EMAIL_BUCKET_NAME: props.emailBucket.bucketName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
@@ -35,7 +35,7 @@ export class EmailSenderLambda extends GoLambda {
     props.configTable.grantReadData(this);
     props.itemTable.grantReadWriteData(this);
     props.changelogTable.grantReadWriteData(this);
-    props.emailBucket.grantRead(this);
+    props.blobStore.grantRead(this);
 
     // Grant SES send permissions
     this.addToRolePolicy(

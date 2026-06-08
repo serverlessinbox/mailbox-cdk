@@ -1,4 +1,4 @@
-export { EmailBucket } from './email-bucket';
+export { BlobStore } from './blob-store';
 
 export { ConfigTable } from './config-table';
 export { ItemTable } from './item-table';

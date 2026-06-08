@@ -8,7 +8,9 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import { OperationInput } from './types';
 
-export const cfClient = new CloudFormationClient({ region: 'us-east-1' });
+function makeCfClient(region: string): CloudFormationClient {
+  return new CloudFormationClient({ region });
+}
 
 export function toCfnParameters(parameters?: Record<string, string | undefined>): Array<{ ParameterKey: string; ParameterValue: string }> {
   if (!parameters) {
@@ -25,7 +27,7 @@ export function toCfnParameters(parameters?: Record<string, string | undefined>)
   return out;
 }
 
-export async function describeStack(stackName: string): Promise<any | undefined> {
+export async function describeStack(stackName: string, cfClient: CloudFormationClient): Promise<any | undefined> {
   try {
     const resp = await cfClient.send(new DescribeStacksCommand({ StackName: stackName }));
     return resp.Stacks?.[0];
@@ -37,7 +39,7 @@ export async function describeStack(stackName: string): Promise<any | undefined>
   }
 }
 
-export async function describeRecentFailureEvents(stackName: string, limit: number = 10): Promise<string[]> {
+export async function describeRecentFailureEvents(stackName: string, cfClient: CloudFormationClient, limit: number = 10): Promise<string[]> {
   try {
     const resp = await cfClient.send(new DescribeStackEventsCommand({ StackName: stackName }));
     const events = resp.StackEvents ?? [];
@@ -89,19 +91,20 @@ export function outputsToObject(outputs?: Array<{ OutputKey?: string; OutputValu
 
 function requiresRecreate(status?: string): boolean {
   // If CloudFormation is stuck in a non-updatable state, delete+recreate is the safest recovery.
-  return status === 'ROLLBACK_FAILED';
+  return status === 'ROLLBACK_FAILED' || status === 'ROLLBACK_COMPLETE';
 }
 
 export async function startOrUpdateStack(op: OperationInput): Promise<void> {
+  const cfClient = makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
   const parameters = toCfnParameters(op.parameters);
   console.log('CloudFormation parameters:', JSON.stringify(parameters, null, 2));
-  console.log('Edge stack operation:', JSON.stringify({
+  console.log('Stack operation:', JSON.stringify({
     stackName: op.stackName,
     templateUrl: op.templateUrl,
     terminationProtection: op.terminationProtection,
   }, null, 2));
 
-  const existing = await describeStack(op.stackName);
+  const existing = await describeStack(op.stackName, cfClient);
   if (!existing) {
     try {
       await cfClient.send(
@@ -121,8 +124,8 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
   }
 
   if (requiresRecreate(existing.StackStatus)) {
-    console.log(`Edge stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
-    await deleteStackIfExists(op.stackName);
+    console.log(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
+    await deleteStackIfExists(op.stackName, cfClient);
     try {
       await cfClient.send(
         new CreateStackCommand({
@@ -159,12 +162,16 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
   }
 }
 
-export async function deleteStackIfExists(stackName: string): Promise<void> {
-  const existing = await describeStack(stackName);
+export async function deleteStackIfExists(stackName: string, cfClient: CloudFormationClient): Promise<void> {
+  const existing = await describeStack(stackName, cfClient);
   if (!existing) {
     return;
   }
   await cfClient.send(new DeleteStackCommand({ StackName: stackName }));
+}
+
+export function makeCfClientFromOp(op: OperationInput): CloudFormationClient {
+  return makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
 }
 
 export function isTerminalSuccess(status?: string): boolean {

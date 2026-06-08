@@ -6,7 +6,7 @@ export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 export type MailboxKmsResource = 's3' | 'dynamodb' | 'sqs';
 
 export interface MailboxKmsPerResourceConfig {
-  readonly emailBucket?: kms.IKey;
+  readonly blobStore?: kms.IKey;
   readonly dynamoTables?: kms.IKey;
   readonly queues?: kms.IKey;
 }
@@ -57,14 +57,14 @@ function awsManagedAlias(scope: Construct, id: string, aliasName: string): kms.I
   return kms.Alias.fromAliasName(scope, id, aliasName);
 }
 
-export function resolveEmailBucketKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
+export function resolveBlobStoreKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
   if (mailboxKmsExcluded('s3', config)) return undefined;
 
   if (mailboxKmsMode(config) === 'aws-managed') {
     return awsManagedAlias(scope, 'aws-managed-kms-s3', 'alias/aws/s3');
   }
 
-  return config?.perResource?.emailBucket ?? config?.key;
+  return config?.perResource?.blobStore ?? config?.key;
 }
 
 export function resolveDynamoTablesKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {

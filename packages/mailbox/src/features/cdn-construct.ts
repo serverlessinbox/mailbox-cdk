@@ -4,13 +4,13 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import { INamedBucket } from '../utils/named-bucket';
-import { INamedTable } from '../utils/named-table';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 export interface CdnProps {
-  readonly emailBucket: INamedBucket;
-  readonly configTable: INamedTable;
-  readonly authKeyStoreTable: INamedTable;
+  readonly blobStore: IBucket;
+  readonly configTable: ITable;
+  readonly authKeyStoreTable: ITable;
   readonly userPoolIssuer: string;
   readonly allowedOrigins?: string[];
   readonly jwtAlgorithms?: string[];
@@ -49,7 +49,7 @@ export class Cdn extends Construct {
 
     // Create custom origin with configuration headers
     // (Lambda@Edge doesn't support environment variables)
-    const s3Origin = new origins.S3Origin(props.emailBucket, {
+    const s3Origin = new origins.S3Origin(props.blobStore, {
       customHeaders: {
         'x-config-table': props.configTable.tableName,
         'x-auth-key-store-table': props.authKeyStoreTable.tableName,

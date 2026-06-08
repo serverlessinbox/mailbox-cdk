@@ -12,12 +12,26 @@ tasks:
     generates:
       - dist/edge-stack-template.json
 
+  build:data-stack:
+    desc: Synthesize CloudFormation template for data stack
+    cmds:
+      - yarn node --require ts-node/register tools/build-data-stack.ts
+    generates:
+      - dist/data-stack-template.json
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+
+  # Data stack artifact publishing (regional)
+  publish:data:dev:
+    desc: Publish data stack template to dev channel
+    cmds:
+      - task: build:data-stack
+      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/data-stack-template.json s3://mailbox-artifacts-eu-west-1/mailbox-cdk-data/channels/dev/template.json --region eu-west-1
 
   # Edge artifact publishing (us-east-1 only)
   publish:edge:dev:
@@ -33,9 +47,9 @@ tasks:
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/edge-deployer/index.ts --out /tmp/edge-deployer.zip
+      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn aws s3 cp /tmp/edge-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/edge-deployer.zip --region eu-west-1
+      - yarn aws s3 cp /tmp/stack-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/stack-deployer.zip --region eu-west-1
       - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/ui-deployer.zip --region eu-west-1
 
   # Combined publish targets
@@ -45,5 +59,6 @@ tasks:
       AWS_PROFILE: serverlessinbox-dev
     cmds:
       - task: build:edge-stack
+      - task: build:data-stack
       - task: bundle
       - yarn ts-node --cwd {{.USER_WORKING_DIR}}/../.. scripts/publish-channel-artifacts.ts

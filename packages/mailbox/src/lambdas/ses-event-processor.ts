@@ -11,7 +11,7 @@ export interface SESEventProcessorLambdaProps {
   changelogTable: ITable;
   mailFeedbackTable: ITable;
   configTable: ITable;
-  emailBucket: IBucket;
+  blobStore: IBucket;
   auditEventsQueue: IQueue;
   artifactResolver: IArtifactResolver;
 }
@@ -28,7 +28,7 @@ export class SESEventProcessorLambda extends GoLambda {
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
         MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        EMAIL_BUCKET_NAME: props.emailBucket.bucketName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
       },
     });
@@ -38,7 +38,7 @@ export class SESEventProcessorLambda extends GoLambda {
     props.changelogTable.grantReadWriteData(this);
     props.mailFeedbackTable.grantReadWriteData(this);
     props.configTable.grantReadWriteData(this);
-    props.emailBucket.grantReadWrite(this);
+    props.blobStore.grantReadWrite(this);
     props.auditEventsQueue.grantSendMessages(this);
   }
 }

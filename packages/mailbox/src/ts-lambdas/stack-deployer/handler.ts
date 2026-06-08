@@ -1,6 +1,6 @@
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { putCfnResponse } from './cfn-response';
-import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, outputsToObject, safeStringify, startOrUpdateStack } from './edge-stack';
+import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, outputsToObject, safeStringify, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
@@ -27,7 +27,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
 
-  console.log('Edge deployer op:', JSON.stringify({
+  console.log('Stack deployer op:', JSON.stringify({
     mode,
     requestType: op.requestType,
     stackName: op.stackName,
@@ -36,12 +36,14 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     parameterKeys: Object.keys(op.parameters ?? {}),
   }, null, 2));
 
+  const cfClient = makeCfClientFromOp(op);
+
   const fail = async (err: any, fallbackMessage: string): Promise<{ done: boolean }> => {
-    console.error('Edge deployer failed:', err);
+    console.error('Stack deployer failed:', err);
     const msg = err ? formatAwsError(err) : fallbackMessage;
 
-    // Try to attach recent edge-stack event reasons (best-effort).
-    const failures = await describeRecentFailureEvents(op.stackName, 8);
+    // Try to attach recent stack event reasons (best-effort).
+    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
 
     const reason = limitReason(`${fallbackMessage}: ${msg}${details}`);
@@ -62,22 +64,33 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
   if (mode === 'start') {
     try {
       if (op.requestType === 'Delete') {
-        await deleteStackIfExists(op.stackName);
+        // If preserveOnDelete is set, skip DeleteStack and return SUCCESS immediately.
+        if (op.preserveOnDelete) {
+          await putCfnResponse({
+            cfn,
+            status: 'SUCCESS',
+            physicalResourceId: op.stackName,
+            data: {},
+            logStreamName: context?.logStreamName,
+          });
+          return { done: true };
+        }
+        await deleteStackIfExists(op.stackName, cfClient);
       } else {
         await startOrUpdateStack(op);
       }
       return { done: false };
     } catch (err: any) {
-      return fail(err, 'Edge deployer start failed');
+      return fail(err, 'Stack deployer start failed');
     }
   }
 
   // mode === 'check'
   let stack: any | undefined;
   try {
-    stack = await describeStack(op.stackName);
+    stack = await describeStack(op.stackName, cfClient);
   } catch (err: any) {
-    return fail(err, 'Edge deployer check failed (DescribeStacks)');
+    return fail(err, 'Stack deployer check failed (DescribeStacks)');
   }
 
   if (op.requestType === 'Delete') {
@@ -94,7 +107,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 
     const status = stack.StackStatus;
     if (isTerminalFailure(status)) {
-      const failures = await describeRecentFailureEvents(op.stackName, 8);
+      const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
       const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
 
       const combinedReason = String(stack.StackStatusReason ?? '') + ' ' + failures.join(' | ');
@@ -107,21 +120,21 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       // Retry DeleteStack a bounded number of times to allow automatic cleanup.
       const maxDeleteRetries = 180; // ~60 min with 20s interval
       if (looksLikeReplicatedLambdaFailure && deleteRetryCount < maxDeleteRetries) {
-        console.log(`Edge stack delete failed due to replicated Lambda@Edge; retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}).`);
+        console.log(`Stack delete failed due to replicated Lambda@Edge; retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}).`);
         try {
-          await deleteStackIfExists(op.stackName);
+          await deleteStackIfExists(op.stackName, cfClient);
         } catch (err: any) {
           console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
         }
         return { done: false, deleteRetryCount: deleteRetryCount + 1 };
       }
 
-      // Safety net: don't block parent delete/rollback on edge stack delete failure.
+      // Safety net: don't block parent delete/rollback on stack delete failure.
       await putCfnResponse({
         cfn,
         status: 'SUCCESS',
         physicalResourceId: op.stackName,
-        reason: limitReason((stack.StackStatusReason ?? `Edge stack delete failed with status ${status}`) + details),
+        reason: limitReason((stack.StackStatusReason ?? `Stack delete failed with status ${status}`) + details),
         logStreamName: context?.logStreamName,
       });
       return { done: true };
@@ -135,13 +148,13 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       cfn,
       status: 'FAILED',
       physicalResourceId: op.stackName,
-      reason: `Edge stack ${op.stackName} does not exist`,
+      reason: `Stack ${op.stackName} does not exist`,
       logStreamName: context?.logStreamName,
     });
     return { done: true };
   }
 
-  console.log('Edge stack status:', JSON.stringify({
+  console.log('Stack status:', JSON.stringify({
     stackName: op.stackName,
     stackId: stack.StackId,
     status: stack.StackStatus,
@@ -151,13 +164,13 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 
   const status = stack.StackStatus;
   if (isTerminalFailure(status)) {
-    const failures = await describeRecentFailureEvents(op.stackName, 8);
+    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
     await putCfnResponse({
       cfn,
       status: 'FAILED',
       physicalResourceId: op.stackName,
-      reason: limitReason((stack.StackStatusReason ?? `Edge stack failed with status ${status}`) + details),
+      reason: limitReason((stack.StackStatusReason ?? `Stack failed with status ${status}`) + details),
       logStreamName: context?.logStreamName,
     });
     return { done: true };
@@ -165,7 +178,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 
   if (isTerminalSuccess(status)) {
     const outputs = outputsToObject(stack.Outputs);
-    console.log('Edge stack outputs keys:', Object.keys(outputs));
+    console.log('Stack outputs keys:', Object.keys(outputs));
     await putCfnResponse({
       cfn,
       status: 'SUCCESS',
@@ -184,8 +197,8 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     throw new Error('Invalid event: expected CloudFormation custom resource event');
   }
 
-  const stateMachineArnRaw = process.env.MAILBOX_EDGE_DEPLOYER_STATE_MACHINE_ARN;
-  const physicalResourceId = event.ResourceProperties.stackName ?? 'MailboxEdge';
+  const stateMachineArnRaw = process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
+  const physicalResourceId = event.ResourceProperties.stackName ?? 'MailboxStack';
 
   const cfn = {
     ResponseURL: event.ResponseURL,
@@ -202,7 +215,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       cfn,
       status,
       physicalResourceId,
-      reason: 'MAILBOX_EDGE_DEPLOYER_STATE_MACHINE_ARN is not set',
+      reason: 'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set',
       logStreamName: context?.logStreamName,
     });
     return;
@@ -218,7 +231,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       cfn,
       status,
       physicalResourceId,
-      reason: `MAILBOX_EDGE_DEPLOYER_STATE_MACHINE_ARN is invalid (expected ':stateMachine:{name}', got ':stateMachine/{name}'): ${stateMachineArnRaw}`,
+      reason: `MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is invalid (expected ':stateMachine:{name}', got ':stateMachine/{name}'): ${stateMachineArnRaw}`,
       logStreamName: context?.logStreamName,
     });
     return;
@@ -294,5 +307,3 @@ export const workerHandler = async (event: any, context: any): Promise<any> => {
   console.log('Worker event:', JSON.stringify(event, null, 2));
   return handleSfn(event as SfnInvokeEvent, context);
 };
-
-

@@ -13,7 +13,7 @@ export interface AdminApiLambdaProps {
   auditLogTable: ITable;
   changelogTable: ITable;
   mailFeedbackTable: ITable;
-  emailBucket: IBucket;
+  blobStore: IBucket;
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
   artifactResolver: IArtifactResolver;
@@ -86,7 +86,7 @@ export class AdminApiLambda extends GoLambda {
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
         MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
-        EMAIL_BUCKET_NAME: props.emailBucket.bucketName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
       },
     });
@@ -108,7 +108,7 @@ export class AdminApiLambda extends GoLambda {
     props.auditEventsQueue.grantSendMessages(this);
 
     // Needed for standard JMAP email storage + submission enqueue
-    props.emailBucket.grantReadWrite(this);
+    props.blobStore.grantReadWrite(this);
     props.emailSubmissionQueue.grantSendMessages(this);
   }
 }

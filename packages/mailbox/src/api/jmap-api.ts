@@ -27,7 +27,7 @@ export interface JMapApiProps {
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
   readonly authKeyStoreTable: ITable;
-  readonly emailBucket: IBucket;
+  readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IQueue;
   readonly auditEventsQueue: IQueue;
 
@@ -130,7 +130,7 @@ export class JMapApi extends Construct {
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
       authKeyStoreTable: props.authKeyStoreTable,
-      emailBucket: props.emailBucket,
+      blobStore: props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue: props.auditEventsQueue,
       cdnHost: props.cdnHost,

@@ -3,13 +3,13 @@ import { BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { TableEncryption, type TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 
-import type { EmailBucketProps } from '../resources/email-bucket';
+import type { BlobStoreProps } from '../resources/blob-store';
 import type { BaseQueueProps } from './base-queue';
 import type { MailboxKmsConfig } from './kms';
-import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveEmailBucketKey, resolveQueuesKey } from './kms';
+import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 
 export interface MailboxEncryptionPlan {
-  readonly emailBucket: EmailBucketProps;
+  readonly blobStore: BlobStoreProps;
   readonly dynamoTables: Partial<TableProps>;
   /**
    * Default props for queues created via BaseQueue.
@@ -52,24 +52,24 @@ export function resolveMailboxEncryptionPlan(scope: Construct, kms?: MailboxKmsC
     return { encryption: QueueEncryption.KMS, encryptionMasterKey: key };
   })();
 
-  const emailBucket = (() => {
+  const blobStore = (() => {
     const excluded = mailboxKmsExcluded('s3', kms);
     const key = mailboxKmsMode(kms) === 'customer-managed' && !excluded
-      ? resolveEmailBucketKey(scope, kms)
+      ? resolveBlobStoreKey(scope, kms)
       : undefined;
 
     if (mailboxKmsMode(kms) === 'customer-managed' && !excluded && !key) {
-      throw new Error("MailboxProps.kms.mode is 'customer-managed' but no S3 KMS key was provided for the email bucket");
+      throw new Error("MailboxProps.kms.mode is 'customer-managed' but no S3 KMS key was provided for the blob store");
     }
 
     return {
       encryption: excluded ? BucketEncryption.S3_MANAGED : undefined,
       encryptionKey: key,
-    } satisfies EmailBucketProps;
+    } satisfies BlobStoreProps;
   })();
 
   return {
-    emailBucket,
+    blobStore,
     dynamoTables,
     queues,
   };

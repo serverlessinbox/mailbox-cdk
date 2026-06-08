@@ -13,7 +13,7 @@ export interface EmailSendingProps {
   readonly configTable: ITable;
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
-  readonly emailBucket: IBucket;
+  readonly blobStore: IBucket;
   readonly artifactResolver: IArtifactResolver;
   readonly sesConfigSetName: string;
 
@@ -58,7 +58,7 @@ export class EmailSending extends Construct {
       configTable: props.configTable,
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
-      emailBucket: props.emailBucket,
+      blobStore: props.blobStore,
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
     });

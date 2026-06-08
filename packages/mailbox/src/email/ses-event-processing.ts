@@ -21,7 +21,7 @@ export interface SESEventProcessingProps {
   readonly changelogTable: ITable;
   readonly mailFeedbackTable: ITable;
   readonly configTable: ITable;
-  readonly emailBucket: IBucket;
+  readonly blobStore: IBucket;
   readonly auditEventsQueue: IQueue;
   readonly artifactResolver: IArtifactResolver;
 
@@ -134,7 +134,7 @@ export class SESEventProcessing extends Construct {
       changelogTable: props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
       configTable: props.configTable,
-      emailBucket: props.emailBucket,
+      blobStore: props.blobStore,
       auditEventsQueue: props.auditEventsQueue,
       artifactResolver: props.artifactResolver,
     });

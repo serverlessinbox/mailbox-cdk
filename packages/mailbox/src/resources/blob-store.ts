@@ -6,7 +6,7 @@ import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForReta
 import type * as kms from 'aws-cdk-lib/aws-kms';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 
-export interface EmailBucketProps {
+export interface BlobStoreProps {
   /**
    * Optional explicit bucket encryption setting.
    * If omitted, defaults to SSE-KMS (AWS-managed) unless an encryptionKey is provided.
@@ -17,11 +17,11 @@ export interface EmailBucketProps {
   readonly encryptionKey?: kms.IKey;
 }
 
-export class EmailBucket extends StackNamedBucket {
-  constructor(scope: Construct, props: EmailBucketProps = {}) {
+export class BlobStore extends StackNamedBucket {
+  constructor(scope: Construct, props: BlobStoreProps = {}) {
     const dev = isDevelopmentMode(scope);
 
-    super(scope, 'email-bucket', {
+    super(scope, 'blob-store', {
       versioned: false,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: props.encryption

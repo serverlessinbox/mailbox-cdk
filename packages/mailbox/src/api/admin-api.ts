@@ -29,7 +29,7 @@ export interface AdminApiProps {
   readonly changelogTable: ITable;
   readonly mailFeedbackTable: ITable;
   readonly authKeyStoreTable: ITable;
-  readonly emailBucket: IBucket;
+  readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IQueue;
   readonly auditEventsQueue: IQueue;
   readonly allowedOrigins?: string[];
@@ -103,7 +103,7 @@ export class AdminApi extends Construct {
       auditLogTable: props.auditLogTable,
       changelogTable: props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
-      emailBucket: props.emailBucket,
+      blobStore: props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue: props.auditEventsQueue,
       artifactResolver: props.artifactResolver,

@@ -60,21 +60,11 @@ export type {
 // Artifacts — context helper
 export { createArtifactResolverFromContext } from './artifacts/artifact-context';
 
-// Artifacts — prefix utilities
-export type { ArtifactReference } from './artifacts/artifact-prefix';
-export {
-  getArtifactPrefix,
-  getEdgeArtifactPrefix,
-  getArtifactUrl,
-  getEdgeArtifactUrl,
-} from './artifacts/artifact-prefix';
 
 // Utils — development mode
 export {
   DEVELOPMENT_CONTEXT_KEYS,
   isDevelopmentMode,
-  removalPolicyForRetainedResources,
-  autoDeleteObjectsInDevelopment,
 } from './utils/development-mode';
 
 // Utils — KMS
@@ -84,13 +74,10 @@ export type {
   MailboxKmsPerResourceConfig,
   MailboxKmsConfig,
 } from './utils/kms';
-export {
-  mailboxKmsMode,
-  mailboxKmsDisabled,
-  mailboxKmsExcluded,
-  resolveEmailBucketKey,
-  resolveDynamoTablesKey,
-  resolveQueuesKey,
-} from './utils/kms';
+
+// Data stack
+export { MailboxDataStack } from './data';
+export type { MailboxDataStackProps } from './data';
+export type { MailboxDataStackRef } from './data';
 
 
