@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@jwpkg/gitversion": "1.4.0-pack-order.1",
+    "@jwpkg/gitversion": "^1.4.0-pack-order.2",
     "@serverlessinbox/artifact-tools": "^0.0.10",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
