@@ -9,7 +9,14 @@
   "workspaces": [
     "packages/*"
   ],
+  "scripts": {
+    "aws": "aws --profile serverlessinbox-dev",
+    "check-artifacts": "ts-node --project tsconfig.scripts.json scripts/check-artifacts.ts",
+    "resolve-artifacts": "ts-node --project tsconfig.scripts.json scripts/resolve-artifacts.ts",
+    "publish-manifest": "ts-node --project tsconfig.scripts.json scripts/publish-manifest.ts"
+  },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3",
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
     "@serverlessinbox/artifact-tools": "^0.0.10",
     "@types/node": "^24.10.1",
