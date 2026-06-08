@@ -39,3 +39,6 @@ jobs:
             }).listen(12345);
           " &
       - run: yarn gitversion publish
+        env:
+          YARN_NPM_REGISTRY_SERVER: "http://localhost:12345"
+          YARN_NPM_AUTH_TOKEN: "stub"
