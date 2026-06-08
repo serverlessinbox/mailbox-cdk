@@ -28,7 +28,7 @@ export const handler = wrapHandler(async (event, context) => {
   if (!targetBucket) throw new Error('Missing required property: targetBucket');
 
   const physicalResourceId =
-    event.RequestType !== 'Create'
+    event.RequestType === 'Update' || event.RequestType === 'Delete'
       ? event.PhysicalResourceId
       : `ui-assets:${event.StackId}:${event.LogicalResourceId}`;
 
