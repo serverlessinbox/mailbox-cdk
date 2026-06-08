@@ -23,7 +23,7 @@ module.exports = {
     },
     {
       source: 'dist/edge-stack-template.json',
-      objectName: 'template.json',
+      objectName: 'edge-stack-template.json',
       bucketName: 'mailbox-artifacts-us-east-1',
       basePath: 'packages/mailbox-cdk-edge',
       region: 'us-east-1',

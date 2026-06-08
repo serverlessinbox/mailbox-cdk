@@ -173,7 +173,7 @@ export class MailboxEdgeDeployer extends Construct {
     // Allow reading the edge stack template and Lambda code from S3
     // The artifact resolver provides the bucket name and artifact paths
     // Edge artifacts are always in us-east-1 regardless of regional stack
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'template.json', 'us-east-1');
+    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');
 
     worker.addToRolePolicy(
       new PolicyStatement({
@@ -182,7 +182,7 @@ export class MailboxEdgeDeployer extends Construct {
           's3:GetObjectVersion',
         ],
         resources: [
-          props.artifactResolver.getArn('mailbox-cdk-edge', 'template.json'),
+          props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
           props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
         ],
       })

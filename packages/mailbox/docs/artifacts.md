@@ -66,7 +66,7 @@ This is useful when you want “save → build → publish → `cdk watch` redep
 Within a `mailbox-cdk` version or channel prefix we keep the following structure:
 
 - `manifest.json`
-- `edge/template.json` (us-east-1 only)
+- `edge/edge-stack-template.json` (us-east-1 only)
 - `edge/lambdas/<name>.zip` (us-east-1 only)
 - `regional/lambdas/<name>.zip` (per deploy region)
 
@@ -91,17 +91,17 @@ UI bundles are single zips per UI package:
 
 Release `mailbox-cdk v1.4.0` (in bucket `mailbox-artifacts-us-east-1`):
 
-- Key: `packages/mailbox-cdk/v1.4.0/edge/template.json`
+- Key: `packages/mailbox-cdk/v1.4.0/edge/edge-stack-template.json`
 
 HTTPS URL form:
 
-- `https://mailbox-artifacts-us-east-1.s3.us-east-1.amazonaws.com/packages/mailbox-cdk/v1.4.0/edge/template.json`
+- `https://mailbox-artifacts-us-east-1.s3.us-east-1.amazonaws.com/packages/mailbox-cdk/v1.4.0/edge/edge-stack-template.json`
 
 ### Channel publish location
 
 Channel `main`:
 
-- `packages/mailbox-cdk/channels/main/edge/template.json`
+- `packages/mailbox-cdk/channels/main/edge/edge-stack-template.json`
 - `packages/mailbox-cdk/channels/main/edge/lambdas/blob-authorizer.zip`
 - `packages/mailbox-cdk/channels/main/regional/lambdas/mailbox-edge-deployer.zip`
 
