@@ -27,11 +27,6 @@ export const handler = wrapHandler(async (event, context) => {
   const targetBucket = String(props.targetBucket ?? '').trim();
   if (!targetBucket) throw new Error('Missing required property: targetBucket');
 
-  const physicalResourceId =
-    event.RequestType === 'Update' || event.RequestType === 'Delete'
-      ? event.PhysicalResourceId
-      : `ui-assets:${event.StackId}:${event.LogicalResourceId}`;
-
   if (event.RequestType === 'Delete') {
     const clearAllOnDelete = Boolean(props.clearAllOnDelete);
 
@@ -43,7 +38,6 @@ export const handler = wrapHandler(async (event, context) => {
       + (await deletePrefix(targetBucket, normalizePrefix(props.configPrefix ?? 'config/', 'config/')));
 
     return {
-      PhysicalResourceId: physicalResourceId,
       Data: {
         deleted: String(deleted),
         contentDeleted: '',
@@ -86,6 +80,8 @@ export const handler = wrapHandler(async (event, context) => {
     configPrefix: normalizedConfigPrefix,
     configJson,
   });
+
+  const physicalResourceId = `ui-assets:${event.StackId}:${event.LogicalResourceId}`;
 
   const invalidationRes = await invalidateCloudFront({
     distributionId,
