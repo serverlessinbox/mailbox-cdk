@@ -585,7 +585,7 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
 
-    const mcpApi = props.activateMcp ? new McpApi(this, 'McpApi', {
+    const mcpApi = props.activateMcp ? new McpApi(this, 'mcp-api', {
       configTable: this._configTable,
       jmapApiGateway: this._jmapApi.httpApi,
       authorizerLambda: this._jmapApi.authorizerLambda,
