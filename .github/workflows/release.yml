@@ -42,3 +42,4 @@ jobs:
         env:
           YARN_NPM_REGISTRY_SERVER: "http://localhost:12345"
           YARN_NPM_AUTH_TOKEN: "stub"
+          YARN_UNSAFE_HTTP_WHITELIST: '["localhost"]'
