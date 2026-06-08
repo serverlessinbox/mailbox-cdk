@@ -20,8 +20,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - name: Install Taskfile
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin -v v3.44.0
+      - uses: arduino/setup-task@v2
       - run: yarn install
       - run: yarn gitversion bump
       - run: yarn gitversion pack
