@@ -9,3 +9,4 @@ lib
 dist
 release
 gitversion.out
+tsconfig.tsbuildinfo
