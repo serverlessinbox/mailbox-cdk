@@ -28,9 +28,9 @@ jobs:
           role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
           aws-region: eu-west-1
       - name: Check component artifacts exist in S3
-        run: yarn ts-node scripts/check-artifacts.ts
+        run: yarn ts-node --project tsconfig.scripts.json scripts/check-artifacts.ts
       - name: Resolve component artifact versions
-        run: yarn ts-node scripts/resolve-artifacts.ts
+        run: yarn ts-node --project tsconfig.scripts.json scripts/resolve-artifacts.ts
       - name: Commit resolved artifact-versions.json
         run: |
           git config user.name "github-actions[bot]"
@@ -62,4 +62,4 @@ jobs:
           YARN_NPM_REGISTRY_SERVER: "http://127.0.0.1:12345"
           YARN_NPM_AUTH_TOKEN: "stub"
       - name: Publish release manifest
-        run: yarn ts-node scripts/publish-manifest.ts
+        run: yarn ts-node --project tsconfig.scripts.json scripts/publish-manifest.ts
