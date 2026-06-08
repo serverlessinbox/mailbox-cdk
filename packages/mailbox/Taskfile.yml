@@ -8,7 +8,7 @@ tasks:
   build:edge-stack:
     desc: Synthesize CloudFormation template for edge stack
     cmds:
-      - yarn ts-node tools/build-edge-stack.ts
+      - yarn tsx tools/build-edge-stack.ts
     generates:
       - dist/edge-stack-template.json
 
