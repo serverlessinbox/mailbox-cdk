@@ -29,6 +29,13 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
           aws-region: eu-west-1
+      - name: Start npm stub registry
+        run: |
+          node -e "
+            require('http').createServer((req, res) => {
+              req.resume();
+              res.writeHead(req.method === 'GET' ? 404 : 200, {'Content-Type': 'application/json'});
+              res.end(JSON.stringify({ok: true}));
+            }).listen(12345);
+          " &
       - run: yarn gitversion publish
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

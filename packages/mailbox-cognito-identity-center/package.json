@@ -23,6 +23,7 @@
     "dev": "task build:watch"
   },
   "publishConfig": {
+    "registry": "http://localhost:12345",
     "main": "lib/index.js",
     "types": "lib/index.d.ts"
   },
