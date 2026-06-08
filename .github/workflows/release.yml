@@ -31,22 +31,10 @@ jobs:
         run: yarn check-artifacts
       - name: Resolve component artifact versions
         run: yarn resolve-artifacts
-      - name: Commit resolved artifact-versions.json
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add artifact-versions.json
-          git diff --cached --quiet || git commit -m "chore: resolve artifact versions [skip ci]"
       - name: Embed component versions in package.json
-        run: |
-          GO=$(yarn node -e "process.stdout.write(require('./artifact-versions.json')['mailbox-go'])")
-          ADMINUI=$(yarn node -e "process.stdout.write(require('./artifact-versions.json')['mailbox-admin-ui'])")
-          WEBMAIL=$(yarn node -e "process.stdout.write(require('./artifact-versions.json')['mailbox-webmail-ui'])")
-          for pkg in packages/mailbox packages/mailbox-cognito; do
-            jq --arg go "$GO" --arg adminui "$ADMINUI" --arg webmail "$WEBMAIL" \
-              '.serverlessinbox = { components: { "mailbox-go": { version: $go }, "mailbox-admin-ui": { version: $adminui }, "mailbox-webmail-ui": { version: $webmail } } }' \
-              "$pkg/package.json" > /tmp/pkg.json && mv /tmp/pkg.json "$pkg/package.json"
-          done
+        run: yarn embed-component-versions
+      - name: Build edge stack
+        run: yarn workspace @serverlessinbox/mailbox build:edge-stack
       - run: yarn gitversion pack
       - name: Start npm stub registry
         run: |

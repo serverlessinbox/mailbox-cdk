@@ -13,6 +13,7 @@
     "aws": "aws --profile serverlessinbox-dev",
     "check-artifacts": "ts-node --project tsconfig.scripts.json scripts/check-artifacts.ts",
     "resolve-artifacts": "ts-node --project tsconfig.scripts.json scripts/resolve-artifacts.ts",
+    "embed-component-versions": "ts-node --project tsconfig.scripts.json scripts/embed-component-versions.ts",
     "publish-manifest": "ts-node --project tsconfig.scripts.json scripts/publish-manifest.ts"
   },
   "devDependencies": {
