@@ -81,6 +81,12 @@ export interface IArtifactResolver {
    * @param objectPath - Object path
    */
   getKey(packageName: string, objectPath: string): string;
+
+  /**
+   * Get the S3 bucket name for the given region.
+   * @param region - AWS region (e.g. 'us-east-1')
+   */
+  getBucketName(region: string): string;
 }
 
 /**
@@ -228,6 +234,13 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
   getKey(packageName: string, objectPath: string): string {
     const prefix = this.getPrefix(packageName);
     return `${prefix}/${objectPath.replace(/^\/+/, '')}`;
+  }
+
+  /**
+   * Get the S3 bucket name for a region.
+   */
+  getBucketName(region: string): string {
+    return this.bucketName(region);
   }
 
   /**

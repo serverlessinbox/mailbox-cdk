@@ -401,7 +401,7 @@ export class MailboxEdgeDeployer extends Construct {
 
     const cfnParameters: Record<string, string> = {
       domainName: props.domainName,
-      artifactBucket: 'mailbox-artifacts-us-east-1',
+      artifactBucket: props.artifactResolver.getBucketName('us-east-1'),
       blobAuthorizerKey: blobAuthorizerKey,
       itemTableArn: props.itemTableArn,
       configTableArn: props.configTableArn,

@@ -41,6 +41,9 @@ tasks:
   # Combined publish targets
   publish:dev:
     desc: Publish all artifacts (edge + regional) to dev channel
+    env:
+      AWS_PROFILE: serverlessinbox-dev
     cmds:
-      - task: publish:edge:dev
-      - task: publish:regional:dev
+      - task: build:edge-stack
+      - task: bundle
+      - yarn ts-node --cwd {{.USER_WORKING_DIR}}/../.. scripts/publish-channel-artifacts.ts
