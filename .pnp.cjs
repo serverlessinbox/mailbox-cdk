@@ -244,6 +244,13 @@ const RAW_RUNTIME_STATE =
           ["@aws-cdk/asset-awscli-v1", "npm:2.2.242"]\
         ],\
         "linkType": "HARD"\
+      }],\
+      ["npm:2.2.282", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-awscli-v1-npm-2.2.282-cb21db30a4-10c0.zip/node_modules/@aws-cdk/asset-awscli-v1/",\
+        "packageDependencies": [\
+          ["@aws-cdk/asset-awscli-v1", "npm:2.2.282"]\
+        ],\
+        "linkType": "HARD"\
       }]\
     ]],\
     ["@aws-cdk/asset-node-proxy-agent-v6", [\
@@ -251,6 +258,37 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-node-proxy-agent-v6-npm-2.1.0-cedeea62b8-10c0.zip/node_modules/@aws-cdk/asset-node-proxy-agent-v6/",\
         "packageDependencies": [\
           ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.0"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:2.1.2", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-node-proxy-agent-v6-npm-2.1.2-c7f1c06b99-10c0.zip/node_modules/@aws-cdk/asset-node-proxy-agent-v6/",\
+        "packageDependencies": [\
+          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@aws-cdk/cloud-assembly-api", [\
+      ["npm:2.2.5", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-cloud-assembly-api-npm-2.2.5-357ba6b1be-10c0.zip/node_modules/@aws-cdk/cloud-assembly-api/",\
+        "packageDependencies": [\
+          ["@aws-cdk/cloud-assembly-api", "npm:2.2.5"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:225d83f8aeee8e71c5a35a03053679858a1bb24d8e0d22df475f9974d7f4aff24ee3ce9402deb09a68bb603caebfd30bb79c7a1b95d77412448377ba234efc21#npm:2.2.5", {\
+        "packageLocation": "./.yarn/__virtual__/@aws-cdk-cloud-assembly-api-virtual-a7abf1079e/6/.yarn/berry/cache/@aws-cdk-cloud-assembly-api-npm-2.2.5-357ba6b1be-10c0.zip/node_modules/@aws-cdk/cloud-assembly-api/",\
+        "packageDependencies": [\
+          ["@aws-cdk/cloud-assembly-api", "virtual:225d83f8aeee8e71c5a35a03053679858a1bb24d8e0d22df475f9974d7f4aff24ee3ce9402deb09a68bb603caebfd30bb79c7a1b95d77412448377ba234efc21#npm:2.2.5"],\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.2.0"],\
+          ["@types/aws-cdk__cloud-assembly-schema", null],\
+          ["jsonschema", "npm:1.5.0"],\
+          ["semver", "npm:7.8.1"]\
+        ],\
+        "packagePeers": [\
+          "@aws-cdk/cloud-assembly-schema",\
+          "@types/aws-cdk__cloud-assembly-schema"\
         ],\
         "linkType": "HARD"\
       }]\
@@ -262,6 +300,15 @@ const RAW_RUNTIME_STATE =
           ["@aws-cdk/cloud-assembly-schema", "npm:48.20.0"],\
           ["jsonschema", "npm:1.4.1"],\
           ["semver", "npm:7.7.3"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:54.2.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-cloud-assembly-schema-npm-54.2.0-aa8e4581d7-10c0.zip/node_modules/@aws-cdk/cloud-assembly-schema/",\
+        "packageDependencies": [\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.2.0"],\
+          ["jsonschema", "npm:1.5.0"],\
+          ["semver", "npm:7.8.1"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -5194,6 +5241,13 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
+      ["npm:2.258.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/aws-cdk-lib-npm-2.258.0-251ca8904b-10c0.zip/node_modules/aws-cdk-lib/",\
+        "packageDependencies": [\
+          ["aws-cdk-lib", "npm:2.258.0"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
       ["virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:2.230.0", {\
         "packageLocation": "./.yarn/__virtual__/aws-cdk-lib-virtual-7739925c07/6/.yarn/berry/cache/aws-cdk-lib-npm-2.230.0-3ec2d1434b-10c0.zip/node_modules/aws-cdk-lib/",\
         "packageDependencies": [\
@@ -5214,6 +5268,34 @@ const RAW_RUNTIME_STATE =
           ["semver", "npm:7.7.3"],\
           ["table", "npm:6.9.0"],\
           ["yaml", "npm:1.10.2"]\
+        ],\
+        "packagePeers": [\
+          "@types/constructs",\
+          "constructs"\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["virtual:f5346a418f5c1de61f1b43dee5551a68949459a16a26cf2aa0fca9dd0a8fd1df5b6cbff4ef84c13e3a633e54ad25947f8729ec58f730233bf31ea84220b26612#npm:2.258.0", {\
+        "packageLocation": "./.yarn/__virtual__/aws-cdk-lib-virtual-225d83f8ae/6/.yarn/berry/cache/aws-cdk-lib-npm-2.258.0-251ca8904b-10c0.zip/node_modules/aws-cdk-lib/",\
+        "packageDependencies": [\
+          ["@aws-cdk/asset-awscli-v1", "npm:2.2.282"],\
+          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.2"],\
+          ["@aws-cdk/cloud-assembly-api", "virtual:225d83f8aeee8e71c5a35a03053679858a1bb24d8e0d22df475f9974d7f4aff24ee3ce9402deb09a68bb603caebfd30bb79c7a1b95d77412448377ba234efc21#npm:2.2.5"],\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.2.0"],\
+          ["@balena/dockerignore", "npm:1.0.2"],\
+          ["@types/constructs", null],\
+          ["aws-cdk-lib", "virtual:f5346a418f5c1de61f1b43dee5551a68949459a16a26cf2aa0fca9dd0a8fd1df5b6cbff4ef84c13e3a633e54ad25947f8729ec58f730233bf31ea84220b26612#npm:2.258.0"],\
+          ["case", "npm:1.6.3"],\
+          ["constructs", null],\
+          ["fs-extra", "npm:11.3.5"],\
+          ["ignore", "npm:5.3.2"],\
+          ["jsonschema", "npm:1.5.0"],\
+          ["mime-types", "npm:2.1.35"],\
+          ["minimatch", "npm:10.2.5"],\
+          ["punycode", "npm:2.3.1"],\
+          ["semver", "npm:7.8.1"],\
+          ["table", "npm:6.9.0"],\
+          ["yaml", "npm:1.10.3"]\
         ],\
         "packagePeers": [\
           "@types/constructs",\
@@ -5427,6 +5509,13 @@ const RAW_RUNTIME_STATE =
           ["balanced-match", "npm:1.0.2"]\
         ],\
         "linkType": "HARD"\
+      }],\
+      ["npm:4.0.4", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/balanced-match-npm-4.0.4-fd666b3c7f-10c0.zip/node_modules/balanced-match/",\
+        "packageDependencies": [\
+          ["balanced-match", "npm:4.0.4"]\
+        ],\
+        "linkType": "HARD"\
       }]\
     ]],\
     ["base64-js", [\
@@ -5500,6 +5589,14 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["balanced-match", "npm:1.0.2"],\
           ["brace-expansion", "npm:2.1.1"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:5.0.6", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/brace-expansion-npm-5.0.6-abf39a1281-10c0.zip/node_modules/brace-expansion/",\
+        "packageDependencies": [\
+          ["balanced-match", "npm:4.0.4"],\
+          ["brace-expansion", "npm:5.0.6"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -8524,6 +8621,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@jsii/check-node", "npm:1.119.0"],\
           ["@jsii/spec", "npm:1.119.0"],\
+          ["aws-cdk-lib", "virtual:f5346a418f5c1de61f1b43dee5551a68949459a16a26cf2aa0fca9dd0a8fd1df5b6cbff4ef84c13e3a633e54ad25947f8729ec58f730233bf31ea84220b26612#npm:2.258.0"],\
           ["case", "npm:1.6.3"],\
           ["chalk", "npm:4.1.2"],\
           ["fast-deep-equal", "npm:3.1.3"],\
@@ -8543,6 +8641,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@jsii/check-node", "npm:1.132.0"],\
           ["@jsii/spec", "npm:1.132.0"],\
+          ["aws-cdk-lib", "virtual:f5346a418f5c1de61f1b43dee5551a68949459a16a26cf2aa0fca9dd0a8fd1df5b6cbff4ef84c13e3a633e54ad25947f8729ec58f730233bf31ea84220b26612#npm:2.258.0"],\
           ["case", "npm:1.6.3"],\
           ["chalk", "npm:4.1.2"],\
           ["fast-deep-equal", "npm:3.1.3"],\
@@ -9053,6 +9152,14 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@isaacs/brace-expansion", "npm:5.0.0"],\
           ["minimatch", "npm:10.1.1"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:10.2.5", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/minimatch-npm-10.2.5-f1c8297822-10c0.zip/node_modules/minimatch/",\
+        "packageDependencies": [\
+          ["brace-expansion", "npm:5.0.6"],\
+          ["minimatch", "npm:10.2.5"]\
         ],\
         "linkType": "HARD"\
       }],\
@@ -11452,6 +11559,13 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/yaml-npm-1.10.2-0e780aebdf-10c0.zip/node_modules/yaml/",\
         "packageDependencies": [\
           ["yaml", "npm:1.10.2"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:1.10.3", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/yaml-npm-1.10.3-df9008b926-10c0.zip/node_modules/yaml/",\
+        "packageDependencies": [\
+          ["yaml", "npm:1.10.3"]\
         ],\
         "linkType": "HARD"\
       }]\
