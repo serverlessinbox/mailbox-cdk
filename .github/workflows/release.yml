@@ -27,8 +27,6 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
           aws-region: eu-west-1
-      - name: Check component artifacts exist in S3
-        run: yarn check-artifacts
       - name: Resolve component artifact versions
         run: yarn resolve-artifacts
       - name: Embed component versions in package.json
