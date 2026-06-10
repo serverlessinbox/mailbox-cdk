@@ -26,6 +26,7 @@ function formatAwsError(err: any): string {
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number }> {
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
+  const attempt = typeof event.attempt === 'number' ? event.attempt : 0;
 
   console.log('Stack deployer op:', JSON.stringify({
     mode,
@@ -102,32 +103,29 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         data: {},
         logStreamName: context?.logStreamName,
       });
-      return { done: true };
+      return { done: true, deleteRetryCount };
     }
 
     const status = stack.StackStatus;
+
+    // DELETE_FAILED is transient: Lambda@Edge replica cleanup happens asynchronously.
+    // Always retry DeleteStack on DELETE_FAILED. The 60-minute cap (maxDeletePollAttempts)
+    // below is the safety valve — if deletion never succeeds, the deployer responds SUCCESS
+    // to avoid blocking parent stack rollback/deletion.
+    if (status === 'DELETE_FAILED') {
+      const maxDeleteRetries = 180; // ~60 min with 20s interval
+      console.log(`Stack delete failed (DELETE_FAILED); retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}). Reason: ${stack.StackStatusReason ?? 'unknown'}`);
+      try {
+        await deleteStackIfExists(op.stackName, cfClient);
+      } catch (err: any) {
+        console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
+      }
+      return { done: false, deleteRetryCount: deleteRetryCount + 1 };
+    }
+
     if (isTerminalFailure(status)) {
       const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
       const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
-
-      const combinedReason = String(stack.StackStatusReason ?? '') + ' ' + failures.join(' | ');
-      const looksLikeReplicatedLambdaFailure = combinedReason.toLowerCase().includes('replicated function')
-        || combinedReason.includes('Deleting Lambda@Edge Functions and Replicas')
-        || combinedReason.includes('Lambda was unable to delete');
-
-      // Lambda@Edge deletion is eventually consistent: even after CloudFront detaches the association,
-      // Lambda can still refuse DeleteFunction for a while because replicas are draining.
-      // Retry DeleteStack a bounded number of times to allow automatic cleanup.
-      const maxDeleteRetries = 180; // ~60 min with 20s interval
-      if (looksLikeReplicatedLambdaFailure && deleteRetryCount < maxDeleteRetries) {
-        console.log(`Stack delete failed due to replicated Lambda@Edge; retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}).`);
-        try {
-          await deleteStackIfExists(op.stackName, cfClient);
-        } catch (err: any) {
-          console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
-        }
-        return { done: false, deleteRetryCount: deleteRetryCount + 1 };
-      }
 
       // Safety net: don't block parent delete/rollback on stack delete failure.
       await putCfnResponse({
@@ -137,7 +135,24 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         reason: limitReason((stack.StackStatusReason ?? `Stack delete failed with status ${status}`) + details),
         logStreamName: context?.logStreamName,
       });
-      return { done: true };
+      return { done: true, deleteRetryCount };
+    }
+
+    // Safety net: cap the Delete polling loop so it cannot run until the Step Functions
+    // 90-minute execution timeout expires silently (which would leave CloudFormation waiting
+    // forever with no response). After ~80 minutes of polling we give up waiting and respond
+    // SUCCESS — the data stack resources are retained via DeletionPolicy anyway.
+    const maxDeletePollAttempts = 180; // 180 × 20s = 60 min, 30-minute safety margin before the 90-min SFN timeout
+    if (attempt >= maxDeletePollAttempts) {
+      console.warn(`Delete polling reached attempt ${attempt}/${maxDeletePollAttempts}; responding SUCCESS to unblock CloudFormation (stack status: ${stack.StackStatus}).`);
+      await putCfnResponse({
+        cfn,
+        status: 'SUCCESS',
+        physicalResourceId: op.stackName,
+        reason: `Stack deletion still in progress after ${attempt} attempts (${stack.StackStatus}); responding SUCCESS to unblock CloudFormation rollback.`,
+        logStreamName: context?.logStreamName,
+      });
+      return { done: true, deleteRetryCount };
     }
 
     return { done: false, deleteRetryCount };
@@ -151,7 +166,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: `Stack ${op.stackName} does not exist`,
       logStreamName: context?.logStreamName,
     });
-    return { done: true };
+    return { done: true, deleteRetryCount };
   }
 
   console.log('Stack status:', JSON.stringify({
@@ -173,7 +188,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: limitReason((stack.StackStatusReason ?? `Stack failed with status ${status}`) + details),
       logStreamName: context?.logStreamName,
     });
-    return { done: true };
+    return { done: true, deleteRetryCount };
   }
 
   if (isTerminalSuccess(status)) {
@@ -186,7 +201,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       data: outputs,
       logStreamName: context?.logStreamName,
     });
-    return { done: true };
+    return { done: true, deleteRetryCount };
   }
 
   return { done: false, deleteRetryCount };

@@ -1,5 +1,4 @@
 import { Construct } from 'constructs';
-import { BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { TableEncryption, type TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 
@@ -63,7 +62,6 @@ export function resolveMailboxEncryptionPlan(scope: Construct, kms?: MailboxKmsC
     }
 
     return {
-      encryption: excluded ? BucketEncryption.S3_MANAGED : undefined,
       encryptionKey: key,
     } satisfies BlobStoreProps;
   })();

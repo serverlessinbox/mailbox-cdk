@@ -5,8 +5,6 @@ import { TypeScriptLambda } from '../utils/ts-lambda';
 export interface EdgeDeployerGrantProps {
   stack: Stack;
   edgeStackArn: string;
-  templateObjectArn: string;
-  blobAuthorizerObjectArn: string;
 }
 
 export function grantEdgeDeployerWorkerPermissions(
@@ -64,9 +62,11 @@ export function grantEdgeDeployerWorkerPermissions(
     })
   );
 
-  // Allow reading the edge stack template and Lambda code from S3
-  // The artifact resolver provides the bucket name and artifact paths
-  // Edge artifacts are always in us-east-1 regardless of regional stack
+  // Allow reading the edge stack template and ALL Lambda artifact zips from S3.
+  // CloudFormation uses the CALLER's identity (this worker role) to fetch Lambda zip files
+  // when creating AWS::Lambda::Function resources — individual object ARNs are not sufficient.
+  // Edge artifacts are always in the us-east-1 artifact bucket regardless of regional stack.
+  // The wildcard covers the template object, all Lambda zips, and any future artifacts in any channel.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -74,8 +74,7 @@ export function grantEdgeDeployerWorkerPermissions(
         's3:GetObjectVersion',
       ],
       resources: [
-        props.templateObjectArn,
-        props.blobAuthorizerObjectArn,
+        'arn:aws:s3:::mailbox-artifacts-us-east-1/packages/mailbox-cdk-edge/*',
       ],
     })
   );

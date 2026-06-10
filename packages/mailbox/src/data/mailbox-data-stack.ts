@@ -1,5 +1,4 @@
 import * as cdk from 'aws-cdk-lib';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { BlobStore } from '../resources/blob-store';
 import { ConfigTable } from '../resources/config-table';
@@ -7,8 +6,8 @@ import { ItemTable } from '../resources/item-table';
 import { ChangelogTable } from '../resources/changelog-table';
 import { AuditLogTable } from '../resources/auditlog-table';
 import { MailFeedbackTable } from '../resources/mailfeedback-table';
-import { MailboxKmsConfig, resolveBlobStoreKey, resolveDynamoTablesKey } from '../utils/kms';
-import { MailboxDataStackRef } from './mailbox-data-stack-ref';
+import { MailboxKmsConfig } from '../utils/kms';
+import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
@@ -21,41 +20,34 @@ export interface MailboxDataStackProps extends cdk.StackProps {
  *
  * Each resource's ARN is published as an SSM parameter so that the
  * parent mailbox stack can consume them without a hard CloudFormation dependency.
+ *
+ * CloudFormation outputs are also published so that MailboxDataDeployer can read
+ * the actual ARNs from the custom resource Data dict at deploy time.
  */
 export class MailboxDataStack extends cdk.Stack {
-  public readonly outputs: MailboxDataStackRef;
-
   constructor(scope: Construct, id: string, props: MailboxDataStackProps = {}) {
     super(scope, id, props);
 
-    const ssmParam = (paramId: string, name: string, value: string): string => {
-      new ssm.StringParameter(this, paramId, { parameterName: name, stringValue: value });
-      return name;
-    };
+    // Resolve encryption settings once. For aws-managed mode this emits
+    // TableEncryption.AWS_MANAGED / BucketEncryption.KMS_MANAGED without an explicit
+    // encryptionKey, so CloudFormation resolves the key in the deploying account rather
+    // than baking the CDK_DEFAULT_ACCOUNT placeholder (000000000000) into the KMS alias ARN.
+    const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
 
     // Create resources
-    const blobStore = new BlobStore(this, { encryptionKey: resolveBlobStoreKey(this, props.kms) });
-    const configTable = new ConfigTable(this, { encryptionKey: resolveDynamoTablesKey(this, props.kms) });
-    const itemTable = new ItemTable(this, { encryptionKey: resolveDynamoTablesKey(this, props.kms) });
-    const changelogTable = new ChangelogTable(this, { encryptionKey: resolveDynamoTablesKey(this, props.kms) });
-    const auditLogTable = new AuditLogTable(this, { encryptionKey: resolveDynamoTablesKey(this, props.kms) });
-    const mailFeedbackTable = new MailFeedbackTable(this, { encryptionKey: resolveDynamoTablesKey(this, props.kms) });
+    const blobStore = new BlobStore(this, encryptionPlan.blobStore);
+    const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
+    const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
+    const changelogTable = new ChangelogTable(this, encryptionPlan.dynamoTables);
+    const auditLogTable = new AuditLogTable(this, encryptionPlan.dynamoTables);
+    const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
 
-    // Publish SSM parameters (ARN only) and collect paths
-    const configTableArnParam = ssmParam('config-table-arn-param', `/${this.stackName}/config-table-arn`, configTable.tableArn);
-    const itemTableArnParam = ssmParam('item-table-arn-param', `/${this.stackName}/item-table-arn`, itemTable.tableArn);
-    const changelogTableArnParam = ssmParam('changelog-table-arn-param', `/${this.stackName}/changelog-table-arn`, changelogTable.tableArn);
-    const auditLogTableArnParam = ssmParam('auditlog-table-arn-param', `/${this.stackName}/auditlog-table-arn`, auditLogTable.tableArn);
-    const mailFeedbackTableArnParam = ssmParam('mailfeedback-table-arn-param', `/${this.stackName}/mailfeedback-table-arn`, mailFeedbackTable.tableArn);
-    const blobStoreArnParam = ssmParam('blob-store-arn-param', `/${this.stackName}/blob-store-arn`, blobStore.bucketArn);
-
-    this.outputs = {
-      configTableArnParam,
-      itemTableArnParam,
-      changelogTableArnParam,
-      auditLogTableArnParam,
-      mailFeedbackTableArnParam,
-      blobStoreArnParam,
-    };
+    // CloudFormation outputs — read by MailboxDataDeployer via custom resource Data dict.
+    new cdk.CfnOutput(this, 'configTableArn',       { value: configTable.tableArn });
+    new cdk.CfnOutput(this, 'itemTableArn',          { value: itemTable.tableArn });
+    new cdk.CfnOutput(this, 'changelogTableArn',     { value: changelogTable.tableArn });
+    new cdk.CfnOutput(this, 'auditLogTableArn',      { value: auditLogTable.tableArn });
+    new cdk.CfnOutput(this, 'mailFeedbackTableArn',  { value: mailFeedbackTable.tableArn });
+    new cdk.CfnOutput(this, 'blobStoreArn',          { value: blobStore.bucketArn });
   }
 }

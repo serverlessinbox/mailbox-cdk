@@ -1,5 +1,5 @@
 import { Aws, Stack } from 'aws-cdk-lib';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 
 export interface DataDeployerGrantProps {
@@ -30,6 +30,14 @@ export function grantDataDeployerWorkerPermissions(
     })
   );
 
+  // ValidateTemplate acts on S3 URLs, not stack ARNs — must be on *
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: ['cloudformation:ValidateTemplate'],
+      resources: ['*'],
+    })
+  );
+
   // Read the data stack template from the artifact bucket (regional bucket)
   worker.addToRolePolicy(
     new PolicyStatement({
@@ -47,11 +55,15 @@ export function grantDataDeployerWorkerPermissions(
         'dynamodb:DescribeTable',
         'dynamodb:UpdateTable',
         'dynamodb:UpdateContinuousBackups',
+        'dynamodb:DescribeContinuousBackups',
+        'dynamodb:UpdateTimeToLive',
+        'dynamodb:DescribeTimeToLive',
+        'dynamodb:DescribeTableReplicaAutoScaling',
         'dynamodb:TagResource',
         'dynamodb:UntagResource',
         'dynamodb:ListTagsOfResource',
       ],
-      resources: [`arn:aws:dynamodb:${props.stack.region}:${props.stack.account}:table/${Aws.STACK_NAME}-data-*`],
+      resources: [`arn:aws:dynamodb:${props.stack.region}:${props.stack.account}:table/${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-data-*`],
     })
   );
 
@@ -67,27 +79,33 @@ export function grantDataDeployerWorkerPermissions(
         's3:PutBucketVersioning',
         's3:GetBucketVersioning',
         's3:PutBucketTagging',
-        's3:PutBucketLifecycleConfiguration',
+        's3:PutLifecycleConfiguration',
         's3:GetLifecycleConfiguration',
         's3:PutEncryptionConfiguration',
         's3:GetEncryptionConfiguration',
         's3:PutBucketPublicAccessBlock',
         's3:GetBucketPublicAccessBlock',
+        's3:GetBucketLocation',
+        's3:PutBucketOwnershipControls',
+        's3:GetBucketOwnershipControls',
       ],
       resources: [`arn:aws:s3:::${props.stack.account}-${Aws.STACK_NAME}-data-*`],
     })
   );
 
-  // SSM parameters (data stack creates /${dataStackName}/... params)
+  // KMS permissions for SSE-KMS on DynamoDB and S3 (CloudFormation uses caller identity)
   worker.addToRolePolicy(
     new PolicyStatement({
-      actions: [
-        'ssm:PutParameter',
-        'ssm:DeleteParameter',
-        'ssm:GetParameter',
-        'ssm:AddTagsToResource',
+      actions: ['kms:DescribeKey', 'kms:CreateGrant'],
+      effect: Effect.ALLOW,
+      resources: [
+        `arn:aws:kms:${props.stack.region}:${props.stack.account}:alias/aws/dynamodb`,
+        `arn:aws:kms:${props.stack.region}:${props.stack.account}:alias/aws/s3`,
+        `arn:aws:kms:${props.stack.region}:${props.stack.account}:key/*`,
       ],
-      resources: [`arn:aws:ssm:${props.stack.region}:${props.stack.account}:parameter/${Aws.STACK_NAME}-data/*`],
+      conditions: {
+        Bool: { 'kms:GrantIsForAWSResource': 'true' },
+      },
     })
   );
 

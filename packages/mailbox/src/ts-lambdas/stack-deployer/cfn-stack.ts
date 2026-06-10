@@ -104,7 +104,7 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
     terminationProtection: op.terminationProtection,
   }, null, 2));
 
-  const existing = await describeStack(op.stackName, cfClient);
+  let existing = await describeStack(op.stackName, cfClient);
   if (!existing) {
     try {
       await cfClient.send(
@@ -117,10 +117,27 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
         })
       );
     } catch (err: any) {
-      console.error('CreateStack failed:', safeStringify(err));
-      throw err;
+      const message = String(err?.message ?? '');
+      if (err?.name === 'AlreadyExistsException' || message.includes('already exists')) {
+        // Race: stack appeared between describeStack and CreateStack.
+        // Re-describe and fall through to the requiresRecreate / UpdateStack path below.
+        console.log(`Stack ${op.stackName} AlreadyExistsException on CreateStack; re-describing to resolve.`);
+        existing = await describeStack(op.stackName, cfClient);
+        if (!existing) {
+          // Should not happen, but if we still can't see it, re-throw the original error.
+          console.error('CreateStack AlreadyExistsException but stack not found on re-describe:', safeStringify(err));
+          throw err;
+        }
+        // Fall through to requiresRecreate / UpdateStack logic below.
+      } else {
+        console.error('CreateStack failed:', safeStringify(err));
+        throw err;
+      }
     }
-    return;
+    if (!existing) {
+      // CreateStack succeeded (existing is still undefined).
+      return;
+    }
   }
 
   if (requiresRecreate(existing.StackStatus)) {

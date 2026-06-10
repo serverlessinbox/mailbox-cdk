@@ -61,4 +61,4 @@ tasks:
       - task: build:edge-stack
       - task: build:data-stack
       - task: bundle
-      - yarn ts-node --cwd {{.USER_WORKING_DIR}}/../.. scripts/publish-channel-artifacts.ts
+      - yarn ts-node --project tsconfig.scripts.json --cwd {{.USER_WORKING_DIR}}/../.. scripts/publish-channel-artifacts.ts

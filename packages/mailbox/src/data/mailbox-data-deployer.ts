@@ -1,4 +1,6 @@
 import { Aws, CustomResource, Fn, Stack } from 'aws-cdk-lib';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
 import { StackDeployerInfra } from '../utils/stack-deployer-infra';
@@ -15,23 +17,31 @@ export interface MailboxDataDeployerProps {
  * Deploys the MailboxDataStack (DynamoDB tables + S3 bucket) via a CloudFormation
  * custom resource. The data stack is deployed in the same region as the mailbox stack.
  *
- * Exposes `dataStackRef` with SSM parameter paths that consumers can pass to
- * `ssm.StringParameter.valueForStringParameter()`.
+ * Exposes typed ITable and IBucket instances built from the ARNs returned in the custom
+ * resource Data dict (i.e. the CloudFormation stack outputs), so that CDK can generate
+ * correct IAM policy resource ARNs at deploy time.
  */
 export class MailboxDataDeployer extends Construct {
-  public readonly dataStackRef: MailboxDataStackRef;
+  public readonly configTable: ITable;
+  public readonly itemTable: ITable;
+  public readonly changelogTable: ITable;
+  public readonly auditLogTable: ITable;
+  public readonly mailFeedbackTable: ITable;
+  public readonly blobStore: IBucket;
 
   constructor(scope: Construct, id: string, props: MailboxDataDeployerProps) {
     super(scope, id);
 
     const stack = Stack.of(this);
 
-    const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
+    // CFN token for use as CloudFormation stack name parameter in the custom resource
+    // and for formatArn of the CFN stack ARN.
+    const dataStackNameToken = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
 
     const dataStackArn = stack.formatArn({
       service: 'cloudformation',
       resource: 'stack',
-      resourceName: `${dataStackName}/*`,
+      resourceName: `${dataStackNameToken}/*`,
     });
 
     const infra = new StackDeployerInfra(this, 'infra', {
@@ -39,21 +49,20 @@ export class MailboxDataDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-data-deployer-',
     });
 
-    // Read the data stack template from the artifact bucket (regional bucket)
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-data', 'template.json');
+    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');
 
     grantDataDeployerWorkerPermissions(infra.worker, {
       stack,
       dataStackArn,
-      dataStackName,
-      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-data', 'template.json'),
+      dataStackName: dataStackNameToken,
+      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
     });
 
     const resource = new CustomResource(this, 'resource', {
       serviceToken: infra.starter.functionArn,
       resourceType: 'Custom::MailboxDataDeployer',
       properties: {
-        stackName: dataStackName,
+        stackName: dataStackNameToken,
         templateUrl,
         preserveOnDelete: true,
       },
@@ -62,13 +71,22 @@ export class MailboxDataDeployer extends Construct {
     // Ensure the workflow remains until after the custom resource is deleted.
     resource.node.addDependency(infra.workflow.stateMachine);
 
-    this.dataStackRef = {
-      configTableArnParam: `/${dataStackName}/config-table-arn`,
-      itemTableArnParam: `/${dataStackName}/item-table-arn`,
-      changelogTableArnParam: `/${dataStackName}/changelog-table-arn`,
-      auditLogTableArnParam: `/${dataStackName}/auditlog-table-arn`,
-      mailFeedbackTableArnParam: `/${dataStackName}/mailfeedback-table-arn`,
-      blobStoreArnParam: `/${dataStackName}/blob-store-arn`,
-    };
+    // Read table and bucket ARNs from the deployed stack outputs
+    // (surfaced as custom resource Data attributes by the stack-deployer handler).
+    const ref = new MailboxDataStackRef(this, 'ref', {
+      configTableArn:       resource.getAttString('configTableArn'),
+      itemTableArn:         resource.getAttString('itemTableArn'),
+      changelogTableArn:    resource.getAttString('changelogTableArn'),
+      auditLogTableArn:     resource.getAttString('auditLogTableArn'),
+      mailFeedbackTableArn: resource.getAttString('mailFeedbackTableArn'),
+      blobStoreArn:         resource.getAttString('blobStoreArn'),
+    });
+
+    this.configTable       = ref.configTable;
+    this.itemTable         = ref.itemTable;
+    this.changelogTable    = ref.changelogTable;
+    this.auditLogTable     = ref.auditLogTable;
+    this.mailFeedbackTable = ref.mailFeedbackTable;
+    this.blobStore         = ref.blobStore;
   }
 }

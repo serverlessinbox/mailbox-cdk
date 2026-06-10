@@ -78,6 +78,7 @@ export type {
 // Data stack
 export { MailboxDataStack } from './data';
 export type { MailboxDataStackProps } from './data';
-export type { MailboxDataStackRef } from './data';
+export { MailboxDataStackRef } from './data';
+export type { MailboxDataStackRefProps } from './data';
 
 

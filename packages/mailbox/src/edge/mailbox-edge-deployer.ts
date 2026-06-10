@@ -80,14 +80,11 @@ export class MailboxEdgeDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
     });
 
-    // Allow reading the edge stack template and Lambda code from S3
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');
 
     grantEdgeDeployerWorkerPermissions(infra.worker, {
       stack,
       edgeStackArn,
-      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
-      blobAuthorizerObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
     });
 
     // Build CloudFormation parameters from the edge construct props

@@ -335,6 +335,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       userGroups: props.authorization?.userGroups ?? ['user'],
     };
 
+    this.jmapScopes = props.jmapScopes ?? Object.values(Permission);
     this.scopeMap = this.buildScopeMap();
 
     // Admin API: always require admin scope. Group enforcement is applied for user tokens only
@@ -356,7 +357,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       userSrp: false,
     };
 
-    this.jmapScopes = props.jmapScopes ?? Object.values(Permission);
     const createGroups = props.createDefaultGroups ?? true;
 
     this.userPool = new cognito.UserPool(this, 'user-pool', {

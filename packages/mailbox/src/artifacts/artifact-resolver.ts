@@ -87,7 +87,16 @@ export interface IArtifactResolver {
    * @param region - AWS region (e.g. 'us-east-1')
    */
   getBucketName(region: string): string;
+
+  /**
+   * Get the version string or channel name for a package.
+   * Returns the version (e.g. "1.2.3") for release and track targets,
+   * or the channel name (e.g. "dev") for channel targets.
+   * Returns undefined if no target is configured for the package.
+   */
+  getVersion(packageName: string): string | undefined;
 }
+
 
 /**
  * Configuration for ArtifactResolver.
@@ -241,6 +250,14 @@ export class ArtifactResolver extends Construct implements IArtifactResolver {
    */
   getBucketName(region: string): string {
     return this.bucketName(region);
+  }
+
+  getVersion(packageName: string): string | undefined {
+    const target = this.packages[packageName];
+    if (!target) return undefined;
+    if (target.kind === 'release') return target.version;
+    if (target.kind === 'channel') return target.channel;
+    return this.resolveTrack(packageName, target.track);
   }
 
   /**

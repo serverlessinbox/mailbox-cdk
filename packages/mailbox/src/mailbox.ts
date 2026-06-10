@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Construct } from 'constructs';
 import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
@@ -18,6 +20,7 @@ import { EmailProcessorLambda } from './lambdas/email-processor';
 import { CertWaiterLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
+import { ArtifactResolver } from './artifacts/artifact-resolver';
 import type { IArtifactResolver } from './artifacts/artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { CertificateWaiter } from './features/certificate-waiter';
@@ -29,13 +32,11 @@ import { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
 import { MailboxDataDeployer } from './data';
-import type { MailboxDataStackRef } from './data';
+import { MailboxDataStackRef } from './data';
 import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
@@ -124,6 +125,39 @@ export interface MailboxOAuthClients {
   readonly jmapUi?: AuthClientConfig;
 }
 
+function resolveArtifactResolver(scope: Construct): ArtifactResolver {
+  const contextValue = scope.node.tryGetContext('artifacts');
+  if (contextValue) {
+    return createArtifactResolverFromContext(scope);
+  }
+
+  const pkgRoot = path.join(__dirname, '..');
+  const versionsPath = path.join(pkgRoot, 'artifact-versions.json');
+  const pkgJsonPath = path.join(pkgRoot, 'package.json');
+
+  let bakedVersions: Record<string, string>;
+  try {
+    bakedVersions = JSON.parse(fs.readFileSync(versionsPath, 'utf8')) as Record<string, string>;
+  } catch {
+    throw new Error(
+      `@serverlessinbox/mailbox: artifact-versions.json not found at ${versionsPath}. ` +
+      'This file is normally included in the npm package. If you are running from source, ' +
+      'set the "artifacts" CDK context key instead.',
+    );
+  }
+
+  const { version: cdkVersion } = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')) as { version: string };
+
+  return new ArtifactResolver(scope, {
+    packages: {
+      'mailbox-cdk':        { kind: 'release', version: cdkVersion },
+      'mailbox-go':         { kind: 'release', version: bakedVersions['mailbox-go'] ?? '0.0.0' },
+      'mailbox-admin-ui':   { kind: 'release', version: bakedVersions['mailbox-admin-ui'] ?? '0.0.0' },
+      'mailbox-webmail-ui': { kind: 'release', version: bakedVersions['mailbox-webmail-ui'] ?? '0.0.0' },
+    },
+  });
+}
+
 /**
  * Main Mailbox construct
  */
@@ -164,7 +198,7 @@ export class Mailbox extends Construct {
       blobStore: this._blobStore,
       emailProcessor: this._emailProcessorLambda,
       bucketPrefix: 'incoming-emails/',
-      artifactResolver: createArtifactResolverFromContext(this),
+      artifactResolver: this.artifactResolver,
       queueProps: this.emailQueueProps,
     }
   }
@@ -178,7 +212,7 @@ export class Mailbox extends Construct {
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
-    const artifactResolverForTags = createArtifactResolverFromContext(this);
+    const artifactResolverForTags = resolveArtifactResolver(this);
     const mailboxCdkTarget = artifactResolverForTags.packages?.['mailbox-cdk'];
     const stackVersion = mailboxCdkTarget
       ? (mailboxCdkTarget.kind === 'release' ? mailboxCdkTarget.version : mailboxCdkTarget.kind === 'channel' ? `channel:${mailboxCdkTarget.channel}` : `track:${mailboxCdkTarget.track}`)
@@ -206,54 +240,13 @@ export class Mailbox extends Construct {
     this.emailQueueProps = encryptionPlan.queues;
 
     // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
-    let dataStackRef: MailboxDataStackRef;
-    let dataDeployer: MailboxDataDeployer | undefined;
-    if (props.dataStack) {
-      dataStackRef = props.dataStack;
-    } else {
-      dataDeployer = new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
-      dataStackRef = dataDeployer.dataStackRef;
-    }
+    const dataRef = props.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
 
-    this._blobStore = s3.Bucket.fromBucketArn(
-      this,
-      'blob-store',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.blobStoreArnParam),
-    );
-
-    const configTable = Table.fromTableArn(
-      this,
-      'config-table',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.configTableArnParam),
-    );
-    this._configTable = configTable;
-
-    const itemTable = Table.fromTableArn(
-      this,
-      'item-table',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.itemTableArnParam),
-    );
-
-    const changelogTable = Table.fromTableArn(
-      this,
-      'changelog-table',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.changelogTableArnParam),
-    );
-
-    const auditLogTable = Table.fromTableArn(
-      this,
-      'audit-log-table',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.auditLogTableArnParam),
-    );
-
-    const mailFeedbackTable = Table.fromTableArn(
-      this,
-      'mailfeedback-table',
-      ssm.StringParameter.valueForStringParameter(this, dataStackRef.mailFeedbackTableArnParam),
-    );
+    this._blobStore   = dataRef.blobStore;
+    this._configTable = dataRef.configTable;
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
-      auditLogTable,
+      auditLogTable: dataRef.auditLogTable,
       artifactResolver,
       queueProps: encryptionPlan.queues,
     });
@@ -272,8 +265,8 @@ export class Mailbox extends Construct {
       prefix: mailboxDomains.prefix,
       hostedZoneId: props.hostedZone?.hostedZoneId,
       hostedZoneName: props.hostedZone?.zoneName,
-      itemTableArn: itemTable.tableArn,
-      configTableArn: configTable.tableArn,
+      itemTableArn: dataRef.itemTable.tableArn,
+      configTableArn: dataRef.configTable.tableArn,
       authKeyStoreTableArn: authKeyStore.table.tableArn,
       productVersion: stackVersion,
       deployer,
@@ -400,15 +393,15 @@ export class Mailbox extends Construct {
       ?? undefined;
 
     new LicenseRefresh(this, 'license-refresh', {
-      configTable: configTable,
+      configTable: dataRef.configTable,
       artifactResolver,
     });
 
     // Lambda function to process incoming emails
     this._emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
       blobStore: this._blobStore,
       artifactResolver,
     });
@@ -428,7 +421,7 @@ export class Mailbox extends Construct {
     const bootstrap = new Bootstrap(this, 'bootstrap', {
       domain: props.domainName,
       oidcIssuer: authProvider.issuer,
-      configTable: configTable,
+      configTable: dataRef.configTable,
       jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
@@ -493,7 +486,7 @@ export class Mailbox extends Construct {
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(this, 'blob-cdn', {
       blobStore: this._blobStore,
-      configTable,
+      configTable: dataRef.configTable,
       authKeyStoreTable: authKeyStore.table,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
@@ -510,9 +503,9 @@ export class Mailbox extends Construct {
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(this, 'tantivy-search', {
       indexBucket: this._blobStore,
-      itemTable: itemTable,
-      configTable: configTable,
-      changelogTable: changelogTable,
+      itemTable: dataRef.itemTable,
+      configTable: dataRef.configTable,
+      changelogTable: dataRef.changelogTable,
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
     });
@@ -520,10 +513,10 @@ export class Mailbox extends Construct {
 
     // SES event processing infrastructure (SNS, SQS, Lambda)
     const sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
-      itemTable: itemTable,
-      mailFeedbackTable: mailFeedbackTable,
-      changelogTable: changelogTable,
-      configTable: configTable,
+      itemTable: dataRef.itemTable,
+      mailFeedbackTable: dataRef.mailFeedbackTable,
+      changelogTable: dataRef.changelogTable,
+      configTable: dataRef.configTable,
       blobStore: this._blobStore,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver: artifactResolver,
@@ -534,9 +527,9 @@ export class Mailbox extends Construct {
 
     // Email sending infrastructure (SQS, Lambda) - must be before API
     const emailSending = new EmailSending(this, 'email-sending', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
       blobStore: this._blobStore,
       artifactResolver: artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
@@ -555,9 +548,9 @@ export class Mailbox extends Construct {
     }
 
     this._jmapApi = new JMapApi(this, 'jmap-api', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
       authKeyStoreTable: authKeyStore.table,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
@@ -580,9 +573,9 @@ export class Mailbox extends Construct {
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
     const webSocketPush = new WebSocketPush(this, 'websocket-push', {
-      configTable: configTable,
-      itemTable: itemTable,
-      changelogTable: changelogTable,
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
       authKeyStoreTable: authKeyStore.table,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver: artifactResolver,
@@ -605,11 +598,11 @@ export class Mailbox extends Construct {
     })();
 
     const adminApi = new AdminApi(this, 'admin-api', {
-      configTable: configTable,
-      itemTable: itemTable,
-      auditLogTable: auditLogTable,
-      changelogTable: changelogTable,
-      mailFeedbackTable: mailFeedbackTable,
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      auditLogTable: dataRef.auditLogTable,
+      changelogTable: dataRef.changelogTable,
+      mailFeedbackTable: dataRef.mailFeedbackTable,
       authKeyStoreTable: authKeyStore.table,
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,

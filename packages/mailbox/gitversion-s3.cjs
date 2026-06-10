@@ -4,14 +4,18 @@ module.exports = {
   basePath: 'packages/mailbox-cdk',
   artifacts: [
     {
-      source: 'src/ts-lambdas/edge-deployer/index.ts',
+      source: 'src/ts-lambdas/stack-deployer/index.ts',
       bundleType: 'js-zip',
-      objectName: 'lambdas/edge-deployer.zip',
+      objectName: 'lambdas/stack-deployer.zip',
     },
     {
       source: 'src/ts-lambdas/ui-deployer/index.ts',
       bundleType: 'js-zip',
       objectName: 'lambdas/ui-deployer.zip',
+    },
+    {
+      source: 'dist/data-stack-template.json',
+      objectName: 'data-stack-template.json',
     },
     {
       source: 'src/ts-lambdas/blob-authorizer/index.ts',

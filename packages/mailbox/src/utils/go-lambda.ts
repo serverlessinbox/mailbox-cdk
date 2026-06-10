@@ -8,7 +8,6 @@ import { CfnLogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
-import artifactVersions from '../../../../artifact-versions.json';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -49,7 +48,7 @@ export class GoLambda extends LambdaFunction {
     });
 
     Tags.of(this).add('mailbox:artifact-name', lambdaId);
-    Tags.of(this).add('mailbox:artifact-version', artifactVersions['mailbox-go']);
+    Tags.of(this).add('mailbox:artifact-version', artifactResolver.getVersion('mailbox-go') ?? 'unknown');
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = this.logGroup.node.defaultChild as CfnLogGroup;

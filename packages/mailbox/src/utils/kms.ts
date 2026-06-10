@@ -22,6 +22,7 @@ export interface MailboxKmsConfig {
 
   /**
    * Exclude specific resources from KMS usage.
+   * Note: 's3' is now a no-op for bucket encryption (blob store always uses S3_MANAGED). Retained for backward compatibility.
    * Example: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.
    */
   readonly excluded?: MailboxKmsResource[];

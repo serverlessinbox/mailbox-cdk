@@ -8473,51 +8473,6 @@
       ],
       "symbolId": "src/api/addons:AdminApiAddonContext"
     },
-    "@serverlessinbox/mailbox.ArtifactReference": {
-      "assembly": "@serverlessinbox/mailbox",
-      "datatype": true,
-      "fqn": "@serverlessinbox/mailbox.ArtifactReference",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/artifacts/artifact-prefix.ts",
-        "line": 9
-      },
-      "name": "ArtifactReference",
-      "properties": [
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Artifact path relative to the publish target prefix, e.g. \"template.json\" or \"lambdas/blob-authorizer.zip\"."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/artifacts/artifact-prefix.ts",
-            "line": 11
-          },
-          "name": "key",
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional S3 object version ID."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/artifacts/artifact-prefix.ts",
-            "line": 14
-          },
-          "name": "s3VersionId",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        }
-      ],
-      "symbolId": "src/artifacts/artifact-prefix:ArtifactReference"
-    },
     "@serverlessinbox/mailbox.ArtifactResolver": {
       "assembly": "@serverlessinbox/mailbox",
       "base": "constructs.Construct",
@@ -8529,7 +8484,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/artifact-resolver.ts",
-          "line": 125
+          "line": 140
         },
         "parameters": [
           {
@@ -8552,7 +8507,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/artifact-resolver.ts",
-        "line": 118
+        "line": 133
       },
       "methods": [
         {
@@ -8561,7 +8516,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 254
+            "line": 284
           },
           "name": "getArn",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8587,12 +8542,36 @@
         },
         {
           "docs": {
+            "summary": "Get the S3 bucket name for a region."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 251
+          },
+          "name": "getBucketName",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "region",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
             "remarks": "Constructs use this to wire Lambda code from artifacts.",
             "summary": "Get Lambda Code for an object."
           },
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 272
+            "line": 302
           },
           "name": "getCode",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8622,7 +8601,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 228
+            "line": 243
           },
           "name": "getKey",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8652,7 +8631,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 236
+            "line": 266
           },
           "name": "getUrl",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8685,11 +8664,37 @@
         },
         {
           "docs": {
+            "remarks": "Returns the version (e.g. \"1.2.3\") for release and track targets,\nor the channel name (e.g. \"dev\") for channel targets.\nReturns undefined if no target is configured for the package.",
+            "summary": "Get the version string or channel name for a package."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 255
+          },
+          "name": "getVersion",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "optional": true,
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
             "summary": "Get S3 version ID for an artifact from the version map."
           },
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 263
+            "line": 293
           },
           "name": "getVersionId",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8721,7 +8726,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 119
+            "line": 134
           },
           "name": "bucketBase",
           "type": {
@@ -8732,7 +8737,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 120
+            "line": 135
           },
           "name": "packages",
           "type": {
@@ -8760,7 +8765,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 121
+            "line": 136
           },
           "name": "region",
           "type": {
@@ -8771,7 +8776,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 122
+            "line": 137
           },
           "name": "versionMap",
           "type": {
@@ -8796,7 +8801,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/artifact-resolver.ts",
-        "line": 89
+        "line": 104
       },
       "name": "ArtifactResolverConfig",
       "properties": [
@@ -8808,7 +8813,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 99
+            "line": 114
           },
           "name": "packages",
           "type": {
@@ -8840,7 +8845,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 94
+            "line": 109
           },
           "name": "bucketBase",
           "optional": true,
@@ -8857,7 +8862,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 104
+            "line": 119
           },
           "name": "region",
           "optional": true,
@@ -8874,7 +8879,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/artifact-resolver.ts",
-            "line": 111
+            "line": 126
           },
           "name": "versionMap",
           "optional": true,
@@ -9298,6 +9303,33 @@
         {
           "abstract": true,
           "docs": {
+            "summary": "Get the S3 bucket name for the given region."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 89
+          },
+          "name": "getBucketName",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "- AWS region (e.g. 'us-east-1')."
+              },
+              "name": "region",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
             "summary": "Get Lambda Code for a package artifact."
           },
           "locationInModule": {
@@ -9408,6 +9440,32 @@
             }
           ],
           "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Returns the version (e.g. \"1.2.3\") for release and track targets,\nor the channel name (e.g. \"dev\") for channel targets.\nReturns undefined if no target is configured for the package.",
+            "summary": "Get the version string or channel name for a package."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/artifact-resolver.ts",
+            "line": 97
+          },
+          "name": "getVersion",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "optional": true,
             "type": {
               "primitive": "string"
             }
@@ -9750,7 +9808,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 163
+          "line": 208
         },
         "parameters": [
           {
@@ -9776,7 +9834,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 121
+        "line": 166
       },
       "name": "Mailbox",
       "properties": [
@@ -9787,7 +9845,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 150
+            "line": 195
           },
           "name": "oauthClients",
           "type": {
@@ -9801,7 +9859,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 134
+            "line": 179
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -9813,7 +9871,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 135
+            "line": 180
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -9825,7 +9883,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 141
+            "line": 186
           },
           "name": "edgeCertificate",
           "optional": true,
@@ -9841,7 +9899,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 144
+            "line": 189
           },
           "name": "regionalCertificate",
           "optional": true,
@@ -9856,7 +9914,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 138
+            "line": 183
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -9868,7 +9926,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 139
+            "line": 184
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -9970,6 +10028,182 @@
         }
       ],
       "symbolId": "src/auth/types:MailboxAuthorizationConfig"
+    },
+    "@serverlessinbox/mailbox.MailboxDataStack": {
+      "assembly": "@serverlessinbox/mailbox",
+      "base": "aws-cdk-lib.Stack",
+      "docs": {
+        "remarks": "Each resource's ARN is published as an SSM parameter so that the\nparent mailbox stack can consume them without a hard CloudFormation dependency.",
+        "summary": "CDK Stack that creates and owns all retained Serverless Inbox data resources: - 5 DynamoDB tables (config, item, changelog, auditlog, mailfeedback) - 1 S3 bucket (email storage)."
+      },
+      "fqn": "@serverlessinbox/mailbox.MailboxDataStack",
+      "initializer": {
+        "locationInModule": {
+          "filename": "src/data/mailbox-data-stack.ts",
+          "line": 28
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "type": {
+              "fqn": "constructs.Construct"
+            }
+          },
+          {
+            "name": "id",
+            "type": {
+              "primitive": "string"
+            }
+          },
+          {
+            "name": "props",
+            "optional": true,
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.MailboxDataStackProps"
+            }
+          }
+        ]
+      },
+      "kind": "class",
+      "locationInModule": {
+        "filename": "src/data/mailbox-data-stack.ts",
+        "line": 25
+      },
+      "name": "MailboxDataStack",
+      "properties": [
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack.ts",
+            "line": 26
+          },
+          "name": "outputs",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef"
+          }
+        }
+      ],
+      "symbolId": "src/data/mailbox-data-stack:MailboxDataStack"
+    },
+    "@serverlessinbox/mailbox.MailboxDataStackProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxDataStackProps",
+      "interfaces": [
+        "aws-cdk-lib.StackProps"
+      ],
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/data/mailbox-data-stack.ts",
+        "line": 13
+      },
+      "name": "MailboxDataStackProps",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack.ts",
+            "line": 14
+          },
+          "name": "kms",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxKmsConfig"
+          }
+        }
+      ],
+      "symbolId": "src/data/mailbox-data-stack:MailboxDataStackProps"
+    },
+    "@serverlessinbox/mailbox.MailboxDataStackRef": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "remarks": "Each property holds the SSM parameter path (not the value) — pass it to\n`ssm.StringParameter.valueForStringParameter()` to obtain the runtime value.",
+        "summary": "SSM parameter paths for a deployed MailboxDataStack."
+      },
+      "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/data/mailbox-data-stack-ref.ts",
+        "line": 7
+      },
+      "name": "MailboxDataStackRef",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 11
+          },
+          "name": "auditLogTableArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 13
+          },
+          "name": "blobStoreArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 10
+          },
+          "name": "changelogTableArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 8
+          },
+          "name": "configTableArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 9
+          },
+          "name": "itemTableArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 12
+          },
+          "name": "mailFeedbackTableArnParam",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/data/mailbox-data-stack-ref:MailboxDataStackRef"
     },
     "@serverlessinbox/mailbox.MailboxKmsConfig": {
       "assembly": "@serverlessinbox/mailbox",
@@ -10073,9 +10307,9 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/kms.ts",
-            "line": 10
+            "line": 9
           },
-          "name": "dynamoTables",
+          "name": "blobStore",
           "optional": true,
           "type": {
             "fqn": "aws-cdk-lib.aws_kms.IKey"
@@ -10086,9 +10320,9 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/kms.ts",
-            "line": 9
+            "line": 10
           },
-          "name": "emailBucket",
+          "name": "dynamoTables",
           "optional": true,
           "type": {
             "fqn": "aws-cdk-lib.aws_kms.IKey"
@@ -10117,7 +10351,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 113
+        "line": 125
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -10126,7 +10360,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 114
+            "line": 126
           },
           "name": "adminUi",
           "optional": true,
@@ -10139,7 +10373,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 115
+            "line": 127
           },
           "name": "jmapUi",
           "optional": true,
@@ -10301,6 +10535,23 @@
           "optional": true,
           "type": {
             "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "When omitted, a `MailboxDataDeployer` custom resource automatically creates and manages\na data stack named `${AWS::StackName}-data`. The data stack is never deleted when the\nmailbox stack is deleted — retained resources survive.\n\nWhen provided, resources are imported from the referenced stack via SSM parameters\nresolved at CloudFormation deploy time. The data stack must already be deployed.",
+            "summary": "Reference to an externally-managed MailboxDataStack."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 122
+          },
+          "name": "dataStack",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef"
           }
         },
         {
@@ -10998,6 +11249,6 @@
       "symbolId": "src/artifacts/artifact-resolver:TrackTarget"
     }
   },
-  "version": "0.0.1",
-  "fingerprint": "rTA0w2zJDAFygU/ms+gJUTrGnSQnG+65n5M92TMwgSA="
+  "version": "0.0.0",
+  "fingerprint": "98Mr53FenHiQUwEYvEMd7D6cQUgtj82HC/CWJA8DOFI="
 }

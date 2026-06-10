@@ -1,5 +1,4 @@
-import { Aws, CfnOutput, Duration } from 'aws-cdk-lib';
-import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { CfnOutput, Duration } from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -94,20 +93,10 @@ export class SesRules extends Construct {
       reportBatchItemFailures: true,
     }));
 
-    // IAM policy for SES to write to S3
-    const sesS3Policy = new PolicyStatement({
-      effect: Effect.ALLOW,
-      principals: [new ServicePrincipal('ses.amazonaws.com')],
-      actions: ['s3:PutObject'],
-      resources: [`${props.delivery.blobStore.bucketArn}/${props.delivery.bucketPrefix}*`],
-      conditions: {
-        StringEquals: {
-          'aws:SourceAccount': Aws.ACCOUNT_ID,
-        },
-      },
-    });
-
-    props.delivery.blobStore.addToResourcePolicy(sesS3Policy);
+    // Note: the SES bucket policy (allowing ses.amazonaws.com to s3:PutObject on incoming-emails/*)
+    // is applied directly on BlobStore in resources/blob-store.ts. The blob store is owned by
+    // MailboxDataStack and referenced here as an imported IBucket; addToResourcePolicy on imported
+    // buckets is a CDK no-op, so the policy must live on the owning construct instead.
 
     new CfnOutput(this, 'SesReceiptRuleSetName', {
       value: ruleSet.receiptRuleSetName,

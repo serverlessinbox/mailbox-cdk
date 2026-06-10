@@ -1,18 +1,12 @@
 import { BlockPublicAccess, BucketEncryption } from "aws-cdk-lib/aws-s3";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Aws, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { StackNamedBucket } from "../utils/named-bucket";
 import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForRetainedResources } from "../utils/development-mode";
 import type * as kms from 'aws-cdk-lib/aws-kms';
-import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 
 export interface BlobStoreProps {
-  /**
-   * Optional explicit bucket encryption setting.
-   * If omitted, defaults to SSE-KMS (AWS-managed) unless an encryptionKey is provided.
-   */
-  readonly encryption?: BucketEncryption;
-
   /** Optional customer-managed CMK to use for SSE-KMS. */
   readonly encryptionKey?: kms.IKey;
 }
@@ -24,8 +18,7 @@ export class BlobStore extends StackNamedBucket {
     super(scope, 'blob-store', {
       versioned: false,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      encryption: props.encryption
-        ?? (props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.KMS_MANAGED),
+      encryption: props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
       encryptionKey: props.encryptionKey,
       autoDeleteObjects: autoDeleteObjectsInDevelopment(scope),
       lifecycleRules: [
@@ -72,5 +65,23 @@ export class BlobStore extends StackNamedBucket {
         })
       );
     }
+
+    // Allow SES to write inbound emails to this bucket.
+    // This policy must live here (on the owned bucket) because the main mailbox stack
+    // references the bucket via Bucket.fromBucketArn (an imported IBucket), and
+    // addToResourcePolicy on imported buckets is a CDK no-op.
+    this.addToResourcePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        principals: [new ServicePrincipal('ses.amazonaws.com')],
+        actions: ['s3:PutObject'],
+        resources: [`${this.bucketArn}/incoming-emails/*`],
+        conditions: {
+          StringEquals: {
+            'aws:Referer': Aws.ACCOUNT_ID,
+          },
+        },
+      }),
+    );
   }
 }

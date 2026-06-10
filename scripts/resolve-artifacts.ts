@@ -50,6 +50,10 @@ async function main(): Promise<void> {
   const outPath = path.join(__dirname, '..', 'artifact-versions.json');
   fs.writeFileSync(outPath, JSON.stringify(result, null, 2) + '\n');
   console.log(`Written: ${outPath}`);
+
+  const pkgOutPath = path.join(__dirname, '..', 'packages', 'mailbox', 'artifact-versions.json');
+  fs.writeFileSync(pkgOutPath, JSON.stringify(result, null, 2) + '\n');
+  console.log(`Written: ${pkgOutPath}`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
