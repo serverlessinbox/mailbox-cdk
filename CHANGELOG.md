@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.4](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.3...v0.0.4) (Wed Jun 10 2026)
+
+### fix
+
+* Manifest publishing ([cd79698](https://github.com/serverlessinbox/mailbox-cdk/commit/cd79698fbf32f38693f6ebfd81a9402b4b00d7b6))
+
 ## [0.0.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.2...v0.0.3) (Wed Jun 10 2026)
 
 ### feat
