@@ -1,7 +1,8 @@
 /** @type {import('@serverlessinbox/artifact-tools').S3WorkspaceConfig} */
 module.exports = {
   bucketName: 'mailbox-artifacts-eu-west-1',
-  basePath: 'packages/mailbox-cognito-lambdas',
+  type: 'package',
+  name: 'mailbox-cognito-lambdas',
   artifacts: [
     {
       source: 'src/ts-lambdas/cognito-idp-users-api/index.ts',

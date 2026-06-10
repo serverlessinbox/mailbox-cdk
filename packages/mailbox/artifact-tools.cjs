@@ -1,7 +1,8 @@
 /** @type {import('@serverlessinbox/artifact-tools').S3WorkspaceConfig} */
 module.exports = {
   bucketName: 'mailbox-artifacts-eu-west-1',
-  basePath: 'packages/mailbox-cdk',
+  type: 'package',
+  name: 'mailbox-cdk',
   artifacts: [
     {
       source: 'src/ts-lambdas/stack-deployer/index.ts',
@@ -22,14 +23,14 @@ module.exports = {
       bundleType: 'js-zip',
       objectName: 'lambdas/blob-authorizer.zip',
       bucketName: 'mailbox-artifacts-us-east-1',
-      basePath: 'packages/mailbox-cdk-edge',
+      name: 'mailbox-cdk-edge',
       region: 'us-east-1',
     },
     {
       source: 'dist/edge-stack-template.json',
       objectName: 'edge-stack-template.json',
       bucketName: 'mailbox-artifacts-us-east-1',
-      basePath: 'packages/mailbox-cdk-edge',
+      name: 'mailbox-cdk-edge',
       region: 'us-east-1',
     },
   ],

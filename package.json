@@ -11,14 +11,14 @@
   ],
   "scripts": {
     "aws": "aws --profile serverlessinbox-dev",
-    "resolve-artifacts": "artifact-tools resolve-artifacts --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --component mailbox-go:packages/mailbox-go --component mailbox-admin-ui:packages/mailbox-admin-ui --component mailbox-webmail-ui:packages/mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
+    "resolve-artifacts": "artifact-tools resolve-artifacts --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --component mailbox-go:package:mailbox-go --component mailbox-admin-ui:package:mailbox-admin-ui --component mailbox-webmail-ui:package:mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
     "embed-component-versions": "ts-node --project tsconfig.scripts.json scripts/embed-component-versions.ts",
-    "publish-manifest": "artifact-tools publish manifest --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --base-path packages/mailbox-cdk --version-from-package packages/mailbox/package.json --versions-file artifact-versions.json --extra-component mailbox-cdk-edge:{version}"
+    "publish-manifest": "artifact-tools publish manifest --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --type package --name mailbox-cdk --version-from-package packages/mailbox/package.json --versions-file artifact-versions.json --extra-component mailbox-cdk-edge:{version}"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3",
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
-    "@serverlessinbox/artifact-tools": "^0.0.14",
+    "@serverlessinbox/artifact-tools": "^0.0.15",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
