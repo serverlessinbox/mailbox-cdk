@@ -2241,9 +2241,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-tools@npm:^0.0.11":
-  version: 0.0.11
-  resolution: "@serverlessinbox/artifact-tools@npm:0.0.11"
+"@serverlessinbox/artifact-tools@npm:^0.0.12":
+  version: 0.0.12
+  resolution: "@serverlessinbox/artifact-tools@npm:0.0.12"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     clipanion: "npm:^3.2.1"
@@ -2253,7 +2253,7 @@ __metadata:
     "@jwpkg/gitversion": 1.4.0-pack-order.2
   bin:
     artifact-tools: dist/cli-entry.js
-  checksum: 10c0/79987c029b9a2fa986b2357339fae357e610c18ecc438345437985a63c2995bb209bbe350714f366a3248328b29d8b710dca12a0282eae7116ec1b9f85509265
+  checksum: 10c0/3d6f4cce051ba35097cfba82a3a56f7fefcb7d5fdcd9e06a17ccc930fd2a943ff94b81d69987297d9d8144476e34b230593198adb407a663b769edce1aff9787
   languageName: node
   linkType: hard
 
@@ -7015,7 +7015,7 @@ __metadata:
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     "@jwpkg/gitversion": "npm:^1.4.0-pack-order.2"
-    "@serverlessinbox/artifact-tools": "npm:^0.0.11"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.12"
     "@types/node": "npm:^24.10.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
