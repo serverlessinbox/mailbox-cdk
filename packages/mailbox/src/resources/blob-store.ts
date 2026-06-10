@@ -83,5 +83,25 @@ export class BlobStore extends StackNamedBucket {
         },
       }),
     );
+
+    // Allow CloudFront (OAC) to read blobs from this bucket.
+    // The CDN construct uses origins.S3BucketOrigin.withOriginAccessControl() and receives
+    // this bucket as an imported IBucket — CDK's grantRead on an imported bucket is a no-op
+    // for the bucket resource policy, so we must add the grant here on the owned bucket.
+    // We scope by account (not distribution ARN) because the distribution lives in the main
+    // stack and its ARN is not known at data-stack deploy time.
+    this.addToResourcePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
+        actions: ['s3:GetObject'],
+        resources: [`${this.bucketArn}/*`],
+        conditions: {
+          StringEquals: {
+            'aws:SourceAccount': Aws.ACCOUNT_ID,
+          },
+        },
+      }),
+    );
   }
 }

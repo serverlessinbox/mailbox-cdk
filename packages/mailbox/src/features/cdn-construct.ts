@@ -49,7 +49,12 @@ export class Cdn extends Construct {
 
     // Create custom origin with configuration headers
     // (Lambda@Edge doesn't support environment variables)
-    const s3Origin = new origins.S3Origin(props.blobStore, {
+    // Use OAC (Origin Access Control) instead of the deprecated OAI (S3Origin).
+    // The blob-store bucket lives in a separate MailboxDataStack and is imported here as
+    // an IBucket; CDK's grantRead on an imported bucket is a no-op for the bucket resource
+    // policy. The s3:GetObject grant for cloudfront.amazonaws.com is therefore placed
+    // directly on the owned BlobStore bucket (see resources/blob-store.ts).
+    const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(props.blobStore, {
       customHeaders: {
         'x-config-table': props.configTable.tableName,
         'x-auth-key-store-table': props.authKeyStoreTable.tableName,
