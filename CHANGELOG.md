@@ -4,6 +4,30 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.2...v0.0.3) (Wed Jun 10 2026)
+
+### feat
+
+* Data stack extraction ([5d48cae](https://github.com/serverlessinbox/mailbox-cdk/commit/5d48cae9889cef72ab0a4502bb88a9cf97964d5f))
+
+* Data stack extraction ([7f2e83b](https://github.com/serverlessinbox/mailbox-cdk/commit/7f2e83b80addd7950dda2b1290435492312296c5))
+
+* New artifact tool ([2720e7f](https://github.com/serverlessinbox/mailbox-cdk/commit/2720e7f082102413d66f26d06a8b372c3310b75e))
+
+* Updated artifact tools ([62c043b](https://github.com/serverlessinbox/mailbox-cdk/commit/62c043b75e0184ed8dabff2dc1b23cce8a178c3e))
+
+* Artifact tool tweaking ([4363225](https://github.com/serverlessinbox/mailbox-cdk/commit/43632252da204587fbb23c71af3892a264e15e4f))
+
+* Artifact tooling update ([0b40723](https://github.com/serverlessinbox/mailbox-cdk/commit/0b40723603d1604c91bdb04d7b6ce15fa00117e9))
+
+### fix
+
+* CDN Cloudfront access to bucket ([617d738](https://github.com/serverlessinbox/mailbox-cdk/commit/617d73886f9f38b21fd823e6e08ef505ed49135c))
+
+* Pipeline script ([cf0d7b3](https://github.com/serverlessinbox/mailbox-cdk/commit/cf0d7b36c544c7f31ce325a8408d2c0e3df53352))
+
+* Artifact tools ([cd602f8](https://github.com/serverlessinbox/mailbox-cdk/commit/cd602f8c01adccfaf1b45375b4d56b502ca628dc))
+
 ## [0.0.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.1...v0.0.2) (Mon Jun 08 2026)
 
 ### feat
