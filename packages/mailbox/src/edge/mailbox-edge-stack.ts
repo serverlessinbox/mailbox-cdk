@@ -170,7 +170,7 @@ export class MailboxEdgeStack extends cdk.Stack {
 
     // Only create the certificate resource when hosted zone parameters are provided.
     // This avoids getting stuck on email validation when no hosted zone is available.
-    const cfnCertificate = this.construct.certificate.node.defaultChild as cdk.CfnResource;
+    const cfnCertificate = this.construct.certificate;
     cfnCertificate.cfnOptions.condition = hasHostedZone;
 
     // Always expose the output key so the regional stack can safely `GetAtt` it.

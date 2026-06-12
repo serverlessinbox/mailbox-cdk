@@ -27,6 +27,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:packages/mailbox-admin-api"\
     },\
     {\
+      "name": "@serverlessinbox/mailbox-bundler",\
+      "reference": "workspace:packages/mailbox-bundler"\
+    },\
+    {\
       "name": "@serverlessinbox/mailbox-cognito",\
       "reference": "workspace:packages/mailbox-cognito"\
     },\
@@ -41,6 +45,7 @@ const RAW_RUNTIME_STATE =
   "fallbackExclusionList": [\
     ["@serverlessinbox/mailbox", ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox", "workspace:packages/mailbox"]],\
     ["@serverlessinbox/mailbox-admin-api", ["workspace:packages/mailbox-admin-api"]],\
+    ["@serverlessinbox/mailbox-bundler", ["virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler", "workspace:packages/mailbox-bundler"]],\
     ["@serverlessinbox/mailbox-cognito", ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox-cognito", "workspace:packages/mailbox-cognito"]],\
     ["@serverlessinbox/mailbox-cognito-identity-center", ["workspace:packages/mailbox-cognito-identity-center"]],\
     ["@serverlessinbox/mailbox-standard", ["workspace:apps/mailbox-standard"]],\
@@ -726,6 +731,10 @@ const RAW_RUNTIME_STATE =
     [\
       "@serverlessinbox/mailbox-admin-api",\
       "workspace:packages/mailbox-admin-api"\
+    ],\
+    [\
+      "@serverlessinbox/mailbox-bundler",\
+      "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"\
     ],\
     [\
       "@serverlessinbox/mailbox-cognito",\
@@ -1829,7 +1838,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "glob",\
-      "npm:7.2.3"\
+      "npm:10.5.0"\
     ],\
     [\
       "glob-parent",\
@@ -6073,6 +6082,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
+          ["@serverlessinbox/mailbox-bundler", "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"],\
           ["@types/aws-cdk-lib", null],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/constructs", null],\
@@ -6111,6 +6121,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
+          ["@serverlessinbox/mailbox-bundler", "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/unzipper", "npm:0.10.11"],\
@@ -6140,6 +6151,39 @@ const RAW_RUNTIME_STATE =
           ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["eslint", "npm:8.57.1"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
+        ],\
+        "linkType": "SOFT"\
+      }]\
+    ]],\
+    ["@serverlessinbox/mailbox-bundler", [\
+      ["virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-mailbox-bundler-virtual-14f1937ecb/1/packages/mailbox-bundler/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/mailbox-bundler", "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"],\
+          ["@types/esbuild", null],\
+          ["@types/node", "npm:24.10.1"],\
+          ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["glob", "npm:10.5.0"],\
+          ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
+        ],\
+        "packagePeers": [\
+          "@types/esbuild",\
+          "esbuild"\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["workspace:packages/mailbox-bundler", {\
+        "packageLocation": "./packages/mailbox-bundler/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/mailbox-bundler", "workspace:packages/mailbox-bundler"],\
+          ["@types/node", "npm:24.10.1"],\
+          ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["glob", "npm:10.5.0"],\
+          ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\

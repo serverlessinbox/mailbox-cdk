@@ -9808,7 +9808,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 208
+          "line": 269
         },
         "parameters": [
           {
@@ -9834,10 +9834,32 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 166
+        "line": 243
       },
       "name": "Mailbox",
       "properties": [
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 267
+          },
+          "name": "certificates",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxCertificates"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 265
+          },
+          "name": "data",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxDataRefs"
+          }
+        },
         {
           "docs": {
             "summary": "OAuth clients created by this construct (only when enabled)."
@@ -9845,7 +9867,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 195
+            "line": 261
           },
           "name": "oauthClients",
           "type": {
@@ -9853,13 +9875,24 @@
           }
         },
         {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 263
+          },
+          "name": "urls",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxUrls"
+          }
+        },
+        {
           "docs": {
-            "summary": "Admin UI resources (when `createAdminUi !== false`)."
+            "summary": "Admin UI resources (when `enableAdminUi !== false`)."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 179
+            "line": 251
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -9871,7 +9904,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 180
+            "line": 252
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -9880,41 +9913,13 @@
           }
         },
         {
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 186
-          },
-          "name": "edgeCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
           "docs": {
-            "remarks": "Exposed for add-on constructs such as McpApi.",
-            "summary": "Regional SAN certificate (when auto-created)."
+            "summary": "Webmail UI resources (when `enableWebmailUi !== false`)."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 189
-          },
-          "name": "regionalCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
-          "docs": {
-            "summary": "Webmail UI resources (when `createWebmailUi !== false`)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 183
+            "line": 255
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -9926,7 +9931,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 184
+            "line": 256
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -10029,12 +10034,274 @@
       ],
       "symbolId": "src/auth/types:MailboxAuthorizationConfig"
     },
+    "@serverlessinbox/mailbox.MailboxCertificateOverrides": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxCertificateOverrides",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 47
+      },
+      "name": "MailboxCertificateOverrides",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. Overrides the shared edge certificate auto-created when hostedZone is provided."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 57
+          },
+          "name": "adminUi",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Regional ACM certificate for api.<domain> (Admin API custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 67
+          },
+          "name": "api",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>). Only needed when hostedZone is not provided (manual DNS setup)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 52
+          },
+          "name": "cloudFront",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Regional ACM certificate for jmap.<domain> (JMAP API custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 72
+          },
+          "name": "jmap",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name. Overrides the shared edge certificate auto-created when hostedZone is provided."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 62
+          },
+          "name": "webmailUi",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Regional ACM certificate for ws.<domain> (WebSocket push custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 77
+          },
+          "name": "ws",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxCertificateOverrides"
+    },
+    "@serverlessinbox/mailbox.MailboxCertificates": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxCertificates",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 119
+      },
+      "name": "MailboxCertificates",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Present only when hostedZone is provided and no overrides.certificates.cloudFront is set.",
+            "summary": "Auto-created us-east-1 ACM certificate for CloudFront (edge) alternate domain names."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 122
+          },
+          "name": "edge",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Present only when hostedZone is provided and no overrides.certificates.api/jmap/ws are set.",
+            "summary": "Auto-created regional ACM SAN certificate for api/jmap/ws subdomains."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 125
+          },
+          "name": "regional",
+          "optional": true,
+          "type": {
+            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxCertificates"
+    },
+    "@serverlessinbox/mailbox.MailboxDataRefs": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxDataRefs",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 104
+      },
+      "name": "MailboxDataRefs",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "DynamoDB table: audit log entries."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 114
+          },
+          "name": "auditLogTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "S3 bucket: raw email MIME files, blob uploads, Tantivy search index objects."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 106
+          },
+          "name": "blobStore",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_s3.IBucket"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "DynamoDB table: JMAP state changelog for client sync."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 112
+          },
+          "name": "changelogTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "DynamoDB table: account/domain configuration, SES config, auth routing."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 108
+          },
+          "name": "configTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "DynamoDB table: all JMAP mailbox items (emails, mailboxes, threads, contacts)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 110
+          },
+          "name": "itemTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "DynamoDB table: SES bounce and complaint feedback records."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 116
+          },
+          "name": "mailFeedbackTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxDataRefs"
+    },
     "@serverlessinbox/mailbox.MailboxDataStack": {
       "assembly": "@serverlessinbox/mailbox",
       "base": "aws-cdk-lib.Stack",
       "docs": {
-        "remarks": "Each resource's ARN is published as an SSM parameter so that the\nparent mailbox stack can consume them without a hard CloudFormation dependency.",
-        "summary": "CDK Stack that creates and owns all retained Serverless Inbox data resources: - 5 DynamoDB tables (config, item, changelog, auditlog, mailfeedback) - 1 S3 bucket (email storage)."
+        "remarks": "CloudFormation outputs are also published so that MailboxDataDeployer can read\nthe actual ARNs from the custom resource Data dict at deploy time.",
+        "summary": "CDK Stack that creates and owns all retained Serverless Inbox data resources: - 5 DynamoDB tables (config, item, changelog, auditlog, mailfeedback) - 1 S3 bucket (email storage)  Each resource's ARN is published as an SSM parameter so that the parent mailbox stack can consume them without a hard CloudFormation dependency."
       },
       "fqn": "@serverlessinbox/mailbox.MailboxDataStack",
       "initializer": {
@@ -10067,22 +10334,9 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/data/mailbox-data-stack.ts",
-        "line": 25
+        "line": 27
       },
       "name": "MailboxDataStack",
-      "properties": [
-        {
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/data/mailbox-data-stack.ts",
-            "line": 26
-          },
-          "name": "outputs",
-          "type": {
-            "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef"
-          }
-        }
-      ],
       "symbolId": "src/data/mailbox-data-stack:MailboxDataStack"
     },
     "@serverlessinbox/mailbox.MailboxDataStackProps": {
@@ -10095,7 +10349,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/data/mailbox-data-stack.ts",
-        "line": 13
+        "line": 12
       },
       "name": "MailboxDataStackProps",
       "properties": [
@@ -10104,7 +10358,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/data/mailbox-data-stack.ts",
-            "line": 14
+            "line": 13
           },
           "name": "kms",
           "optional": true,
@@ -10117,19 +10371,133 @@
     },
     "@serverlessinbox/mailbox.MailboxDataStackRef": {
       "assembly": "@serverlessinbox/mailbox",
-      "datatype": true,
-      "docs": {
-        "remarks": "Each property holds the SSM parameter path (not the value) — pass it to\n`ssm.StringParameter.valueForStringParameter()` to obtain the runtime value.",
-        "summary": "SSM parameter paths for a deployed MailboxDataStack."
-      },
+      "base": "constructs.Construct",
       "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef",
-      "kind": "interface",
+      "initializer": {
+        "locationInModule": {
+          "filename": "src/data/mailbox-data-stack-ref.ts",
+          "line": 22
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "type": {
+              "fqn": "constructs.Construct"
+            }
+          },
+          {
+            "name": "id",
+            "type": {
+              "primitive": "string"
+            }
+          },
+          {
+            "name": "props",
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.MailboxDataStackRefProps"
+            }
+          }
+        ]
+      },
+      "kind": "class",
       "locationInModule": {
         "filename": "src/data/mailbox-data-stack-ref.ts",
-        "line": 7
+        "line": 14
       },
       "name": "MailboxDataStackRef",
       "properties": [
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 18
+          },
+          "name": "auditLogTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 20
+          },
+          "name": "blobStore",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_s3.IBucket"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 17
+          },
+          "name": "changelogTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 15
+          },
+          "name": "configTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 16
+          },
+          "name": "itemTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 19
+          },
+          "name": "mailFeedbackTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        }
+      ],
+      "symbolId": "src/data/mailbox-data-stack-ref:MailboxDataStackRef"
+    },
+    "@serverlessinbox/mailbox.MailboxDataStackRefProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxDataStackRefProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/data/mailbox-data-stack-ref.ts",
+        "line": 5
+      },
+      "name": "MailboxDataStackRefProps",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 9
+          },
+          "name": "auditLogTableArn",
+          "type": {
+            "primitive": "string"
+          }
+        },
         {
           "abstract": true,
           "immutable": true,
@@ -10137,31 +10505,7 @@
             "filename": "src/data/mailbox-data-stack-ref.ts",
             "line": 11
           },
-          "name": "auditLogTableArnParam",
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/data/mailbox-data-stack-ref.ts",
-            "line": 13
-          },
-          "name": "blobStoreArnParam",
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/data/mailbox-data-stack-ref.ts",
-            "line": 10
-          },
-          "name": "changelogTableArnParam",
+          "name": "blobStoreArn",
           "type": {
             "primitive": "string"
           }
@@ -10173,7 +10517,7 @@
             "filename": "src/data/mailbox-data-stack-ref.ts",
             "line": 8
           },
-          "name": "configTableArnParam",
+          "name": "changelogTableArn",
           "type": {
             "primitive": "string"
           }
@@ -10183,9 +10527,9 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/data/mailbox-data-stack-ref.ts",
-            "line": 9
+            "line": 6
           },
-          "name": "itemTableArnParam",
+          "name": "configTableArn",
           "type": {
             "primitive": "string"
           }
@@ -10195,15 +10539,27 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/data/mailbox-data-stack-ref.ts",
-            "line": 12
+            "line": 7
           },
-          "name": "mailFeedbackTableArnParam",
+          "name": "itemTableArn",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/data/mailbox-data-stack-ref.ts",
+            "line": 10
+          },
+          "name": "mailFeedbackTableArn",
           "type": {
             "primitive": "string"
           }
         }
       ],
-      "symbolId": "src/data/mailbox-data-stack-ref:MailboxDataStackRef"
+      "symbolId": "src/data/mailbox-data-stack-ref:MailboxDataStackRefProps"
     },
     "@serverlessinbox/mailbox.MailboxKmsConfig": {
       "assembly": "@serverlessinbox/mailbox",
@@ -10219,13 +10575,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Example: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.",
+            "remarks": "Note: 's3' is now a no-op for bucket encryption (blob store always uses S3_MANAGED). Retained for backward compatibility.\nExample: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.",
             "summary": "Exclude specific resources from KMS usage."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/kms.ts",
-            "line": 27
+            "line": 28
           },
           "name": "excluded",
           "optional": true,
@@ -10247,7 +10603,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/kms.ts",
-            "line": 33
+            "line": 34
           },
           "name": "key",
           "optional": true,
@@ -10280,7 +10636,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/kms.ts",
-            "line": 36
+            "line": 37
           },
           "name": "perResource",
           "optional": true,
@@ -10351,7 +10707,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 125
+        "line": 202
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -10360,7 +10716,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 126
+            "line": 203
           },
           "name": "adminUi",
           "optional": true,
@@ -10373,7 +10729,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 127
+            "line": 204
           },
           "name": "jmapUi",
           "optional": true,
@@ -10384,6 +10740,71 @@
       ],
       "symbolId": "src/mailbox:MailboxOAuthClients"
     },
+    "@serverlessinbox/mailbox.MailboxOverrides": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxOverrides",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 128
+      },
+      "name": "MailboxOverrides",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "When omitted, certificates are auto-created\n(requires hostedZone). Supply individual fields to bypass auto-creation\nfor specific endpoints (e.g., manual DNS or cross-account certificate).",
+            "summary": "ACM certificate overrides."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 140
+          },
+          "name": "certificates",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxCertificateOverrides"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "When omitted, a MailboxDataDeployer custom resource is used.",
+            "summary": "Externally-managed MailboxDataStack reference."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 133
+          },
+          "name": "dataStack",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Default labels match the property names (e.g. admin → \"admin\").\nAll labels must be valid single DNS labels (no dots).",
+            "summary": "Override the subdomain label for any endpoint."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 147
+          },
+          "name": "subdomains",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.MailboxSubdomainOverrides"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxOverrides"
+    },
     "@serverlessinbox/mailbox.MailboxProps": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
@@ -10391,7 +10812,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 50
+        "line": 150
       },
       "name": "MailboxProps",
       "properties": [
@@ -10403,7 +10824,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 58
+            "line": 158
           },
           "name": "authProvider",
           "type": {
@@ -10415,11 +10836,28 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 52
+            "line": 152
           },
           "name": "domainName",
           "type": {
             "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Defaults to true.",
+            "summary": "Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 175
+          },
+          "name": "enableAdminUi",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
           }
         },
         {
@@ -10430,9 +10868,9 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 88
+            "line": 187
           },
-          "name": "activateMcp",
+          "name": "enableMcp",
           "optional": true,
           "type": {
             "primitive": "boolean"
@@ -10447,74 +10885,9 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 110
+            "line": 194
           },
-          "name": "activateReceiving",
-          "optional": true,
-          "type": {
-            "primitive": "boolean"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 91
-          },
-          "name": "adminUiCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional regional ACM certificate for api.<domain> (Admin API custom domain)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 97
-          },
-          "name": "apiCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 70
-          },
-          "name": "cloudFrontCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "remarks": "Defaults to true.",
-            "summary": "Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 76
-          },
-          "name": "createAdminUi",
+          "name": "enableReceiving",
           "optional": true,
           "type": {
             "primitive": "boolean"
@@ -10529,45 +10902,12 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 82
+            "line": 181
           },
-          "name": "createWebmailUi",
+          "name": "enableWebmailUi",
           "optional": true,
           "type": {
             "primitive": "boolean"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "remarks": "When omitted, a `MailboxDataDeployer` custom resource automatically creates and manages\na data stack named `${AWS::StackName}-data`. The data stack is never deleted when the\nmailbox stack is deleted — retained resources survive.\n\nWhen provided, resources are imported from the referenced stack via SSM parameters\nresolved at CloudFormation deploy time. The data stack must already be deployed.",
-            "summary": "Reference to an externally-managed MailboxDataStack."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 122
-          },
-          "name": "dataStack",
-          "optional": true,
-          "type": {
-            "fqn": "@serverlessinbox/mailbox.MailboxDataStackRef"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional deployer label used for tagging (default: 'cfn')."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 61
-          },
-          "name": "deployer",
-          "optional": true,
-          "type": {
-            "primitive": "string"
           }
         },
         {
@@ -10578,7 +10918,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 67
+            "line": 161
           },
           "name": "extraAllowedOrigins",
           "optional": true,
@@ -10593,31 +10933,10 @@
         },
         {
           "abstract": true,
-          "docs": {
-            "summary": "Optional extra tags applied to all taggable resources in this construct."
-          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 64
-          },
-          "name": "extraTags",
-          "optional": true,
-          "type": {
-            "collection": {
-              "elementtype": {
-                "primitive": "string"
-              },
-              "kind": "map"
-            }
-          }
-        },
-        {
-          "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 51
+            "line": 151
           },
           "name": "hostedZone",
           "optional": true,
@@ -10628,28 +10947,12 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 100
-          },
-          "name": "jmapCertificate",
-          "optional": true,
-          "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
             "summary": "Optional KMS configuration for at-rest encryption of core resources."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 55
+            "line": 155
           },
           "name": "kms",
           "optional": true,
@@ -10660,37 +10963,206 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name."
+            "summary": "Certificate and data stack overrides."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 94
+            "line": 199
           },
-          "name": "webmailUiCertificate",
+          "name": "overrides",
           "optional": true,
           "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+            "fqn": "@serverlessinbox/mailbox.MailboxOverrides"
           }
         },
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain)."
+            "remarks": "When set, all endpoints are placed under\n`{prefix}.{domainName}` — e.g. prefix \"mailbox\" on \"example.com\" yields\n`admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.\nMust be a valid single DNS label (no dots).",
+            "summary": "Optional subdomain namespace."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 103
+            "line": 169
           },
-          "name": "wsCertificate",
+          "name": "subdomainNamespace",
           "optional": true,
           "type": {
-            "fqn": "aws-cdk-lib.aws_certificatemanager.ICertificate"
+            "primitive": "string"
           }
         }
       ],
       "symbolId": "src/mailbox:MailboxProps"
+    },
+    "@serverlessinbox/mailbox.MailboxSubdomainOverrides": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxSubdomainOverrides",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 80
+      },
+      "name": "MailboxSubdomainOverrides",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "default": "\"admin\""
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 82
+          },
+          "name": "admin",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "\"api\""
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 88
+          },
+          "name": "api",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "\"jmap\""
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 86
+          },
+          "name": "jmap",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "\"webmail\""
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 84
+          },
+          "name": "webmail",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "\"ws\""
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 90
+          },
+          "name": "ws",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxSubdomainOverrides"
+    },
+    "@serverlessinbox/mailbox.MailboxUrls": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.MailboxUrls",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/mailbox.ts",
+        "line": 93
+      },
+      "name": "MailboxUrls",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "https://api.<domainName>."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 101
+          },
+          "name": "adminApi",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "https://admin.<domainName>."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 95
+          },
+          "name": "adminUi",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "https://jmap.<domainName>."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 99
+          },
+          "name": "jmapApi",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "https://webmail.<domainName>."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 97
+          },
+          "name": "webmail",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/mailbox:MailboxUrls"
     },
     "@serverlessinbox/mailbox.OAuthAuthorizationCodeClientConfig": {
       "assembly": "@serverlessinbox/mailbox",
@@ -11249,6 +11721,6 @@
       "symbolId": "src/artifacts/artifact-resolver:TrackTarget"
     }
   },
-  "version": "0.0.0",
-  "fingerprint": "98Mr53FenHiQUwEYvEMd7D6cQUgtj82HC/CWJA8DOFI="
+  "version": "0.0.5",
+  "fingerprint": "LHHQvWWNoQSpwkmBJY9D2b4dZGsdvHmnZoe9Y5PHKHo="
 }

@@ -44,6 +44,87 @@ import {
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 
+export interface MailboxCertificateOverrides {
+  /**
+   * us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>).
+   * Only needed when hostedZone is not provided (manual DNS setup).
+   */
+  readonly cloudFront?: acm.ICertificate;
+  /**
+   * us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name.
+   * Overrides the shared edge certificate auto-created when hostedZone is provided.
+   */
+  readonly adminUi?: acm.ICertificate;
+  /**
+   * us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name.
+   * Overrides the shared edge certificate auto-created when hostedZone is provided.
+   */
+  readonly webmailUi?: acm.ICertificate;
+  /**
+   * Regional ACM certificate for api.<domain> (Admin API custom domain).
+   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   */
+  readonly api?: acm.ICertificate;
+  /**
+   * Regional ACM certificate for jmap.<domain> (JMAP API custom domain).
+   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   */
+  readonly jmap?: acm.ICertificate;
+  /**
+   * Regional ACM certificate for ws.<domain> (WebSocket push custom domain).
+   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   */
+  readonly ws?: acm.ICertificate;
+}
+
+export interface MailboxSubdomainOverrides {
+  /** @default "admin" */
+  readonly admin?: string;
+  /** @default "webmail" */
+  readonly webmail?: string;
+  /** @default "jmap" */
+  readonly jmap?: string;
+  /** @default "api" */
+  readonly api?: string;
+  /** @default "ws" */
+  readonly ws?: string;
+}
+
+export interface MailboxUrls {
+  /** https://admin.<domainName> */
+  readonly adminUi: string;
+  /** https://webmail.<domainName> */
+  readonly webmail: string;
+  /** https://jmap.<domainName> */
+  readonly jmapApi: string;
+  /** https://api.<domainName> */
+  readonly adminApi: string;
+}
+
+export interface MailboxDataRefs {
+  /** S3 bucket: raw email MIME files, blob uploads, Tantivy search index objects. */
+  readonly blobStore: IBucket;
+  /** DynamoDB table: account/domain configuration, SES config, auth routing. */
+  readonly configTable: ITable;
+  /** DynamoDB table: all JMAP mailbox items (emails, mailboxes, threads, contacts). */
+  readonly itemTable: ITable;
+  /** DynamoDB table: JMAP state changelog for client sync. */
+  readonly changelogTable: ITable;
+  /** DynamoDB table: audit log entries. */
+  readonly auditLogTable: ITable;
+  /** DynamoDB table: SES bounce and complaint feedback records. */
+  readonly mailFeedbackTable: ITable;
+}
+
+export interface MailboxCertificates {
+  /** Auto-created us-east-1 ACM certificate for CloudFront (edge) alternate domain names.
+   *  Present only when hostedZone is provided and no overrides.certificates.cloudFront is set. */
+  readonly edge?: acm.ICertificate;
+  /** Auto-created regional ACM SAN certificate for api/jmap/ws subdomains.
+   *  Present only when hostedZone is provided and no overrides.certificates.api/jmap/ws are set. */
+  readonly regional?: acm.ICertificate;
+}
+
 export interface MailboxOverrides {
   /**
    * Externally-managed MailboxDataStack reference.
@@ -56,51 +137,14 @@ export interface MailboxOverrides {
    * (requires hostedZone). Supply individual fields to bypass auto-creation
    * for specific endpoints (e.g., manual DNS or cross-account certificate).
    */
-  readonly certificates?: {
-    /**
-     * us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>).
-     * Only needed when hostedZone is not provided (manual DNS setup).
-     */
-    readonly cloudFront?: acm.ICertificate;
-    /**
-     * us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name.
-     */
-    readonly adminUi?: acm.ICertificate;
-    /**
-     * us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name.
-     */
-    readonly webmailUi?: acm.ICertificate;
-    /**
-     * Regional ACM certificate for api.<domain> (Admin API custom domain).
-     */
-    readonly api?: acm.ICertificate;
-    /**
-     * Regional ACM certificate for jmap.<domain> (JMAP API custom domain).
-     */
-    readonly jmap?: acm.ICertificate;
-    /**
-     * Regional ACM certificate for ws.<domain> (WebSocket push custom domain).
-     */
-    readonly ws?: acm.ICertificate;
-  };
+  readonly certificates?: MailboxCertificateOverrides;
 
   /**
    * Override the subdomain label for any endpoint.
    * Default labels match the property names (e.g. admin → "admin").
    * All labels must be valid single DNS labels (no dots).
    */
-  readonly subdomains?: {
-    /** @default "admin" */
-    readonly admin?: string;
-    /** @default "webmail" */
-    readonly webmail?: string;
-    /** @default "jmap" */
-    readonly jmap?: string;
-    /** @default "api" */
-    readonly api?: string;
-    /** @default "ws" */
-    readonly ws?: string;
-  };
+  readonly subdomains?: MailboxSubdomainOverrides;
 }
 
 export interface MailboxProps {
@@ -216,26 +260,11 @@ export class Mailbox extends Construct {
   /** OAuth clients created by this construct (only when enabled). */
   public readonly oauthClients: MailboxOAuthClients = {};
 
-  public readonly urls: {
-    readonly adminUi: string;
-    readonly webmail: string;
-    readonly jmapApi: string;
-    readonly adminApi: string;
-  };
+  public readonly urls: MailboxUrls;
 
-  public readonly data: {
-    readonly blobStore: IBucket;
-    readonly configTable: ITable;
-    readonly itemTable: ITable;
-    readonly changelogTable: ITable;
-    readonly auditLogTable: ITable;
-    readonly mailFeedbackTable: ITable;
-  };
+  public readonly data: MailboxDataRefs;
 
-  public readonly certificates: {
-    readonly edge?: acm.ICertificate;
-    readonly regional?: acm.ICertificate;
-  };
+  public readonly certificates: MailboxCertificates;
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);

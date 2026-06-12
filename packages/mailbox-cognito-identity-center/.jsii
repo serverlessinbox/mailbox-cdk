@@ -6,7 +6,7 @@
     ]
   },
   "dependencies": {
-    "@serverlessinbox/mailbox-cognito": "0.0.1",
+    "@serverlessinbox/mailbox-cognito": "0.0.5",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0"
   },
@@ -8676,6 +8676,6 @@
       "symbolId": "src/identity-center-saml:IdentityCenterSamlMetadata"
     }
   },
-  "version": "0.0.1",
-  "fingerprint": "eDIia8hdJaDU3m4s2Zn7IdNiV96bQbA+M5llKk2E7/s="
+  "version": "0.0.5",
+  "fingerprint": "lXeVJ99z3c34LGGZ2GZY0gRe8b/0+jRoczNMHeoTdh4="
 }

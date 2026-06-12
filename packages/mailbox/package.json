@@ -16,13 +16,14 @@
     "build:watch": "tsc --watch",
     "build:edge-stack": "task build:edge-stack",
     "build:data-stack": "task build:data-stack",
-    "prepack": "yarn prepare-manifest build && yarn build:edge-stack && yarn build:data-stack && yarn bundle",
+    "prepack": "yarn prepare-manifest build && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii",
     "postpack": "yarn clean",
     "lint": "eslint .",
     "test": "jest",
     "clean": "rm -rf dist lib",
     "dev": "task build:watch",
     "bundle": "task bundle",
+    "bundle:jsii": "mailbox-bundler package .",
     "publish:dev": "task publish:dev"
   },
   "publishConfig": {
@@ -53,6 +54,7 @@
     "@aws-sdk/client-dynamodb": "^3.946.0",
     "@aws-sdk/client-s3": "^3.946.0",
     "@aws-sdk/client-sfn": "^3.946.0",
+    "@serverlessinbox/mailbox-bundler": "workspace:*",
     "@types/aws-lambda": "^8.10.159",
     "@types/node": "^24.10.1",
     "@types/unzipper": "^0.10.11",

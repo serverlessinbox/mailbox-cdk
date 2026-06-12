@@ -26,6 +26,16 @@ tasks:
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
 
+  bundle:jsii:
+    desc: Bundle jsii construct source (esbuild + tsc declarations)
+    cmds:
+      - yarn bundle:jsii
+    sources:
+      - src/**/*.ts
+    generates:
+      - lib/**/*.js
+      - lib/**/*.d.ts
+
   # Data stack artifact publishing (regional)
   publish:data:dev:
     desc: Publish data stack template to dev channel

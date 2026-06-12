@@ -2267,6 +2267,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@serverlessinbox/mailbox-bundler@workspace:*, @serverlessinbox/mailbox-bundler@workspace:packages/mailbox-bundler":
+  version: 0.0.0-use.local
+  resolution: "@serverlessinbox/mailbox-bundler@workspace:packages/mailbox-bundler"
+  dependencies:
+    "@types/node": "npm:^24.10.1"
+    clipanion: "npm:^4.0.0-rc.2"
+    esbuild: "npm:^0.27.1"
+    glob: "npm:^10.3.10"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.9.3"
+  peerDependencies:
+    esbuild: ^0.27.1
+  bin:
+    mailbox-bundler: ./bin/index-typescript.js
+  languageName: unknown
+  linkType: soft
+
 "@serverlessinbox/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center":
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-cognito-identity-center@workspace:packages/mailbox-cognito-identity-center"
@@ -2342,6 +2359,7 @@ __metadata:
     "@aws-sdk/client-dynamodb": "npm:^3.946.0"
     "@aws-sdk/client-s3": "npm:^3.946.0"
     "@aws-sdk/client-sfn": "npm:^3.946.0"
+    "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^24.10.1"
     "@types/unzipper": "npm:^0.10.11"

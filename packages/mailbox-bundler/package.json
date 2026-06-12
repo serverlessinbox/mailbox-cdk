@@ -1,0 +1,36 @@
+{
+  "name": "@serverlessinbox/mailbox-bundler",
+  "version": "0.0.0",
+  "description": "Internal esbuild bundler for jsii CDK construct packages",
+  "license": "Apache-2.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "publishConfig": {
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "bin": {
+      "mailbox-bundler": "./bin/index.js"
+    }
+  },
+  "bin": "./bin/index-typescript.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "prepack": "yarn build",
+    "postpack": "rm -rf lib"
+  },
+  "preferUnplugged": true,
+  "dependencies": {
+    "clipanion": "^4.0.0-rc.2",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "esbuild": "^0.27.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "esbuild": "^0.27.1"
+  }
+}

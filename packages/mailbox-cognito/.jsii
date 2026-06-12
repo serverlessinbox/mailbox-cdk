@@ -6,7 +6,7 @@
     ]
   },
   "dependencies": {
-    "@serverlessinbox/mailbox": "0.0.1",
+    "@serverlessinbox/mailbox": "0.0.5",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0"
   },
@@ -9817,6 +9817,6 @@
       "symbolId": "src/auth/mailbox-user-pool:ProvisionHeadlessClientConfig"
     }
   },
-  "version": "0.0.1",
-  "fingerprint": "yyusIh4I075hQMvzgLKc9aUDkELum8pDR2dkpTPTh7g="
+  "version": "0.0.5",
+  "fingerprint": "gW2wEqrgpq76HAh/QJkGrUPcuIua7STw0GgfXR9dw6I="
 }
