@@ -48,7 +48,7 @@ export interface MailboxEdgeConstructProps {
  * Accepts pre-resolved S3 locations - artifact prefix calculation happens in the deployer.
  */
 export class MailboxEdgeConstruct extends Construct {
-  public readonly certificate: acm.Certificate;
+  public readonly certificate: acm.CfnCertificate;
   public readonly blobAuthorizerFunction: lambda.IFunction;
   public readonly blobAuthorizerVersion: lambda.IVersion;
 
@@ -76,10 +76,18 @@ export class MailboxEdgeConstruct extends Construct {
 
     // NOTE: Whether this certificate is actually created is controlled by a CloudFormation condition
     // in the stack (so we can decide based on parameter values at deploy time).
-    this.certificate = new acm.Certificate(this, 'edge-certificate', {
+    // Uses CfnCertificate (L1) with native DNS validation so CloudFormation handles the
+    // Route53 record creation without a CDK bootstrap custom resource.
+    this.certificate = new acm.CfnCertificate(this, 'edge-certificate', {
       domainName: webmail,
       subjectAlternativeNames: [admin, auth, cdn],
-      validation: acm.CertificateValidation.fromDns(hostedZone),
+      validationMethod: 'DNS',
+      domainValidationOptions: [
+        { domainName: webmail, hostedZoneId: hostedZone.hostedZoneId },
+        { domainName: admin,   hostedZoneId: hostedZone.hostedZoneId },
+        { domainName: auth,    hostedZoneId: hostedZone.hostedZoneId },
+        { domainName: cdn,     hostedZoneId: hostedZone.hostedZoneId },
+      ],
     });
 
     // Create blob-authorizer Lambda

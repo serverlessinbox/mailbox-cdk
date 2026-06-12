@@ -1,4 +1,4 @@
-import { App } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import {
@@ -19,15 +19,12 @@ async function main() {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000',
       region: 'us-east-1',
     },
+    synthesizer: new BootstraplessSynthesizer(),
   });
 
   const assembly = app.synth();
   const artifact = assembly.getStackArtifact(stack.artifactId);
   const template = artifact.template;
-
-  // Remove CDK bootstrap version parameter and rules - customers shouldn't need CDK bootstrap
-  delete template.Parameters?.BootstrapVersion;
-  delete template.Rules?.CheckBootstrapVersion;
 
   // Ensure output directory exists
   if (!fs.existsSync(outDir)) {

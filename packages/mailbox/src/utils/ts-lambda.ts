@@ -4,7 +4,9 @@ import {
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import { CfnLogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IArtifactResolver } from '../artifacts/artifact-resolver';
@@ -88,8 +90,11 @@ export class TypeScriptLambda extends LambdaFunction {
     });
 
     if (logGroupRetention !== false) {
-      const cfnLogGroup = this.logGroup.node.defaultChild as CfnLogGroup;
-      cfnLogGroup.retentionInDays = logGroupRetention;
+      const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {
+        logGroupName: `/aws/lambda/${this.functionName}`,
+        retentionInDays: logGroupRetention,
+      });
+      cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
     }
   }
 }

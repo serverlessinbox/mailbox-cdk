@@ -11,7 +11,6 @@ import { WebSocketPush } from './api/websocket';
 import { McpApi } from './api/mcp-api';
 import type { IAdminApiAddon, AdminApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
-import type { EmailDelivery } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
 } from './auth/types';
@@ -45,6 +44,65 @@ import {
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 
+export interface MailboxOverrides {
+  /**
+   * Externally-managed MailboxDataStack reference.
+   * When omitted, a MailboxDataDeployer custom resource is used.
+   */
+  readonly dataStack?: MailboxDataStackRef;
+
+  /**
+   * ACM certificate overrides. When omitted, certificates are auto-created
+   * (requires hostedZone). Supply individual fields to bypass auto-creation
+   * for specific endpoints (e.g., manual DNS or cross-account certificate).
+   */
+  readonly certificates?: {
+    /**
+     * us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>).
+     * Only needed when hostedZone is not provided (manual DNS setup).
+     */
+    readonly cloudFront?: acm.ICertificate;
+    /**
+     * us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name.
+     */
+    readonly adminUi?: acm.ICertificate;
+    /**
+     * us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name.
+     */
+    readonly webmailUi?: acm.ICertificate;
+    /**
+     * Regional ACM certificate for api.<domain> (Admin API custom domain).
+     */
+    readonly api?: acm.ICertificate;
+    /**
+     * Regional ACM certificate for jmap.<domain> (JMAP API custom domain).
+     */
+    readonly jmap?: acm.ICertificate;
+    /**
+     * Regional ACM certificate for ws.<domain> (WebSocket push custom domain).
+     */
+    readonly ws?: acm.ICertificate;
+  };
+
+  /**
+   * Override the subdomain label for any endpoint.
+   * Default labels match the property names (e.g. admin → "admin").
+   * All labels must be valid single DNS labels (no dots).
+   */
+  readonly subdomains?: {
+    /** @default "admin" */
+    readonly admin?: string;
+    /** @default "webmail" */
+    readonly webmail?: string;
+    /** @default "jmap" */
+    readonly jmap?: string;
+    /** @default "api" */
+    readonly api?: string;
+    /** @default "ws" */
+    readonly ws?: string;
+  };
+}
+
 export interface MailboxProps {
   readonly hostedZone?: IHostedZone;
   readonly domainName: string;
@@ -55,69 +113,46 @@ export interface MailboxProps {
   /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
   readonly authProvider: IMailboxAuthProvider;
 
-  /** Optional deployer label used for tagging (default: 'cfn'). */
-  readonly deployer?: ServerlessInboxDeployer;
-
-  /** Optional extra tags applied to all taggable resources in this construct. */
-  readonly extraTags?: Record<string, string>;
-
   /** Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically. */
   readonly extraAllowedOrigins?: string[];
 
-  /** Optional us-east-1 ACM certificate for CloudFront alternate domain names (e.g., cdn.<domain>). */
-  readonly cloudFrontCertificate?: acm.ICertificate;
+  /**
+   * Optional subdomain namespace. When set, all endpoints are placed under
+   * `{prefix}.{domainName}` — e.g. prefix "mailbox" on "example.com" yields
+   * `admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.
+   * Must be a valid single DNS label (no dots).
+   */
+  readonly subdomainNamespace?: string;
 
   /**
    * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
    */
-  readonly createAdminUi?: boolean;
+  readonly enableAdminUi?: boolean;
 
   /**
    * Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
    */
-  readonly createWebmailUi?: boolean;
+  readonly enableWebmailUi?: boolean;
 
   /**
    * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>.
    * Requires an Advanced license tier. Defaults to false.
    */
-  readonly activateMcp?: boolean;
-
-  /** Optional us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. */
-  readonly adminUiCertificate?: acm.ICertificate;
-
-  /** Optional us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name. */
-  readonly webmailUiCertificate?: acm.ICertificate;
-
-  /** Optional regional ACM certificate for api.<domain> (Admin API custom domain). */
-  readonly apiCertificate?: acm.ICertificate;
-
-  /** Optional regional ACM certificate for jmap.<domain> (JMAP API custom domain). */
-  readonly jmapCertificate?: acm.ICertificate;
-
-  /** Optional regional ACM certificate for ws.<domain> (WebSocket push custom domain). */
-  readonly wsCertificate?: acm.ICertificate;
+  readonly enableMcp?: boolean;
 
   /**
    * When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt
    * rule set. Only one rule set can be active per account per region — this is an explicit operator
    * decision.
    */
-  readonly activateReceiving?: boolean;
+  readonly enableReceiving?: boolean;
 
   /**
-   * Reference to an externally-managed MailboxDataStack.
-   *
-   * When omitted, a `MailboxDataDeployer` custom resource automatically creates and manages
-   * a data stack named `${AWS::StackName}-data`. The data stack is never deleted when the
-   * mailbox stack is deleted — retained resources survive.
-   *
-   * When provided, resources are imported from the referenced stack via SSM parameters
-   * resolved at CloudFormation deploy time. The data stack must already be deployed.
+   * Certificate and data stack overrides.
    */
-  readonly dataStack?: MailboxDataStackRef;
+  readonly overrides?: MailboxOverrides;
 }
 
 export interface MailboxOAuthClients {
@@ -162,53 +197,62 @@ function resolveArtifactResolver(scope: Construct): ArtifactResolver {
  * Main Mailbox construct
  */
 export class Mailbox extends Construct {
-  /** @internal */
-  public readonly _blobStore: IBucket;
-  /** @internal */
-  public readonly _emailProcessorLambda: EmailProcessorLambda;
-  /** @internal */
-  public readonly _configTable: ITable;
-  /** @internal */
-  public readonly _cdn: Cdn;
+  private readonly _blobStore: IBucket;
+  private readonly _emailProcessorLambda: EmailProcessorLambda;
+  private readonly _configTable: ITable;
   private readonly artifactResolver: IArtifactResolver;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
-  /** Admin UI resources (when `createAdminUi !== false`). */
+  /** Admin UI resources (when `enableAdminUi !== false`). */
   public readonly adminUiBucket?: IBucket;
   public readonly adminUiDistribution?: IDistribution;
 
-  /** Webmail UI resources (when `createWebmailUi !== false`). */
+  /** Webmail UI resources (when `enableWebmailUi !== false`). */
   public readonly webmailUiBucket?: IBucket;
   public readonly webmailUiDistribution?: IDistribution;
 
-  public readonly edgeCertificate?: acm.ICertificate;
-
-  /** Regional SAN certificate (when auto-created). Exposed for add-on constructs such as McpApi. */
-  public readonly regionalCertificate?: acm.ICertificate;
-
-  /** @internal */
-  public readonly _jmapApi: JMapApi;
+  private readonly _jmapApi: JMapApi;
 
   /** OAuth clients created by this construct (only when enabled). */
   public readonly oauthClients: MailboxOAuthClients = {};
 
-  /** @internal */
-  _emailDelivery(): EmailDelivery {
-    return {
-      blobStore: this._blobStore,
-      emailProcessor: this._emailProcessorLambda,
-      bucketPrefix: 'incoming-emails/',
-      artifactResolver: this.artifactResolver,
-      queueProps: this.emailQueueProps,
-    }
-  }
+  public readonly urls: {
+    readonly adminUi: string;
+    readonly webmail: string;
+    readonly jmapApi: string;
+    readonly adminApi: string;
+  };
+
+  public readonly data: {
+    readonly blobStore: IBucket;
+    readonly configTable: ITable;
+    readonly itemTable: ITable;
+    readonly changelogTable: ITable;
+    readonly auditLogTable: ITable;
+    readonly mailFeedbackTable: ITable;
+  };
+
+  public readonly certificates: {
+    readonly edge?: acm.ICertificate;
+    readonly regional?: acm.ICertificate;
+  };
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
     const authProvider: IMailboxAuthProvider = props.authProvider;
 
-    const deployer = props.deployer ?? 'cfn';
+    const deployer: ServerlessInboxDeployer = (() => {
+      const v = this.node.tryGetContext('deployer');
+      if (v === 'cdk' || v === 'cfn' || v === 'marketplace') return v;
+      if (v !== undefined && v !== null) {
+        throw new Error(
+          `@serverlessinbox/mailbox: invalid CDK context value for "deployer": "${v}". ` +
+          'Must be one of: cdk, cfn, marketplace.',
+        );
+      }
+      return 'cfn';
+    })();
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
@@ -222,14 +266,20 @@ export class Mailbox extends Construct {
       deployment: Aws.STACK_NAME,
       version: stackVersion,
       deployer,
-      extraTags: props.extraTags,
       product: 'mailbox',
     });
 
-    const createAdminUi = props.createAdminUi ?? true;
-    const createWebmailUi = props.createWebmailUi ?? true;
+    const enableAdminUi = props.enableAdminUi ?? true;
+    const enableWebmailUi = props.enableWebmailUi ?? true;
 
-    const mailboxDomains = new MailboxDomains({ domainName: props.domainName });
+    const mailboxDomains = new MailboxDomains({ domainName: props.domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains });
+
+    this.urls = {
+      adminUi:  `https://${mailboxDomains.admin}`,
+      webmail:  `https://${mailboxDomains.webmail}`,
+      jmapApi:  `https://${mailboxDomains.jmap}`,
+      adminApi: `https://${mailboxDomains.api}`,
+    };
 
     this.artifactResolver = artifactResolverForTags;
     const artifactResolver = this.artifactResolver;
@@ -240,10 +290,19 @@ export class Mailbox extends Construct {
     this.emailQueueProps = encryptionPlan.queues;
 
     // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
-    const dataRef = props.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
+    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
 
     this._blobStore   = dataRef.blobStore;
     this._configTable = dataRef.configTable;
+
+    this.data = {
+      blobStore:         dataRef.blobStore,
+      configTable:       dataRef.configTable,
+      itemTable:         dataRef.itemTable,
+      changelogTable:    dataRef.changelogTable,
+      auditLogTable:     dataRef.auditLogTable,
+      mailFeedbackTable: dataRef.mailFeedbackTable,
+    };
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable: dataRef.auditLogTable,
@@ -273,12 +332,12 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(edgeStack, 'edge');
 
-    this.edgeCertificate = edgeStack.edgeCertificate;
+    const edgeCertificate = edgeStack.edgeCertificate;
 
     const hasHostedZone = Boolean(props.hostedZone?.hostedZoneId && props.hostedZone?.zoneName);
-    const useCustomCdnDomain = Boolean(props.cloudFrontCertificate || hasHostedZone);
+    const useCustomCdnDomain = Boolean(props.overrides?.certificates?.cloudFront || hasHostedZone);
 
-    const defaultUiCertificate = hasHostedZone ? edgeStack.edgeCertificate : undefined;
+    const defaultUiCertificate = hasHostedZone ? edgeCertificate : undefined;
     if (hasHostedZone && !defaultUiCertificate) {
       throw new Error('hostedZone was provided but edge certificate was not created');
     }
@@ -287,20 +346,34 @@ export class Mailbox extends Construct {
     // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
     // Prefer a single SAN certificate for both api.<domain> and jmap.<domain> when *neither* is provided.
     // If only one is provided, we still auto-create a certificate for the missing hostname so the API works.
-    const providedApiCertificate = props.apiCertificate;
-    const providedJmapCertificate = props.jmapCertificate;
-    const providedWsCertificate = props.wsCertificate;
+    const providedApiCertificate = props.overrides?.certificates?.api;
+    const providedJmapCertificate = props.overrides?.certificates?.jmap;
+    const providedWsCertificate = props.overrides?.certificates?.ws;
 
     // If either API certificate is missing and we have Route53, create a single SAN cert
     // that covers both names and use it to fill the gaps.
-    const regionalSanCertificate = (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate))
-      ? new acm.Certificate(this, 'regional-api-certificate', {
+    let regionalSanCertificate: acm.ICertificate | undefined;
+    if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
+      const cfnCert = new acm.CfnCertificate(this, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
         subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${props.domainName}`],
-        validation: acm.CertificateValidation.fromDns(props.hostedZone!),
-      })
-      : undefined;
-    this.regionalCertificate = regionalSanCertificate;
+        validationMethod: 'DNS',
+        domainValidationOptions: [
+          { domainName: mailboxDomains.api, hostedZoneId: props.hostedZone!.hostedZoneId },
+          { domainName: mailboxDomains.jmap, hostedZoneId: props.hostedZone!.hostedZoneId },
+          { domainName: mailboxDomains.ws, hostedZoneId: props.hostedZone!.hostedZoneId },
+          { domainName: `mcp.${props.domainName}`, hostedZoneId: props.hostedZone!.hostedZoneId },
+        ],
+      });
+      regionalSanCertificate = acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', cfnCert.ref);
+    }
+
+    const regionalCertificate = regionalSanCertificate;
+
+    this.certificates = {
+      edge:     edgeCertificate,
+      regional: regionalCertificate,
+    };
 
     const apiCertificate = providedApiCertificate
       ?? regionalSanCertificate;
@@ -322,7 +395,7 @@ export class Mailbox extends Construct {
     let adminUiCnameTarget: string | undefined;
     let webmailUiCnameTarget: string | undefined;
 
-    if (createAdminUi) {
+    if (enableAdminUi) {
       const providerAdminUiConfig = authProvider.adminUiConfig?.();
       const providerAuthz = authProvider.authorizationConfig?.();
 
@@ -342,7 +415,7 @@ export class Mailbox extends Construct {
 
       const adminUi = new AdminUi(this, 'admin-ui', {
         domainName: mailboxDomains.admin,
-        certificate: props.adminUiCertificate ?? defaultUiCertificate,
+        certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
         configTable: this._configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
@@ -361,10 +434,10 @@ export class Mailbox extends Construct {
       adminUiCnameTarget = adminUi.distribution.distributionDomainName;
     }
 
-    if (createWebmailUi) {
+    if (enableWebmailUi) {
       const webmailUi = new WebmailUi(this, 'webmail-ui', {
         domainName: mailboxDomains.webmail,
-        certificate: props.webmailUiCertificate ?? defaultUiCertificate,
+        certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
         configTable: this._configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
@@ -425,7 +498,7 @@ export class Mailbox extends Construct {
       jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
-      sesRuleSetName: props.activateReceiving ? sesRules.ruleSetName : undefined,
+      sesRuleSetName: props.enableReceiving ? sesRules.ruleSetName : undefined,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,
@@ -492,11 +565,9 @@ export class Mailbox extends Construct {
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
-      certificate: hasHostedZone ? edgeStack.edgeCertificate : props.cloudFrontCertificate,
+      certificate: hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront,
     });
     applyServerlessInboxComponentTag(cdnConstruct, 'edge');
-
-    this._cdn = cdnConstruct;
 
     // DNS is created later, once all endpoint targets are known.
 
@@ -618,11 +689,11 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
 
-    const mcpApi = props.activateMcp ? new McpApi(this, 'mcp-api', {
+    const mcpApi = props.enableMcp ? new McpApi(this, 'mcp-api', {
       configTable: this._configTable,
       jmapApiGateway: this._jmapApi.httpApi,
       authorizerLambda: this._jmapApi.authorizerLambda,
-      certificate: this.regionalCertificate!,
+      certificate: this.certificates.regional!,
       domainName: props.domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
     }) : undefined;

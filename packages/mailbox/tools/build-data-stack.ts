@@ -1,4 +1,4 @@
-import { App } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { parseArgs, writeJson } from './_common';
@@ -14,15 +14,12 @@ async function main() {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000',
       region: process.env.CDK_DEFAULT_REGION ?? 'eu-west-1',
     },
+    synthesizer: new BootstraplessSynthesizer(),
   });
 
   const assembly = app.synth();
   const artifact = assembly.getStackArtifact(stack.artifactId);
   const template = artifact.template;
-
-  // Remove CDK bootstrap version parameter and rules
-  delete template.Parameters?.BootstrapVersion;
-  delete template.Rules?.CheckBootstrapVersion;
 
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });

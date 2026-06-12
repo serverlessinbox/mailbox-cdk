@@ -178,7 +178,7 @@ export class MailboxEdgeStack extends cdk.Stack {
     const edgeCertificateArnOutput = new cdk.CfnOutput(this, 'edge-certificate-arn', {
       value: cdk.Fn.conditionIf(
         hasHostedZone.logicalId,
-        this.construct.certificate.certificateArn,
+        this.construct.certificate.ref,
         '',
       ).toString(),
       description: 'ARN of the ACM certificate for CloudFront/Lambda@Edge (empty when no hosted zone configured)',

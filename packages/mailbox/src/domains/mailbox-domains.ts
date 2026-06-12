@@ -19,6 +19,15 @@ export interface MailboxDomainNamesProps {
 
   /** Optional extra label between endpoint and base domain, e.g. "mailbox" -> api.mailbox.example.com */
   readonly prefix?: string;
+
+  /** Override the subdomain label for any endpoint. All labels must be valid single DNS labels (no dots). */
+  readonly subdomainOverrides?: {
+    admin?: string;
+    webmail?: string;
+    jmap?: string;
+    api?: string;
+    ws?: string;
+  };
 }
 
 export interface IMailboxDomainNames {
@@ -108,13 +117,15 @@ export class MailboxDomains implements IMailboxDomainNames {
     this.prefix = normalizePrefix(props.prefix);
 
     const base = this.prefix ? `${this.prefix}.${this.domainName}` : this.domainName;
+    const { subdomainOverrides } = props;
 
-    this.ws = `ws.${base}`;
-    this.api = `api.${base}`;
-    this.jmap = `jmap.${base}`;
+    this.ws = `${subdomainOverrides?.ws ?? 'ws'}.${base}`;
+    this.api = `${subdomainOverrides?.api ?? 'api'}.${base}`;
+    this.jmap = `${subdomainOverrides?.jmap ?? 'jmap'}.${base}`;
+    this.webmail = `${subdomainOverrides?.webmail ?? 'webmail'}.${base}`;
+    this.admin = `${subdomainOverrides?.admin ?? 'admin'}.${base}`;
+    // cdn, auth, mcp remain hardcoded — not exposed in MailboxOverrides.subdomains
     this.cdn = `cdn.${base}`;
-    this.webmail = `webmail.${base}`;
-    this.admin = `admin.${base}`;
     this.auth = `auth.${base}`;
     this.mcp = `mcp.${base}`;
   }

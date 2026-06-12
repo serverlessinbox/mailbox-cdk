@@ -4,7 +4,7 @@
 
 // Mailbox construct
 export { Mailbox } from './mailbox';
-export type { MailboxProps, MailboxOAuthClients } from './mailbox';
+export type { MailboxProps, MailboxOverrides, MailboxOAuthClients } from './mailbox';
 
 // Auth — types
 export {
