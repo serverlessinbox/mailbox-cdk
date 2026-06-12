@@ -1,0 +1,45 @@
+name: Release Apps
+
+on:
+  push:
+    tags:
+      - 'apps/v*.*.*'
+
+jobs:
+  release-apps:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - run: yarn install --immutable
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # TODO: verify github-actions-deploy-role has s3:PutObject on templates/ prefix in mailbox-support-stacks
+          role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
+          aws-region: eu-west-1
+
+      - name: Resolve component artifact versions
+        run: yarn resolve-artifacts
+
+      - name: Embed component versions in package.json
+        run: yarn embed-component-versions
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#apps/}" >> $GITHUB_ENV
+
+      - name: Synthesize CDK template
+        run: yarn workspace @serverlessinbox/mailbox-standard synth
+
+      - name: Publish release artifacts
+        run: yarn artifact-tools publish release --version $VERSION
+        working-directory: apps/mailbox-standard

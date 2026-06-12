@@ -1,0 +1,26 @@
+{
+  "name": "@serverlessinbox/mailbox-standard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Standard single-stack CDK app for Mailbox",
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "@serverlessinbox/mailbox": "*",
+    "@serverlessinbox/mailbox-cognito": "*",
+    "aws-cdk-lib": "^2.224.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@serverlessinbox/artifact-tools": "^0.0.17",
+    "@types/node": "^24.10.1",
+    "aws-cdk": "^2.224.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

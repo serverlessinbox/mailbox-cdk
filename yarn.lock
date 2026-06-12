@@ -2289,7 +2289,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@serverlessinbox/mailbox-cognito@workspace:*, @serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito":
+"@serverlessinbox/mailbox-cognito@npm:*, @serverlessinbox/mailbox-cognito@workspace:*, @serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito":
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito"
   dependencies:
@@ -2317,7 +2317,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@serverlessinbox/mailbox@workspace:*, @serverlessinbox/mailbox@workspace:packages/mailbox":
+"@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard":
+  version: 0.0.0-use.local
+  resolution: "@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard"
+  dependencies:
+    "@serverlessinbox/artifact-tools": "npm:^0.0.17"
+    "@serverlessinbox/mailbox": "npm:*"
+    "@serverlessinbox/mailbox-cognito": "npm:*"
+    "@types/node": "npm:^24.10.1"
+    aws-cdk: "npm:^2.224.0"
+    aws-cdk-lib: "npm:^2.224.0"
+    constructs: "npm:^10.0.0"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.9.3"
+  languageName: unknown
+  linkType: soft
+
+"@serverlessinbox/mailbox@npm:*, @serverlessinbox/mailbox@workspace:*, @serverlessinbox/mailbox@workspace:packages/mailbox":
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox@workspace:packages/mailbox"
   dependencies:
@@ -3806,6 +3822,15 @@ __metadata:
   peerDependencies:
     constructs: ^10.0.0
   checksum: 10c0/a71faa57ed8574e7fe7675b21f899ec0836a3404597b49821f28c23c54d404abcecc9e22add43febc3c01d0308ee5f5257603807dd41ff8ec2ee6577163e7f0f
+  languageName: node
+  linkType: hard
+
+"aws-cdk@npm:^2.224.0":
+  version: 2.1126.0
+  resolution: "aws-cdk@npm:2.1126.0"
+  bin:
+    cdk: bin/cdk
+  checksum: 10c0/3523d17f7a102242717626152b3381617543944d50689e8c903ccd9ede2246279feb33528d429978cf5be297bcf6229c1d8c15113c6bc6b5203b52843e494d23
   languageName: node
   linkType: hard
 

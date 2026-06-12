@@ -1,0 +1,26 @@
+{
+  "parameters": [
+    {
+      "name": "domainName",
+      "type": "String",
+      "description": "Your domain name for the mailbox (e.g. mail.example.com)"
+    },
+    {
+      "name": "hostedZoneId",
+      "type": "String",
+      "description": "Route53 hosted zone ID for domainName"
+    },
+    {
+      "name": "adminUsername",
+      "type": "String",
+      "default": "admin",
+      "description": "Username for the first Cognito admin user"
+    },
+    {
+      "name": "SubdomainNamespace",
+      "type": "String",
+      "description": "Optional: place all endpoints under a subdomain namespace (e.g. 'mailbox' → admin.mailbox.example.com). Leave blank to use the root domain.",
+      "default": ""
+    }
+  ]
+}
