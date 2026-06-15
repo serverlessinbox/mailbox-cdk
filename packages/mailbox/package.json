@@ -54,6 +54,7 @@
     "@aws-sdk/client-dynamodb": "^3.946.0",
     "@aws-sdk/client-s3": "^3.946.0",
     "@aws-sdk/client-sfn": "^3.946.0",
+    "@serverlessinbox/artifact-tools": "^0.0.22",
     "@serverlessinbox/mailbox-bundler": "workspace:*",
     "@types/aws-lambda": "^8.10.159",
     "@types/node": "^24.10.1",

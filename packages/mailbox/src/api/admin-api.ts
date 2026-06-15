@@ -15,7 +15,7 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
@@ -33,7 +33,7 @@ export interface AdminApiProps {
   readonly emailSubmissionQueue: IQueue;
   readonly auditEventsQueue: IQueue;
   readonly allowedOrigins?: string[];
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */

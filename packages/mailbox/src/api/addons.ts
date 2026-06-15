@@ -3,8 +3,6 @@ import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 
-import type { IArtifactResolver } from '../artifacts/artifact-resolver';
-
 export interface IAdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
@@ -15,7 +13,6 @@ export interface IAdminApiAddon {
 
 
 export interface AdminApiAddonContext {
-  readonly artifactResolver: IArtifactResolver;
   readonly auditEventsQueue: IQueue;
 }
 

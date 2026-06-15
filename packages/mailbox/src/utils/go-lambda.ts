@@ -9,7 +9,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
 import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -20,7 +20,7 @@ export interface GoLambda2Props extends FunctionOptions {
   /**
    * Code provider for obtaining lambda code asset
    */
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 
   /**
    * Log retention policy for the lambda's default log group.
@@ -50,7 +50,7 @@ export class GoLambda extends LambdaFunction {
     });
 
     Tags.of(this).add('mailbox:artifact-name', lambdaId);
-    Tags.of(this).add('mailbox:artifact-version', artifactResolver.getVersion('mailbox-go') ?? 'unknown');
+    Tags.of(this).add('mailbox:artifact-version', artifactResolver.getVersion('mailbox-go'));
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {

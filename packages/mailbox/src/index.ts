@@ -46,19 +46,6 @@ export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from './api/addons';
 
-// Artifacts — resolver
-export { ArtifactResolver } from './artifacts/artifact-resolver';
-export type {
-  ReleaseTarget,
-  ChannelTarget,
-  TrackTarget,
-  PublishTarget,
-  IArtifactResolver,
-  ArtifactResolverConfig,
-} from './artifacts/artifact-resolver';
-
-// Artifacts — context helper
-export { createArtifactResolverFromContext } from './artifacts/artifact-context';
 
 
 // Utils — development mode

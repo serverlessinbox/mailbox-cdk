@@ -1,6 +1,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
@@ -9,7 +9,7 @@ export interface WebSocketConnectLambdaProps {
   authKeyStoreTable: ITable;
   configTable: ITable;
   maxSubscriptions: number;
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 }
 
 export class WebSocketConnectLambda extends GoLambda {

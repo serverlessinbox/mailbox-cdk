@@ -2,11 +2,11 @@ import { Aws, Duration, Fn } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from './ts-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { MailboxStackDeployerWorkflow } from './stack-deployer-workflow';
 
 export interface StackDeployerInfraProps {
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   /**
    * Prefix for the Step Functions state machine name, e.g. 'MailboxDataDeployer-'.
    * The stack GUID is appended to keep the name unique and under 80 chars.

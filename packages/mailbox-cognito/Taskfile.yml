@@ -47,6 +47,6 @@ tasks:
       - task: bundle:idp-users-api
       - task: bundle:custom-message
       - task: bundle:bootstrap-user
-      - yarn aws s3 cp /tmp/cognito-idp-users-api.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-idp-users-api.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/cognito-custom-message.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-custom-message.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/cognito-bootstrap-user.zip s3://mailbox-artifacts-eu-west-1/mailbox-cognito-lambdas/channels/dev/lambdas/cognito-bootstrap-user.zip --region eu-west-1
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-custom-message.zip
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip

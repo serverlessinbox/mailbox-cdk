@@ -18,7 +18,7 @@ import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { RemovalPolicy, Aws } from 'aws-cdk-lib';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackNamedTable } from '../utils/named-table';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -48,7 +48,7 @@ export interface WebSocketPushProps {
   readonly changelogTable: ITable;
   readonly authKeyStoreTable: ITable;
   readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   readonly maxSubscriptions?: number;
 
   /** Optional custom domain name (e.g. ws.example.com). When set, a domain mapping is created. */

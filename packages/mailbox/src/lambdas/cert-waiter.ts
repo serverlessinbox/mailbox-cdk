@@ -1,10 +1,10 @@
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 
 export interface CertWaiterLambdaProps {
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 }
 
 export class CertWaiterLambda extends GoLambda {

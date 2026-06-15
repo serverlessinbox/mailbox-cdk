@@ -6037,6 +6037,20 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
+      ["npm:0.0.20", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.20-38091650a8-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-tools", "npm:0.0.20"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["npm:0.0.22", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.22-ef8167131f-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-tools", "npm:0.0.22"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
       ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.17", {\
         "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-c5cfde65e1/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.17-1a0d2bb0ba-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
         "packageDependencies": [\
@@ -6054,12 +6068,29 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "HARD"\
       }],\
-      ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.17", {\
-        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-e9f82c345f/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.17-1a0d2bb0ba-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+      ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.20", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-df64c8af0d/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.20-38091650a8-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
         "packageDependencies": [\
           ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@jwpkg/gitversion", null],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.17"],\
+          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.20"],\
+          ["@types/jwpkg__gitversion", null],\
+          ["clipanion", "virtual:c5cfde65e126e203cbec73a8f5a4f29340bb1b944cc2ccca9f25ed4f4ec6bf4d23201a4481a869a87886d25a1c1311409f73d35605649773ae3661337bfe9e82#npm:3.2.1"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["semver", "npm:7.8.1"]\
+        ],\
+        "packagePeers": [\
+          "@jwpkg/gitversion",\
+          "@types/jwpkg__gitversion"\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-dc65152965/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.22-ef8167131f-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+        "packageDependencies": [\
+          ["@aws-sdk/client-s3", "npm:3.1058.0"],\
+          ["@jwpkg/gitversion", null],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22"],\
           ["@types/jwpkg__gitversion", null],\
           ["clipanion", "virtual:c5cfde65e126e203cbec73a8f5a4f29340bb1b944cc2ccca9f25ed4f4ec6bf4d23201a4481a869a87886d25a1c1311409f73d35605649773ae3661337bfe9e82#npm:3.2.1"],\
           ["esbuild", "npm:0.27.1"],\
@@ -6081,6 +6112,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-dynamodb", "npm:3.1061.0"],\
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"],\
           ["@types/aws-cdk-lib", null],\
@@ -6120,6 +6152,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-dynamodb", "npm:3.1061.0"],\
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:f4cb1b9274744e6af0918094c12a723b14e59fc80943fc8cb9c2279d914b5507568685027ebf868f4342d20b5304dc2fcc84e8758a62eb4a184b85d6b2ee6e88#workspace:packages/mailbox-bundler"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
@@ -6196,6 +6229,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.1061.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1061.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-cognito", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox-cognito"],\
@@ -6229,6 +6263,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.1061.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1061.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.22"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-cognito", "workspace:packages/mailbox-cognito"],\
@@ -6274,7 +6309,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:apps/mailbox-standard", {\
         "packageLocation": "./apps/mailbox-standard/",\
         "packageDependencies": [\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.17"],\
+          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.20"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-cognito", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox-cognito"],\
           ["@serverlessinbox/mailbox-standard", "workspace:apps/mailbox-standard"],\

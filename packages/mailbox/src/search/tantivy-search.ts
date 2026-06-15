@@ -5,7 +5,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { TantivyIndexerLambda } from '../lambdas';
 import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 
@@ -33,7 +33,7 @@ export interface TantivySearchProps {
   /**
    * Lambda code provider for building/downloading lambdas
    */
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
 
   /** Optional default props applied to queues created by this construct (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;

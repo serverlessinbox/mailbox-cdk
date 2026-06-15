@@ -36,35 +36,31 @@ tasks:
       - lib/**/*.js
       - lib/**/*.d.ts
 
-  # Data stack artifact publishing (regional)
   publish:data:dev:
     desc: Publish data stack template to dev channel
     cmds:
       - task: build:data-stack
-      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/data-stack-template.json s3://mailbox-artifacts-eu-west-1/mailbox-cdk-data/channels/dev/template.json --region eu-west-1
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
 
-  # Edge artifact publishing (us-east-1 only)
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn aws s3 cp {{.USER_WORKING_DIR}}/dist/edge-stack-template.json s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/template.json --region us-east-1
-      - yarn aws s3 cp /tmp/blob-authorizer.zip s3://mailbox-artifacts-us-east-1/mailbox-cdk-edge/channels/dev/lambdas/blob-authorizer.zip --region us-east-1
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
 
-  # Regional artifact publishing
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn aws s3 cp /tmp/stack-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/stack-deployer.zip --region eu-west-1
-      - yarn aws s3 cp /tmp/ui-deployer.zip s3://mailbox-artifacts-eu-west-1/mailbox-cdk/channels/dev/lambdas/ui-deployer.zip --region eu-west-1
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
+      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
 
-  # Combined publish targets
   publish:dev:
-    desc: Publish all artifacts (edge + regional) to dev channel
+    desc: Publish all artifacts (edge + regional + data) to dev channel
     env:
       AWS_PROFILE: serverlessinbox-dev
     cmds:

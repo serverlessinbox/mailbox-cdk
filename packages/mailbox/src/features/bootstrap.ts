@@ -3,7 +3,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda } from '../lambdas';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,
@@ -26,7 +26,7 @@ export interface BootstrapProps {
   readonly authPolicies?: AuthPoliciesConfig;
   readonly oauthClients?: OAuthClientsConfig;
 
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   readonly sesRuleSetName?: string;
 }
 

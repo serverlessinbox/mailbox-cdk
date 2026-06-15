@@ -9,7 +9,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
@@ -20,7 +20,7 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
    * Artifact resolver for obtaining lambda code from S3
    */
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 
   /**
    * Package name where the lambda artifact is published (defaults to 'mailbox-cdk')

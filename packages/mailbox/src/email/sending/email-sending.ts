@@ -6,7 +6,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
-import { IArtifactResolver } from '../../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
 import type { IWebSocketBroadcastPublisher } from '../../api/websocket';
 
 export interface EmailSendingProps {
@@ -14,7 +14,7 @@ export interface EmailSendingProps {
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
   readonly blobStore: IBucket;
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   readonly sesConfigSetName: string;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */

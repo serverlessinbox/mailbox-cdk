@@ -1,5 +1,5 @@
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -9,7 +9,7 @@ export interface AuthorizerLambdaProps {
   authKeyStoreTable: ITable;
   configTable: ITable;
   userPoolIssuer: string;
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
   authPolicyName?: AuthPolicyName;

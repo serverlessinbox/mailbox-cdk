@@ -6,11 +6,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 import { LicenseRefresherLambda } from '../lambdas';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 
 export interface LicenseRefreshProps {
   readonly configTable: ITable;
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
 }
 
 export class LicenseRefresh extends Construct {

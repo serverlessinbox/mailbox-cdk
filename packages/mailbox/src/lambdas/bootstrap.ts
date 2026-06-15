@@ -2,14 +2,14 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export interface BootstrapLambdaProps {
   configTable: ITable;
   jwkCacheTable: ITable;
   authKeyStoreTable: ITable;
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 }
 
 export class BootstrapLambda extends GoLambda {

@@ -1,5 +1,8 @@
 import { IConstruct } from 'constructs';
-import { ArtifactResolver, ArtifactResolverConfig } from './artifact-resolver';
+import { Stack } from 'aws-cdk-lib';
+import { CdkArtifactResolver } from './cdk-artifact-resolver';
+import { readArtifactVersions } from '@serverlessinbox/artifact-tools';
+import * as path from 'path';
 
 const ARTIFACT_CONTEXT_KEYS = {
   config: 'artifacts',
@@ -9,45 +12,43 @@ const ARTIFACT_CONTEXT_KEYS = {
 /**
  * Creates an ArtifactResolver from CDK context values.
  *
- * Context key: `artifacts` (required)
+ * Context key: `artifacts` (optional override)
  *
  * Structure:
  * ```json
  * {
- *   "bucketBase": "mailbox-artifacts",
- *   "packages": {
- *     "mailbox-cdk": { "kind": "release", "version": "1.2.3" },
- *     "mailbox-go": { "kind": "channel", "channel": "dev" }
- *   }
+ *   "bucketBase": "mailbox-artifacts"
  * }
  * ```
  *
- * Optional context key: `artifactVersions` (for versioned URLs in channels)
- * Map of S3 keys to version IDs: `{ "packages/mailbox-go/channels/dev/lambdas/handler.zip": "abc123" }`
+ * If context is not provided, reads the default artifact-versions.json file.
+ * bucketBase in context (if present) overrides the versions file value.
  */
-export function createArtifactResolverFromContext(scope: IConstruct): ArtifactResolver {
+export function createArtifactResolverFromContext(scope: IConstruct): CdkArtifactResolver {
+  const stack = Stack.of(scope);
   const contextValue = scope.node.tryGetContext(ARTIFACT_CONTEXT_KEYS.config);
+  let bucketBaseOverride: string | undefined;
 
-  if (!contextValue) {
-    throw new Error(
-      `Missing context value '${ARTIFACT_CONTEXT_KEYS.config}'. ` +
-        'Provide artifact configuration via cdk.json or CLI -c flag.',
-    );
+  if (contextValue) {
+    if (typeof contextValue !== 'object') {
+      throw new Error(
+        `Invalid context value for '${ARTIFACT_CONTEXT_KEYS.config}': ` +
+          'Expected an object.',
+      );
+    }
+    bucketBaseOverride = contextValue.bucketBase;
   }
 
-  if (typeof contextValue !== 'object' || !contextValue.packages) {
-    throw new Error(
-      `Invalid context value for '${ARTIFACT_CONTEXT_KEYS.config}': ` +
-        'Expected an object with a "packages" field.',
-    );
-  }
+  const pkgRoot = path.join(__dirname, '../..');
+  const versionsPath = path.join(pkgRoot, 'artifact-versions.json');
 
-  const versionMap = scope.node.tryGetContext(ARTIFACT_CONTEXT_KEYS.versionMap) ?? {};
+  // Read and parse versions file using artifact-tools
+  const parsedVersions = readArtifactVersions(versionsPath);
 
-  const config: ArtifactResolverConfig = {
-    ...contextValue,
-    versionMap,
-  };
-
-  return new ArtifactResolver(scope, config);
+  // Use the factory to produce pre-computed artifact data
+  return new CdkArtifactResolver({
+    versions: parsedVersions,
+    bucketBaseOverride,
+    deploymentRegion: stack.region,
+  }, scope);
 }

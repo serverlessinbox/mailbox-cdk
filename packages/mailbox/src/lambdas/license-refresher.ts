@@ -3,11 +3,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 
 export interface LicenseRefresherLambdaProps {
   configTable: ITable;
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 }
 
 export class LicenseRefresherLambda extends GoLambda {

@@ -1,5 +1,5 @@
 import { GoLambda } from '../utils/go-lambda';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
@@ -11,7 +11,7 @@ export interface UserProvisionerLambdaProps {
   itemTable: ITable;
   changelogTable: ITable;
   auditEventsQueue: IQueue;
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 }
 
 export class UserProvisionerLambda extends GoLambda {
