@@ -1,8 +1,8 @@
 import { CustomResource } from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { BootstrapLambda } from '../lambdas';
+import { BootstrapLambda, SesReceivingMode } from '../lambdas';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import {
   AuthPoliciesConfig,
@@ -27,7 +27,10 @@ export interface BootstrapProps {
   readonly oauthClients?: OAuthClientsConfig;
 
   readonly artifactResolver: ICdkArtifactResolver;
-  readonly sesRuleSetName?: string;
+  readonly sesReceiving?: {
+    ruleSet: IReceiptRuleSet;
+    mode: SesReceivingMode;
+  };
 }
 
 /**
@@ -53,6 +56,7 @@ export class Bootstrap extends Construct {
       jwkCacheTable: props.jwkCacheTable,
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
+      sesReceiving: props.sesReceiving,
     });
     this.handler = handler;
 
@@ -79,14 +83,6 @@ export class Bootstrap extends Construct {
     });
 
     props.configTable.grantReadWriteData(handler);
-
-    if (props.sesRuleSetName) {
-      handler.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
-      handler.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['ses:SetActiveReceiptRuleSet'],
-        resources: ['*'],
-      }));
-    }
   }
 }
 

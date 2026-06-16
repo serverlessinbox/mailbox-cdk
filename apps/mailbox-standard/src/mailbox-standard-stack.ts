@@ -85,7 +85,7 @@ export class MailboxStandardStack extends cdk.Stack {
       authProvider: userPool,
       subdomainNamespace: subdomainNamespace.valueAsString,
       subdomainNamespaceCondition: hasNamespace,
-      enableReceiving: true,
+      enableReceiving: 'on',
       // CORS origins are derived from domainName by the construct itself
       // (admin.<domain> and webmail.<domain> are added automatically).
     });

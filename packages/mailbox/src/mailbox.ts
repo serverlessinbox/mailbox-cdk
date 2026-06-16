@@ -14,7 +14,7 @@ import {
 } from './auth/types';
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { CertWaiterLambda } from './lambdas';
+import { CertWaiterLambda, SesReceivingMode } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
 import { Bootstrap } from './features/bootstrap';
@@ -194,7 +194,7 @@ export interface MailboxProps {
    * rule set. Only one rule set can be active per account per region — this is an explicit operator
    * decision.
    */
-  readonly enableReceiving?: boolean;
+  readonly enableReceiving?: SesReceivingMode;
 
   /**
    * Certificate and data stack overrides.
@@ -504,7 +504,9 @@ export class Mailbox extends Construct {
       jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
-      sesRuleSetName: props.enableReceiving ? sesRules.ruleSetName : undefined,
+      sesReceiving: props.enableReceiving && props.enableReceiving !== 'off'
+        ? { ruleSet: sesRules.ruleSet, mode: props.enableReceiving }
+        : undefined,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,

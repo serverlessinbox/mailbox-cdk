@@ -2,7 +2,7 @@ import { CfnOutput, Duration } from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
+import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
@@ -26,6 +26,8 @@ export interface SesRulesProps {
 export class SesRules extends Construct {
   /** The name of the SES receipt rule set created by this construct. */
   readonly ruleSetName: string;
+  /** The SES receipt rule set object (typed CDK interface for passing to other constructs). */
+  readonly ruleSet: IReceiptRuleSet;
 
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
@@ -66,6 +68,7 @@ export class SesRules extends Construct {
     // SES receipt rule set
     const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {});
     this.ruleSetName = ruleSet.receiptRuleSetName;
+    this.ruleSet = ruleSet;
 
     // SES receipt rule: store email in S3, then notify via Lambda → SQS → email-processor
     new ReceiptRule(this, 'email-rule', {

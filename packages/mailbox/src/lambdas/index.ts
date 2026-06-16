@@ -54,7 +54,7 @@ export { AuditWriterLambda } from './audit-writer';
 export type { AuditWriterLambdaProps } from './audit-writer';
 
 export { BootstrapLambda } from './bootstrap';
-export type { BootstrapLambdaProps } from './bootstrap';
+export type { BootstrapLambdaProps, SesReceivingMode } from './bootstrap';
 
 export { UserProvisionerLambda } from './user-provisioner';
 export type { UserProvisionerLambdaProps } from './user-provisioner';

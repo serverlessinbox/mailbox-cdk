@@ -4,12 +4,19 @@ import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
+
+export type SesReceivingMode = 'off' | 'on' | 'forced';
 
 export interface BootstrapLambdaProps {
   configTable: ITable;
   jwkCacheTable: ITable;
   authKeyStoreTable: ITable;
   artifactResolver: ICdkArtifactResolver;
+  sesReceiving?: {
+    ruleSet: IReceiptRuleSet;
+    mode: SesReceivingMode;
+  };
 }
 
 export class BootstrapLambda extends GoLambda {
@@ -48,5 +55,23 @@ export class BootstrapLambda extends GoLambda {
       actions: ['execute-api:Invoke'],
       resources: ['*'],
     }));
+
+    if (props.sesReceiving) {
+      const { ruleSet, mode } = props.sesReceiving;
+      this.addEnvironment('SES_RULE_SET_NAME', ruleSet.receiptRuleSetName);
+      this.addEnvironment('SES_RECEIVING_MODE', mode);
+      if (mode === 'on' || mode === 'forced') {
+        this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+          actions: ['ses:SetActiveReceiptRuleSet'],
+          resources: ['*'],
+        }));
+      }
+      if (mode === 'on') {
+        this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+          actions: ['ses:DescribeActiveReceiptRuleSet'],
+          resources: ['*'],
+        }));
+      }
+    }
   }
 }
