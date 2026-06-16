@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
-import { type ArtifactReference } from '../artifacts/artifact-prefix';
+import type { ResolvedArtifact } from '@serverlessinbox/artifact-tools';
 import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
@@ -79,10 +79,9 @@ export class MailboxEdgeStack extends cdk.Stack {
       type: 'String',
       description: 'Prefix with dots: "." for no prefix, or ".{prefix}." for a prefix',
       default: '.',
-      // No empty strings: keeps deployments predictable and avoids conditional logic.
-      // Examples: "." or ".mailbox.".
+      // Allow "." (no prefix) or dot-wrapped labels like ".mailbox.".
       allowedPattern: '^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$',
-      constraintDescription: 'Must be "." or a dot-wrapped DNS label like ".mailbox."',
+      constraintDescription: 'Use "." for no namespace, or use a dot-wrapped DNS label like ".mailbox."',
     });
     prefixParam.overrideLogicalId('prefix');
 
@@ -146,9 +145,10 @@ export class MailboxEdgeStack extends cdk.Stack {
     authKeyStoreTableArnParam.overrideLogicalId('authKeyStoreTableArn');
 
     // Build artifact reference from parameters
-    const blobAuthorizerReference: ArtifactReference = {
+    const blobAuthorizerReference: ResolvedArtifact = {
       key: blobAuthorizerKeyParam.valueAsString,
-      s3VersionId: blobAuthorizerS3VersionIdParam.valueAsString !== '' ? blobAuthorizerS3VersionIdParam.valueAsString : undefined,
+      bucket: artifactBucketParam.valueAsString,
+      versionId: blobAuthorizerS3VersionIdParam.valueAsString,
     };
 
     // Create the construct with values from CF parameters

@@ -2,13 +2,13 @@ import { Aws, CustomResource, Fn, Stack } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackDeployerInfra } from '../utils/stack-deployer-infra';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 
 export interface MailboxDataDeployerProps {
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
   /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
   readonly dataStackName?: string;
 }

@@ -7,7 +7,7 @@ module.exports = {
   artifacts: [
     {
       objectName: 'template.json',
-      sourcePath: 'cdk.out/MailboxStandardStack.template.json',
+      sourcePath: 'cdk.out/MailboxStandard.template.json',
     },
     {
       objectName: 'config.json',

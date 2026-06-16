@@ -42,7 +42,7 @@ export class MailboxDns extends Construct {
       if (props.hostedZone) {
         new route53.CnameRecord(this, `${endpoint}-cname`, {
           zone: props.hostedZone,
-          recordName: relativeRecordName(fqdn, props.hostedZone.zoneName),
+          recordName: props.names.relativeLabel(endpoint),
           domainName: target,
           ttl,
         });
@@ -62,22 +62,6 @@ export class MailboxDns extends Construct {
       }
     }
   }
-}
-
-function relativeRecordName(fqdn: string, zoneName: string): string {
-  const normalizedZone = zoneName.replace(/\.+$/, '').toLowerCase();
-  const normalizedFqdn = fqdn.replace(/\.+$/, '').toLowerCase();
-
-  if (normalizedFqdn === normalizedZone) {
-    throw new Error(`Refusing to create apex record for zone ${zoneName}`);
-  }
-
-  const suffix = `.${normalizedZone}`;
-  if (!normalizedFqdn.endsWith(suffix)) {
-    throw new Error(`FQDN ${fqdn} is not inside hosted zone ${zoneName}`);
-  }
-
-  return normalizedFqdn.slice(0, -suffix.length);
 }
 
 function capitalize(value: string): string {

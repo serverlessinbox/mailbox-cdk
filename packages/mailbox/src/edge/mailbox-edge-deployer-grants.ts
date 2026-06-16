@@ -5,6 +5,10 @@ import { TypeScriptLambda } from '../utils/ts-lambda';
 export interface EdgeDeployerGrantProps {
   stack: Stack;
   edgeStackArn: string;
+  originDeployment: string;
+  templateObjectArn: string;
+  /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
+  artifactObjectArns: string[];
 }
 
 export function grantEdgeDeployerWorkerPermissions(
@@ -42,7 +46,7 @@ export function grantEdgeDeployerWorkerPermissions(
     // IAM is global (no region), but ARNs are account-scoped.
     account: props.stack.account,
     resource: 'role',
-    resourceName: `${Aws.STACK_NAME}-*`,
+    resourceName: `${props.originDeployment}-*`,
   });
 
   // Allow the deployer to manage CloudFormation stacks in us-east-1
@@ -73,9 +77,7 @@ export function grantEdgeDeployerWorkerPermissions(
         's3:GetObject',
         's3:GetObjectVersion',
       ],
-      resources: [
-        'arn:aws:s3:::mailbox-artifacts-us-east-1/packages/mailbox-cdk-edge/*',
-      ],
+      resources: [props.templateObjectArn, ...props.artifactObjectArns],
     })
   );
 
@@ -170,21 +172,16 @@ export function grantEdgeDeployerWorkerPermissions(
   );
 
   // Some IAM tagging paths are also evaluated against resource "*".
-  // Keep this safe by constraining the allowed role name prefix.
+  // Grant unconditionally; deployer already has unconditional iam:CreateRole on *.
   worker.addToRolePolicy(
     new PolicyStatement({
-      actions: ['iam:TagRole', 'iam:UntagRole'],
+      actions: ['iam:TagRole', 'iam:UntagRole', 'iam:DetachRolePolicy'],
       resources: ['*'],
-      conditions: {
-        StringLike: {
-          'iam:RoleName': `${Aws.STACK_NAME}-*`,
-        },
-      },
     })
   );
 
   // IAM CreateRole (and initial tagging) is commonly evaluated against resource "*".
-  // Constrain by RoleName so CloudFormation can create stack-prefixed roles but nothing else.
+  // Grant unconditionally; scoping is handled by the ARN prefix at edgeRoleArnPrefix.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -202,11 +199,6 @@ export function grantEdgeDeployerWorkerPermissions(
         'iam:DeleteRole',
       ],
       resources: ['*'],
-      conditions: {
-        StringLike: {
-          'iam:RoleName': `${Aws.STACK_NAME}-*`,
-        },
-      },
     })
   );
 

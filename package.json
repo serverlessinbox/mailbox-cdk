@@ -19,7 +19,7 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "^3",
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
-    "@serverlessinbox/artifact-tools": "^0.0.17",
+    "@serverlessinbox/artifact-tools": "^0.0.24",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

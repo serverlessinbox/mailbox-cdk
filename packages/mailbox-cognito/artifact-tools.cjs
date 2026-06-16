@@ -5,18 +5,15 @@ module.exports = {
   name: 'mailbox-cognito-lambdas',
   artifacts: [
     {
-      source: 'src/ts-lambdas/cognito-idp-users-api/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/cognito-idp-users-api.zip',
       objectName: 'lambdas/cognito-idp-users-api.zip',
     },
     {
-      source: 'src/ts-lambdas/custom-message/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/cognito-custom-message.zip',
       objectName: 'lambdas/cognito-custom-message.zip',
     },
     {
-      source: 'src/ts-lambdas/bootstrap-user/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/cognito-bootstrap-user.zip',
       objectName: 'lambdas/cognito-bootstrap-user.zip',
     },
   ],

@@ -23,7 +23,7 @@ import { createArtifactResolverFromContext } from '../artifacts/artifact-context
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
@@ -79,7 +79,7 @@ export class MailboxUi extends Construct {
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
 
-  private getOrCreateUiDeployer(artifactResolver: IArtifactResolver): TypeScriptLambda {
+  private getOrCreateUiDeployer(artifactResolver: ICdkArtifactResolver): TypeScriptLambda {
     const stack = Stack.of(this);
     const existing = stack.node.tryFindChild('mailbox-ui-deployer');
     if (existing) {
@@ -175,27 +175,9 @@ export class MailboxUi extends Construct {
     this.distributionDomainName = props.certificate ? props.domainName : this.distribution.distributionDomainName;
   }
 
-  private addUiDeployment(artifactResolver: IArtifactResolver, props: MailboxUiProps): void {
+  private addUiDeployment(artifactResolver: ICdkArtifactResolver, props: MailboxUiProps): void {
     const deployer = this.getOrCreateUiDeployer(artifactResolver);
 
-    // Read UI bundle artifact from regional publication bucket.
-    // ArtifactResolver may be configured with a different region than the current stack
-    // (e.g. when deploying stacks cross-region while keeping artifacts in one place).
-    // Use resolver's region/bucketBase when available.
-    const resolverAny = artifactResolver as any;
-    const artifactBucketBase = typeof resolverAny.bucketBase === 'string' ? resolverAny.bucketBase : 'mailbox-artifacts';
-    const artifactRegion = typeof resolverAny.region === 'string' ? resolverAny.region : Stack.of(this).region;
-    const artifactBucketName = `${artifactBucketBase}-${artifactRegion}`;
-    const artifactBucket = Bucket.fromBucketName(this, 'artifact-bucket', artifactBucketName);
-    artifactBucket.grantRead(deployer);
-
-    // Allow versioned reads when version IDs are provided.
-    deployer.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['s3:GetObjectVersion'],
-        resources: [artifactBucket.arnForObjects('*')],
-      }),
-    );
 
     // Allow cache invalidations after deployment.
     deployer.addToRolePolicy(
@@ -214,15 +196,31 @@ export class MailboxUi extends Construct {
       }),
     );
 
-    const uiKey = props.uiBundle ? artifactResolver.getKey(props.uiBundle.packageName, props.uiBundle.objectPath) : undefined;
-    const uiVersionId = props.uiBundle
-      ? artifactResolver.getVersionId(props.uiBundle.packageName, props.uiBundle.objectPath)
+    const uiResolved = props.uiBundle
+      ? artifactResolver.resolve(props.uiBundle.packageName, props.uiBundle.objectPath)
       : undefined;
+
+    // Allow reading UI bundle artifacts from the artifacts bucket.
+    // Both GetObject and GetObjectVersion are required for versioned artifact access.
+    if (uiResolved) {
+      const stack = Stack.of(this);
+      deployer.addToRolePolicy(
+        new PolicyStatement({
+          actions: [
+            's3:GetObject',
+            's3:GetObjectVersion',
+          ],
+          resources: [
+            `arn:aws:s3:::${uiResolved.bucket}/${uiResolved.key}`,
+          ],
+        }),
+      );
+    }
 
     // Stable nonce so CFN updates when inputs change (without forcing redeploy on every synth).
     const normalizedConfig = props.uiConfig ?? undefined;
     const nonce = createHash('sha256')
-      .update(JSON.stringify({ uiKey, uiVersionId, config: normalizedConfig }))
+      .update(JSON.stringify({ key: uiResolved?.key, versionId: uiResolved?.versionId, config: normalizedConfig }))
       .digest('hex')
       .slice(0, 16);
 
@@ -237,9 +235,9 @@ export class MailboxUi extends Construct {
         clearAllOnDelete: true,
 
         // Optional UI bundle deployment
-        sourceBucket: uiKey ? artifactBucketName : undefined,
-        sourceKey: uiKey,
-        sourceVersionId: uiVersionId,
+        sourceBucket: uiResolved?.bucket,
+        sourceKey: uiResolved?.key,
+        sourceVersionId: uiResolved?.versionId,
         contentPrefix: 'content/',
 
         // Optional dynamic config
@@ -255,7 +253,7 @@ export class MailboxUi extends Construct {
 
   private addAuthBehavior(
     distribution: Distribution,
-    artifactResolver: IArtifactResolver,
+    artifactResolver: ICdkArtifactResolver,
     configTable: ITable,
     auditEventsQueue: IQueue | undefined,
     authPolicyName: AuthPolicyName,

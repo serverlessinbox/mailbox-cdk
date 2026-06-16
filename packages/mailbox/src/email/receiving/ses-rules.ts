@@ -21,7 +21,6 @@ export interface EmailDelivery {
 
 export interface SesRulesProps {
   readonly delivery: EmailDelivery;
-  readonly activateReceiving?: boolean;
 }
 
 export class SesRules extends Construct {

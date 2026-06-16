@@ -18,7 +18,6 @@ import {
   ProvisionAdminUiClientParams,
   ProvisionJmapUiClientParams,
   isDevelopmentMode,
-  createArtifactResolverFromContext,
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider } from '@serverlessinbox/mailbox';
@@ -28,7 +27,8 @@ import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from
 
 import { makePhysicalName, slugifyLabel } from '../utils/resource-names';
 import { PermissionToCognitoScope } from './scopemaps/cognito';
-import { CognitoCustomMessageLambda } from '../lambdas/cognito-custom-message';
+import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
+import { createCognitoArtifactData } from '../artifacts';
 
 /**
  * Cognito-managed domain configuration
@@ -59,11 +59,6 @@ export type MailboxUserPoolDomain = MailboxUserPoolCognitoDomain | MailboxUserPo
 export interface MailboxUserPoolAuthorizationConfig {
   readonly adminGroups?: string[];
   readonly userGroups?: string[];
-}
-
-export interface MailboxUserPoolCustomMessageConfig {
-  readonly loginUrl?: string;
-  readonly supportText?: string;
 }
 
 export interface ProvisionHeadlessClientConfig {
@@ -102,12 +97,13 @@ export interface MailboxUserPoolProps {
 
   readonly authFlows?: cdk.aws_cognito.AuthFlow;
 
-  /**
-   * Custom message templates for Cognito emails (Custom Message trigger).
-   * If provided, the trigger is attached automatically to this user pool.
-   */
-  readonly customMessage?: MailboxUserPoolCustomMessageConfig;
+}
 
+export interface BootstrapUserConfig {
+  /** Defaults to `"admin"` if not provided. */
+  readonly username?: string;
+  readonly groups: string[];
+  readonly temporaryPassword?: string;
 }
 
 /**
@@ -116,8 +112,6 @@ export interface MailboxUserPoolProps {
 export class MailboxUserPool extends Construct implements IMailboxAuthProviderBase, IAdminApiAddonProvider {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolDomain: cognito.UserPoolDomain;
-  /** The underlying CDK construct wrapping the custom message Lambda, if configured. */
-  public readonly customMessageLambda?: Construct;
   private readonly jmapResourceServer: cognito.UserPoolResourceServer;
   private readonly jmapScopes: Permission[];
   private readonly resourceServerIdentifier: string = 'si';
@@ -142,6 +136,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly adminUiClients = new Map<string, AuthClientConfig>();
   private readonly jmapUiClients = new Map<string, AuthClientConfig>();
   private readonly headlessClients = new Map<string, AuthClientConfig>();
+  private readonly _artifactResolver;
+  private _bootstrapUserCount = 0;
 
   get userPoolId(): string {
     return this.userPool.userPoolId;
@@ -308,7 +304,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
-        artifactResolver: ctx.artifactResolver,
+        artifactResolver: this._artifactResolver,
         auditEventsQueue: ctx.auditEventsQueue,
         pool: this,
       }),
@@ -329,6 +325,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
     super(scope, id);
+
+    this._artifactResolver = createCognitoArtifactData(this);
 
     this.authzConfig = {
       adminGroups: props.authorization?.adminGroups ?? ['admin'],
@@ -391,18 +389,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       removalPolicy: isDevelopmentMode(this) ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
     });
 
-    if (props.customMessage) {
-      const artifactResolver = createArtifactResolverFromContext(this);
-      const customMessageConstruct = new CognitoCustomMessageLambda(this, 'custom-message', {
-        artifactResolver,
-        loginUrl: props.customMessage.loginUrl,
-        supportText: props.customMessage.supportText,
-      });
-      (this as { customMessageLambda?: Construct }).customMessageLambda = customMessageConstruct;
-
-      this.userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, customMessageConstruct.fn);
-    }
-
     this.issuer = `https://cognito-idp.${cdk.Stack.of(this).region}.amazonaws.com/${this.userPool.userPoolId}`;
 
     this.jmapResourceServer = this.userPool.addResourceServer('jmap-resource-server', {
@@ -453,6 +439,42 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     }
 
     return scopeMap;
+  }
+
+  /**
+   * Attach a bootstrap user Custom Resource to this user pool.
+   * The artifact resolver is shared with the rest of the user pool.
+   *
+   * @param config Bootstrap user configuration
+   */
+  public addBootstrapUser(config: BootstrapUserConfig): void {
+    const index = ++this._bootstrapUserCount;
+    const constructId = `bootstrapped-user-${index}`;
+    const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
+      artifactResolver: this._artifactResolver,
+    }).fn;
+
+    new cdk.CustomResource(this, constructId, {
+      resourceType: 'Custom::CognitoBootstrapUser',
+      serviceToken: handler.functionArn,
+      properties: {
+        userPoolId: this.userPool.userPoolId,
+        username: config.username,
+        groups: config.groups,
+        temporaryPassword: config.temporaryPassword,
+      },
+    });
+
+    handler.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminUpdateUserAttributes',
+          'cognito-idp:AdminAddUserToGroup',
+        ],
+        resources: [this.userPool.userPoolArn],
+      }),
+    );
   }
 
   public grantAdminAccess(fn: lambda.IFunction): void {

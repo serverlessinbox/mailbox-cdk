@@ -2,12 +2,11 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { IArtifactResolver } from '@serverlessinbox/mailbox';
-
 import { COGNITO_LAMBDAS_ARTIFACT_PACKAGE } from '../artifacts';
+import type { ICdkArtifactResolver } from '../cdk-resolver';
 
 export interface CognitoIdpUsersApiLambdaProps {
-  artifactResolver: IArtifactResolver;
+  artifactResolver: ICdkArtifactResolver;
 
   /** Cognito user pool ID to manage. */
   userPoolId: string;

@@ -7,7 +7,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { type ArtifactReference } from '../artifacts/artifact-prefix';
+import type { ResolvedArtifact } from '@serverlessinbox/artifact-tools';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */
@@ -30,7 +30,7 @@ export interface MailboxEdgeConstructProps {
   readonly artifactBucket: string | s3.IBucket;
 
   /** Blob-authorizer Lambda artifact reference (key + optional S3 version ID) */
-  readonly blobAuthorizerReference: ArtifactReference;
+  readonly blobAuthorizerReference: ResolvedArtifact;
 
   /** DynamoDB item table ARN (regional) used by blob-authorizer */
   readonly itemTableArn: string;
@@ -116,7 +116,7 @@ export class MailboxEdgeConstruct extends Construct {
       code: lambda.Code.fromBucket(
         artifactBucket,
         props.blobAuthorizerReference.key,
-        props.blobAuthorizerReference.s3VersionId,
+        props.blobAuthorizerReference.versionId,
       ),
       role: blobAuthorizerRole,
       memorySize: 512,
@@ -135,7 +135,20 @@ export class MailboxEdgeConstruct extends Construct {
     // Force a new AWS::Lambda::Version resource (replacement) whenever the S3 version ID changes.
     // Without this, CFn updates $LATEST but the immutable version resource stays the same.
     const cfnVersion = this.blobAuthorizerVersion.node.defaultChild as cdk.CfnResource;
-    cfnVersion.addPropertyOverride('Description', props.blobAuthorizerReference.s3VersionId ?? '');
+    cfnVersion.addPropertyOverride('Description', props.blobAuthorizerReference.versionId ?? '');
+
+    // S3ObjectVersion must be absent (not empty string) when no version ID is provided;
+    // Lambda rejects an empty string for this field.
+    const hasBlobAuthorizerVersion = new cdk.CfnCondition(this, 'has-blob-authorizer-version', {
+      expression: cdk.Fn.conditionNot(
+        cdk.Fn.conditionEquals(props.blobAuthorizerReference.versionId ?? '', ''),
+      ),
+    });
+    const cfnFunction = blobAuthorizerFunction.node.defaultChild as lambda.CfnFunction;
+    cfnFunction.addPropertyOverride(
+      'Code.S3ObjectVersion',
+      cdk.Fn.conditionIf(hasBlobAuthorizerVersion.logicalId, props.blobAuthorizerReference.versionId ?? '', cdk.Aws.NO_VALUE),
+    );
 
     // Lambda@Edge needs explicit IAM permissions; it can't assume it has access to regional DynamoDB tables.
     // Grant only read access to the required tables (+ index access for Query).

@@ -5,13 +5,11 @@ module.exports = {
   name: 'mailbox-cdk',
   artifacts: [
     {
-      source: 'src/ts-lambdas/stack-deployer/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/stack-deployer.zip',
       objectName: 'lambdas/stack-deployer.zip',
     },
     {
-      source: 'src/ts-lambdas/ui-deployer/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/ui-deployer.zip',
       objectName: 'lambdas/ui-deployer.zip',
     },
     {
@@ -19,8 +17,7 @@ module.exports = {
       objectName: 'data-stack-template.json',
     },
     {
-      source: 'src/ts-lambdas/blob-authorizer/index.ts',
-      bundleType: 'js-zip',
+      source: '/tmp/blob-authorizer.zip',
       objectName: 'lambdas/blob-authorizer.zip',
       bucketName: 'mailbox-artifacts-us-east-1',
       name: 'mailbox-cdk-edge',

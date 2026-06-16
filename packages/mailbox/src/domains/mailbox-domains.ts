@@ -1,4 +1,4 @@
-import { Token } from 'aws-cdk-lib';
+import { Fn, Token } from 'aws-cdk-lib';
 
 export const MAILBOX_ENDPOINTS = [
   'ws',
@@ -28,6 +28,8 @@ export interface MailboxDomainNamesProps {
     api?: string;
     ws?: string;
   };
+
+  readonly prefixConditionName?: string;
 }
 
 export interface IMailboxDomainNames {
@@ -44,6 +46,8 @@ export interface IMailboxDomainNames {
   readonly mcp: string;
 
   fqdn(endpoint: MailboxEndpoint): string;
+  /** Subdomain label(s) relative to the hosted zone root, safe to pass as Route53 recordName. */
+  relativeLabel(endpoint: MailboxEndpoint): string;
   all(): Record<MailboxEndpoint, string>;
 }
 
@@ -111,12 +115,25 @@ export class MailboxDomains implements IMailboxDomainNames {
   public readonly auth: string;
   public readonly mcp: string;
 
+  /** Per-endpoint relative labels (subdomain label + optional namespace, without the zone). */
+  private readonly _relativeLabels: Record<MailboxEndpoint, string>;
+
   constructor(props: MailboxDomainNamesProps) {
     this.domainName = normalizeDomainName(props.domainName);
 
     this.prefix = normalizePrefix(props.prefix);
 
-    const base = this.prefix ? `${this.prefix}.${this.domainName}` : this.domainName;
+    const base = (() => {
+      if (this.prefix && Token.isUnresolved(this.prefix) && props.prefixConditionName) {
+        return Fn.conditionIf(
+          props.prefixConditionName,
+          `${this.prefix}.${this.domainName}`,
+          this.domainName,
+        ).toString();
+      }
+      return this.prefix ? `${this.prefix}.${this.domainName}` : this.domainName;
+    })();
+
     const { subdomainOverrides } = props;
 
     this.ws = `${subdomainOverrides?.ws ?? 'ws'}.${base}`;
@@ -128,10 +145,39 @@ export class MailboxDomains implements IMailboxDomainNames {
     this.cdn = `cdn.${base}`;
     this.auth = `auth.${base}`;
     this.mcp = `mcp.${base}`;
+
+    // Build relative record names (subdomain label + optional namespace, without the zone).
+    // These are safe to pass as Route53 recordName — CDK will append the zone automatically.
+    const relativeLabel = (label: string): string => {
+      if (this.prefix && Token.isUnresolved(this.prefix) && props.prefixConditionName) {
+        // Use conditionIf so CloudFormation resolves the correct label at deployment time.
+        return Fn.conditionIf(
+          props.prefixConditionName,
+          `${label}.${this.prefix}`,
+          label,
+        ).toString();
+      }
+      return this.prefix ? `${label}.${this.prefix}` : label;
+    };
+
+    this._relativeLabels = {
+      ws: relativeLabel(subdomainOverrides?.ws ?? 'ws'),
+      api: relativeLabel(subdomainOverrides?.api ?? 'api'),
+      jmap: relativeLabel(subdomainOverrides?.jmap ?? 'jmap'),
+      webmail: relativeLabel(subdomainOverrides?.webmail ?? 'webmail'),
+      admin: relativeLabel(subdomainOverrides?.admin ?? 'admin'),
+      cdn: relativeLabel('cdn'),
+      auth: relativeLabel('auth'),
+      mcp: relativeLabel('mcp'),
+    };
   }
 
   public fqdn(endpoint: MailboxEndpoint): string {
     return this.all()[endpoint];
+  }
+
+  public relativeLabel(endpoint: MailboxEndpoint): string {
+    return this._relativeLabels[endpoint];
   }
 
   public all(): Record<MailboxEndpoint, string> {

@@ -1,0 +1,8 @@
+version: '3'
+
+tasks:
+  publish:dev:
+    desc: Publish all CDK artifacts (mailbox + mailbox-cognito) to dev channel
+    cmds:
+      - task -d packages/mailbox publish:dev
+      - task -d packages/mailbox-cognito publish:dev

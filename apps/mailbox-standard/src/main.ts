@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
-import { loadChannelVersions } from '@serverlessinbox/artifact-tools';
+import * as path from 'path';
+import { loadChannelVersions, readArtifactVersions } from '@serverlessinbox/artifact-tools';
 import { MailboxStandardStack } from './mailbox-standard-stack';
 
 void (async () => {
@@ -12,28 +13,35 @@ void (async () => {
     'mailbox-cognito-lambdas': 'eu-west-1',
   };
 
-  const versions = await loadChannelVersions({
+  const versionMap = await loadChannelVersions({
     channel: 'dev',
     bucketBase: 'mailbox-artifacts',
+    artifactType: 'package',
     packages: packageRegions,
   });
+  console.log('Loaded artifact versions:', versionMap);
 
   const context = {
-    deployer: 'cfn',
     artifacts: {
       bucketBase: 'mailbox-artifacts',
       packages: Object.fromEntries(
         Object.keys(packageRegions).map((name) => [
           name,
-          { kind: 'release' as const, version: versions[name] },
+          { kind: 'channel' as const, channel: 'dev' },
         ]),
       ),
     },
+    artifactVersions: versionMap,
   };
+
+  const allowedRegions: string[] = [
+    'eu-west-1',
+  ];
 
   const app = new cdk.App({ context });
 
   new MailboxStandardStack(app, 'MailboxStandard', {
     synthesizer: new cdk.BootstraplessSynthesizer(),
+    allowedRegions,
   });
 })();

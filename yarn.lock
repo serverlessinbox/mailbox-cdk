@@ -2241,9 +2241,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-tools@npm:^0.0.17":
-  version: 0.0.17
-  resolution: "@serverlessinbox/artifact-tools@npm:0.0.17"
+"@serverlessinbox/artifact-tools@npm:^0.0.24":
+  version: 0.0.24
+  resolution: "@serverlessinbox/artifact-tools@npm:0.0.24"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     clipanion: "npm:^3.2.1"
@@ -2253,39 +2253,7 @@ __metadata:
     "@jwpkg/gitversion": 1.4.0-pack-order.2
   bin:
     artifact-tools: dist/cli-entry.js
-  checksum: 10c0/ff4e9d2f3205b77d5018d4ea13a23caca0cbbebaf79ba98cb90dd05be92af96d265079f7f67b802d608792f9914b591219be601bb8935f4ddc06168566b1eca7
-  languageName: node
-  linkType: hard
-
-"@serverlessinbox/artifact-tools@npm:^0.0.20":
-  version: 0.0.20
-  resolution: "@serverlessinbox/artifact-tools@npm:0.0.20"
-  dependencies:
-    "@aws-sdk/client-s3": "npm:^3"
-    clipanion: "npm:^3.2.1"
-    esbuild: "npm:^0.27.1"
-    semver: "npm:^7.8.1"
-  peerDependencies:
-    "@jwpkg/gitversion": 1.4.0-pack-order.2
-  bin:
-    artifact-tools: dist/cli-entry.js
-  checksum: 10c0/d4c125dac34fc8d28a9069cbf585a30988a39c66336fd9ea7121605f0a9b4d46cedd1b27636b7a23db5dec7d3f884a2c583334dcda32a4dd1949b7c669a7f132
-  languageName: node
-  linkType: hard
-
-"@serverlessinbox/artifact-tools@npm:^0.0.22":
-  version: 0.0.22
-  resolution: "@serverlessinbox/artifact-tools@npm:0.0.22"
-  dependencies:
-    "@aws-sdk/client-s3": "npm:^3"
-    clipanion: "npm:^3.2.1"
-    esbuild: "npm:^0.27.1"
-    semver: "npm:^7.8.1"
-  peerDependencies:
-    "@jwpkg/gitversion": 1.4.0-pack-order.2
-  bin:
-    artifact-tools: dist/cli-entry.js
-  checksum: 10c0/c3ce8f79dfa858cd0fa5e7efb79e98952846a794d7809b19eab8ba0369e961f4f5903e4afbb406689c8b641bddfece994c97f4785f19f57f435405e9d70fffa6
+  checksum: 10c0/89f8c98bdae609c9a5304aecf8da29b37085a4fb2f409e399a417dc14e6d13b045022ec7a88b3a09a76a00c1414f53b6e2709bf11a5cc48aeae1d4c4ad406d18
   languageName: node
   linkType: hard
 
@@ -2345,9 +2313,10 @@ __metadata:
     "@aws-sdk/client-cognito-identity-provider": "npm:^3.947.0"
     "@aws-sdk/client-sqs": "npm:^3.947.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
-    "@serverlessinbox/artifact-tools": "npm:^0.0.22"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.24"
     "@serverlessinbox/mailbox": "workspace:*"
     "@serverlessinbox/mailbox-admin-api": "workspace:*"
+    "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^24.10.1"
     aws-cdk-lib: "npm:^2.224.0"
@@ -2371,7 +2340,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard"
   dependencies:
-    "@serverlessinbox/artifact-tools": "npm:^0.0.20"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.24"
     "@serverlessinbox/mailbox": "npm:*"
     "@serverlessinbox/mailbox-cognito": "npm:*"
     "@types/node": "npm:^24.10.1"
@@ -2392,7 +2361,7 @@ __metadata:
     "@aws-sdk/client-dynamodb": "npm:^3.946.0"
     "@aws-sdk/client-s3": "npm:^3.946.0"
     "@aws-sdk/client-sfn": "npm:^3.946.0"
-    "@serverlessinbox/artifact-tools": "npm:^0.0.22"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.24"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^24.10.1"
@@ -7092,7 +7061,7 @@ __metadata:
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     "@jwpkg/gitversion": "npm:^1.4.0-pack-order.2"
-    "@serverlessinbox/artifact-tools": "npm:^0.0.17"
+    "@serverlessinbox/artifact-tools": "npm:^0.0.24"
     "@types/node": "npm:^24.10.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"

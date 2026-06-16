@@ -19,12 +19,39 @@ tasks:
     generates:
       - dist/data-stack-template.json
 
+  bundle:blob-authorizer:
+    desc: Bundle blob-authorizer lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/blob-authorizer/**/*.ts
+    generates:
+      - /tmp/blob-authorizer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
+
+  bundle:stack-deployer:
+    desc: Bundle stack-deployer lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/stack-deployer/**/*.ts
+    generates:
+      - /tmp/stack-deployer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
+
+  bundle:ui-deployer:
+    desc: Bundle ui-deployer lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/ui-deployer/**/*.ts
+    generates:
+      - /tmp/ui-deployer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - task: bundle:blob-authorizer
+      - task: bundle:stack-deployer
+      - task: bundle:ui-deployer
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -40,24 +67,24 @@ tasks:
     desc: Publish data stack template to dev channel
     cmds:
       - task: build:data-stack
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
 
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
 
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
-      - yarn run --top-level artifact-tools bundle js-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -66,5 +93,7 @@ tasks:
     cmds:
       - task: build:edge-stack
       - task: build:data-stack
-      - task: bundle
-      - yarn --top-level artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}}
+      - task: bundle:blob-authorizer
+      - task: bundle:stack-deployer
+      - task: bundle:ui-deployer
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}}

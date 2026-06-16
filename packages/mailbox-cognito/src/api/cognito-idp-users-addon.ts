@@ -5,9 +5,10 @@ import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { IAdminApiAddon, IArtifactResolver } from '@serverlessinbox/mailbox';
+import { IAdminApiAddon } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
+import type { ICdkArtifactResolver } from '../cdk-resolver';
 
 export interface CognitoIdpUsersAuthorizationConfig {
   readonly adminGroups: string[];
@@ -21,8 +22,8 @@ export interface ICognitoIdpUsersPoolConfig {
 }
 
 export interface CognitoIdpUsersAdminApiAddonProps {
-  readonly artifactResolver: IArtifactResolver;
-
+  /** Artifact resolver — provided by MailboxUserPool, not created independently. */
+  readonly artifactResolver: ICdkArtifactResolver;
 
   /** Audit events queue used by the existing audit-writer lambda. */
   readonly auditEventsQueue: IQueue;

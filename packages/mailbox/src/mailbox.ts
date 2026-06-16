@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { Construct } from 'constructs';
 import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
@@ -19,12 +17,11 @@ import { EmailProcessorLambda } from './lambdas/email-processor';
 import { CertWaiterLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
-import { ArtifactResolver } from './artifacts/artifact-resolver';
-import type { IArtifactResolver } from './artifacts/artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { CertificateWaiter } from './features/certificate-waiter';
 import { LicenseRefresh } from './features/license-refresh';
 import { MailboxDns, MailboxDomains } from './domains';
+import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
 import { IHostedZone } from 'aws-cdk-lib/aws-route53';
@@ -169,6 +166,12 @@ export interface MailboxProps {
   readonly subdomainNamespace?: string;
 
   /**
+   * CloudFormation condition indicating whether subdomainNamespace is set.
+   * When provided, domain names are emitted as CloudFormation Fn::If expressions.
+   */
+  readonly subdomainNamespaceCondition?: cdk.CfnCondition;
+
+  /**
    * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
    */
@@ -204,38 +207,6 @@ export interface MailboxOAuthClients {
   readonly jmapUi?: AuthClientConfig;
 }
 
-function resolveArtifactResolver(scope: Construct): ArtifactResolver {
-  const contextValue = scope.node.tryGetContext('artifacts');
-  if (contextValue) {
-    return createArtifactResolverFromContext(scope);
-  }
-
-  const pkgRoot = path.join(__dirname, '..');
-  const versionsPath = path.join(pkgRoot, 'artifact-versions.json');
-  const pkgJsonPath = path.join(pkgRoot, 'package.json');
-
-  let bakedVersions: Record<string, string>;
-  try {
-    bakedVersions = JSON.parse(fs.readFileSync(versionsPath, 'utf8')) as Record<string, string>;
-  } catch {
-    throw new Error(
-      `@serverlessinbox/mailbox: artifact-versions.json not found at ${versionsPath}. ` +
-      'This file is normally included in the npm package. If you are running from source, ' +
-      'set the "artifacts" CDK context key instead.',
-    );
-  }
-
-  const { version: cdkVersion } = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')) as { version: string };
-
-  return new ArtifactResolver(scope, {
-    packages: {
-      'mailbox-cdk':        { kind: 'release', version: cdkVersion },
-      'mailbox-go':         { kind: 'release', version: bakedVersions['mailbox-go'] ?? '0.0.0' },
-      'mailbox-admin-ui':   { kind: 'release', version: bakedVersions['mailbox-admin-ui'] ?? '0.0.0' },
-      'mailbox-webmail-ui': { kind: 'release', version: bakedVersions['mailbox-webmail-ui'] ?? '0.0.0' },
-    },
-  });
-}
 
 /**
  * Main Mailbox construct
@@ -244,7 +215,6 @@ export class Mailbox extends Construct {
   private readonly _blobStore: IBucket;
   private readonly _emailProcessorLambda: EmailProcessorLambda;
   private readonly _configTable: ITable;
-  private readonly artifactResolver: IArtifactResolver;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `enableAdminUi !== false`). */
@@ -285,11 +255,8 @@ export class Mailbox extends Construct {
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
-    const artifactResolverForTags = resolveArtifactResolver(this);
-    const mailboxCdkTarget = artifactResolverForTags.packages?.['mailbox-cdk'];
-    const stackVersion = mailboxCdkTarget
-      ? (mailboxCdkTarget.kind === 'release' ? mailboxCdkTarget.version : mailboxCdkTarget.kind === 'channel' ? `channel:${mailboxCdkTarget.channel}` : `track:${mailboxCdkTarget.track}`)
-      : 'unknown';
+    const artifactResolver = createArtifactResolverFromContext(this);
+    const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
     applyServerlessInboxBaseTags(this, {
       deployment: Aws.STACK_NAME,
@@ -301,7 +268,7 @@ export class Mailbox extends Construct {
     const enableAdminUi = props.enableAdminUi ?? true;
     const enableWebmailUi = props.enableWebmailUi ?? true;
 
-    const mailboxDomains = new MailboxDomains({ domainName: props.domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains });
+    const mailboxDomains = new MailboxDomains({ domainName: props.domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains, prefixConditionName: props.subdomainNamespaceCondition?.logicalId });
 
     this.urls = {
       adminUi:  `https://${mailboxDomains.admin}`,
@@ -309,9 +276,6 @@ export class Mailbox extends Construct {
       jmapApi:  `https://${mailboxDomains.jmap}`,
       adminApi: `https://${mailboxDomains.api}`,
     };
-
-    this.artifactResolver = artifactResolverForTags;
-    const artifactResolver = this.artifactResolver;
 
     // Configuration constants
 
@@ -347,10 +311,23 @@ export class Mailbox extends Construct {
     });
     applyServerlessInboxComponentTag(authKeyStore, 'auth');
 
+    // Translate bare subdomainNamespace to dot-wrapped format for edge stack.
+    // Edge stack expects: "." for no namespace, or ".{label}." for a namespace.
+    // Use Fn.conditionIf to generate the correct format based on whether namespace is present.
+    const edgePrefix: string = props.subdomainNamespaceCondition
+      ? (cdk.Fn.conditionIf(
+          props.subdomainNamespaceCondition.logicalId,
+          cdk.Fn.join('', ['.', props.subdomainNamespace ?? '', '.']),
+          '.',
+        ) as unknown as string)
+      : mailboxDomains.prefix
+        ? `.${mailboxDomains.prefix}.`
+        : '.';
+
     const edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
       domainName: props.domainName,
       artifactResolver: artifactResolver,
-      prefix: mailboxDomains.prefix,
+      prefix: edgePrefix,
       hostedZoneId: props.hostedZone?.hostedZoneId,
       hostedZoneName: props.hostedZone?.zoneName,
       itemTableArn: dataRef.itemTable.tableArn,
@@ -690,7 +667,6 @@ export class Mailbox extends Construct {
       if (typeof authProvider.createAdminApiAddons !== 'function') return [];
 
       const ctx: AdminApiAddonContext = {
-        artifactResolver,
         auditEventsQueue: auditWriting.auditEventsQueue,
       };
 

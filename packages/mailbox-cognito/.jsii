@@ -8443,61 +8443,23 @@
     }
   },
   "types": {
-    "@serverlessinbox/mailbox-cognito.BootstrapUser": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "base": "constructs.Construct",
-      "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUser",
-      "initializer": {
-        "locationInModule": {
-          "filename": "src/auth/bootstrap-user.ts",
-          "line": 28
-        },
-        "parameters": [
-          {
-            "name": "scope",
-            "type": {
-              "fqn": "constructs.Construct"
-            }
-          },
-          {
-            "name": "id",
-            "type": {
-              "primitive": "string"
-            }
-          },
-          {
-            "name": "props",
-            "type": {
-              "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUserProps"
-            }
-          }
-        ]
-      },
-      "kind": "class",
-      "locationInModule": {
-        "filename": "src/auth/bootstrap-user.ts",
-        "line": 27
-      },
-      "name": "BootstrapUser",
-      "symbolId": "src/auth/bootstrap-user:BootstrapUser"
-    },
-    "@serverlessinbox/mailbox-cognito.BootstrapUserProps": {
+    "@serverlessinbox/mailbox-cognito.BootstrapUserConfig": {
       "assembly": "@serverlessinbox/mailbox-cognito",
       "datatype": true,
-      "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUserProps",
+      "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUserConfig",
       "kind": "interface",
       "locationInModule": {
-        "filename": "src/auth/bootstrap-user.ts",
-        "line": 8
+        "filename": "src/auth/mailbox-user-pool.ts",
+        "line": 102
       },
-      "name": "BootstrapUserProps",
+      "name": "BootstrapUserConfig",
       "properties": [
         {
           "abstract": true,
           "immutable": true,
           "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 14
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 107
           },
           "name": "groups",
           "type": {
@@ -8511,26 +8473,14 @@
         },
         {
           "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 9
-          },
-          "name": "userPool",
-          "type": {
-            "fqn": "aws-cdk-lib.aws_cognito.IUserPool"
-          }
-        },
-        {
-          "abstract": true,
           "docs": {
             "remarks": "Required unless `temporaryPassword` is set.",
             "summary": "Email address for the bootstrap user."
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 13
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 106
           },
           "name": "email",
           "optional": true,
@@ -8545,8 +8495,8 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 24
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 114
           },
           "name": "sendInvite",
           "optional": true,
@@ -8557,13 +8507,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "When set, the user is created in\nFORCE_CHANGE_PASSWORD state and must change it on first login.\nThis is a temporary credential only — never use for permanent passwords.",
+            "remarks": "When set, the user is created in\nFORCE_CHANGE_PASSWORD state and must change it on first login.",
             "summary": "One-time temporary bootstrap password."
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 21
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 112
           },
           "name": "temporaryPassword",
           "optional": true,
@@ -8578,8 +8528,8 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/auth/bootstrap-user.ts",
-            "line": 11
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 104
           },
           "name": "username",
           "optional": true,
@@ -8588,208 +8538,7 @@
           }
         }
       ],
-      "symbolId": "src/auth/bootstrap-user:BootstrapUserProps"
-    },
-    "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAdminApiAddon": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "base": "constructs.Construct",
-      "docs": {
-        "remarks": "Routes: `${basePath}/{proxy+}` (ANY)\n\nThe actual handler logic lives in a provider-owned Lambda (TypeScript/Node.js, artifact-based).",
-        "summary": "Mounts a Cognito-specific IdP user management API under the main Admin API."
-      },
-      "fqn": "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAdminApiAddon",
-      "initializer": {
-        "locationInModule": {
-          "filename": "src/api/cognito-idp-users-addon.ts",
-          "line": 55
-        },
-        "parameters": [
-          {
-            "name": "scope",
-            "type": {
-              "fqn": "constructs.Construct"
-            }
-          },
-          {
-            "name": "id",
-            "type": {
-              "primitive": "string"
-            }
-          },
-          {
-            "name": "props",
-            "type": {
-              "fqn": "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAdminApiAddonProps"
-            }
-          }
-        ]
-      },
-      "interfaces": [
-        "@serverlessinbox/mailbox.IAdminApiAddon"
-      ],
-      "kind": "class",
-      "locationInModule": {
-        "filename": "src/api/cognito-idp-users-addon.ts",
-        "line": 45
-      },
-      "methods": [
-        {
-          "docs": {
-            "summary": "Mount additional routes on the Admin API behind the same authorizer."
-          },
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 89
-          },
-          "name": "addRoutes",
-          "overrides": "@serverlessinbox/mailbox.IAdminApiAddon",
-          "parameters": [
-            {
-              "name": "api",
-              "type": {
-                "fqn": "aws-cdk-lib.aws_apigatewayv2.HttpApi"
-              }
-            },
-            {
-              "name": "authorizer",
-              "type": {
-                "fqn": "aws-cdk-lib.aws_apigatewayv2_authorizers.HttpLambdaAuthorizer"
-              }
-            }
-          ]
-        }
-      ],
-      "name": "CognitoIdpUsersAdminApiAddon",
-      "properties": [
-        {
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 46
-          },
-          "name": "basePath",
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "docs": {
-            "summary": "The underlying CDK construct wrapping the Lambda function."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 53
-          },
-          "name": "lambdaFunction",
-          "type": {
-            "fqn": "constructs.Construct"
-          }
-        },
-        {
-          "docs": {
-            "summary": "Optional UI config fragment to be merged into the Admin UI `/config/config.json`."
-          },
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 47
-          },
-          "name": "uiConfig",
-          "optional": true,
-          "overrides": "@serverlessinbox/mailbox.IAdminApiAddon",
-          "type": {
-            "collection": {
-              "elementtype": {
-                "primitive": "any"
-              },
-              "kind": "map"
-            }
-          }
-        }
-      ],
-      "symbolId": "src/api/cognito-idp-users-addon:CognitoIdpUsersAdminApiAddon"
-    },
-    "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAdminApiAddonProps": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "datatype": true,
-      "fqn": "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAdminApiAddonProps",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/api/cognito-idp-users-addon.ts",
-        "line": 23
-      },
-      "name": "CognitoIdpUsersAdminApiAddonProps",
-      "properties": [
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Audit events queue used by the existing audit-writer lambda."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 25
-          },
-          "name": "auditEventsQueue",
-          "type": {
-            "fqn": "aws-cdk-lib.aws_sqs.IQueue"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Cognito pool integration (used for pool id + granting permissions)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 28
-          },
-          "name": "pool",
-          "type": {
-            "fqn": "@serverlessinbox/mailbox-cognito.ICognitoIdpUsersPoolConfig"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "remarks": "defaults to `/idp-users`.",
-            "summary": "Optional base path;"
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 32
-          },
-          "name": "basePath",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional UI config to be merged into admin-ui config.json."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 35
-          },
-          "name": "uiConfig",
-          "optional": true,
-          "type": {
-            "collection": {
-              "elementtype": {
-                "primitive": "any"
-              },
-              "kind": "map"
-            }
-          }
-        }
-      ],
-      "symbolId": "src/api/cognito-idp-users-addon:CognitoIdpUsersAdminApiAddonProps"
+      "symbolId": "src/auth/mailbox-user-pool:BootstrapUserConfig"
     },
     "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAuthorizationConfig": {
       "assembly": "@serverlessinbox/mailbox-cognito",
@@ -8798,7 +8547,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/cognito-idp-users-addon.ts",
-        "line": 12
+        "line": 13
       },
       "name": "CognitoIdpUsersAuthorizationConfig",
       "properties": [
@@ -8807,7 +8556,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 13
+            "line": 14
           },
           "name": "adminGroups",
           "type": {
@@ -8824,7 +8573,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 14
+            "line": 15
           },
           "name": "userGroups",
           "type": {
@@ -8845,14 +8594,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/cognito-idp-users-addon.ts",
-        "line": 17
+        "line": 18
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 20
+            "line": 21
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -8865,7 +8614,7 @@
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 19
+            "line": 20
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -8885,7 +8634,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/cognito-idp-users-addon.ts",
-            "line": 18
+            "line": 19
           },
           "name": "userPoolId",
           "type": {
@@ -8894,125 +8643,6 @@
         }
       ],
       "symbolId": "src/api/cognito-idp-users-addon:ICognitoIdpUsersPoolConfig"
-    },
-    "@serverlessinbox/mailbox-cognito.MailboxCognitoCustomMessage": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "base": "constructs.Construct",
-      "docs": {
-        "remarks": "This is an addon construct (keeps `MailboxUserPool` focused on user pool concerns).",
-        "summary": "Attaches the built-in artifact-based Custom Message trigger to a Cognito User Pool."
-      },
-      "fqn": "@serverlessinbox/mailbox-cognito.MailboxCognitoCustomMessage",
-      "initializer": {
-        "locationInModule": {
-          "filename": "src/auth/custom-message.ts",
-          "line": 30
-        },
-        "parameters": [
-          {
-            "name": "scope",
-            "type": {
-              "fqn": "constructs.Construct"
-            }
-          },
-          {
-            "name": "id",
-            "type": {
-              "primitive": "string"
-            }
-          },
-          {
-            "name": "props",
-            "type": {
-              "fqn": "@serverlessinbox/mailbox-cognito.MailboxCognitoCustomMessageProps"
-            }
-          }
-        ]
-      },
-      "kind": "class",
-      "locationInModule": {
-        "filename": "src/auth/custom-message.ts",
-        "line": 23
-      },
-      "name": "MailboxCognitoCustomMessage",
-      "properties": [
-        {
-          "docs": {
-            "summary": "The underlying CDK construct wrapping the Lambda function."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/custom-message.ts",
-            "line": 28
-          },
-          "name": "lambdaFunction",
-          "type": {
-            "fqn": "constructs.Construct"
-          }
-        }
-      ],
-      "symbolId": "src/auth/custom-message:MailboxCognitoCustomMessage"
-    },
-    "@serverlessinbox/mailbox-cognito.MailboxCognitoCustomMessageProps": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "datatype": true,
-      "fqn": "@serverlessinbox/mailbox-cognito.MailboxCognitoCustomMessageProps",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/auth/custom-message.ts",
-        "line": 6
-      },
-      "name": "MailboxCognitoCustomMessageProps",
-      "properties": [
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "The Cognito user pool to attach the trigger to."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/custom-message.ts",
-            "line": 8
-          },
-          "name": "userPool",
-          "type": {
-            "fqn": "aws-cdk-lib.aws_cognito.UserPool"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional login URL to include in templates."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/custom-message.ts",
-            "line": 11
-          },
-          "name": "loginUrl",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional support/contact line appended to emails."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/custom-message.ts",
-            "line": 14
-          },
-          "name": "supportText",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        }
-      ],
-      "symbolId": "src/auth/custom-message:MailboxCognitoCustomMessageProps"
     },
     "@serverlessinbox/mailbox-cognito.MailboxUserPool": {
       "assembly": "@serverlessinbox/mailbox-cognito",
@@ -9024,7 +8654,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/auth/mailbox-user-pool.ts",
-          "line": 328
+          "line": 333
         },
         "parameters": [
           {
@@ -9054,9 +8684,40 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 115
+        "line": 120
       },
       "methods": [
+        {
+          "docs": {
+            "remarks": "The artifact resolver is shared with the rest of the user pool.",
+            "summary": "Attach a bootstrap user Custom Resource to this user pool."
+          },
+          "locationInModule": {
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 458
+          },
+          "name": "addBootstrapUser",
+          "parameters": [
+            {
+              "docs": {
+                "summary": "CDK construct id — must be unique within this construct."
+              },
+              "name": "id",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "docs": {
+                "summary": "Bootstrap user configuration."
+              },
+              "name": "config",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUserConfig"
+              }
+            }
+          ]
+        },
         {
           "docs": {
             "remarks": "Intended for addon packages (e.g. SAML/OIDC federation providers).",
@@ -9064,7 +8725,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 153
+            "line": 157
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9079,7 +8740,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 316
+            "line": 321
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9096,7 +8757,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 320
+            "line": 325
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9108,7 +8769,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 307
+            "line": 311
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9140,7 +8801,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 324
+            "line": 329
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9152,7 +8813,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 454
+            "line": 488
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9170,7 +8831,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 263
+            "line": 267
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9191,7 +8852,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 230
+            "line": 234
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9214,7 +8875,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 285
+            "line": 289
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9239,7 +8900,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 136
+            "line": 139
           },
           "name": "authMethod",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9251,7 +8912,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 166
+            "line": 170
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9263,7 +8924,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 135
+            "line": 138
           },
           "name": "issuer",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9275,7 +8936,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 134
+            "line": 137
           },
           "name": "oauthDomain",
           "type": {
@@ -9289,7 +8950,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 139
+            "line": 142
           },
           "name": "policies",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9301,7 +8962,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 133
+            "line": 136
           },
           "name": "scopeMap",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9323,7 +8984,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 162
+            "line": 166
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9335,7 +8996,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 137
+            "line": 140
           },
           "name": "usePkce",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9347,7 +9008,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 116
+            "line": 121
           },
           "name": "userPool",
           "type": {
@@ -9358,7 +9019,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 117
+            "line": 122
           },
           "name": "userPoolDomain",
           "type": {
@@ -9369,26 +9030,11 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 145
+            "line": 149
           },
           "name": "userPoolId",
           "type": {
             "primitive": "string"
-          }
-        },
-        {
-          "docs": {
-            "summary": "The underlying CDK construct wrapping the custom message Lambda, if configured."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 119
-          },
-          "name": "customMessageLambda",
-          "optional": true,
-          "type": {
-            "fqn": "constructs.Construct"
           }
         }
       ],
@@ -9401,7 +9047,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 58
+        "line": 59
       },
       "name": "MailboxUserPoolAuthorizationConfig",
       "properties": [
@@ -9410,7 +9056,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 59
+            "line": 60
           },
           "name": "adminGroups",
           "optional": true,
@@ -9428,7 +9074,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 60
+            "line": 61
           },
           "name": "userGroups",
           "optional": true,
@@ -9454,7 +9100,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 35
+        "line": 36
       },
       "name": "MailboxUserPoolCognitoDomain",
       "properties": [
@@ -9466,7 +9112,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 38
+            "line": 39
           },
           "name": "cognitoDomainPrefix",
           "type": {
@@ -9478,7 +9124,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 36
+            "line": 37
           },
           "name": "kind",
           "type": {
@@ -9498,7 +9144,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 44
+        "line": 45
       },
       "name": "MailboxUserPoolCustomDomain",
       "properties": [
@@ -9510,7 +9156,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 49
+            "line": 50
           },
           "name": "certificate",
           "type": {
@@ -9525,7 +9171,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 47
+            "line": 48
           },
           "name": "domainName",
           "type": {
@@ -9537,7 +9183,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 45
+            "line": 46
           },
           "name": "kind",
           "type": {
@@ -9547,46 +9193,6 @@
       ],
       "symbolId": "src/auth/mailbox-user-pool:MailboxUserPoolCustomDomain"
     },
-    "@serverlessinbox/mailbox-cognito.MailboxUserPoolCustomMessageConfig": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "datatype": true,
-      "fqn": "@serverlessinbox/mailbox-cognito.MailboxUserPoolCustomMessageConfig",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 63
-      },
-      "name": "MailboxUserPoolCustomMessageConfig",
-      "properties": [
-        {
-          "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 64
-          },
-          "name": "loginUrl",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "abstract": true,
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 65
-          },
-          "name": "supportText",
-          "optional": true,
-          "type": {
-            "primitive": "string"
-          }
-        }
-      ],
-      "symbolId": "src/auth/mailbox-user-pool:MailboxUserPoolCustomMessageConfig"
-    },
     "@serverlessinbox/mailbox-cognito.MailboxUserPoolProps": {
       "assembly": "@serverlessinbox/mailbox-cognito",
       "datatype": true,
@@ -9594,7 +9200,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 75
+        "line": 71
       },
       "name": "MailboxUserPoolProps",
       "properties": [
@@ -9607,7 +9213,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 81
+            "line": 77
           },
           "name": "domain",
           "type": {
@@ -9628,7 +9234,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 102
+            "line": 98
           },
           "name": "authFlows",
           "optional": true,
@@ -9645,7 +9251,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 99
+            "line": 95
           },
           "name": "authorization",
           "optional": true,
@@ -9662,29 +9268,12 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 93
+            "line": 89
           },
           "name": "createDefaultGroups",
           "optional": true,
           "type": {
             "primitive": "boolean"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
-            "remarks": "If provided, the trigger is attached automatically to this user pool.",
-            "summary": "Custom message templates for Cognito emails (Custom Message trigger)."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 108
-          },
-          "name": "customMessage",
-          "optional": true,
-          "type": {
-            "fqn": "@serverlessinbox/mailbox-cognito.MailboxUserPoolCustomMessageConfig"
           }
         },
         {
@@ -9696,7 +9285,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 87
+            "line": 83
           },
           "name": "jmapScopes",
           "optional": true,
@@ -9719,7 +9308,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 68
+        "line": 64
       },
       "name": "ProvisionHeadlessClientConfig",
       "properties": [
@@ -9728,7 +9317,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 70
+            "line": 66
           },
           "name": "audiences",
           "type": {
@@ -9745,7 +9334,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 69
+            "line": 65
           },
           "name": "name",
           "type": {
@@ -9757,7 +9346,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 71
+            "line": 67
           },
           "name": "permissions",
           "type": {
@@ -9774,5 +9363,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "9WRFFcWZm5aqTYPvjk2h9zmk/1aMhiKT2J0+/1tTWhk="
+  "fingerprint": "ofjXwNr/XGyOFepAhYrfbWjYd6dvd645jFfc1Imkcoc="
 }

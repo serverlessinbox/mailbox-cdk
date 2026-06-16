@@ -1,8 +1,8 @@
-import { Aws, CustomResource, Stack } from 'aws-cdk-lib';
+import { Aws, CustomResource, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import { IArtifactResolver } from '../artifacts/artifact-resolver';
+import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackDeployerInfra } from '../utils/stack-deployer-infra';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
 
@@ -10,7 +10,7 @@ export interface MailboxEdgeDeployerProps {
   /**
    * Artifact resolver for loading Lambda code and artifact locations from S3
    */
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver: ICdkArtifactResolver;
 
   /** Base domain name (e.g. example.com) */
   readonly domainName: string;
@@ -66,7 +66,7 @@ export class MailboxEdgeDeployer extends Construct {
 
     // IMPORTANT: use the *deployed* CloudFormation stack name, not the CDK logical stack id.
     // This ensures the synthesized template behaves correctly when deployed via pure CloudFormation.
-    const edgeStackName = `${Aws.STACK_NAME}-edge-stack`;
+    const edgeStackName = `${Aws.STACK_NAME}-edge`;
     const edgeStackArn = stack.formatArn({
       service: 'cloudformation',
       region: 'us-east-1',
@@ -80,23 +80,27 @@ export class MailboxEdgeDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
     });
 
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');
+    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json');
 
     grantEdgeDeployerWorkerPermissions(infra.worker, {
       stack,
       edgeStackArn,
+      originDeployment: Aws.STACK_NAME,
+      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
+      artifactObjectArns: [
+        props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
+      ],
     });
 
     // Build CloudFormation parameters from the edge construct props
-    const blobAuthorizerKey = props.artifactResolver.getKey('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
-    const blobAuthorizerVersionId = props.artifactResolver.getVersionId('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
+    const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
 
     const deployer = props.deployer ?? 'cfn';
 
     const cfnParameters: Record<string, string> = {
       domainName: props.domainName,
-      artifactBucket: props.artifactResolver.getBucketName('us-east-1'),
-      blobAuthorizerKey: blobAuthorizerKey,
+      artifactBucket: blobAuthorizerResolved.bucket,
+      blobAuthorizerKey: blobAuthorizerResolved.key,
       itemTableArn: props.itemTableArn,
       configTableArn: props.configTableArn,
       authKeyStoreTableArn: props.authKeyStoreTableArn,
@@ -106,18 +110,24 @@ export class MailboxEdgeDeployer extends Construct {
       originRegion: Stack.of(this).region,
       productVersion: props.productVersion ?? 'unknown',
       deployer: deployer,
+      blobAuthorizerS3VersionId: blobAuthorizerResolved.versionId ?? '',
     };
 
-    // Include version ID if available in artifact resolver
-    if (blobAuthorizerVersionId) {
-      cfnParameters.blobAuthorizerS3VersionId = blobAuthorizerVersionId;
-    }
-
     // Edge template expects a dot-wrapped prefix: "." for no prefix, or ".{label}.".
-    // Accept callers passing either raw label or dot-wrapped form and normalize.
-    const rawPrefix = (props.prefix ?? '').trim();
-    const normalizedPrefixLabel = rawPrefix.replace(/^\.+/, '').replace(/\.+$/, '');
-    cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
+    // Props.prefix may be either:
+    // - A bare label (e.g., "mailbox") — normalize to dot-wrapped form
+    // - An unresolved CDK token (e.g., from Fn.conditionIf) — pass through as-is
+    // - Already dot-wrapped (e.g., ".mailbox.") — pass through as-is
+    // IMPORTANT: Check Token.isUnresolved BEFORE calling .trim(), which would resolve the token.
+    if (Token.isUnresolved(props.prefix)) {
+      // Unresolved token (e.g., Fn.conditionIf) — pass through as-is
+      cfnParameters.prefix = props.prefix as string;
+    } else {
+      // Resolved string — normalize
+      const rawPrefix = (props.prefix ?? '').trim();
+      const normalizedPrefixLabel = rawPrefix.replace(/^\.+/, '').replace(/\.+$/, '');
+      cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
+    }
 
     if (props.hostedZoneId && props.hostedZoneName) {
       cfnParameters.hostedZoneId = props.hostedZoneId;
