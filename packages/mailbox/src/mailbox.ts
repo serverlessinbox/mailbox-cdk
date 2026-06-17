@@ -41,6 +41,14 @@ import {
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 
+/**
+ * Re exports public API types and constructs for the mailbox package.
+ */
+
+export {
+  SesReceivingMode
+} from './lambdas';
+
 export interface MailboxCertificateOverrides {
   /**
    * us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>).

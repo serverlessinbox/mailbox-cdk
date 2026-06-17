@@ -4,7 +4,17 @@
 
 // Mailbox construct
 export { Mailbox } from './mailbox';
-export type { MailboxProps, MailboxOverrides, MailboxOAuthClients, MailboxCertificateOverrides, MailboxSubdomainOverrides, MailboxUrls, MailboxDataRefs, MailboxCertificates } from './mailbox';
+export type {
+  MailboxProps,
+  MailboxOverrides,
+  MailboxOAuthClients,
+  MailboxCertificateOverrides,
+  MailboxSubdomainOverrides,
+  MailboxUrls,
+  MailboxDataRefs,
+  MailboxCertificates,
+  SesReceivingMode,
+} from './mailbox';
 
 // Auth — types
 export {
