@@ -512,7 +512,7 @@ export class Mailbox extends Construct {
       jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
-      sesReceiving: props.enableReceiving && props.enableReceiving !== 'off'
+      sesReceiving: props.enableReceiving && props.enableReceiving !== 'on'
         ? { ruleSet: sesRules.ruleSet, mode: props.enableReceiving }
         : undefined,
 
