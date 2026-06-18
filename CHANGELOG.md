@@ -4,6 +4,36 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.5...v0.0.6) (Thu Jun 18 2026)
+
+### feat
+
+* first app ([9b55915](https://github.com/serverlessinbox/mailbox-cdk/commit/9b55915bd5ced7d09b747bbe0b5fe0c3a95faa30))
+
+* Public interface ([426f8a0](https://github.com/serverlessinbox/mailbox-cdk/commit/426f8a0655d4aebaf387822b7d36301c85f29b42))
+
+* Bundling code ([32f28e5](https://github.com/serverlessinbox/mailbox-cdk/commit/32f28e533efc7c943848b13819084607221997f6))
+
+* Artifacts and cloud formation template generation ([63cd1f4](https://github.com/serverlessinbox/mailbox-cdk/commit/63cd1f484055d762e81d1655adb4ea09c2295f1b))
+
+* Ses rule enablement ([9375c25](https://github.com/serverlessinbox/mailbox-cdk/commit/9375c25832cdaef6d66cd80f9d92a90a94d6eb48))
+
+* Email recieving on by default ([07c571d](https://github.com/serverlessinbox/mailbox-cdk/commit/07c571d0e57083356cfbe33f0582502c11930d51))
+
+* Cognito data stack ([bcdc04f](https://github.com/serverlessinbox/mailbox-cdk/commit/bcdc04fb1987cc99255bcfde9100a316940b9c49))
+
+### fix
+
+* Ses recieving type export ([5da222f](https://github.com/serverlessinbox/mailbox-cdk/commit/5da222f8b7636dee2193720e5bda6b96660f2daa))
+
+* Pipeline ([2fd15c3](https://github.com/serverlessinbox/mailbox-cdk/commit/2fd15c36599e5a95960a62f50bc62f5e7308a4f6))
+
+### chore
+
+* Cleanup old concepts ([9af540a](https://github.com/serverlessinbox/mailbox-cdk/commit/9af540ad38d14bb2ebd18c7708c9181824c33595))
+
+* Using artifact registry ([c767486](https://github.com/serverlessinbox/mailbox-cdk/commit/c76748699ca847fc2dc3d07c00405c4f971c0372))
+
 ## [0.0.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.4...v0.0.5) (Thu Jun 11 2026)
 
 ### feat
