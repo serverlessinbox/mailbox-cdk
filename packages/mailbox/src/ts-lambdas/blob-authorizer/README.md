@@ -39,7 +39,7 @@ Configuration is passed via CloudFront custom origin headers:
 ## JWT Verification
 
 - Uses `jsonwebtoken` library with RS256 algorithm
-- Fetches JWKS from DynamoDB (cached by jwk-dynamo-cache-updater Lambda)
+- Fetches JWKS from DynamoDB (cached by auth-key-store-updater Lambda)
 - In-memory caching of JWKS for warm Lambda invocations
 - Converts JWK to PEM format for verification
 - Validates issuer, expiration, and signature

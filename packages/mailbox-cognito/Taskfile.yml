@@ -35,15 +35,6 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node22
 
-  bundle:custom-message:
-    desc: Bundle cognito custom-message trigger lambda zip to /tmp
-    sources:
-      - src/ts-lambdas/custom-message/**/*.ts
-    generates:
-      - /tmp/cognito-custom-message.zip
-    cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/custom-message/index.ts --out /tmp/cognito-custom-message.zip --target node22
-
   bundle:bootstrap-user:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
     sources:
@@ -57,7 +48,6 @@ tasks:
     desc: Bundle all cognito lambdas to /tmp/*.zip
     cmds:
       - task: bundle:idp-users-api
-      - task: bundle:custom-message
       - task: bundle:bootstrap-user
 
   publish:dev:
@@ -66,10 +56,8 @@ tasks:
       AWS_PROFILE: serverlessinbox-dev
     cmds:
       - task: bundle:idp-users-api
-      - task: bundle:custom-message
       - task: bundle:bootstrap-user
       - task: build:cognito-data-stack
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-custom-message.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object cognito-data-stack-template.json

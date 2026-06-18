@@ -9,10 +9,6 @@ module.exports = {
       objectName: 'lambdas/cognito-idp-users-api.zip',
     },
     {
-      source: '/tmp/cognito-custom-message.zip',
-      objectName: 'lambdas/cognito-custom-message.zip',
-    },
-    {
       source: '/tmp/cognito-bootstrap-user.zip',
       objectName: 'lambdas/cognito-bootstrap-user.zip',
     },
