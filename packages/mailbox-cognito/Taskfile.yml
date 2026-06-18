@@ -1,6 +1,13 @@
 version: '3'
 
 tasks:
+  build:cognito-data-stack:
+    desc: Synthesize CloudFormation template for cognito data stack
+    cmds:
+      - yarn node --require ts-node/register tools/build-cognito-data-stack.ts
+    generates:
+      - dist/cognito-data-stack-template.json
+
   generate:proto:idp-users:
     desc: Generate TypeScript types + client for IdP Users admin API (buf). Generated output is committed.
     cmds:
@@ -54,13 +61,15 @@ tasks:
       - task: bundle:bootstrap-user
 
   publish:dev:
-    desc: Publish cognito regional ts-lambdas to dev channel
+    desc: Publish cognito regional ts-lambdas and data stack template to dev channel
     env:
       AWS_PROFILE: serverlessinbox-dev
     cmds:
       - task: bundle:idp-users-api
       - task: bundle:custom-message
       - task: bundle:bootstrap-user
+      - task: build:cognito-data-stack
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-custom-message.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object cognito-data-stack-template.json

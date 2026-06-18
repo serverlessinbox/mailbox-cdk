@@ -1,0 +1,180 @@
+import { Aws, Duration, Fn } from 'aws-cdk-lib';
+import { Architecture, Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import * as cdk from 'aws-cdk-lib';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { Construct } from 'constructs';
+import { createCognitoArtifactData } from '../artifacts';
+
+/**
+ * Self-contained scaffolding for the Cognito data stack deployer.
+ *
+ * Creates:
+ * - `worker` Lambda (15 min / 512 MB) — executes CloudFormation operations
+ * - `workflow` Step Functions state machine (20s check interval, 90 min timeout)
+ * - `starter` Lambda (1 min / 256 MB) — CloudFormation custom resource entrypoint
+ *
+ * Both worker and starter are served from the shared `mailbox-cdk` stack-deployer zip,
+ * differentiated by handler entrypoint.
+ *
+ * Worker IAM policies for Cognito / CloudFormation resources are the caller's responsibility
+ * (see MailboxCognitoDataDeployerGrants). The caller must also create the CustomResource and
+ * call `resource.node.addDependency(deployerInfra.stateMachine)`.
+ */
+export class MailboxCognitoDeployerInfra extends Construct {
+  public readonly worker: LambdaFunction;
+  public readonly starter: LambdaFunction;
+  public readonly stateMachine: sfn.StateMachine;
+
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
+
+    const resolver = createCognitoArtifactData(this);
+
+    // Both worker and starter are served from the same zip, using different handler entrypoints.
+    const code: Code = resolver.getCode('mailbox-cdk', 'lambdas/stack-deployer.zip');
+
+    // Worker Lambda: performs CloudFormation operations and polls for completion.
+    this.worker = new LambdaFunction(this, 'worker', {
+      code,
+      runtime: Runtime.NODEJS_20_X,
+      architecture: Architecture.ARM_64,
+      handler: 'index.workerHandler',
+      timeout: Duration.minutes(15),
+      memorySize: 512,
+      description: `Serverless Inbox Mailbox Cognito: stack-deployer worker (${Aws.STACK_NAME})`,
+    });
+
+    this._addLogRetention(this.worker, 'WorkerLogGroup');
+
+    // Step Functions state machine name, derived from the stack GUID for uniqueness.
+    // StackId is an ARN: arn:aws:cloudformation:region:acct:stack/stack-name/guid
+    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    const stateMachineName = Fn.join('', ['mailbox-cognito-data-deployer-', stackGuid]);
+
+    this.stateMachine = this._createStateMachine(this.worker, stateMachineName);
+
+    // Starter Lambda: CFN custom resource entrypoint — only starts the Step Functions execution.
+    this.starter = new LambdaFunction(this, 'starter', {
+      code,
+      runtime: Runtime.NODEJS_20_X,
+      architecture: Architecture.ARM_64,
+      handler: 'index.starterHandler',
+      timeout: Duration.minutes(1),
+      memorySize: 256,
+      description: `Serverless Inbox Mailbox Cognito: stack-deployer starter (${Aws.STACK_NAME})`,
+    });
+
+    this._addLogRetention(this.starter, 'StarterLogGroup');
+
+    this.starter.addEnvironment(
+      'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN',
+      this.stateMachine.stateMachineArn,
+    );
+
+    this.starter.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['states:StartExecution'],
+        resources: [this.stateMachine.stateMachineArn],
+      }),
+    );
+  }
+
+  private _addLogRetention(fn: LambdaFunction, logicalId: string): void {
+    const cfnLogGroup = new logs.CfnLogGroup(this, logicalId, {
+      logGroupName: `/aws/lambda/${fn.functionName}`,
+      retentionInDays: RetentionDays.ONE_MONTH,
+    });
+    cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+  }
+
+  /**
+   * Inlines the Step Functions workflow that drives long-running CloudFormation operations.
+   *
+   * Input shape expected by the worker:
+   * {
+   *   cfn: { ResponseURL, StackId, RequestId, LogicalResourceId, ... },
+   *   op:  { requestType, region, stackName, templateUrl, parameters, preserveOnDelete }
+   * }
+   */
+  private _createStateMachine(handler: LambdaFunction, stateMachineName: sfn.StateMachine['stateMachineName']): sfn.StateMachine {
+    const checkInterval = Duration.seconds(20);
+    const timeout = Duration.minutes(90);
+
+    // Track polling iterations so the worker can implement bounded retries.
+    const init = new sfn.Pass(this, 'Init', {
+      parameters: {
+        'cfn.$': '$.cfn',
+        'op.$': '$.op',
+        attempt: 0,
+        deleteRetryCount: 0,
+      },
+    });
+
+    const startOp = new tasks.LambdaInvoke(this, 'StartStackOperation', {
+      lambdaFunction: handler,
+      payloadResponseOnly: true,
+      resultPath: '$.start',
+      payload: sfn.TaskInput.fromObject({
+        mode: 'start',
+        cfn: sfn.JsonPath.objectAt('$.cfn'),
+        op: sfn.JsonPath.objectAt('$.op'),
+        attempt: sfn.JsonPath.numberAt('$.attempt'),
+      }),
+    });
+
+    const wait = new sfn.Wait(this, 'WaitBeforeCheck', {
+      time: sfn.WaitTime.duration(checkInterval),
+    });
+
+    const checkOp = new tasks.LambdaInvoke(this, 'CheckStackOperation', {
+      lambdaFunction: handler,
+      payloadResponseOnly: true,
+      resultPath: '$.check',
+      payload: sfn.TaskInput.fromObject({
+        mode: 'check',
+        cfn: sfn.JsonPath.objectAt('$.cfn'),
+        op: sfn.JsonPath.objectAt('$.op'),
+        attempt: sfn.JsonPath.numberAt('$.attempt'),
+        deleteRetryCount: sfn.JsonPath.numberAt('$.deleteRetryCount'),
+      }),
+    });
+
+    const incrementAttempt = new sfn.Pass(this, 'IncrementAttempt', {
+      parameters: {
+        'cfn.$': '$.cfn',
+        'op.$': '$.op',
+        'start.$': '$.start',
+        'check.$': '$.check',
+        'attempt.$': 'States.MathAdd($.attempt, 1)',
+        'deleteRetryCount.$': '$.check.deleteRetryCount',
+      },
+    });
+
+    const done = new sfn.Succeed(this, 'Done');
+
+    const checkChoice = new sfn.Choice(this, 'IsDone?')
+      .when(sfn.Condition.booleanEquals('$.check.done', true), done)
+      .otherwise(wait);
+
+    // Loop: Wait -> Check -> Choice (done? else Wait)
+    wait.next(checkOp).next(incrementAttempt).next(checkChoice);
+
+    const startChoice = new sfn.Choice(this, 'StartedOk?')
+      // If start already finalized (e.g. early failure), stop the workflow.
+      .when(sfn.Condition.booleanEquals('$.start.done', true), done)
+      .otherwise(wait);
+
+    const definition = init.next(startOp).next(startChoice);
+
+    return new sfn.StateMachine(this, 'StateMachine', {
+      definitionBody: sfn.DefinitionBody.fromChainable(definition),
+      timeout,
+      comment: 'Serverless Inbox Mailbox Cognito: cognito data stack deployer workflow',
+      stateMachineName,
+    });
+  }
+}

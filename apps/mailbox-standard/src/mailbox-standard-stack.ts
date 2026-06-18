@@ -67,14 +67,14 @@ export class MailboxStandardStack extends cdk.Stack {
     const userPool = new MailboxUserPool(this, 'UserPool', {
       domain: {
         kind: 'cognito',
-        cognitoDomainPrefix: `${cdk.Aws.STACK_NAME}-user-pool`,
+        cognitoDomainPrefix: `${cdk.Aws.STACK_NAME}`,
       },
     });
 
     userPool.addBootstrapUser({
       username: adminUsername.valueAsString,
       groups: ['admin'],
-    });   
+    });
 
     // Main mailbox construct — wires all infrastructure together.
     // The @serverlessinbox/mailbox package ships artifact-versions.json; the release

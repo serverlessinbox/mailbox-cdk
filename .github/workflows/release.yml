@@ -35,6 +35,10 @@ jobs:
         run: yarn workspace @serverlessinbox/mailbox build:edge-stack
       - name: Build data stack
         run: yarn workspace @serverlessinbox/mailbox build:data-stack
+      - name: Build cognito data stack template
+        run: yarn workspace @serverlessinbox/mailbox-cognito build:cognito-data-stack
+      - name: Bundle cognito stack deployer lambda
+        run: yarn mailbox-bundler lambda-zip --entry packages/mailbox/src/ts-lambdas/stack-deployer/index.ts --out /tmp/cognito-stack-deployer.zip
       - run: yarn gitversion pack
       - name: Start npm stub registry
         run: |

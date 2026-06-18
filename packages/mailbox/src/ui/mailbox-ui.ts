@@ -203,7 +203,6 @@ export class MailboxUi extends Construct {
     // Allow reading UI bundle artifacts from the artifacts bucket.
     // Both GetObject and GetObjectVersion are required for versioned artifact access.
     if (uiResolved) {
-      const stack = Stack.of(this);
       deployer.addToRolePolicy(
         new PolicyStatement({
           actions: [

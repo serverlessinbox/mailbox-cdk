@@ -2,7 +2,7 @@ import { Duration, Aws } from 'aws-cdk-lib';
 import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { COGNITO_LAMBDAS_ARTIFACT_PACKAGE } from '../artifacts';
+import { COGNITO_ARTIFACT_PACKAGE } from '../artifacts';
 import type { ICdkArtifactResolver } from '../cdk-resolver';
 
 export interface CognitoBootstrapUserLambdaProps {
@@ -21,7 +21,7 @@ export class CognitoBootstrapUserLambda extends Construct {
   constructor(scope: Construct, id: string, props: CognitoBootstrapUserLambdaProps) {
     super(scope, id);
 
-    const code: Code = props.artifactResolver.getCode(COGNITO_LAMBDAS_ARTIFACT_PACKAGE, 'lambdas/cognito-bootstrap-user.zip');
+    const code: Code = props.artifactResolver.getCode(COGNITO_ARTIFACT_PACKAGE, 'lambdas/cognito-bootstrap-user.zip');
 
     this.fn = new LambdaFunction(this, 'function', {
       code,

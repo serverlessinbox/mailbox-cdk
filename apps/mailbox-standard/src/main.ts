@@ -5,12 +5,12 @@ import { MailboxStandardStack } from './mailbox-standard-stack';
 
 void (async () => {
   const packageRegions: Record<string, string> = {
-    'mailbox-go':              'eu-west-1',
-    'mailbox-cdk':             'eu-west-1',
-    'mailbox-cdk-edge':        'us-east-1',
-    'mailbox-admin-ui':        'eu-west-1',
-    'mailbox-webmail-ui':      'eu-west-1',
-    'mailbox-cognito-lambdas': 'eu-west-1',
+    'mailbox-go': 'eu-west-1',
+    'mailbox-cdk': 'eu-west-1',
+    'mailbox-cdk-edge': 'us-east-1',
+    'mailbox-admin-ui': 'eu-west-1',
+    'mailbox-webmail-ui': 'eu-west-1',
+    'mailbox-cognito': 'eu-west-1',
   };
 
   const versionMap = await loadChannelVersions({

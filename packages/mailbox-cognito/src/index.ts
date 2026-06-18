@@ -6,9 +6,9 @@
 export { MailboxUserPool } from './auth/mailbox-user-pool';
 export type {
   MailboxUserPoolProps,
+  MailboxUserPoolDomainConfig,
   MailboxUserPoolCognitoDomain,
   MailboxUserPoolCustomDomain,
-  MailboxUserPoolDomain,
   MailboxUserPoolAuthorizationConfig,
   ProvisionHeadlessClientConfig,
   BootstrapUserConfig,
@@ -24,4 +24,7 @@ export type {
 
 
 // Artifacts
-export { COGNITO_LAMBDAS_ARTIFACT_PACKAGE } from './artifacts';
+export { COGNITO_ARTIFACT_PACKAGE } from './artifacts';
+
+// Cognito data stack
+export * from './cognito';
