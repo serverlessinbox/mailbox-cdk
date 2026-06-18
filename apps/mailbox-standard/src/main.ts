@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as path from 'path';
-import { loadChannelVersions, readArtifactVersions } from '@serverlessinbox/artifact-tools';
+import { loadChannelVersions, readArtifactVersions } from '@serverlessinbox/artifact-registry';
 import { MailboxStandardStack } from './mailbox-standard-stack';
 
 void (async () => {

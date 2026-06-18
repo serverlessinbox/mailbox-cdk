@@ -721,8 +721,12 @@ const RAW_RUNTIME_STATE =
       "npm:0.11.0"\
     ],\
     [\
+      "@serverlessinbox/artifact-registry",\
+      "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.25"\
+    ],\
+    [\
       "@serverlessinbox/artifact-tools",\
-      "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.24"\
+      "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"\
     ],\
     [\
       "@serverlessinbox/mailbox",\
@@ -3153,7 +3157,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
-          ["@serverlessinbox/artifact-tools", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-registry", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.25"],\
           ["@types/node", "npm:24.10.1"],\
           ["mailbox-cdk", "workspace:."],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
@@ -6029,22 +6033,22 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
-    ["@serverlessinbox/artifact-tools", [\
-      ["npm:0.0.24", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.24-0e8c19e843-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+    ["@serverlessinbox/artifact-registry", [\
+      ["npm:0.0.25", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-registry-npm-0.0.25-5cf6029df2-10c0.zip/node_modules/@serverlessinbox/artifact-registry/",\
         "packageDependencies": [\
-          ["@serverlessinbox/artifact-tools", "npm:0.0.24"]\
+          ["@serverlessinbox/artifact-registry", "npm:0.0.25"]\
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.24", {\
-        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-b9d41b1394/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.24-0e8c19e843-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+      ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.25", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-registry-virtual-6f94320a05/6/.yarn/berry/cache/@serverlessinbox-artifact-registry-npm-0.0.25-5cf6029df2-10c0.zip/node_modules/@serverlessinbox/artifact-registry/",\
         "packageDependencies": [\
           ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
-          ["@serverlessinbox/artifact-tools", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-registry", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.25"],\
           ["@types/jwpkg__gitversion", null],\
-          ["clipanion", "virtual:b9d41b139481e8321b0fa994ad103175529ed34ad92bad158b8c697da7b2eafaca3752cae7b0949da430a070ce731c26689893e5077bc21ff39ebbba46f58991#npm:3.2.1"],\
+          ["clipanion", "virtual:6f94320a05ed09c50c19f00368fa1a16c9bbd36567299c3d5f9f326194e68329571c3b5458e0856c8e334e318fba2b814db48b58758a592eac0325d6b1b0b4be#npm:3.2.1"],\
           ["esbuild", "npm:0.27.1"],\
           ["semver", "npm:7.8.1"]\
         ],\
@@ -6054,14 +6058,40 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "HARD"\
       }],\
-      ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24", {\
-        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-a325fc27b5/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.24-0e8c19e843-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+      ["virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.25", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-registry-virtual-c3273f7501/6/.yarn/berry/cache/@serverlessinbox-artifact-registry-npm-0.0.25-5cf6029df2-10c0.zip/node_modules/@serverlessinbox/artifact-registry/",\
         "packageDependencies": [\
           ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@jwpkg/gitversion", null],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-registry", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.25"],\
           ["@types/jwpkg__gitversion", null],\
-          ["clipanion", "virtual:b9d41b139481e8321b0fa994ad103175529ed34ad92bad158b8c697da7b2eafaca3752cae7b0949da430a070ce731c26689893e5077bc21ff39ebbba46f58991#npm:3.2.1"],\
+          ["clipanion", "virtual:6f94320a05ed09c50c19f00368fa1a16c9bbd36567299c3d5f9f326194e68329571c3b5458e0856c8e334e318fba2b814db48b58758a592eac0325d6b1b0b4be#npm:3.2.1"],\
+          ["esbuild", "npm:0.27.1"],\
+          ["semver", "npm:7.8.1"]\
+        ],\
+        "packagePeers": [\
+          "@jwpkg/gitversion",\
+          "@types/jwpkg__gitversion"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@serverlessinbox/artifact-tools", [\
+      ["npm:0.0.24", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.24-0e8c19e843-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-tools", "npm:0.0.24"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-tools-virtual-e932eb7208/6/.yarn/berry/cache/@serverlessinbox-artifact-tools-npm-0.0.24-0e8c19e843-10c0.zip/node_modules/@serverlessinbox/artifact-tools/",\
+        "packageDependencies": [\
+          ["@aws-sdk/client-s3", "npm:3.1058.0"],\
+          ["@jwpkg/gitversion", null],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"],\
+          ["@types/jwpkg__gitversion", null],\
+          ["clipanion", "virtual:6f94320a05ed09c50c19f00368fa1a16c9bbd36567299c3d5f9f326194e68329571c3b5458e0856c8e334e318fba2b814db48b58758a592eac0325d6b1b0b4be#npm:3.2.1"],\
           ["esbuild", "npm:0.27.1"],\
           ["semver", "npm:7.8.1"]\
         ],\
@@ -6081,7 +6111,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-dynamodb", "npm:3.1061.0"],\
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#workspace:packages/mailbox-bundler"],\
           ["@types/aws-cdk-lib", null],\
@@ -6121,7 +6151,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-dynamodb", "npm:3.1061.0"],\
           ["@aws-sdk/client-s3", "npm:3.1061.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1061.0"],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#workspace:packages/mailbox-bundler"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
@@ -6198,7 +6228,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.1061.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1061.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#workspace:packages/mailbox-bundler"],\
@@ -6233,7 +6263,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.1061.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1061.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-tools", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#npm:0.0.24"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:c177c791d8a5aa4f5766d0ae98608d96c30d09958ae47030a14a6e5e4e47f2f0d727f745339cf3fcf02a50c1c6a576a74c5bfdea503525dc72065e1720ac50d2#workspace:packages/mailbox-bundler"],\
@@ -6280,7 +6310,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:apps/mailbox-standard", {\
         "packageLocation": "./apps/mailbox-standard/",\
         "packageDependencies": [\
-          ["@serverlessinbox/artifact-tools", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-registry", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#npm:0.0.25"],\
           ["@serverlessinbox/mailbox", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-cognito", "virtual:56fba7b831b802aced9cf46ac36d2ffb4e2d865badbbb72cdb9c4b264b003498a21e5e6fbe051c1f3b78cbaefcbfcbe7f72ddbb8a60f886b5b668d62a0aab5cd#workspace:packages/mailbox-cognito"],\
           ["@serverlessinbox/mailbox-standard", "workspace:apps/mailbox-standard"],\
@@ -9054,11 +9084,11 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4", {\
-        "packageLocation": "./.yarn/__virtual__/clipanion-virtual-4a3c099085/6/.yarn/berry/cache/clipanion-npm-4.0.0-rc.4-40deb7eb3b-10c0.zip/node_modules/clipanion/",\
+      ["virtual:6f94320a05ed09c50c19f00368fa1a16c9bbd36567299c3d5f9f326194e68329571c3b5458e0856c8e334e318fba2b814db48b58758a592eac0325d6b1b0b4be#npm:3.2.1", {\
+        "packageLocation": "./.yarn/__virtual__/clipanion-virtual-93d6e9aa70/6/.yarn/berry/cache/clipanion-npm-3.2.1-fc9187f56c-10c0.zip/node_modules/clipanion/",\
         "packageDependencies": [\
           ["@types/typanion", null],\
-          ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
+          ["clipanion", "virtual:6f94320a05ed09c50c19f00368fa1a16c9bbd36567299c3d5f9f326194e68329571c3b5458e0856c8e334e318fba2b814db48b58758a592eac0325d6b1b0b4be#npm:3.2.1"],\
           ["typanion", "npm:3.14.0"]\
         ],\
         "packagePeers": [\
@@ -9066,11 +9096,11 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "HARD"\
       }],\
-      ["virtual:b9d41b139481e8321b0fa994ad103175529ed34ad92bad158b8c697da7b2eafaca3752cae7b0949da430a070ce731c26689893e5077bc21ff39ebbba46f58991#npm:3.2.1", {\
-        "packageLocation": "./.yarn/__virtual__/clipanion-virtual-55199c33ea/6/.yarn/berry/cache/clipanion-npm-3.2.1-fc9187f56c-10c0.zip/node_modules/clipanion/",\
+      ["virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4", {\
+        "packageLocation": "./.yarn/__virtual__/clipanion-virtual-4a3c099085/6/.yarn/berry/cache/clipanion-npm-4.0.0-rc.4-40deb7eb3b-10c0.zip/node_modules/clipanion/",\
         "packageDependencies": [\
           ["@types/typanion", null],\
-          ["clipanion", "virtual:b9d41b139481e8321b0fa994ad103175529ed34ad92bad158b8c697da7b2eafaca3752cae7b0949da430a070ce731c26689893e5077bc21ff39ebbba46f58991#npm:3.2.1"],\
+          ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
           ["typanion", "npm:3.14.0"]\
         ],\
         "packagePeers": [\
@@ -12091,7 +12121,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
-          ["@serverlessinbox/artifact-tools", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.24"],\
+          ["@serverlessinbox/artifact-registry", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.0.25"],\
           ["@types/node", "npm:24.10.1"],\
           ["mailbox-cdk", "workspace:."],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\

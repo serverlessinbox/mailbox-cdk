@@ -41,5 +41,5 @@ jobs:
         run: yarn workspace @serverlessinbox/mailbox-standard synth
 
       - name: Publish release artifacts
-        run: yarn artifact-tools publish release --version $VERSION
+        run: yarn artifact-registry publish release --version $VERSION
         working-directory: apps/mailbox-standard

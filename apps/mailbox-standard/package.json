@@ -14,7 +14,7 @@
     "constructs": "^10.0.0"
   },
   "devDependencies": {
-    "@serverlessinbox/artifact-tools": "^0.0.24",
+    "@serverlessinbox/artifact-registry": "^0.0.25",
     "@types/node": "^24.10.1",
     "aws-cdk": "^2.224.0",
     "ts-node": "^10.9.2",
