@@ -13,6 +13,10 @@ module.exports = {
       objectName: 'lambdas/ui-deployer.zip',
     },
     {
+      source: '/tmp/stack-helpers.zip',
+      objectName: 'lambdas/stack-helpers.zip',
+    },
+    {
       source: 'dist/data-stack-template.json',
       objectName: 'data-stack-template.json',
     },

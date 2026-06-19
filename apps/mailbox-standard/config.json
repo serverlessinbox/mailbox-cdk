@@ -1,14 +1,9 @@
 {
   "parameters": [
     {
-      "name": "domainName",
-      "type": "String",
-      "description": "Your domain name for the mailbox (e.g. mail.example.com)"
-    },
-    {
       "name": "hostedZoneId",
       "type": "String",
-      "description": "Route53 hosted zone ID for domainName"
+      "description": "Route53 hosted zone ID. The domain name is derived automatically."
     },
     {
       "name": "adminUsername",

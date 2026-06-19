@@ -28,6 +28,13 @@ export class MailboxDataStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxDataStackProps = {}) {
     super(scope, id, props);
 
+    // S3 name base parameter (required).
+    // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
+    const s3NameBaseParam = new cdk.CfnParameter(this, 's3NameBase', {
+      type: 'String',
+      description: 'S3-safe base for bucket names',
+    });
+
     // Resolve encryption settings once. For aws-managed mode this emits
     // TableEncryption.AWS_MANAGED / BucketEncryption.KMS_MANAGED without an explicit
     // encryptionKey, so CloudFormation resolves the key in the deploying account rather
@@ -35,7 +42,7 @@ export class MailboxDataStack extends cdk.Stack {
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
 
     // Create resources
-    const blobStore = new BlobStore(this, encryptionPlan.blobStore);
+    const blobStore = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, s3NameBase: s3NameBaseParam.valueAsString });
     const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
     const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
     const changelogTable = new ChangelogTable(this, encryptionPlan.dynamoTables);

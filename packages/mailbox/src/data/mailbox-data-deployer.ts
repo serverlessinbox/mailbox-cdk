@@ -11,6 +11,8 @@ export interface MailboxDataDeployerProps {
   readonly artifactResolver: ICdkArtifactResolver;
   /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
   readonly dataStackName?: string;
+  /** S3-safe base for bucket names */
+  readonly s3NameBase: string;
 }
 
 /**
@@ -65,6 +67,7 @@ export class MailboxDataDeployer extends Construct {
         stackName: dataStackNameToken,
         templateUrl,
         preserveOnDelete: true,
+        parameters: { s3NameBase: props.s3NameBase },
       },
     });
 

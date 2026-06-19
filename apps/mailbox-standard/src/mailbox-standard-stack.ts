@@ -1,5 +1,4 @@
 import * as cdk from 'aws-cdk-lib';
-import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { Mailbox } from '@serverlessinbox/mailbox';
 import { MailboxUserPool } from '@serverlessinbox/mailbox-cognito';
@@ -25,14 +24,9 @@ export class MailboxStandardStack extends cdk.Stack {
     }
 
     // CloudFormation parameters — deployer fills these in at deploy time.
-    const domainName = new cdk.CfnParameter(this, 'domainName', {
-      type: 'String',
-      description: 'Base domain name for the mailbox deployment (e.g. mail.example.com).',
-    });
-
     const hostedZoneId = new cdk.CfnParameter(this, 'hostedZoneId', {
       type: 'AWS::Route53::HostedZone::Id',
-      description: 'Route 53 hosted zone ID that contains domainName.',
+      description: 'Route 53 hosted zone ID. The domain name is derived automatically at deploy time.',
     });
 
     const adminUsername = new cdk.CfnParameter(this, 'adminUsername', {
@@ -49,18 +43,6 @@ export class MailboxStandardStack extends cdk.Stack {
         '(e.g. "mailbox" yields api.mailbox.example.com). Leave empty for no namespace.',
       allowedPattern: '^$|^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$',
       constraintDescription: 'Leave empty or provide a valid DNS label: lowercase letters, digits, and hyphens only (no dots). Max 63 characters.',
-    });
-
-    const hasNamespace = new cdk.CfnCondition(this, 'HasNamespace', {
-      expression: cdk.Fn.conditionNot(
-        cdk.Fn.conditionEquals(subdomainNamespace.valueAsString, ''),
-      ),
-    });
-
-    // Route 53 hosted zone (looked up by attributes at deploy time, not synthesis time).
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
-      hostedZoneId: hostedZoneId.valueAsString,
-      zoneName: domainName.valueAsString,
     });
 
     // Cognito user pool — uses a Cognito-managed OAuth domain unique to this stack.
@@ -80,14 +62,12 @@ export class MailboxStandardStack extends cdk.Stack {
     // The @serverlessinbox/mailbox package ships artifact-versions.json; the release
     // pipeline runs embed-component-versions before cdk synth to pin v{version} keys.
     const mailbox = new Mailbox(this, 'Mailbox', {
-      domainName: domainName.valueAsString,
-      hostedZone,
+      hostedZoneId: hostedZoneId.valueAsString,
       authProvider: userPool,
       subdomainNamespace: subdomainNamespace.valueAsString,
-      subdomainNamespaceCondition: hasNamespace,
       enableReceiving: 'on',
-      // CORS origins are derived from domainName by the construct itself
-      // (admin.<domain> and webmail.<domain> are added automatically).
+      // Domain name and S3-safe stack name are derived from the hosted zone at deploy time
+      // via a custom resource (admin.<domain> and webmail.<domain> are added automatically).
     });
 
     // ── Stack outputs ────────────────────────────────────────────────────────

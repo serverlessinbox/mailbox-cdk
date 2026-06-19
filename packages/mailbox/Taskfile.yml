@@ -46,12 +46,22 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
 
+  bundle:stack-helpers:
+    desc: Bundle stack-helpers lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/stack-helpers/**/*.ts
+    generates:
+      - /tmp/stack-helpers.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
       - task: bundle:blob-authorizer
       - task: bundle:stack-deployer
       - task: bundle:ui-deployer
+      - task: bundle:stack-helpers
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -83,8 +93,10 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
       - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
+      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -96,4 +108,5 @@ tasks:
       - task: bundle:blob-authorizer
       - task: bundle:stack-deployer
       - task: bundle:ui-deployer
+      - task: bundle:stack-helpers
       - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}}

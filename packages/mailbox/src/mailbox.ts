@@ -24,7 +24,7 @@ import { MailboxDns, MailboxDomains } from './domains';
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { MailboxEdgeDeployer } from './edge';
-import { IHostedZone } from 'aws-cdk-lib/aws-route53';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -40,6 +40,7 @@ import {
 } from './utils/serverless-inbox-tags';
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
+import { StackHelpers } from './utils/stack-helpers';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -138,6 +139,11 @@ export interface MailboxOverrides {
   readonly dataStack?: MailboxDataStackRef;
 
   /**
+   * Custom data stack name. When omitted, defaults to "${AWS::StackName}-data".
+   */
+  readonly dataStackName?: string;
+
+  /**
    * ACM certificate overrides. When omitted, certificates are auto-created
    * (requires hostedZone). Supply individual fields to bypass auto-creation
    * for specific endpoints (e.g., manual DNS or cross-account certificate).
@@ -153,8 +159,8 @@ export interface MailboxOverrides {
 }
 
 export interface MailboxProps {
-  readonly hostedZone?: IHostedZone;
-  readonly domainName: string;
+  /** Route53 hosted zone ID. The domain name is derived at deploy time via StackHelpers. */
+  readonly hostedZoneId?: string;
 
   /** Optional KMS configuration for at-rest encryption of core resources. */
   readonly kms?: MailboxKmsConfig;
@@ -172,13 +178,6 @@ export interface MailboxProps {
    * Must be a valid single DNS label (no dots).
    */
   readonly subdomainNamespace?: string;
-
-  /**
-   * CloudFormation condition indicating whether subdomainNamespace is set.
-   * When provided, domain names are emitted as CloudFormation Fn::If expressions.
-   */
-  readonly subdomainNamespaceCondition?: cdk.CfnCondition;
-
   /**
    * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
    * Defaults to true.
@@ -273,10 +272,34 @@ export class Mailbox extends Construct {
       product: 'mailbox',
     });
 
+    // Derive domain name and S3-safe stack name from hosted zone at deploy time.
+    const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
+
+    const stackHelpers = new StackHelpers(this, 'stack-helpers', {
+      artifactResolver,
+      hostedZoneId: props.hostedZoneId ?? '',
+      dataStackName: effectiveDataStackName,
+    });
+
+    const domainName: string = stackHelpers.derivedDomainName;
+    const s3NameBase: string = stackHelpers.derivedS3SafeDataStackName;
+
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', {
+      hostedZoneId: props.hostedZoneId ?? '',
+      zoneName: domainName,
+    });
+
+    const subdomainNamespaceCondition = props.subdomainNamespace !== undefined
+      ? new cdk.CfnCondition(this, 'HasSubdomainNamespace', {
+          expression: cdk.Fn.conditionNot(
+            cdk.Fn.conditionEquals(props.subdomainNamespace, ''),
+          ),
+        })
+      : undefined;
     const enableAdminUi = props.enableAdminUi ?? true;
     const enableWebmailUi = props.enableWebmailUi ?? true;
 
-    const mailboxDomains = new MailboxDomains({ domainName: props.domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains, prefixConditionName: props.subdomainNamespaceCondition?.logicalId });
+    const mailboxDomains = new MailboxDomains({ domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains, prefixConditionName: subdomainNamespaceCondition?.logicalId });
 
     this.urls = {
       adminUi:  `https://${mailboxDomains.admin}`,
@@ -291,7 +314,11 @@ export class Mailbox extends Construct {
     this.emailQueueProps = encryptionPlan.queues;
 
     // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
-    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', { artifactResolver });
+    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', {
+      artifactResolver,
+      dataStackName: props.overrides?.dataStackName,
+      s3NameBase,
+    });
 
     this._blobStore   = dataRef.blobStore;
     this._configTable = dataRef.configTable;
@@ -322,9 +349,9 @@ export class Mailbox extends Construct {
     // Translate bare subdomainNamespace to dot-wrapped format for edge stack.
     // Edge stack expects: "." for no namespace, or ".{label}." for a namespace.
     // Use Fn.conditionIf to generate the correct format based on whether namespace is present.
-    const edgePrefix: string = props.subdomainNamespaceCondition
+    const edgePrefix: string = subdomainNamespaceCondition
       ? (cdk.Fn.conditionIf(
-          props.subdomainNamespaceCondition.logicalId,
+          subdomainNamespaceCondition.logicalId,
           cdk.Fn.join('', ['.', props.subdomainNamespace ?? '', '.']),
           '.',
         ) as unknown as string)
@@ -333,11 +360,11 @@ export class Mailbox extends Construct {
         : '.';
 
     const edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
-      domainName: props.domainName,
+      domainName,
       artifactResolver: artifactResolver,
       prefix: edgePrefix,
-      hostedZoneId: props.hostedZone?.hostedZoneId,
-      hostedZoneName: props.hostedZone?.zoneName,
+      hostedZoneId: props.hostedZoneId,
+      hostedZoneName: domainName,
       itemTableArn: dataRef.itemTable.tableArn,
       configTableArn: dataRef.configTable.tableArn,
       authKeyStoreTableArn: authKeyStore.table.tableArn,
@@ -348,7 +375,7 @@ export class Mailbox extends Construct {
 
     const edgeCertificate = edgeStack.edgeCertificate;
 
-    const hasHostedZone = Boolean(props.hostedZone?.hostedZoneId && props.hostedZone?.zoneName);
+    const hasHostedZone = Boolean(props.hostedZoneId);
     const useCustomCdnDomain = Boolean(props.overrides?.certificates?.cloudFront || hasHostedZone);
 
     const defaultUiCertificate = hasHostedZone ? edgeCertificate : undefined;
@@ -370,13 +397,13 @@ export class Mailbox extends Construct {
     if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
       const cfnCert = new acm.CfnCertificate(this, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
-        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${props.domainName}`],
+        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${domainName}`],
         validationMethod: 'DNS',
         domainValidationOptions: [
-          { domainName: mailboxDomains.api, hostedZoneId: props.hostedZone!.hostedZoneId },
-          { domainName: mailboxDomains.jmap, hostedZoneId: props.hostedZone!.hostedZoneId },
-          { domainName: mailboxDomains.ws, hostedZoneId: props.hostedZone!.hostedZoneId },
-          { domainName: `mcp.${props.domainName}`, hostedZoneId: props.hostedZone!.hostedZoneId },
+          { domainName: mailboxDomains.api, hostedZoneId: props.hostedZoneId! },
+          { domainName: mailboxDomains.jmap, hostedZoneId: props.hostedZoneId! },
+          { domainName: mailboxDomains.ws, hostedZoneId: props.hostedZoneId! },
+          { domainName: `mcp.${domainName}`, hostedZoneId: props.hostedZoneId! },
         ],
       });
       regionalSanCertificate = acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', cfnCert.ref);
@@ -506,7 +533,7 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(sesRules, 'email');
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
-      domain: props.domainName,
+      domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable: dataRef.configTable,
       jwkCacheTable: authKeyStore.table,
@@ -709,7 +736,7 @@ export class Mailbox extends Construct {
       jmapApiGateway: this._jmapApi.httpApi,
       authorizerLambda: this._jmapApi.authorizerLambda,
       certificate: this.certificates.regional!,
-      domainName: props.domainName,
+      domainName: domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
     }) : undefined;
 
@@ -731,7 +758,7 @@ export class Mailbox extends Construct {
     if (hasHostedZone) {
       new MailboxDns(this, 'dns', {
         names: mailboxDomains,
-        hostedZone: props.hostedZone,
+        hostedZone: hostedZone,
         cnameTargets: {
           admin: adminUiCnameTarget,
           webmail: webmailUiCnameTarget,

@@ -1,5 +1,5 @@
 import { BlockPublicAccess, BucketEncryption } from "aws-cdk-lib/aws-s3";
-import { Aws, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Aws, Duration, RemovalPolicy, Stack, IResolvable } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { StackNamedBucket } from "../utils/named-bucket";
 import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForRetainedResources } from "../utils/development-mode";
@@ -9,6 +9,8 @@ import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 export interface BlobStoreProps {
   /** Optional customer-managed CMK to use for SSE-KMS. */
   readonly encryptionKey?: kms.IKey;
+  /** Optional S3-safe base for bucket names (replaces Aws.STACK_NAME when provided) */
+  readonly s3NameBase?: string | IResolvable;
 }
 
 export class BlobStore extends StackNamedBucket {
@@ -20,6 +22,7 @@ export class BlobStore extends StackNamedBucket {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
       encryptionKey: props.encryptionKey,
+      s3NameBase: props.s3NameBase,
       autoDeleteObjects: autoDeleteObjectsInDevelopment(scope),
       lifecycleRules: [
         {
