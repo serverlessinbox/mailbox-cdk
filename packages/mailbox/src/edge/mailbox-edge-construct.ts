@@ -7,7 +7,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import type { ResolvedArtifact } from '@serverlessinbox/artifact-tools';
+import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */

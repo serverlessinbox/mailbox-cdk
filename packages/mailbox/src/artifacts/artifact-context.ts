@@ -1,8 +1,8 @@
 import { IConstruct } from 'constructs';
 import { Stack } from 'aws-cdk-lib';
 import { CdkArtifactResolver } from './cdk-artifact-resolver';
-import { readArtifactVersions } from '@serverlessinbox/artifact-tools';
-import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-tools';
+import { readArtifactVersions } from '@serverlessinbox/artifact-registry';
+import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-registry';
 import * as path from 'path';
 import { readFileSync } from 'fs';
 

@@ -1,8 +1,8 @@
 import { Code } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
 import type { IConstruct } from 'constructs';
-import { ArtifactResolver } from '@serverlessinbox/artifact-tools';
-import type { IArtifactResolver, ArtifactResolverFactoryOptions } from '@serverlessinbox/artifact-tools';
+import { ArtifactResolver } from '@serverlessinbox/artifact-registry';
+import type { IArtifactResolver, ArtifactResolverFactoryOptions } from '@serverlessinbox/artifact-registry';
 
 export interface ICdkArtifactResolver extends IArtifactResolver {
   getCode(packageName: string, objectPath: string): Code;

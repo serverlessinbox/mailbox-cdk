@@ -77,7 +77,7 @@ tasks:
     desc: Publish data stack template to dev channel
     cmds:
       - task: build:data-stack
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
 
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
@@ -85,8 +85,8 @@ tasks:
       - task: build:edge-stack
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip --target node22 --external aws-sdk
       - du -sh /tmp/blob-authorizer.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
 
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
@@ -94,9 +94,9 @@ tasks:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -109,4 +109,4 @@ tasks:
       - task: bundle:stack-deployer
       - task: bundle:ui-deployer
       - task: bundle:stack-helpers
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}}
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}

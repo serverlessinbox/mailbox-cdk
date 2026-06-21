@@ -58,6 +58,6 @@ tasks:
       - task: bundle:idp-users-api
       - task: bundle:bootstrap-user
       - task: build:cognito-data-stack
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip
-      - yarn  artifact-tools publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object cognito-data-stack-template.json
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object cognito-data-stack-template.json
