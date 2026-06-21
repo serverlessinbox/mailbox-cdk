@@ -17,6 +17,8 @@ export interface AdminApiLambdaProps {
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
   artifactResolver: ICdkArtifactResolver;
+  /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
+  sesRuleSetName?: string;
 }
 
 export class AdminApiLambda extends GoLambda {
@@ -73,6 +75,13 @@ export class AdminApiLambda extends GoLambda {
     }));
   }
 
+  private grantSesReceivingAccess() {
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["ses:DescribeActiveReceiptRuleSet"],
+      resources: ["*"],
+    }));
+  }
+
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
       lambdaId: 'admin-api',
@@ -97,6 +106,11 @@ export class AdminApiLambda extends GoLambda {
     this.grantRoute53Access();
     this.grantServiceQuotasAccess();
     this.grantLicenseApiAccess();
+
+    if (props.sesRuleSetName) {
+      this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
+      this.grantSesReceivingAccess();
+    }
 
     props.auditLogTable.grantReadData(this);
     props.mailFeedbackTable.grantReadData(this);

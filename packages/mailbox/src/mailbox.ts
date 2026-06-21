@@ -539,9 +539,10 @@ export class Mailbox extends Construct {
       jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
-      sesReceiving: props.enableReceiving && props.enableReceiving !== 'on'
+      sesReceiving: props.enableReceiving
         ? { ruleSet: sesRules.ruleSet, mode: props.enableReceiving }
         : undefined,
+      sesSendEnabled: true,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,
@@ -728,6 +729,8 @@ export class Mailbox extends Construct {
 
       domainName: apiCertificate ? mailboxDomains.api : undefined,
       certificate: apiCertificate,
+
+      sesRuleSetName: sesRules.ruleSetName,
     });
     applyServerlessInboxComponentTag(adminApi, 'api');
 

@@ -18,8 +18,11 @@ export const handler = wrapHandler(async (event) => {
   const hostedZoneId: string  = event.ResourceProperties?.HostedZoneId ?? '';
   const dataStackName: string = event.ResourceProperties?.DataStackName ?? '';
 
-  const resp = await r53.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
-  const domainName = (resp.HostedZone?.Name ?? '').replace(/\.$/, '');
+  let domainName = '';
+  if (hostedZoneId) {
+    const resp = await r53.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
+    domainName = (resp.HostedZone?.Name ?? '').replace(/\.$/, '');
+  }
   const s3SafeDataStackName = sanitizeStackName(dataStackName);
 
   return { Data: { domainName, s3SafeDataStackName } };

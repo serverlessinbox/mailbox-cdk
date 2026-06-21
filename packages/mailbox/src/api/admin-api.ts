@@ -44,6 +44,9 @@ export interface AdminApiProps {
 
   /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
   readonly certificate?: acm.ICertificate;
+
+  /** Name of the SES receipt rule set. Passed to the handler for setup-flow SES readiness checks. */
+  readonly sesRuleSetName?: string;
 }
 
 export class AdminApi extends Construct {
@@ -107,6 +110,7 @@ export class AdminApi extends Construct {
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue: props.auditEventsQueue,
       artifactResolver: props.artifactResolver,
+      sesRuleSetName: props.sesRuleSetName,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 

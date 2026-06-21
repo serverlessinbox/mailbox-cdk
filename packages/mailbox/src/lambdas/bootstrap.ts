@@ -17,6 +17,8 @@ export interface BootstrapLambdaProps {
     ruleSet: IReceiptRuleSet;
     mode: SesReceivingMode;
   };
+  /** When true, sets SES_SEND_ENABLED=on so the bootstrap marks the default domain as send-capable. */
+  sesSendEnabled?: boolean;
 }
 
 export class BootstrapLambda extends GoLambda {
@@ -60,18 +62,14 @@ export class BootstrapLambda extends GoLambda {
       const { ruleSet, mode } = props.sesReceiving;
       this.addEnvironment('SES_RULE_SET_NAME', ruleSet.receiptRuleSetName);
       this.addEnvironment('SES_RECEIVING_MODE', mode);
-      if (mode === 'on' || mode === 'forced') {
-        this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-          actions: ['ses:SetActiveReceiptRuleSet'],
-          resources: ['*'],
-        }));
-      }
-      if (mode === 'on') {
-        this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-          actions: ['ses:DescribeActiveReceiptRuleSet'],
-          resources: ['*'],
-        }));
-      }
+      this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+        actions: ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
+        resources: ['*'],
+      }));
+    }
+
+    if (props.sesSendEnabled) {
+      this.addEnvironment('SES_SEND_ENABLED', 'on');
     }
   }
 }

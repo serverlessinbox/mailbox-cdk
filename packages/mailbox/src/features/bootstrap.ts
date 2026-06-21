@@ -31,6 +31,8 @@ export interface BootstrapProps {
     ruleSet: IReceiptRuleSet;
     mode: SesReceivingMode;
   };
+  /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
+  readonly sesSendEnabled?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export class Bootstrap extends Construct {
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
       sesReceiving: props.sesReceiving,
+      sesSendEnabled: props.sesSendEnabled,
     });
     this.handler = handler;
 

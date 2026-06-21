@@ -29,7 +29,7 @@ export class StackHelpers extends Construct {
     });
 
     fn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['route53:GetHostedZone'],
+      actions: ['route53:GetHostedZone', 'route53:ListHostedZones'],
       resources: ['*'],
     }));
 
