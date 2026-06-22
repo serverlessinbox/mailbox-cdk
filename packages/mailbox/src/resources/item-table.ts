@@ -22,5 +22,10 @@ export class ItemTable extends StackNamedTable {
       partitionKey: { name: 'gsi2pk', type: AttributeType.STRING },
       sortKey: { name: 'gsi2sk', type: AttributeType.STRING },
     });
+    this.addGlobalSecondaryIndex({
+      indexName: 'gsi3',
+      partitionKey: { name: 'gsi3pk', type: AttributeType.STRING },
+      sortKey: { name: 'gsi3sk', type: AttributeType.STRING },
+    });
   }
 }
