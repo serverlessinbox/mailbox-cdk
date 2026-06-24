@@ -9071,7 +9071,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 245
+          "line": 246
         },
         "parameters": [
           {
@@ -9097,7 +9097,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 220
+        "line": 221
       },
       "name": "Mailbox",
       "properties": [
@@ -9105,7 +9105,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 243
+            "line": 244
           },
           "name": "certificates",
           "type": {
@@ -9116,7 +9116,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 241
+            "line": 242
           },
           "name": "data",
           "type": {
@@ -9130,7 +9130,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 237
+            "line": 238
           },
           "name": "oauthClients",
           "type": {
@@ -9141,7 +9141,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 239
+            "line": 240
           },
           "name": "urls",
           "type": {
@@ -9155,7 +9155,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 227
+            "line": 228
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -9167,7 +9167,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 228
+            "line": 229
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -9182,7 +9182,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 231
+            "line": 232
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -9194,7 +9194,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 232
+            "line": 233
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -9970,7 +9970,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 211
+        "line": 212
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -9979,7 +9979,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 212
+            "line": 213
           },
           "name": "adminUi",
           "optional": true,
@@ -9992,7 +9992,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 213
+            "line": 214
           },
           "name": "jmapUi",
           "optional": true,
@@ -10104,7 +10104,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 168
+            "line": 169
           },
           "name": "authProvider",
           "type": {
@@ -10120,7 +10120,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 184
+            "line": 185
           },
           "name": "enableAdminUi",
           "optional": true,
@@ -10136,7 +10136,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 196
+            "line": 197
           },
           "name": "enableMcp",
           "optional": true,
@@ -10153,7 +10153,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 203
+            "line": 204
           },
           "name": "enableReceiving",
           "optional": true,
@@ -10170,7 +10170,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 190
+            "line": 191
           },
           "name": "enableWebmailUi",
           "optional": true,
@@ -10186,7 +10186,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 171
+            "line": 172
           },
           "name": "extraAllowedOrigins",
           "optional": true,
@@ -10201,15 +10201,19 @@
         },
         {
           "abstract": true,
+          "docs": {
+            "remarks": "The domain name is derived at deploy time via StackHelpers.",
+            "summary": "Route53 hosted zone ID."
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 162
+            "line": 163
           },
-          "name": "hostedZone",
+          "name": "hostedZoneId",
           "optional": true,
           "type": {
-            "fqn": "aws-cdk-lib.aws_route53.IHostedZone"
+            "primitive": "string"
           }
         },
         {
@@ -10220,7 +10224,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 165
+            "line": 166
           },
           "name": "kms",
           "optional": true,
@@ -10236,7 +10240,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 208
+            "line": 209
           },
           "name": "overrides",
           "optional": true,
@@ -10253,7 +10257,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 179
+            "line": 180
           },
           "name": "subdomainNamespace",
           "optional": true,
@@ -10903,6 +10907,6 @@
       "symbolId": "src/auth/types:ProvisionJmapUiClientParams"
     }
   },
-  "version": "0.0.0",
-  "fingerprint": "n3GwUZMKa2TXfVWbJOfy2x1kK6DZnTX6FHCJjLmSQ50="
+  "version": "0.0.8",
+  "fingerprint": "PGnQGs0uhj1nBQUd+EKJPT5nlUg/hIbcHq9WutkjJ8I="
 }
