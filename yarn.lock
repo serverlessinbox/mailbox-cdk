@@ -2492,6 +2492,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@serverlessinbox/artifact-registry@npm:^0.0.27":
+  version: 0.0.27
+  resolution: "@serverlessinbox/artifact-registry@npm:0.0.27"
+  dependencies:
+    "@aws-sdk/client-s3": "npm:^3"
+    clipanion: "npm:^3.2.1"
+    esbuild: "npm:^0.27.1"
+    semver: "npm:^7.8.1"
+  peerDependencies:
+    "@jwpkg/gitversion": 1.4.0-pack-order.2
+  bin:
+    artifact-registry: dist/cli-entry.js
+  checksum: 10c0/6ba275ce748b98b6dd6a57913ea6be79d4da5aab1549c4de075737dd12ef7971ad64177a55502a4c8b54c60d5c403384392fb302892ed3775d020e96e239e20d
+  languageName: node
+  linkType: hard
+
 "@serverlessinbox/mailbox-admin-api@workspace:*, @serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api":
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api"
@@ -2575,7 +2591,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard"
   dependencies:
-    "@serverlessinbox/artifact-registry": "npm:^0.0.25"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.27"
     "@serverlessinbox/mailbox": "npm:*"
     "@serverlessinbox/mailbox-cognito": "npm:*"
     "@types/node": "npm:^24.10.1"
@@ -2597,7 +2613,7 @@ __metadata:
     "@aws-sdk/client-route-53": "npm:^3.946.0"
     "@aws-sdk/client-s3": "npm:^3.946.0"
     "@aws-sdk/client-sfn": "npm:^3.946.0"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.25"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.27"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^24.10.1"
@@ -7297,7 +7313,7 @@ __metadata:
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     "@jwpkg/gitversion": "npm:^1.4.0-pack-order.2"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.25"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.27"
     "@types/node": "npm:^24.10.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
