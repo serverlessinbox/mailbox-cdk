@@ -4,6 +4,28 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.7...v0.0.8) (Wed Jun 24 2026)
+
+### chore
+
+* Artifact registry ([c3e2765](https://github.com/serverlessinbox/mailbox-cdk/commit/c3e27656868573416f4d423bf5a5ffcc14cc3b16))
+
+* Removed apps for now ([2222727](https://github.com/serverlessinbox/mailbox-cdk/commit/2222727c4f261a511d0be8c8be06a8c839e6f026))
+
+### feat
+
+* Ses rules activation ([41f3da4](https://github.com/serverlessinbox/mailbox-cdk/commit/41f3da45e810848050ef69ab2737fbadd71dff18))
+
+* Stable standard app ([1443001](https://github.com/serverlessinbox/mailbox-cdk/commit/14430010f72df067bc16123cc3b377478c83f510))
+
+### fix
+
+* gsi3 for item table ([ead8485](https://github.com/serverlessinbox/mailbox-cdk/commit/ead8485c347d5553fdf5b99b4440da8d6903fcf8))
+
+* Packing ([5bea90c](https://github.com/serverlessinbox/mailbox-cdk/commit/5bea90c51eb07c925806a1cec803ed3d94d2f2a5))
+
+* Pipeline ([7f247ad](https://github.com/serverlessinbox/mailbox-cdk/commit/7f247ad0f490875c7cfe6dc53d5c496c68612166))
+
 ## [0.0.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.6...v0.0.7) (Fri Jun 19 2026)
 
 ### feat
