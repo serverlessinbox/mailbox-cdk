@@ -37,6 +37,9 @@ jobs:
         run: yarn workspace @serverlessinbox/mailbox build:data-stack
       - name: Build cognito data stack template
         run: yarn workspace @serverlessinbox/mailbox-cognito build:cognito-data-stack
+      - name: Bundle mailbox lambdas
+        working-directory: packages/mailbox
+        run: task bundle
       - name: Bundle cognito lambdas
         working-directory: packages/mailbox-cognito
         run: task bundle
