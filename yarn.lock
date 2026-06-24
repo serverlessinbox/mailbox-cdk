@@ -2476,22 +2476,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-registry@npm:^0.0.25":
-  version: 0.0.25
-  resolution: "@serverlessinbox/artifact-registry@npm:0.0.25"
-  dependencies:
-    "@aws-sdk/client-s3": "npm:^3"
-    clipanion: "npm:^3.2.1"
-    esbuild: "npm:^0.27.1"
-    semver: "npm:^7.8.1"
-  peerDependencies:
-    "@jwpkg/gitversion": 1.4.0-pack-order.2
-  bin:
-    artifact-registry: dist/cli-entry.js
-  checksum: 10c0/489d98b2986ad7263bcb1fefe5c21533c037a83f9cdead05e7f63cb7c8400509b62d091c3e3b47717d38d6e3e347eb20b6e28dcc073f5b742152385390d56989
-  languageName: node
-  linkType: hard
-
 "@serverlessinbox/artifact-registry@npm:^0.0.27":
   version: 0.0.27
   resolution: "@serverlessinbox/artifact-registry@npm:0.0.27"
@@ -2564,7 +2548,7 @@ __metadata:
     "@aws-sdk/client-cognito-identity-provider": "npm:^3.947.0"
     "@aws-sdk/client-sqs": "npm:^3.947.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.25"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.27"
     "@serverlessinbox/mailbox": "workspace:*"
     "@serverlessinbox/mailbox-admin-api": "workspace:*"
     "@serverlessinbox/mailbox-bundler": "workspace:*"

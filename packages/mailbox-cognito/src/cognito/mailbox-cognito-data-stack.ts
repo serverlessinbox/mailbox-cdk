@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Aws, Fn, RemovalPolicy } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
-import { JMAP_SCOPE_DESCRIPTIONS } from '@serverlessinbox/mailbox';
+import { isDevelopmentMode, JMAP_SCOPE_DESCRIPTIONS } from '@serverlessinbox/mailbox';
 import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
 
 /**
@@ -17,7 +17,8 @@ import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
  */
 export class MailboxCognitoDataStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps = {}) {
-    super(scope, id, props);
+    const terminationProtection = isDevelopmentMode(scope) ? false : (props.terminationProtection ?? true);
+    super(scope, id, { ...props, terminationProtection });
 
     // --- CloudFormation Parameters ---
 

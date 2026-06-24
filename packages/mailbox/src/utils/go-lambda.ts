@@ -40,7 +40,7 @@ export class GoLambda extends LambdaFunction {
 
     super(scope, id, {
       code,
-      runtime: Runtime.PROVIDED_AL2,
+      runtime: Runtime.PROVIDED_AL2023,
       handler: 'bootstrap',
       architecture: Architecture.ARM_64,
       memorySize: 640,

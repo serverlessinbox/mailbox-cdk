@@ -8,6 +8,7 @@ import { AuditLogTable } from '../resources/auditlog-table';
 import { MailFeedbackTable } from '../resources/mailfeedback-table';
 import { MailboxKmsConfig } from '../utils/kms';
 import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
+import { isDevelopmentMode } from '../utils/development-mode';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
@@ -26,7 +27,8 @@ export interface MailboxDataStackProps extends cdk.StackProps {
  */
 export class MailboxDataStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxDataStackProps = {}) {
-    super(scope, id, props);
+    const terminationProtection = isDevelopmentMode(scope) ? false : (props.terminationProtection ?? true);
+    super(scope, id, { ...props, terminationProtection });
 
     // S3 name base parameter (required).
     // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
