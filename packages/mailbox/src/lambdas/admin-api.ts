@@ -53,6 +53,7 @@ export class AdminApiLambda extends GoLambda {
       actions: [
         "route53:ChangeResourceRecordSets",
         "route53:ListHostedZonesByName",
+        "route53:ListResourceRecordSets",
       ],
       resources: ["*"],
     }));
