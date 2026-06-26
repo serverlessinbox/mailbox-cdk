@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.9...v0.0.10) (Fri Jun 26 2026)
+
+### feat
+
+* Admin api records ([d7cf41a](https://github.com/serverlessinbox/mailbox-cdk/commit/d7cf41a608684da899b262153b47559b723d8710))
+
 ## [0.0.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.8...v0.0.9) (Wed Jun 24 2026)
 
 ### fix
