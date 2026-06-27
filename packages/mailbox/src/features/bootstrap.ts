@@ -58,6 +58,7 @@ export class Bootstrap extends Construct {
       jwkCacheTable: props.jwkCacheTable,
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
+      domain: props.domain,
       sesReceiving: props.sesReceiving,
       sesSendEnabled: props.sesSendEnabled,
     });

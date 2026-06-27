@@ -19,6 +19,8 @@ export interface AdminApiLambdaProps {
   artifactResolver: ICdkArtifactResolver;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
   sesRuleSetName?: string;
+  /** SES configuration set name for outbound email tracking. */
+  readonly sesConfigSetName: string;
 }
 
 export class AdminApiLambda extends GoLambda {
@@ -98,6 +100,7 @@ export class AdminApiLambda extends GoLambda {
         MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
+        SES_CONFIG_SET_NAME: props.sesConfigSetName,
       },
     });
 

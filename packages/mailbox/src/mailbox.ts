@@ -675,6 +675,7 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      adminUIURL: this.urls.adminUi,
 
       oauthClientId: jmapOAuthClientId,
 
@@ -684,6 +685,7 @@ export class Mailbox extends Construct {
       // WebSocket URL will be passed via environment variable, not here
     });
     const jmapApi = this._jmapApi;
+    jmapApi.userProvisionerLambda.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
     applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
@@ -731,7 +733,9 @@ export class Mailbox extends Construct {
       certificate: apiCertificate,
 
       sesRuleSetName: sesRules.ruleSetName,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
     });
+    adminApi.apiHandlerLambda.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
     applyServerlessInboxComponentTag(adminApi, 'api');
 
     const mcpApi = props.enableMcp ? new McpApi(this, 'mcp-api', {

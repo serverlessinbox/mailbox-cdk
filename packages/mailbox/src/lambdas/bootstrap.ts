@@ -1,9 +1,9 @@
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 
 export type SesReceivingMode = 'off' | 'on' | 'forced';
@@ -13,6 +13,7 @@ export interface BootstrapLambdaProps {
   jwkCacheTable: ITable;
   authKeyStoreTable: ITable;
   artifactResolver: ICdkArtifactResolver;
+  domain: string;
   sesReceiving?: {
     ruleSet: IReceiptRuleSet;
     mode: SesReceivingMode;
@@ -71,5 +72,18 @@ export class BootstrapLambda extends GoLambda {
     if (props.sesSendEnabled) {
       this.addEnvironment('SES_SEND_ENABLED', 'on');
     }
+
+    // Allow bootstrap to register and inspect the domain's SES email identity.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        'ses:CreateEmailIdentity',
+        'ses:GetEmailIdentity',
+        'ses:PutEmailIdentityDkimSigningAttributes',
+      ],
+      resources: [
+        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/${props.domain}`,
+      ],
+    }));
   }
 }

@@ -2,6 +2,7 @@ import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -12,6 +13,14 @@ export interface UserProvisionerLambdaProps {
   changelogTable: ITable;
   auditEventsQueue: IQueue;
   artifactResolver: ICdkArtifactResolver;
+  /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
+  readonly adminUIURL: string;
+  /** Blob store bucket for email attachments/bodies (used by the email service). */
+  readonly blobStore: IBucket;
+  /** SQS queue for email submissions (used by the submission service). */
+  readonly emailSubmissionQueue: IQueue;
+  /** SES configuration set name for sending emails. */
+  readonly sesConfigSetName: string;
 }
 
 export class UserProvisionerLambda extends GoLambda {
@@ -26,6 +35,10 @@ export class UserProvisionerLambda extends GoLambda {
         ITEM_TABLE_NAME: props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        ADMIN_UI_URL: props.adminUIURL,
+        BLOB_STORAGE_NAME: props.blobStore.bucketName,
+        EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
+        SES_CONFIG_SET_NAME: props.sesConfigSetName,
       },
     });
 
@@ -37,9 +50,21 @@ export class UserProvisionerLambda extends GoLambda {
     // Audit events emitted during provisioning
     props.auditEventsQueue.grantSendMessages(this);
 
+    // Email service: blob store for email bodies/attachments
+    props.blobStore.grantReadWrite(this);
+
+    // Submission service: enqueue email submissions
+    props.emailSubmissionQueue.grantSendMessages(this);
+
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
+      resources: ['*'],
+    }));
+
+    // Direct SES v2 send for welcome email
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['ses:SendRawEmail'],
       resources: ['*'],
     }));
   }

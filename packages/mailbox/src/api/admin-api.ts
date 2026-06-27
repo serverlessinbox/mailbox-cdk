@@ -47,13 +47,16 @@ export interface AdminApiProps {
 
   /** Name of the SES receipt rule set. Passed to the handler for setup-flow SES readiness checks. */
   readonly sesRuleSetName?: string;
+  /** SES configuration set name for outbound email tracking. */
+  readonly sesConfigSetName: string;
 }
 
 export class AdminApi extends Construct {
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  private readonly apiHandlerLambda: AdminApiLambda;
+  /** Exposed so callers can set additional env vars (e.g. SYSTEM_SENDER_ADDRESS) after construction. */
+  public readonly apiHandlerLambda: AdminApiLambda;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -111,6 +114,7 @@ export class AdminApi extends Construct {
       auditEventsQueue: props.auditEventsQueue,
       artifactResolver: props.artifactResolver,
       sesRuleSetName: props.sesRuleSetName,
+      sesConfigSetName: props.sesConfigSetName,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 
