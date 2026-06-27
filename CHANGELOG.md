@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.10...v0.0.11) (Sat Jun 27 2026)
+
+### feat
+
+* Welcome twekaing ([658b360](https://github.com/serverlessinbox/mailbox-cdk/commit/658b36026de713477acfd567e3ca94979b12ff6b))
+
 ## [0.0.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.9...v0.0.10) (Fri Jun 26 2026)
 
 ### feat
