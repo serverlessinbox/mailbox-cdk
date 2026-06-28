@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
-import { AuthorizerLambda, ApiHandlerLambda, UserProvisionerLambda } from '../lambdas';
+import { AuthorizerLambda, ApiHandlerLambda } from '../lambdas';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { JmapOAuthHandlerConfig } from '../lambdas/jmap-api';
 import {
   ApiMapping,
@@ -45,8 +46,8 @@ export interface JMapApiProps {
 
   readonly sesConfigSetName: string;
 
-  /** Full URL of the Admin UI (e.g. https://admin.example.com). Forwarded to user-provisioner for welcome email CTA. */
-  readonly adminUIURL: string;
+  /** Pre-constructed user-provisioner function. Passed through to ApiHandlerLambda. */
+  readonly userProvisionerFunction: IFunction;
 
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
   readonly domainName?: string;
@@ -61,8 +62,6 @@ export class JMapApi extends Construct {
   public readonly domainTarget?: string;
   authorizerLambda: GoLambda; // Exposed for reuse in WebSocket API
   apiHandlerLambda: GoLambda; // Exposed to add WebSocket URL env var
-  /** Exposed so callers can set additional env vars (e.g. SYSTEM_SENDER_ADDRESS) after construction. */
-  public readonly userProvisionerLambda: GoLambda;
   /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
   public readonly httpApi: HttpApi;
 
@@ -122,18 +121,7 @@ export class JMapApi extends Construct {
 
     this.httpApi = api;
 
-    const userProvisionerLambda = new UserProvisionerLambda(this, 'user-provisioner', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      auditEventsQueue: props.auditEventsQueue,
-      artifactResolver: props.artifactResolver,
-      adminUIURL: props.adminUIURL,
-      blobStore: props.blobStore,
-      emailSubmissionQueue: props.emailSubmissionQueue,
-      sesConfigSetName: props.sesConfigSetName,
-    });
-    this.userProvisionerLambda = userProvisionerLambda;
+    const userProvisionerLambda = props.userProvisionerFunction;
 
     const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
       configTable: props.configTable,

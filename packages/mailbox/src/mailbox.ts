@@ -14,7 +14,7 @@ import {
 } from './auth/types';
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { CertWaiterLambda, SesReceivingMode } from './lambdas';
+import { CertWaiterLambda, SesReceivingMode, UserProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
 import { Bootstrap } from './features/bootstrap';
@@ -662,6 +662,20 @@ export class Mailbox extends Construct {
       );
     }
 
+    const userProvisioner = new UserProvisionerLambda(this, 'user-provisioner', {
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      artifactResolver: artifactResolver,
+      adminUIURL: this.urls.adminUi,
+      blobStore: this._blobStore,
+      emailSubmissionQueue: emailSending.submissionQueue,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+    });
+    userProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
+    applyServerlessInboxComponentTag(userProvisioner, 'api');
+
     this._jmapApi = new JMapApi(this, 'jmap-api', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
@@ -675,7 +689,7 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
-      adminUIURL: this.urls.adminUi,
+      userProvisionerFunction: userProvisioner,
 
       oauthClientId: jmapOAuthClientId,
 
@@ -685,7 +699,6 @@ export class Mailbox extends Construct {
       // WebSocket URL will be passed via environment variable, not here
     });
     const jmapApi = this._jmapApi;
-    jmapApi.userProvisionerLambda.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
     applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
