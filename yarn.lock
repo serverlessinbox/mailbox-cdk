@@ -2571,9 +2571,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard":
+"@serverlessinbox/mailbox-standard-app@workspace:apps/mailbox-standard-app":
   version: 0.0.0-use.local
-  resolution: "@serverlessinbox/mailbox-standard@workspace:apps/mailbox-standard"
+  resolution: "@serverlessinbox/mailbox-standard-app@workspace:apps/mailbox-standard-app"
   dependencies:
     "@serverlessinbox/artifact-registry": "npm:^0.0.27"
     "@serverlessinbox/mailbox": "npm:*"

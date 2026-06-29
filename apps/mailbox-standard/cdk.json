@@ -1,4 +1,0 @@
-{
-  "app": "yarn ts-node src/main.ts",
-  "context": {}
-}
