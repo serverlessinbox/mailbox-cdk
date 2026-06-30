@@ -1,6 +1,4 @@
 import { Construct } from 'constructs';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
@@ -55,32 +53,25 @@ export interface AdminUiProps {
  *
  * Example:
  * ```typescript
- * const oauthHandler = new OAuthHandler(this, 'oauth-handler', {...});
- * 
  * const adminUi = new AdminUi(this, 'admin-ui', {
  *   domainName: 'admin.example.com',
- *   oauthApiUrl: oauthHandler.apiUrl + '/admin/auth',
+ *   ...
  * });
  *
  * console.log(`Admin UI available at: ${adminUi.distributionDomainName}`);
  * ```
  */
-export class AdminUi extends Construct {
-  readonly bucket: Bucket;
-  readonly distribution: Distribution;
-  readonly distributionDomainName: string;
+export class AdminUi extends MailboxUi {
   readonly oauthClient: AuthClientConfig;
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
-    super(scope, id);
-
     const mergedUiConfig = {
       ...(props.uiConfig ?? {}),
       ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
     };
 
-    const ui = new MailboxUi(this, 'ui', {
+    super(scope, id, {
       label: 'Admin UI',
       domainName: props.domainName,
       certificate: props.certificate,
@@ -95,7 +86,7 @@ export class AdminUi extends Construct {
       uiConfig: Object.keys(mergedUiConfig).length > 0 ? mergedUiConfig : undefined,
     });
 
-    const uiHost = ui.distributionDomainName;
+    const uiHost = this.distributionDomainName;
     this.oauthClient = props.authProvider.provisionAdminUiClient({
       name: 'integrated',
       callbackUrls: [`https://${uiHost}/auth/callback`],
@@ -103,9 +94,5 @@ export class AdminUi extends Construct {
     });
 
     this.oauthRedirectUri = '/'; // Land on '/' so PortalLanding can route to /welcome (onboarding) vs /home.
-
-    this.bucket = ui.bucket;
-    this.distribution = ui.distribution;
-    this.distributionDomainName = ui.distributionDomainName;
   }
 }

@@ -12,7 +12,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Duration, Aws } from 'aws-cdk-lib';
+import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
@@ -57,6 +57,8 @@ export class AdminApi extends Construct {
   public readonly domainTarget?: string;
   /** Exposed so callers can set additional env vars (e.g. SYSTEM_SENDER_ADDRESS) after construction. */
   public readonly apiHandlerLambda: AdminApiLambda;
+  /** L1 CfnDomainName for logical-ID pinning. Present only when domainName is provided. */
+  private _domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -90,6 +92,8 @@ export class AdminApi extends Construct {
 
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
+
+      this._domainCfnResource = domain.node.defaultChild as CfnResource;
 
       new ApiMapping(this, 'mapping', {
         api,
@@ -145,5 +149,10 @@ export class AdminApi extends Construct {
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this.apiHandlerLambda);
+  }
+
+  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
+  public get domainCfnResource(): CfnResource | undefined {
+    return this._domainCfnResource;
   }
 }

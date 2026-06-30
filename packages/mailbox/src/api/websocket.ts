@@ -17,7 +17,7 @@ import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integra
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { RemovalPolicy, Aws } from 'aws-cdk-lib';
+import { RemovalPolicy, Aws, CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackNamedTable } from '../utils/named-table';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -65,6 +65,8 @@ export class WebSocketPush extends Construct {
   public readonly connectionsTable: Table;
   private readonly broadcastLambda: lambda.Function;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
+  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
+  private _domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
@@ -117,6 +119,8 @@ export class WebSocketPush extends Construct {
 
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
+
+      this._domainCfnResource = domain.node.defaultChild as CfnResource;
 
       // Preserve the existing stage-in-path URL shape.
       new ApiMapping(this, 'mapping', {
@@ -189,5 +193,10 @@ export class WebSocketPush extends Construct {
     webSocketApi.addRoute('$default', {
       integration: new WebSocketLambdaIntegration('message-integration', messageLambda),
     });
+  }
+
+  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
+  public get domainCfnResource(): CfnResource | undefined {
+    return this._domainCfnResource;
   }
 }

@@ -1,6 +1,4 @@
 import { Construct } from 'constructs';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -38,17 +36,12 @@ export interface WebmailUiProps {
   readonly apiUrl?: string;
 }
 
-export class WebmailUi extends Construct {
-  readonly bucket: Bucket;
-  readonly distribution: Distribution;
-  readonly distributionDomainName: string;
+export class WebmailUi extends MailboxUi {
   readonly oauthClient: AuthClientConfig;
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: WebmailUiProps) {
-    super(scope, id);
-
-    const ui = new MailboxUi(this, 'ui', {
+    super(scope, id, {
       label: 'Webmail UI',
       domainName: props.domainName,
       certificate: props.certificate,
@@ -60,7 +53,7 @@ export class WebmailUi extends Construct {
       uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
     });
 
-    const uiHost = ui.distributionDomainName;
+    const uiHost = this.distributionDomainName;
     const allPermissions = Object.values(Permission);
     this.oauthClient = props.authProvider.provisionJmapUiClient({
       name: 'integrated',
@@ -70,9 +63,5 @@ export class WebmailUi extends Construct {
     });
 
     this.oauthRedirectUri = '/';
-
-    this.bucket = ui.bucket;
-    this.distribution = ui.distribution;
-    this.distributionDomainName = ui.distributionDomainName;
   }
 }

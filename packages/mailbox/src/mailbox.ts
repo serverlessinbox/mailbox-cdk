@@ -41,6 +41,7 @@ import {
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { StackHelpers } from './utils/stack-helpers';
+import { MailboxResourceDescriptions } from './utils/resource-descriptions';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -272,10 +273,32 @@ export class Mailbox extends Construct {
       product: 'mailbox',
     });
 
+    // --- Group nodes (8 intermediate constructs for construct-tree grouping) ---
+    const groups = {
+      data:   new Construct(this, 'data'),
+      auth:   new Construct(this, 'auth'),
+      edge:   new Construct(this, 'edge'),
+      ui:     new Construct(this, 'ui'),
+      email:  new Construct(this, 'email'),
+      apis:   new Construct(this, 'apis'),
+      search: new Construct(this, 'search'),
+      ops:    new Construct(this, 'ops'),
+    };
+
+    // Component tags on each group — CDK propagates to the whole subtree.
+    applyServerlessInboxComponentTag(groups.data,   'data');
+    applyServerlessInboxComponentTag(groups.auth,   'auth');
+    applyServerlessInboxComponentTag(groups.edge,   'edge');
+    applyServerlessInboxComponentTag(groups.ui,     'ui');
+    applyServerlessInboxComponentTag(groups.email,  'email');
+    applyServerlessInboxComponentTag(groups.apis,   'api');
+    applyServerlessInboxComponentTag(groups.search, 'search');
+    applyServerlessInboxComponentTag(groups.ops,    'ops');
+
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
-    const stackHelpers = new StackHelpers(this, 'stack-helpers', {
+    const stackHelpers = new StackHelpers(groups.ops, 'stack-helpers', {
       artifactResolver,
       hostedZoneId: props.hostedZoneId ?? '',
       dataStackName: effectiveDataStackName,
@@ -314,7 +337,7 @@ export class Mailbox extends Construct {
     this.emailQueueProps = encryptionPlan.queues;
 
     // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
-    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(this, 'data-deployer', {
+    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(groups.data, 'data-deployer', {
       artifactResolver,
       dataStackName: props.overrides?.dataStackName,
       s3NameBase,
@@ -332,19 +355,17 @@ export class Mailbox extends Construct {
       mailFeedbackTable: dataRef.mailFeedbackTable,
     };
 
-    const auditWriting = new AuditWriting(this, 'audit-writing', {
+    const auditWriting = new AuditWriting(groups.ops, 'audit-writing', {
       auditLogTable: dataRef.auditLogTable,
       artifactResolver,
       queueProps: encryptionPlan.queues,
     });
-    applyServerlessInboxComponentTag(auditWriting, 'api');
 
     // Auth key store - writes to DynamoDB for Lambda@Edge
-    const authKeyStore = new AuthKeyStore(this, 'auth-key-store', {
+    const authKeyStore = new AuthKeyStore(groups.auth, 'auth-key-store', {
       issuers: [authProvider.issuer],
       artifactResolver,
     });
-    applyServerlessInboxComponentTag(authKeyStore, 'auth');
 
     // Translate bare subdomainNamespace to dot-wrapped format for edge stack.
     // Edge stack expects: "." for no namespace, or ".{label}." for a namespace.
@@ -359,7 +380,7 @@ export class Mailbox extends Construct {
         ? `.${mailboxDomains.prefix}.`
         : '.';
 
-    const edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
+    const edgeStack = new MailboxEdgeDeployer(groups.edge, 'stack-deployer', {
       domainName,
       artifactResolver: artifactResolver,
       prefix: edgePrefix,
@@ -371,7 +392,6 @@ export class Mailbox extends Construct {
       productVersion: stackVersion,
       deployer,
     });
-    applyServerlessInboxComponentTag(edgeStack, 'edge');
 
     const edgeCertificate = edgeStack.edgeCertificate;
 
@@ -395,7 +415,7 @@ export class Mailbox extends Construct {
     // that covers both names and use it to fill the gaps.
     let regionalSanCertificate: acm.ICertificate | undefined;
     if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
-      const cfnCert = new acm.CfnCertificate(this, 'regional-api-certificate', {
+      const cfnCert = new acm.CfnCertificate(groups.edge, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
         subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${domainName}`],
         validationMethod: 'DNS',
@@ -406,7 +426,7 @@ export class Mailbox extends Construct {
           { domainName: `mcp.${domainName}`, hostedZoneId: props.hostedZoneId! },
         ],
       });
-      regionalSanCertificate = acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', cfnCert.ref);
+      regionalSanCertificate = acm.Certificate.fromCertificateArn(groups.edge, 'regional-api-certificate-ref', cfnCert.ref);
     }
 
     const regionalCertificate = regionalSanCertificate;
@@ -454,7 +474,7 @@ export class Mailbox extends Construct {
           : {}),
       };
 
-      const adminUi = new AdminUi(this, 'admin-ui', {
+      const adminUi = new AdminUi(groups.ui, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
         configTable: this._configTable,
@@ -463,7 +483,6 @@ export class Mailbox extends Construct {
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
         uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
       });
-      applyServerlessInboxComponentTag(adminUi, 'ui');
 
       this.adminUiBucket = adminUi.bucket;
       this.adminUiDistribution = adminUi.distribution;
@@ -476,7 +495,7 @@ export class Mailbox extends Construct {
     }
 
     if (enableWebmailUi) {
-      const webmailUi = new WebmailUi(this, 'webmail-ui', {
+      const webmailUi = new WebmailUi(groups.ui, 'webmail-ui', {
         domainName: mailboxDomains.webmail,
         certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
         configTable: this._configTable,
@@ -485,7 +504,6 @@ export class Mailbox extends Construct {
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
         uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       });
-      applyServerlessInboxComponentTag(webmailUi, 'ui');
 
       this.webmailUiBucket = webmailUi.bucket;
       this.webmailUiDistribution = webmailUi.distribution;
@@ -506,22 +524,21 @@ export class Mailbox extends Construct {
       ?? this.oauthClients.adminUi?.groups
       ?? undefined;
 
-    new LicenseRefresh(this, 'license-refresh', {
+    new LicenseRefresh(groups.ops, 'license-refresh', {
       configTable: dataRef.configTable,
       artifactResolver,
     });
 
     // Lambda function to process incoming emails
-    this._emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+    this._emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
       blobStore: this._blobStore,
       artifactResolver,
     });
-    applyServerlessInboxComponentTag(this._emailProcessorLambda, 'email');
 
-    const sesRules = new SesRules(this, 'ses-rules', {
+    const sesRules = new SesRules(groups.email, 'ses-rules', {
       delivery: {
         blobStore: this._blobStore,
         emailProcessor: this._emailProcessorLambda,
@@ -530,9 +547,8 @@ export class Mailbox extends Construct {
         queueProps: this.emailQueueProps,
       },
     });
-    applyServerlessInboxComponentTag(sesRules, 'email');
 
-    const bootstrap = new Bootstrap(this, 'bootstrap', {
+    const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable: dataRef.configTable,
@@ -585,24 +601,25 @@ export class Mailbox extends Construct {
         }
         : undefined,
     });
-    applyServerlessInboxComponentTag(bootstrap, 'auth');
+    // bootstrap is declared but only used for its side-effects; suppress unused-locals check.
+    void bootstrap;
 
     // If a regional SAN cert was auto-created, insert a waiter custom resource.
     // On deletion, the waiter polls ACM DescribeCertificate until InUseBy is empty,
     // preventing the "Certificate is in use" CloudFormation error.
     let certWaiter: CertificateWaiter | undefined;
     if (regionalSanCertificate) {
-      const certWaiterLambda = new CertWaiterLambda(this, 'cert-waiter-lambda', {
+      const certWaiterLambda = new CertWaiterLambda(groups.edge, 'cert-waiter-lambda', {
         artifactResolver,
       });
-      certWaiter = new CertificateWaiter(this, 'regional-cert-waiter', {
+      certWaiter = new CertificateWaiter(groups.edge, 'regional-cert-waiter', {
         certificate: regionalSanCertificate,
         certWaiterLambda,
       });
     }
 
     // CloudFront CDN for blob downloads with Lambda@Edge
-    const cdnConstruct = new Cdn(this, 'blob-cdn', {
+    const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this._blobStore,
       configTable: dataRef.configTable,
       authKeyStoreTable: authKeyStore.table,
@@ -612,12 +629,11 @@ export class Mailbox extends Construct {
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
       certificate: hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront,
     });
-    applyServerlessInboxComponentTag(cdnConstruct, 'edge');
 
     // DNS is created later, once all endpoint targets are known.
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
-    const tantivySearch = new TantivySearch(this, 'tantivy-search', {
+    const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
       indexBucket: this._blobStore,
       itemTable: dataRef.itemTable,
       configTable: dataRef.configTable,
@@ -625,10 +641,11 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
     });
-    applyServerlessInboxComponentTag(tantivySearch, 'search');
+    // tantivySearch is used for side-effects only at this level.
+    void tantivySearch;
 
     // SES event processing infrastructure (SNS, SQS, Lambda)
-    const sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
+    const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
       itemTable: dataRef.itemTable,
       mailFeedbackTable: dataRef.mailFeedbackTable,
       changelogTable: dataRef.changelogTable,
@@ -638,11 +655,10 @@ export class Mailbox extends Construct {
       artifactResolver: artifactResolver,
       queueProps: encryptionPlan.queues,
     });
-    applyServerlessInboxComponentTag(sesEventProcessing, 'email');
 
 
     // Email sending infrastructure (SQS, Lambda) - must be before API
-    const emailSending = new EmailSending(this, 'email-sending', {
+    const emailSending = new EmailSending(groups.email, 'email-sending', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
@@ -651,7 +667,6 @@ export class Mailbox extends Construct {
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
     });
-    applyServerlessInboxComponentTag(emailSending, 'email');
 
     // JMAP must always advertise the JMAP_UI OAuth client in its session response.
     // That client is provisioned when the Webmail UI is enabled.
@@ -663,7 +678,7 @@ export class Mailbox extends Construct {
       );
     }
 
-    const userProvisioner = new UserProvisionerLambda(this, 'user-provisioner', {
+    const userProvisioner = new UserProvisionerLambda(groups.ops, 'user-provisioner', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
@@ -675,9 +690,8 @@ export class Mailbox extends Construct {
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
     });
     userProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
-    applyServerlessInboxComponentTag(userProvisioner, 'api');
 
-    this._jmapApi = new JMapApi(this, 'jmap-api', {
+    this._jmapApi = new JMapApi(groups.apis, 'jmap-api', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
@@ -700,10 +714,9 @@ export class Mailbox extends Construct {
       // WebSocket URL will be passed via environment variable, not here
     });
     const jmapApi = this._jmapApi;
-    applyServerlessInboxComponentTag(jmapApi, 'api');
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
-    const webSocketPush = new WebSocketPush(this, 'websocket-push', {
+    const webSocketPush = new WebSocketPush(groups.apis, 'websocket-push', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
@@ -715,6 +728,7 @@ export class Mailbox extends Construct {
       domainName: (hasHostedZone && wsCertificate) ? mailboxDomains.ws : undefined,
       certificate: hasHostedZone ? wsCertificate : undefined,
     });
+    // Keep a deeper messaging override — websocket-push overrides the apis group tag.
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
     const adminApiAddons: IAdminApiAddon[] = (() => {
@@ -727,7 +741,7 @@ export class Mailbox extends Construct {
       return authProvider.createAdminApiAddons(this, ctx);
     })();
 
-    const adminApi = new AdminApi(this, 'admin-api', {
+    const adminApi = new AdminApi(groups.apis, 'admin-api', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       auditLogTable: dataRef.auditLogTable,
@@ -750,9 +764,8 @@ export class Mailbox extends Construct {
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
     });
     adminApi.apiHandlerLambda.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
-    applyServerlessInboxComponentTag(adminApi, 'api');
 
-    const mcpApi = props.enableMcp ? new McpApi(this, 'mcp-api', {
+    const mcpApi = props.enableMcp ? new McpApi(groups.apis, 'mcp-api', {
       configTable: this._configTable,
       jmapApiGateway: this._jmapApi.httpApi,
       authorizerLambda: this._jmapApi.authorizerLambda,
@@ -776,8 +789,20 @@ export class Mailbox extends Construct {
     emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
     sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
 
+    // --- Pin 5 logical IDs to survive reparenting ---
+    // admin-api custom domain
+    adminApi.domainCfnResource?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
+    // jmap-api custom domain
+    jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
+    // websocket-push custom domain
+    webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
+    // auth-key-store DynamoDB table
+    (authKeyStore.table.node.defaultChild as cdk.CfnResource).overrideLogicalId('Mailboxauthkeystore8FA0AB27');
+    // websocket-push connections DynamoDB table
+    (webSocketPush.connectionsTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('Mailboxwebsocketpushwebsocket85CC01CF');
+
     if (hasHostedZone) {
-      new MailboxDns(this, 'dns', {
+      const dns = new MailboxDns(groups.edge, 'dns', {
         names: mailboxDomains,
         hostedZone: hostedZone,
         cnameTargets: {
@@ -790,8 +815,14 @@ export class Mailbox extends Construct {
           mcp: mcpApi?.domainTarget,
         },
       });
-      applyServerlessInboxComponentTag(this.node.findChild('dns'), 'edge');
+      // dns is used for side-effects only at this level.
+      void dns;
     }
+
+    // Phase 3: add Name tags and native descriptions to every L1 resource under this construct.
+    // The aspect writes Name tags directly to each resource's TagManager (no sub-aspect spawned),
+    // so default aspect priority is fine.
+    cdk.Aspects.of(this).add(new MailboxResourceDescriptions(id));
 
   }
 }

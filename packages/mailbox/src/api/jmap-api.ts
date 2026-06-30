@@ -14,7 +14,7 @@ import {
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Duration, Aws } from 'aws-cdk-lib';
+import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
@@ -64,6 +64,8 @@ export class JMapApi extends Construct {
   apiHandlerLambda: GoLambda; // Exposed to add WebSocket URL env var
   /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
   public readonly httpApi: HttpApi;
+  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
+  private _domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: JMapApiProps) {
     super(scope, id);
@@ -106,6 +108,8 @@ export class JMapApi extends Construct {
 
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
+
+      this._domainCfnResource = domain.node.defaultChild as CfnResource;
 
       new ApiMapping(this, 'mapping', {
         api,
@@ -176,5 +180,10 @@ export class JMapApi extends Construct {
 
     this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this.apiHandlerLambda);
+  }
+
+  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
+  public get domainCfnResource(): CfnResource | undefined {
+    return this._domainCfnResource;
   }
 }

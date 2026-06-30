@@ -3,10 +3,12 @@ import type { IConstruct } from 'constructs';
 
 export type ServerlessInboxComponent =
   | 'auth'
+  | 'data'
   | 'ui'
   | 'edge'
   | 'api'
   | 'email'
+  | 'ops'
   | 'storage'
   | 'search'
   | 'messaging';
