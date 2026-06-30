@@ -5,6 +5,7 @@ import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 
 export type SesReceivingMode = 'off' | 'on' | 'forced';
 
@@ -20,6 +21,7 @@ export interface BootstrapLambdaProps {
   };
   /** When true, sets SES_SEND_ENABLED=on so the bootstrap marks the default domain as send-capable. */
   sesSendEnabled?: boolean;
+  hostedZone?: route53.IHostedZone;
 }
 
 export class BootstrapLambda extends GoLambda {
@@ -71,6 +73,13 @@ export class BootstrapLambda extends GoLambda {
 
     if (props.sesSendEnabled) {
       this.addEnvironment('SES_SEND_ENABLED', 'on');
+    }
+
+    if (props.hostedZone) {
+      this.addToRolePolicy(new PolicyStatement({
+        actions: ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
+        resources: [`arn:aws:route53:::hostedzone/${props.hostedZone.hostedZoneId}`],
+      }));
     }
 
     // Allow bootstrap to register and inspect the domain's SES email identity.

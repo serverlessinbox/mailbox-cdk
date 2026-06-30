@@ -543,6 +543,7 @@ export class Mailbox extends Construct {
         ? { ruleSet: sesRules.ruleSet, mode: props.enableReceiving }
         : undefined,
       sesSendEnabled: true,
+      hostedZone: hasHostedZone ? hostedZone : undefined,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,

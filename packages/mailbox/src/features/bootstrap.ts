@@ -1,5 +1,6 @@
 import { CustomResource } from 'aws-cdk-lib';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda, SesReceivingMode } from '../lambdas';
@@ -33,6 +34,7 @@ export interface BootstrapProps {
   };
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
+  readonly hostedZone?: route53.IHostedZone;
 }
 
 /**
@@ -61,6 +63,7 @@ export class Bootstrap extends Construct {
       domain: props.domain,
       sesReceiving: props.sesReceiving,
       sesSendEnabled: props.sesSendEnabled,
+      hostedZone: props.hostedZone,
     });
     this.handler = handler;
 
@@ -83,6 +86,7 @@ export class Bootstrap extends Construct {
             jmapUi: props.oauthClients.jmapUi ? toRequestOAuthClient(props.oauthClients.jmapUi) : undefined,
           }
           : undefined,
+        hostedZoneId: props.hostedZone?.hostedZoneId,
       },
     });
 
