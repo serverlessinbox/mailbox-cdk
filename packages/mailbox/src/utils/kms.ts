@@ -3,7 +3,7 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 
 export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 
-export type MailboxKmsResource = 's3' | 'dynamodb' | 'sqs';
+export type MailboxKmsResource = 'dynamodb' | 'sqs';
 
 export interface MailboxKmsPerResourceConfig {
   readonly blobStore?: kms.IKey;
@@ -22,8 +22,7 @@ export interface MailboxKmsConfig {
 
   /**
    * Exclude specific resources from KMS usage.
-   * Note: 's3' is now a no-op for bucket encryption (blob store always uses S3_MANAGED). Retained for backward compatibility.
-   * Example: { mode: 'aws-managed', excluded: ['s3'] } keeps S3 on SSE-S3, while Dynamo/SQS remain KMS-encrypted.
+   * Example: { mode: 'aws-managed', excluded: ['dynamodb'] } keeps DynamoDB on default encryption while SQS remains KMS-encrypted.
    */
   readonly excluded?: MailboxKmsResource[];
 
@@ -59,8 +58,6 @@ function awsManagedAlias(scope: Construct, id: string, aliasName: string): kms.I
 }
 
 export function resolveBlobStoreKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsExcluded('s3', config)) return undefined;
-
   if (mailboxKmsMode(config) === 'aws-managed') {
     return awsManagedAlias(scope, 'aws-managed-kms-s3', 'alias/aws/s3');
   }

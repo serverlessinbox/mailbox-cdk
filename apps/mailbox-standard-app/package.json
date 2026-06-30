@@ -4,6 +4,7 @@
   "description": "Standard single-stack CDK app for Mailbox",
   "scripts": {
     "build": "tsc",
+    "load-track-versions": "ts-node --project tsconfig.scripts.json scripts/load-track-versions.ts",
     "synth": "ARTIFACT_MODE=dev cdk synth",
     "synth:track": "ARTIFACT_MODE=track cdk synth"
   },

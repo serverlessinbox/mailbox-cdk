@@ -52,12 +52,11 @@ export function resolveMailboxEncryptionPlan(scope: Construct, kms?: MailboxKmsC
   })();
 
   const blobStore = (() => {
-    const excluded = mailboxKmsExcluded('s3', kms);
-    const key = mailboxKmsMode(kms) === 'customer-managed' && !excluded
+    const key = mailboxKmsMode(kms) === 'customer-managed'
       ? resolveBlobStoreKey(scope, kms)
       : undefined;
 
-    if (mailboxKmsMode(kms) === 'customer-managed' && !excluded && !key) {
+    if (mailboxKmsMode(kms) === 'customer-managed' && !key) {
       throw new Error("MailboxProps.kms.mode is 'customer-managed' but no S3 KMS key was provided for the blob store");
     }
 

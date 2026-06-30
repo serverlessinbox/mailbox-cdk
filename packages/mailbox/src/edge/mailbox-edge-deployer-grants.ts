@@ -223,9 +223,6 @@ export function grantEdgeDeployerWorkerPermissions(
         // CloudFormation uses TagResource/UntagResource when creating Log Groups with tags.
         'logs:TagResource',
         'logs:UntagResource',
-        // Backwards-compatible explicit log-group tagging APIs.
-        'logs:TagLogGroup',
-        'logs:UntagLogGroup',
       ],
       resources: [
         edgeLogGroupArnPrefix,

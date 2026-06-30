@@ -7,9 +7,6 @@ export type { BootstrapProps } from './bootstrap';
 export { Cdn } from './cdn-construct';
 export type { CdnProps } from './cdn-construct';
 
-export { DomainResolver } from './domain-resolver';
-export type { DomainResolverProps } from './domain-resolver';
-
 export { AuthKeyStore } from './auth-key-store';
 export type { AuthKeyStoreProps } from './auth-key-store';
 
