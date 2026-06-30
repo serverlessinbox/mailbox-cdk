@@ -50,10 +50,13 @@ export function createCognitoArtifactData(
       }
     }
   }
+
+  const versionMap = scope.node.tryGetContext('artifactVersions') as Record<string, string> | undefined;
   return new CdkArtifactResolver({
     versions: { bucketBase: jsonVersions.bucketBase, packages },
     bucketBaseOverride,
     deploymentRegion: Stack.of(scope).region,
+    s3VersionMap: versionMap,
   }, scope);
 }
 
