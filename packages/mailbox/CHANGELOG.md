@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.14](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.13...v0.0.14) (Tue Jun 30 2026)
+
+### fix
+
+* Redirect issues ([53aeb04](https://github.com/serverlessinbox/mailbox-cdk/commit/53aeb04e7c1d000b4253a5972c1221a71e652201))
+
 ## [0.0.13](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.12...v0.0.13) (Tue Jun 30 2026)
 
 ### fix
