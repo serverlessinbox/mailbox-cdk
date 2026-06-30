@@ -4,6 +4,20 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.12](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.11...v0.0.12) (Tue Jun 30 2026)
+
+### refactor
+
+* User provisioning ([829a2c8](https://github.com/serverlessinbox/mailbox-cdk/commit/829a2c8953794cde70eef223cff1d9842f7a8a82))
+
+### feat
+
+* Bootstrap creates dkim ([6d168f7](https://github.com/serverlessinbox/mailbox-cdk/commit/6d168f703c4f2c10f4cce2c134224a4b954cfa32))
+
+### fix
+
+* Apps and removed some legacy ([2186bb5](https://github.com/serverlessinbox/mailbox-cdk/commit/2186bb5e2bf33249eb68f36590c97b7645c40dc7))
+
 ## [0.0.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.10...v0.0.11) (Sat Jun 27 2026)
 
 ### feat

@@ -4,6 +4,28 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.12](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.11...v0.0.12) (Tue Jun 30 2026)
+
+### refactor
+
+* User provisioning ([829a2c8](https://github.com/serverlessinbox/mailbox-cdk/commit/829a2c8953794cde70eef223cff1d9842f7a8a82))
+
+### feat
+
+* Standard app ([1f536bb](https://github.com/serverlessinbox/mailbox-cdk/commit/1f536bbee46a31459be4251ec3d8e4655937f0b9))
+
+* Bootstrap creates dkim ([6d168f7](https://github.com/serverlessinbox/mailbox-cdk/commit/6d168f703c4f2c10f4cce2c134224a4b954cfa32))
+
+* Workflow dispatch trigger ([40d16e3](https://github.com/serverlessinbox/mailbox-cdk/commit/40d16e3cda8730fecaea21bd9036bf5dc5ea9c37))
+
+### fix
+
+* Apps and removed some legacy ([2186bb5](https://github.com/serverlessinbox/mailbox-cdk/commit/2186bb5e2bf33249eb68f36590c97b7645c40dc7))
+
+### chore
+
+* Removed apps ([81aabec](https://github.com/serverlessinbox/mailbox-cdk/commit/81aabec5bd25eb2f36aa8c2ffa29bdd6de0c0351))
+
 ## [0.0.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.10...v0.0.11) (Sat Jun 27 2026)
 
 ### feat
