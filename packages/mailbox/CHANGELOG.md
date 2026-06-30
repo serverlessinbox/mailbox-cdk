@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.13](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.12...v0.0.13) (Tue Jun 30 2026)
+
+### fix
+
+* Resolving ([659651d](https://github.com/serverlessinbox/mailbox-cdk/commit/659651dd4fb703401e16497137b1591684c3244d))
+
 ## [0.0.12](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.11...v0.0.12) (Tue Jun 30 2026)
 
 ### refactor
