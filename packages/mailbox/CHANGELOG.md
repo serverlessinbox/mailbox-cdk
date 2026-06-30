@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.15](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.14...v0.0.15) (Tue Jun 30 2026)
+
+### feat
+
+* Refactored the grouping and tagging ([a546414](https://github.com/serverlessinbox/mailbox-cdk/commit/a546414cec8905c7deb96d6e105515d71f8a29e8))
+
 ## [0.0.14](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.13...v0.0.14) (Tue Jun 30 2026)
 
 ### fix
