@@ -2,9 +2,9 @@ import { IConstruct } from 'constructs';
 import { Stack } from 'aws-cdk-lib';
 import { CdkArtifactResolver } from './cdk-artifact-resolver';
 import { readArtifactVersions } from '@serverlessinbox/artifact-registry';
-import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-registry';
+import type { ArtifactVersionsEntry, ArtifactZone, ParsedArtifactVersions } from '@serverlessinbox/artifact-registry';
 import * as path from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
 const ARTIFACT_CONTEXT_KEYS = {
   config: 'artifacts',
@@ -45,8 +45,13 @@ export function createArtifactResolverFromContext(scope: IConstruct): CdkArtifac
   const versionsPath = path.join(pkgRoot, 'artifact-versions.json');
   const pkgJsonPath = path.join(pkgRoot, 'package.json');
 
-  // JSON file provides zone info and fallback versions for external artifacts
-  const jsonVersions = readArtifactVersions(versionsPath);
+  // JSON file provides zone info and fallback versions for external artifacts.
+  // Baked-in versions exist only in a published construct (or after resolve-artifacts
+  // runs); when consuming from source the file is absent and we rely entirely on the
+  // track-version / context-supplied packages below.
+  const jsonVersions: ParsedArtifactVersions = existsSync(versionsPath)
+    ? readArtifactVersions(versionsPath)
+    : { packages: {}, bucketBase: undefined };
   const packages: Record<string, ArtifactVersionsEntry> = { ...jsonVersions.packages };
 
   // Self-owned artifacts: inject from package.json when not provided by context
