@@ -570,7 +570,7 @@ export class Mailbox extends Construct {
               clientId: this.oauthClients.adminUi.clientId,
               clientSecret: this.oauthClients.adminUi.clientSecret,
               scopes: ['openid', 'email', 'profile', ...this.oauthClients.adminUi.requestScopeList],
-              redirectUri: adminUiRedirectUri ?? '/dashboard',
+              redirectUri: adminUiRedirectUri ?? '/',
             }
             : undefined,
           jmapUi: this.oauthClients.jmapUi

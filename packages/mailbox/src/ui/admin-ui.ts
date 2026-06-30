@@ -102,7 +102,7 @@ export class AdminUi extends Construct {
       logoutUrls: [`https://${uiHost}/`],
     });
 
-    this.oauthRedirectUri = '/dashboard';
+    this.oauthRedirectUri = '/'; // Land on '/' so PortalLanding can route to /welcome (onboarding) vs /home.
 
     this.bucket = ui.bucket;
     this.distribution = ui.distribution;
