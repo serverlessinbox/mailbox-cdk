@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.16](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.15...v0.0.16) (Wed Jul 01 2026)
+
+### feat
+
+* Resource naming and tagging ([8e2aa2c](https://github.com/serverlessinbox/mailbox-cdk/commit/8e2aa2c3838093a4890bf1a14d284cf12a57e658))
+
 ## [0.0.15](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.14...v0.0.15) (Tue Jun 30 2026)
 
 ### feat
