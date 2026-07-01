@@ -85,7 +85,7 @@ export class MailboxEdgeDeployer extends Construct {
     grantEdgeDeployerWorkerPermissions(infra.worker, {
       stack,
       edgeStackArn,
-      originDeployment: Aws.STACK_NAME,
+      rootStack: Aws.STACK_NAME,
       templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
       artifactObjectArns: [
         props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
@@ -105,9 +105,10 @@ export class MailboxEdgeDeployer extends Construct {
       configTableArn: props.configTableArn,
       authKeyStoreTableArn: props.authKeyStoreTableArn,
 
-      // Tagging/back-reference parameters (consumed by the edge stack template)
-      originDeployment: Aws.STACK_NAME,
-      originRegion: Stack.of(this).region,
+      // Tagging/back-reference parameters (consumed by the edge stack template).
+      // Keys MUST match the edge stack's CfnParameter overrideLogicalId (rootStack / rootRegion).
+      rootStack: Aws.STACK_NAME,
+      rootRegion: Stack.of(this).region,
       productVersion: props.productVersion ?? 'unknown',
       deployer: deployer,
       blobAuthorizerS3VersionId: blobAuthorizerResolved.versionId ?? '',

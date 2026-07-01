@@ -53,6 +53,10 @@ export class MailboxDataDeployer extends Construct {
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');
 
+    // Real product version for tagging (same source as the main Mailbox construct), so the data
+    // sub-stack's resources get serverless-inbox:version = the actual version, not 'unknown'.
+    const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
+
     grantDataDeployerWorkerPermissions(infra.worker, {
       stack,
       dataStackArn,
@@ -67,7 +71,15 @@ export class MailboxDataDeployer extends Construct {
         stackName: dataStackNameToken,
         templateUrl,
         preserveOnDelete: true,
-        parameters: { s3NameBase: props.s3NameBase },
+        parameters: {
+          s3NameBase: props.s3NameBase,
+          // Correlation tagging: pass the root (main) stack name so the data sub-stack's resources
+          // carry the same serverless-inbox:root-stack tag. Key MUST match the data stack's
+          // CfnParameter overrideLogicalId (rootStack).
+          rootStack: Aws.STACK_NAME,
+          // Real product version so tags aren't 'unknown'.
+          productVersion,
+        },
       },
     });
 

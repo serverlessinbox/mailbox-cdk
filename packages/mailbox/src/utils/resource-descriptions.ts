@@ -183,17 +183,36 @@ function sanitizeDescription(s: string): string {
  * All tags are written via TagManager.setTag (guarded by isTaggable), never `Tags.of()`, which
  * would spawn a Tag sub-aspect and trip CDK's aspect-ordering / infinite-loop guards.
  */
+export interface MailboxResourceDescriptionsOptions {
+  /**
+   * Component sentence used whenever the COMPONENT_DESCRIPTIONS lookup misses (e.g. sub-stack
+   * resources whose ids aren't in the main-stack component map). Defaults to a path-derived string.
+   */
+  readonly fallbackDescription?: string;
+}
+
 export class MailboxResourceDescriptions implements cdk.IAspect {
-  constructor(private readonly mailboxId: string) {}
+  private readonly fallbackDescription?: string;
+
+  /**
+   * @param anchorId  Construct id that marks each stack's own root in the node path; `pathTailAfter`
+   *                  computes the tail relative to it (e.g. 'Mailbox' for the main construct, or the
+   *                  stack id for a sub-stack applied at stack scope).
+   * @param options   Optional overrides (e.g. `fallbackDescription` for sub-stacks).
+   */
+  constructor(private readonly anchorId: string, options: MailboxResourceDescriptionsOptions = {}) {
+    this.fallbackDescription = options.fallbackDescription;
+  }
 
   public visit(node: IConstruct): void {
     if (!(node instanceof cdk.CfnResource)) return;
 
-    const tail = pathTailAfter(node, this.mailboxId);
+    const tail = pathTailAfter(node, this.anchorId);
 
     // Component id = the path segment after the group (tail = `<group>/<component>/...`).
     const componentId = tail.split('/')[1];
     const componentSentence = (componentId && COMPONENT_DESCRIPTIONS[componentId])
+      ?? this.fallbackDescription
       ?? `ServerlessInbox · ${fallbackComponentFromPath(tail)} · ${tail}`;
 
     const role = structuralRole(node.cfnResourceType, node.node.id);

@@ -79,6 +79,7 @@ export function grantDataDeployerWorkerPermissions(
         's3:PutBucketVersioning',
         's3:GetBucketVersioning',
         's3:PutBucketTagging',
+        's3:GetBucketTagging',
         's3:PutLifecycleConfiguration',
         's3:GetLifecycleConfiguration',
         's3:PutEncryptionConfiguration',

@@ -1,6 +1,6 @@
 import { Aws, CustomResource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { getCognitoDataStackTemplateArn, getCognitoDataStackTemplateUrl } from '../artifacts';
+import { getCognitoDataStackTemplateArn, getCognitoDataStackTemplateUrl, getCognitoProductVersion } from '../artifacts';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
 import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
@@ -52,6 +52,12 @@ export class MailboxCognitoDataDeployer extends Construct {
       cognitoDomainPrefix: props.cognitoDomainPrefix,
       mfaMode: props.mfaMode ?? 'OPTIONAL',
       passwordMinLength: String(props.passwordMinLength ?? 8),
+      // Correlation tagging: pass the root (main) stack name so the cognito sub-stack's resources
+      // carry the same serverless-inbox:root-stack tag. Key MUST match the cognito data stack's
+      // CfnParameter overrideLogicalId (rootStack).
+      rootStack: Aws.STACK_NAME,
+      // Real product version so tags aren't 'unknown'.
+      productVersion: getCognitoProductVersion(this),
     };
     if (props.customDomain !== undefined) {
       parameters.customDomainName = props.customDomain.domainName;

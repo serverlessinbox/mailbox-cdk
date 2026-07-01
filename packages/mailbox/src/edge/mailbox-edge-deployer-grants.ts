@@ -5,7 +5,7 @@ import { TypeScriptLambda } from '../utils/ts-lambda';
 export interface EdgeDeployerGrantProps {
   stack: Stack;
   edgeStackArn: string;
-  originDeployment: string;
+  rootStack: string;
   templateObjectArn: string;
   /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
   artifactObjectArns: string[];
@@ -46,7 +46,7 @@ export function grantEdgeDeployerWorkerPermissions(
     // IAM is global (no region), but ARNs are account-scoped.
     account: props.stack.account,
     resource: 'role',
-    resourceName: `${props.originDeployment}-*`,
+    resourceName: `${props.rootStack}-*`,
   });
 
   // Allow the deployer to manage CloudFormation stacks in us-east-1

@@ -74,3 +74,13 @@ export function getCognitoDataStackTemplateArn(scope: IConstruct, options?: Crea
   const resolver = createCognitoArtifactData(scope, options);
   return resolver.getArn(COGNITO_ARTIFACT_PACKAGE, 'cognito-data-stack-template.json');
 }
+
+/**
+ * Resolves the product version used for `serverless-inbox:version` tagging in the cognito data
+ * sub-stack. Uses the cognito package's own (self-owned) version, which is always present in the
+ * resolver's package map — mirrors how the main construct threads a real version into its stacks.
+ */
+export function getCognitoProductVersion(scope: IConstruct, options?: CreateCognitoArtifactOptions): string {
+  const resolver = createCognitoArtifactData(scope, options);
+  return resolver.getVersion(COGNITO_ARTIFACT_PACKAGE);
+}

@@ -2,7 +2,14 @@ import * as cdk from 'aws-cdk-lib';
 import { Aws, Fn, RemovalPolicy } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
-import { isDevelopmentMode, JMAP_SCOPE_DESCRIPTIONS } from '@serverlessinbox/mailbox';
+import {
+  isDevelopmentMode,
+  JMAP_SCOPE_DESCRIPTIONS,
+  applyServerlessInboxBaseTags,
+  applyServerlessInboxComponentTag,
+  MailboxResourceDescriptions,
+  type ServerlessInboxDeployer,
+} from '@serverlessinbox/mailbox';
 import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
 
 /**
@@ -53,6 +60,47 @@ export class MailboxCognitoDataStack extends cdk.Stack {
       minValue: 6,
       maxValue: 99,
     });
+
+    // --- Correlation / tagging parameters (mirror the edge/data sub-stacks) ---
+
+    const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
+      type: 'String',
+      description: 'Root (main) CloudFormation stack name (regional stack that created this cognito stack)',
+      default: '',
+    });
+    rootStackParam.overrideLogicalId('rootStack');
+
+    const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
+      type: 'String',
+      description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
+      default: 'unknown',
+    });
+    productVersionParam.overrideLogicalId('productVersion');
+
+    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
+      type: 'String',
+      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+      default: 'cfn',
+      allowedValues: ['cdk', 'cfn', 'marketplace'],
+    });
+    deployerParam.overrideLogicalId('deployer');
+
+    // Apply product/correlation tags to everything in this cognito data stack.
+    // root-stack is the main stack name (via rootStack param); the base helper tags this
+    // stack's own name as `stack` (AWS::StackName). Cognito is the identity/auth tier.
+    applyServerlessInboxBaseTags(this, {
+      product: 'mailbox',
+      rootStack: rootStackParam.valueAsString,
+      version: productVersionParam.valueAsString,
+      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
+    });
+    applyServerlessInboxComponentTag(this, 'auth');
+
+    // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack
+    // component map, so supply an identity-tier fallback sentence; anchor on this stack's own id.
+    cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
+      fallbackDescription: 'ServerlessInbox identity - Cognito user directory.',
+    }));
 
     // --- Conditions ---
 

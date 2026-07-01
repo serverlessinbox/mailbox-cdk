@@ -8,6 +8,7 @@ import {
   applyServerlessInboxEdgeTags,
   type ServerlessInboxDeployer,
 } from '../utils/serverless-inbox-tags';
+import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 
 export interface MailboxEdgeStackProps extends cdk.StackProps {
   // No additional props - configuration comes from CloudFormation parameters
@@ -25,17 +26,17 @@ export class MailboxEdgeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxEdgeStackProps) {
     super(scope, id, props);
 
-    const originDeploymentParam = new cdk.CfnParameter(this, 'origin-deployment', {
+    const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
       type: 'String',
-      description: 'Originating CloudFormation stack name (regional stack that created this edge stack)',
+      description: 'Root (main) CloudFormation stack name (regional stack that created this edge stack)',
     });
-    originDeploymentParam.overrideLogicalId('originDeployment');
+    rootStackParam.overrideLogicalId('rootStack');
 
-    const originRegionParam = new cdk.CfnParameter(this, 'origin-region', {
+    const rootRegionParam = new cdk.CfnParameter(this, 'root-region', {
       type: 'String',
-      description: 'Originating AWS region (regional stack region that created this edge stack)',
+      description: 'Root (main) AWS region (regional stack region that created this edge stack)',
     });
-    originRegionParam.overrideLogicalId('originRegion');
+    rootRegionParam.overrideLogicalId('rootRegion');
 
     const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
       type: 'String',
@@ -52,19 +53,26 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     deployerParam.overrideLogicalId('deployer');
 
-    // Apply product/correlation tags to everything in this edge stack, and add origin back-references.
+    // Apply product/correlation tags to everything in this edge stack, and add root back-references.
     applyServerlessInboxBaseTags(this, {
       product: 'mailbox',
-      // root-stack is the main stack name (flows in via the originDeployment param);
+      // root-stack is the main stack name (flows in via the rootStack param);
       // the base helper tags this edge stack's own name as `stack` (AWS::StackName).
-      rootStack: originDeploymentParam.valueAsString,
+      rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
       deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
     });
     applyServerlessInboxComponentTag(this, 'edge');
     applyServerlessInboxEdgeTags(this, {
-      rootRegion: originRegionParam.valueAsString,
+      rootRegion: rootRegionParam.valueAsString,
     });
+
+    // Add Name tags + native descriptions to every L1 in this edge sub-stack. Its resource ids
+    // aren't in the main-stack component map, so supply an edge-tier fallback sentence. Anchor on
+    // this stack's own id so path tails are computed relative to the sub-stack root.
+    cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
+      fallbackDescription: 'ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing.',
+    }));
 
     // Define CloudFormation parameters so the template is configurable
     const domainNameParam = new cdk.CfnParameter(this, 'domain-name', {

@@ -64,6 +64,24 @@ export {
   isDevelopmentMode,
 } from './utils/development-mode';
 
+// Utils — tagging & correlation (used by sibling sub-stack packages, e.g. mailbox-cognito)
+export {
+  ServerlessInboxTagKeys,
+  applyServerlessInboxBaseTags,
+  applyServerlessInboxComponentTag,
+  applyServerlessInboxEdgeTags,
+} from './utils/serverless-inbox-tags';
+export type {
+  ServerlessInboxComponent,
+  ServerlessInboxDeployer,
+  ApplyServerlessInboxTagsOptions,
+  ApplyServerlessInboxEdgeTagsOptions,
+} from './utils/serverless-inbox-tags';
+
+// Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)
+export { MailboxResourceDescriptions } from './utils/resource-descriptions';
+export type { MailboxResourceDescriptionsOptions } from './utils/resource-descriptions';
+
 // Utils — KMS
 export type {
   MailboxKmsMode,

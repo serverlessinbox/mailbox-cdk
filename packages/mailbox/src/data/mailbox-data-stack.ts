@@ -9,6 +9,12 @@ import { MailFeedbackTable } from '../resources/mailfeedback-table';
 import { MailboxKmsConfig } from '../utils/kms';
 import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
 import { isDevelopmentMode } from '../utils/development-mode';
+import {
+  applyServerlessInboxBaseTags,
+  applyServerlessInboxComponentTag,
+  type ServerlessInboxDeployer,
+} from '../utils/serverless-inbox-tags';
+import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
@@ -36,6 +42,48 @@ export class MailboxDataStack extends cdk.Stack {
       type: 'String',
       description: 'S3-safe base for bucket names',
     });
+
+    // Correlation/tagging parameters (mirror the edge stack). The originating (main) stack name and
+    // the deploy metadata flow in from MailboxDataDeployer so this sub-stack's resources carry the
+    // same root-stack correlation tags.
+    const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
+      type: 'String',
+      description: 'Root (main) CloudFormation stack name (regional stack that created this data stack)',
+      default: '',
+    });
+    rootStackParam.overrideLogicalId('rootStack');
+
+    const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
+      type: 'String',
+      description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
+      default: 'unknown',
+    });
+    productVersionParam.overrideLogicalId('productVersion');
+
+    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
+      type: 'String',
+      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+      default: 'cfn',
+      allowedValues: ['cdk', 'cfn', 'marketplace'],
+    });
+    deployerParam.overrideLogicalId('deployer');
+
+    // Apply product/correlation tags to everything in this data stack.
+    // root-stack is the main stack name (via rootStack param); the base helper tags this
+    // stack's own name as `stack` (AWS::StackName).
+    applyServerlessInboxBaseTags(this, {
+      product: 'mailbox',
+      rootStack: rootStackParam.valueAsString,
+      version: productVersionParam.valueAsString,
+      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
+    });
+    applyServerlessInboxComponentTag(this, 'data');
+
+    // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack
+    // component map, so supply a data-tier fallback sentence; anchor on this stack's own id.
+    cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
+      fallbackDescription: 'ServerlessInbox data tier - retained DynamoDB tables and S3 blob store.',
+    }));
 
     // Resolve encryption settings once. For aws-managed mode this emits
     // TableEncryption.AWS_MANAGED / BucketEncryption.KMS_MANAGED without an explicit
