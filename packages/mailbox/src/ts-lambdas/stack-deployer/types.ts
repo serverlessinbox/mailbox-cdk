@@ -3,6 +3,12 @@ export interface StackDeployerProperties {
   templateUrl: string;
   /** CloudFormation stack parameters for the edge stack */
   parameters?: Record<string, string | undefined>;
+  /**
+   * Object-level tags applied to the AWS::CloudFormation::Stack itself (and propagated by
+   * CloudFormation to the stack's resources) via the CreateStack/UpdateStack `Tags` parameter.
+   * Parallel channel to `parameters`.
+   */
+  tags?: Record<string, string | undefined>;
   /** Whether to enable termination protection on the edge stack */
   terminationProtection?: boolean;
 }

@@ -4,6 +4,7 @@ import { getCognitoDataStackTemplateArn, getCognitoDataStackTemplateUrl, getCogn
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
 import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
+import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
@@ -48,6 +49,9 @@ export class MailboxCognitoDataDeployer extends Construct {
       templateObjectArn: getCognitoDataStackTemplateArn(this),
     });
 
+    const productVersion = getCognitoProductVersion(this);
+    const cognitoStackName = Aws.STACK_NAME + '-cognito';
+
     const parameters: Record<string, string> = {
       cognitoDomainPrefix: props.cognitoDomainPrefix,
       mfaMode: props.mfaMode ?? 'OPTIONAL',
@@ -57,7 +61,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       // CfnParameter overrideLogicalId (rootStack).
       rootStack: Aws.STACK_NAME,
       // Real product version so tags aren't 'unknown'.
-      productVersion: getCognitoProductVersion(this),
+      productVersion,
     };
     if (props.customDomain !== undefined) {
       parameters.customDomainName = props.customDomain.domainName;
@@ -70,9 +74,15 @@ export class MailboxCognitoDataDeployer extends Construct {
       properties: {
         region: Aws.REGION,
         preserveOnDelete: true,
-        stackName: Aws.STACK_NAME + '-cognito',
+        stackName: cognitoStackName,
         templateUrl: getCognitoDataStackTemplateUrl(this),
         parameters,
+        // Object-level correlation tags on the cognito AWS::CloudFormation::Stack itself.
+        tags: serverlessInboxSubStackTags({
+          rootStack: Aws.STACK_NAME,
+          stack: cognitoStackName,
+          version: productVersion,
+        }),
       },
     });
 

@@ -6,6 +6,7 @@ import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackDeployerInfra } from '../utils/stack-deployer-infra';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
+import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
 
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: ICdkArtifactResolver;
@@ -80,6 +81,12 @@ export class MailboxDataDeployer extends Construct {
           // Real product version so tags aren't 'unknown'.
           productVersion,
         },
+        // Object-level correlation tags on the data AWS::CloudFormation::Stack itself.
+        tags: serverlessInboxSubStackTags({
+          rootStack: Aws.STACK_NAME,
+          stack: dataStackNameToken,
+          version: productVersion,
+        }),
       },
     });
 

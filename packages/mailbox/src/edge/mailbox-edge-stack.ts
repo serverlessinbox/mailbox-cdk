@@ -9,6 +9,7 @@ import {
   type ServerlessInboxDeployer,
 } from '../utils/serverless-inbox-tags';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
+import { addServerlessInboxResourceGroup } from '../utils/resource-group';
 
 export interface MailboxEdgeStackProps extends cdk.StackProps {
   // No additional props - configuration comes from CloudFormation parameters
@@ -73,6 +74,12 @@ export class MailboxEdgeStack extends cdk.Stack {
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
       fallbackDescription: 'ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing.',
     }));
+
+    // Per-region (us-east-1) AWS Resource Group collecting this deployment's edge resources.
+    // Matches the root-stack value flowing in from the main stack via the rootStack param.
+    addServerlessInboxResourceGroup(this, 'resource-group', {
+      rootStackValue: rootStackParam.valueAsString,
+    });
 
     // Define CloudFormation parameters so the template is configurable
     const domainNameParam = new cdk.CfnParameter(this, 'domain-name', {

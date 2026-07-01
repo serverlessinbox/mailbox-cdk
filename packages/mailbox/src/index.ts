@@ -70,12 +70,14 @@ export {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
+  serverlessInboxSubStackTags,
 } from './utils/serverless-inbox-tags';
 export type {
   ServerlessInboxComponent,
   ServerlessInboxDeployer,
   ApplyServerlessInboxTagsOptions,
   ApplyServerlessInboxEdgeTagsOptions,
+  ServerlessInboxSubStackTagOptions,
 } from './utils/serverless-inbox-tags';
 
 // Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)

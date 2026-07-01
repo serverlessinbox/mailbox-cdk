@@ -42,6 +42,7 @@ import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { StackHelpers } from './utils/stack-helpers';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
+import { addServerlessInboxResourceGroup } from './utils/resource-group';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -828,6 +829,10 @@ export class Mailbox extends Construct {
     // The aspect writes Name tags directly to each resource's TagManager (no sub-aspect spawned),
     // so default aspect priority is fine.
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(id));
+
+    // Per-region AWS Resource Group collecting all resources tagged with this deployment's
+    // root-stack (this is the main stack, so root-stack = AWS::StackName).
+    addServerlessInboxResourceGroup(this, 'resource-group');
 
   }
 }

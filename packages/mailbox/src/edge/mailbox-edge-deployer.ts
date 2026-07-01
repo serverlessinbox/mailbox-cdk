@@ -5,6 +5,7 @@ import { Construct } from 'constructs';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { StackDeployerInfra } from '../utils/stack-deployer-infra';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
+import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
 
 export interface MailboxEdgeDeployerProps {
   /**
@@ -142,6 +143,12 @@ export class MailboxEdgeDeployer extends Construct {
         stackName: edgeStackName,
         templateUrl,
         parameters: cfnParameters,
+        // Object-level correlation tags on the edge AWS::CloudFormation::Stack itself.
+        tags: serverlessInboxSubStackTags({
+          rootStack: Aws.STACK_NAME,
+          stack: edgeStackName,
+          version: props.productVersion,
+        }),
         terminationProtection: props.terminationProtection ?? false,
         region: 'us-east-1',
       },

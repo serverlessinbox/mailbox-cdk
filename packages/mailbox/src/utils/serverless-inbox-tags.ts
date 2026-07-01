@@ -90,6 +90,36 @@ export function applyServerlessInboxComponentTag(scope: IConstruct, component: S
   Tags.of(scope).add(ServerlessInboxTagKeys.component, component);
 }
 
+export interface ServerlessInboxSubStackTagOptions {
+  /** Root (main) stack name shared across the deployment. */
+  rootStack: string;
+  /** This sub-stack's own CloudFormation stack name. */
+  stack: string;
+  /** Product version (e.g. '1.2.3' or 'channel:dev'). */
+  version?: string;
+  /** Defaults to 'mailbox'. */
+  product?: string;
+}
+
+/**
+ * Builds the object-level tag map applied to a sub-stack's AWS::CloudFormation::Stack via the
+ * deployer's CreateStack/UpdateStack `Tags` parameter (correlation scheme: root-stack + stack +
+ * product + version). Keys use the canonical `serverless-inbox:` prefix.
+ */
+export function serverlessInboxSubStackTags(
+  options: ServerlessInboxSubStackTagOptions,
+): Record<string, string> {
+  const tags: Record<string, string> = {
+    [ServerlessInboxTagKeys.product]: (options.product ?? 'mailbox').trim() || 'mailbox',
+    [ServerlessInboxTagKeys.rootStack]: options.rootStack,
+    [ServerlessInboxTagKeys.stack]: options.stack,
+  };
+  if (options.version) {
+    tags[ServerlessInboxTagKeys.version] = options.version;
+  }
+  return tags;
+}
+
 export function applyServerlessInboxEdgeTags(scope: IConstruct, options: ApplyServerlessInboxEdgeTagsOptions): void {
   Tags.of(scope).add(ServerlessInboxTagKeys.edge, 'true');
   // root-stack is set by applyServerlessInboxBaseTags; only the root-region back-reference is added here.

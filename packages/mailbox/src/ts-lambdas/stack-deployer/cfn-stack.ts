@@ -27,6 +27,21 @@ export function toCfnParameters(parameters?: Record<string, string | undefined>)
   return out;
 }
 
+export function toCfnTags(tags?: Record<string, string | undefined>): Array<{ Key: string; Value: string }> {
+  if (!tags) {
+    return [];
+  }
+
+  const out: Array<{ Key: string; Value: string }> = [];
+  for (const [key, value] of Object.entries(tags)) {
+    if (value === undefined || value === '') {
+      continue;
+    }
+    out.push({ Key: key, Value: value });
+  }
+  return out;
+}
+
 export async function describeStack(stackName: string, cfClient: CloudFormationClient): Promise<any | undefined> {
   try {
     const resp = await cfClient.send(new DescribeStacksCommand({ StackName: stackName }));
@@ -97,7 +112,9 @@ function requiresRecreate(status?: string): boolean {
 export async function startOrUpdateStack(op: OperationInput): Promise<void> {
   const cfClient = makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
   const parameters = toCfnParameters(op.parameters);
+  const tags = toCfnTags(op.tags);
   console.log('CloudFormation parameters:', JSON.stringify(parameters, null, 2));
+  console.log('CloudFormation tags:', JSON.stringify(tags, null, 2));
   console.log('Stack operation:', JSON.stringify({
     stackName: op.stackName,
     templateUrl: op.templateUrl,
@@ -112,6 +129,7 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
           StackName: op.stackName,
           TemplateURL: op.templateUrl,
           Parameters: parameters,
+          Tags: tags,
           Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
           EnableTerminationProtection: op.terminationProtection ?? false,
         })
@@ -149,6 +167,7 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
           StackName: op.stackName,
           TemplateURL: op.templateUrl,
           Parameters: parameters,
+          Tags: tags,
           Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
           EnableTerminationProtection: op.terminationProtection ?? false,
         })
@@ -166,6 +185,7 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
         StackName: op.stackName,
         TemplateURL: op.templateUrl,
         Parameters: parameters,
+        Tags: tags,
         Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
       })
     );
