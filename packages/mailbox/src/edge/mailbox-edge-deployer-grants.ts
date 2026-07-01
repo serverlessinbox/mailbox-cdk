@@ -91,6 +91,7 @@ export function grantEdgeDeployerWorkerPermissions(
         'acm:DeleteCertificate',
         'acm:ListTagsForCertificate',
         'acm:AddTagsToCertificate',
+        'acm:RemoveTagsFromCertificate',
       ],
       resources: ['arn:aws:acm:us-east-1:*:certificate/*'],
     })
