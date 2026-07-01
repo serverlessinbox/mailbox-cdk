@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.17](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.16...v0.0.17) (Wed Jul 01 2026)
+
+### fix
+
+* Edge grants for tags ([7b8d32e](https://github.com/serverlessinbox/mailbox-cdk/commit/7b8d32e052b449684c3648298152beb60993d66b))
+
 ## [0.0.16](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.15...v0.0.16) (Wed Jul 01 2026)
 
 ### feat
