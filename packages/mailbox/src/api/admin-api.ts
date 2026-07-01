@@ -15,6 +15,7 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -35,6 +36,7 @@ export interface AdminApiProps {
   readonly allowedOrigins?: string[];
   readonly artifactResolver: ICdkArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
+  readonly userProvisionerFunction: IFunction;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
@@ -119,6 +121,7 @@ export class AdminApi extends Construct {
       artifactResolver: props.artifactResolver,
       sesRuleSetName: props.sesRuleSetName,
       sesConfigSetName: props.sesConfigSetName,
+      userProvisionerFunction: props.userProvisionerFunction,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 

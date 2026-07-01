@@ -52,17 +52,18 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     deployerParam.overrideLogicalId('deployer');
 
-    // Apply product/deployment tags to everything in this edge stack, and add origin back-references.
+    // Apply product/correlation tags to everything in this edge stack, and add origin back-references.
     applyServerlessInboxBaseTags(this, {
       product: 'mailbox',
-      // In the edge stack, deployment is the edge stack name (AWS::StackName).
+      // root-stack is the main stack name (flows in via the originDeployment param);
+      // the base helper tags this edge stack's own name as `stack` (AWS::StackName).
+      rootStack: originDeploymentParam.valueAsString,
       version: productVersionParam.valueAsString,
       deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
     });
     applyServerlessInboxComponentTag(this, 'edge');
     applyServerlessInboxEdgeTags(this, {
-      originDeployment: originDeploymentParam.valueAsString,
-      originRegion: originRegionParam.valueAsString,
+      rootRegion: originRegionParam.valueAsString,
     });
 
     // Define CloudFormation parameters so the template is configurable

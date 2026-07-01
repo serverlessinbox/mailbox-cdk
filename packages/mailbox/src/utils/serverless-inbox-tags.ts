@@ -19,22 +19,29 @@ const TAG_PREFIX = 'serverless-inbox:' as const;
 
 export const ServerlessInboxTagKeys = {
   product: `${TAG_PREFIX}product`,
-  deployment: `${TAG_PREFIX}deployment`,
+  /** Main (root) stack name — shared across all stacks in a deployment for cross-stack correlation. */
+  rootStack: `${TAG_PREFIX}root-stack`,
+  /** This stack's own name (AWS::StackName). */
+  stack: `${TAG_PREFIX}stack`,
   component: `${TAG_PREFIX}component`,
+  description: `${TAG_PREFIX}description`,
   version: `${TAG_PREFIX}version`,
   deployer: `${TAG_PREFIX}deployer`,
 
   edge: `${TAG_PREFIX}edge`,
-  originDeployment: `${TAG_PREFIX}origin-deployment`,
-  originRegion: `${TAG_PREFIX}origin-region`,
+  rootRegion: `${TAG_PREFIX}root-region`,
 } as const;
 
 export interface ApplyServerlessInboxTagsOptions {
   /** Defaults to 'mailbox'. */
   product?: string;
 
-  /** Defaults to AWS::StackName (the deployed stack name). */
-  deployment?: string;
+  /**
+   * Main (root) stack name, shared across all stacks in a deployment for cross-stack correlation.
+   * Tagged as `serverless-inbox:root-stack`. This stack's own name is tagged separately as
+   * `serverless-inbox:stack` (from AWS::StackName).
+   */
+  rootStack: string;
 
   /** Optional version string (e.g. '1.2.3' or 'channel:dev'). */
   version?: string;
@@ -47,19 +54,20 @@ export interface ApplyServerlessInboxTagsOptions {
 }
 
 export interface ApplyServerlessInboxEdgeTagsOptions {
-  originDeployment: string;
-  originRegion: string;
+  /** The root stack's region (where the main stack is deployed). Tagged as `serverless-inbox:root-region`. */
+  rootRegion: string;
 }
 
 export function applyServerlessInboxBaseTags(
   scope: IConstruct,
-  options: ApplyServerlessInboxTagsOptions = {},
+  options: ApplyServerlessInboxTagsOptions,
 ): void {
   const product = (options.product ?? 'mailbox').trim() || 'mailbox';
-  const deployment = (options.deployment ?? Aws.STACK_NAME).toString();
 
   Tags.of(scope).add(ServerlessInboxTagKeys.product, product);
-  Tags.of(scope).add(ServerlessInboxTagKeys.deployment, deployment);
+  // Correlation scheme: root-stack is the shared main stack name; stack is this stack's own name.
+  Tags.of(scope).add(ServerlessInboxTagKeys.rootStack, options.rootStack);
+  Tags.of(scope).add(ServerlessInboxTagKeys.stack, Aws.STACK_NAME);
 
   if (options.version) {
     Tags.of(scope).add(ServerlessInboxTagKeys.version, options.version);
@@ -84,6 +92,6 @@ export function applyServerlessInboxComponentTag(scope: IConstruct, component: S
 
 export function applyServerlessInboxEdgeTags(scope: IConstruct, options: ApplyServerlessInboxEdgeTagsOptions): void {
   Tags.of(scope).add(ServerlessInboxTagKeys.edge, 'true');
-  Tags.of(scope).add(ServerlessInboxTagKeys.originDeployment, options.originDeployment);
-  Tags.of(scope).add(ServerlessInboxTagKeys.originRegion, options.originRegion);
+  // root-stack is set by applyServerlessInboxBaseTags; only the root-region back-reference is added here.
+  Tags.of(scope).add(ServerlessInboxTagKeys.rootRegion, options.rootRegion);
 }

@@ -267,7 +267,8 @@ export class Mailbox extends Construct {
     const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
     applyServerlessInboxBaseTags(this, {
-      deployment: Aws.STACK_NAME,
+      // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
+      rootStack: Aws.STACK_NAME,
       version: stackVersion,
       deployer,
       product: 'mailbox',
@@ -481,6 +482,9 @@ export class Mailbox extends Construct {
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
+        webmailUrl: enableWebmailUi && (props.overrides?.certificates?.webmailUi ?? defaultUiCertificate)
+          ? `https://${mailboxDomains.webmail}`
+          : undefined,
         uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
       });
 
@@ -754,6 +758,7 @@ export class Mailbox extends Construct {
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver: artifactResolver,
       authProvider,
+      userProvisionerFunction: userProvisioner,
 
       addons: adminApiAddons,
 

@@ -3,6 +3,7 @@ import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -17,6 +18,7 @@ export interface AdminApiLambdaProps {
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
   artifactResolver: ICdkArtifactResolver;
+  userProvisionerFunction: IFunction;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
   sesRuleSetName?: string;
   /** SES configuration set name for outbound email tracking. */
@@ -101,6 +103,7 @@ export class AdminApiLambda extends GoLambda {
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
+        USER_PROVISIONER_FUNCTION_NAME: props.userProvisionerFunction.functionName,
       },
     });
 
@@ -128,5 +131,8 @@ export class AdminApiLambda extends GoLambda {
     // Needed for standard JMAP email storage + submission enqueue
     props.blobStore.grantReadWrite(this);
     props.emailSubmissionQueue.grantSendMessages(this);
+
+    // Grant the User provisioning function to be invoked
+    props.userProvisionerFunction.grantInvoke(this);
   }
 }

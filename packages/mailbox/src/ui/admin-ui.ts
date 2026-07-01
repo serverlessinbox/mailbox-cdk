@@ -37,6 +37,9 @@ export interface AdminUiProps {
   /** Base URL for the Admin UI's backend API. Written into `/config/config.json`. */
   readonly apiUrl?: string;
 
+  /** Webmail app URL. Written into `/config/config.json` as `webmailUrl`. */
+  readonly webmailUrl?: string;
+
   /** Additional runtime config written into `/config/config.json` (e.g. feature flags / IdP user management config). */
   readonly uiConfig?: Record<string, unknown>;
 }
@@ -69,6 +72,7 @@ export class AdminUi extends MailboxUi {
     const mergedUiConfig = {
       ...(props.uiConfig ?? {}),
       ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
+      ...(props.webmailUrl ? { webmailUrl: props.webmailUrl } : {}),
     };
 
     super(scope, id, {
