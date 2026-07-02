@@ -3,7 +3,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
-import { StackDeployerInfra } from '../utils/stack-deployer-infra';
+import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';

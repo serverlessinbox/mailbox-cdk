@@ -34,28 +34,28 @@ export const ServerlessInboxTagKeys = {
 
 export interface ApplyServerlessInboxTagsOptions {
   /** Defaults to 'mailbox'. */
-  product?: string;
+  readonly product?: string;
 
   /**
    * Main (root) stack name, shared across all stacks in a deployment for cross-stack correlation.
    * Tagged as `serverless-inbox:root-stack`. This stack's own name is tagged separately as
    * `serverless-inbox:stack` (from AWS::StackName).
    */
-  rootStack: string;
+  readonly rootStack: string;
 
   /** Optional version string (e.g. '1.2.3' or 'channel:dev'). */
-  version?: string;
+  readonly version?: string;
 
   /** Optional deployer kind ('cfn' by default if provided). */
-  deployer?: ServerlessInboxDeployer;
+  readonly deployer?: ServerlessInboxDeployer;
 
   /** Optional extra tags supplied by the caller. */
-  extraTags?: Record<string, string>;
+  readonly extraTags?: Record<string, string>;
 }
 
 export interface ApplyServerlessInboxEdgeTagsOptions {
   /** The root stack's region (where the main stack is deployed). Tagged as `serverless-inbox:root-region`. */
-  rootRegion: string;
+  readonly rootRegion: string;
 }
 
 export function applyServerlessInboxBaseTags(
@@ -92,13 +92,13 @@ export function applyServerlessInboxComponentTag(scope: IConstruct, component: S
 
 export interface ServerlessInboxSubStackTagOptions {
   /** Root (main) stack name shared across the deployment. */
-  rootStack: string;
+  readonly rootStack: string;
   /** This sub-stack's own CloudFormation stack name. */
-  stack: string;
+  readonly stack: string;
   /** Product version (e.g. '1.2.3' or 'channel:dev'). */
-  version?: string;
+  readonly version?: string;
   /** Defaults to 'mailbox'. */
-  product?: string;
+  readonly product?: string;
 }
 
 /**

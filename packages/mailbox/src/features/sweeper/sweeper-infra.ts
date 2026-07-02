@@ -1,7 +1,7 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { TypeScriptLambda } from './ts-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
+import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
 import { SweeperWorkflow } from './sweeper-workflow';
 import { Fn, Stack, Aws, Duration, RemovalPolicy } from 'aws-cdk-lib';
 
@@ -29,8 +29,8 @@ export interface SweeperInfraProps {
  * destroy+redeploy, so RETAIN'd role stubs never collide.
  */
 export class SweeperInfra extends Construct {
-  readonly starter: TypeScriptLambda;
-  readonly worker: TypeScriptLambda;
+  readonly starter: ResourceSweeperStarterLambda;
+  readonly worker: ResourceSweeperWorkerLambda;
   readonly workflow: SweeperWorkflow;
   readonly executionRole: iam.Role;
 
@@ -98,13 +98,9 @@ export class SweeperInfra extends Construct {
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Worker Lambda (RETAIN'd — invoked by SFN Branch B post-stack-delete)
-    this.worker = new TypeScriptLambda(this, 'worker', {
-      lambdaId: 'resource-sweeper',
+    // Now instantiated via the typed wrapper construct
+    this.worker = new ResourceSweeperWorkerLambda(this, 'worker', {
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.workerHandler',
-      timeout: Duration.minutes(3),
-      memorySize: 256,
       role: workerRole,
     });
     (this.worker.node.defaultChild as any)
@@ -198,6 +194,9 @@ export class SweeperInfra extends Construct {
       workerRoleArn,
       workerRoleName,
       worker: this.worker,
+      workerLambdaArn: this.worker.functionArn,
+      workerRolePolicyName: 'sweeper-worker-policy',
+      rolePolicyName: 'sweeper-execution-policy',
       checkInterval: Duration.minutes(5),
       timeout: Duration.hours(4),
       stateMachineName: smName,
@@ -206,13 +205,11 @@ export class SweeperInfra extends Construct {
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Starter Lambda (NOT retained — CFN deletes normally)
-    this.starter = new TypeScriptLambda(this, 'starter', {
-      lambdaId: 'resource-sweeper',
+    // Now instantiated via the typed wrapper construct with minimal env vars
+    this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.starterHandler',
-      timeout: Duration.minutes(1),
-      memorySize: 256,
+      stateMachineArn: smArn,
+      rootStackName: Aws.STACK_NAME,
     });
 
     // Worker role: single consolidated inline policy
@@ -237,20 +234,6 @@ export class SweeperInfra extends Construct {
       ],
     });
     workerPolicy.attachToRole(workerRole);
-
-    // Starter env vars — all self-referential ARNs use formatArn strings (no GetAtt tokens).
-    // These match the execution input contract expected by the handler.
-    this.starter.addEnvironment('MAILBOX_SWEEPER_STATE_MACHINE_ARN', smArn);
-    this.starter.addEnvironment('MAILBOX_SWEEPER_ROOT_STACK_NAME', Aws.STACK_NAME);
-    this.starter.addEnvironment('MAILBOX_SWEEPER_WORKER_LAMBDA_ARN', this.worker.functionArn);
-    // Worker role ARN — formatArn string, not workerRole.roleArn token (no GetAtt edge)
-    this.starter.addEnvironment('MAILBOX_SWEEPER_WORKER_ROLE_ARN', workerRoleArn);
-    // Worker policy name: explicitly set via policyName prop on iam.Policy
-    this.starter.addEnvironment('MAILBOX_SWEEPER_WORKER_ROLE_POLICY_NAME', 'sweeper-worker-policy');
-    // Execution role ARN — formatArn string, not executionRole.roleArn token (no GetAtt edge)
-    this.starter.addEnvironment('MAILBOX_SWEEPER_EXECUTION_ROLE_ARN', execRoleArn);
-    // Execution policy name: explicitly set via policyName prop on iam.Policy
-    this.starter.addEnvironment('MAILBOX_SWEEPER_ROLE_POLICY_NAME', 'sweeper-execution-policy');
 
     // Starter can invoke the state machine — smArn is a formatArn string (no GetAtt edge)
     this.starter.addToRolePolicy(new iam.PolicyStatement({

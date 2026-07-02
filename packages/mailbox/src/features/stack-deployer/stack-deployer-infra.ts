@@ -1,8 +1,9 @@
 import { Aws, Duration, Fn } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { TypeScriptLambda } from './ts-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
+import { StackDeployerWorkerLambda } from '../../lambdas/stack-deployer-worker';
+import { StackDeployerStarterLambda } from '../../lambdas/stack-deployer-starter';
 import { MailboxStackDeployerWorkflow } from './stack-deployer-workflow';
 
 export interface StackDeployerInfraProps {
@@ -29,21 +30,16 @@ export interface StackDeployerInfraProps {
  * `resource.node.addDependency(infra.workflow.stateMachine)`.
  */
 export class StackDeployerInfra extends Construct {
-  public readonly worker: TypeScriptLambda;
-  public readonly starter: TypeScriptLambda;
+  public readonly worker: StackDeployerWorkerLambda;
+  public readonly starter: StackDeployerStarterLambda;
   public readonly workflow: MailboxStackDeployerWorkflow;
 
   constructor(scope: Construct, id: string, props: StackDeployerInfraProps) {
     super(scope, id);
 
     // Worker Lambda: performs CloudFormation operations and polls for completion.
-    this.worker = new TypeScriptLambda(this, 'worker', {
-      lambdaId: 'stack-deployer',
+    this.worker = new StackDeployerWorkerLambda(this, 'worker', {
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.workerHandler',
-      timeout: Duration.minutes(15),
-      memorySize: 512,
     });
 
     // Step Functions state machine name, derived from the stack GUID for uniqueness.
@@ -59,19 +55,10 @@ export class StackDeployerInfra extends Construct {
     });
 
     // Starter Lambda: CFN custom resource entrypoint — only starts the Step Functions execution.
-    this.starter = new TypeScriptLambda(this, 'starter', {
-      lambdaId: 'stack-deployer',
+    this.starter = new StackDeployerStarterLambda(this, 'starter', {
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.starterHandler',
-      timeout: Duration.minutes(1),
-      memorySize: 256,
+      stateMachineArn: this.workflow.stateMachine.stateMachineArn,
     });
-
-    this.starter.addEnvironment(
-      'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN',
-      this.workflow.stateMachine.stateMachineArn,
-    );
 
     this.starter.addToRolePolicy(
       new PolicyStatement({

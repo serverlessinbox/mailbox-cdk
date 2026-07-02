@@ -26,6 +26,12 @@ export interface SweeperWorkflowProps {
   readonly executionRoleName: string;
   /** The worker Lambda function (for us-east-1 edge Lambda deletes). */
   readonly worker: IFunction;
+  /** ARN of the worker Lambda function (for self-cleanup deletion). */
+  readonly workerLambdaArn: string;
+  /** Policy name for the worker role (for self-cleanup policy deletion). */
+  readonly workerRolePolicyName: string;
+  /** Policy name for the SFN execution role (for self-cleanup policy deletion). */
+  readonly rolePolicyName: string;
   /** How long to wait between checks (default: 5 min). */
   readonly checkInterval?: Duration;
   /** Overall timeout for the workflow (default: 4h). */
@@ -183,7 +189,7 @@ export class SweeperWorkflow extends Construct {
       service: 'lambda',
       action: 'deleteFunction',
       parameters: {
-        'FunctionName.$': '$.workerLambdaArn',
+        FunctionName: this.props.workerLambdaArn,
       },
       resultPath: sfn.JsonPath.DISCARD,
       iamResources: [workerArn],
@@ -211,7 +217,7 @@ export class SweeperWorkflow extends Construct {
       action: 'deleteRolePolicy',
       parameters: {
         RoleName: this.props.workerRoleName,
-        'PolicyName.$': '$.workerRolePolicyName',
+        PolicyName: this.props.workerRolePolicyName,
       },
       resultPath: sfn.JsonPath.DISCARD,
       iamResources: [this.props.workerRoleArn],
@@ -262,7 +268,7 @@ export class SweeperWorkflow extends Construct {
       action: 'deleteRolePolicy',
       parameters: {
         RoleName: this.props.executionRoleName,
-        'PolicyName.$': '$.rolePolicyName',
+        PolicyName: this.props.rolePolicyName,
       },
       resultPath: sfn.JsonPath.DISCARD,
       iamResources: [this.props.executionRoleArn],

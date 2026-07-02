@@ -13,12 +13,6 @@ export interface SweepTarget {
 
 export interface SweepExecutionInput {
   targets: SweepTarget[];
-  workerLambdaArn: string;
-  workerRoleArn: string;
-  workerRolePolicyName: string;
-  stateMachineArn: string;
-  executionRoleArn: string;
-  rolePolicyName: string;
 }
 
 export interface WorkerInput extends SweepTarget {
@@ -57,11 +51,6 @@ export const starterHandler: CloudFormationCustomResourceHandler = wrapHandler(a
   const resourceKind = event.ResourceProperties['ResourceKind'] as string | undefined;
   const rootStackName = process.env['MAILBOX_SWEEPER_ROOT_STACK_NAME']!;
   const smArn = process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN']!;
-  const workerArn = process.env['MAILBOX_SWEEPER_WORKER_LAMBDA_ARN']!;
-  const workerRoleArn = process.env['MAILBOX_SWEEPER_WORKER_ROLE_ARN']!;
-  const workerRolePolicyName = process.env['MAILBOX_SWEEPER_WORKER_ROLE_POLICY_NAME']!;
-  const execRoleArn = process.env['MAILBOX_SWEEPER_EXECUTION_ROLE_ARN']!;
-  const rolePolicyName = process.env['MAILBOX_SWEEPER_ROLE_POLICY_NAME']!;
 
   // Determine which ARN to sweep
   // wrapHandler's event type doesn't expose OldResourceProperties, but it's present in Update events
@@ -98,12 +87,6 @@ export const starterHandler: CloudFormationCustomResourceHandler = wrapHandler(a
     try {
       const executionInput: SweepExecutionInput = {
         targets: [{ kind: arnToSweepKind as 'core-acm-cert' | 'edge-lambda-fn', arn: arnToSweep, rootStackName }],
-        workerLambdaArn: workerArn,
-        workerRoleArn,
-        workerRolePolicyName,
-        stateMachineArn: smArn,
-        executionRoleArn: execRoleArn,
-        rolePolicyName,
       };
 
       console.log('Starting SFN execution', { executionName: event.RequestId, stateMachineArn: smArn });

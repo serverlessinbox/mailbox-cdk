@@ -61,3 +61,15 @@ export type { UserProvisionerLambdaProps } from './user-provisioner';
 
 export { LicenseRefresherLambda } from './license-refresher';
 export type { LicenseRefresherLambdaProps } from './license-refresher';
+
+export { ResourceSweeperStarterLambda } from './resource-sweeper-starter';
+export type { ResourceSweeperStarterLambdaProps } from './resource-sweeper-starter';
+
+export { ResourceSweeperWorkerLambda } from './resource-sweeper-worker';
+export type { ResourceSweeperWorkerLambdaProps } from './resource-sweeper-worker';
+
+export { StackDeployerStarterLambda } from './stack-deployer-starter';
+export type { StackDeployerStarterLambdaProps } from './stack-deployer-starter';
+
+export { StackDeployerWorkerLambda } from './stack-deployer-worker';
+export type { StackDeployerWorkerLambdaProps } from './stack-deployer-worker';

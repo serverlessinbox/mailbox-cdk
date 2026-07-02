@@ -3,7 +3,7 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
-import { StackDeployerInfra } from '../utils/stack-deployer-infra';
+import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
 import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
 
