@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.19](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.18...v0.0.19) (Thu Jul 02 2026)
+
+### fix
+
+* Service timeout ([32c181c](https://github.com/serverlessinbox/mailbox-cdk/commit/32c181c1c053caed3731f1ca4b7fda8a9c4deab6))
+
 ## [0.0.18](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.17...v0.0.18) (Thu Jul 02 2026)
 
 ### feat
