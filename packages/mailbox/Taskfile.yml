@@ -55,6 +55,15 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
 
+  bundle:resource-sweeper:
+    desc: Bundle resource-sweeper lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/resource-sweeper/**/*.ts
+    generates:
+      - /tmp/resource-sweeper.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
@@ -62,6 +71,7 @@ tasks:
       - task: bundle:stack-deployer
       - task: bundle:ui-deployer
       - task: bundle:stack-helpers
+      - task: bundle:resource-sweeper
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -94,9 +104,11 @@ tasks:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/resource-sweeper.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -109,4 +121,5 @@ tasks:
       - task: bundle:stack-deployer
       - task: bundle:ui-deployer
       - task: bundle:stack-helpers
+      - task: bundle:resource-sweeper
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}

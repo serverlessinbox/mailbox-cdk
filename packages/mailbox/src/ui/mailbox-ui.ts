@@ -225,6 +225,7 @@ export class MailboxUi extends Construct {
 
     new CustomResource(this, 'ui-assets', {
       serviceToken: deployer.functionArn,
+      serviceTimeout: Duration.minutes(15), // caps CFN's default multi-hour wait
       properties: {
         deploymentNonce: nonce,
 

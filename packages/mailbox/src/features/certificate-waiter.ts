@@ -1,4 +1,4 @@
-import { CustomResource } from 'aws-cdk-lib';
+import { CustomResource, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
@@ -23,6 +23,7 @@ export class CertificateWaiter extends Construct {
     const cr = new CustomResource(this, 'resource', {
       serviceToken: props.certWaiterLambda.functionArn,
       resourceType: 'Custom::CertificateWaiter',
+      serviceTimeout: Duration.minutes(15), // caps CFN's default; Lambda polls for up to 12 min
       properties: {
         resourceKind: 'cert-waiter',
         certificateArn: props.certificate.certificateArn,

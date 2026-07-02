@@ -94,7 +94,7 @@ export class TypeScriptLambda extends LambdaFunction {
         logGroupName: `/aws/lambda/${this.functionName}`,
         retentionInDays: logGroupRetention,
       });
-      cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+      cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
     }
   }
 }

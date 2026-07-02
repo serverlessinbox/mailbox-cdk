@@ -1,4 +1,4 @@
-import { Aws, CustomResource, Stack, Token } from 'aws-cdk-lib';
+import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
@@ -139,6 +139,7 @@ export class MailboxEdgeDeployer extends Construct {
     this.resource = new CustomResource(this, 'resource', {
       serviceToken: infra.starter.functionArn,
       resourceType: 'Custom::MailboxEdgeDeployer',
+      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
       properties: {
         stackName: edgeStackName,
         templateUrl,

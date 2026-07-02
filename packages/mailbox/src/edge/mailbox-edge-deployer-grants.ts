@@ -216,6 +216,27 @@ export function grantEdgeDeployerWorkerPermissions(
     })
   );
 
+  // AWS Resource Groups SERVICE actions (distinct from the tag:* Resource Groups Tagging API above).
+  // CloudFormation needs these to create/update/delete/tag AWS::ResourceGroups::Group resources.
+  // CreateGroup is evaluated against resource "*" (same as iam:CreateRole and logs:CreateLogGroup pattern).
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: [
+        'resource-groups:CreateGroup',
+        'resource-groups:DeleteGroup',
+        'resource-groups:GetGroup',
+        'resource-groups:GetGroupQuery',
+        'resource-groups:GetGroupConfiguration',
+        'resource-groups:UpdateGroup',
+        'resource-groups:UpdateGroupQuery',
+        'resource-groups:Tag',
+        'resource-groups:Untag',
+        'resource-groups:GetTags',
+      ],
+      resources: ['*'],
+    })
+  );
+
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [

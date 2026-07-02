@@ -88,7 +88,7 @@ export class MailboxCognitoDeployerInfra extends Construct {
       logGroupName: `/aws/lambda/${fn.functionName}`,
       retentionInDays: RetentionDays.ONE_MONTH,
     });
-    cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+    cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
   }
 
   /**

@@ -416,8 +416,9 @@ export class Mailbox extends Construct {
     // If either API certificate is missing and we have Route53, create a single SAN cert
     // that covers both names and use it to fill the gaps.
     let regionalSanCertificate: acm.ICertificate | undefined;
+    let cfnCert: acm.CfnCertificate | undefined;
     if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
-      const cfnCert = new acm.CfnCertificate(groups.edge, 'regional-api-certificate', {
+      cfnCert = new acm.CfnCertificate(groups.edge, 'regional-api-certificate', {
         domainName: mailboxDomains.api,
         subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${domainName}`],
         validationMethod: 'DNS',
@@ -428,6 +429,7 @@ export class Mailbox extends Construct {
           { domainName: `mcp.${domainName}`, hostedZoneId: props.hostedZoneId! },
         ],
       });
+      cfnCert.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
       regionalSanCertificate = acm.Certificate.fromCertificateArn(groups.edge, 'regional-api-certificate-ref', cfnCert.ref);
     }
 

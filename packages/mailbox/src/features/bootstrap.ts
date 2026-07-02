@@ -1,4 +1,4 @@
-import { CustomResource } from 'aws-cdk-lib';
+import { CustomResource, Duration } from 'aws-cdk-lib';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
@@ -69,6 +69,7 @@ export class Bootstrap extends Construct {
 
     new CustomResource(this, id, {
       serviceToken: handler.functionArn,
+      serviceTimeout: Duration.minutes(10), // caps CFN's default multi-hour wait
       properties: {
         bootstrapNonce: Date.now().toString(),
         ensureServiceQuotasPrereqs: true,

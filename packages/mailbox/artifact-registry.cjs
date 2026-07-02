@@ -17,6 +17,10 @@ module.exports = {
       objectName: 'lambdas/stack-helpers.zip',
     },
     {
+      source: '/tmp/resource-sweeper.zip',
+      objectName: 'lambdas/resource-sweeper.zip',
+    },
+    {
       source: 'dist/data-stack-template.json',
       objectName: 'data-stack-template.json',
     },

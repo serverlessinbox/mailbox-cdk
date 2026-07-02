@@ -133,7 +133,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
         recoveryMechanisms: [{ name: 'admin_only', priority: 1 }],
       },
     });
-    cfnPool.applyRemovalPolicy(RemovalPolicy.RETAIN);
+    cfnPool.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // --- UserPoolDomain ---
 
@@ -150,7 +150,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
         Aws.NO_VALUE,
       ) as any,
     });
-    cfnDomain.applyRemovalPolicy(RemovalPolicy.RETAIN);
+    cfnDomain.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // --- UserPoolResourceServer ---
     // Scopes are synthesized from platform constants at template build time.

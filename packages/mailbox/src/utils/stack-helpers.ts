@@ -35,6 +35,7 @@ export class StackHelpers extends Construct {
 
     const cr = new cdk.CfnCustomResource(this, 'resource', {
       serviceToken: fn.functionArn,
+      serviceTimeout: 3600, // caps CFN's default multi-hour wait (1 hour = 3600s)
     });
     cr.addPropertyOverride('HostedZoneId', props.hostedZoneId);
     cr.addPropertyOverride('DataStackName', props.dataStackName);

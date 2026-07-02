@@ -1,4 +1,4 @@
-import { Aws, CustomResource, Fn, Stack } from 'aws-cdk-lib';
+import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -68,6 +68,7 @@ export class MailboxDataDeployer extends Construct {
     const resource = new CustomResource(this, 'resource', {
       serviceToken: infra.starter.functionArn,
       resourceType: 'Custom::MailboxDataDeployer',
+      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
       properties: {
         stackName: dataStackNameToken,
         templateUrl,
