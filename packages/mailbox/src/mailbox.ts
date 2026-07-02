@@ -14,12 +14,14 @@ import {
 } from './auth/types';
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { CertWaiterLambda, SesReceivingMode, UserProvisionerLambda } from './lambdas';
+import { SesReceivingMode, UserProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
 import { Bootstrap } from './features/bootstrap';
-import { CertificateWaiter } from './features/certificate-waiter';
+import { DeferredRemoval } from './features/deferred-removal';
 import { LicenseRefresh } from './features/license-refresh';
+import { SweeperInfra } from './utils/sweeper-infra';
+import { Fn } from 'aws-cdk-lib';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -611,19 +613,45 @@ export class Mailbox extends Construct {
     // bootstrap is declared but only used for its side-effects; suppress unused-locals check.
     void bootstrap;
 
-    // If a regional SAN cert was auto-created, insert a waiter custom resource.
-    // On deletion, the waiter polls ACM DescribeCertificate until InUseBy is empty,
-    // preventing the "Certificate is in use" CloudFormation error.
-    let certWaiter: CertificateWaiter | undefined;
-    if (regionalSanCertificate) {
-      const certWaiterLambda = new CertWaiterLambda(groups.edge, 'cert-waiter-lambda', {
-        artifactResolver,
-      });
-      certWaiter = new CertificateWaiter(groups.edge, 'regional-cert-waiter', {
-        certificate: regionalSanCertificate,
-        certWaiterLambda,
+    // Resource sweeper infrastructure (SFN + worker Lambda)
+    // Handles async cleanup of retained resources (ACM cert, edge Lambda) after stack deletion.
+    const sweeperInfra = new SweeperInfra(groups.edge, 'sweeper-infra', {
+      artifactResolver,
+    });
+
+    // Enqueue the regional ACM cert for deferred removal (if it was auto-created).
+    // The sweeper will delete it after API Gateway custom domain detachment drains.
+    if (regionalSanCertificate && cfnCert) {
+      new DeferredRemoval(groups.edge, 'regional-cert-deferred-removal', {
+        resourceArn: cfnCert.ref,
+        resourceKind: 'core-acm-cert',
+        sweeperStarter: sweeperInfra.starter,
+        label: 'regional-san-certificate',
       });
     }
+
+    // Enqueue the edge blob-authorizer Lambda for deferred removal.
+    // Strip the version qualifier from the version ARN to get the stable function ARN.
+    // Version ARN:  arn:aws:lambda:us-east-1:<acct>:function:<name>:<version>
+    // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
+    const versionArn = edgeStack.getOutput('blobAuthorizerVersionArn');
+    const fnArnParts = Fn.split(':', versionArn);
+    const edgeFunctionArn = Fn.join(':', [
+      Fn.select(0, fnArnParts), // arn
+      Fn.select(1, fnArnParts), // aws
+      Fn.select(2, fnArnParts), // lambda
+      Fn.select(3, fnArnParts), // us-east-1
+      Fn.select(4, fnArnParts), // account
+      Fn.select(5, fnArnParts), // function
+      Fn.select(6, fnArnParts), // <function-name>
+      // Fn.select(7, ...) is the version number — intentionally dropped
+    ]);
+    new DeferredRemoval(groups.edge, 'edge-fn-deferred-removal', {
+      resourceArn: edgeFunctionArn,
+      resourceKind: 'edge-lambda-fn',
+      sweeperStarter: sweeperInfra.starter,
+      label: 'edge-blob-authorizer',
+    });
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
@@ -781,12 +809,6 @@ export class Mailbox extends Construct {
       domainName: domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
     }) : undefined;
-
-    if (certWaiter) {
-      jmapApi.node.addDependency(certWaiter);
-      webSocketPush.node.addDependency(certWaiter);
-      adminApi.node.addDependency(certWaiter);
-    }
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);

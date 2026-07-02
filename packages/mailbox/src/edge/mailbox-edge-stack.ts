@@ -185,8 +185,8 @@ export class MailboxEdgeStack extends cdk.Stack {
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);
 
     // RETAIN_ON_UPDATE_OR_DELETE the blob-authorizer Lambda@Edge function and version to prevent CloudFormation
-    // from deleting them while CloudFront replicas still hold references. Lambda@Edge replicas
-    // drain asynchronously (~4 hours); manual cleanup is required after that window.
+    // from deleting them while CloudFront replicas still hold references. The resource sweeper
+    // will delete them asynchronously after the replica propagation window drains (~4 hours).
     // RETAIN_ON_UPDATE_OR_DELETE ensures we don't orphan failed-create stubs while still protecting real deletions.
     (this.construct.blobAuthorizerFunction.node.defaultChild as cdk.CfnResource)
       .applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);

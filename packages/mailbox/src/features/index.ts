@@ -10,8 +10,8 @@ export type { CdnProps } from './cdn-construct';
 export { AuthKeyStore } from './auth-key-store';
 export type { AuthKeyStoreProps } from './auth-key-store';
 
-export { CertificateWaiter } from './certificate-waiter';
-export type { CertificateWaiterProps } from './certificate-waiter';
+export { DeferredRemoval } from './deferred-removal';
+export type { DeferredRemovalProps } from './deferred-removal';
 
 export { LicenseRefresh } from './license-refresh';
 export type { LicenseRefreshProps } from './license-refresh';
