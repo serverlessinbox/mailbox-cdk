@@ -90,9 +90,6 @@ export class SweeperInfra extends Construct {
     const workerRole = new iam.Role(this, 'worker-role', {
       roleName: workerRoleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-      ],
     });
     (workerRole.node.defaultChild as any)
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
@@ -206,7 +203,7 @@ export class SweeperInfra extends Construct {
       rootStackName: Aws.STACK_NAME,
     });
 
-    // Worker role: single consolidated inline policy for ACM + Lambda deletion.
+    // Worker role: single consolidated inline policy for ACM + Lambda deletion + CloudWatch Logs.
     // Ownership is verified in code (Lambda handler checks tags), not via IAM conditions.
     // This avoids the IAM tag-condition evaluation complexity and keeps ownership logic centralized.
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
@@ -229,6 +226,15 @@ export class SweeperInfra extends Construct {
         new iam.PolicyStatement({
           actions: ['lambda:DeleteFunction'],
           resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
+        }),
+        // CloudWatch Logs operations (replicates AWSLambdaBasicExecutionRole)
+        new iam.PolicyStatement({
+          actions: ['logs:CreateLogGroup'],
+          resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
+        }),
+        new iam.PolicyStatement({
+          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+          resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:/aws/lambda/*:*`],
         }),
       ],
     });
