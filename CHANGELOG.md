@@ -4,6 +4,14 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.24](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.23...v0.0.24) (Fri Jul 03 2026)
+
+### fix
+
+* Component group for sweeper ([e5670ef](https://github.com/serverlessinbox/mailbox-cdk/commit/e5670ef2d4843b05bec37034cbdccec6110c78ea))
+
+* Remove impossible step ([2fbae5f](https://github.com/serverlessinbox/mailbox-cdk/commit/2fbae5f94eb94f34aecf3f5895797bd383290b87))
+
 ## [0.0.23](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.22...v0.0.23) (Fri Jul 03 2026)
 
 ### fix
