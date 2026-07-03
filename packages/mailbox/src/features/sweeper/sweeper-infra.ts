@@ -140,6 +140,9 @@ export class SweeperInfra extends Construct {
       ],
     });
     executionPolicy.attachToRole(this.executionRole);
+    // Grant policy is attached to a RETAIN'd role and is needed by the sweeper execution that runs during/after stack teardown, so it must be retained too; the self-clean tail (`iam:DeleteRolePolicy`) removes it at the right time.
+    (executionPolicy.node.defaultChild as any)
+      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Permissions boundary: restrict execution role to invoke + self-cleanup only.
     // ACM/Lambda deletion responsibility moved to worker role.
@@ -230,6 +233,9 @@ export class SweeperInfra extends Construct {
       ],
     });
     workerPolicy.attachToRole(workerRole);
+    // Grant policy is attached to a RETAIN'd role and is needed by the sweeper execution that runs during/after stack teardown, so it must be retained too; the self-clean tail (`iam:DeleteRolePolicy`) removes it at the right time.
+    (workerPolicy.node.defaultChild as any)
+      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Starter can invoke the state machine — smArn is a formatArn string (no GetAtt edge)
     this.starter.addToRolePolicy(new iam.PolicyStatement({
