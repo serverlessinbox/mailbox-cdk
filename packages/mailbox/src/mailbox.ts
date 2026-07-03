@@ -614,7 +614,7 @@ export class Mailbox extends Construct {
 
     // Resource sweeper infrastructure (SFN + worker Lambda)
     // Handles async cleanup of retained resources (ACM cert, edge Lambda) after stack deletion.
-    const sweeperInfra = new SweeperInfra(groups.edge, 'sweeper-infra', {
+    const sweeperInfra = new SweeperInfra(groups.ops, 'sweeper-infra', {
       artifactResolver,
     });
 
@@ -637,7 +637,7 @@ export class Mailbox extends Construct {
     // Enqueue both ACM cert and edge Lambda for deferred removal (as a single execution).
     // The sweeper deletes both in parallel after they drain (API Gateway detachment for cert,
     // CloudFront replica draining for Lambda@Edge).
-    new DeferredRemoval(groups.edge, 'deferred-removal', {
+    new DeferredRemoval(groups.ops, 'deferred-removal', {
       certArn: regionalSanCertificate && cfnCert ? cfnCert.ref : undefined,
       edgeFnArn: edgeFunctionArn,
       sweeperStarter: sweeperInfra.starter,
