@@ -618,19 +618,7 @@ export class Mailbox extends Construct {
       artifactResolver,
     });
 
-    // Enqueue the regional ACM cert for deferred removal (if it was auto-created).
-    // The sweeper will delete it after API Gateway custom domain detachment drains.
-    if (regionalSanCertificate && cfnCert) {
-      new DeferredRemoval(groups.edge, 'regional-cert-deferred-removal', {
-        resourceArn: cfnCert.ref,
-        resourceKind: 'core-acm-cert',
-        sweeperStarter: sweeperInfra.starter,
-        label: 'regional-san-certificate',
-      });
-    }
-
-    // Enqueue the edge blob-authorizer Lambda for deferred removal.
-    // Strip the version qualifier from the version ARN to get the stable function ARN.
+    // Extract the edge blob-authorizer Lambda ARN (strip version qualifier).
     // Version ARN:  arn:aws:lambda:us-east-1:<acct>:function:<name>:<version>
     // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
     const versionArn = edgeStack.getOutput('blobAuthorizerVersionArn');
@@ -645,11 +633,15 @@ export class Mailbox extends Construct {
       Fn.select(6, fnArnParts), // <function-name>
       // Fn.select(7, ...) is the version number — intentionally dropped
     ]);
-    new DeferredRemoval(groups.edge, 'edge-fn-deferred-removal', {
-      resourceArn: edgeFunctionArn,
-      resourceKind: 'edge-lambda-fn',
+
+    // Enqueue both ACM cert and edge Lambda for deferred removal (as a single execution).
+    // The sweeper deletes both in parallel after they drain (API Gateway detachment for cert,
+    // CloudFront replica draining for Lambda@Edge).
+    new DeferredRemoval(groups.edge, 'deferred-removal', {
+      certArn: regionalSanCertificate && cfnCert ? cfnCert.ref : undefined,
+      edgeFnArn: edgeFunctionArn,
       sweeperStarter: sweeperInfra.starter,
-      label: 'edge-blob-authorizer',
+      rootStackName: cdk.Stack.of(this).stackName,
     });
 
     // CloudFront CDN for blob downloads with Lambda@Edge

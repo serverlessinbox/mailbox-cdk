@@ -1,4 +1,4 @@
-import { Duration, Aws } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -24,7 +24,7 @@ export interface SweeperWorkflowProps {
   readonly workerRoleName: string;
   /** Static role name for the execution role (used in SFN DeleteRolePolicy operations). */
   readonly executionRoleName: string;
-  /** The worker Lambda function (for us-east-1 edge Lambda deletes). */
+  /** The worker Lambda function (invoked by SFN for both ACM and Lambda deletion). */
   readonly worker: IFunction;
   /** ARN of the worker Lambda function (for self-cleanup deletion). */
   readonly workerLambdaArn: string;
@@ -32,8 +32,8 @@ export interface SweeperWorkflowProps {
   readonly workerRolePolicyName: string;
   /** Policy name for the SFN execution role (for self-cleanup policy deletion). */
   readonly rolePolicyName: string;
-  /** How long to wait between checks (default: 5 min). */
-  readonly checkInterval?: Duration;
+  /** How long to wait between retries (default: 5 min). */
+  readonly retryInterval?: Duration;
   /** Overall timeout for the workflow (default: 4h). */
   readonly timeout?: Duration;
   /** Required: explicit state machine name for ARN construction. */
@@ -45,263 +45,184 @@ export interface SweeperWorkflowProps {
 /**
  * CDK Construct wrapper for the resource sweeper Step Functions workflow.
  *
- * Handles two sweep targets:
- * - Branch A: core regional ACM cert (same-region CallAwsService)
- * - Branch B: us-east-1 edge Lambda function (LambdaInvoke to worker + polling)
+ * Thin retry loop:
+ * 1. InvokeWorker: call worker Lambda with both certArn and edgeFnArn
+ * 2. Choice on $.status:
+ *    - SUCCESS → self-cleanup chain → done
+ *    - RETRY → wait 5 min → back to InvokeWorker
+ *    - FAILED → fail
  *
  * Self-cleanup tail: delete worker Lambda, delete worker role, delete state machine,
- * strip SFN execution-role policies.
+ * strip SFN execution-role policies. Runs once on SUCCESS.
  */
 export class SweeperWorkflow extends Construct {
   readonly stateMachine: sfn.StateMachine;
-  private readonly props: SweeperWorkflowProps;
-  private selfCleanupChain: sfn.State | null = null;
 
   constructor(scope: Construct, id: string, props: SweeperWorkflowProps) {
     super(scope, id);
 
-    this.props = props;
-    const checkInterval = props.checkInterval ?? Duration.minutes(5);
+    const retryInterval = props.retryInterval ?? Duration.minutes(5);
     const timeout = props.timeout ?? Duration.hours(4);
 
-    this.stateMachine = this.createSweeperStateMachine(props, checkInterval, timeout);
+    this.stateMachine = this.createSweeperStateMachine(props, retryInterval, timeout);
   }
 
   private createSweeperStateMachine(
     props: SweeperWorkflowProps,
-    checkInterval: Duration,
+    retryInterval: Duration,
     timeout: Duration,
   ): sfn.StateMachine {
-    // Pre-create the shared self-cleanup chain
-    this.selfCleanupChain = this.createSelfCleanupChain(props.worker);
-
-    const init = new sfn.Pass(this, 'Init', {
-      comment: 'Initialize sweeper execution',
+    // Invoke worker task
+    const invokeWorker = new tasks.LambdaInvoke(this, 'InvokeWorker', {
+      lambdaFunction: props.worker,
+      payloadResponseOnly: true,
+      resultPath: '$.workerResult',
+      payload: sfn.TaskInput.fromObject({
+        'certArn.$': '$.certArn',
+        'edgeFnArn.$': '$.edgeFnArn',
+        'rootStackName.$': '$.rootStackName',
+      }),
+      retryOnServiceExceptions: true,
     });
 
-    // Route on target kind
-    const routeTarget = new sfn.Choice(this, 'RouteTarget')
-      .when(
-        sfn.Condition.stringEquals('$.targets[0].kind', 'core-acm-cert'),
-        this.createAcmBranch(checkInterval),
-      )
-      .when(
-        sfn.Condition.stringEquals('$.targets[0].kind', 'edge-lambda-fn'),
-        this.createEdgeLambdaBranch(props.worker, checkInterval),
-      )
-      .otherwise(new sfn.Fail(this, 'UnknownTargetKind', {
-        error: 'UnknownTargetKind',
-        cause: 'Unknown target kind',
-      }));
+    // Wait before retry
+    const waitRetry = new sfn.Wait(this, 'WaitRetry', {
+      time: sfn.WaitTime.duration(retryInterval),
+    });
 
-    init.next(routeTarget);
+    // Self-cleanup chain (runs once on SUCCESS)
+    const selfCleanup = this.createSelfCleanupChain(props);
+
+    // Choice on worker status
+    const statusChoice = new sfn.Choice(this, 'StatusChoice')
+      .when(
+        sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'),
+        selfCleanup,
+      )
+      .when(
+        sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'),
+        waitRetry,
+      )
+      .otherwise(
+        new sfn.Fail(this, 'Failed', {
+          error: 'WorkerFailed',
+          cause: 'Worker returned FAILED status',
+        }),
+      );
+
+    invokeWorker.next(statusChoice);
+    waitRetry.next(invokeWorker);
 
     return new sfn.StateMachine(this, 'StateMachine', {
-      definition: init,
+      definition: invokeWorker,
       role: props.executionRole,
       timeout,
       stateMachineName: props.stateMachineName,
     });
   }
 
-  private createAcmBranch(checkInterval: Duration): sfn.State {
-    // CheckAcmInUse - DescribeCertificate
-    const checkAcmInUse = new tasks.CallAwsService(this, 'CheckAcmInUse', {
-      service: 'acm',
-      action: 'describeCertificate',
-      parameters: {
-        'CertificateArn.$': '$.targets[0].arn',
-      },
-      resultPath: '$.acmResult',
-      iamResources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-    });
-
-    // DeleteAcmCert - ownership guard enforced by IAM tag condition
-    // (aws:ResourceTag/serverless-inbox:root-stack == Aws.STACK_NAME)
-    const deleteAcmCert = new tasks.CallAwsService(this, 'DeleteAcmCert', {
-      service: 'acm',
-      action: 'deleteCertificate',
-      parameters: {
-        'CertificateArn.$': '$.targets[0].arn',
-      },
-      resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-    });
-
-    // AcmInUse? (Choice) - wait if in use, otherwise proceed to delete
-    const acmInUseCheck = new sfn.Choice(this, 'AcmInUse?')
-      .when(
-        sfn.Condition.isPresent('$.acmResult.Certificate.InUseBy[0]'),
-        new sfn.Wait(this, 'WaitAcm', {
-          time: sfn.WaitTime.duration(checkInterval),
-        }).next(checkAcmInUse),
-      )
-      .otherwise(deleteAcmCert);
-
-    checkAcmInUse.next(acmInUseCheck);
-
-    deleteAcmCert.addCatch(this.selfCleanupChain!, {
-      errors: ['acm.ResourceNotFoundException', 'acm.ResourceInUseException'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-
-    return checkAcmInUse;
-  }
-
-  private createEdgeLambdaBranch(worker: IFunction, checkInterval: Duration): sfn.State {
-    // AttemptEdgeLambdaDelete
-    const attemptEdgeLambdaDelete = new tasks.LambdaInvoke(this, 'AttemptEdgeLambdaDelete', {
-      lambdaFunction: worker,
-      payloadResponseOnly: true,
-      resultPath: '$.result',
-      payload: sfn.TaskInput.fromObject({
-        'kind.$': '$.targets[0].kind',
-        'arn.$': '$.targets[0].arn',
-        'rootStackName.$': '$.targets[0].rootStackName',
-      }),
-      retryOnServiceExceptions: true,
-    });
-
-    // EdgeDone? (Choice)
-    const edgeDoneCheck = new sfn.Choice(this, 'EdgeDone?')
-      .when(
-        sfn.Condition.booleanEquals('$.result.done', true),
-        this.selfCleanupChain!,
-      )
-      .otherwise(
-        new sfn.Wait(this, 'WaitEdge', {
-          time: sfn.WaitTime.duration(checkInterval),
-        }).next(attemptEdgeLambdaDelete),
-      );
-
-    attemptEdgeLambdaDelete.next(edgeDoneCheck);
-    return attemptEdgeLambdaDelete;
-  }
-
-  private createSelfCleanupChain(worker: IFunction): sfn.State {
-    // Build the complete cleanup chain that both ACM and Edge Lambda branches will reference
-    const deleteWorker = this.createSelfCleanupDeleteWorkerTask(worker);
-    return deleteWorker;
-  }
-
-  private createSelfCleanupDeleteWorkerTask(worker: IFunction): sfn.State {
-    // SelfCleanupDeleteWorker
-    const workerArn = worker.functionArn;
+  private createSelfCleanupChain(props: SweeperWorkflowProps): sfn.State {
+    // Delete worker Lambda
     const deleteWorker = new tasks.CallAwsService(this, 'SelfCleanupDeleteWorker', {
       service: 'lambda',
       action: 'deleteFunction',
       parameters: {
-        FunctionName: this.props.workerLambdaArn,
+        FunctionName: props.workerLambdaArn,
       },
       resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [workerArn],
+      iamResources: [props.workerLambdaArn],
     });
 
-    // Create worker role policy state once, reuse in both catch handlers
-    const deleteWorkerRolePolicy = this.createSelfCleanupDeleteWorkerRolePolicy();
-    deleteWorker.addCatch(deleteWorkerRolePolicy, {
-      errors: ['lambda.ResourceNotFoundException'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-    deleteWorker.addCatch(deleteWorkerRolePolicy, {
-      errors: ['States.ALL'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-
-    return deleteWorker;
-  }
-
-  private createSelfCleanupDeleteWorkerRolePolicy(): sfn.State {
-    // SelfCleanupDeleteWorkerRolePolicy - scoped to WORKER role ARN
-    // Use static role name (no intrinsic extraction needed — name is known at synth time).
+    // Delete worker role policy
     const deleteWorkerRolePolicy = new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRolePolicy', {
       service: 'iam',
       action: 'deleteRolePolicy',
       parameters: {
-        RoleName: this.props.workerRoleName,
-        PolicyName: this.props.workerRolePolicyName,
+        RoleName: props.workerRoleName,
+        PolicyName: props.workerRolePolicyName,
       },
       resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [this.props.workerRoleArn],
+      iamResources: [props.workerRoleArn],
     });
 
-    const deleteWorkerRoleNext = this.createSelfCleanupDeleteWorkerRole();
-    deleteWorkerRolePolicy.addCatch(deleteWorkerRoleNext, {
-      errors: ['iam.NoSuchEntityException'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-
-    return deleteWorkerRolePolicy;
-  }
-
-  private createSelfCleanupDeleteWorkerRole(): sfn.State {
-    // SelfCleanupDeleteWorkerRole - scoped to WORKER role ARN
-    // Use static role name (no intrinsic extraction needed — name is known at synth time).
+    // Delete worker role
     const deleteWorkerRole = new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRole', {
       service: 'iam',
       action: 'deleteRole',
       parameters: {
-        RoleName: this.props.workerRoleName,
+        RoleName: props.workerRoleName,
       },
       resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [this.props.workerRoleArn],
+      iamResources: [props.workerRoleArn],
     });
 
-    // Wire to state machine self-deletion (via sfn SDK integration)
-    const deleteStateMachine = this.createSelfCleanupDeleteStateMachine();
-    deleteWorkerRole.next(deleteStateMachine);
-    deleteWorkerRole.addCatch(deleteStateMachine, {
-      errors: ['iam.NoSuchEntityException'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-
-    return deleteWorkerRole;
-  }
-
-  private createSelfCleanupDeleteStateMachine(): sfn.State {
-    // SelfCleanupDeleteStateMachine - delete the state machine itself using sfn SDK integration.
-    // A running state machine can mark itself for deletion; the current execution completes,
-    // then the machine is removed. Use a static ARN string (no JSONPath extraction).
+    // Delete state machine
     const deleteStateMachine = new tasks.CallAwsService(this, 'SelfCleanupDeleteStateMachine', {
       service: 'sfn',
       action: 'deleteStateMachine',
       parameters: {
-        StateMachineArn: this.props.stateMachineArn,
+        StateMachineArn: props.stateMachineArn,
       },
       resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [this.props.stateMachineArn],
+      iamResources: [props.stateMachineArn],
     });
 
-    // Wire to execution role policy deletion
-    const deleteExecutionRolePolicy = this.createSelfCleanupDeleteExecutionRolePolicy();
+    // Delete execution role policy
+    const deleteExecutionRolePolicy = new tasks.CallAwsService(this, 'SelfCleanupDeleteExecutionRolePolicy', {
+      service: 'iam',
+      action: 'deleteRolePolicy',
+      parameters: {
+        RoleName: props.executionRoleName,
+        PolicyName: props.rolePolicyName,
+      },
+      resultPath: sfn.JsonPath.DISCARD,
+      iamResources: [props.executionRoleArn],
+    });
+
+    // Final success
+    const succeed = new sfn.Succeed(this, 'Succeed');
+
+    // Wire: deleteWorker → deleteWorkerRolePolicy → deleteWorkerRole → deleteStateMachine → deleteExecutionRolePolicy → succeed
+    deleteWorker.next(deleteWorkerRolePolicy);
+
+    // Add catch handlers for deleteWorker (already gone)
+    deleteWorker.addCatch(deleteWorkerRolePolicy, {
+      errors: ['lambda.ResourceNotFoundException'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    deleteWorkerRolePolicy.next(deleteWorkerRole);
+
+    // Add catch handler for deleteWorkerRolePolicy (already gone)
+    deleteWorkerRolePolicy.addCatch(deleteWorkerRole, {
+      errors: ['iam.NoSuchEntityException'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    deleteWorkerRole.next(deleteStateMachine);
+
+    // Add catch handler for deleteWorkerRole (already gone or has attached policies)
+    deleteWorkerRole.addCatch(deleteStateMachine, {
+      errors: ['iam.NoSuchEntityException', 'iam.DeleteConflictException'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
     deleteStateMachine.next(deleteExecutionRolePolicy);
+
+    // Add catch handler for deleteStateMachine (unlikely but safe)
     deleteStateMachine.addCatch(deleteExecutionRolePolicy, {
       errors: ['States.ALL'],
       resultPath: sfn.JsonPath.DISCARD,
     });
 
-    return deleteStateMachine;
-  }
-
-  private createSelfCleanupDeleteExecutionRolePolicy(): sfn.State {
-    // SelfCleanupDeleteExecutionRolePolicy (final step) - scoped to EXECUTION role ARN
-    // Use static role name (no intrinsic extraction needed — name is known at synth time).
-    // The state machine is deleted via the SelfCleanupDeleteStateMachine step (sfn SDK integration).
-    // Note: role stubs are RETAIN'd and cannot be deleted, so we only strip policies.
-    const deleteExecutionRolePolicy = new tasks.CallAwsService(this, 'SelfCleanupDeleteExecutionRolePolicy', {
-      service: 'iam',
-      action: 'deleteRolePolicy',
-      parameters: {
-        RoleName: this.props.executionRoleName,
-        PolicyName: this.props.rolePolicyName,
-      },
-      resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [this.props.executionRoleArn],
-    });
-
-    const succeed = new sfn.Succeed(this, 'Succeed');
     deleteExecutionRolePolicy.next(succeed);
 
-    return deleteExecutionRolePolicy;
+    // Add catch handler for deleteExecutionRolePolicy (already gone)
+    deleteExecutionRolePolicy.addCatch(succeed, {
+      errors: ['iam.NoSuchEntityException'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    return deleteWorker;
   }
 }

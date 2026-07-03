@@ -106,35 +106,26 @@ export class SweeperInfra extends Construct {
     (this.worker.node.defaultChild as any)
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-    // Execution role: consolidated inline policy for all SFN operations.
+    // Execution role: consolidated inline policy for SFN + self-cleanup operations ONLY.
+    // Worker owns ACM and Lambda deletion now; exec role only invokes worker and self-cleans.
     // Self-referential ARNs (worker role, own role) use pre-built formatArn strings — no GetAtt.
     const executionPolicy = new iam.Policy(this, 'execution-policy', {
       policyName: 'sweeper-execution-policy',
       statements: [
-        // Invoke and delete worker Lambda
+        // Invoke worker Lambda (worker owns deletion logic)
         new iam.PolicyStatement({
-          actions: ['lambda:InvokeFunction', 'lambda:DeleteFunction'],
+          actions: ['lambda:InvokeFunction'],
           resources: [this.worker.functionArn],
         }),
-        // Delete worker role — uses formatArn string, not roleArn token (no GetAtt edge)
+        // Delete worker Lambda (self-cleanup)
+        new iam.PolicyStatement({
+          actions: ['lambda:DeleteFunction'],
+          resources: [this.worker.functionArn],
+        }),
+        // Delete worker role policy + role (self-cleanup) — uses formatArn string, not roleArn token (no GetAtt edge)
         new iam.PolicyStatement({
           actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
           resources: [workerRoleArn],
-        }),
-        // Core ACM cert (same-region CallAwsService)
-        // Ownership is enforced authoritatively by IAM tag condition on acm:DeleteCertificate.
-        // ASL cannot reliably filter tags by value, so we rely on the IAM condition guard.
-        new iam.PolicyStatement({
-          actions: [
-            'acm:DescribeCertificate',
-            'acm:DeleteCertificate',
-          ],
-          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-          conditions: {
-            'StringEquals': {
-              'aws:ResourceTag/serverless-inbox:root-stack': Aws.STACK_NAME,
-            },
-          },
         }),
         // Delete state machine — smArn is already a formatArn string (no GetAtt)
         new iam.PolicyStatement({
@@ -150,27 +141,23 @@ export class SweeperInfra extends Construct {
     });
     executionPolicy.attachToRole(this.executionRole);
 
-    // Permissions boundary: restrict execution role to the same operations as the inline policy.
+    // Permissions boundary: restrict execution role to invoke + self-cleanup only.
+    // ACM/Lambda deletion responsibility moved to worker role.
     // Self-referential ARNs use formatArn strings — no GetAtt edges (breaks the boundary→role cycle).
     const boundaryPolicy = new iam.ManagedPolicy(this, 'execution-role-boundary', {
       statements: [
         new iam.PolicyStatement({
-          actions: ['lambda:InvokeFunction', 'lambda:DeleteFunction'],
+          actions: ['lambda:InvokeFunction'],
+          resources: [this.worker.functionArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ['lambda:DeleteFunction'],
           resources: [this.worker.functionArn],
         }),
         // Worker role — formatArn string, not workerRole.roleArn token
         new iam.PolicyStatement({
           actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
           resources: [workerRoleArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['acm:DescribeCertificate', 'acm:DeleteCertificate'],
-          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-          conditions: {
-            'StringEquals': {
-              'aws:ResourceTag/serverless-inbox:root-stack': Aws.STACK_NAME,
-            },
-          },
         }),
         new iam.PolicyStatement({
           actions: ['states:DeleteStateMachine'],
@@ -200,7 +187,7 @@ export class SweeperInfra extends Construct {
       workerLambdaArn: this.worker.functionArn,
       workerRolePolicyName: 'sweeper-worker-policy',
       rolePolicyName: 'sweeper-execution-policy',
-      checkInterval: Duration.minutes(5),
+      retryInterval: Duration.minutes(5),
       timeout: Duration.hours(4),
       stateMachineName: smName,
       stateMachineArn: smArn,
@@ -216,24 +203,29 @@ export class SweeperInfra extends Construct {
       rootStackName: Aws.STACK_NAME,
     });
 
-    // Worker role: single consolidated inline policy
-    // GetFunction is scoped by ARN prefix + runtime tag guard in the Lambda handler (not IAM condition).
-    // DeleteFunction is scoped by both ARN prefix and aws:ResourceTag condition.
+    // Worker role: single consolidated inline policy for ACM + Lambda deletion.
+    // Ownership is verified in code (Lambda handler checks tags), not via IAM conditions.
+    // This avoids the IAM tag-condition evaluation complexity and keeps ownership logic centralized.
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: 'sweeper-worker-policy',
       statements: [
+        // ACM operations (regional, same as SFN)
+        new iam.PolicyStatement({
+          actions: [
+            'acm:DescribeCertificate',
+            'acm:DeleteCertificate',
+            'acm:ListTagsForCertificate',
+          ],
+          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
+        }),
+        // Lambda@Edge operations (us-east-1)
         new iam.PolicyStatement({
           actions: ['lambda:GetFunction'],
-          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:${Aws.STACK_NAME}-edge-*`],
+          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
         }),
         new iam.PolicyStatement({
           actions: ['lambda:DeleteFunction'],
-          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:${Aws.STACK_NAME}-edge-*`],
-          conditions: {
-            'StringEquals': {
-              'aws:ResourceTag/serverless-inbox:root-stack': Aws.STACK_NAME,
-            },
-          },
+          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
         }),
       ],
     });
