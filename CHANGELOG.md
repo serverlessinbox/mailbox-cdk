@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.23](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.22...v0.0.23) (Fri Jul 03 2026)
+
+### fix
+
+* Cleanup role ([501c0da](https://github.com/serverlessinbox/mailbox-cdk/commit/501c0da510310309e204c69a0e924cdb87b81e8c))
+
 ## [0.0.22](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.21...v0.0.22) (Fri Jul 03 2026)
 
 ### fix
