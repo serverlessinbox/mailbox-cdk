@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
 import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
 import { SweeperWorkflow } from './sweeper-workflow';
-import { Fn, Stack, Aws, Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: ICdkArtifactResolver;
@@ -68,7 +68,7 @@ export class SweeperInfra extends Construct {
       region: Aws.REGION,
       resource: 'stateMachine',
       resourceName: smName,
-      arnFormat: stack.node.root.node.root === stack ? 'ARN_FORMAT_COLON_RESOURCE_NAME' as any : undefined,
+      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
     });
 
     // SFN execution role — deterministic GUID-suffixed name so its ARN can be built without GetAtt.
@@ -184,6 +184,9 @@ export class SweeperInfra extends Construct {
       ],
     });
     iam.PermissionsBoundary.of(this.executionRole).apply(boundaryPolicy);
+    // Exec-role stub is RETAIN'd and cannot be deleted, so its attached permissions-boundary policy must be retained too — otherwise CFN can't delete it (attached to the stub) and teardown fails with a 409.
+    (boundaryPolicy.node.defaultChild as any)
+      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // State machine workflow — pass pre-built ARN strings and role names so SweeperWorkflow never needs GetAtt tokens.
     this.workflow = new SweeperWorkflow(this, 'workflow', {
@@ -200,6 +203,7 @@ export class SweeperInfra extends Construct {
       checkInterval: Duration.minutes(5),
       timeout: Duration.hours(4),
       stateMachineName: smName,
+      stateMachineArn: smArn,
     });
     (this.workflow.stateMachine.node.defaultChild as any)
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);

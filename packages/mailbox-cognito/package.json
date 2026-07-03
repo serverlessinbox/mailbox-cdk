@@ -71,5 +71,27 @@
     "src",
     "lib",
     "artifact-versions.json"
-  ]
+  ],
+  "serverlessinbox": {
+    "components": {
+      "mailbox-go": {
+        "version": {
+          "version": "0.0.0",
+          "zone": "regional"
+        }
+      },
+      "mailbox-admin-ui": {
+        "version": {
+          "version": "0.0.0",
+          "zone": "regional"
+        }
+      },
+      "mailbox-webmail-ui": {
+        "version": {
+          "version": "0.0.0",
+          "zone": "regional"
+        }
+      }
+    }
+  }
 }

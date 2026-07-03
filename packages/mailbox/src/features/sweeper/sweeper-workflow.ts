@@ -38,6 +38,8 @@ export interface SweeperWorkflowProps {
   readonly timeout?: Duration;
   /** Required: explicit state machine name for ARN construction. */
   readonly stateMachineName: string;
+  /** ARN of the state machine itself (for self-deletion via sfn SDK). */
+  readonly stateMachineArn: string;
 }
 
 /**
@@ -245,10 +247,10 @@ export class SweeperWorkflow extends Construct {
       iamResources: [this.props.workerRoleArn],
     });
 
-    // Wire directly to execution role policy deletion (state machine self-deletion is not supported).
-    const deleteExecutionRolePolicy = this.createSelfCleanupDeleteExecutionRolePolicy();
-    deleteWorkerRole.next(deleteExecutionRolePolicy);
-    deleteWorkerRole.addCatch(deleteExecutionRolePolicy, {
+    // Wire to state machine self-deletion (via sfn SDK integration)
+    const deleteStateMachine = this.createSelfCleanupDeleteStateMachine();
+    deleteWorkerRole.next(deleteStateMachine);
+    deleteWorkerRole.addCatch(deleteStateMachine, {
       errors: ['iam.NoSuchEntityException'],
       resultPath: sfn.JsonPath.DISCARD,
     });
@@ -256,13 +258,36 @@ export class SweeperWorkflow extends Construct {
     return deleteWorkerRole;
   }
 
+  private createSelfCleanupDeleteStateMachine(): sfn.State {
+    // SelfCleanupDeleteStateMachine - delete the state machine itself using sfn SDK integration.
+    // A running state machine can mark itself for deletion; the current execution completes,
+    // then the machine is removed. Use a static ARN string (no JSONPath extraction).
+    const deleteStateMachine = new tasks.CallAwsService(this, 'SelfCleanupDeleteStateMachine', {
+      service: 'sfn',
+      action: 'deleteStateMachine',
+      parameters: {
+        StateMachineArn: this.props.stateMachineArn,
+      },
+      resultPath: sfn.JsonPath.DISCARD,
+      iamResources: [this.props.stateMachineArn],
+    });
+
+    // Wire to execution role policy deletion
+    const deleteExecutionRolePolicy = this.createSelfCleanupDeleteExecutionRolePolicy();
+    deleteStateMachine.next(deleteExecutionRolePolicy);
+    deleteStateMachine.addCatch(deleteExecutionRolePolicy, {
+      errors: ['States.ALL'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    return deleteStateMachine;
+  }
+
   private createSelfCleanupDeleteExecutionRolePolicy(): sfn.State {
     // SelfCleanupDeleteExecutionRolePolicy (final step) - scoped to EXECUTION role ARN
     // Use static role name (no intrinsic extraction needed — name is known at synth time).
-    // NOTE: The state machine is intentionally left as an inert leftover after sweep completes
-    // because self-deletion via CallAwsService is not supported by Step Functions (a state machine
-    // cannot delete itself). This is an accepted trade-off; the state machine will remain as a
-    // bare stub in the account post-cleanup, similar to the RETAIN'd role stubs.
+    // The state machine is deleted via the SelfCleanupDeleteStateMachine step (sfn SDK integration).
+    // Note: role stubs are RETAIN'd and cannot be deleted, so we only strip policies.
     const deleteExecutionRolePolicy = new tasks.CallAwsService(this, 'SelfCleanupDeleteExecutionRolePolicy', {
       service: 'iam',
       action: 'deleteRolePolicy',
