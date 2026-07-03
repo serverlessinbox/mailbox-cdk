@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.21](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.20...v0.0.21) (Fri Jul 03 2026)
+
+### fix
+
+* Sweeper ([02c9756](https://github.com/serverlessinbox/mailbox-cdk/commit/02c9756307d90c9f73e02054f6d6635f1dac9c91))
+
 ## [0.0.20](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.19...v0.0.20) (Fri Jul 03 2026)
 
 ### fix
