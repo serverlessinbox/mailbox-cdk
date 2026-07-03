@@ -167,22 +167,10 @@ export class SweeperWorkflow extends Construct {
       iamResources: [props.stateMachineArn],
     });
 
-    // Delete execution role policy
-    const deleteExecutionRolePolicy = new tasks.CallAwsService(this, 'SelfCleanupDeleteExecutionRolePolicy', {
-      service: 'iam',
-      action: 'deleteRolePolicy',
-      parameters: {
-        RoleName: props.executionRoleName,
-        PolicyName: props.rolePolicyName,
-      },
-      resultPath: sfn.JsonPath.DISCARD,
-      iamResources: [props.executionRoleArn],
-    });
-
     // Final success
     const succeed = new sfn.Succeed(this, 'Succeed');
 
-    // Wire: deleteWorker → deleteWorkerRolePolicy → deleteWorkerRole → deleteStateMachine → deleteExecutionRolePolicy → succeed
+    // Wire: deleteWorker → deleteWorkerRolePolicy → deleteWorkerRole → deleteStateMachine (terminal)
     deleteWorker.next(deleteWorkerRolePolicy);
 
     // Add catch handlers for deleteWorker (already gone)
@@ -207,19 +195,9 @@ export class SweeperWorkflow extends Construct {
       resultPath: sfn.JsonPath.DISCARD,
     });
 
-    deleteStateMachine.next(deleteExecutionRolePolicy);
-
-    // Add catch handler for deleteStateMachine (unlikely but safe)
-    deleteStateMachine.addCatch(deleteExecutionRolePolicy, {
+    // deleteStateMachine is terminal (no .next) with error-only fallback to succeed
+    deleteStateMachine.addCatch(succeed, {
       errors: ['States.ALL'],
-      resultPath: sfn.JsonPath.DISCARD,
-    });
-
-    deleteExecutionRolePolicy.next(succeed);
-
-    // Add catch handler for deleteExecutionRolePolicy (already gone)
-    deleteExecutionRolePolicy.addCatch(succeed, {
-      errors: ['iam.NoSuchEntityException'],
       resultPath: sfn.JsonPath.DISCARD,
     });
 
