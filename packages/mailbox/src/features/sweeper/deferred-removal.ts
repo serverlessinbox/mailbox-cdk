@@ -49,5 +49,11 @@ export class DeferredRemoval extends Construct {
       .filter(Boolean)
       .join('|') || 'mailbox-deferred-removal';
     (cr as any).physicalResourceId = physicalResourceId;
+
+    // Explicit dependency: ensure the custom resource is deleted BEFORE its provider Lambda.
+    // Because the serviceToken is a plain string (formatArn, to avoid circular dependencies),
+    // CDK cannot infer the CR→provider dependency automatically. Without this, CloudFormation
+    // deletes them concurrently, causing the provider role to die first and the Delete to fail.
+    cr.node.addDependency(props.sweeperStarter);
   }
 }
