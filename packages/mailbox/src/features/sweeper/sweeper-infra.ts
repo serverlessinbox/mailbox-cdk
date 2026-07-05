@@ -42,13 +42,18 @@ export class SweeperInfra extends Construct {
     // Derive stack GUID for uniqueness — fixed for a stack's lifetime, differs after destroy+redeploy.
     const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
 
-    // State machine name (GUID-suffixed, same as before)
-    const smName = Fn.join('', ['mailbox-sweeper-', stackGuid]);
+    // Derive parent group id (e.g., 'ops', 'edge') to make names unique per construct position.
+    // This ensures the construct can move between groups without same-stack name collisions.
+    const parentGroupId = (this.node.scope as any)?.node?.id ?? 'default';
+
+    // State machine name (group + GUID-suffixed, ensures uniqueness when construct moves)
+    const smName = Fn.join('', ['mailbox-sweeper-', parentGroupId, '-', stackGuid]);
 
     // Deterministic GUID-suffixed role names — required so ARNs can be constructed as plain strings
     // (no GetAtt), breaking all self-referential circular CloudFormation dependency edges.
-    const execRoleName = Fn.join('', ['mailbox-sweeper-exec-', stackGuid]);
-    const workerRoleName = Fn.join('', ['mailbox-sweeper-worker-', stackGuid]);
+    // Group id ensures names change when construct moves (edge→ops), preventing same-stack collisions.
+    const execRoleName = Fn.join('', ['mailbox-sweeper-exec-', parentGroupId, '-', stackGuid]);
+    const workerRoleName = Fn.join('', ['mailbox-sweeper-worker-', parentGroupId, '-', stackGuid]);
 
     // Pre-built ARN strings using formatArn — no GetAtt tokens, no CFN dependency edges.
     const execRoleArn = stack.formatArn({
