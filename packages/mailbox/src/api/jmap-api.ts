@@ -17,7 +17,7 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { IMailboxAuthProvider } from '../auth/types';
 import { GoLambda } from '../utils/go-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';

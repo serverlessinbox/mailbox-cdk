@@ -6,7 +6,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 import { LicenseRefresherLambda } from '../lambdas';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface LicenseRefreshProps {
   readonly configTable: ITable;

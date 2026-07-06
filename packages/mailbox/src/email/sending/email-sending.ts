@@ -6,7 +6,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
-import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher } from '../../api/websocket';
 
 export interface EmailSendingProps {

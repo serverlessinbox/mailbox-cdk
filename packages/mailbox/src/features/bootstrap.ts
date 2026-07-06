@@ -4,7 +4,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda, SesReceivingMode } from '../lambdas';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,

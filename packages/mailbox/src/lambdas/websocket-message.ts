@@ -1,6 +1,6 @@
 import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';

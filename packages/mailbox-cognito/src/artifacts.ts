@@ -5,7 +5,7 @@ import { Code } from 'aws-cdk-lib/aws-lambda';
 import type { IConstruct } from 'constructs';
 import { readArtifactVersions } from '@serverlessinbox/artifact-registry';
 import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-registry';
-import { CdkArtifactResolver } from './cdk-resolver';
+import { CdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export const COGNITO_ARTIFACT_PACKAGE = 'mailbox-cognito' as const;
 

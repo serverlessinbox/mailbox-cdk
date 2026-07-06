@@ -1,7 +1,7 @@
 import { Aws, Duration, Fn } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '../../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerWorkerLambda } from '../../lambdas/stack-deployer-worker';
 import { StackDeployerStarterLambda } from '../../lambdas/stack-deployer-starter';
 import { MailboxStackDeployerWorkflow } from './stack-deployer-workflow';

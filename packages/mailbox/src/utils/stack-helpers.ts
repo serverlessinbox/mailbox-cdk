@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from './ts-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface StackHelpersProps {
   readonly artifactResolver: ICdkArtifactResolver;

@@ -18,7 +18,7 @@ import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { RemovalPolicy, Aws, CfnResource } from 'aws-cdk-lib';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackNamedTable } from '../utils/named-table';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';

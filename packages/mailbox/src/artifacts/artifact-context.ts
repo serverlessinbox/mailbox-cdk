@@ -1,6 +1,6 @@
 import { IConstruct } from 'constructs';
 import { Stack } from 'aws-cdk-lib';
-import { CdkArtifactResolver } from './cdk-artifact-resolver';
+import { CdkArtifactResolver, type TrackGranularity } from '@serverlessinbox/mailbox-cdk-shared';
 import { readArtifactVersions } from '@serverlessinbox/artifact-registry';
 import type { ArtifactVersionsEntry, ArtifactZone, ParsedArtifactVersions } from '@serverlessinbox/artifact-registry';
 import * as path from 'path';
@@ -10,6 +10,14 @@ const ARTIFACT_CONTEXT_KEYS = {
   config: 'artifacts',
   versionMap: 'artifactVersions',
 } as const;
+
+export interface CreateArtifactResolverOptions {
+  /** Optional track mode configuration. */
+  readonly track?: {
+    readonly granularity: TrackGranularity;
+    readonly distTag: string;
+  };
+}
 
 /**
  * Creates an ArtifactResolver from CDK context values.
@@ -26,7 +34,10 @@ const ARTIFACT_CONTEXT_KEYS = {
  * If context is not provided, reads the default artifact-versions.json file.
  * bucketBase in context (if present) overrides the versions file value.
  */
-export function createArtifactResolverFromContext(scope: IConstruct): CdkArtifactResolver {
+export function createArtifactResolverFromContext(
+  scope: IConstruct,
+  options?: CreateArtifactResolverOptions,
+): CdkArtifactResolver {
   const stack = Stack.of(scope);
   const contextValue = scope.node.tryGetContext(ARTIFACT_CONTEXT_KEYS.config);
   let bucketBaseOverride: string | undefined;
@@ -87,5 +98,5 @@ export function createArtifactResolverFromContext(scope: IConstruct): CdkArtifac
     bucketBaseOverride,
     deploymentRegion: stack.region,
     s3VersionMap: versionMap,
-  }, scope);
+  }, scope, options?.track ? { track: options.track } : undefined);
 }

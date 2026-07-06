@@ -17,6 +17,8 @@ import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, UserProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { createArtifactResolverFromContext } from './artifacts/artifact-context';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra } from './features/sweeper';
 import { LicenseRefresh } from './features/license-refresh';
@@ -210,6 +212,18 @@ export interface MailboxProps {
    * Certificate and data stack overrides.
    */
   readonly overrides?: MailboxOverrides;
+
+  /**
+   * Self-update track granularity (subplan #2, stack-self-update feature). Default `pinned` (no track
+   * resolver, no new infrastructure, byte-identical behavior). `major` follows `v{major}`, `minor`
+   * follows `v{major}.{minor}` — concrete track derived from the package's currently-pinned version
+   * from `artifact-versions.json`. Each Lambda/UI code resolved through the track pointer instead of
+   * pinned at synth time. The scheduled auto-update mechanism itself is a separate subplan, not yet built.
+   */
+  readonly track?: 'pinned' | 'major' | 'minor';
+
+  /** Which pointer line (distTag) to resolve within the track. @default "stable" */
+  readonly distTag?: string;
 }
 
 export interface MailboxOAuthClients {
@@ -265,8 +279,18 @@ export class Mailbox extends Construct {
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
-    const artifactResolver = createArtifactResolverFromContext(this);
-    const stackVersion = artifactResolver.getVersion('mailbox-cdk');
+    // Self-update (subplan #2, stack-self-update): if track mode is enabled, pass config to the resolver.
+    // The resolver will create the singleton TrackResolverProvider internally.
+    const baseArtifactResolver: CdkArtifactResolver = createArtifactResolverFromContext(this, {
+      track:
+        props.track && props.track !== 'pinned'
+          ? {
+              granularity: props.track,
+              distTag: props.distTag ?? 'stable',
+            }
+          : undefined,
+    });
+    const stackVersion = baseArtifactResolver.getVersion('mailbox-cdk');
 
     applyServerlessInboxBaseTags(this, {
       // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
@@ -297,6 +321,8 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(groups.apis,   'api');
     applyServerlessInboxComponentTag(groups.search, 'search');
     applyServerlessInboxComponentTag(groups.ops,    'ops');
+
+    const artifactResolver: ICdkArtifactResolver = baseArtifactResolver;
 
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);

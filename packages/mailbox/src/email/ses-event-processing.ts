@@ -10,7 +10,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 import { IQueue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { makePhysicalName } from '../utils/resource-names';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';

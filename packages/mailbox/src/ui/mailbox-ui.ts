@@ -23,7 +23,7 @@ import { createArtifactResolverFromContext } from '../artifacts/artifact-context
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 

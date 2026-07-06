@@ -5,7 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 import { AuditWriterLambda } from '../lambdas';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface AuditWritingProps {
   readonly auditLogTable: ITable;

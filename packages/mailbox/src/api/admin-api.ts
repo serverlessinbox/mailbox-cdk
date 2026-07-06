@@ -16,7 +16,7 @@ import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 

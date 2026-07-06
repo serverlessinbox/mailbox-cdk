@@ -3,7 +3,7 @@ import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { GoLambda } from "../utils/go-lambda";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher } from "../api/websocket";
 
 export interface EmailProcessorLambdaProps {

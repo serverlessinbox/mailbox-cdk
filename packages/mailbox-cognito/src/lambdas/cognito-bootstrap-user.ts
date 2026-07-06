@@ -3,7 +3,7 @@ import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } fr
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../artifacts';
-import type { ICdkArtifactResolver } from '../cdk-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoBootstrapUserLambdaProps {
   artifactResolver: ICdkArtifactResolver;

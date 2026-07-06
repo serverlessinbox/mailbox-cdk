@@ -5,7 +5,7 @@ import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../lambdas';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { INamedTable, StackNamedTable } from '../utils/named-table';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 

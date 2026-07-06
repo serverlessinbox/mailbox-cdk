@@ -9,7 +9,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**

@@ -6,7 +6,7 @@
     ]
   },
   "dependencies": {
-    "@serverlessinbox/mailbox": "0.0.8",
+    "@serverlessinbox/mailbox": "0.0.0",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0"
   },
@@ -8647,7 +8647,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-          "line": 41
+          "line": 42
         },
         "parameters": [
           {
@@ -8673,7 +8673,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-        "line": 38
+        "line": 39
       },
       "name": "MailboxCognitoDataDeployer",
       "properties": [
@@ -8681,7 +8681,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 39
+            "line": 40
           },
           "name": "dataStackRef",
           "type": {
@@ -8698,7 +8698,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-        "line": 8
+        "line": 9
       },
       "name": "MailboxCognitoDataDeployerCustomDomain",
       "properties": [
@@ -8710,7 +8710,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 12
+            "line": 13
           },
           "name": "certificateArn",
           "type": {
@@ -8725,7 +8725,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 10
+            "line": 11
           },
           "name": "domainName",
           "type": {
@@ -8742,7 +8742,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-        "line": 15
+        "line": 16
       },
       "name": "MailboxCognitoDataDeployerProps",
       "properties": [
@@ -8754,7 +8754,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 17
+            "line": 18
           },
           "name": "cognitoDomainPrefix",
           "type": {
@@ -8770,7 +8770,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 19
+            "line": 20
           },
           "name": "customDomain",
           "optional": true,
@@ -8787,7 +8787,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 21
+            "line": 22
           },
           "name": "mfaMode",
           "optional": true,
@@ -8804,7 +8804,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer.ts",
-            "line": 23
+            "line": 24
           },
           "name": "passwordMinLength",
           "optional": true,
@@ -8826,7 +8826,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/cognito/mailbox-cognito-data-stack.ts",
-          "line": 19
+          "line": 26
         },
         "parameters": [
           {
@@ -8853,7 +8853,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-stack.ts",
-        "line": 18
+        "line": 25
       },
       "name": "MailboxCognitoDataStack",
       "symbolId": "src/cognito/mailbox-cognito-data-stack:MailboxCognitoDataStack"
@@ -9754,6 +9754,6 @@
       "symbolId": "src/auth/mailbox-user-pool:ProvisionHeadlessClientConfig"
     }
   },
-  "version": "0.0.8",
-  "fingerprint": "m/caJt9wECQtHhyaX14T1HVT71Av/sINHHq3d4+wKZ0="
+  "version": "0.0.0",
+  "fingerprint": "cWzohmUhaKLXNW8sI74aXjZCjNO4XDoEcfO8T+6Z8H4="
 }

@@ -3,7 +3,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface LicenseRefresherLambdaProps {
   configTable: ITable;

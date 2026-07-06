@@ -2,7 +2,7 @@ import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '../artifacts/cdk-artifact-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
 import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';

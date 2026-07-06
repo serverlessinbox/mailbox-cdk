@@ -8,7 +8,7 @@ import { Construct } from 'constructs';
 import { IAdminApiAddon } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
-import type { ICdkArtifactResolver } from '../cdk-resolver';
+import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoIdpUsersAuthorizationConfig {
   readonly adminGroups: string[];
@@ -30,7 +30,6 @@ export interface CognitoIdpUsersAdminApiAddonProps {
 
   /** Cognito pool integration (used for pool id + granting permissions). */
   readonly pool: ICognitoIdpUsersPoolConfig;
-
 
   /** Optional base path; defaults to `/idp-users`. */
   readonly basePath?: string;
