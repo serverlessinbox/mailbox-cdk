@@ -4,6 +4,22 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.25](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.24...v0.0.25) (Mon Jul 06 2026)
+
+### fix
+
+* Defererd removal dependency ([cad19e2](https://github.com/serverlessinbox/mailbox-cdk/commit/cad19e2697714bdde6cd478538e711a90b70a636))
+
+* Sweeper infra ([943e73c](https://github.com/serverlessinbox/mailbox-cdk/commit/943e73c63a60a209f0a167112c97b53ff0db2d4f))
+
+* Artifact-registry stable channel ([450054d](https://github.com/serverlessinbox/mailbox-cdk/commit/450054dfd211c559d1011ea768ada8bd33a0735f))
+
+### feat
+
+* Dynamic track installation ([2b59811](https://github.com/serverlessinbox/mailbox-cdk/commit/2b598118c2570f353141fd258a75dc1f3658fcd3))
+
+* New artifact-registry with logging ([46f3e11](https://github.com/serverlessinbox/mailbox-cdk/commit/46f3e11f84177213670539a4dfe092579d616384))
+
 ## [0.0.24](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.23...v0.0.24) (Fri Jul 03 2026)
 
 ### fix
