@@ -57,7 +57,7 @@
     "@aws-sdk/client-route-53": "^3.946.0",
     "@aws-sdk/client-s3": "^3.946.0",
     "@aws-sdk/client-sfn": "^3.946.0",
-    "@serverlessinbox/artifact-registry": "^0.0.31",
+    "@serverlessinbox/artifact-registry": "^0.0.32",
     "@serverlessinbox/mailbox-bundler": "workspace:*",
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*",
     "@types/aws-lambda": "^8.10.159",

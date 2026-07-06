@@ -2887,9 +2887,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-registry@npm:^0.0.31":
-  version: 0.0.31
-  resolution: "@serverlessinbox/artifact-registry@npm:0.0.31"
+"@serverlessinbox/artifact-registry@npm:^0.0.32":
+  version: 0.0.32
+  resolution: "@serverlessinbox/artifact-registry@npm:0.0.32"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     aws-custom-resources: "npm:^0.0.4"
@@ -2900,7 +2900,7 @@ __metadata:
     "@jwpkg/gitversion": 1.4.0-pack-order.2
   bin:
     artifact-registry: dist/cli-entry.js
-  checksum: 10c0/4f8047f08570a0603634cc4da9bb583cdf1289da675df84d18bb7745628331175d82540917b4333730124825fdfd1c7a209e9bae5a19780a871397cfe976d46c
+  checksum: 10c0/23ba45f22413d0f02924bee92d38921daf34f96c19793b322cf215adf219bb675fe84c963187c03a223a696347c929af0280b2246b95437ced9efcf61c512966
   languageName: node
   linkType: hard
 
@@ -2935,7 +2935,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-cdk-shared@workspace:packages/mailbox-cdk-shared"
   dependencies:
-    "@serverlessinbox/artifact-registry": "npm:^0.0.31"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.32"
     aws-cdk-lib: "npm:^2.224.0"
     constructs: "npm:^10.0.0"
     typescript: "npm:^5.9.3"
@@ -2971,7 +2971,7 @@ __metadata:
     "@aws-sdk/client-cognito-identity-provider": "npm:^3.947.0"
     "@aws-sdk/client-sqs": "npm:^3.947.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.31"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.32"
     "@serverlessinbox/mailbox": "workspace:*"
     "@serverlessinbox/mailbox-admin-api": "workspace:*"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
@@ -3008,7 +3008,7 @@ __metadata:
     "@aws-sdk/client-route-53": "npm:^3.946.0"
     "@aws-sdk/client-s3": "npm:^3.946.0"
     "@aws-sdk/client-sfn": "npm:^3.946.0"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.31"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.32"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
@@ -7763,7 +7763,7 @@ __metadata:
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
     "@jwpkg/gitversion": "npm:^1.4.0-pack-order.2"
-    "@serverlessinbox/artifact-registry": "npm:^0.0.31"
+    "@serverlessinbox/artifact-registry": "npm:^0.0.32"
     "@types/node": "npm:^24.10.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"

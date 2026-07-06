@@ -14,7 +14,7 @@
     "clean": "rm -rf lib"
   },
   "dependencies": {
-    "@serverlessinbox/artifact-registry": "^0.0.31",
+    "@serverlessinbox/artifact-registry": "^0.0.32",
     "aws-cdk-lib": "^2.224.0",
     "constructs": "^10.0.0"
   },
