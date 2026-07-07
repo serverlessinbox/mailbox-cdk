@@ -49,6 +49,8 @@ export class TrackResolverProvider extends Construct {
 
     this._config = config;
     const DEFAULT_PROJECT = config.project;
+    // Default bucket base to 'mailbox-artifacts' if undefined; ensures env var and IAM ARN are always consistent.
+    const artifactBucketBase = config.artifactBucketBase || 'mailbox-artifacts';
 
     const fn = new lambda.Function(this, 'handler', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -59,7 +61,7 @@ export class TrackResolverProvider extends Construct {
       memorySize: 256,
       description: `Serverless Inbox Mailbox: track-resolver provider (${Aws.STACK_NAME})`,
       environment: {
-        ARTIFACT_BUCKET_BASE: config.artifactBucketBase,
+        ARTIFACT_BUCKET_BASE: artifactBucketBase,
         PROJECT: DEFAULT_PROJECT,
       },
     });
@@ -70,7 +72,7 @@ export class TrackResolverProvider extends Construct {
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
         resources: [
-          `arn:aws:s3:::${config.artifactBucketBase}-${Aws.REGION}/${DEFAULT_PROJECT}/packages/*/releases/*`,
+          `arn:aws:s3:::${artifactBucketBase}-${Aws.REGION}/${DEFAULT_PROJECT}/packages/*/releases/*`,
         ],
       }),
     );

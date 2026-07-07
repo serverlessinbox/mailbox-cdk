@@ -37,7 +37,7 @@ export class CdkArtifactResolver extends ArtifactResolver implements ICdkArtifac
     // If track config provided, ensure the provider exists for this stack
     if (this._trackConfig) {
       const stack = Stack.of(scope);
-      const artifactBucketBase = (options.versions as any).bucketBase;
+      const artifactBucketBase = this.getBucketBase();
       TrackResolverProvider.getOrCreate(stack, {
         artifactBucketBase,
         project: 'serverlessinbox',
