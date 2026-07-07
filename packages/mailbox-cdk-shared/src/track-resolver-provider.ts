@@ -68,11 +68,13 @@ export class TrackResolverProvider extends Construct {
 
     // IAM: read-only, project-scoped wildcard covers all packages this provider serves.
     // Pattern mirrors artifact-registry's S3 key schema (deliberately NOT extracted to avoid over-engineering).
+    // Include both deployment region and us-east-1 (for edge-zone packages).
     fn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
         resources: [
           `arn:aws:s3:::${artifactBucketBase}-${Aws.REGION}/${DEFAULT_PROJECT}/packages/*/releases/*`,
+          `arn:aws:s3:::${artifactBucketBase}-us-east-1/${DEFAULT_PROJECT}/packages/*/releases/*`,
         ],
       }),
     );
@@ -121,6 +123,7 @@ export class TrackResolverProvider extends Construct {
     version: string,
     granularity: TrackGranularity,
     distTag: string,
+    region: string,
     objectName: string,
   ): string {
     // Ensure the per-package CR exists (created once, then reused)
@@ -136,6 +139,7 @@ export class TrackResolverProvider extends Construct {
         version,
         granularity,
         distTag,
+        region,
       });
       for (const [key, value] of Object.entries(properties)) {
         resource.addPropertyOverride(key, value);

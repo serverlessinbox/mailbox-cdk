@@ -3,7 +3,7 @@ import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
 import { Stack } from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
 import { ArtifactResolver } from '@serverlessinbox/artifact-registry';
-import type { ArtifactResolverFactoryOptions, IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry';
+import type { ArtifactResolverFactoryOptions, IArtifactResolver, ResolvedArtifact, ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SHARED_GROUP_ID, SINGLETON_ID, TrackResolverProvider } from './track-resolver-provider';
 
 export type TrackGranularity = 'major' | 'minor';
@@ -24,6 +24,8 @@ export class CdkArtifactResolver extends ArtifactResolver implements ICdkArtifac
   private readonly _scope: IConstruct;
   private readonly _bucketCache = new Map<string, IBucket>();
   private readonly _trackConfig?: { granularity: TrackGranularity; distTag: string };
+  private readonly _deploymentRegion: string;
+  private readonly _packages: Record<string, ArtifactVersionsEntry>;
 
   constructor(
     options: ArtifactResolverFactoryOptions,
@@ -33,6 +35,8 @@ export class CdkArtifactResolver extends ArtifactResolver implements ICdkArtifac
     super(options);
     this._scope = scope;
     this._trackConfig = cdkOptions?.track;
+    this._deploymentRegion = options.deploymentRegion;
+    this._packages = options.versions.packages;
 
     // If track config provided, ensure the provider exists for this stack
     if (this._trackConfig) {
@@ -82,12 +86,18 @@ export class CdkArtifactResolver extends ArtifactResolver implements ICdkArtifac
     const anchor = super.resolve(packageName, objectPath);
     const config = provider.getConfig();
 
+    // Determine the per-package region from its zone: edge → us-east-1, regional → deploymentRegion
+    const EDGE_REGION = 'us-east-1';
+    const pkgEntry = this._packages[packageName];
+    const region = pkgEntry?.zone === 'edge' ? EDGE_REGION : this._deploymentRegion;
+
     // Ensure the per-package CR exists and get the deploy-time-resolved key token
     const keyToken = provider.getResolvedKeyToken(
       packageName,
       version,
       config.granularity,
       config.distTag,
+      region,
       objectPath,
     );
 
