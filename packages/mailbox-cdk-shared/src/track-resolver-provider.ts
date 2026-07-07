@@ -5,8 +5,9 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import {
   TRACK_RESOLVER_HANDLER_SOURCE,
+  TRACK_RESOLVER_VERSION_ATTR,
   buildTrackResolverProperties,
-  trackResolverObjectAttrName,
+  buildArtifactKey,
 } from '@serverlessinbox/artifact-registry';
 import type { TrackGranularity } from './cdk-artifact-resolver';
 
@@ -106,10 +107,12 @@ export class TrackResolverProvider extends Construct {
 
   /**
    * Gets or creates a per-package CfnCustomResource pointing at the singleton Lambda, then returns
-   * the deploy-time-resolved key as a token string via Fn.getAtt.
+   * the deploy-time-resolved artifact key as a token string via Fn.getAtt.
    *
    * The CfnCustomResource is created once per package and cached; subsequent calls for the same
    * package reuse it. This ensures each package gets its own CFN resource for independent tracking.
+   * The CR returns the resolved version, and the artifact key is built via buildArtifactKey with
+   * that token.
    */
   getResolvedKeyToken(
     packageName: string,
@@ -140,9 +143,14 @@ export class TrackResolverProvider extends Construct {
     }
 
     const resource = this._customResources.get(packageName)!;
-    return cdk.Fn.getAtt(
-      resource.logicalId,
-      trackResolverObjectAttrName(packageName, objectName),
-    ).toString();
+    const versionToken = cdk.Fn.getAtt(resource.logicalId, TRACK_RESOLVER_VERSION_ATTR).toString();
+
+    // Build the artifact key using the resolved version token and the object name.
+    return buildArtifactKey('package', packageName, {
+      type: 'release',
+      version: { version: versionToken } as any,
+      objectName,
+      project: this._config.project,
+    });
   }
 }
