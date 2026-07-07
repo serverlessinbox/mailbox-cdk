@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.28](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.27...v0.0.28) (Tue Jul 07 2026)
+
+### fix
+
+* Bucket lookup ([dda9c23](https://github.com/serverlessinbox/mailbox-cdk/commit/dda9c23150468bc0148b840aa42386af98865810))
+
 ## [0.0.27](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.26...v0.0.27) (Tue Jul 07 2026)
 
 ### feat
