@@ -8,13 +8,13 @@ import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface EmailDelivery {
   readonly blobStore: IBucket;
   readonly emailProcessor: IFunction;
   readonly bucketPrefix: string;
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
   /** Encryption props forwarded from the mailbox encryption plan. */
   readonly queueProps?: Partial<BaseQueueProps>;
 }

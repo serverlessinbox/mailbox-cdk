@@ -9,7 +9,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
 import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -20,7 +20,7 @@ export interface GoLambda2Props extends FunctionOptions {
   /**
    * Code provider for obtaining lambda code asset
    */
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 
   /**
    * Log retention policy for the lambda's default log group.

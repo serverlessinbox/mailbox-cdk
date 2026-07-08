@@ -1,5 +1,5 @@
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -12,7 +12,7 @@ export interface UserProvisionerLambdaProps {
   itemTable: ITable;
   changelogTable: ITable;
   auditEventsQueue: IQueue;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
   readonly adminUIURL: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */

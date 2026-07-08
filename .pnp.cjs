@@ -6826,10 +6826,13 @@ const RAW_RUNTIME_STATE =
       ["workspace:packages/mailbox-cdk-shared", {\
         "packageLocation": "./packages/mailbox-cdk-shared/",\
         "packageDependencies": [\
+          ["@aws-sdk/client-s3", "npm:3.1058.0"],\
           ["@serverlessinbox/artifact-registry", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.0.34"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
+          ["@types/node", "npm:24.10.1"],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
           ["constructs", "npm:10.4.3"],\
+          ["esbuild", "npm:0.27.1"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\

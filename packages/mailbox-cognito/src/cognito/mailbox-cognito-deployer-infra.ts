@@ -7,7 +7,12 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
-import { createCognitoArtifactData } from '../artifacts';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+
+export interface MailboxCognitoDeployerInfraProps {
+  /** Artifact resolver for deployer Lambda code (stack-deployer zip). Internal use; passed from parent. */
+  readonly artifactResolver: ICdkArtifactEngine;
+}
 
 /**
  * Self-contained scaffolding for the Cognito data stack deployer.
@@ -29,13 +34,11 @@ export class MailboxCognitoDeployerInfra extends Construct {
   public readonly starter: LambdaFunction;
   public readonly stateMachine: sfn.StateMachine;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: MailboxCognitoDeployerInfraProps) {
     super(scope, id);
 
-    const resolver = createCognitoArtifactData(this);
-
     // Both worker and starter are served from the same zip, using different handler entrypoints.
-    const code: Code = resolver.getCode('mailbox-cdk', 'lambdas/stack-deployer.zip');
+    const code: Code = props.artifactResolver.getCode('mailbox-cdk', 'lambdas/stack-deployer.zip');
 
     // Worker Lambda: performs CloudFormation operations and polls for completion.
     this.worker = new LambdaFunction(this, 'worker', {

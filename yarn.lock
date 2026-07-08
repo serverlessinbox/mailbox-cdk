@@ -2934,9 +2934,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-cdk-shared@workspace:packages/mailbox-cdk-shared"
   dependencies:
+    "@aws-sdk/client-s3": "npm:^3"
     "@serverlessinbox/artifact-registry": "npm:^0.0.34"
+    "@types/node": "npm:^24.10.1"
     aws-cdk-lib: "npm:^2.224.0"
     constructs: "npm:^10.0.0"
+    esbuild: "npm:^0.27.1"
     typescript: "npm:^5.9.3"
   languageName: unknown
   linkType: soft

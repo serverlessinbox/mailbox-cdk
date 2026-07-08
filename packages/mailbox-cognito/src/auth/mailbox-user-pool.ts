@@ -19,14 +19,16 @@ import {
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider } from '@serverlessinbox/mailbox';
+import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
 
 import { slugifyLabel } from '../utils/resource-names';
 import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
-import { createCognitoArtifactData } from '../artifacts';
-import { MailboxCognitoDataDeployer } from '../cognito';
+import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
 
 export interface MailboxUserPoolAuthorizationConfig {
   readonly adminGroups?: string[];
@@ -74,6 +76,12 @@ export interface MailboxUserPoolProps {
   readonly mfaMode?: 'OFF' | 'OPTIONAL' | 'ON';
   /** Minimum password length (6–99). @default 8 */
   readonly passwordMinLength?: number;
+
+  /**
+   * Artifact resolver for Lambda code resolution (stack-self-update subplan #3, Phase A, D1/D2).
+   * When omitted, defaults to pinned behavior (byte-identical to old behavior, zero infra).
+   */
+  readonly artifactResolver?: IArtifactResolver;
 }
 
 export interface BootstrapUserConfig {
@@ -110,7 +118,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly adminUiClients = new Map<string, AuthClientConfig>();
   private readonly jmapUiClients = new Map<string, AuthClientConfig>();
   private readonly headlessClients = new Map<string, AuthClientConfig>();
-  private readonly _artifactResolver;
+  private readonly artifacts: ICdkArtifactEngine;
   private _bootstrapUserCount = 0;
 
   // Stored userPoolId for use in CfnUserPoolClient and grants
@@ -299,7 +307,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
-        artifactResolver: this._artifactResolver,
+        artifactResolver: this.artifacts,
         auditEventsQueue: ctx.auditEventsQueue,
         pool: this,
       }),
@@ -321,7 +329,11 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
     super(scope, id);
 
-    this._artifactResolver = createCognitoArtifactData(this);
+    // Artifact resolution (stack-self-update subplan #3, Phase A):
+    // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
+    // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
+    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+    this.artifacts = new CdkArtifactEngine(this, resolver);
 
     this.authzConfig = {
       adminGroups: props.authorization?.adminGroups ?? ['admin'],
@@ -356,6 +368,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         : undefined,
       mfaMode: props.mfaMode,
       passwordMinLength: props.passwordMinLength,
+      artifactResolver: this.artifacts,
     });
     const stackRef = deployer.dataStackRef;
 
@@ -393,7 +406,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const index = ++this._bootstrapUserCount;
     const constructId = `bootstrapped-user-${index}`;
     const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
-      artifactResolver: this._artifactResolver,
+      artifactResolver: this.artifacts,
     }).fn;
 
     new CustomResource(this, constructId, {

@@ -2,6 +2,7 @@ import { Construct } from 'constructs';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
 import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
@@ -34,6 +35,9 @@ export interface WebmailUiProps {
 
   /** Base URL for the Webmail UI's backend API. Written into `/config/config.json`. */
   readonly apiUrl?: string;
+
+  /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 export class WebmailUi extends MailboxUi {
@@ -51,6 +55,7 @@ export class WebmailUi extends MailboxUi {
       oauthClientName: OAUTH_CLIENT_JMAP_UI,
       uiBundle: props.uiBundle,
       uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
+      artifactResolver: props.artifactResolver,
     });
 
     const uiHost = this.distributionDomainName;

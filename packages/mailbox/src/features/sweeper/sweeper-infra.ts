@@ -1,12 +1,12 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SweeperWorkflow } from './sweeper-workflow';
 import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
 
 export interface SweeperInfraProps {
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 /**

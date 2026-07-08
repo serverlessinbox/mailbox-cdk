@@ -4,7 +4,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda, SesReceivingMode } from '../lambdas';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,
@@ -27,7 +27,7 @@ export interface BootstrapProps {
   readonly authPolicies?: AuthPoliciesConfig;
   readonly oauthClients?: OAuthClientsConfig;
 
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
   readonly sesReceiving?: {
     ruleSet: IReceiptRuleSet;
     mode: SesReceivingMode;

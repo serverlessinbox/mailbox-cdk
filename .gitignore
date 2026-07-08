@@ -10,3 +10,4 @@ dist
 release
 gitversion.out
 tsconfig.tsbuildinfo
+packages/mailbox-cdk-shared/tsconfig.build.tsbuildinfo

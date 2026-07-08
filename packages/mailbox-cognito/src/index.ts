@@ -24,7 +24,8 @@ export type {
 
 
 // Artifacts
-export { COGNITO_ARTIFACT_PACKAGE } from './artifacts';
+/** Package name for mailbox-cognito artifacts. */
+export const COGNITO_ARTIFACT_PACKAGE = 'mailbox-cognito' as const;
 
 // Cognito data stack
 export * from './cognito';

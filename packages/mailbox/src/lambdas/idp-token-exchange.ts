@@ -1,5 +1,5 @@
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
@@ -11,7 +11,7 @@ export interface IdpTokenExchangeLambdaProps {
   auditEventsQueue?: IQueue;
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 }
 
 export class IdpTokenExchangeLambda extends GoLambda {

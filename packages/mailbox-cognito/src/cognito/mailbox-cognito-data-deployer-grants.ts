@@ -1,8 +1,6 @@
 import { Aws } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
-import { IConstruct } from 'constructs';
-import { getCognitoDataStackTemplateArn } from '../artifacts';
 
 export interface CognitoDataDeployerGrantProps {
   /** S3 object ARN for the cognito data stack CloudFormation template. */
@@ -132,11 +130,5 @@ export function grantCognitoDataDeployerPermissions(
  * Grants using the scope-derived template ARN (convenience overload for callers that have a
  * CDK scope but not a pre-resolved ARN string).
  */
-export function grantCognitoDataDeployerPermissionsFromScope(
-  worker: LambdaFunction,
-  scope: IConstruct,
-): void {
-  grantCognitoDataDeployerPermissions(worker, {
-    templateObjectArn: getCognitoDataStackTemplateArn(scope),
-  });
-}
+// Deprecated: grantCognitoDataDeployerPermissionsFromScope was removed to avoid local engine creation.
+// Callers should use grantCognitoDataDeployerPermissions directly with a pre-computed templateObjectArn.

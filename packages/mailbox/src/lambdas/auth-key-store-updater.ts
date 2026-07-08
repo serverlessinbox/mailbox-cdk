@@ -1,12 +1,12 @@
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 export interface AuthKeyStoreUpdaterLambdaProps {
   issuers: string[];
   authKeyStoreTable: ITable;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 }
 
 export class AuthKeyStoreUpdaterLambda extends GoLambda {

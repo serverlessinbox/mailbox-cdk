@@ -2,7 +2,7 @@ import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
 import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
@@ -11,7 +11,7 @@ export interface MailboxEdgeDeployerProps {
   /**
    * Artifact resolver for loading Lambda code and artifact locations from S3
    */
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
 
   /** Base domain name (e.g. example.com) */
   readonly domainName: string;
@@ -81,20 +81,20 @@ export class MailboxEdgeDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
     });
 
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json');
+    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');
 
     grantEdgeDeployerWorkerPermissions(infra.worker, {
       stack,
       edgeStackArn,
       rootStack: Aws.STACK_NAME,
-      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
+      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1'),
       artifactObjectArns: [
-        props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
+        props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1'),
       ],
     });
 
     // Build CloudFormation parameters from the edge construct props
-    const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
+    const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1');
 
     const deployer = props.deployer ?? 'cfn';
 

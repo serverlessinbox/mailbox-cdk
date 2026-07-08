@@ -1,12 +1,12 @@
 import { Duration } from 'aws-cdk-lib';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { GoLambda } from '../utils/go-lambda';
 
 export interface SesReceiptForwarderLambdaProps {
   emailProcessorQueue: IQueue;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 }
 
 /**

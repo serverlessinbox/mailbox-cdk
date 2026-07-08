@@ -1,10 +1,10 @@
 import { TypeScriptLambda } from '../utils/ts-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 export interface ResourceSweeperStarterLambdaProps {
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 
   /** ARN of the state machine to start */
   stateMachineArn: string;

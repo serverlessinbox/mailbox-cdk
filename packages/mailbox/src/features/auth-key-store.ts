@@ -5,7 +5,7 @@ import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../lambdas';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { INamedTable, StackNamedTable } from '../utils/named-table';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
@@ -14,7 +14,7 @@ export interface AuthKeyStoreProps {
   /**
    * Artifact resolver for building/downloading lambdas
    */
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 export class AuthKeyStore extends Construct {

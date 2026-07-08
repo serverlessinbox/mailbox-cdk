@@ -14,8 +14,8 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { GoLambda } from '../utils/go-lambda';
-import { createArtifactResolverFromContext } from '../artifacts/artifact-context';
 
 export interface McpApiProps {
   configTable: dynamodb.ITable;
@@ -24,6 +24,8 @@ export interface McpApiProps {
   certificate: acm.ICertificate;
   domainName: string;
   scopeMap: Record<string, string[]>;
+  /** Artifact resolver for Lambda code resolution. */
+  artifactResolver: ICdkArtifactEngine;
 }
 
 export class McpApi extends Construct {
@@ -57,11 +59,9 @@ export class McpApi extends Construct {
       stage: api.defaultStage!,
     });
 
-    const artifactResolver = createArtifactResolverFromContext(this);
-
     const handlerLambda = new GoLambda(this, 'handler', {
       lambdaId: 'mcp-api',
-      artifactResolver,
+      artifactResolver: props.artifactResolver,
       memorySize: 256,
       timeout: Duration.seconds(29),
       environment: {

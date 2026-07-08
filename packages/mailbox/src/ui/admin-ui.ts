@@ -3,6 +3,7 @@ import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CL
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxUi } from './mailbox-ui';
 
 export interface AdminUiProps {
@@ -42,6 +43,9 @@ export interface AdminUiProps {
 
   /** Additional runtime config written into `/config/config.json` (e.g. feature flags / IdP user management config). */
   readonly uiConfig?: Record<string, unknown>;
+
+  /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 /**
@@ -88,6 +92,7 @@ export class AdminUi extends MailboxUi {
         objectPath: 'admin-ui.zip',
       },
       uiConfig: Object.keys(mergedUiConfig).length > 0 ? mergedUiConfig : undefined,
+      artifactResolver: props.artifactResolver,
     });
 
     const uiHost = this.distributionDomainName;

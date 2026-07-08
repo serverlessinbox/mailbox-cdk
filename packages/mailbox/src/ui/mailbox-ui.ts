@@ -19,11 +19,10 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { createHash } from 'crypto';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import { createArtifactResolverFromContext } from '../artifacts/artifact-context';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import { TypeScriptLambda } from '../utils/ts-lambda';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
@@ -64,6 +63,9 @@ export interface MailboxUiProps {
     /** Additional provider-/deployment-specific config for the UI. */
     [key: string]: unknown;
   };
+
+  /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 /**
@@ -79,7 +81,7 @@ export class MailboxUi extends Construct {
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
 
-  private getOrCreateUiDeployer(artifactResolver: ICdkArtifactResolver): TypeScriptLambda {
+  private getOrCreateUiDeployer(artifactResolver: ICdkArtifactEngine): TypeScriptLambda {
     const stack = Stack.of(this);
     const existing = stack.node.tryFindChild('mailbox-ui-deployer');
     if (existing) {
@@ -99,7 +101,7 @@ export class MailboxUi extends Construct {
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
     super(scope, id);
 
-    const artifactResolver = createArtifactResolverFromContext(this);
+    const artifacts = props.artifactResolver;
 
     this.bucket = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -161,7 +163,7 @@ export class MailboxUi extends Construct {
 
     this.addAuthBehavior(
       this.distribution,
-      artifactResolver,
+      artifacts,
       props.configTable,
       props.auditEventsQueue,
       props.authPolicyName,
@@ -169,14 +171,14 @@ export class MailboxUi extends Construct {
     );
 
     if (props.uiBundle || props.uiConfig) {
-      this.addUiDeployment(artifactResolver, props);
+      this.addUiDeployment(artifacts, props);
     }
 
     this.distributionDomainName = props.certificate ? props.domainName : this.distribution.distributionDomainName;
   }
 
-  private addUiDeployment(artifactResolver: ICdkArtifactResolver, props: MailboxUiProps): void {
-    const deployer = this.getOrCreateUiDeployer(artifactResolver);
+  private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
+    const deployer = this.getOrCreateUiDeployer(artifacts);
 
 
     // Allow cache invalidations after deployment.
@@ -197,7 +199,7 @@ export class MailboxUi extends Construct {
     );
 
     const uiResolved = props.uiBundle
-      ? artifactResolver.resolve(props.uiBundle.packageName, props.uiBundle.objectPath)
+      ? artifacts.resolve(props.uiBundle.packageName, props.uiBundle.objectPath, Stack.of(this).region)
       : undefined;
 
     // Allow reading UI bundle artifacts from the artifacts bucket.
@@ -253,7 +255,7 @@ export class MailboxUi extends Construct {
 
   private addAuthBehavior(
     distribution: Distribution,
-    artifactResolver: ICdkArtifactResolver,
+    artifactResolver: ICdkArtifactEngine,
     configTable: ITable,
     auditEventsQueue: IQueue | undefined,
     authPolicyName: AuthPolicyName,

@@ -1,6 +1,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -10,7 +10,7 @@ export interface TantivyIndexerLambdaProps {
   itemTable: ITable;
   configTable: ITable;
   changelogTable: ITable;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 }
 
 export class TantivyIndexerLambda extends GoLambda {

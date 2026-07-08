@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -13,7 +13,7 @@ export interface BootstrapLambdaProps {
   configTable: ITable;
   jwkCacheTable: ITable;
   authKeyStoreTable: ITable;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
   domain: string;
   sesReceiving?: {
     ruleSet: IReceiptRuleSet;

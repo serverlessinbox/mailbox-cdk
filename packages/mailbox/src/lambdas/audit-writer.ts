@@ -1,12 +1,12 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 export interface AuditWriterLambdaProps {
   auditLogTable: ITable;
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
 }
 
 export class AuditWriterLambda extends GoLambda {

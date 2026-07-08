@@ -1,10 +1,10 @@
 import { Aws, CustomResource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { getCognitoDataStackTemplateArn, getCognitoDataStackTemplateUrl, getCognitoProductVersion } from '../artifacts';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
 import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
@@ -22,6 +22,8 @@ export interface MailboxCognitoDataDeployerProps {
   readonly mfaMode?: 'OFF' | 'OPTIONAL' | 'ON';
   /** Minimum password length (6–99). @default 8 */
   readonly passwordMinLength?: number;
+  /** Engine for artifact resolution (threaded from parent MailboxUserPool). */
+  readonly artifactResolver: ICdkArtifactEngine;
 }
 
 /**
@@ -42,14 +44,22 @@ export class MailboxCognitoDataDeployer extends Construct {
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerProps) {
     super(scope, id);
 
-    const deployerInfra = new MailboxCognitoDeployerInfra(this, 'infra');
+    const artifacts = props.artifactResolver;
+
+    const deployerInfra = new MailboxCognitoDeployerInfra(this, 'infra', {
+      artifactResolver: artifacts,
+    });
+
+    // Resolve the cognito data stack template to S3 location.
+    const templateUrl = artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json');
+    const templateArn = artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json');
 
     // Grant the worker the IAM permissions it needs (CloudFormation + Cognito + S3 template read).
     grantCognitoDataDeployerPermissions(deployerInfra.worker, {
-      templateObjectArn: getCognitoDataStackTemplateArn(this),
+      templateObjectArn: templateArn,
     });
 
-    const productVersion = getCognitoProductVersion(this);
+    const productVersion = artifacts.getVersion('mailbox-cognito');
     const cognitoStackName = Aws.STACK_NAME + '-cognito';
 
     const parameters: Record<string, string> = {
@@ -75,7 +85,7 @@ export class MailboxCognitoDataDeployer extends Construct {
         region: Aws.REGION,
         preserveOnDelete: true,
         stackName: cognitoStackName,
-        templateUrl: getCognitoDataStackTemplateUrl(this),
+        templateUrl,
         parameters,
         // Object-level correlation tags on the cognito AWS::CloudFormation::Stack itself.
         tags: serverlessInboxSubStackTags({

@@ -2,14 +2,14 @@ import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
 
 export interface MailboxDataDeployerProps {
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
   /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
   readonly dataStackName?: string;
   /** S3-safe base for bucket names */

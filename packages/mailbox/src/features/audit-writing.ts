@@ -5,11 +5,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 import { AuditWriterLambda } from '../lambdas';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface AuditWritingProps {
   readonly auditLogTable: ITable;
-  readonly artifactResolver: ICdkArtifactResolver;
+  readonly artifactResolver: ICdkArtifactEngine;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;

@@ -16,9 +16,8 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, UserProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
-import { createArtifactResolverFromContext } from './artifacts/artifact-context';
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import { CdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra } from './features/sweeper';
 import { LicenseRefresh } from './features/license-refresh';
@@ -214,16 +213,10 @@ export interface MailboxProps {
   readonly overrides?: MailboxOverrides;
 
   /**
-   * Self-update track granularity (subplan #2, stack-self-update feature). Default `pinned` (no track
-   * resolver, no new infrastructure, byte-identical behavior). `major` follows `v{major}`, `minor`
-   * follows `v{major}.{minor}` — concrete track derived from the package's currently-pinned version
-   * from `artifact-versions.json`. Each Lambda/UI code resolved through the track pointer instead of
-   * pinned at synth time. The scheduled auto-update mechanism itself is a separate subplan, not yet built.
+   * Strategy for resolving Lambda code + UI bundle artifacts. Omit for pinned synth-time resolution
+   * (`PinnedResolver`); inject an `AutoUpdater` to track a dist-tag at deploy.
    */
-  readonly track?: 'pinned' | 'major' | 'minor';
-
-  /** Which pointer line (distTag) to resolve within the track. @default "stable" */
-  readonly distTag?: string;
+  readonly artifactResolver?: IArtifactResolver;
 }
 
 export interface MailboxOAuthClients {
@@ -279,18 +272,12 @@ export class Mailbox extends Construct {
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
-    // Self-update (subplan #2, stack-self-update): if track mode is enabled, pass config to the resolver.
-    // The resolver will create the singleton TrackResolverProvider internally.
-    const baseArtifactResolver: CdkArtifactResolver = createArtifactResolverFromContext(this, {
-      track:
-        props.track && props.track !== 'pinned'
-          ? {
-              granularity: props.track,
-              distTag: props.distTag ?? 'stable',
-            }
-          : undefined,
-    });
-    const stackVersion = baseArtifactResolver.getVersion('mailbox-cdk');
+    // Artifact resolution (stack-self-update subplan #3, Phase A):
+    // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
+    // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
+    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+    const artifactResolver = new CdkArtifactEngine(this, resolver);
+    const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
     applyServerlessInboxBaseTags(this, {
       // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
@@ -321,8 +308,6 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(groups.apis,   'api');
     applyServerlessInboxComponentTag(groups.search, 'search');
     applyServerlessInboxComponentTag(groups.ops,    'ops');
-
-    const artifactResolver: ICdkArtifactResolver = baseArtifactResolver;
 
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
@@ -411,7 +396,7 @@ export class Mailbox extends Construct {
 
     const edgeStack = new MailboxEdgeDeployer(groups.edge, 'stack-deployer', {
       domainName,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       prefix: edgePrefix,
       hostedZoneId: props.hostedZoneId,
       hostedZoneName: domainName,
@@ -516,6 +501,7 @@ export class Mailbox extends Construct {
           ? `https://${mailboxDomains.webmail}`
           : undefined,
         uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
+        artifactResolver,
       });
 
       this.adminUiBucket = adminUi.bucket;
@@ -537,6 +523,7 @@ export class Mailbox extends Construct {
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
         uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
+        artifactResolver,
       });
 
       this.webmailUiBucket = webmailUi.bucket;
@@ -690,7 +677,7 @@ export class Mailbox extends Construct {
       itemTable: dataRef.itemTable,
       configTable: dataRef.configTable,
       changelogTable: dataRef.changelogTable,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       queueProps: encryptionPlan.queues,
     });
     // tantivySearch is used for side-effects only at this level.
@@ -704,7 +691,7 @@ export class Mailbox extends Construct {
       configTable: dataRef.configTable,
       blobStore: this._blobStore,
       auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       queueProps: encryptionPlan.queues,
     });
 
@@ -715,7 +702,7 @@ export class Mailbox extends Construct {
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
       blobStore: this._blobStore,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
     });
@@ -735,7 +722,7 @@ export class Mailbox extends Construct {
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
       auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       adminUIURL: this.urls.adminUi,
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
@@ -753,7 +740,7 @@ export class Mailbox extends Construct {
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       userProvisionerFunction: userProvisioner,
@@ -774,7 +761,7 @@ export class Mailbox extends Construct {
       changelogTable: dataRef.changelogTable,
       authKeyStoreTable: authKeyStore.table,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
-      artifactResolver: artifactResolver,
+      artifactResolver,
       maxSubscriptions: 10,
 
       domainName: (hasHostedZone && wsCertificate) ? mailboxDomains.ws : undefined,
@@ -804,7 +791,7 @@ export class Mailbox extends Construct {
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
-      artifactResolver: artifactResolver,
+      artifactResolver,
       authProvider,
       userProvisionerFunction: userProvisioner,
 
@@ -825,6 +812,7 @@ export class Mailbox extends Construct {
       certificate: this.certificates.regional!,
       domainName: domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
+      artifactResolver,
     }) : undefined;
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);

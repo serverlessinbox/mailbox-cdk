@@ -1,7 +1,7 @@
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import { IdpTokenExchangeLambda } from "../../lambdas";
-import type { ICdkArtifactResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
@@ -14,7 +14,7 @@ import {
 import { Aws } from 'aws-cdk-lib';
 
 export interface IdpTokenExchangeApiProps {
-  artifactResolver: ICdkArtifactResolver;
+  artifactResolver: ICdkArtifactEngine;
   configTable: ITable;
   auditEventsQueue?: IQueue;
 
