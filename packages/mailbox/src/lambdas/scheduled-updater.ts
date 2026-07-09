@@ -33,7 +33,6 @@ export class ScheduledUpdaterLambda extends TypeScriptLambda {
         GRANULARITY: props.granularity,
         PROJECT: 'serverlessinbox',
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
-        // UPDATER_FUNCTION_ARN set post-construction (self-reference)
       },
     });
   }

@@ -103,6 +103,9 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       }),
     );
 
+    // Tag the provider-handler Lambda to exclude it from auto-update scanning.
+    cdk.Tags.of(fn).add('serverless-inbox:auto-update', 'exclude');
+
     this.lambdaFn = fn;
 
     // Phase B: Scheduled updater Lambda, EventBridge rule, DLQ (all gated on IsTracking)
@@ -114,7 +117,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
     });
-    updater.addEnvironment('UPDATER_FUNCTION_ARN', updater.functionArn);
+
+    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update=exclude).
+    // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
+    cdk.Tags.of(updater).add('serverless-inbox:auto-update', 'exclude');
 
     // Updater IAM: comprehensive least-privilege
     updater.addToRolePolicy(

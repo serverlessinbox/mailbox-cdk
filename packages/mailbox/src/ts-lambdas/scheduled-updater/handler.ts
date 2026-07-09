@@ -145,7 +145,6 @@ export async function advanceLambdaIfStale(
  * Main handler: EventBridge-triggered, scans both regions for targets and updates stale ones.
  */
 export const handler = async (): Promise<void> => {
-  const ownArn = requireEnv('UPDATER_FUNCTION_ARN');
   const rootStackTag = getRootStackTag();
   const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
   const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
@@ -175,13 +174,14 @@ export const handler = async (): Promise<void> => {
           const arn = resource.ResourceARN;
           if (!arn) continue;
 
-          // Skip self (the updater Lambda itself).
-          if (arn === ownArn) {
-            console.log('skipping updater itself', { arn });
+          const tags = tagMapFrom(resource.Tags);
+
+          // Skip any resource tagged with the auto-update exclusion tag.
+          if (tags['serverless-inbox:auto-update'] === 'exclude') {
+            console.log('skipping auto-update-excluded resource', { arn });
             continue;
           }
 
-          const tags = tagMapFrom(resource.Tags);
           const pkg = tags['serverless-inbox:artifact-package'];
           const artifactName = tags['serverless-inbox:artifact-name'];
           const deployedVersion = tags['serverless-inbox:artifact-version'];
