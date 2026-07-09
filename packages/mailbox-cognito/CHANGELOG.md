@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.41](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.40...v0.0.41) (Thu Jul 09 2026)
+
+### fix
+
+* Double log retention ([f7192f7](https://github.com/serverlessinbox/mailbox-cdk/commit/f7192f7267151254c8ba851438915f50c9b27087))
+
 ## [0.0.40](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.39...v0.0.40) (Thu Jul 09 2026)
 
 
