@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.33](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.32...v0.0.33) (Thu Jul 09 2026)
+
+### fix
+
+* Unit tests ([1b9b8e3](https://github.com/serverlessinbox/mailbox-cdk/commit/1b9b8e364949e0ef767cbd83d400f638d72d696b))
+
 ## [0.0.32](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.31...v0.0.32) (Thu Jul 09 2026)
 
 ### fix
