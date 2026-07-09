@@ -1,7 +1,4 @@
 import { Aws, Duration, Fn } from 'aws-cdk-lib';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-import * as cdk from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
@@ -44,8 +41,6 @@ export class MailboxCognitoDeployerInfra extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    this._addLogRetention(this.worker, 'WorkerLogGroup');
-
     // Step Functions state machine name, derived from the stack GUID for uniqueness.
     // StackId is an ARN: arn:aws:cloudformation:region:acct:stack/stack-name/guid
     const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
@@ -60,22 +55,12 @@ export class MailboxCognitoDeployerInfra extends Construct {
       stateMachineArn: this.stateMachine.stateMachineArn,
     });
 
-    this._addLogRetention(this.starter, 'StarterLogGroup');
-
     this.starter.addToRolePolicy(
       new PolicyStatement({
         actions: ['states:StartExecution'],
         resources: [this.stateMachine.stateMachineArn],
       }),
     );
-  }
-
-  private _addLogRetention(fn: IFunction, logicalId: string): void {
-    const cfnLogGroup = new logs.CfnLogGroup(this, logicalId, {
-      logGroupName: `/aws/lambda/${fn.functionName}`,
-      retentionInDays: RetentionDays.ONE_MONTH,
-    });
-    cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
   }
 
   /**
