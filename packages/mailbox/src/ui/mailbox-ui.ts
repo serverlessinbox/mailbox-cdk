@@ -186,8 +186,8 @@ export class MailboxUi extends Construct {
   private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
     const deployer = this.getOrCreateUiDeployer(artifacts);
 
-    // Tag the bucket for scheduled auto-update discovery
-    Tags.of(this.bucket).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
+    // Tag the distribution for scheduled auto-update discovery
+    Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
 
     // Allow cache invalidations after deployment.
     deployer.addToRolePolicy(
@@ -226,13 +226,13 @@ export class MailboxUi extends Construct {
       );
     }
 
-    // Tag the bucket with artifact metadata for auto-update tracking
+    // Tag the distribution with artifact metadata for auto-update tracking
     if (props.uiBundle) {
       const bundleVersion = artifacts.getVersion(props.uiBundle.packageName);
-      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactPackage, props.uiBundle.packageName);
-      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactName, props.uiBundle.objectPath);
-      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactVersion, bundleVersion);
-      Tags.of(this.bucket).add(ServerlessInboxTagKeys.distributionId, this.distribution.distributionId);
+      Tags.of(this.distribution).add(ServerlessInboxTagKeys.artifactPackage, props.uiBundle.packageName);
+      Tags.of(this.distribution).add(ServerlessInboxTagKeys.artifactName, props.uiBundle.objectPath);
+      Tags.of(this.distribution).add(ServerlessInboxTagKeys.artifactVersion, bundleVersion);
+      Tags.of(this.distribution).add(ServerlessInboxTagKeys.bucketName, this.bucket.bucketName);
     }
 
     // Stable nonce so CFN updates when inputs change (without forcing redeploy on every synth).

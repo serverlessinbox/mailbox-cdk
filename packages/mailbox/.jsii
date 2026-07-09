@@ -8809,7 +8809,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 232
+            "line": 220
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -11480,5 +11480,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "wh3PVOmZ20zf09AqYDbSYMu1dxflHq3yH5qd+Q7dKjk="
+  "fingerprint": "uOa5rBggLmGCNiICxGD0LMoO0LlWDTym//SM/8Bi0CQ="
 }

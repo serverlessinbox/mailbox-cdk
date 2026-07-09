@@ -9,10 +9,9 @@
 
 import { mockClient } from 'aws-sdk-client-mock';
 import {
-  S3Client,
-  GetBucketTaggingCommand,
-  PutBucketTaggingCommand,
-} from '@aws-sdk/client-s3';
+  CloudFrontClient,
+  TagResourceCommand,
+} from '@aws-sdk/client-cloudfront';
 import { advanceUiBucketIfStale } from '../update-ui';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -38,9 +37,9 @@ const { deployZipToPrefix } = jest.requireMock('../../shared/ui-ops') as any;
 const { invalidateCloudFront } = jest.requireMock('../../shared/ui-cloudfront') as any;
 
 describe('advanceUiBucketIfStale', () => {
-  // aws-sdk-client-mock generic type is awkward (AwsStubbed<S3Client> loses command specifics);
+  // aws-sdk-client-mock generic type is awkward (AwsStubbed<CloudFrontClient> loses command specifics);
   // tracking via .commandCalls() is adequate without a full type annotation.
-  let s3Mock: any;
+  let cloudFrontMock: any;
 
   // Get mocked functions from artifact-registry mock
   const mockReadReleasePointer = readReleasePointer as jest.Mock;
@@ -52,11 +51,13 @@ describe('advanceUiBucketIfStale', () => {
     process.env.DIST_TAG = 'latest';
     process.env.GRANULARITY = 'major';
     process.env.PROJECT = 'serverlessinbox';
-    s3Mock = mockClient(S3Client as any);
+    process.env.AWS_REGION = 'us-east-1';
+    process.env.AWS_ACCOUNT_ID = '123456789012';
+    cloudFrontMock = mockClient(CloudFrontClient as any);
   });
 
   afterEach(() => {
-    s3Mock.restore();
+    cloudFrontMock.restore();
   });
 
   it('skips when no pointer is available', async () => {
@@ -98,7 +99,7 @@ describe('advanceUiBucketIfStale', () => {
     expect(deployZipToPrefix).not.toHaveBeenCalled();
   });
 
-  it('updates bucket when stale: deploys, invalidates, and updates tags', async () => {
+  it('updates bucket when stale: deploys, invalidates, and updates distribution tags', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue({
       version: '1.2.4',
@@ -108,17 +109,7 @@ describe('advanceUiBucketIfStale', () => {
     (deployZipToPrefix as jest.Mock).mockResolvedValue({ uploaded: 42 });
     (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
 
-    s3Mock.on(GetBucketTaggingCommand).resolves({
-      TagSet: [
-        { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-        { Key: 'serverless-inbox:auto-update-type', Value: 'ui' },
-        { Key: 'serverless-inbox:artifact-package', Value: 'ui-bundle' },
-        { Key: 'serverless-inbox:artifact-name', Value: 'ui-bundle.zip' },
-        { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
-        { Key: 'serverless-inbox:distribution-id', Value: 'ABCD1234' },
-      ],
-    });
-    s3Mock.on(PutBucketTaggingCommand).resolves({});
+    cloudFrontMock.on(TagResourceCommand).resolves({});
 
     await advanceUiBucketIfStale(
       'us-east-1',
@@ -144,22 +135,14 @@ describe('advanceUiBucketIfStale', () => {
       callerReference: expect.stringContaining('ui-update:ui-content-bucket:1.2.4'),
     });
 
-    // Verify GetBucketTagging and PutBucketTagging were called with correct merged tag set
-    const getTags = s3Mock.commandCalls(GetBucketTaggingCommand);
-    expect(getTags).toHaveLength(1);
-
-    const putTags = s3Mock.commandCalls(PutBucketTaggingCommand);
-    expect(putTags).toHaveLength(1);
-    // Verify PutBucketTaggingCommand was called with full merged tag set: existing tags preserved, only artifact-version bumped
-    expect(putTags[0].args[0].input).toEqual({
-      Bucket: 'ui-content-bucket',
-      Tagging: {
-        TagSet: [
-          { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-          { Key: 'serverless-inbox:auto-update-type', Value: 'ui' },
-          { Key: 'serverless-inbox:artifact-package', Value: 'ui-bundle' },
-          { Key: 'serverless-inbox:artifact-name', Value: 'ui-bundle.zip' },
-          { Key: 'serverless-inbox:distribution-id', Value: 'ABCD1234' },
+    // Verify CloudFront TagResource was called to update distribution tags
+    const tagCalls = cloudFrontMock.commandCalls(TagResourceCommand);
+    expect(tagCalls).toHaveLength(1);
+    // Verify TagResourceCommand was called with correct distribution ARN and artifact-version tag
+    expect(tagCalls[0].args[0].input).toEqual({
+      Resource: 'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
+      Tags: {
+        Items: [
           { Key: 'serverless-inbox:artifact-version', Value: '1.2.4' },
         ],
       },
@@ -197,8 +180,7 @@ describe('advanceUiBucketIfStale', () => {
     (deployZipToPrefix as jest.Mock).mockResolvedValue({ uploaded: 10 });
     (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
 
-    s3Mock.on(GetBucketTaggingCommand).resolves({ TagSet: [] });
-    s3Mock.on(PutBucketTaggingCommand).resolves({});
+    cloudFrontMock.on(TagResourceCommand).resolves({});
 
     await advanceUiBucketIfStale(
       'us-east-1',

@@ -30,12 +30,8 @@ import {
   ListDistributionsCommand,
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
+  TagResourceCommand as CloudFrontTagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
-import {
-  S3Client,
-  GetBucketTaggingCommand,
-  PutBucketTaggingCommand,
-} from '@aws-sdk/client-s3';
 import { handler } from '../handler';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -273,12 +269,14 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       expect(mockReadReleasePointer).not.toHaveBeenCalled();
     });
 
-    it('routes ui auto-update-type on S3 bucket to advanceUiBucketIfStale', async () => {
-      const s3Mock = mockClient(S3Client as any);
+    it('routes ui auto-update-type on CloudFront distribution to advanceUiBucketIfStale', async () => {
+      const cloudFrontMockLocal = mockClient(CloudFrontClient as any);
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.AWS_REGION = 'us-east-1';
+      process.env.AWS_ACCOUNT_ID = '123456789012';
 
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
@@ -292,21 +290,20 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
           {
-            ResourceARN: 'arn:aws:s3:::ui-content-bucket',
+            ResourceARN: 'arn:aws:cloudfront::123456789012:distribution/D123',
             Tags: [
               { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
               { Key: 'serverless-inbox:artifact-package', Value: 'ui-bundle' },
               { Key: 'serverless-inbox:artifact-name', Value: 'ui-bundle.zip' },
               { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
               { Key: 'serverless-inbox:auto-update-type', Value: 'ui' },
-              { Key: 'serverless-inbox:distribution-id', Value: 'D123' },
+              { Key: 'serverless-inbox:bucket-name', Value: 'ui-content-bucket' },
             ],
           },
         ],
       });
 
-      s3Mock.on(GetBucketTaggingCommand).resolves({ TagSet: [] });
-      s3Mock.on(PutBucketTaggingCommand).resolves({});
+      cloudFrontMockLocal.on(CloudFrontTagResourceCommand).resolves({});
 
       await handler();
 
@@ -316,6 +313,8 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       expect(deployZipToPrefix).toHaveBeenCalled();
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
       expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
+
+      cloudFrontMockLocal.restore();
     });
 
     it('routes edge auto-update-type to advanceEdgeLambdaIfStale in us-east-1', async () => {

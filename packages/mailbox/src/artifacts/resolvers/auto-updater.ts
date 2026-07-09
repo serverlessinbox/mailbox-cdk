@@ -159,18 +159,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       }),
     );
 
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetBucketTagging', 's3:PutBucketTagging'],
-        resources: [`arn:aws:s3:::*-ui-*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-        },
-      }),
-    );
-
     // Edge auto-update: publish new versions + update CloudFront
     updater.addToRolePolicy(
       new iam.PolicyStatement({
@@ -187,7 +175,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     // CloudFront distribution management: scope to distributions tagged with this stack
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation', 'cloudfront:TagResource'],
         resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
         conditions: {
           StringEquals: {

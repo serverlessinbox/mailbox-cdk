@@ -41,7 +41,7 @@ export const handler = async (): Promise<void> => {
     granularity: process.env.GRANULARITY,
   });
 
-  // Scan Lambda functions and S3 buckets in both regions.
+  // Scan Lambda functions and CloudFront distributions in both regions.
   for (const region of uniqueRegions) {
     const tagging = new ResourceGroupsTaggingAPIClient({ region });
     let nextToken: string | undefined;
@@ -50,7 +50,7 @@ export const handler = async (): Promise<void> => {
       const response = await tagging.send(
         new GetResourcesCommand({
           TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [rootStackTag] }],
-          ResourceTypeFilters: ['lambda:function', 's3:bucket'],
+          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
           PaginationToken: nextToken,
         }),
       );
@@ -81,18 +81,18 @@ export const handler = async (): Promise<void> => {
 
           try {
             // Route by resource type and auto-update-type
-            if (resourceType === 's3') {
-              // S3 bucket: only UI type is supported
+            if (resourceType === 'cloudfront') {
+              // CloudFront distribution: only UI type is supported
               if (autoUpdateType === 'ui') {
-                const bucketName = arn.split(':')[5]; // Extract bucket name from ARN
-                const distributionId = tags['serverless-inbox:distribution-id'];
-                if (!distributionId) {
-                  console.debug('UI bucket missing distribution-id tag', { arn });
+                const distributionId = arn.split('/')[1]; // Extract distribution ID from ARN (arn:aws:cloudfront::ACCOUNT:distribution/DISTRIBUTION_ID)
+                const bucketName = tags['serverless-inbox:bucket-name'];
+                if (!bucketName) {
+                  console.debug('UI distribution missing bucket-name tag', { arn });
                   continue;
                 }
-                await advanceUiBucketIfStale(region, bucketName, pkg, artifactName, deployedVersion, distributionId);
+                await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, distributionId);
               } else {
-                console.debug('unsupported auto-update-type for S3 bucket', { arn, type: autoUpdateType });
+                console.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
               }
             } else if (resourceType === 'lambda') {
               // Lambda function: code or edge types

@@ -38,7 +38,7 @@ export const ServerlessInboxTagKeys = {
   artifactPackage: `${TAG_PREFIX}artifact-package`,
   artifactVersion: `${TAG_PREFIX}artifact-version`,
   autoUpdateType: `${TAG_PREFIX}auto-update-type`,
-  distributionId: `${TAG_PREFIX}distribution-id`,
+  bucketName: `${TAG_PREFIX}bucket-name`,
 } as const;
 
 export interface ApplyServerlessInboxTagsOptions {
