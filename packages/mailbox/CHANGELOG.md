@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.40](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.39...v0.0.40) (Thu Jul 09 2026)
+
+### fix
+
+* Iam hardening ([e7ff17b](https://github.com/serverlessinbox/mailbox-cdk/commit/e7ff17b11c4c73ddd8cb3bb785b3bbc2bc89ea7a))
+
 ## [0.0.39](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.38...v0.0.39) (Thu Jul 09 2026)
 
 ### feat
