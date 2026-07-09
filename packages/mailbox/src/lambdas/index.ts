@@ -68,6 +68,9 @@ export type { ResourceSweeperStarterLambdaProps } from './resource-sweeper-start
 export { ResourceSweeperWorkerLambda } from './resource-sweeper-worker';
 export type { ResourceSweeperWorkerLambdaProps } from './resource-sweeper-worker';
 
+export { ScheduledUpdaterLambda } from './scheduled-updater';
+export type { ScheduledUpdaterLambdaProps } from './scheduled-updater';
+
 export { StackDeployerStarterLambda } from './stack-deployer-starter';
 export type { StackDeployerStarterLambdaProps } from './stack-deployer-starter';
 

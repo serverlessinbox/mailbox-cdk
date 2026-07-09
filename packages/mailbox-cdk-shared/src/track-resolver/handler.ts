@@ -25,9 +25,8 @@
  * from a narrow relative path (`../utils/artifact-key`) rather than a barrel.
  */
 
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { buildReleasePointerKey, DEFAULT_PROJECT } from '@serverlessinbox/artifact-registry/dist/utils/artifact-key';
-import type { LatestStablePointer } from '@serverlessinbox/artifact-registry/dist/utils/types';
+import { DEFAULT_PROJECT } from '@serverlessinbox/artifact-registry/dist/utils/artifact-key';
+import { readReleasePointer } from '@serverlessinbox/artifact-registry/dist/utils/read-release-pointer';
 import { TRACK_RESOLVER_VERSION_ATTR } from './attr';
 
 /** Static PhysicalResourceId: guarantees every Update is in-place, never a replacement. */
@@ -37,21 +36,6 @@ const PHYSICAL_RESOURCE_ID = 'TrackResolver';
 const BUCKET_BASE = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
 const REGION = process.env.AWS_REGION ?? 'eu-west-1';
 const PROJECT = process.env.PROJECT ?? DEFAULT_PROJECT;
-
-/**
- * Parse S3 object body as LatestStablePointer or return null.
- * Uses AWS SDK v3's built-in `transformToString()` to handle stream→string conversion.
- */
-async function parsePointer(body: any): Promise<LatestStablePointer | null> {
-  if (!body) return null;
-  try {
-    const text = await body.transformToString('utf-8');
-    return JSON.parse(text);
-  } catch (err: any) {
-    console.error('failed to parse pointer JSON', { error: err.message });
-    return null;
-  }
-}
 
 interface HandlerResponse {
   PhysicalResourceId: string;
@@ -71,16 +55,16 @@ export async function handleRequest(event: any): Promise<HandlerResponse> {
   }
 
   const region = Region ?? REGION;
-  const bucket = `${BUCKET_BASE}-${region}`;
-  const key = buildReleasePointerKey('package', Package, { distTag: DistTag, project: PROJECT });
 
-  const s3 = new S3Client({ region });
   try {
-    const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const pointer = await parsePointer(res.Body);
+    // Use readReleasePointer to fetch the track-scoped pointer.
+    const pointer = await readReleasePointer(Package, DistTag, region, {
+      bucketBase: BUCKET_BASE,
+      project: PROJECT,
+    });
 
     if (!pointer || !pointer.version) {
-      throw new Error(`TrackResolver: pointer missing or has no version for ${Package} (distTag=${DistTag}) at s3://${bucket}/${key}`);
+      throw new Error(`TrackResolver: pointer missing or has no version for ${Package} (distTag=${DistTag})`);
     }
 
     console.log('resolved', { Package, DistTag, version: pointer.version });

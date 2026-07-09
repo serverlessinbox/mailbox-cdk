@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { CustomResource, Duration, Fn, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { CustomResource, Duration, Fn, RemovalPolicy, Stack, Tags } from 'aws-cdk-lib';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import {
   AllowedMethods,
@@ -24,6 +24,7 @@ import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
 import { TypeScriptLambda } from '../utils/ts-lambda';
+import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
 export type UiBundleSource = {
@@ -88,7 +89,7 @@ export class MailboxUi extends Construct {
       return existing as TypeScriptLambda;
     }
 
-    return new TypeScriptLambda(stack, 'mailbox-ui-deployer', {
+    const deployer = new TypeScriptLambda(stack, 'mailbox-ui-deployer', {
       lambdaId: 'ui-deployer',
       artifactResolver,
       packageName: 'mailbox-cdk',
@@ -96,6 +97,11 @@ export class MailboxUi extends Construct {
       timeout: Duration.minutes(15),
       memorySize: 1024,
     });
+
+    // UI discovery tag for the scheduled updater (Correction 1 / decision 2)
+    Tags.of(deployer).add(ServerlessInboxTagKeys.uiBundleTarget, 'true');
+
+    return deployer;
   }
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
@@ -180,6 +186,8 @@ export class MailboxUi extends Construct {
   private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
     const deployer = this.getOrCreateUiDeployer(artifacts);
 
+    // UI discovery tag for the scheduled updater (Correction 1 / decision 2)
+    Tags.of(this.bucket).add(ServerlessInboxTagKeys.uiBundleTarget, 'true');
 
     // Allow cache invalidations after deployment.
     deployer.addToRolePolicy(

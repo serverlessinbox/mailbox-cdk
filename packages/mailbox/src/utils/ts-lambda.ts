@@ -7,9 +7,10 @@ import {
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
-import { Aws } from 'aws-cdk-lib';
+import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
@@ -88,6 +89,10 @@ export class TypeScriptLambda extends LambdaFunction {
       description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...lambdaProps,
     });
+
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactName, lambdaId);
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactPackage, packageName);
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactVersion, artifactResolver.getVersion(packageName));
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {

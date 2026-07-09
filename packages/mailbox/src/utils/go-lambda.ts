@@ -10,6 +10,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Aws, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -49,8 +50,9 @@ export class GoLambda extends LambdaFunction {
       ...lambdaProps,
     });
 
-    Tags.of(this).add('mailbox:artifact-name', lambdaId);
-    Tags.of(this).add('mailbox:artifact-version', artifactResolver.getVersion('mailbox-go'));
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactName, lambdaId);
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactPackage, 'mailbox-go');
+    Tags.of(this).add(ServerlessInboxTagKeys.artifactVersion, artifactResolver.getVersion('mailbox-go'));
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {

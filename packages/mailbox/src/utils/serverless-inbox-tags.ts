@@ -30,6 +30,11 @@ export const ServerlessInboxTagKeys = {
 
   edge: `${TAG_PREFIX}edge`,
   rootRegion: `${TAG_PREFIX}root-region`,
+
+  artifactName: `${TAG_PREFIX}artifact-name`,
+  artifactPackage: `${TAG_PREFIX}artifact-package`,
+  artifactVersion: `${TAG_PREFIX}artifact-version`,
+  uiBundleTarget: `${TAG_PREFIX}ui-bundle-target`,
 } as const;
 
 export interface ApplyServerlessInboxTagsOptions {
