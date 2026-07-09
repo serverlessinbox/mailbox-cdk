@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.35](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.34...v0.0.35) (Thu Jul 09 2026)
+
+### fix
+
+* External package ([796459f](https://github.com/serverlessinbox/mailbox-cdk/commit/796459fbd7525988afa99485fb61fde8acc4adcc))
+
 ## [0.0.34](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.33...v0.0.34) (Thu Jul 09 2026)
 
 ### fix
