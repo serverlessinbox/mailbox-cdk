@@ -4,6 +4,7 @@ import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../..
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SweeperWorkflow } from './sweeper-workflow';
 import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys } from '../../utils/serverless-inbox-tags';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: ICdkArtifactEngine;
@@ -209,8 +210,11 @@ export class SweeperInfra extends Construct {
     });
 
     // Worker role: single consolidated inline policy for ACM + Lambda deletion + CloudWatch Logs.
-    // Ownership is verified in code (Lambda handler checks tags), not via IAM conditions.
-    // This avoids the IAM tag-condition evaluation complexity and keeps ownership logic centralized.
+    // Ownership is verified in code (Lambda handler checks tags) AND enforced by IAM: the
+    // destructive actions (DeleteCertificate/DeleteFunction) require the target to carry this
+    // stack's root-stack tag, so the worker can never delete resources of another deployment.
+    // Reads stay unconditioned — the handler needs them to fetch tags for its own ownership check.
+    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: 'sweeper-worker-policy',
       statements: [
@@ -218,10 +222,18 @@ export class SweeperInfra extends Construct {
         new iam.PolicyStatement({
           actions: [
             'acm:DescribeCertificate',
-            'acm:DeleteCertificate',
             'acm:ListTagsForCertificate',
           ],
           resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
+        }),
+        new iam.PolicyStatement({
+          actions: ['acm:DeleteCertificate'],
+          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
+          conditions: {
+            StringEquals: {
+              [rootStackTagKey]: Aws.STACK_NAME,
+            },
+          },
         }),
         // Lambda@Edge operations (us-east-1)
         new iam.PolicyStatement({
@@ -231,6 +243,11 @@ export class SweeperInfra extends Construct {
         new iam.PolicyStatement({
           actions: ['lambda:DeleteFunction'],
           resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
+          conditions: {
+            StringEquals: {
+              [rootStackTagKey]: Aws.STACK_NAME,
+            },
+          },
         }),
         // CloudWatch Logs operations (replicates AWSLambdaBasicExecutionRole)
         new iam.PolicyStatement({

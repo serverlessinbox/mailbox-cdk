@@ -1,53 +1,41 @@
-import { Aws, Stack } from 'aws-cdk-lib';
+import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
 
 export interface EdgeDeployerGrantProps {
   stack: Stack;
+  /** Deployed CloudFormation stack name of the edge stack (`${AWS::StackName}-edge`). */
+  edgeStackName: string;
   edgeStackArn: string;
   rootStack: string;
   templateObjectArn: string;
   /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
   artifactObjectArns: string[];
+  /** Route53 hosted zone used for the edge certificate's DNS validation (omit when no hosted zone is configured). */
+  hostedZoneId?: string;
 }
 
+/**
+ * Permissions for the worker Lambda that deploys the edge stack via CloudFormation in us-east-1.
+ *
+ * CloudFormation (called without a RoleArn) uses the CALLER's permissions to create/update/delete
+ * every resource in the template, so this role needs create/delete rights for exactly the resource
+ * types the edge template contains: an ACM certificate, one IAM role (+ inline policy + managed
+ * policy attachment), one Lambda function + version, and a resource group. Keep this list in
+ * lockstep with the edge template — a new resource type there needs a scoped grant here.
+ *
+ * Scoping strategy: CFN-generated physical NAMES are truncated to the service's length limit
+ * (64 chars for IAM roles and Lambda functions), so name-prefix ARN patterns break for long stack
+ * names. The IAM role is therefore scoped by its deterministic PATH (never truncated), and Lambda
+ * mutations carry a tag-condition fallback keyed on the `serverless-inbox:root-stack` tag that the
+ * edge template applies to the function.
+ */
 export function grantEdgeDeployerWorkerPermissions(
   worker: TypeScriptLambda,
   props: EdgeDeployerGrantProps,
 ): void {
-  // IMPORTANT: use the *deployed* CloudFormation stack name, not the CDK logical stack id.
-  const edgeStackName = `${Aws.STACK_NAME}-edge-stack`;
-
-  // CloudFormation (when called without a RoleArn) uses the caller's permissions to create/delete
-  // resources. Since the edge template creates CloudWatch Log Groups with RemovalPolicy.DESTROY,
-  // the deployer needs explicit permissions to delete those log groups during stack deletion.
-  const edgeLogGroupArnPrefix = props.stack.formatArn({
-    service: 'logs',
-    region: 'us-east-1',
-    resource: 'log-group',
-    // CDK-generated LogGroup names are prefixed with the stack name.
-    resourceName: `${edgeStackName}*`,
-  });
-
-  // IMPORTANT: CDK-generated physical names for resources created by the edge stack template
-  // are typically prefixed with the *stack name* (AWS::StackName) plus the logical id.
-  // Since our deployer itself runs in a regional stack, and we want a synthesized template to work
-  // under pure CloudFormation too, scope permissions using AWS::StackName rather than a hard-coded prefix.
-  const edgeLambdaArnPrefix = props.stack.formatArn({
-    service: 'lambda',
-    region: 'us-east-1',
-    resource: 'function',
-    resourceName: `${Aws.STACK_NAME}-*`,
-  });
-
-  const edgeRoleArnPrefix = props.stack.formatArn({
-    service: 'iam',
-    region: '',
-    // IAM is global (no region), but ARNs are account-scoped.
-    account: props.stack.account,
-    resource: 'role',
-    resourceName: `${props.rootStack}-*`,
-  });
+  const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
 
   // Allow the deployer to manage CloudFormation stacks in us-east-1
   worker.addToRolePolicy(
@@ -70,7 +58,6 @@ export function grantEdgeDeployerWorkerPermissions(
   // CloudFormation uses the CALLER's identity (this worker role) to fetch Lambda zip files
   // when creating AWS::Lambda::Function resources — individual object ARNs are not sufficient.
   // Edge artifacts are always in the us-east-1 artifact bucket regardless of regional stack.
-  // The wildcard covers the template object, all Lambda zips, and any future artifacts in any channel.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -81,67 +68,114 @@ export function grantEdgeDeployerWorkerPermissions(
     })
   );
 
-  // CloudFormation needs these permissions to create the edge resources
-  // These are granted to the handler so it can pass them to CloudFormation
+  // ACM certificate lifecycle. Certificate ARNs are random UUIDs, so only the account/region can
+  // be pinned; DeleteCertificate additionally requires our root-stack tag on the certificate.
+  const certificateArnPrefix = props.stack.formatArn({
+    service: 'acm',
+    region: 'us-east-1',
+    resource: 'certificate',
+    resourceName: '*',
+  });
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
         'acm:RequestCertificate',
         'acm:DescribeCertificate',
-        'acm:DeleteCertificate',
         'acm:ListTagsForCertificate',
         'acm:AddTagsToCertificate',
         'acm:RemoveTagsFromCertificate',
       ],
-      resources: ['arn:aws:acm:us-east-1:*:certificate/*'],
+      resources: [certificateArnPrefix],
     })
   );
-
   worker.addToRolePolicy(
     new PolicyStatement({
-      actions: [
-        'lambda:CreateFunction',
-        'lambda:DeleteFunction',
-        'lambda:UpdateFunctionCode',
-        'lambda:UpdateFunctionConfiguration',
-        'lambda:GetFunction',
-        'lambda:ListVersionsByFunction',
-        'lambda:PublishVersion',
-        'lambda:AddPermission',
-        'lambda:RemovePermission',
-        'lambda:TagResource',
-        'lambda:UntagResource',
-      ],
-      resources: [edgeLambdaArnPrefix],
-    })
-  );
-
-  // Some Lambda APIs (notably CreateFunction) are evaluated against resource "*".
-  // Keep this safe by constraining the allowed function name prefix.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: [
-        'lambda:CreateFunction',
-        'lambda:DeleteFunction',
-        'lambda:UpdateFunctionCode',
-        'lambda:UpdateFunctionConfiguration',
-        'lambda:GetFunction',
-        'lambda:ListVersionsByFunction',
-        'lambda:PublishVersion',
-        'lambda:AddPermission',
-        'lambda:RemovePermission',
-        'lambda:TagResource',
-        'lambda:UntagResource',
-      ],
-      resources: ['*'],
+      actions: ['acm:DeleteCertificate'],
+      resources: [certificateArnPrefix],
       conditions: {
-        StringLike: {
-          'lambda:FunctionName': `${Aws.STACK_NAME}-*`,
+        StringEquals: {
+          [rootStackTagKey]: props.rootStack,
         },
       },
     })
   );
 
+  // Lambda function + version lifecycle. NOTE: Lambda function ARNs use a COLON separator
+  // (`:function:name`), so ArnFormat.COLON_RESOURCE_NAME is required — the slash form silently
+  // matches nothing.
+  const edgeLambdaActions = [
+    'lambda:CreateFunction',
+    'lambda:DeleteFunction',
+    'lambda:UpdateFunctionCode',
+    'lambda:UpdateFunctionConfiguration',
+    'lambda:GetFunction',
+    'lambda:ListVersionsByFunction',
+    'lambda:PublishVersion',
+    'lambda:TagResource',
+    'lambda:UntagResource',
+  ];
+  const edgeLambdaArnPrefix = props.stack.formatArn({
+    service: 'lambda',
+    region: 'us-east-1',
+    resource: 'function',
+    resourceName: `${props.edgeStackName}-*`,
+    arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+  });
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: edgeLambdaActions,
+      resources: [edgeLambdaArnPrefix],
+    })
+  );
+  // Same grant expressed as a function-name condition. Some Lambda authorization paths (notably
+  // CreateFunction) evaluate against resource "*" with the name in the request context.
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: edgeLambdaActions,
+      resources: ['*'],
+      conditions: {
+        StringLike: {
+          'lambda:FunctionName': `${props.edgeStackName}-*`,
+        },
+      },
+    })
+  );
+  // Tag-scoped fallback for post-create operations: the CFN-generated function name is truncated
+  // to 64 chars for long stack names, breaking both name-prefix patterns above. The root-stack tag
+  // applied by the edge template is immune to truncation and keeps updates/deletion working.
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: [
+        'lambda:DeleteFunction',
+        'lambda:UpdateFunctionCode',
+        'lambda:UpdateFunctionConfiguration',
+        'lambda:GetFunction',
+        'lambda:ListVersionsByFunction',
+        'lambda:PublishVersion',
+        'lambda:TagResource',
+        'lambda:UntagResource',
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          [rootStackTagKey]: props.rootStack,
+        },
+      },
+    })
+  );
+
+  // The edge template's single IAM role (blob-authorizer execution role) carries the deterministic
+  // path `/<edge-stack-name>/` (see mailbox-edge-construct.ts), so every role action — including
+  // iam:PassRole to Lambda — is scoped to that path. Unlike the CFN-generated role NAME, the path
+  // is never truncated, so this pattern is reliable for any stack name length.
+  const edgeRoleArnPrefix = props.stack.formatArn({
+    service: 'iam',
+    region: '',
+    // IAM is global (no region), but ARNs are account-scoped.
+    account: props.stack.account,
+    resource: 'role',
+    resourceName: `${props.edgeStackName}/*`,
+  });
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -163,46 +197,6 @@ export function grantEdgeDeployerWorkerPermissions(
     })
   );
 
-  // CreateRole is sometimes evaluated against resource "*" (not the role ARN) which would bypass
-  // the ARN-scoped statement above. Allow it explicitly.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['iam:CreateRole'],
-      resources: ['*'],
-    })
-  );
-
-  // Some IAM tagging paths are also evaluated against resource "*".
-  // Grant unconditionally; deployer already has unconditional iam:CreateRole on *.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['iam:TagRole', 'iam:UntagRole', 'iam:DetachRolePolicy'],
-      resources: ['*'],
-    })
-  );
-
-  // IAM CreateRole (and initial tagging) is commonly evaluated against resource "*".
-  // Grant unconditionally; scoping is handled by the ARN prefix at edgeRoleArnPrefix.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: [
-        'iam:CreateRole',
-        'iam:TagRole',
-        'iam:UntagRole',
-        'iam:PutRolePolicy',
-        'iam:GetRolePolicy',
-        'iam:DeleteRolePolicy',
-        'iam:AttachRolePolicy',
-        'iam:DetachRolePolicy',
-        'iam:GetRole',
-        'iam:ListRolePolicies',
-        'iam:ListAttachedRolePolicies',
-        'iam:DeleteRole',
-      ],
-      resources: ['*'],
-    })
-  );
-
   // Some CloudFormation resources use the Resource Groups Tagging API behind the scenes.
   // Grant it broadly; the individual service actions above remain scoped.
   worker.addToRolePolicy(
@@ -217,12 +211,25 @@ export function grantEdgeDeployerWorkerPermissions(
   );
 
   // AWS Resource Groups SERVICE actions (distinct from the tag:* Resource Groups Tagging API above).
-  // CloudFormation needs these to create/update/delete/tag AWS::ResourceGroups::Group resources.
-  // CreateGroup is evaluated against resource "*" (same as iam:CreateRole and logs:CreateLogGroup pattern).
+  // The edge template creates one group with the deterministic name
+  // `<edge-stack-name>-serverless-inbox` (see utils/resource-group.ts), so everything except
+  // CreateGroup is scoped to it. CreateGroup stays on "*" — group-ARN scoping for it is unverified
+  // and a wrongly-scoped create fails the whole edge deployment.
+  const edgeResourceGroupArn = props.stack.formatArn({
+    service: 'resource-groups',
+    region: 'us-east-1',
+    resource: 'group',
+    resourceName: `${props.edgeStackName}-serverless-inbox`,
+  });
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: ['resource-groups:CreateGroup'],
+      resources: ['*'],
+    })
+  );
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
-        'resource-groups:CreateGroup',
         'resource-groups:DeleteGroup',
         'resource-groups:GetGroup',
         'resource-groups:GetGroupQuery',
@@ -233,65 +240,33 @@ export function grantEdgeDeployerWorkerPermissions(
         'resource-groups:Untag',
         'resource-groups:GetTags',
       ],
-      resources: ['*'],
+      resources: [edgeResourceGroupArn],
     })
   );
 
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: [
-        'logs:DeleteLogGroup',
-        'logs:PutRetentionPolicy',
-        // CloudFormation uses TagResource/UntagResource when creating Log Groups with tags.
-        'logs:TagResource',
-        'logs:UntagResource',
-      ],
-      resources: [
-        edgeLogGroupArnPrefix,
-        // Some APIs (and some error reporting paths) refer to the log-stream ARN shape.
-        `${edgeLogGroupArnPrefix}:log-stream:*`,
-        // Some IAM evaluations use an extra suffix segment.
-        `${edgeLogGroupArnPrefix}:*`,
-      ],
-    })
-  );
+  // The edge template contains no CloudWatch Log Groups, so the deployer needs NO logs
+  // permissions. (The worker Lambda's own logging comes from its execution role's basic policy.)
+  // If a log group is ever added to the edge template, grant logs actions here scoped to
+  // `log-group:<edge-stack-name>*`.
 
-  // Some CloudWatch Logs tagging calls are evaluated against resource "*" (or against an ARN shape
-  // that doesn't match our prefix), which manifests as a missing logs:TagResource permission.
-  // Keep this narrowly scoped to tagging operations only.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['logs:TagResource', 'logs:UntagResource'],
-      resources: ['*'],
-    })
-  );
-
-  // CloudFormation rollback/delete has repeatedly evaluated DeleteLogGroup in ways that don't match
-  // our intended ARN prefix (notably showing a log-stream-shaped ARN in the error message).
-  // To stop manual cleanups, allow DeleteLogGroup broadly for this worker.
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['logs:DeleteLogGroup'],
-      resources: ['*'],
-    })
-  );
-
-  // CreateLogGroup is typically evaluated against resource "*".
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['logs:CreateLogGroup'],
-      resources: ['*'],
-    })
-  );
-
-  worker.addToRolePolicy(
-    new PolicyStatement({
-      actions: [
-        'route53:ChangeResourceRecordSets',
-        'route53:ListResourceRecordSets',
-        'route53:GetChange',
-      ],
-      resources: ['*'],
-    })
-  );
+  // Route53 record writes for the certificate's DNS validation. Only needed (and only granted)
+  // when a hosted zone is configured — without one, the certificate resource is conditioned out
+  // of the edge stack. GetChange ARNs are random ids and cannot be scoped further.
+  if (props.hostedZoneId !== undefined) {
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: [
+          'route53:ChangeResourceRecordSets',
+          'route53:ListResourceRecordSets',
+        ],
+        resources: [`arn:${Aws.PARTITION}:route53:::hostedzone/${props.hostedZoneId}`],
+      })
+    );
+    worker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['route53:GetChange'],
+        resources: [`arn:${Aws.PARTITION}:route53:::change/*`],
+      })
+    );
+  }
 }

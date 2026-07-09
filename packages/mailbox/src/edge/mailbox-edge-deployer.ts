@@ -85,12 +85,14 @@ export class MailboxEdgeDeployer extends Construct {
 
     grantEdgeDeployerWorkerPermissions(infra.worker, {
       stack,
+      edgeStackName,
       edgeStackArn,
       rootStack: Aws.STACK_NAME,
       templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1'),
       artifactObjectArns: [
         props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1'),
       ],
+      hostedZoneId: props.hostedZoneId,
     });
 
     // Build CloudFormation parameters from the edge construct props

@@ -1,6 +1,6 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cdk from 'aws-cdk-lib';
-import { Aws, Fn, Tags } from 'aws-cdk-lib';
+import { Aws, Fn } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -102,6 +102,11 @@ export class MailboxEdgeConstruct extends Construct {
     // Lambda@Edge requires the execution role trust policy to allow BOTH principals.
     // CloudFront validates this during association.
     const blobAuthorizerRole = new iam.Role(this, 'blob-authorizer-role', {
+      // Deterministic IAM path so the edge deployer can scope its iam:* permissions to
+      // `role/<edge-stack-name>/*`. The path survives regardless of the CFN-generated role NAME,
+      // which gets truncated to IAM's 64-char limit for long stack names and therefore cannot be
+      // matched reliably by a name-prefix pattern. Contract with mailbox-edge-deployer-grants.ts.
+      path: `/${Aws.STACK_NAME}/`,
       assumedBy: new iam.CompositePrincipal(
         new iam.ServicePrincipal('lambda.amazonaws.com'),
         new iam.ServicePrincipal('edgelambda.amazonaws.com'),
@@ -136,9 +141,12 @@ export class MailboxEdgeConstruct extends Construct {
     // updateType='edge' because it's updated via the scheduled updater (UpdateFunctionCode + PublishVersion + CloudFront)
     applyArtifactTags(blobAuthorizerFunction, 'mailbox-cdk-edge', 'blob-authorizer', props.productVersion, 'edge');
 
-    // Ensure root-stack tag is present for discovery by the scheduled updater.
-    // The edge stack's applyServerlessInboxBaseTags propagates this, but we make it explicit here.
-    Tags.of(blobAuthorizerFunction).add('serverless-inbox:root-stack', Aws.STACK_NAME);
+    // The root-stack tag (used by the scheduled updater for discovery, the sweeper's ownership
+    // check, and the tag-scoped IAM conditions in the deployer/sweeper policies) comes from the
+    // stack-level applyServerlessInboxBaseTags aspect, which carries the ROOT stack name from the
+    // rootStack parameter. Do NOT re-add it here with Aws.STACK_NAME: inside this template that
+    // resolves to the EDGE stack's own name and, being closer to the resource, it overrides the
+    // stack aspect with the wrong value — breaking sweeper ownership verification.
 
     this.blobAuthorizerFunction = blobAuthorizerFunction;
 

@@ -133,11 +133,27 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
 
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['lambda:GetFunction', 'lambda:UpdateFunctionCode', 'lambda:TagResource'],
+        actions: ['lambda:GetFunction', 'lambda:UpdateFunctionCode'],
         resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
           StringEquals: {
             [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    // TagResource constrained to artifact-version tag only; prevents rewriting root-stack scope or injecting arbitrary tags
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['lambda:TagResource'],
+        resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
           },
         },
       }),
@@ -175,11 +191,27 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     // CloudFront distribution management: scope to distributions tagged with this stack
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation', 'cloudfront:TagResource'],
+        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
         resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
         conditions: {
           StringEquals: {
             [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    // TagResource constrained to artifact-version tag only; prevents rewriting root-stack scope or injecting arbitrary tags
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudfront:TagResource'],
+        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
           },
         },
       }),
