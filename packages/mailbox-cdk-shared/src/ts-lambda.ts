@@ -79,6 +79,21 @@ export class TypeScriptLambda extends LambdaFunction {
 
     const code = artifactResolver.getCode(packageName, `lambdas/${lambdaId}.zip`);
 
+    // Unnamed (CFN-generated) log group passed via the `logGroup` prop (renders LoggingConfig —
+    // a plain AWS::Logs::LogGroup, no LogRetention custom resource; the prop also makes the
+    // `fn.logGroup` getter safe, which would otherwise lazily create that CR). Deriving the name
+    // from the function (`/aws/lambda/<fn>`) is unsafe combined with RETAIN: the name stays
+    // identical across logical-id churn (construct moves/renames), so a replacement LogGroup
+    // collides with the still-existing or retained-orphan one ("already exists in stack …").
+    // A generated name is unique per logical resource — replacements and retained orphans can
+    // never collide, and Lambda can't auto-create the group before CFN does.
+    const logGroup = logGroupRetention !== false && !props.logGroup
+      ? new logs.LogGroup(scope, `${id}-log-group`, {
+        retention: logGroupRetention,
+        removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+      })
+      : undefined;
+
     super(scope, id, {
       code,
       runtime: Runtime.NODEJS_20_X,
@@ -87,17 +102,10 @@ export class TypeScriptLambda extends LambdaFunction {
       memorySize: 512,
       ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
       description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
+      ...(logGroup ? { logGroup } : {}),
       ...lambdaProps,
     });
 
     applyArtifactTags(this, packageName, lambdaId, artifactResolver.getVersion(packageName));
-
-    if (logGroupRetention !== false) {
-      const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {
-        logGroupName: `/aws/lambda/${this.functionName}`,
-        retentionInDays: logGroupRetention,
-      });
-      cfnLogGroup.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-    }
   }
 }

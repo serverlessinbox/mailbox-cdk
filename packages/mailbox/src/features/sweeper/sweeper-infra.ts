@@ -254,9 +254,15 @@ export class SweeperInfra extends Construct {
           actions: ['logs:CreateLogGroup'],
           resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
         }),
+        // Write-only, same effective scope as AWSLambdaBasicExecutionRole. Cannot be pinned to the
+        // worker's own group: its name is CFN-generated (see the log-group note in ts-lambda.ts)
+        // and this role is built before the lambda, without GetAtt.
         new iam.PolicyStatement({
           actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:/aws/lambda/*:*`],
+          resources: [
+            `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
+            `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,
+          ],
         }),
       ],
     });
