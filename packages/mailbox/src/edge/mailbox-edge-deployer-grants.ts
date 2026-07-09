@@ -36,6 +36,7 @@ export function grantEdgeDeployerWorkerPermissions(
   props: EdgeDeployerGrantProps,
 ): void {
   const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
+  const requestStackTagKey = `aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`;
 
   // Allow the deployer to manage CloudFormation stacks in us-east-1
   worker.addToRolePolicy(
@@ -69,7 +70,12 @@ export function grantEdgeDeployerWorkerPermissions(
   );
 
   // ACM certificate lifecycle. Certificate ARNs are random UUIDs, so only the account/region can
-  // be pinned; DeleteCertificate additionally requires our root-stack tag on the certificate.
+  // be pinned. Scoping strategy prevents tagging-based escalation:
+  // - RequestCertificate is gated by aws:RequestTag so new certs are born owned.
+  // - Post-create tag mutations (AddTagsToCertificate/RemoveTagsFromCertificate) are gated by
+  //   aws:ResourceTag so only already-owned certs can be modified (blocks tagging a foreign cert
+  //   into scope).
+  // - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
   const certificateArnPrefix = props.stack.formatArn({
     service: 'acm',
     region: 'us-east-1',
@@ -80,12 +86,36 @@ export function grantEdgeDeployerWorkerPermissions(
     new PolicyStatement({
       actions: [
         'acm:RequestCertificate',
+      ],
+      resources: [certificateArnPrefix],
+      conditions: {
+        StringEquals: {
+          [requestStackTagKey]: props.rootStack,
+        },
+      },
+    })
+  );
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: [
         'acm:DescribeCertificate',
         'acm:ListTagsForCertificate',
+      ],
+      resources: [certificateArnPrefix],
+    })
+  );
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: [
         'acm:AddTagsToCertificate',
         'acm:RemoveTagsFromCertificate',
       ],
       resources: [certificateArnPrefix],
+      conditions: {
+        StringEquals: {
+          [rootStackTagKey]: props.rootStack,
+        },
+      },
     })
   );
   worker.addToRolePolicy(
@@ -143,6 +173,12 @@ export function grantEdgeDeployerWorkerPermissions(
   // Tag-scoped fallback for post-create operations: the CFN-generated function name is truncated
   // to 64 chars for long stack names, breaking both name-prefix patterns above. The root-stack tag
   // applied by the edge template is immune to truncation and keeps updates/deletion working.
+  // TagResource/UntagResource are not further constrained by aws:TagKeys because the set of tags
+  // applied by the edge stack is broad (product, version, deployer, component, edge, root-region,
+  // artifact metadata — 12+ tags) and may grow; a hard-coded allowlist would become stale and break
+  // future deployments. This accepts a residual risk that the worker could modify any tag on the
+  // Lambda, but such modifications would be observable in CloudTrail/resource inventory and
+  // are scoped to resources already owned by this deployment (root-stack condition).
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -165,9 +201,9 @@ export function grantEdgeDeployerWorkerPermissions(
   );
 
   // The edge template's single IAM role (blob-authorizer execution role) carries the deterministic
-  // path `/<edge-stack-name>/` (see mailbox-edge-construct.ts), so every role action — including
-  // iam:PassRole to Lambda — is scoped to that path. Unlike the CFN-generated role NAME, the path
-  // is never truncated, so this pattern is reliable for any stack name length.
+  // path `/<edge-stack-name>/` (see mailbox-edge-construct.ts), so every role action is scoped to
+  // that path. Unlike the CFN-generated role NAME, the path is never truncated, so this pattern is
+  // reliable for any stack name length.
   const edgeRoleArnPrefix = props.stack.formatArn({
     service: 'iam',
     region: '',
@@ -179,7 +215,6 @@ export function grantEdgeDeployerWorkerPermissions(
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
-        'iam:PassRole',
         'iam:CreateRole',
         'iam:DeleteRole',
         'iam:TagRole',
@@ -187,13 +222,39 @@ export function grantEdgeDeployerWorkerPermissions(
         'iam:PutRolePolicy',
         'iam:GetRolePolicy',
         'iam:DeleteRolePolicy',
-        'iam:AttachRolePolicy',
         'iam:DetachRolePolicy',
         'iam:GetRole',
         'iam:ListRolePolicies',
         'iam:ListAttachedRolePolicies',
       ],
       resources: [edgeRoleArnPrefix],
+    })
+  );
+  // iam:PassRole is scoped to the same role path but additionally gated to only Lambda services
+  // to prevent passing the role to other services or to unauthorized principals.
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: ['iam:PassRole'],
+      resources: [edgeRoleArnPrefix],
+      conditions: {
+        StringEquals: {
+          'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'],
+        },
+      },
+    })
+  );
+  // iam:AttachRolePolicy is scoped to the role path but additionally gated to only the managed
+  // policy that CloudFormation applies to Lambda execution roles, preventing privilege escalation
+  // via unrestricted policy attachment.
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: ['iam:AttachRolePolicy'],
+      resources: [edgeRoleArnPrefix],
+      conditions: {
+        StringEquals: {
+          'iam:PolicyARN': 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+        },
+      },
     })
   );
 
