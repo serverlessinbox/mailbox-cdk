@@ -64,6 +64,15 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
 
+  bundle:scheduled-updater:
+    desc: Bundle scheduled-updater lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/scheduled-updater/**/*.ts
+    generates:
+      - /tmp/scheduled-updater.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "aws-sdk,semver,@serverlessinbox/artifact-registry,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda"
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
@@ -72,6 +81,7 @@ tasks:
       - task: bundle:ui-deployer
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
+      - task: bundle:scheduled-updater
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -105,10 +115,12 @@ tasks:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "aws-sdk,semver,@serverlessinbox/artifact-registry,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda"
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/resource-sweeper.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/scheduled-updater.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
