@@ -23,7 +23,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
-import { TypeScriptLambda } from '../utils/ts-lambda';
+import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
@@ -98,9 +98,6 @@ export class MailboxUi extends Construct {
       memorySize: 1024,
     });
 
-    // UI discovery tag for the scheduled updater (Correction 1 / decision 2)
-    Tags.of(deployer).add(ServerlessInboxTagKeys.uiBundleTarget, 'true');
-
     return deployer;
   }
 
@@ -158,6 +155,9 @@ export class MailboxUi extends Construct {
       ],
     });
 
+    // Tag the distribution for root-stack correlation (inherited via parent, but explicit for clarity).
+    Tags.of(this.distribution).add(ServerlessInboxTagKeys.rootStack, Aws.STACK_NAME);
+
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.
     this.distribution.addBehavior('/config/*', configOrigin, {
@@ -186,8 +186,8 @@ export class MailboxUi extends Construct {
   private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
     const deployer = this.getOrCreateUiDeployer(artifacts);
 
-    // UI discovery tag for the scheduled updater (Correction 1 / decision 2)
-    Tags.of(this.bucket).add(ServerlessInboxTagKeys.uiBundleTarget, 'true');
+    // Tag the bucket for scheduled auto-update discovery
+    Tags.of(this.bucket).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
 
     // Allow cache invalidations after deployment.
     deployer.addToRolePolicy(
@@ -224,6 +224,15 @@ export class MailboxUi extends Construct {
           ],
         }),
       );
+    }
+
+    // Tag the bucket with artifact metadata for auto-update tracking
+    if (props.uiBundle) {
+      const bundleVersion = artifacts.getVersion(props.uiBundle.packageName);
+      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactPackage, props.uiBundle.packageName);
+      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactName, props.uiBundle.objectPath);
+      Tags.of(this.bucket).add(ServerlessInboxTagKeys.artifactVersion, bundleVersion);
+      Tags.of(this.bucket).add(ServerlessInboxTagKeys.distributionId, this.distribution.distributionId);
     }
 
     // Stable nonce so CFN updates when inputs change (without forcing redeploy on every synth).

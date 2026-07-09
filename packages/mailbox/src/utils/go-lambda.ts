@@ -7,10 +7,10 @@ import {
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
-import { Aws, Tags } from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -50,9 +50,7 @@ export class GoLambda extends LambdaFunction {
       ...lambdaProps,
     });
 
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactName, lambdaId);
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactPackage, 'mailbox-go');
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactVersion, artifactResolver.getVersion('mailbox-go'));
+    applyArtifactTags(this, 'mailbox-go', lambdaId, artifactResolver.getVersion('mailbox-go'));
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {

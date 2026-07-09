@@ -1,6 +1,6 @@
 import { Aws } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
 export interface CognitoDataDeployerGrantProps {
   /** S3 object ARN for the cognito data stack CloudFormation template. */
@@ -17,7 +17,7 @@ export interface CognitoDataDeployerGrantProps {
  * values — so they remain as CloudFormation tokens.
  */
 export function grantCognitoDataDeployerPermissions(
-  worker: LambdaFunction,
+  worker: IFunction,
   props: CognitoDataDeployerGrantProps,
 ): void {
   const cognitoDataStackArn = `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-cognito/*`;

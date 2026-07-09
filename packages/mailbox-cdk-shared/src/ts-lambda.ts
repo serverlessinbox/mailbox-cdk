@@ -7,31 +7,31 @@ import {
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
-import { Aws, Tags } from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
+import type { ICdkArtifactEngine } from './artifact-engine';
+import { applyArtifactTags } from './apply-artifact-tags';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
    * Lambda identifier used by artifact resolver (e.g., "edge-deployer", "webhook-handler")
    */
-  lambdaId: string;
+  readonly lambdaId: string;
 
   /**
    * Artifact resolver for obtaining lambda code from S3
    */
-  artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: ICdkArtifactEngine;
 
   /**
    * Package name where the lambda artifact is published (defaults to 'mailbox-cdk')
    */
-  packageName?: string;
+  readonly packageName?: string;
 
   /**
    * Lambda entry point handler (defaults to 'index.handler')
    */
-  handler?: string;
+  readonly handler?: string;
 
   /**
    * Log retention policy for the lambda's default log group.
@@ -39,7 +39,7 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
    *
    * Default: ONE_MONTH.
    */
-  logGroupRetention?: RetentionDays | false;
+  readonly logGroupRetention?: RetentionDays | false;
 }
 
 /**
@@ -90,9 +90,7 @@ export class TypeScriptLambda extends LambdaFunction {
       ...lambdaProps,
     });
 
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactName, lambdaId);
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactPackage, packageName);
-    Tags.of(this).add(ServerlessInboxTagKeys.artifactVersion, artifactResolver.getVersion(packageName));
+    applyArtifactTags(this, packageName, lambdaId, artifactResolver.getVersion(packageName));
 
     if (logGroupRetention !== false) {
       const cfnLogGroup = new logs.CfnLogGroup(this, 'LogGroup', {

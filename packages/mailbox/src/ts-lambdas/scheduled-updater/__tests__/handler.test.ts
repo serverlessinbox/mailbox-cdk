@@ -1,11 +1,11 @@
 /// <reference types="jest" />
 
 /**
- * Unit and integration tests for the scheduled updater Lambda handler (stack-self-update, Phase B).
+ * Integration tests for the scheduled updater Lambda handler (stack-self-update, Phase B).
  *
- * Tests the handler's core logic by importing and exercising REAL functions from ../handler:
- * - tagMapFrom (pure function, no mocks)
- * - advanceLambdaIfStale, handler (integration tests, aws-sdk-client-mock)
+ * Tests the handler's core scanning, routing, and dispatch logic by importing and exercising
+ * the REAL handler function from ../handler. Tests how the handler discovers resources,
+ * routes them to appropriate update functions (code/ui/edge), and handles errors.
  *
  * PENDING PUBLISH NOTE: This test suite imports from @serverlessinbox/artifact-registry,
  * which has NOT been published yet. The tests are written fully and correct, but will not
@@ -14,12 +14,29 @@
  */
 
 import { mockClient } from 'aws-sdk-client-mock';
-import { LambdaClient, UpdateFunctionCodeCommand, TagResourceCommand } from '@aws-sdk/client-lambda';
+import {
+  LambdaClient,
+  UpdateFunctionCodeCommand,
+  TagResourceCommand,
+  InvokeCommand,
+  PublishVersionCommand,
+} from '@aws-sdk/client-lambda';
 import {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { tagMapFrom, advanceLambdaIfStale, handler } from '../handler';
+import {
+  CloudFrontClient,
+  ListDistributionsCommand,
+  GetDistributionConfigCommand,
+  UpdateDistributionCommand,
+} from '@aws-sdk/client-cloudfront';
+import {
+  S3Client,
+  GetBucketTaggingCommand,
+  PutBucketTaggingCommand,
+} from '@aws-sdk/client-s3';
+import { handler } from '../handler';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
 // Note: artifact-registry is not yet published (pending), so this mock allows
@@ -30,8 +47,20 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
   readReleasePointer: jest.fn(),
 }), { virtual: true });
 
+// Mock shared UI operations
+jest.mock('../../shared/ui-ops', () => ({
+  deployZipToPrefix: jest.fn(),
+  normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
+}));
+
+jest.mock('../../shared/ui-cloudfront', () => ({
+  invalidateCloudFront: jest.fn(),
+}));
+
 // Import mocks as any to work around unpublished package
 const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock('@serverlessinbox/artifact-registry') as any;
+const { deployZipToPrefix } = jest.requireMock('../../shared/ui-ops') as any;
+const { invalidateCloudFront } = jest.requireMock('../../shared/ui-cloudfront') as any;
 
 // Fixture helpers to reduce boilerplate
 function lambdaResource(
@@ -51,43 +80,91 @@ function lambdaResource(
   };
 }
 
-describe('Scheduled Updater Handler - Unit Tests', () => {
-  describe('tagMapFrom', () => {
-    it('converts tags array to record and preserves all keys/values', () => {
-      const tags = [
-        { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
-        { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
-        { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
-        { Key: 'tag-other', Value: 'value-other' },
-      ];
-      const map = tagMapFrom(tags);
-      expect(map['serverless-inbox:artifact-name']).toBe('mailbox-go');
-      expect(map['serverless-inbox:artifact-package']).toBe('mailbox-go');
-      expect(map['serverless-inbox:artifact-version']).toBe('1.2.3');
-      expect(map['tag-other']).toBe('value-other');
-    });
+// CloudFront mock helper to create distributions with edge lambda associations
+function createDistributionWithEdgeLambda(
+  distId: string,
+  lambdaArn: string,
+  lambdaVersion: string,
+): any {
+  return {
+    Id: distId,
+    DomainName: `${distId}.cloudfront.net`,
+    DefaultCacheBehavior: {
+      TargetOriginId: 'myOrigin',
+      ViewerProtocolPolicy: 'allow-all',
+      TrustedSigners: { Enabled: false, Quantity: 0 },
+      ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
+      LambdaFunctionAssociations: {
+        Quantity: 1,
+        Items: [
+          {
+            EventType: 'origin-request',
+            LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
+          },
+        ],
+      },
+    },
+    ETag: 'test-etag',
+  };
+}
 
-    it('skips tags with missing Key or Value', () => {
-      const tags = [
-        { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
-        { Key: 'incomplete-key' }, // Missing Value
-        { Value: 'incomplete-value' }, // Missing Key
-      ];
-      const map = tagMapFrom(tags);
-      expect(Object.keys(map).length).toBe(1);
-      expect(map['serverless-inbox:artifact-name']).toBe('mailbox-go');
-    });
+function createDistributionConfig(lambdaArn: string, lambdaVersion: string, additionalBehaviorWithLambda?: boolean): any {
+  const config: any = {
+    CallerReference: 'test-ref',
+    Comment: 'test-distribution',
+    Enabled: true,
+    Origins: {
+      Quantity: 1,
+      Items: [{ Id: 'myOrigin', DomainName: 'example.com', CustomOriginConfig: { HTTPPort: 80, OriginProtocolPolicy: 'http-only' } }],
+    },
+    DefaultCacheBehavior: {
+      TargetOriginId: 'myOrigin',
+      ViewerProtocolPolicy: 'allow-all',
+      TrustedSigners: { Enabled: false, Quantity: 0 },
+      ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
+      LambdaFunctionAssociations: {
+        Quantity: 1,
+        Items: [
+          {
+            EventType: 'origin-request',
+            LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
+          },
+        ],
+      },
+    },
+  };
 
-    it('returns empty record for undefined or empty tags', () => {
-      expect(tagMapFrom(undefined)).toEqual({});
-      expect(tagMapFrom([])).toEqual({});
-    });
-  });
-});
+  if (additionalBehaviorWithLambda) {
+    config.CacheBehaviors = {
+      Quantity: 1,
+      Items: [
+        {
+          PathPattern: '/api/*',
+          TargetOriginId: 'myOrigin',
+          ViewerProtocolPolicy: 'allow-all',
+          TrustedSigners: { Enabled: false, Quantity: 0 },
+          ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
+          LambdaFunctionAssociations: {
+            Quantity: 1,
+            Items: [
+              {
+                EventType: 'viewer-request',
+                LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
+              },
+            ],
+          },
+        },
+      ],
+    };
+  }
 
-describe('Scheduled Updater Handler - Integration Tests', () => {
+  return config;
+}
+
+describe('Scheduled Updater Handler — Integration Tests', () => {
   const lambdaMock = mockClient(LambdaClient);
   const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
+  const cloudFrontMock = mockClient(CloudFrontClient);
 
   // Get mocked functions from artifact-registry mock
   const mockReadReleasePointer = readReleasePointer as jest.Mock;
@@ -98,6 +175,7 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
     jest.clearAllMocks();
     lambdaMock.reset();
     taggingMock.reset();
+    cloudFrontMock.reset();
     // Reset environment variables
     delete process.env.DIST_TAG;
     delete process.env.GRANULARITY;
@@ -105,135 +183,6 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
     delete process.env.ARTIFACT_BUCKET_BASE;
     delete process.env.ROOT_STACK_TAG_VALUE;
     delete process.env.AWS_REGION;
-  });
-
-  describe('advanceLambdaIfStale', () => {
-    beforeEach(() => {
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-    });
-
-    it('skips update when no pointer is available', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue(null);
-
-      await advanceLambdaIfStale(
-        'us-east-1',
-        'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-        'mailbox-go',
-        'mailbox-go',
-        '1.2.3',
-      );
-
-      expect(mockDeriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      // No AWS SDK calls should have been made
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
-    });
-
-    it('skips update when version is not newer (idempotent)', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      // Pointer version equals deployed version — no update should occur
-      mockReadReleasePointer.mockResolvedValue({
-        version: '1.2.3',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-
-      await advanceLambdaIfStale(
-        'us-east-1',
-        'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-        'mailbox-go',
-        'mailbox-go',
-        '1.2.3',
-      );
-
-      expect(mockDeriveTrack).toHaveBeenCalled();
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      // Real semver.gt('1.2.3', '1.2.3') returns false, so no update occurs
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
-    });
-
-    it('advances Lambda when pointer version is strictly newer (uses default bucketBase)', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      // Pointer version (1.2.4) is strictly newer than deployed version (1.2.3)
-      mockReadReleasePointer.mockResolvedValue({
-        version: '1.2.4',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
-
-      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
-      lambdaMock.on(TagResourceCommand).resolves({});
-
-      await advanceLambdaIfStale(
-        'us-east-1',
-        'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-        'mailbox-go',
-        'mailbox-go',
-        '1.2.3',
-      );
-
-      // Verify readReleasePointer was called with default bucketBase
-      expect(mockReadReleasePointer).toHaveBeenCalledWith(
-        'mailbox-go',
-        'latest',
-        'us-east-1',
-        expect.objectContaining({
-          bucketBase: 'mailbox-artifacts',
-          project: 'serverlessinbox',
-        }),
-      );
-
-      // Verify UpdateFunctionCodeCommand used the default bucket
-      const updateCalls = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
-      expect(updateCalls).toHaveLength(1);
-      expect(updateCalls[0].args[0].input.S3Bucket).toBe('mailbox-artifacts-us-east-1');
-
-      // Verify TagResourceCommand was called with new version
-      const tagCalls = lambdaMock.commandCalls(TagResourceCommand);
-      expect(tagCalls).toHaveLength(1);
-      expect(tagCalls[0].args[0].input.Tags).toEqual({ 'serverless-inbox:artifact-version': '1.2.4' });
-    });
-
-    it('skips target when pointer version is not valid semver', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      // Pointer version is not a valid semver string
-      mockReadReleasePointer.mockResolvedValue({
-        version: 'not-a-semver',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-
-      await advanceLambdaIfStale(
-        'us-east-1',
-        'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-        'mailbox-go',
-        'mailbox-go',
-        '1.2.3',
-      );
-
-      // Should skip without calling UpdateFunctionCodeCommand
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
-    });
-
-    it('uses ARTIFACT_BUCKET_BASE env var when provided', async () => {
-      process.env.ARTIFACT_BUCKET_BASE = 'custom-artifacts';
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({
-        version: '1.0.1',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('test-key');
-
-      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
-      lambdaMock.on(TagResourceCommand).resolves({});
-
-      await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0');
-
-      // Verify both the readReleasePointer and UpdateFunctionCodeCommand use custom bucket
-      expect(mockReadReleasePointer).toHaveBeenCalledWith('test-pkg', 'latest', 'us-east-1', expect.objectContaining({ bucketBase: 'custom-artifacts' }));
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input.S3Bucket).toBe('custom-artifacts-us-east-1');
-    });
   });
 
   describe('handler (main entry point)', () => {
@@ -262,7 +211,45 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
       expect(getCalls.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('skips resources with auto-update exclusion tag (serverless-inbox:auto-update=exclude)', async () => {
+    it('updates lambda with auto-update-type=code (default)', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+      process.env.DIST_TAG = 'latest';
+      process.env.GRANULARITY = 'major';
+      process.env.PROJECT = 'serverlessinbox';
+
+      mockDeriveTrack.mockReturnValue('v1');
+      mockReadReleasePointer.mockResolvedValue({
+        version: '1.2.4',
+        s3Location: { bucket: 'test-bucket', key: 'test-key' },
+      });
+      mockBuildArtifactKey.mockReturnValue('release/1.2.4/lambdas/mailbox-go.zip');
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+            ],
+          },
+        ],
+      });
+
+      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+      lambdaMock.on(TagResourceCommand).resolves({});
+
+      await handler();
+
+      // Verify advanceLambdaIfStale WAS called (code type should be updated)
+      expect(mockReadReleasePointer).toHaveBeenCalled();
+      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    });
+
+    it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
@@ -271,10 +258,10 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
             ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater',
             Tags: [
               { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'scheduled-updater' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk' },
               { Key: 'serverless-inbox:artifact-name', Value: 'scheduled-updater' },
               { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update', Value: 'exclude' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
             ],
           },
         ],
@@ -282,7 +269,171 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
 
       await handler();
 
-      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to exclude tag)
+      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to none type)
+      expect(mockReadReleasePointer).not.toHaveBeenCalled();
+    });
+
+    it('routes ui auto-update-type on S3 bucket to advanceUiBucketIfStale', async () => {
+      const s3Mock = mockClient(S3Client as any);
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+      process.env.DIST_TAG = 'latest';
+      process.env.GRANULARITY = 'major';
+      process.env.PROJECT = 'serverlessinbox';
+
+      mockDeriveTrack.mockReturnValue('v1');
+      mockReadReleasePointer.mockResolvedValue({
+        version: '2.0.0',
+        s3Location: { bucket: 'test-bucket', key: 'test-key' },
+      });
+      mockBuildArtifactKey.mockReturnValue('ui-bundle/release/2.0.0/ui-bundle.zip');
+      (deployZipToPrefix as jest.Mock).mockResolvedValue({ uploaded: 5 });
+      (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:s3:::ui-content-bucket',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'ui-bundle' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'ui-bundle.zip' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'ui' },
+              { Key: 'serverless-inbox:distribution-id', Value: 'D123' },
+            ],
+          },
+        ],
+      });
+
+      s3Mock.on(GetBucketTaggingCommand).resolves({ TagSet: [] });
+      s3Mock.on(PutBucketTaggingCommand).resolves({});
+
+      await handler();
+
+      // Verify readReleasePointer was called (ui path)
+      expect(mockReadReleasePointer).toHaveBeenCalled();
+      // Verify deployZipToPrefix was called (bucket update, not Lambda invoke)
+      expect(deployZipToPrefix).toHaveBeenCalled();
+      expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
+      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
+    });
+
+    it('routes edge auto-update-type to advanceEdgeLambdaIfStale in us-east-1', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+      process.env.AWS_REGION = 'us-east-1';
+      process.env.DIST_TAG = 'latest';
+      process.env.GRANULARITY = 'major';
+      process.env.PROJECT = 'serverlessinbox';
+
+      mockDeriveTrack.mockReturnValue('v1');
+      mockReadReleasePointer.mockResolvedValue({
+        version: '2.0.0',
+        s3Location: { bucket: 'test-bucket', key: 'test-key' },
+      });
+      mockBuildArtifactKey.mockReturnValue('edge-lambda.zip');
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-edge' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'blob-authorizer' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'edge' },
+            ],
+          },
+        ],
+      });
+
+      const edgeLambdaArn = 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer';
+      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+      lambdaMock.on(PublishVersionCommand).resolves({
+        FunctionArn: edgeLambdaArn + ':5',
+      });
+
+      const distribution = createDistributionWithEdgeLambda('DIST123', edgeLambdaArn, '3');
+      cloudFrontMock.on(ListDistributionsCommand).resolves({
+        DistributionList: {
+          IsTruncated: false,
+          Items: [distribution],
+          Marker: '',
+          MaxItems: 100,
+          Quantity: 1,
+        },
+      });
+
+      const distConfig = createDistributionConfig(edgeLambdaArn, '3');
+      cloudFrontMock.on(GetDistributionConfigCommand).resolves({
+        DistributionConfig: distConfig,
+        ETag: 'test-etag-123',
+      });
+
+      cloudFrontMock.on(UpdateDistributionCommand).resolves({});
+      lambdaMock.on(TagResourceCommand).resolves({});
+
+      await handler();
+
+      // Verify readReleasePointer was called
+      expect(mockReadReleasePointer).toHaveBeenCalled();
+      // Verify edge path was taken (PublishVersion called, not InvokeCommand)
+      expect(lambdaMock.commandCalls(PublishVersionCommand)).toHaveLength(1);
+      expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
+      expect(cloudFrontMock.commandCalls(UpdateDistributionCommand)).toHaveLength(1);
+    });
+
+    it('skips edge update when not in us-east-1 region', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+      process.env.AWS_REGION = 'us-west-2';
+
+      // First call (us-west-2): return edge lambda
+      // Second call (us-east-1): return empty
+      taggingMock
+        .on(GetResourcesCommand)
+        .resolvesOnce({
+          ResourceTagMappingList: [
+            {
+              ResourceARN: 'arn:aws:lambda:us-west-2:123456789012:function:blob-authorizer',
+              Tags: [
+                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+                { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-edge' },
+                { Key: 'serverless-inbox:artifact-name', Value: 'blob-authorizer' },
+                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+                { Key: 'serverless-inbox:auto-update-type', Value: 'edge' },
+              ],
+            },
+          ],
+        })
+        .resolves({ ResourceTagMappingList: [] });
+
+      await handler();
+
+      // Verify readReleasePointer was NOT called (edge skipped in non-us-east-1 region)
+      expect(mockReadReleasePointer).not.toHaveBeenCalled();
+    });
+
+    it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'scheduled-updater' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
+            ],
+          },
+        ],
+      });
+
+      await handler();
+
+      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to none type)
       expect(mockReadReleasePointer).not.toHaveBeenCalled();
     });
 
@@ -315,11 +466,33 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
       taggingMock
         .on(GetResourcesCommand)
         .resolvesOnce({
-          ResourceTagMappingList: [lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:lambda-1', 'pkg1', 'lambda-1', '1.0.0')],
+          ResourceTagMappingList: [
+            {
+              ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:lambda-1',
+              Tags: [
+                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+                { Key: 'serverless-inbox:artifact-package', Value: 'pkg1' },
+                { Key: 'serverless-inbox:artifact-name', Value: 'lambda-1' },
+                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+                { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+              ],
+            },
+          ],
           PaginationToken: 'next-token',
         })
         .resolvesOnce({
-          ResourceTagMappingList: [lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:lambda-2', 'pkg2', 'lambda-2', '1.0.0')],
+          ResourceTagMappingList: [
+            {
+              ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:lambda-2',
+              Tags: [
+                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+                { Key: 'serverless-inbox:artifact-package', Value: 'pkg2' },
+                { Key: 'serverless-inbox:artifact-name', Value: 'lambda-2' },
+                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+                { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+              ],
+            },
+          ],
         });
 
       mockDeriveTrack.mockReturnValue('v1');
@@ -336,8 +509,26 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
-          lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:mailbox-go', 'mailbox-go', 'mailbox-go', '1.2.3'),
-          lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:admin-api', 'admin-api', 'admin-api', '1.0.0'),
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+            ],
+          },
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:admin-api',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'admin-api' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'admin-api' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+            ],
+          },
         ],
       });
 

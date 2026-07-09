@@ -1,8 +1,8 @@
 import { wrapHandler } from 'aws-custom-resources';
 
-import { invalidateCloudFront } from './cloudfront';
-import { normalizePrefix } from './paths';
-import { deletePrefix, deployZipToPrefix, writeConfigJson } from './s3-ops';
+import { invalidateCloudFront } from '../shared/ui-cloudfront';
+import { normalizePrefix } from '../shared/ui-ops';
+import { deletePrefix, deployZipToPrefix, writeConfigJson } from '../shared/ui-ops';
 import type { UiDeployerResourceProperties } from './types';
 
 function isUiDeployerResourceProperties(

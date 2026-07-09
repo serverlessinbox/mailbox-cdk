@@ -15,6 +15,9 @@ export type ServerlessInboxComponent =
 
 export type ServerlessInboxDeployer = 'cdk' | 'cfn' | 'marketplace';
 
+/** Auto-update type: how a lambda is kept current with new versions. */
+export type AutoUpdateType = 'code' | 'ui' | 'edge' | 'none';
+
 const TAG_PREFIX = 'serverless-inbox:' as const;
 
 export const ServerlessInboxTagKeys = {
@@ -34,7 +37,8 @@ export const ServerlessInboxTagKeys = {
   artifactName: `${TAG_PREFIX}artifact-name`,
   artifactPackage: `${TAG_PREFIX}artifact-package`,
   artifactVersion: `${TAG_PREFIX}artifact-version`,
-  uiBundleTarget: `${TAG_PREFIX}ui-bundle-target`,
+  autoUpdateType: `${TAG_PREFIX}auto-update-type`,
+  distributionId: `${TAG_PREFIX}distribution-id`,
 } as const;
 
 export interface ApplyServerlessInboxTagsOptions {

@@ -8468,7 +8468,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 61
+        "line": 65
       },
       "name": "ApplyServerlessInboxEdgeTagsOptions",
       "properties": [
@@ -8481,7 +8481,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 63
+            "line": 67
           },
           "name": "rootRegion",
           "type": {
@@ -8498,7 +8498,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 40
+        "line": 44
       },
       "name": "ApplyServerlessInboxTagsOptions",
       "properties": [
@@ -8511,7 +8511,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 49
+            "line": 53
           },
           "name": "rootStack",
           "type": {
@@ -8526,7 +8526,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 55
+            "line": 59
           },
           "name": "deployer",
           "optional": true,
@@ -8542,7 +8542,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 58
+            "line": 62
           },
           "name": "extraTags",
           "optional": true,
@@ -8563,7 +8563,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 42
+            "line": 46
           },
           "name": "product",
           "optional": true,
@@ -8579,7 +8579,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 52
+            "line": 56
           },
           "name": "version",
           "optional": true,
@@ -8770,7 +8770,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 65
+          "line": 66
         },
         "parameters": [
           {
@@ -8800,7 +8800,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 56
+        "line": 57
       },
       "methods": [
         {
@@ -8809,7 +8809,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 169
+            "line": 232
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -8854,7 +8854,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 47
+        "line": 48
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -8867,7 +8867,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 49
+            "line": 50
           },
           "name": "distTag",
           "optional": true,
@@ -8884,7 +8884,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 51
+            "line": 52
           },
           "name": "granularity",
           "optional": true,
@@ -8900,7 +8900,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 53
+            "line": 54
           },
           "name": "updateInterval",
           "optional": true,
@@ -11409,7 +11409,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 98
+        "line": 102
       },
       "name": "ServerlessInboxSubStackTagOptions",
       "properties": [
@@ -11421,7 +11421,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 100
+            "line": 104
           },
           "name": "rootStack",
           "type": {
@@ -11436,7 +11436,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 102
+            "line": 106
           },
           "name": "stack",
           "type": {
@@ -11451,7 +11451,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 106
+            "line": 110
           },
           "name": "product",
           "optional": true,
@@ -11467,7 +11467,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 104
+            "line": 108
           },
           "name": "version",
           "optional": true,
@@ -11480,5 +11480,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "6FmIhSlP7c1osF3AF0OU7jxVQeWFVAQw4hiWq7TGoqU="
+  "fingerprint": "wh3PVOmZ20zf09AqYDbSYMu1dxflHq3yH5qd+Q7dKjk="
 }

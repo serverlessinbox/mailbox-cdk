@@ -1,6 +1,6 @@
 import { Aws, Stack } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { TypeScriptLambda } from '../utils/ts-lambda';
+import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface DataDeployerGrantProps {
   stack: Stack;

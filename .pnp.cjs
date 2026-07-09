@@ -941,6 +941,10 @@ const RAW_RUNTIME_STATE =
       "npm:3.1.4"\
     ],\
     [\
+      "@types/mime-types",\
+      "npm:2.1.4"\
+    ],\
+    [\
       "@types/node",\
       "npm:24.10.1"\
     ],\
@@ -5891,6 +5895,7 @@ const RAW_RUNTIME_STATE =
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/constructs", null],\
           ["@types/jest", "npm:29.5.14"],\
+          ["@types/mime-types", "npm:2.1.4"],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/semver", "npm:7.7.1"],\
           ["@types/unzipper", "npm:0.10.11"],\
@@ -5906,6 +5911,7 @@ const RAW_RUNTIME_STATE =
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
+          ["mime-types", "npm:2.1.35"],\
           ["semver", "npm:7.8.5"],\
           ["ts-jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.4.6"],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
@@ -5938,6 +5944,7 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/jest", "npm:29.5.14"],\
+          ["@types/mime-types", "npm:2.1.4"],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/semver", "npm:7.7.1"],\
           ["@types/unzipper", "npm:0.10.11"],\
@@ -5953,6 +5960,7 @@ const RAW_RUNTIME_STATE =
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
+          ["mime-types", "npm:2.1.35"],\
           ["semver", "npm:7.8.5"],\
           ["ts-jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.4.6"],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
@@ -6580,6 +6588,15 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@types/keyv", "npm:3.1.4"],\
           ["@types/node", "npm:24.10.1"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@types/mime-types", [\
+      ["npm:2.1.4", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@types-mime-types-npm-2.1.4-ea40d0e262-10c0.zip/node_modules/@types/mime-types/",\
+        "packageDependencies": [\
+          ["@types/mime-types", "npm:2.1.4"]\
         ],\
         "linkType": "HARD"\
       }]\

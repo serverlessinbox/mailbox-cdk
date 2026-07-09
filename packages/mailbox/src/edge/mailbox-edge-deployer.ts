@@ -37,8 +37,8 @@ export interface MailboxEdgeDeployerProps {
   /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
   readonly authKeyStoreTableArn: string;
 
-  /** Optional product/stack version used for tagging edge resources. */
-  readonly productVersion?: string;
+  /** Product/stack version used for tagging edge resources. */
+  readonly productVersion: string;
 
   /** Optional deployer label used for tagging (default: 'cfn'). */
   readonly deployer?: 'cdk' | 'cfn' | 'marketplace';
@@ -110,7 +110,7 @@ export class MailboxEdgeDeployer extends Construct {
       // Keys MUST match the edge stack's CfnParameter overrideLogicalId (rootStack / rootRegion).
       rootStack: Aws.STACK_NAME,
       rootRegion: Stack.of(this).region,
-      productVersion: props.productVersion ?? 'unknown',
+      productVersion: props.productVersion,
       deployer: deployer,
       blobAuthorizerS3VersionId: blobAuthorizerResolved.versionId ?? '',
     };

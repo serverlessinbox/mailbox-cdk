@@ -1,9 +1,13 @@
 /**
  * Scheduled auto-updater Lambda handler (stack-self-update, Phase B).
  *
- * Discovers Lambdas tagged with the root-stack, compares their deployed versions against
- * track-scoped release pointers, and updates code for any that are stale within the granularity bound.
- * UI bundle refresh is deferred to a separate slice (stack-self-update Phase B.2).
+ * Discovers resources tagged with the root-stack, compares their deployed versions against
+ * track-scoped release pointers, and updates code/ui/edge for any that are stale within the granularity bound.
+ *
+ * Three update paths:
+ * - code: UpdateFunctionCode on Lambda functions
+ * - ui: Extract bundle zip, upload to S3 bucket, invalidate CloudFront
+ * - edge: UpdateFunctionCode + PublishVersion + CloudFront repoint
  *
  * Triggered by EventBridge on a schedule (default 6h).
  * NOT wrapped in wrapHandler — plain async function returning void.
@@ -13,133 +17,15 @@ import {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import {
-  LambdaClient,
-  UpdateFunctionCodeCommand,
-  TagResourceCommand,
-} from '@aws-sdk/client-lambda';
-import { deriveTrack, buildArtifactKey, readReleasePointer } from '@serverlessinbox/artifact-registry';
-import { gt as semverGt, valid as semverValid } from 'semver';
-
-/** Environment variables supplied by the CDK wrapper (Step 7/8). */
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`required environment variable ${name} is not set`);
-  }
-  return value;
-}
+import { advanceLambdaIfStale } from './update-code';
+import { advanceUiBucketIfStale } from './update-ui';
+import { advanceEdgeLambdaIfStale } from './update-edge';
+import { requireEnv, tagMapFrom } from './common';
 
 /** Tenant ID / root stack name (all resources in this stack share this tag value). */
 function getRootStackTag(): string {
   return requireEnv('ROOT_STACK_TAG_VALUE');
 }
-
-/** Convert ResourceGroupsTaggingAPI Tags array to a record for easier access. */
-export function tagMapFrom(tags: Array<{ Key?: string; Value?: string }> | undefined): Record<string, string> {
-  const map: Record<string, string> = {};
-  if (!tags) return map;
-  for (const tag of tags) {
-    if (tag.Key && tag.Value) {
-      map[tag.Key] = tag.Value;
-    }
-  }
-  return map;
-}
-
-/**
- * Update a Lambda function's code if a newer version is available.
- * On success, update the artifact-version tag.
- * Integration testable: accepts region, lambdaArn, and derives pointer from env/registry.
- */
-export async function advanceLambdaIfStale(
-  region: string,
-  lambdaArn: string,
-  packageName: string,
-  artifactName: string,
-  deployedVersion: string,
-): Promise<void> {
-  const distTag = requireEnv('DIST_TAG');
-  const granularity = requireEnv('GRANULARITY');
-  const project = requireEnv('PROJECT');
-  const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
-
-  // Derive the track from the deployed version.
-  const myTrack = deriveTrack(deployedVersion, granularity as 'major' | 'minor');
-
-  // Read the track-scoped pointer.
-  const pointer = await readReleasePointer(packageName, distTag, region, {
-    bucketBase,
-    project,
-    track: myTrack,
-  });
-
-  if (!pointer) {
-    console.log('no pointer available', { packageName, distTag, track: myTrack });
-    return;
-  }
-
-  // Guard against invalid versions: skip this target if either version isn't semver-valid.
-  if (!semverValid(pointer.version) || !semverValid(deployedVersion)) {
-    console.log('invalid version format, skipping', {
-      lambdaArn,
-      deployedVersion,
-      candidateVersion: pointer.version,
-      deployedVersionValid: semverValid(deployedVersion),
-      candidateVersionValid: semverValid(pointer.version),
-    });
-    return;
-  }
-
-  // Check if the candidate version is strictly newer.
-  if (!semverGt(pointer.version, deployedVersion)) {
-    console.log('version is not newer', {
-      lambdaArn,
-      deployedVersion,
-      candidateVersion: pointer.version,
-    });
-    return;
-  }
-
-  // Build the artifact key for the new version and update the function.
-  const artifactKey = buildArtifactKey('package', packageName, {
-    type: 'release',
-    version: { version: pointer.version } as any, // The SemVer type is not critical here; we just need the string.
-    objectName: `lambdas/${artifactName}.zip`,
-    project,
-  });
-  const artifactBucket = `${bucketBase}-${region}`;
-
-  const lambdaClient = new LambdaClient({ region });
-  try {
-    console.log('updating lambda code', { lambdaArn, artifactBucket, artifactKey, newVersion: pointer.version });
-    await lambdaClient.send(
-      new UpdateFunctionCodeCommand({
-        FunctionName: lambdaArn,
-        S3Bucket: artifactBucket,
-        S3Key: artifactKey,
-      }),
-    );
-
-    // Update the artifact-version tag.
-    await lambdaClient.send(
-      new TagResourceCommand({
-        Resource: lambdaArn,
-        Tags: { 'serverless-inbox:artifact-version': pointer.version },
-      }),
-    );
-
-    console.log('lambda updated', {
-      lambdaArn,
-      oldVersion: deployedVersion,
-      newVersion: pointer.version,
-    });
-  } catch (err: any) {
-    console.error('failed to update lambda', { lambdaArn, error: err.message });
-    throw err;
-  }
-}
-
 
 /**
  * Main handler: EventBridge-triggered, scans both regions for targets and updates stale ones.
@@ -155,7 +41,7 @@ export const handler = async (): Promise<void> => {
     granularity: process.env.GRANULARITY,
   });
 
-  // Scan Lambda functions in both regions.
+  // Scan Lambda functions and S3 buckets in both regions.
   for (const region of uniqueRegions) {
     const tagging = new ResourceGroupsTaggingAPIClient({ region });
     let nextToken: string | undefined;
@@ -164,7 +50,7 @@ export const handler = async (): Promise<void> => {
       const response = await tagging.send(
         new GetResourcesCommand({
           TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [rootStackTag] }],
-          ResourceTypeFilters: ['lambda:function'],
+          ResourceTypeFilters: ['lambda:function', 's3:bucket'],
           PaginationToken: nextToken,
         }),
       );
@@ -175,26 +61,60 @@ export const handler = async (): Promise<void> => {
           if (!arn) continue;
 
           const tags = tagMapFrom(resource.Tags);
+          const resourceType = arn.split(':')[2]; // Extract service type from ARN (position 2 = s3|lambda|etc)
 
-          // Skip any resource tagged with the auto-update exclusion tag.
-          if (tags['serverless-inbox:auto-update'] === 'exclude') {
-            console.log('skipping auto-update-excluded resource', { arn });
-            continue;
-          }
-
+          // Read auto-update type
+          const autoUpdateType = tags['serverless-inbox:auto-update-type'] ?? 'none';
           const pkg = tags['serverless-inbox:artifact-package'];
           const artifactName = tags['serverless-inbox:artifact-name'];
           const deployedVersion = tags['serverless-inbox:artifact-version'];
 
           if (!pkg || !artifactName || !deployedVersion) {
-            console.debug('lambda missing artifact tags', { arn, pkg, artifactName, deployedVersion });
+            console.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
+            continue;
+          }
+
+          if (autoUpdateType === 'none') {
+            console.debug('skipping auto-update-type=none', { arn });
             continue;
           }
 
           try {
-            await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion);
+            // Route by resource type and auto-update-type
+            if (resourceType === 's3') {
+              // S3 bucket: only UI type is supported
+              if (autoUpdateType === 'ui') {
+                const bucketName = arn.split(':')[5]; // Extract bucket name from ARN
+                const distributionId = tags['serverless-inbox:distribution-id'];
+                if (!distributionId) {
+                  console.debug('UI bucket missing distribution-id tag', { arn });
+                  continue;
+                }
+                await advanceUiBucketIfStale(region, bucketName, pkg, artifactName, deployedVersion, distributionId);
+              } else {
+                console.debug('unsupported auto-update-type for S3 bucket', { arn, type: autoUpdateType });
+              }
+            } else if (resourceType === 'lambda') {
+              // Lambda function: code or edge types
+              switch (autoUpdateType) {
+                case 'code':
+                  await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion);
+                  break;
+                case 'edge':
+                  if (region === 'us-east-1') {
+                    await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion);
+                  } else {
+                    console.debug('skipping edge update in non-us-east-1 region', { arn, region });
+                  }
+                  break;
+                default:
+                  console.debug('unknown auto-update-type for lambda', { arn, type: autoUpdateType });
+              }
+            } else {
+              console.debug('unknown resource type', { arn, resourceType });
+            }
           } catch (err: any) {
-            console.error('failed to check/update lambda', { arn, error: err.message });
+            console.error('failed to update resource', { arn, error: err.message });
             // Continue processing other targets.
           }
         }

@@ -2106,6 +2106,7 @@ __metadata:
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/jest": "npm:^29.0.0"
+    "@types/mime-types": "npm:^2.1.4"
     "@types/node": "npm:^24.10.1"
     "@types/semver": "npm:^7.5.0"
     "@types/unzipper": "npm:^0.10.11"
@@ -2121,6 +2122,7 @@ __metadata:
     jsii: "npm:^5.9.44"
     jsii-pacmak: "npm:*"
     jsii-rosetta: "npm:^5.9.15"
+    mime-types: "npm:^2.1.35"
     semver: "npm:^7.6.0"
     ts-jest: "npm:^29.0.0"
     ts-node: "npm:^10.9.2"
@@ -2541,6 +2543,13 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/ff8f54fc49621210291f815fe5b15d809fd7d032941b3180743440bd507ecdf08b9e844625fa346af568c84bf34114eb378dcdc3e921a08ba1e2a08d7e3c809c
+  languageName: node
+  linkType: hard
+
+"@types/mime-types@npm:^2.1.4":
+  version: 2.1.4
+  resolution: "@types/mime-types@npm:2.1.4"
+  checksum: 10c0/a10d57881d14a053556b3d09292de467968d965b0a06d06732c748da39b3aa569270b5b9f32529fd0e9ac1e5f3b91abb894f5b1996373254a65cb87903c86622
   languageName: node
   linkType: hard
 

@@ -1,6 +1,6 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cdk from 'aws-cdk-lib';
-import { Aws, Fn } from 'aws-cdk-lib';
+import { Aws, Fn, Tags } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -8,6 +8,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
+import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */
@@ -40,6 +41,9 @@ export interface MailboxEdgeConstructProps {
 
   /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
   readonly authKeyStoreTableArn: string;
+
+  /** Product version for artifact tagging (e.g., '1.2.3') */
+  readonly productVersion: string;
 }
 
 /**
@@ -126,6 +130,15 @@ export class MailboxEdgeConstruct extends Construct {
       //   removalPolicy: RemovalPolicy.RETAIN,
       // }),
     });
+
+    // Apply artifact tags for auto-update tracking.
+    // Package: mailbox-cdk-edge (us-east-1), artifact: blob-authorizer
+    // updateType='edge' because it's updated via the scheduled updater (UpdateFunctionCode + PublishVersion + CloudFront)
+    applyArtifactTags(blobAuthorizerFunction, 'mailbox-cdk-edge', 'blob-authorizer', props.productVersion, 'edge');
+
+    // Ensure root-stack tag is present for discovery by the scheduled updater.
+    // The edge stack's applyServerlessInboxBaseTags propagates this, but we make it explicit here.
+    Tags.of(blobAuthorizerFunction).add('serverless-inbox:root-stack', Aws.STACK_NAME);
 
     this.blobAuthorizerFunction = blobAuthorizerFunction;
 

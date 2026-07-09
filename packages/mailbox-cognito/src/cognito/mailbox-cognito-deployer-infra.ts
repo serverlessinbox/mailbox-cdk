@@ -1,5 +1,4 @@
 import { Aws, Duration, Fn } from 'aws-cdk-lib';
-import { Architecture, Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib';
@@ -8,6 +7,8 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { CognitoDeployerWorkerLambda, CognitoDeployerStarterLambda } from '../lambdas';
 
 export interface MailboxCognitoDeployerInfraProps {
   /** Artifact resolver for deployer Lambda code (stack-deployer zip). Internal use; passed from parent. */
@@ -30,25 +31,17 @@ export interface MailboxCognitoDeployerInfraProps {
  * call `resource.node.addDependency(deployerInfra.stateMachine)`.
  */
 export class MailboxCognitoDeployerInfra extends Construct {
-  public readonly worker: LambdaFunction;
-  public readonly starter: LambdaFunction;
+  public readonly worker: IFunction;
+  public readonly starter: IFunction;
   public readonly stateMachine: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props: MailboxCognitoDeployerInfraProps) {
     super(scope, id);
 
-    // Both worker and starter are served from the same zip, using different handler entrypoints.
-    const code: Code = props.artifactResolver.getCode('mailbox-cdk', 'lambdas/stack-deployer.zip');
-
     // Worker Lambda: performs CloudFormation operations and polls for completion.
-    this.worker = new LambdaFunction(this, 'worker', {
-      code,
-      runtime: Runtime.NODEJS_20_X,
-      architecture: Architecture.ARM_64,
-      handler: 'index.workerHandler',
-      timeout: Duration.minutes(15),
-      memorySize: 512,
-      description: `Serverless Inbox Mailbox Cognito: stack-deployer worker (${Aws.STACK_NAME})`,
+    // Uses TypeScriptLambda wrapper to auto-apply artifact tags for auto-update tracking.
+    this.worker = new CognitoDeployerWorkerLambda(this, 'worker', {
+      artifactResolver: props.artifactResolver,
     });
 
     this._addLogRetention(this.worker, 'WorkerLogGroup');
@@ -61,22 +54,13 @@ export class MailboxCognitoDeployerInfra extends Construct {
     this.stateMachine = this._createStateMachine(this.worker, stateMachineName);
 
     // Starter Lambda: CFN custom resource entrypoint — only starts the Step Functions execution.
-    this.starter = new LambdaFunction(this, 'starter', {
-      code,
-      runtime: Runtime.NODEJS_20_X,
-      architecture: Architecture.ARM_64,
-      handler: 'index.starterHandler',
-      timeout: Duration.minutes(1),
-      memorySize: 256,
-      description: `Serverless Inbox Mailbox Cognito: stack-deployer starter (${Aws.STACK_NAME})`,
+    // Uses TypeScriptLambda wrapper to auto-apply artifact tags for auto-update tracking.
+    this.starter = new CognitoDeployerStarterLambda(this, 'starter', {
+      artifactResolver: props.artifactResolver,
+      stateMachineArn: this.stateMachine.stateMachineArn,
     });
 
     this._addLogRetention(this.starter, 'StarterLogGroup');
-
-    this.starter.addEnvironment(
-      'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN',
-      this.stateMachine.stateMachineArn,
-    );
 
     this.starter.addToRolePolicy(
       new PolicyStatement({
@@ -86,7 +70,7 @@ export class MailboxCognitoDeployerInfra extends Construct {
     );
   }
 
-  private _addLogRetention(fn: LambdaFunction, logicalId: string): void {
+  private _addLogRetention(fn: IFunction, logicalId: string): void {
     const cfnLogGroup = new logs.CfnLogGroup(this, logicalId, {
       logGroupName: `/aws/lambda/${fn.functionName}`,
       retentionInDays: RetentionDays.ONE_MONTH,
@@ -103,7 +87,7 @@ export class MailboxCognitoDeployerInfra extends Construct {
    *   op:  { requestType, region, stackName, templateUrl, parameters, preserveOnDelete }
    * }
    */
-  private _createStateMachine(handler: LambdaFunction, stateMachineName: sfn.StateMachine['stateMachineName']): sfn.StateMachine {
+  private _createStateMachine(handler: IFunction, stateMachineName: sfn.StateMachine['stateMachineName']): sfn.StateMachine {
     const checkInterval = Duration.seconds(20);
     const timeout = Duration.minutes(90);
 

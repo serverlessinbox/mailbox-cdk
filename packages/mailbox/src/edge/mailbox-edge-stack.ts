@@ -180,6 +180,7 @@ export class MailboxEdgeStack extends cdk.Stack {
       itemTableArn: itemTableArnParam.valueAsString,
       configTableArn: configTableArnParam.valueAsString,
       authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
+      productVersion: productVersionParam.valueAsString,
     };
 
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);

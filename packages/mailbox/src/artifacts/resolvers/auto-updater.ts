@@ -1,5 +1,5 @@
 import { Construct, IConstruct } from 'constructs';
-import { Aws, Duration, Fn, IAspect } from 'aws-cdk-lib';
+import { Aws, Duration, Fn, IAspect, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -14,6 +14,7 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver, ResolvedArtifact } from '../i-artifact-resolver';
 import { ScheduledUpdaterLambda } from '../../lambdas/scheduled-updater';
+import { ServerlessInboxTagKeys } from '../../utils/serverless-inbox-tags';
 
 /**
  * Aspect that gates all CfnResource children of a construct onto an IsTracking condition.
@@ -104,7 +105,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     );
 
     // Tag the provider-handler Lambda to exclude it from auto-update scanning.
-    cdk.Tags.of(fn).add('serverless-inbox:auto-update', 'exclude');
+    Tags.of(fn).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     this.lambdaFn = fn;
 
@@ -118,9 +119,9 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       rootStackTagValue: Aws.STACK_NAME,
     });
 
-    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update=exclude).
+    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
     // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
-    cdk.Tags.of(updater).add('serverless-inbox:auto-update', 'exclude');
+    Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     // Updater IAM: comprehensive least-privilege
     updater.addToRolePolicy(
@@ -136,9 +137,71 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
         resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
           StringEquals: {
-            'aws:ResourceTag/serverless-inbox:root-stack': Aws.STACK_NAME,
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
           },
         },
+      }),
+    );
+
+    // UI auto-update: extract bundle, upload to bucket, invalidate CloudFront
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
+        resources: [
+          `arn:aws:s3:::*-ui-*`,
+          `arn:aws:s3:::*-ui-*/*`,
+        ],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetBucketTagging', 's3:PutBucketTagging'],
+        resources: [`arn:aws:s3:::*-ui-*`],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    // Edge auto-update: publish new versions + update CloudFront
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['lambda:PublishVersion'],
+        resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    // CloudFront distribution management: scope to distributions tagged with this stack
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+          },
+        },
+      }),
+    );
+
+    // CloudFront distribution listing: read-only enumeration, unscopable by AWS
+    updater.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudfront:ListDistributions'],
+        resources: ['*'],
       }),
     );
 
@@ -207,6 +270,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     const versionToken = cdk.Fn.getAtt(resource.logicalId, TRACK_RESOLVER_VERSION_ATTR).toString();
 
     // Tracked key (from CR-resolved version token)
+    // cast: CFN token, not a runtime SemVer
     const trackedKey = buildArtifactKey('package', packageName, {
       type: 'release',
       version: { version: versionToken } as any,

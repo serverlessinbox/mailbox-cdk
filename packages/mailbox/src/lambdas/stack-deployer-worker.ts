@@ -1,4 +1,4 @@
-import { TypeScriptLambda } from '../utils/ts-lambda';
+import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
