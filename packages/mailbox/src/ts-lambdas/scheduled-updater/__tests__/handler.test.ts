@@ -104,7 +104,6 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
     delete process.env.PROJECT;
     delete process.env.ARTIFACT_BUCKET_BASE;
     delete process.env.ROOT_STACK_TAG_VALUE;
-    delete process.env.UPDATER_FUNCTION_ARN;
     delete process.env.AWS_REGION;
   });
 
@@ -244,15 +243,13 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
       process.env.PROJECT = 'serverlessinbox';
     });
 
-    it('requires UPDATER_FUNCTION_ARN and ROOT_STACK_TAG_VALUE environment variables', async () => {
-      delete process.env.UPDATER_FUNCTION_ARN;
+    it('requires ROOT_STACK_TAG_VALUE environment variable', async () => {
       delete process.env.ROOT_STACK_TAG_VALUE;
 
       await expect(handler()).rejects.toThrow('required environment variable');
     });
 
     it('scans both AWS_REGION and us-east-1 for Lambdas', async () => {
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-west-2:123456789012:function:scheduled-updater';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       process.env.AWS_REGION = 'us-west-2';
 
@@ -265,24 +262,31 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
       expect(getCalls.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('skips updater Lambda itself (self-exclusion via UPDATER_FUNCTION_ARN)', async () => {
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater';
+    it('skips resources with auto-update exclusion tag (serverless-inbox:auto-update=exclude)', async () => {
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
-          lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater', 'scheduled-updater', 'scheduled-updater', '1.0.0'),
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'scheduled-updater' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'scheduled-updater' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update', Value: 'exclude' },
+            ],
+          },
         ],
       });
 
       await handler();
 
-      // Verify advanceLambdaIfStale was NOT called (no readReleasePointer call)
+      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to exclude tag)
       expect(mockReadReleasePointer).not.toHaveBeenCalled();
     });
 
     it('skips Lambdas missing required artifact tags', async () => {
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
@@ -305,7 +309,6 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
     });
 
     it('handles pagination correctly in region scan', async () => {
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       // Queue responses: first page with continuation token, then second page without token
@@ -329,7 +332,6 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
     });
 
     it('continues processing even if one Lambda update fails', async () => {
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
@@ -361,7 +363,6 @@ describe('Scheduled Updater Handler - Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
-      process.env.UPDATER_FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
     });
 
