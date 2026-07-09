@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.43](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.42...v0.0.43) (Thu Jul 09 2026)
+
+### fix
+
+* Log group naming ([108a9e1](https://github.com/serverlessinbox/mailbox-cdk/commit/108a9e11794b236946d992aa3ee3536ba43264a2))
+
 ## [0.0.42](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.41...v0.0.42) (Thu Jul 09 2026)
 
 ### fix
