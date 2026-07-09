@@ -125,7 +125,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     // Updater IAM: comprehensive least-privilege
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['resourcegroupstaggingapi:GetResources'],
+        actions: ['tag:GetResources'],
         resources: ['*'],
       }),
     );
