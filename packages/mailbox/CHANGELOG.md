@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.32](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.31...v0.0.32) (Thu Jul 09 2026)
+
+### fix
+
+* Exclude auto update tag ([d1411e0](https://github.com/serverlessinbox/mailbox-cdk/commit/d1411e00d47597ea0529cb6ccbc75f042aeb8d34))
+
 ## [0.0.31](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.30...v0.0.31) (Thu Jul 09 2026)
 
 ### feat
