@@ -71,7 +71,7 @@ tasks:
     generates:
       - /tmp/scheduled-updater.zip
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "aws-sdk,semver,@serverlessinbox/artifact-registry,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda"
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "@aws-sdk/client-s3,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda,semver"
 
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
@@ -115,7 +115,7 @@ tasks:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "aws-sdk,semver,@serverlessinbox/artifact-registry,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda"
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/scheduled-updater/index.ts --out /tmp/scheduled-updater.zip --external "@aws-sdk/client-s3,@aws-sdk/client-resource-groups-tagging-api,@aws-sdk/client-lambda,semver"
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
