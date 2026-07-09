@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.31](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.30...v0.0.31) (Thu Jul 09 2026)
+
+### feat
+
+* Auto updater ([c020833](https://github.com/serverlessinbox/mailbox-cdk/commit/c020833a2c197fa9d771b54d40a4430ce5758ba3))
+
 ## [0.0.30](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.29...v0.0.30) (Wed Jul 08 2026)
 
 ### feat
