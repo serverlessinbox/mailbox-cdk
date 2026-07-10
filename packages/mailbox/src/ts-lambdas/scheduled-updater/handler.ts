@@ -84,13 +84,12 @@ export const handler = async (): Promise<void> => {
             if (resourceType === 'cloudfront') {
               // CloudFront distribution: only UI type is supported
               if (autoUpdateType === 'ui') {
-                const distributionId = arn.split('/')[1]; // Extract distribution ID from ARN (arn:aws:cloudfront::ACCOUNT:distribution/DISTRIBUTION_ID)
                 const bucketName = tags['serverless-inbox:bucket-name'];
                 if (!bucketName) {
                   console.debug('UI distribution missing bucket-name tag', { arn });
                   continue;
                 }
-                await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, distributionId);
+                await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn);
               } else {
                 console.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
               }

@@ -160,21 +160,17 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     );
 
     // UI auto-update: extract bundle, upload to bucket, invalidate CloudFront
-    // aws:ResourceTag reads the object's own tags (a freshly-uploaded object is untagged → always denies),
-    // so scope object writes by the containing bucket's tag via s3:BucketTag; UI buckets are per-UI dedicated
-    // and carry the root-stack base tag.
+    // S3 object writes cannot be tag-scoped: aws:ResourceTag reads the (untagged) object, and s3:BucketTag
+    // is not honored for PutObject (live-verified deny against a correctly-tagged bucket). Scope by the
+    // deterministic UI bucket name instead — ${ACCOUNT_ID}-${STACK_NAME}-ui-<label> (from StackNamedBucket):
+    // this stack's dedicated per-UI buckets, this account only.
     updater.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
         resources: [
-          `arn:aws:s3:::*-ui-*`,
-          `arn:aws:s3:::*-ui-*/*`,
+          `arn:aws:s3:::${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-ui-*`,
+          `arn:aws:s3:::${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-ui-*/*`,
         ],
-        conditions: {
-          StringEquals: {
-            [`s3:BucketTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-        },
       }),
     );
 

@@ -52,7 +52,6 @@ describe('advanceUiBucketIfStale', () => {
     process.env.GRANULARITY = 'major';
     process.env.PROJECT = 'serverlessinbox';
     process.env.AWS_REGION = 'us-east-1';
-    process.env.AWS_ACCOUNT_ID = '123456789012';
     cloudFrontMock = mockClient(CloudFrontClient as any);
   });
 
@@ -70,7 +69,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'ABCD1234',
+      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
     );
 
     expect(mockDeriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
@@ -92,7 +91,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'ABCD1234',
+      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
     );
 
     // Pointer version equals deployed, no operations
@@ -111,13 +110,14 @@ describe('advanceUiBucketIfStale', () => {
 
     cloudFrontMock.on(TagResourceCommand).resolves({});
 
+    const distributionArn = 'arn:aws:cloudfront::818189473156:distribution/ABCD1234';
     await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'ABCD1234',
+      distributionArn,
     );
 
     // Verify deployZipToPrefix was called
@@ -140,7 +140,7 @@ describe('advanceUiBucketIfStale', () => {
     expect(tagCalls).toHaveLength(1);
     // Verify TagResourceCommand was called with correct distribution ARN and artifact-version tag
     expect(tagCalls[0].args[0].input).toEqual({
-      Resource: 'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
+      Resource: 'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
       Tags: {
         Items: [
           { Key: 'serverless-inbox:artifact-version', Value: '1.2.4' },
@@ -162,7 +162,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'ABCD1234',
+      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
     );
 
     // Should skip entirely
@@ -188,7 +188,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'ABCD1234',
+      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
     );
 
     // Verify custom bucket base was used

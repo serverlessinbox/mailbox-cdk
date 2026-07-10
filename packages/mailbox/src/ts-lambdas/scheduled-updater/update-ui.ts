@@ -27,7 +27,7 @@ export async function advanceUiBucketIfStale(
   packageName: string,
   artifactName: string,
   deployedVersion: string,
-  distributionId: string,
+  distributionArn: string,
 ): Promise<void> {
   const project = requireEnv('PROJECT');
   const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
@@ -53,6 +53,10 @@ export async function advanceUiBucketIfStale(
   try {
     console.log('updating UI bucket', { bucketName, artifactBucket: bucket, artifactKey, newVersion: pointer.version, deploymentRegion });
 
+    // Extract distribution ID from ARN for invalidation and logging
+    // ARN format: arn:aws:cloudfront::ACCOUNT:distribution/DISTRIBUTION_ID
+    const distributionId = distributionArn.split('/')[1];
+
     // Extract and upload to bucket in deployment region
     const contentPrefix = normalizePrefix('content/', 'content/');
     const res = await deployZipToPrefix({
@@ -71,7 +75,6 @@ export async function advanceUiBucketIfStale(
 
     // Update the distribution's artifact-version tag via CloudFront TagResource
     const cloudFront = new CloudFrontClient({ region: deploymentRegion });
-    const distributionArn = `arn:aws:cloudfront::${process.env.AWS_ACCOUNT_ID || '123456789012'}:distribution/${distributionId}`;
 
     await cloudFront.send(
       new TagResourceCommand({
@@ -93,7 +96,7 @@ export async function advanceUiBucketIfStale(
       cacheInvalidated: invalidationRes.invalidated,
     });
   } catch (err: any) {
-    console.error('failed to update UI bucket', { bucketName, distributionId, error: err.message });
+    console.error('failed to update UI bucket', { bucketName, distributionId: distributionArn.split('/')[1], error: err.message });
     throw err;
   }
 }

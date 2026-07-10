@@ -109,6 +109,7 @@ export class MailboxUi extends Construct {
     this.bucket = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
+      abacStatus: true,
     });
 
     const originAccessIdentity = new OriginAccessIdentity(this, 'origin-access-identity', {

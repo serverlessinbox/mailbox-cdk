@@ -118,15 +118,19 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@aws-cdk/asset-awscli-v1",\
-      "npm:2.2.242"\
+      "npm:2.2.282"\
     ],\
     [\
       "@aws-cdk/asset-node-proxy-agent-v6",\
-      "npm:2.1.0"\
+      "npm:2.1.2"\
+    ],\
+    [\
+      "@aws-cdk/cloud-assembly-api",\
+      "virtual:ba82097a17a5f5da1e77f3f7563d9586e2e04e36adac0a54af9294350b5d49e2cee46e86b473ef1371a2b00648812f6043ed3a7a14920ac5158433ba7565b1f3#npm:2.2.6"\
     ],\
     [\
       "@aws-cdk/cloud-assembly-schema",\
-      "npm:48.20.0"\
+      "npm:54.9.0"\
     ],\
     [\
       "@aws-crypto/crc32",\
@@ -1198,7 +1202,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "ajv",\
-      "npm:8.17.1"\
+      "npm:6.12.6"\
     ],\
     [\
       "algoliasearch",\
@@ -1262,7 +1266,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "aws-cdk-lib",\
-      "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"\
+      "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"\
     ],\
     [\
       "aws-custom-resources",\
@@ -1498,7 +1502,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "constructs",\
-      "npm:10.4.3"\
+      "npm:10.6.0"\
     ],\
     [\
       "convert-source-map",\
@@ -2258,7 +2262,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "json-schema-traverse",\
-      "npm:1.0.0"\
+      "npm:0.4.1"\
     ],\
     [\
       "json-stable-stringify-without-jsonify",\
@@ -2274,7 +2278,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "jsonschema",\
-      "npm:1.4.1"\
+      "npm:1.5.0"\
     ],\
     [\
       "just-extend",\
@@ -2315,10 +2319,6 @@ const RAW_RUNTIME_STATE =
     [\
       "lodash.merge",\
       "npm:4.6.2"\
-    ],\
-    [\
-      "lodash.truncate",\
-      "npm:4.4.2"\
     ],\
     [\
       "log4js",\
@@ -2939,10 +2939,6 @@ const RAW_RUNTIME_STATE =
       "npm:1.0.0"\
     ],\
     [\
-      "table",\
-      "npm:6.9.0"\
-    ],\
-    [\
       "tar",\
       "npm:7.5.16"\
     ],\
@@ -3155,7 +3151,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "yaml",\
-      "npm:1.10.2"\
+      "npm:1.10.3"\
     ],\
     [\
       "yargs",\
@@ -3374,29 +3370,53 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@aws-cdk/asset-awscli-v1", [\
-      ["npm:2.2.242", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-awscli-v1-npm-2.2.242-612846f855-10c0.zip/node_modules/@aws-cdk/asset-awscli-v1/",\
+      ["npm:2.2.282", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-awscli-v1-npm-2.2.282-cb21db30a4-10c0.zip/node_modules/@aws-cdk/asset-awscli-v1/",\
         "packageDependencies": [\
-          ["@aws-cdk/asset-awscli-v1", "npm:2.2.242"]\
+          ["@aws-cdk/asset-awscli-v1", "npm:2.2.282"]\
         ],\
         "linkType": "HARD"\
       }]\
     ]],\
     ["@aws-cdk/asset-node-proxy-agent-v6", [\
-      ["npm:2.1.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-node-proxy-agent-v6-npm-2.1.0-cedeea62b8-10c0.zip/node_modules/@aws-cdk/asset-node-proxy-agent-v6/",\
+      ["npm:2.1.2", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-asset-node-proxy-agent-v6-npm-2.1.2-c7f1c06b99-10c0.zip/node_modules/@aws-cdk/asset-node-proxy-agent-v6/",\
         "packageDependencies": [\
-          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.0"]\
+          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@aws-cdk/cloud-assembly-api", [\
+      ["npm:2.2.6", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-cloud-assembly-api-npm-2.2.6-02fe3b87cf-10c0.zip/node_modules/@aws-cdk/cloud-assembly-api/",\
+        "packageDependencies": [\
+          ["@aws-cdk/cloud-assembly-api", "npm:2.2.6"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:ba82097a17a5f5da1e77f3f7563d9586e2e04e36adac0a54af9294350b5d49e2cee46e86b473ef1371a2b00648812f6043ed3a7a14920ac5158433ba7565b1f3#npm:2.2.6", {\
+        "packageLocation": "./.yarn/__virtual__/@aws-cdk-cloud-assembly-api-virtual-cef8f88d12/6/.yarn/berry/cache/@aws-cdk-cloud-assembly-api-npm-2.2.6-02fe3b87cf-10c0.zip/node_modules/@aws-cdk/cloud-assembly-api/",\
+        "packageDependencies": [\
+          ["@aws-cdk/cloud-assembly-api", "virtual:ba82097a17a5f5da1e77f3f7563d9586e2e04e36adac0a54af9294350b5d49e2cee46e86b473ef1371a2b00648812f6043ed3a7a14920ac5158433ba7565b1f3#npm:2.2.6"],\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.9.0"],\
+          ["@types/aws-cdk__cloud-assembly-schema", null],\
+          ["jsonschema", "npm:1.5.0"],\
+          ["semver", "npm:7.8.5"]\
+        ],\
+        "packagePeers": [\
+          "@aws-cdk/cloud-assembly-schema",\
+          "@types/aws-cdk__cloud-assembly-schema"\
         ],\
         "linkType": "HARD"\
       }]\
     ]],\
     ["@aws-cdk/cloud-assembly-schema", [\
-      ["npm:48.20.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-cloud-assembly-schema-npm-48.20.0-24379582d2-10c0.zip/node_modules/@aws-cdk/cloud-assembly-schema/",\
+      ["npm:54.9.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@aws-cdk-cloud-assembly-schema-npm-54.9.0-9a4eb05e59-10c0.zip/node_modules/@aws-cdk/cloud-assembly-schema/",\
         "packageDependencies": [\
-          ["@aws-cdk/cloud-assembly-schema", "npm:48.20.0"],\
-          ["jsonschema", "npm:1.4.1"],\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.9.0"],\
+          ["jsonschema", "npm:1.5.0"],\
           ["semver", "npm:7.8.5"]\
         ],\
         "linkType": "HARD"\
@@ -5901,10 +5921,10 @@ const RAW_RUNTIME_STATE =
           ["@types/unzipper", "npm:0.10.11"],\
           ["@typescript-eslint/eslint-plugin", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
           ["@typescript-eslint/parser", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
           ["aws-custom-resources", "npm:0.0.4"],\
           ["aws-sdk-client-mock", "npm:3.1.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
@@ -5950,10 +5970,10 @@ const RAW_RUNTIME_STATE =
           ["@types/unzipper", "npm:0.10.11"],\
           ["@typescript-eslint/eslint-plugin", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
           ["@typescript-eslint/parser", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
           ["aws-custom-resources", "npm:0.0.4"],\
           ["aws-sdk-client-mock", "npm:3.1.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
@@ -6023,8 +6043,8 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/artifact-registry", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.0.36"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
           ["@types/node", "npm:24.10.1"],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
@@ -6049,8 +6069,8 @@ const RAW_RUNTIME_STATE =
           ["@types/constructs", null],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/serverlessinbox__mailbox", null],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
@@ -6084,8 +6104,8 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox-cognito", "workspace:packages/mailbox-cognito"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/node", "npm:24.10.1"],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
@@ -6106,8 +6126,8 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox-cognito", "virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#workspace:packages/mailbox-cognito"],\
           ["@serverlessinbox/mailbox-cognito-identity-center", "workspace:packages/mailbox-cognito-identity-center"],\
           ["@types/node", "npm:20.19.25"],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
-          ["constructs", "npm:10.4.3"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["constructs", "npm:10.6.0"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
           ["jsii", "npm:5.9.44"],\
@@ -8272,33 +8292,33 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["aws-cdk-lib", [\
-      ["npm:2.230.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/aws-cdk-lib-npm-2.230.0-3ec2d1434b-10c0.zip/node_modules/aws-cdk-lib/",\
+      ["npm:2.261.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/aws-cdk-lib-npm-2.261.0-d12cadcc16-10c0.zip/node_modules/aws-cdk-lib/",\
         "packageDependencies": [\
-          ["aws-cdk-lib", "npm:2.230.0"]\
+          ["aws-cdk-lib", "npm:2.261.0"]\
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0", {\
-        "packageLocation": "./.yarn/__virtual__/aws-cdk-lib-virtual-a4f6f441ac/6/.yarn/berry/cache/aws-cdk-lib-npm-2.230.0-3ec2d1434b-10c0.zip/node_modules/aws-cdk-lib/",\
+      ["virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0", {\
+        "packageLocation": "./.yarn/__virtual__/aws-cdk-lib-virtual-ba82097a17/6/.yarn/berry/cache/aws-cdk-lib-npm-2.261.0-d12cadcc16-10c0.zip/node_modules/aws-cdk-lib/",\
         "packageDependencies": [\
-          ["@aws-cdk/asset-awscli-v1", "npm:2.2.242"],\
-          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.0"],\
-          ["@aws-cdk/cloud-assembly-schema", "npm:48.20.0"],\
+          ["@aws-cdk/asset-awscli-v1", "npm:2.2.282"],\
+          ["@aws-cdk/asset-node-proxy-agent-v6", "npm:2.1.2"],\
+          ["@aws-cdk/cloud-assembly-api", "virtual:ba82097a17a5f5da1e77f3f7563d9586e2e04e36adac0a54af9294350b5d49e2cee46e86b473ef1371a2b00648812f6043ed3a7a14920ac5158433ba7565b1f3#npm:2.2.6"],\
+          ["@aws-cdk/cloud-assembly-schema", "npm:54.9.0"],\
           ["@balena/dockerignore", "npm:1.0.2"],\
           ["@types/constructs", null],\
-          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.230.0"],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
           ["case", "npm:1.6.3"],\
-          ["constructs", "npm:10.4.3"],\
-          ["fs-extra", "npm:11.3.5"],\
+          ["constructs", "npm:10.6.0"],\
+          ["fs-extra", "npm:11.3.6"],\
           ["ignore", "npm:5.3.2"],\
           ["jsonschema", "npm:1.5.0"],\
           ["mime-types", "npm:2.1.35"],\
-          ["minimatch", "npm:3.1.2"],\
+          ["minimatch", "npm:10.2.5"],\
           ["punycode", "npm:2.3.1"],\
           ["semver", "npm:7.8.5"],\
-          ["table", "npm:6.9.0"],\
-          ["yaml", "npm:1.10.2"]\
+          ["yaml", "npm:1.10.3"]\
         ],\
         "packagePeers": [\
           "@types/constructs",\
@@ -8524,6 +8544,13 @@ const RAW_RUNTIME_STATE =
           ["balanced-match", "npm:1.0.2"]\
         ],\
         "linkType": "HARD"\
+      }],\
+      ["npm:4.0.4", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/balanced-match-npm-4.0.4-fd666b3c7f-10c0.zip/node_modules/balanced-match/",\
+        "packageDependencies": [\
+          ["balanced-match", "npm:4.0.4"]\
+        ],\
+        "linkType": "HARD"\
       }]\
     ]],\
     ["base64-js", [\
@@ -8589,6 +8616,14 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["balanced-match", "npm:1.0.2"],\
           ["brace-expansion", "npm:2.1.1"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:5.0.7", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/brace-expansion-npm-5.0.7-48dc108338-10c0.zip/node_modules/brace-expansion/",\
+        "packageDependencies": [\
+          ["balanced-match", "npm:4.0.4"],\
+          ["brace-expansion", "npm:5.0.7"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -9114,10 +9149,10 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["constructs", [\
-      ["npm:10.4.3", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/constructs-npm-10.4.3-5deb8bc137-10c0.zip/node_modules/constructs/",\
+      ["npm:10.6.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/constructs-npm-10.6.0-6e37e8fbbb-10c0.zip/node_modules/constructs/",\
         "packageDependencies": [\
-          ["constructs", "npm:10.4.3"]\
+          ["constructs", "npm:10.6.0"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -10080,6 +10115,16 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/fs-extra-npm-11.3.5-1aa9c62625-10c0.zip/node_modules/fs-extra/",\
         "packageDependencies": [\
           ["fs-extra", "npm:11.3.5"],\
+          ["graceful-fs", "npm:4.2.11"],\
+          ["jsonfile", "npm:6.2.0"],\
+          ["universalify", "npm:2.0.1"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:11.3.6", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/fs-extra-npm-11.3.6-1ac5bffb56-10c0.zip/node_modules/fs-extra/",\
+        "packageDependencies": [\
+          ["fs-extra", "npm:11.3.6"],\
           ["graceful-fs", "npm:4.2.11"],\
           ["jsonfile", "npm:6.2.0"],\
           ["universalify", "npm:2.0.1"]\
@@ -11737,13 +11782,6 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["jsonschema", [\
-      ["npm:1.4.1", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/jsonschema-npm-1.4.1-548ecda9d0-10c0.zip/node_modules/jsonschema/",\
-        "packageDependencies": [\
-          ["jsonschema", "npm:1.4.1"]\
-        ],\
-        "linkType": "HARD"\
-      }],\
       ["npm:1.5.0", {\
         "packageLocation": "../../../../../.yarn/berry/cache/jsonschema-npm-1.5.0-a1e4a2d9f7-10c0.zip/node_modules/jsonschema/",\
         "packageDependencies": [\
@@ -11850,15 +11888,6 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/lodash.merge-npm-4.6.2-77cb4416bf-10c0.zip/node_modules/lodash.merge/",\
         "packageDependencies": [\
           ["lodash.merge", "npm:4.6.2"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["lodash.truncate", [\
-      ["npm:4.4.2", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/lodash.truncate-npm-4.4.2-bc50fe1663-10c0.zip/node_modules/lodash.truncate/",\
-        "packageDependencies": [\
-          ["lodash.truncate", "npm:4.4.2"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -12099,6 +12128,14 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@isaacs/brace-expansion", "npm:5.0.0"],\
           ["minimatch", "npm:10.1.1"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:10.2.5", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/minimatch-npm-10.2.5-f1c8297822-10c0.zip/node_modules/minimatch/",\
+        "packageDependencies": [\
+          ["brace-expansion", "npm:5.0.7"],\
+          ["minimatch", "npm:10.2.5"]\
         ],\
         "linkType": "HARD"\
       }],\
@@ -13400,16 +13437,6 @@ const RAW_RUNTIME_STATE =
           ["slice-ansi", "npm:3.0.0"]\
         ],\
         "linkType": "HARD"\
-      }],\
-      ["npm:4.0.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/slice-ansi-npm-4.0.0-6eeca1d10e-10c0.zip/node_modules/slice-ansi/",\
-        "packageDependencies": [\
-          ["ansi-styles", "npm:4.3.0"],\
-          ["astral-regex", "npm:2.0.0"],\
-          ["is-fullwidth-code-point", "npm:3.0.0"],\
-          ["slice-ansi", "npm:4.0.0"]\
-        ],\
-        "linkType": "HARD"\
       }]\
     ]],\
     ["smart-buffer", [\
@@ -13672,20 +13699,6 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/supports-preserve-symlinks-flag-npm-1.0.0-f17c4d0028-10c0.zip/node_modules/supports-preserve-symlinks-flag/",\
         "packageDependencies": [\
           ["supports-preserve-symlinks-flag", "npm:1.0.0"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["table", [\
-      ["npm:6.9.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/table-npm-6.9.0-5955281f93-10c0.zip/node_modules/table/",\
-        "packageDependencies": [\
-          ["ajv", "npm:8.17.1"],\
-          ["lodash.truncate", "npm:4.4.2"],\
-          ["slice-ansi", "npm:4.0.0"],\
-          ["string-width", "npm:4.2.3"],\
-          ["strip-ansi", "npm:6.0.1"],\
-          ["table", "npm:6.9.0"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -14632,10 +14645,10 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["yaml", [\
-      ["npm:1.10.2", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/yaml-npm-1.10.2-0e780aebdf-10c0.zip/node_modules/yaml/",\
+      ["npm:1.10.3", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/yaml-npm-1.10.3-df9008b926-10c0.zip/node_modules/yaml/",\
         "packageDependencies": [\
-          ["yaml", "npm:1.10.2"]\
+          ["yaml", "npm:1.10.3"]\
         ],\
         "linkType": "HARD"\
       }]\
