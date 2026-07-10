@@ -213,6 +213,7 @@ export function makeCfClientFromOp(op: OperationInput): CloudFormationClient {
 
 export function isTerminalSuccess(status?: string): boolean {
   if (!status) return false;
+  if (status.startsWith('DELETE_')) return false; // DELETE_COMPLETE is not a deploy success
   return status.endsWith('_COMPLETE') && !status.includes('ROLLBACK');
 }
 

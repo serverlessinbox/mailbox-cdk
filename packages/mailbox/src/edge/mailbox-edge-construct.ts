@@ -102,11 +102,6 @@ export class MailboxEdgeConstruct extends Construct {
     // Lambda@Edge requires the execution role trust policy to allow BOTH principals.
     // CloudFront validates this during association.
     const blobAuthorizerRole = new iam.Role(this, 'blob-authorizer-role', {
-      // Deterministic IAM path so the edge deployer can scope its iam:* permissions to
-      // `role/<edge-stack-name>/*`. The path survives regardless of the CFN-generated role NAME,
-      // which gets truncated to IAM's 64-char limit for long stack names and therefore cannot be
-      // matched reliably by a name-prefix pattern. Contract with mailbox-edge-deployer-grants.ts.
-      path: `/${Aws.STACK_NAME}/`,
       assumedBy: new iam.CompositePrincipal(
         new iam.ServicePrincipal('lambda.amazonaws.com'),
         new iam.ServicePrincipal('edgelambda.amazonaws.com'),

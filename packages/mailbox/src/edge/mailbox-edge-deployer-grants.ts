@@ -200,17 +200,18 @@ export function grantEdgeDeployerWorkerPermissions(
     })
   );
 
-  // The edge template's single IAM role (blob-authorizer execution role) carries the deterministic
-  // path `/<edge-stack-name>/` (see mailbox-edge-construct.ts), so every role action is scoped to
-  // that path. Unlike the CFN-generated role NAME, the path is never truncated, so this pattern is
-  // reliable for any stack name length.
+  // The edge template's single IAM role (blob-authorizer execution role) is scoped by name-prefix
+  // `<edge-stack-name>-*` (see mailbox-edge-construct.ts). This pattern covers the CFN-generated
+  // role name and avoids path-based scoping that would break existing deployments already created
+  // with the default path. Known caveat: a very long root-stack name could truncate the role name
+  // past IAM's 64-char limit; a deliberate path-based migration is the future fix.
   const edgeRoleArnPrefix = props.stack.formatArn({
     service: 'iam',
     region: '',
     // IAM is global (no region), but ARNs are account-scoped.
     account: props.stack.account,
     resource: 'role',
-    resourceName: `${props.edgeStackName}/*`,
+    resourceName: `${props.edgeStackName}-*`,
   });
   worker.addToRolePolicy(
     new PolicyStatement({

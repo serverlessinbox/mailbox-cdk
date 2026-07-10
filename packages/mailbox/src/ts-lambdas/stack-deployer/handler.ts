@@ -5,6 +5,10 @@ import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
 
+// Poll attempt cap: ensures the worker responds within the CR serviceTimeout (60 min),
+// with comfortable headroom before CFN gives up. 135 attempts × 20s interval ≈ 45 min.
+const MAX_POLL_ATTEMPTS = 135;
+
 function limitReason(reason: string, maxLen: number = 3500): string {
   // CloudFormation Reason has a size limit; keep some headroom.
   if (reason.length <= maxLen) return reason;
@@ -138,13 +142,11 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       return { done: true, deleteRetryCount };
     }
 
-    // Safety net: cap the Delete polling loop so it cannot run until the Step Functions
-    // 90-minute execution timeout expires silently (which would leave CloudFormation waiting
-    // forever with no response). After ~80 minutes of polling we give up waiting and respond
-    // SUCCESS — the data stack resources are retained via DeletionPolicy anyway.
-    const maxDeletePollAttempts = 180; // 180 × 20s = 60 min, 30-minute safety margin before the 90-min SFN timeout
-    if (attempt >= maxDeletePollAttempts) {
-      console.warn(`Delete polling reached attempt ${attempt}/${maxDeletePollAttempts}; responding SUCCESS to unblock CloudFormation (stack status: ${stack.StackStatus}).`);
+    // Safety net: cap the Delete polling loop so the worker responds before the CloudFormation
+    // custom resource serviceTimeout (60 min). On cap, respond SUCCESS to unblock parent stack
+    // rollback/deletion; data stack resources are retained via DeletionPolicy.
+    if (attempt >= MAX_POLL_ATTEMPTS) {
+      console.warn(`Delete polling reached attempt ${attempt}/${MAX_POLL_ATTEMPTS}; responding SUCCESS to unblock CloudFormation (stack status: ${stack.StackStatus}).`);
       await putCfnResponse({
         cfn,
         status: 'SUCCESS',
@@ -178,6 +180,22 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
   }, null, 2));
 
   const status = stack.StackStatus;
+
+  // Hard-fail on DELETE_* status during non-Delete operations: a stack being torn down
+  // can never satisfy a create/update/redeploy. This blocks unbounded polling on DELETE_IN_PROGRESS.
+  if (status.startsWith('DELETE_')) {
+    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+    const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
+    await putCfnResponse({
+      cfn,
+      status: 'FAILED',
+      physicalResourceId: op.stackName,
+      reason: limitReason(`Stack ${op.stackName} is being deleted (status ${status}); cannot deploy into a deleting stack.` + details),
+      logStreamName: context?.logStreamName,
+    });
+    return { done: true, deleteRetryCount };
+  }
+
   if (isTerminalFailure(status)) {
     const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
@@ -199,6 +217,19 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       status: 'SUCCESS',
       physicalResourceId: op.stackName,
       data: outputs,
+      logStreamName: context?.logStreamName,
+    });
+    return { done: true, deleteRetryCount };
+  }
+
+  // Cap the non-Delete polling loop so the worker responds within the CR serviceTimeout (60 min).
+  // On cap, respond FAILED and stop polling.
+  if (attempt >= MAX_POLL_ATTEMPTS) {
+    await putCfnResponse({
+      cfn,
+      status: 'FAILED',
+      physicalResourceId: op.stackName,
+      reason: limitReason(`Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status})`),
       logStreamName: context?.logStreamName,
     });
     return { done: true, deleteRetryCount };
