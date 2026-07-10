@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   type ListObjectsV2CommandOutput,
 } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import unzipper from 'unzipper';
 
 import { guessContentType } from './ui-content-type';
@@ -15,7 +16,12 @@ import { normalizeRelativeKey, normalizePrefix } from './ui-paths';
 
 export { normalizePrefix };
 
-const s3 = new S3Client({});
+const requestHandler = new NodeHttpHandler({
+  requestTimeout: 5000,
+  connectionTimeout: 5000,
+});
+
+const s3 = new S3Client({ requestHandler });
 
 export async function deletePrefix(bucket: string, prefix: string): Promise<number> {
   let deleted = 0;

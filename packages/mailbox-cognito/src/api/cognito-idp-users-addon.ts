@@ -52,8 +52,8 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
   /** @internal */
   private readonly _lambdaConstruct: CognitoIdpUsersApiLambda;
 
-  /** The underlying CDK construct wrapping the Lambda function. */
-  public readonly lambdaFunction: Construct;
+  /** The underlying Lambda function. */
+  public readonly lambdaFunction: IFunction;
 
   constructor(scope: Construct, id: string, props: CognitoIdpUsersAdminApiAddonProps) {
     super(scope, id);
@@ -82,19 +82,19 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
 
     const authz = props.pool.fetchAuthorizationConfig?.();
     if (authz) {
-      this._lambdaConstruct.function.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
-      this._lambdaConstruct.function.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
+      this._lambdaConstruct.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
+      this._lambdaConstruct.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
     }
 
-    props.pool.grantAdminAccess(this._lambdaConstruct.fn);
-    props.auditEventsQueue.grantSendMessages(this._lambdaConstruct.fn);
+    props.pool.grantAdminAccess(this._lambdaConstruct);
+    props.auditEventsQueue.grantSendMessages(this._lambdaConstruct);
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
       path: `${this.basePath}/{proxy+}`,
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('cognito-idp-users', this._lambdaConstruct.fn),
+      integration: new HttpLambdaIntegration('cognito-idp-users', this._lambdaConstruct),
       authorizer,
     });
   }

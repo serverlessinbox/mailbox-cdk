@@ -1,10 +1,9 @@
-import { Duration, Aws } from 'aws-cdk-lib';
-import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoIdpUsersApiLambdaProps {
   artifactResolver: ICdkArtifactEngine;
@@ -22,36 +21,18 @@ export interface CognitoIdpUsersApiLambdaProps {
  * Expects an artifact at: `lambdas/cognito-idp-users-api.zip`
  * with handler: `index.handler`.
  */
-export class CognitoIdpUsersApiLambda extends Construct {
-  public readonly function: LambdaFunction;
-  public readonly fn: IFunction;
-
+export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoIdpUsersApiLambdaProps) {
-    super(scope, id);
-
-    const code: Code = props.artifactResolver.getCode(COGNITO_ARTIFACT_PACKAGE, 'lambdas/cognito-idp-users-api.zip');
-
-    this.function = new LambdaFunction(this, 'function', {
-      code,
-      runtime: Runtime.NODEJS_20_X,
-      architecture: Architecture.ARM_64,
-      handler: 'index.handler',
+    super(scope, id, {
+      lambdaId: 'cognito-idp-users-api',
+      artifactResolver: props.artifactResolver,
+      packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(15),
       memorySize: 256,
-      description: `Serverless Inbox Mailbox: cognito-idp-users-api (${Aws.STACK_NAME})`,
       environment: {
         USER_POOL_ID: props.userPoolId,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
       },
     });
-
-    applyArtifactTags(
-      this.function,
-      COGNITO_ARTIFACT_PACKAGE,
-      'cognito-idp-users-api',
-      props.artifactResolver.getVersion(COGNITO_ARTIFACT_PACKAGE),
-    );
-
-    this.fn = this.function;
   }
 }

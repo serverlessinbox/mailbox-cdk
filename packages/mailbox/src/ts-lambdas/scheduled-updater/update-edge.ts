@@ -6,6 +6,8 @@ import {
   LambdaClient,
   UpdateFunctionCodeCommand,
   PublishVersionCommand,
+  GetFunctionConfigurationCommand,
+  ResourceConflictException,
 } from '@aws-sdk/client-lambda';
 import {
   CloudFrontClient,
@@ -97,14 +99,79 @@ export async function advanceEdgeLambdaIfStale(
   try {
     console.log('updating edge lambda code', { edgeLambdaArn, artifactBucket: bucket, artifactKey, newVersion: pointer.version });
 
-    // 1. UpdateFunctionCode
-    await lambdaClient.send(
-      new UpdateFunctionCodeCommand({
-        FunctionName: edgeLambdaArn,
-        S3Bucket: bucket,
-        S3Key: artifactKey,
-      }),
-    );
+    // 1. UpdateFunctionCode with retry on ResourceConflictException
+    const maxUpdateAttempts = 3;
+    const updateDelays = [3000, 6000, 12000]; // ms
+    let lastUpdateError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxUpdateAttempts; attempt++) {
+      try {
+        await lambdaClient.send(
+          new UpdateFunctionCodeCommand({
+            FunctionName: edgeLambdaArn,
+            S3Bucket: bucket,
+            S3Key: artifactKey,
+          }),
+        );
+        lastUpdateError = null;
+        break;
+      } catch (err: any) {
+        if (err instanceof ResourceConflictException || err.name === 'ResourceConflictException') {
+          lastUpdateError = err;
+          if (attempt < maxUpdateAttempts - 1) {
+            const delayMs = updateDelays[attempt];
+            console.log('UpdateFunctionCode conflict, retrying', {
+              edgeLambdaArn,
+              attempt: attempt + 1,
+              nextRetryDelayMs: delayMs,
+              error: err.message,
+            });
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            continue;
+          }
+        }
+        throw err;
+      }
+    }
+
+    if (lastUpdateError) {
+      throw lastUpdateError;
+    }
+
+    // 1b. Poll for update completion
+    const maxPollAttempts = 30; // 60s total at 2s intervals
+    const pollIntervalMs = 2000;
+    let updateSettled = false;
+
+    for (let pollAttempt = 0; pollAttempt < maxPollAttempts; pollAttempt++) {
+      const cfgResp = await lambdaClient.send(
+        new GetFunctionConfigurationCommand({
+          FunctionName: edgeLambdaArn,
+        }),
+      );
+
+      const status = cfgResp.LastUpdateStatus;
+      if (status === 'Successful') {
+        updateSettled = true;
+        break;
+      }
+      if (status === 'Failed') {
+        const reason = cfgResp.LastUpdateStatusReason || 'unknown reason';
+        throw new Error(
+          `Function code update failed for ${edgeLambdaArn}: ${reason}`,
+        );
+      }
+
+      if (pollAttempt < maxPollAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      }
+    }
+
+    if (!updateSettled) {
+      throw new Error(
+        `Timed out waiting for function code update to settle for ${edgeLambdaArn}`,
+      );
+    }
 
     // 2. PublishVersion → new numeric version
     const versionResp = await lambdaClient.send(

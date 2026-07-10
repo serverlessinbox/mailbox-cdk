@@ -1,7 +1,13 @@
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createHash } from 'node:crypto';
 
-const cloudFront = new CloudFrontClient({});
+const requestHandler = new NodeHttpHandler({
+  requestTimeout: 5000,
+  connectionTimeout: 5000,
+});
+
+const cloudFront = new CloudFrontClient({ requestHandler });
 
 export async function invalidateCloudFront(params: {
   distributionId?: string;

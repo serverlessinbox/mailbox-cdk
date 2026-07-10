@@ -1,10 +1,9 @@
-import { Duration, Aws } from 'aws-cdk-lib';
-import { Architecture, Code, Function as LambdaFunction, IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoBootstrapUserLambdaProps {
   artifactResolver: ICdkArtifactEngine;
@@ -16,29 +15,14 @@ export interface CognitoBootstrapUserLambdaProps {
  * Expects an artifact at: `lambdas/cognito-bootstrap-user.zip`
  * with handler: `index.handler`.
  */
-export class CognitoBootstrapUserLambda extends Construct {
-  public readonly fn: IFunction;
-
+export class CognitoBootstrapUserLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoBootstrapUserLambdaProps) {
-    super(scope, id);
-
-    const code: Code = props.artifactResolver.getCode(COGNITO_ARTIFACT_PACKAGE, 'lambdas/cognito-bootstrap-user.zip');
-
-    this.fn = new LambdaFunction(this, 'function', {
-      code,
-      runtime: Runtime.NODEJS_20_X,
-      architecture: Architecture.ARM_64,
-      handler: 'index.handler',
+    super(scope, id, {
+      lambdaId: 'cognito-bootstrap-user',
+      artifactResolver: props.artifactResolver,
+      packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.minutes(2),
       memorySize: 256,
-      description: `Serverless Inbox Mailbox: cognito-bootstrap-user (${Aws.STACK_NAME})`,
     });
-
-    applyArtifactTags(
-      this.fn,
-      COGNITO_ARTIFACT_PACKAGE,
-      'cognito-bootstrap-user',
-      props.artifactResolver.getVersion(COGNITO_ARTIFACT_PACKAGE),
-    );
   }
 }

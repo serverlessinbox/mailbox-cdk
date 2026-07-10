@@ -49,7 +49,7 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
  * Automatically:
  * - Resolves code from artifact bucket using artifact resolver
  * - Sets up CloudWatch logs with retention
- * - Uses Node.js 20.x runtime with ARM64 architecture
+ * - Uses Node.js 24.x runtime with ARM64 architecture
  * - Configurable memory and timeout
  *
  * Example:
@@ -96,7 +96,7 @@ export class TypeScriptLambda extends LambdaFunction {
 
     super(scope, id, {
       code,
-      runtime: Runtime.NODEJS_20_X,
+      runtime: Runtime.NODEJS_24_X,
       handler,
       architecture: Architecture.ARM_64,
       memorySize: 512,

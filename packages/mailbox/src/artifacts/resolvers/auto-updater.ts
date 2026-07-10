@@ -80,7 +80,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
 
     // Create the shared resolver Lambda (gated on IsTracking)
     const fn = new lambda.Function(this, 'provider-handler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
       code: lambda.Code.fromInline(TRACK_RESOLVER_HANDLER_SOURCE),
@@ -177,7 +177,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     // Edge auto-update: publish new versions + update CloudFront
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['lambda:PublishVersion'],
+        actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
         resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
           StringEquals: {

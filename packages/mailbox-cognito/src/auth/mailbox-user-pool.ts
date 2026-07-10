@@ -407,7 +407,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const constructId = `bootstrapped-user-${index}`;
     const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
-    }).fn;
+    });
 
     new CustomResource(this, constructId, {
       resourceType: 'Custom::CognitoBootstrapUser',

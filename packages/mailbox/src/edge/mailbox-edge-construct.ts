@@ -115,7 +115,7 @@ export class MailboxEdgeConstruct extends Construct {
     // The key here is already the full path (artifact prefix included)
     // This is pre-calculated by the deployer
     const blobAuthorizerFunction = new lambda.Function(this, 'blob-authorizer', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromBucket(
         artifactBucket,
