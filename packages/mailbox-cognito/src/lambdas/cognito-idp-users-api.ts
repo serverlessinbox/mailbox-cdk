@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoIdpUsersApiLambdaProps {
   artifactResolver: ICdkArtifactEngine;
@@ -43,6 +44,13 @@ export class CognitoIdpUsersApiLambda extends Construct {
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
       },
     });
+
+    applyArtifactTags(
+      this.function,
+      COGNITO_ARTIFACT_PACKAGE,
+      'cognito-idp-users-api',
+      props.artifactResolver.getVersion(COGNITO_ARTIFACT_PACKAGE),
+    );
 
     this.fn = this.function;
   }

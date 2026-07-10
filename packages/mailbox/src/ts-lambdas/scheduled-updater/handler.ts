@@ -69,13 +69,13 @@ export const handler = async (): Promise<void> => {
           const artifactName = tags['serverless-inbox:artifact-name'];
           const deployedVersion = tags['serverless-inbox:artifact-version'];
 
-          if (!pkg || !artifactName || !deployedVersion) {
-            console.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
+          if (autoUpdateType === 'none') {
+            console.debug('skipping auto-update-type=none', { arn });
             continue;
           }
 
-          if (autoUpdateType === 'none') {
-            console.debug('skipping auto-update-type=none', { arn });
+          if (!pkg || !artifactName || !deployedVersion) {
+            console.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
             continue;
           }
 

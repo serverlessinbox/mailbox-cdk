@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import {
   S3Client,
   DeleteObjectsCommand,
@@ -7,11 +9,9 @@ import {
   type ListObjectsV2CommandOutput,
 } from '@aws-sdk/client-s3';
 import unzipper from 'unzipper';
-import { Readable } from 'node:stream';
 
 import { guessContentType } from './ui-content-type';
 import { normalizeRelativeKey, normalizePrefix } from './ui-paths';
-import { streamToBuffer } from './ui-streams';
 
 export { normalizePrefix };
 
@@ -77,33 +77,35 @@ export async function deployZipToPrefix(params: {
   const body = obj.Body;
   if (!body) throw new Error('S3 GetObject returned empty body');
 
+  // Buffer the entire (small) UI zip, then read entries via random access.
+  // This avoids two issues with the streaming pipe + for-await approach:
+  // 1. .pipe() does NOT forward source-stream errors, so errors on zipStream
+  //    (the S3 body) emit with no listener → uncaught exception → process exit
+  // 2. unzipper.Parse with forceStream consumed via for-await can leave the
+  //    final iterator promise unsettled → event loop empties → Node exits
+  // Both bypass the try/catch → Lambda NodeJsExit crash.
+  const zipBuffer = Buffer.from(await body.transformToByteArray());
+  const directory = await unzipper.Open.buffer(zipBuffer);
+
   let uploaded = 0;
-  const zipStream = body instanceof Readable ? body : Readable.from(body as any);
-  const directory = zipStream.pipe(unzipper.Parse({ forceStream: true }));
+  for (const file of directory.files) {
+    if (file.type === 'Directory') continue;
 
-  for await (const entry of directory) {
-    const entryPath = entry.path as string;
-
-    if (entry.type === 'Directory') {
-      entry.autodrain();
-      continue;
-    }
-
-    const relative = normalizeRelativeKey(entryPath);
+    const relative = normalizeRelativeKey(file.path);
     const key = `${targetPrefix}${relative}`;
 
     // Don't stream the entry directly into S3 PutObject.
     // The AWS SDK may sign streaming bodies with strict chunking requirements
     // ("Only the last chunk is allowed to have a size less than 8192 bytes").
     // Buffering avoids that failure mode and is fine for UI asset zips.
-    const entryBody = await streamToBuffer(entry);
+    const content = await file.buffer();
 
     await s3.send(
       new PutObjectCommand({
         Bucket: targetBucket,
         Key: key,
-        Body: entryBody,
-        ContentLength: entryBody.length,
+        Body: content,
+        ContentLength: content.length,
         ContentType: guessContentType(key),
       }),
     );

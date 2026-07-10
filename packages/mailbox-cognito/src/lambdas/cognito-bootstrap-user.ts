@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoBootstrapUserLambdaProps {
   artifactResolver: ICdkArtifactEngine;
@@ -32,5 +33,12 @@ export class CognitoBootstrapUserLambda extends Construct {
       memorySize: 256,
       description: `Serverless Inbox Mailbox: cognito-bootstrap-user (${Aws.STACK_NAME})`,
     });
+
+    applyArtifactTags(
+      this.fn,
+      COGNITO_ARTIFACT_PACKAGE,
+      'cognito-bootstrap-user',
+      props.artifactResolver.getVersion(COGNITO_ARTIFACT_PACKAGE),
+    );
   }
 }

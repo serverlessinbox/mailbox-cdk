@@ -458,6 +458,74 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       expect(mockReadReleasePointer).not.toHaveBeenCalled();
     });
 
+    it('skips resource with auto-update-type=none and NO artifact tags (branch-order fix)', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+
+      // Blob CDN distribution or infrastructure lambda: marked as auto-update-type=none with no artifact tags
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:blob-cdn',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
+              // No artifact-package, artifact-name, artifact-version
+            ],
+          },
+        ],
+      });
+
+      await handler();
+
+      // Should log "skipping auto-update-type=none" and NOT "missing artifact tags"
+      expect(mockReadReleasePointer).not.toHaveBeenCalled();
+    });
+
+    it('skips untagged resource (defaults to auto-update-type=none)', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:untagged-lambda',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              // No auto-update-type tag, no artifact tags
+            ],
+          },
+        ],
+      });
+
+      await handler();
+
+      // Should default to auto-update-type=none and skip cleanly
+      expect(mockReadReleasePointer).not.toHaveBeenCalled();
+    });
+
+    it('logs missing artifact tags for auto-update-type=code resource missing artifact-version', async () => {
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+              // Missing artifact-version: should trigger "missing artifact tags" log
+            ],
+          },
+        ],
+      });
+
+      await handler();
+
+      // Should NOT call readReleasePointer (opt-in but misconfigured)
+      expect(mockReadReleasePointer).not.toHaveBeenCalled();
+    });
+
     it('handles pagination correctly in region scan', async () => {
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
