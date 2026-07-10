@@ -6,6 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
 
 export interface CdnProps {
   readonly blobStore: IBucket;
@@ -99,6 +100,8 @@ export class Cdn extends Construct {
       },
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // US, Canada, Europe
     });
+
+    cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     this.host = `https://${props.domainName && props.certificate ? props.domainName : this.distribution.distributionDomainName}`;
     this.distributionId = this.distribution.distributionId;

@@ -160,6 +160,9 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
     );
 
     // UI auto-update: extract bundle, upload to bucket, invalidate CloudFront
+    // aws:ResourceTag reads the object's own tags (a freshly-uploaded object is untagged → always denies),
+    // so scope object writes by the containing bucket's tag via s3:BucketTag; UI buckets are per-UI dedicated
+    // and carry the root-stack base tag.
     updater.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
@@ -169,7 +172,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
         ],
         conditions: {
           StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
+            [`s3:BucketTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
           },
         },
       }),
@@ -188,7 +191,8 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       }),
     );
 
-    // CloudFront distribution management: scope to distributions tagged with this stack
+    // CloudFront distribution management: scope to this account and root-stack tag.
+    // CloudFront distribution resource type supports aws:ResourceTag, so distributions are scoped by the root-stack tag.
     updater.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
@@ -201,7 +205,8 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       }),
     );
 
-    // TagResource constrained to artifact-version tag only; prevents rewriting root-stack scope or injecting arbitrary tags
+    // TagResource constrained to distributions matching root-stack tag and allowing only artifact-version mutations.
+    // Prevents rewriting root-stack scope or injecting arbitrary tags.
     updater.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cloudfront:TagResource'],
