@@ -71,10 +71,15 @@ export function grantEdgeDeployerWorkerPermissions(
 
   // ACM certificate lifecycle. Certificate ARNs are random UUIDs, so only the account/region can
   // be pinned. Scoping strategy prevents tagging-based escalation:
-  // - RequestCertificate is gated by aws:RequestTag so new certs are born owned.
-  // - Post-create tag mutations (AddTagsToCertificate/RemoveTagsFromCertificate) are gated by
-  //   aws:ResourceTag so only already-owned certs can be modified (blocks tagging a foreign cert
-  //   into scope).
+  // - RequestCertificate is granted unconditionally on the region+account ARN prefix. CloudFormation
+  //   creates ACM certificates untagged, then applies tags via a separate AddTagsToCertificate call,
+  //   so aws:RequestTag is never satisfied on RequestCertificate in the CFN path. Scope by region+account
+  //   instead. Low risk: RequestCertificate only creates new certs (random ARNs), cannot read/modify/delete
+  //   existing certs.
+  // - AddTagsToCertificate is gated by aws:RequestTag (on the root-stack tag being WRITTEN) so the worker
+  //   can only stamp its own owner value on initially-untagged certs, blocking escalation via tagging
+  //   foreign certs into scope. ResourceTag cannot gate this initial tagging (cert has no tags at birth).
+  // - RemoveTagsFromCertificate is gated by aws:ResourceTag so only already-owned certs can be untagged.
   // - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
   const certificateArnPrefix = props.stack.formatArn({
     service: 'acm',
@@ -88,11 +93,6 @@ export function grantEdgeDeployerWorkerPermissions(
         'acm:RequestCertificate',
       ],
       resources: [certificateArnPrefix],
-      conditions: {
-        StringEquals: {
-          [requestStackTagKey]: props.rootStack,
-        },
-      },
     })
   );
   worker.addToRolePolicy(
@@ -108,6 +108,18 @@ export function grantEdgeDeployerWorkerPermissions(
     new PolicyStatement({
       actions: [
         'acm:AddTagsToCertificate',
+      ],
+      resources: [certificateArnPrefix],
+      conditions: {
+        StringEquals: {
+          [requestStackTagKey]: props.rootStack,
+        },
+      },
+    })
+  );
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: [
         'acm:RemoveTagsFromCertificate',
       ],
       resources: [certificateArnPrefix],
