@@ -76,9 +76,10 @@ export function grantEdgeDeployerWorkerPermissions(
   //   so aws:RequestTag is never satisfied on RequestCertificate in the CFN path. Scope by region+account
   //   instead. Low risk: RequestCertificate only creates new certs (random ARNs), cannot read/modify/delete
   //   existing certs.
-  // - AddTagsToCertificate is gated by aws:RequestTag (on the root-stack tag being WRITTEN) so the worker
-  //   can only stamp its own owner value on initially-untagged certs, blocking escalation via tagging
-  //   foreign certs into scope. ResourceTag cannot gate this initial tagging (cert has no tags at birth).
+  // - AddTagsToCertificate: split into two statements (see below). RequestTag covers the CREATE path;
+  //   ResourceTag covers the UPDATE path. On CREATE, CloudFormation tags the untagged cert with root-stack.
+  //   On UPDATE, CloudFormation sends only changed tags (root-stack may be absent), so ResourceTag is needed
+  //   to match the already-tagged cert. Together they block escalation via tagging foreign certs into scope.
   // - RemoveTagsFromCertificate is gated by aws:ResourceTag so only already-owned certs can be untagged.
   // - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
   const certificateArnPrefix = props.stack.formatArn({
@@ -104,6 +105,8 @@ export function grantEdgeDeployerWorkerPermissions(
       resources: [certificateArnPrefix],
     })
   );
+  // AddTags on CREATE: CloudFormation tags the initially-untagged cert, so root-stack is in the request.
+  // aws:RequestTag gates to only the CREATE path.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -113,6 +116,20 @@ export function grantEdgeDeployerWorkerPermissions(
       conditions: {
         StringEquals: {
           [requestStackTagKey]: props.rootStack,
+        },
+      },
+    })
+  );
+  // AddTags on an UPDATE: CloudFormation sends only changed tags, so root-stack may be absent from the
+  // request (aws:RequestTag above won't match) — but the cert already exists and carries the root-stack
+  // tag from creation, so aws:ResourceTag links it. Union of the two covers create + update.
+  worker.addToRolePolicy(
+    new PolicyStatement({
+      actions: ['acm:AddTagsToCertificate'],
+      resources: [certificateArnPrefix],
+      conditions: {
+        StringEquals: {
+          [rootStackTagKey]: props.rootStack,
         },
       },
     })
