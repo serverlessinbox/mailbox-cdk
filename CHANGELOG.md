@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.47](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.46...v0.0.47) (Fri Jul 10 2026)
+
+### fix
+
+* Cert grant ([380b71c](https://github.com/serverlessinbox/mailbox-cdk/commit/380b71ca35baa7618b256442d828c8ce4860cf25))
+
 ## [0.0.46](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.45...v0.0.46) (Fri Jul 10 2026)
 
 ### fix
