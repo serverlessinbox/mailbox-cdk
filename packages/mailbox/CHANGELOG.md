@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.51](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.50...v0.0.51) (Sat Jul 11 2026)
+
+### fix
+
+* Socket handling fixed in node 24 ([c5ac3c3](https://github.com/serverlessinbox/mailbox-cdk/commit/c5ac3c3da1210756c9cbcde6edbed97c236d3de3))
+
 ## [0.0.50](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.49...v0.0.50) (Fri Jul 10 2026)
 
 ### fix
