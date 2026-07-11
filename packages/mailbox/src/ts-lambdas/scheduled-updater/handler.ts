@@ -17,6 +17,7 @@ import {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
 } from '@aws-sdk/client-resource-groups-tagging-api';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { advanceLambdaIfStale } from './update-code';
 import { advanceUiBucketIfStale } from './update-ui';
 import { advanceEdgeLambdaIfStale } from './update-edge';
@@ -29,99 +30,112 @@ function getRootStackTag(): string {
 
 /**
  * Main handler: EventBridge-triggered, scans both regions for targets and updates stale ones.
+ * Implements buffered logging: only logs when updates occur or errors happen.
  */
 export const handler = async (): Promise<void> => {
-  const rootStackTag = getRootStackTag();
-  const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
-  const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
+  const logger = new LoggerBuffer();
 
-  console.log('scheduled updater started', {
-    rootStackTag,
-    regions: uniqueRegions,
-    granularity: process.env.GRANULARITY,
-  });
+  try {
+    const rootStackTag = getRootStackTag();
+    const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
+    const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
 
-  // Scan Lambda functions and CloudFront distributions in both regions.
-  for (const region of uniqueRegions) {
-    const tagging = new ResourceGroupsTaggingAPIClient({ region });
-    let nextToken: string | undefined;
+    logger.info('scheduled updater started', {
+      rootStackTag,
+      regions: uniqueRegions,
+      granularity: process.env.GRANULARITY,
+    });
 
-    do {
-      const response = await tagging.send(
-        new GetResourcesCommand({
-          TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [rootStackTag] }],
-          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-          PaginationToken: nextToken,
-        }),
-      );
+    // Scan Lambda functions and CloudFront distributions in both regions.
+    for (const region of uniqueRegions) {
+      const tagging = new ResourceGroupsTaggingAPIClient({ region });
+      let nextToken: string | undefined;
 
-      if (response.ResourceTagMappingList) {
-        for (const resource of response.ResourceTagMappingList) {
-          const arn = resource.ResourceARN;
-          if (!arn) continue;
+      do {
+        const response = await tagging.send(
+          new GetResourcesCommand({
+            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [rootStackTag] }],
+            ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
+            PaginationToken: nextToken,
+          }),
+        );
 
-          const tags = tagMapFrom(resource.Tags);
-          const resourceType = arn.split(':')[2]; // Extract service type from ARN (position 2 = s3|lambda|etc)
+        if (response.ResourceTagMappingList) {
+          for (const resource of response.ResourceTagMappingList) {
+            const arn = resource.ResourceARN;
+            if (!arn) continue;
 
-          // Read auto-update type
-          const autoUpdateType = tags['serverless-inbox:auto-update-type'] ?? 'none';
-          const pkg = tags['serverless-inbox:artifact-package'];
-          const artifactName = tags['serverless-inbox:artifact-name'];
-          const deployedVersion = tags['serverless-inbox:artifact-version'];
+            const tags = tagMapFrom(resource.Tags);
+            const resourceType = arn.split(':')[2]; // Extract service type from ARN (position 2 = s3|lambda|etc)
 
-          if (autoUpdateType === 'none') {
-            console.debug('skipping auto-update-type=none', { arn });
-            continue;
-          }
+            // Read auto-update type
+            const autoUpdateType = tags['serverless-inbox:auto-update-type'] ?? 'none';
+            const pkg = tags['serverless-inbox:artifact-package'];
+            const artifactName = tags['serverless-inbox:artifact-name'];
+            const deployedVersion = tags['serverless-inbox:artifact-version'];
 
-          if (!pkg || !artifactName || !deployedVersion) {
-            console.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
-            continue;
-          }
-
-          try {
-            // Route by resource type and auto-update-type
-            if (resourceType === 'cloudfront') {
-              // CloudFront distribution: only UI type is supported
-              if (autoUpdateType === 'ui') {
-                const bucketName = tags['serverless-inbox:bucket-name'];
-                if (!bucketName) {
-                  console.debug('UI distribution missing bucket-name tag', { arn });
-                  continue;
-                }
-                await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn);
-              } else {
-                console.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
-              }
-            } else if (resourceType === 'lambda') {
-              // Lambda function: code or edge types
-              switch (autoUpdateType) {
-                case 'code':
-                  await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion);
-                  break;
-                case 'edge':
-                  if (region === 'us-east-1') {
-                    await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion);
-                  } else {
-                    console.debug('skipping edge update in non-us-east-1 region', { arn, region });
-                  }
-                  break;
-                default:
-                  console.debug('unknown auto-update-type for lambda', { arn, type: autoUpdateType });
-              }
-            } else {
-              console.debug('unknown resource type', { arn, resourceType });
+            if (autoUpdateType === 'none') {
+              logger.debug('skipping auto-update-type=none', { arn });
+              continue;
             }
-          } catch (err: any) {
-            console.error('failed to update resource', { arn, error: err.message });
-            // Continue processing other targets.
+
+            if (!pkg || !artifactName || !deployedVersion) {
+              logger.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
+              continue;
+            }
+
+            try {
+              // Route by resource type and auto-update-type
+              if (resourceType === 'cloudfront') {
+                // CloudFront distribution: only UI type is supported
+                if (autoUpdateType === 'ui') {
+                  const bucketName = tags['serverless-inbox:bucket-name'];
+                  if (!bucketName) {
+                    logger.debug('UI distribution missing bucket-name tag', { arn });
+                    continue;
+                  }
+                  await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn, logger);
+                } else {
+                  logger.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
+                }
+              } else if (resourceType === 'lambda') {
+                // Lambda function: code or edge types
+                switch (autoUpdateType) {
+                  case 'code':
+                    await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion, logger);
+                    break;
+                  case 'edge':
+                    if (region === 'us-east-1') {
+                      await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion, logger);
+                    } else {
+                      logger.debug('skipping edge update in non-us-east-1 region', { arn, region });
+                    }
+                    break;
+                  default:
+                    logger.debug('unknown auto-update-type for lambda', { arn, type: autoUpdateType });
+                }
+              } else {
+                logger.debug('unknown resource type', { arn, resourceType });
+              }
+            } catch (err: any) {
+              logger.error('failed to update resource', { arn, error: err.message });
+              // Continue processing other targets.
+            }
           }
         }
-      }
 
-      nextToken = response.PaginationToken;
-    } while (nextToken);
+        nextToken = response.PaginationToken;
+      } while (nextToken);
+    }
+
+    logger.info('scheduled updater completed');
+  } catch (err: any) {
+    logger.error('scheduled updater failed', { error: err.message });
+    throw err;
+  } finally {
+    // Flush buffered logs only if there were updates or errors.
+    if (logger.shouldFlush()) {
+      logger.flush();
+    }
   }
-
-  console.log('scheduled updater completed');
 };

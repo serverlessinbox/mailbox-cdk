@@ -13,6 +13,7 @@ import {
   UpdateFunctionCodeCommand,
   TagResourceCommand,
 } from '@aws-sdk/client-lambda';
+import { LoggerBuffer } from '../../shared/logger-buffer';
 import { advanceLambdaIfStale } from '../update-code';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -55,15 +56,18 @@ describe('advanceLambdaIfStale', () => {
   it('skips update when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
+    const logger = new LoggerBuffer();
 
-    await advanceLambdaIfStale(
+    const updated = await advanceLambdaIfStale(
       'us-east-1',
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     expect(mockDeriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // No AWS SDK calls should have been made
@@ -77,15 +81,18 @@ describe('advanceLambdaIfStale', () => {
       version: '1.2.3',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceLambdaIfStale(
+    const updated = await advanceLambdaIfStale(
       'us-east-1',
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     expect(mockDeriveTrack).toHaveBeenCalled();
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // Real semver.gt('1.2.3', '1.2.3') returns false, so no update occurs
@@ -103,15 +110,18 @@ describe('advanceLambdaIfStale', () => {
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceLambdaIfStale(
+    const updated = await advanceLambdaIfStale(
       'us-east-1',
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(true);
     // Verify readReleasePointer was called with default bucketBase
     expect(mockReadReleasePointer).toHaveBeenCalledWith(
       'mailbox-go',
@@ -141,15 +151,18 @@ describe('advanceLambdaIfStale', () => {
       version: 'not-a-semver',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceLambdaIfStale(
+    const updated = await advanceLambdaIfStale(
       'us-east-1',
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     // Should skip without calling UpdateFunctionCodeCommand
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
   });
@@ -165,9 +178,11 @@ describe('advanceLambdaIfStale', () => {
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0');
+    const updated = await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0', logger);
 
+    expect(updated).toBe(true);
     // Verify both the readReleasePointer and UpdateFunctionCodeCommand use custom bucket
     expect(mockReadReleasePointer).toHaveBeenCalledWith('test-pkg', 'latest', 'us-east-1', expect.objectContaining({ bucketBase: 'custom-artifacts' }));
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input.S3Bucket).toBe('custom-artifacts-us-east-1');

@@ -8,6 +8,7 @@ import {
   TagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { deployZipToPrefix, normalizePrefix } from '../shared/ui-ops';
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
 import { resolveStaleTarget } from './staleness';
@@ -17,6 +18,7 @@ import { requireEnv, artifactBucketName } from './common';
  * Update a UI bucket's contents if a newer bundle version is available.
  * Extracts the bundle zip, uploads files to the target bucket, invalidates CloudFront,
  * and updates the distribution's artifact-version tag via CloudFront TagResource.
+ * Returns true if an update occurred, false if no-op (not stale).
  *
  * packageName and artifactName come from the distribution's tags.
  * Uses process.env.AWS_REGION (deployment region) for artifact resolution, not the scan region.
@@ -28,7 +30,8 @@ export async function advanceUiBucketIfStale(
   artifactName: string,
   deployedVersion: string,
   distributionArn: string,
-): Promise<void> {
+  logger: LoggerBuffer,
+): Promise<boolean> {
   const project = requireEnv('PROJECT');
   const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
   const deploymentRegion = process.env.AWS_REGION || 'us-east-1';
@@ -36,7 +39,7 @@ export async function advanceUiBucketIfStale(
   // Check staleness using deployment region (where the bundle artifact lives)
   const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion);
   if (!stale) {
-    return;
+    return false;
   }
 
   const { pointer, parsed } = stale;
@@ -51,7 +54,7 @@ export async function advanceUiBucketIfStale(
   const bucket = artifactBucketName(bucketBase, deploymentRegion);
 
   try {
-    console.log('updating UI bucket', { bucketName, artifactBucket: bucket, artifactKey, newVersion: pointer.version, deploymentRegion });
+    logger.info('updating UI bucket', { bucketName, artifactBucket: bucket, artifactKey, newVersion: pointer.version, deploymentRegion });
 
     // Extract distribution ID from ARN for invalidation and logging
     // ARN format: arn:aws:cloudfront::ACCOUNT:distribution/DISTRIBUTION_ID
@@ -87,7 +90,7 @@ export async function advanceUiBucketIfStale(
       }),
     );
 
-    console.log('UI bucket updated', {
+    logger.info('UI bucket updated', {
       bucketName,
       distributionId,
       oldVersion: deployedVersion,
@@ -95,8 +98,11 @@ export async function advanceUiBucketIfStale(
       filesUploaded: res.uploaded,
       cacheInvalidated: invalidationRes.invalidated,
     });
+
+    logger.recordUpdate();
+    return true;
   } catch (err: any) {
-    console.error('failed to update UI bucket', { bucketName, distributionId: distributionArn.split('/')[1], error: err.message });
+    logger.error('failed to update UI bucket', { bucketName, distributionId: distributionArn.split('/')[1], error: err.message });
     throw err;
   }
 }

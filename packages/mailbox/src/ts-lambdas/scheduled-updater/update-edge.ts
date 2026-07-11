@@ -17,6 +17,7 @@ import {
   DistributionConfig,
 } from '@aws-sdk/client-cloudfront';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { resolveStaleTarget } from './staleness';
 import { requireEnv, artifactBucketName, bumpArtifactVersionTag } from './common';
 
@@ -64,14 +65,16 @@ function stripLambdaVersion(arn: string): string {
 
 /**
  * Update an edge Lambda: UpdateFunctionCode, PublishVersion, and repoint CloudFront.
- * On success, update the lambda's artifact-version tag.
+ * On success, update the lambda's artifact-version tag and log via the provided buffer.
+ * Returns true if an update occurred, false if no-op (not stale).
  */
 export async function advanceEdgeLambdaIfStale(
   edgeLambdaArn: string,
   packageName: string,
   artifactName: string,
   deployedVersion: string,
-): Promise<void> {
+  logger: LoggerBuffer,
+): Promise<boolean> {
   const project = requireEnv('PROJECT');
   const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
   const region = 'us-east-1'; // Edge lambdas are always us-east-1
@@ -79,7 +82,7 @@ export async function advanceEdgeLambdaIfStale(
   // Check staleness
   const stale = await resolveStaleTarget(region, packageName, deployedVersion);
   if (!stale) {
-    return;
+    return false;
   }
 
   const { pointer, parsed } = stale;
@@ -97,7 +100,7 @@ export async function advanceEdgeLambdaIfStale(
   const cfClient = new CloudFrontClient({ region });
 
   try {
-    console.log('updating edge lambda code', { edgeLambdaArn, artifactBucket: bucket, artifactKey, newVersion: pointer.version });
+    logger.info('updating edge lambda code', { edgeLambdaArn, artifactBucket: bucket, artifactKey, newVersion: pointer.version });
 
     // 1. UpdateFunctionCode with retry on ResourceConflictException
     const maxUpdateAttempts = 3;
@@ -120,7 +123,7 @@ export async function advanceEdgeLambdaIfStale(
           lastUpdateError = err;
           if (attempt < maxUpdateAttempts - 1) {
             const delayMs = updateDelays[attempt];
-            console.log('UpdateFunctionCode conflict, retrying', {
+            logger.info('UpdateFunctionCode conflict, retrying', {
               edgeLambdaArn,
               attempt: attempt + 1,
               nextRetryDelayMs: delayMs,
@@ -258,15 +261,18 @@ export async function advanceEdgeLambdaIfStale(
     // 6. Tag the lambda to record the new artifact-version
     await bumpArtifactVersionTag(lambdaClient, edgeLambdaArn, pointer.version);
 
-    console.log('edge lambda updated', {
+    logger.info('edge lambda updated', {
       edgeLambdaArn,
       newVersionArn,
       distributionId: targetDistributionId,
       oldVersion: deployedVersion,
       newVersion: pointer.version,
     });
+
+    logger.recordUpdate();
+    return true;
   } catch (err: any) {
-    console.error('failed to update edge lambda', { edgeLambdaArn, error: err.message });
+    logger.error('failed to update edge lambda', { edgeLambdaArn, error: err.message });
     throw err;
   }
 }

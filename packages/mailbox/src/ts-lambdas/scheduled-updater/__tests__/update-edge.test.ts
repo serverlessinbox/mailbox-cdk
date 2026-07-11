@@ -20,6 +20,7 @@ import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
+import { LoggerBuffer } from '../../shared/logger-buffer';
 import { advanceEdgeLambdaIfStale } from '../update-edge';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -143,14 +144,17 @@ describe('advanceEdgeLambdaIfStale', () => {
   it('skips when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     expect(mockDeriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // No update commands should occur
@@ -164,14 +168,17 @@ describe('advanceEdgeLambdaIfStale', () => {
       version: '1.2.3',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     // No update commands
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
   });
@@ -182,14 +189,17 @@ describe('advanceEdgeLambdaIfStale', () => {
       version: 'invalid',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(false);
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
   });
 
@@ -233,14 +243,17 @@ describe('advanceEdgeLambdaIfStale', () => {
 
     cloudFrontMock.on(UpdateDistributionCommand).resolves({});
     lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(true);
     // Verify UpdateFunctionCode was called
     const updateCalls = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
     expect(updateCalls).toHaveLength(1);
@@ -343,14 +356,17 @@ describe('advanceEdgeLambdaIfStale', () => {
 
     cloudFrontMock.on(UpdateDistributionCommand).resolves({});
     lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(true);
     // Verify UpdateDistribution was called with correct ETag
     const updateDistCalls = cloudFrontMock.commandCalls(UpdateDistributionCommand);
     expect(updateDistCalls).toHaveLength(1);
@@ -394,6 +410,7 @@ describe('advanceEdgeLambdaIfStale', () => {
         Quantity: 1,
       },
     });
+    const logger = new LoggerBuffer();
 
     await expect(
       advanceEdgeLambdaIfStale(
@@ -401,6 +418,7 @@ describe('advanceEdgeLambdaIfStale', () => {
         'edge-pkg',
         'edge-lambda',
         '1.2.3',
+        logger,
       ),
     ).rejects.toThrow(`No CloudFront distribution found for edge lambda ${edgeLambdaArn}`);
   });
@@ -440,14 +458,17 @@ describe('advanceEdgeLambdaIfStale', () => {
 
     cloudFrontMock.on(UpdateDistributionCommand).resolves({});
     lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceEdgeLambdaIfStale(
+    const updated = await advanceEdgeLambdaIfStale(
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',
       '1.2.3',
+      logger,
     );
 
+    expect(updated).toBe(true);
     const updateCalls = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
     expect(updateCalls[0].args[0].input.S3Bucket).toBe('custom-artifacts-us-east-1');
   });

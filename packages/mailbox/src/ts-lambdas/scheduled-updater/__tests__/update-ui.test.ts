@@ -12,6 +12,7 @@ import {
   CloudFrontClient,
   TagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
+import { LoggerBuffer } from '../../shared/logger-buffer';
 import { advanceUiBucketIfStale } from '../update-ui';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -62,16 +63,19 @@ describe('advanceUiBucketIfStale', () => {
   it('skips when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
+    const logger = new LoggerBuffer();
 
-    await advanceUiBucketIfStale(
+    const updated = await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      logger,
     );
 
+    expect(updated).toBe(false);
     expect(mockDeriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // No S3 operations should occur
@@ -84,16 +88,19 @@ describe('advanceUiBucketIfStale', () => {
       version: '1.2.3',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceUiBucketIfStale(
+    const updated = await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      logger,
     );
 
+    expect(updated).toBe(false);
     // Pointer version equals deployed, no operations
     expect(deployZipToPrefix).not.toHaveBeenCalled();
   });
@@ -109,17 +116,20 @@ describe('advanceUiBucketIfStale', () => {
     (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
 
     cloudFrontMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
     const distributionArn = 'arn:aws:cloudfront::818189473156:distribution/ABCD1234';
-    await advanceUiBucketIfStale(
+    const updated = await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
       distributionArn,
+      logger,
     );
 
+    expect(updated).toBe(true);
     // Verify deployZipToPrefix was called
     expect(deployZipToPrefix).toHaveBeenCalledWith({
       sourceBucket: 'mailbox-artifacts-us-east-1',
@@ -155,16 +165,19 @@ describe('advanceUiBucketIfStale', () => {
       version: 'not-a-version',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
     });
+    const logger = new LoggerBuffer();
 
-    await advanceUiBucketIfStale(
+    const updated = await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      logger,
     );
 
+    expect(updated).toBe(false);
     // Should skip entirely
     expect(deployZipToPrefix).not.toHaveBeenCalled();
   });
@@ -181,16 +194,19 @@ describe('advanceUiBucketIfStale', () => {
     (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
 
     cloudFrontMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
 
-    await advanceUiBucketIfStale(
+    const updated = await advanceUiBucketIfStale(
       'us-east-1',
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      logger,
     );
 
+    expect(updated).toBe(true);
     // Verify custom bucket base was used
     expect(deployZipToPrefix).toHaveBeenCalledWith(
       expect.objectContaining({
