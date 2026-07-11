@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.52](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.51...v0.0.52) (Sat Jul 11 2026)
+
+### feat
+
+* Logging updates ([56ecaee](https://github.com/serverlessinbox/mailbox-cdk/commit/56ecaeed087107c8458da2066b7ec97acdab1f07))
+
 ## [0.0.51](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.50...v0.0.51) (Sat Jul 11 2026)
 
 ### fix
