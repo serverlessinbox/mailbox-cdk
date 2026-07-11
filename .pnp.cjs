@@ -5911,7 +5911,6 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
-          ["@smithy/node-http-handler", "npm:4.9.4"],\
           ["@types/aws-cdk-lib", null],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/constructs", null],\
@@ -5963,7 +5962,6 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
-          ["@smithy/node-http-handler", "npm:4.9.4"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/jest", "npm:29.5.14"],\
           ["@types/mime-types", "npm:2.1.4"],\

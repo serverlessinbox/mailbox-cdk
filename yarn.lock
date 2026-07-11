@@ -2116,7 +2116,6 @@ __metadata:
     "@serverlessinbox/artifact-registry": "npm:^0.0.36"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*"
-    "@smithy/node-http-handler": "npm:^4.7.6"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/jest": "npm:^29.0.0"
     "@types/mime-types": "npm:^2.1.4"
