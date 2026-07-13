@@ -2,15 +2,21 @@ import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export interface UpdateApiLambdaProps {
   readonly rootStackArn: string;
-  readonly auditLogTable: ITable;
   readonly configTable: ITable;
   readonly artifactBucketBase: string;
   readonly artifactResolver: ICdkArtifactEngine;
+  readonly versionTagName: string;
+  readonly pointerBucket: string;
+  readonly pointerKey: string;
+  readonly templateUrlTemplate: string;
+  readonly auditEventsQueue: IQueue;
+  readonly distTag?: string;
 }
 
 /**
@@ -35,8 +41,12 @@ export class UpdateApiLambda extends GoLambda {
         ROOT_STACK_ARN: props.rootStackArn,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
-        ARTIFACT_PROJECT: 'serverlessinbox',
-        AUDIT_LOG_TABLE_NAME: props.auditLogTable.tableName,
+        VERSION_TAG_NAME: props.versionTagName,
+        POINTER_BUCKET: props.pointerBucket,
+        POINTER_KEY: props.pointerKey,
+        TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
+        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        DIST_TAG: props.distTag ?? 'stable',
       },
     });
 
@@ -70,10 +80,10 @@ export class UpdateApiLambda extends GoLambda {
       })
     );
 
-    // Grant audit log table write access
-    props.auditLogTable.grantWriteData(this);
-
     // Grant config table read-only access for authentication
     props.configTable.grantReadData(this);
+
+    // Grant send permission on the audit-events queue (shared HTTP registry audit path)
+    props.auditEventsQueue.grantSendMessages(this);
   }
 }

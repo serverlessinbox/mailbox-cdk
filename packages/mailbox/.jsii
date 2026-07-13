@@ -9091,7 +9091,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 65
+        "line": 72
       },
       "name": "ApplyServerlessInboxEdgeTagsOptions",
       "properties": [
@@ -9104,7 +9104,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 67
+            "line": 74
           },
           "name": "rootRegion",
           "type": {
@@ -9121,7 +9121,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 44
+        "line": 51
       },
       "name": "ApplyServerlessInboxTagsOptions",
       "properties": [
@@ -9134,7 +9134,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 53
+            "line": 60
           },
           "name": "rootStack",
           "type": {
@@ -9149,7 +9149,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 59
+            "line": 66
           },
           "name": "deployer",
           "optional": true,
@@ -9165,7 +9165,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 62
+            "line": 69
           },
           "name": "extraTags",
           "optional": true,
@@ -9186,7 +9186,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 46
+            "line": 53
           },
           "name": "product",
           "optional": true,
@@ -9202,7 +9202,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 56
+            "line": 63
           },
           "name": "version",
           "optional": true,
@@ -12054,7 +12054,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/utils/serverless-inbox-tags.ts",
-        "line": 102
+        "line": 109
       },
       "name": "ServerlessInboxSubStackTagOptions",
       "properties": [
@@ -12066,7 +12066,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 104
+            "line": 111
           },
           "name": "rootStack",
           "type": {
@@ -12081,7 +12081,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 106
+            "line": 113
           },
           "name": "stack",
           "type": {
@@ -12096,7 +12096,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 110
+            "line": 117
           },
           "name": "product",
           "optional": true,
@@ -12112,7 +12112,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/utils/serverless-inbox-tags.ts",
-            "line": 108
+            "line": 115
           },
           "name": "version",
           "optional": true,
@@ -12130,20 +12130,33 @@
         "summary": "Provider for the Update addon."
       },
       "fqn": "@serverlessinbox/mailbox.UpdateAddonProvider",
-      "initializer": {},
+      "initializer": {
+        "locationInModule": {
+          "filename": "src/addons/update-addon.ts",
+          "line": 234
+        },
+        "parameters": [
+          {
+            "name": "props",
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.UpdateAddonProviderProps"
+            }
+          }
+        ]
+      },
       "interfaces": [
         "@serverlessinbox/mailbox.IAdminApiAddonProvider"
       ],
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/update-addon.ts",
-        "line": 189
+        "line": 233
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 190
+            "line": 236
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12175,8 +12188,72 @@
       ],
       "name": "UpdateAddonProvider",
       "symbolId": "src/addons/update-addon:UpdateAddonProvider"
+    },
+    "@serverlessinbox/mailbox.UpdateAddonProviderProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Props for constructing UpdateAddonProvider."
+      },
+      "fqn": "@serverlessinbox/mailbox.UpdateAddonProviderProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/addons/update-addon.ts",
+        "line": 218
+      },
+      "name": "UpdateAddonProviderProps",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Template artifact name (e.g., 'mailbox-standard')."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/update-addon.ts",
+            "line": 220
+          },
+          "name": "templateName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Version tag name (e.g., 'mailbox-standard')."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/update-addon.ts",
+            "line": 223
+          },
+          "name": "versionTagName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "defaults to 'stable'.",
+            "summary": "Distribution tag (release line);"
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/update-addon.ts",
+            "line": 226
+          },
+          "name": "distTag",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/addons/update-addon:UpdateAddonProviderProps"
     }
   },
   "version": "0.0.0",
-  "fingerprint": "7kuvoDBFxpX82afWOXLHLSa2IjTEI0iKELADDnVD138="
+  "fingerprint": "GgPcdwJ0/HHHWCThSeRoNtIQaddGE+7Abi4k+E7Xi7E="
 }

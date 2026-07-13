@@ -4,8 +4,10 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
 import { UpdateApiLambda } from '../lambdas/update-api';
@@ -18,11 +20,20 @@ export interface UpdateAddonProps {
   /** DynamoDB table for configuration. */
   readonly configTable: ITable;
 
-  /** DynamoDB table for audit logging. */
-  readonly auditLogTable: ITable;
+  /** SQS queue for audit events (shared HTTP registry audit path). */
+  readonly auditEventsQueue: IQueue;
 
   /** Optional base path for mount routes; defaults to `/update`. */
   readonly basePath?: string;
+
+  /** Template artifact name (e.g., 'mailbox-standard'). */
+  readonly templateName: string;
+
+  /** Version tag name (e.g., 'mailbox-standard'). */
+  readonly versionTagName: string;
+
+  /** Distribution tag (release line); defaults to 'stable'. */
+  readonly distTag?: string;
 }
 
 /**
@@ -54,19 +65,38 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
     const rootStackArn = cdk.Stack.of(this).stackId;
     const stack = cdk.Stack.of(this);
     const stackName = stack.stackName;
+    const region = stack.region;
 
     // Self-load the artifact engine using the established cognito pattern
     const resolver = PinnedResolver.loadFromArtifactMetadata(this);
     const artifactEngine = new CdkArtifactEngine(this, resolver);
     const artifactBucketBase = artifactEngine.getBucketBase();
 
+    // Build release pointer key and URL template using artifact-registry functions
+    const pointerKey = buildReleasePointerKey('template', props.templateName, {
+      distTag: props.distTag ?? 'stable',
+    });
+    const pointerBucket = buildArtifactBucketName(artifactBucketBase, region);
+
+    // Build template URL template with placeholders for version and objectName
+    const templateUrlTemplate = buildArtifactUrl(
+      pointerBucket,
+      region,
+      buildArtifactKey('template', props.templateName, { type: 'release-template' }),
+    );
+
     // Create the update-api Lambda with its own role and CFN permissions.
     this._lambdaConstruct = new UpdateApiLambda(this, 'lambda', {
       rootStackArn,
-      auditLogTable: props.auditLogTable,
       configTable: props.configTable,
       artifactBucketBase,
       artifactResolver: artifactEngine,
+      versionTagName: props.versionTagName,
+      pointerBucket,
+      pointerKey,
+      templateUrlTemplate,
+      auditEventsQueue: props.auditEventsQueue,
+      distTag: props.distTag,
     });
 
     // Create CloudFormation execution role for ChangeSet operations.
@@ -183,15 +213,34 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
 }
 
 /**
+ * Props for constructing UpdateAddonProvider.
+ */
+export interface UpdateAddonProviderProps {
+  /** Template artifact name (e.g., 'mailbox-standard'). */
+  readonly templateName: string;
+
+  /** Version tag name (e.g., 'mailbox-standard'). */
+  readonly versionTagName: string;
+
+  /** Distribution tag (release line); defaults to 'stable'. */
+  readonly distTag?: string;
+}
+
+/**
  * Provider for the Update addon. Pass this to Mailbox's adminApiAddonProviders
  * to enable human-gated CloudFormation ChangeSet operations in the Admin API.
  */
 export class UpdateAddonProvider implements IAdminApiAddonProvider {
+  constructor(private readonly props: UpdateAddonProviderProps) {}
+
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new UpdateAddon(scope, 'update-addon', {
         configTable: ctx.configTable,
-        auditLogTable: ctx.auditLogTable,
+        auditEventsQueue: ctx.auditEventsQueue,
+        templateName: this.props.templateName,
+        versionTagName: this.props.versionTagName,
+        distTag: this.props.distTag,
       }),
     ];
   }

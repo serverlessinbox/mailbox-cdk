@@ -28,7 +28,14 @@ export const ServerlessInboxTagKeys = {
   stack: `${TAG_PREFIX}stack`,
   component: `${TAG_PREFIX}component`,
   description: `${TAG_PREFIX}description`,
+  /** Construct/CDK suite version (generic — every deployment has one). */
   version: `${TAG_PREFIX}version`,
+  /**
+   * Published *template* version — present ONLY on template-based deployments (e.g. the standard app),
+   * stamped by that app's release pipeline. This is the axis the human-gated ChangeSet self-update
+   * compares against; distinct from `version` (the construct version).
+   */
+  templateVersion: `${TAG_PREFIX}template-version`,
   deployer: `${TAG_PREFIX}deployer`,
 
   edge: `${TAG_PREFIX}edge`,
