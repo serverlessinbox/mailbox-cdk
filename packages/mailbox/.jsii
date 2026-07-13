@@ -9056,6 +9056,30 @@
           "type": {
             "fqn": "aws-cdk-lib.aws_sqs.IQueue"
           }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 18
+          },
+          "name": "auditLogTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 17
+          },
+          "name": "configTable",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_dynamodb.ITable"
+          }
         }
       ],
       "symbolId": "src/api/addons:AdminApiAddonContext"
@@ -9516,7 +9540,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 6
+        "line": 7
       },
       "methods": [
         {
@@ -9526,7 +9550,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 8
+            "line": 9
           },
           "name": "addRoutes",
           "parameters": [
@@ -9554,7 +9578,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 11
+            "line": 12
           },
           "name": "uiConfig",
           "optional": true,
@@ -9573,20 +9597,21 @@
     "@serverlessinbox/mailbox.IAdminApiAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "summary": "Optional capability for an auth provider implementation (e.g. Cognito) to register additional Admin API routes without the core package knowing provider specifics."
+        "remarks": "Both auth providers (e.g. Cognito) and other capabilities (e.g. Update addon)\nimplement this to register their Admin API routes and UI config without\nthe core package knowing capability-specific details.",
+        "summary": "Provider for contributing admin-api routes and UI configuration."
       },
       "fqn": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 23
+        "line": 27
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 24
+            "line": 28
           },
           "name": "createAdminApiAddons",
           "parameters": [
@@ -9997,7 +10022,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 256
+          "line": 259
         },
         "parameters": [
           {
@@ -10023,7 +10048,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 231
+        "line": 234
       },
       "name": "Mailbox",
       "properties": [
@@ -10031,7 +10056,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 254
+            "line": 257
           },
           "name": "certificates",
           "type": {
@@ -10042,7 +10067,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 252
+            "line": 255
           },
           "name": "data",
           "type": {
@@ -10056,7 +10081,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 248
+            "line": 251
           },
           "name": "oauthClients",
           "type": {
@@ -10067,7 +10092,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 250
+            "line": 253
           },
           "name": "urls",
           "type": {
@@ -10081,7 +10106,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 238
+            "line": 241
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -10093,7 +10118,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 239
+            "line": 242
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -10108,7 +10133,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 242
+            "line": 245
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -10120,7 +10145,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 243
+            "line": 246
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -10896,7 +10921,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 222
+        "line": 225
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -10905,7 +10930,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 223
+            "line": 226
           },
           "name": "adminUi",
           "optional": true,
@@ -10918,7 +10943,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 224
+            "line": 227
           },
           "name": "jmapUi",
           "optional": true,
@@ -11040,13 +11065,34 @@
         {
           "abstract": true,
           "docs": {
+            "summary": "Optional admin-api capability providers (e.g. the Update addon). The composing stack opts in by passing providers; the reusable construct does not bake them in."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 179
+          },
+          "name": "adminApiAddonProviders",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "fqn": "@serverlessinbox/mailbox.IAdminApiAddonProvider"
+              },
+              "kind": "array"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
             "remarks": "Omit for pinned synth-time resolution\n(`PinnedResolver`); inject an `AutoUpdater` to track a dist-tag at deploy.",
             "summary": "Strategy for resolving Lambda code + UI bundle artifacts."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 219
+            "line": 222
           },
           "name": "artifactResolver",
           "optional": true,
@@ -11063,7 +11109,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 189
+            "line": 192
           },
           "name": "enableAdminUi",
           "optional": true,
@@ -11079,7 +11125,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 201
+            "line": 204
           },
           "name": "enableMcp",
           "optional": true,
@@ -11096,7 +11142,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 208
+            "line": 211
           },
           "name": "enableReceiving",
           "optional": true,
@@ -11113,7 +11159,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 195
+            "line": 198
           },
           "name": "enableWebmailUi",
           "optional": true,
@@ -11183,7 +11229,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 213
+            "line": 216
           },
           "name": "overrides",
           "optional": true,
@@ -11200,7 +11246,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 184
+            "line": 187
           },
           "name": "subdomainNamespace",
           "optional": true,
@@ -12076,8 +12122,61 @@
         }
       ],
       "symbolId": "src/utils/serverless-inbox-tags:ServerlessInboxSubStackTagOptions"
+    },
+    "@serverlessinbox/mailbox.UpdateAddonProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable human-gated CloudFormation ChangeSet operations in the Admin API.",
+        "summary": "Provider for the Update addon."
+      },
+      "fqn": "@serverlessinbox/mailbox.UpdateAddonProvider",
+      "initializer": {},
+      "interfaces": [
+        "@serverlessinbox/mailbox.IAdminApiAddonProvider"
+      ],
+      "kind": "class",
+      "locationInModule": {
+        "filename": "src/addons/update-addon.ts",
+        "line": 189
+      },
+      "methods": [
+        {
+          "locationInModule": {
+            "filename": "src/addons/update-addon.ts",
+            "line": 190
+          },
+          "name": "createAdminApiAddons",
+          "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        }
+      ],
+      "name": "UpdateAddonProvider",
+      "symbolId": "src/addons/update-addon:UpdateAddonProvider"
     }
   },
   "version": "0.0.0",
-  "fingerprint": "A8g5vYI5CMa5DyUvsXbDbpimqjLU2CajkJQlLSwGAC0="
+  "fingerprint": "7kuvoDBFxpX82afWOXLHLSa2IjTEI0iKELADDnVD138="
 }

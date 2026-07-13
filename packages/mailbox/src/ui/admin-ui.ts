@@ -73,11 +73,12 @@ export class AdminUi extends MailboxUi {
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
-    const mergedUiConfig = {
+    // Build eager config by merging uiConfig with apiUrl and webmailUrl
+    const staticUiConfig = props.uiConfig ? {
       ...(props.uiConfig ?? {}),
       ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
       ...(props.webmailUrl ? { webmailUrl: props.webmailUrl } : {}),
-    };
+    } : undefined;
 
     super(scope, id, {
       label: 'Admin UI',
@@ -91,7 +92,7 @@ export class AdminUi extends MailboxUi {
         packageName: 'mailbox-admin-ui',
         objectPath: 'admin-ui.zip',
       },
-      uiConfig: Object.keys(mergedUiConfig).length > 0 ? mergedUiConfig : undefined,
+      uiConfig: staticUiConfig,
       artifactResolver: props.artifactResolver,
     });
 

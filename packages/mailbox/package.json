@@ -83,6 +83,7 @@
     "semver": "^7.6.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.2",
+    "typanion": "^3.14.0",
     "typescript": "^5.9.3",
     "unzipper": "^0.12.3"
   },

@@ -76,3 +76,6 @@ export type { StackDeployerStarterLambdaProps } from './stack-deployer-starter';
 
 export { StackDeployerWorkerLambda } from './stack-deployer-worker';
 export type { StackDeployerWorkerLambdaProps } from './stack-deployer-worker';
+
+export { UpdateApiLambda } from './update-api';
+export type { UpdateApiLambdaProps } from './update-api';

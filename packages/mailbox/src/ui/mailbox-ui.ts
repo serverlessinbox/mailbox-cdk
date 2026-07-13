@@ -236,10 +236,13 @@ export class MailboxUi extends Construct {
       Tags.of(this.distribution).add(ServerlessInboxTagKeys.bucketName, this.bucket.bucketName);
     }
 
-    // Stable nonce so CFN updates when inputs change (without forcing redeploy on every synth).
-    const normalizedConfig = props.uiConfig ?? undefined;
-    const nonce = createHash('sha256')
-      .update(JSON.stringify({ key: uiResolved?.key, versionId: uiResolved?.versionId, config: normalizedConfig }))
+    // Config and nonce are built eagerly
+    const configJson = props.uiConfig
+      ? JSON.stringify(props.uiConfig)
+      : undefined;
+
+    const deploymentNonce = createHash('sha256')
+      .update(JSON.stringify({ key: uiResolved?.key, versionId: uiResolved?.versionId, config: props.uiConfig }))
       .digest('hex')
       .slice(0, 16);
 
@@ -247,7 +250,7 @@ export class MailboxUi extends Construct {
       serviceToken: deployer.functionArn,
       serviceTimeout: Duration.minutes(15), // caps CFN's default multi-hour wait
       properties: {
-        deploymentNonce: nonce,
+        deploymentNonce,
 
         targetBucket: this.bucket.bucketName,
 
@@ -262,7 +265,7 @@ export class MailboxUi extends Construct {
 
         // Optional dynamic config
         configPrefix: 'config/',
-        configJson: props.uiConfig ? JSON.stringify(props.uiConfig) : undefined,
+        configJson,
 
         // Optional CDN cache invalidation (recommended when deploying a new UI bundle)
         distributionId: this.distribution.distributionId,
@@ -314,4 +317,5 @@ export class MailboxUi extends Construct {
       allowedMethods: AllowedMethods.ALLOW_ALL,
     });
   }
+
 }

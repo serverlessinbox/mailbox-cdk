@@ -55,6 +55,7 @@ export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from './api/addons';
+export { UpdateAddonProvider } from './addons/update-addon';
 
 // Utils — development mode
 export {

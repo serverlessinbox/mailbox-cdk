@@ -7,7 +7,7 @@ import { AdminApi } from './api/admin-api';
 import { JMapApi } from './api/jmap-api';
 import { WebSocketPush } from './api/websocket';
 import { McpApi } from './api/mcp-api';
-import type { IAdminApiAddon, AdminApiAddonContext } from './api';
+import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from './api';
 import { SesRules } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
@@ -174,6 +174,9 @@ export interface MailboxProps {
 
   /** Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically. */
   readonly extraAllowedOrigins?: string[];
+
+  /** Optional admin-api capability providers (e.g. the Update addon). The composing stack opts in by passing providers; the reusable construct does not bake them in. */
+  readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
 
   /**
    * Optional subdomain namespace. When set, all endpoints are placed under
@@ -472,11 +475,36 @@ export class Mailbox extends Construct {
     let adminUiCnameTarget: string | undefined;
     let webmailUiCnameTarget: string | undefined;
 
+    // Build admin API addons early from all providers (auth provider + optional additional providers).
+    // All addons are known at construction time, so uiConfig merge is eager.
+    const adminApiAddons: IAdminApiAddon[] = (() => {
+      const addons: IAdminApiAddon[] = [];
+
+      const ctx: AdminApiAddonContext = {
+        auditEventsQueue: auditWriting.auditEventsQueue,
+        configTable: dataRef.configTable,
+        auditLogTable: dataRef.auditLogTable,
+      };
+
+      // Collect addons from auth provider
+      if (typeof authProvider.createAdminApiAddons === 'function') {
+        addons.push(...authProvider.createAdminApiAddons(this, ctx));
+      }
+
+      // Collect addons from optional addon providers
+      for (const provider of props.adminApiAddonProviders ?? []) {
+        addons.push(...provider.createAdminApiAddons(this, ctx));
+      }
+
+      return addons;
+    })();
+
     if (enableAdminUi) {
       const providerAdminUiConfig = authProvider.adminUiConfig?.();
       const providerAuthz = authProvider.authorizationConfig?.();
 
-      const mergedAdminUiConfig = {
+      // Build admin UI config eagerly by merging provider config, authz, and all addon configs.
+      const mergedAdminUiConfig: Record<string, unknown> = {
         ...(providerAdminUiConfig ?? {}),
         ...(providerAuthz
           ? {
@@ -489,6 +517,13 @@ export class Mailbox extends Construct {
           }
           : {}),
       };
+
+      // Merge uiConfig from all addons
+      for (const addon of adminApiAddons) {
+        if (addon.uiConfig) {
+          Object.assign(mergedAdminUiConfig, addon.uiConfig);
+        }
+      }
 
       const adminUi = new AdminUi(groups.ui, 'admin-ui', {
         domainName: mailboxDomains.admin,
@@ -769,17 +804,6 @@ export class Mailbox extends Construct {
     });
     // Keep a deeper messaging override — websocket-push overrides the apis group tag.
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
-
-    const adminApiAddons: IAdminApiAddon[] = (() => {
-      if (typeof authProvider.createAdminApiAddons !== 'function') return [];
-
-      const ctx: AdminApiAddonContext = {
-        auditEventsQueue: auditWriting.auditEventsQueue,
-      };
-
-      return authProvider.createAdminApiAddons(this, ctx);
-    })();
-
     const adminApi = new AdminApi(groups.apis, 'admin-api', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
@@ -864,4 +888,5 @@ export class Mailbox extends Construct {
     addServerlessInboxResourceGroup(this, 'resource-group');
 
   }
+
 }

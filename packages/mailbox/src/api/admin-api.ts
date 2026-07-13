@@ -136,6 +136,7 @@ export class AdminApi extends Construct {
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
 
+    // Mount all addons at construction time
     for (const addon of props.addons ?? []) {
       addon.addRoutes(api, httpLambdaAuthorize);
     }
