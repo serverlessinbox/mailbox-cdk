@@ -4,6 +4,14 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.53](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.52...v0.0.53) (Mon Jul 13 2026)
+
+### feat
+
+* Update addon ([e69752d](https://github.com/serverlessinbox/mailbox-cdk/commit/e69752d4f145181d93f8017d643c89a21f351c5c))
+
+* Updated idl ([6ff1261](https://github.com/serverlessinbox/mailbox-cdk/commit/6ff126179646b6a01e3d16679f17ad23c14a56e9))
+
 ## [0.0.52](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.51...v0.0.52) (Sat Jul 11 2026)
 
 ### feat
