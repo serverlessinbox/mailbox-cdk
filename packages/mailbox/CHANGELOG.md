@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.56](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.55...v0.0.56) (Tue Jul 14 2026)
+
+### fix
+
+* Nonce handling for artifacts ([c410144](https://github.com/serverlessinbox/mailbox-cdk/commit/c410144be8c84e520e602542bac94962f6d556ee))
+
 ## [0.0.55](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.54...v0.0.55) (Tue Jul 14 2026)
 
 ### feat
