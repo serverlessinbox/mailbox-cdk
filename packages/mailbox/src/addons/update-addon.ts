@@ -7,7 +7,6 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
@@ -65,7 +64,6 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
 
     const rootStackArn = cdk.Stack.of(this).stackId;
     const stack = cdk.Stack.of(this);
-    const stackName = stack.stackName;
     const region = stack.region;
 
     // Self-load the artifact engine using the established cognito pattern
@@ -109,117 +107,6 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
 
     // Grant the Lambda read access to the template-version parameter.
     templateVersionParam.grantRead(this._lambdaConstruct);
-
-    // Create CloudFormation execution role for ChangeSet operations.
-    // Trust policy: CloudFormation service principal only. CloudFormation does not populate
-    // aws:SourceArn or aws:SourceAccount in the STS:AssumeRole call for roles passed via
-    // CreateChangeSet RoleARN (unlike registry extensions or StackSets admin roles), so a
-    // confused-deputy condition would be unsatisfiable and break all self-updates. Residual
-    // risk is bounded: iam:PassRole on this role is granted only to the update-api Lambda,
-    // and its CreateChangeSet operations are scoped to the single root-stack ARN.
-    //
-    // This role is intentionally broad (no permissions boundary) for now. A permissions boundary
-    // confining it is deferred as a separate hardening workitem (stack-self-update boundary
-    // hardening). This matches CDK's own bootstrap cfn-exec-role pattern: broad, gated by who can
-    // assume/pass it (here only the update-api Lambda, scoped to the one stack ARN).
-    const cfnExecRole = new iam.Role(this, 'cfn-exec-role', {
-      roleName: `${stackName}-cfn-exec-role`,
-      assumedBy: new iam.ServicePrincipal('cloudformation.amazonaws.com'),
-      description: 'CloudFormation execution role for stack self-update via ChangeSet API',
-    });
-
-    // Add identity policy grants to the role.
-    // These are the permissions that allow CloudFormation to manage the stack.
-    cfnExecRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'StackResourceServices',
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'lambda:*',
-          'dynamodb:*',
-          's3:*',
-          'sqs:*',
-          'ses:*',
-          'cognito-idp:*',
-          'cloudfront:*',
-          'apigateway:*',
-          'logs:*',
-          'events:*',
-          'acm:*',
-          'route53:*',
-          'states:*',
-          'resource-groups:*',
-          'sns:*',
-          'ssm:PutParameter',
-          'ssm:DeleteParameter',
-          'ssm:GetParameter',
-          'ssm:GetParameters',
-          'ssm:AddTagsToResource',
-          'ssm:RemoveTagsFromResource',
-          'ssm:ListTagsForResource',
-        ],
-        resources: ['*'],
-      })
-    );
-
-    cfnExecRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'IamForChildRolesAndPolicies',
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'iam:CreateRole',
-          'iam:DeleteRole',
-          'iam:UpdateRole',
-          'iam:UpdateAssumeRolePolicy',
-          'iam:TagRole',
-          'iam:UntagRole',
-          'iam:PutRolePolicy',
-          'iam:DeleteRolePolicy',
-          'iam:AttachRolePolicy',
-          'iam:DetachRolePolicy',
-          'iam:CreatePolicy',
-          'iam:DeletePolicy',
-          'iam:CreatePolicyVersion',
-          'iam:DeletePolicyVersion',
-          'iam:SetDefaultPolicyVersion',
-          'iam:TagPolicy',
-          'iam:UntagPolicy',
-          'iam:PassRole',
-          'iam:CreateServiceLinkedRole',
-          'iam:GetRole',
-          'iam:GetPolicy',
-          'iam:GetPolicyVersion',
-          'iam:ListRolePolicies',
-          'iam:ListAttachedRolePolicies',
-        ],
-        resources: ['*'],
-      })
-    );
-
-    cfnExecRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'SelfStackCfnMeta',
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'cloudformation:DescribeStacks',
-          'cloudformation:DescribeStackEvents',
-          'cloudformation:GetTemplate',
-        ],
-        resources: ['*'],
-      })
-    );
-
-    // Pass role ARN to the Lambda via environment variable and grant PassRole
-    this._lambdaConstruct.addEnvironment('CFN_EXECUTION_ROLE_ARN', cfnExecRole.roleArn);
-    if (this._lambdaConstruct.role) {
-      this._lambdaConstruct.role.addToPrincipalPolicy(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['iam:PassRole'],
-          resources: [cfnExecRole.roleArn],
-        })
-      );
-    }
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {

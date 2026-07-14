@@ -85,5 +85,86 @@ export class UpdateApiLambda extends GoLambda {
 
     // Grant send permission on the audit-events queue (shared HTTP registry audit path)
     props.auditEventsQueue.grantSendMessages(this);
+
+    // Stack management permissions: Lambda now executes ChangeSet operations without a separate
+    // execution role. CloudFormation runs under the Lambda's identity when no RoleARN is provided.
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'StackResourceServices',
+        effect: Effect.ALLOW,
+        actions: [
+          'lambda:*',
+          'dynamodb:*',
+          's3:*',
+          'sqs:*',
+          'ses:*',
+          'cognito-idp:*',
+          'cloudfront:*',
+          'apigateway:*',
+          'logs:*',
+          'events:*',
+          'acm:*',
+          'route53:*',
+          'states:*',
+          'resource-groups:*',
+          'sns:*',
+          'ssm:PutParameter',
+          'ssm:DeleteParameter',
+          'ssm:GetParameter',
+          'ssm:GetParameters',
+          'ssm:AddTagsToResource',
+          'ssm:RemoveTagsFromResource',
+          'ssm:ListTagsForResource',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'IamForChildRolesAndPolicies',
+        effect: Effect.ALLOW,
+        actions: [
+          'iam:CreateRole',
+          'iam:DeleteRole',
+          'iam:UpdateRole',
+          'iam:UpdateAssumeRolePolicy',
+          'iam:TagRole',
+          'iam:UntagRole',
+          'iam:PutRolePolicy',
+          'iam:DeleteRolePolicy',
+          'iam:AttachRolePolicy',
+          'iam:DetachRolePolicy',
+          'iam:CreatePolicy',
+          'iam:DeletePolicy',
+          'iam:CreatePolicyVersion',
+          'iam:DeletePolicyVersion',
+          'iam:SetDefaultPolicyVersion',
+          'iam:TagPolicy',
+          'iam:UntagPolicy',
+          'iam:PassRole',
+          'iam:CreateServiceLinkedRole',
+          'iam:GetRole',
+          'iam:GetPolicy',
+          'iam:GetPolicyVersion',
+          'iam:ListRolePolicies',
+          'iam:ListAttachedRolePolicies',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'SelfStackCfnMeta',
+        effect: Effect.ALLOW,
+        actions: [
+          'cloudformation:DescribeStacks',
+          'cloudformation:DescribeStackEvents',
+          'cloudformation:GetTemplate',
+        ],
+        resources: ['*'],
+      })
+    );
   }
 }
