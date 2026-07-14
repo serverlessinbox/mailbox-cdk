@@ -145,6 +145,7 @@ export class UpdateApiLambda extends GoLambda {
           'iam:PassRole',
           'iam:CreateServiceLinkedRole',
           'iam:GetRole',
+          'iam:GetRolePolicy',
           'iam:GetPolicy',
           'iam:GetPolicyVersion',
           'iam:ListRolePolicies',
