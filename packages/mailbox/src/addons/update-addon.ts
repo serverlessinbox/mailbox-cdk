@@ -5,6 +5,7 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
@@ -29,8 +30,8 @@ export interface UpdateAddonProps {
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
-  /** Version tag name (e.g., 'mailbox-standard'). */
-  readonly versionTagName: string;
+  /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev'). */
+  readonly templateVersion: string;
 
   /** Distribution tag (release line); defaults to 'stable'. */
   readonly distTag?: string;
@@ -85,19 +86,29 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
       buildArtifactKey('template', props.templateName, { type: 'release-template' }),
     );
 
+    // Create SSM StringParameter for template version.
+    // This resource is rendered into the CloudFormation template and survives quick-create deploys.
+    const templateVersionParam = new ssm.StringParameter(this, 'template-version', {
+      stringValue: props.templateVersion,
+      tier: ssm.ParameterTier.STANDARD,
+    });
+
     // Create the update-api Lambda with its own role and CFN permissions.
     this._lambdaConstruct = new UpdateApiLambda(this, 'lambda', {
       rootStackArn,
       configTable: props.configTable,
       artifactBucketBase,
       artifactResolver: artifactEngine,
-      versionTagName: props.versionTagName,
+      templateVersionParamName: templateVersionParam.parameterName,
       pointerBucket,
       pointerKey,
       templateUrlTemplate,
       auditEventsQueue: props.auditEventsQueue,
       distTag: props.distTag,
     });
+
+    // Grant the Lambda read access to the template-version parameter.
+    templateVersionParam.grantRead(this._lambdaConstruct);
 
     // Create CloudFormation execution role for ChangeSet operations.
     // Trust policy: CloudFormation service principal only. CloudFormation does not populate
@@ -219,8 +230,8 @@ export interface UpdateAddonProviderProps {
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
-  /** Version tag name (e.g., 'mailbox-standard'). */
-  readonly versionTagName: string;
+  /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev'). */
+  readonly templateVersion: string;
 
   /** Distribution tag (release line); defaults to 'stable'. */
   readonly distTag?: string;
@@ -239,7 +250,7 @@ export class UpdateAddonProvider implements IAdminApiAddonProvider {
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
         templateName: this.props.templateName,
-        versionTagName: this.props.versionTagName,
+        templateVersion: this.props.templateVersion,
         distTag: this.props.distTag,
       }),
     ];

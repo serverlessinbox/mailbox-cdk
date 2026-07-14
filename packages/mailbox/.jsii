@@ -12133,7 +12133,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/update-addon.ts",
-          "line": 234
+          "line": 245
         },
         "parameters": [
           {
@@ -12150,13 +12150,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/update-addon.ts",
-        "line": 233
+        "line": 244
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 236
+            "line": 247
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12199,7 +12199,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/update-addon.ts",
-        "line": 218
+        "line": 229
       },
       "name": "UpdateAddonProviderProps",
       "properties": [
@@ -12211,7 +12211,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 220
+            "line": 231
           },
           "name": "templateName",
           "type": {
@@ -12221,14 +12221,14 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Version tag name (e.g., 'mailbox-standard')."
+            "summary": "Template version string (e.g., 'v0.0.53' or '0.0.0-dev')."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 223
+            "line": 234
           },
-          "name": "versionTagName",
+          "name": "templateVersion",
           "type": {
             "primitive": "string"
           }
@@ -12242,7 +12242,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 226
+            "line": 237
           },
           "name": "distTag",
           "optional": true,
@@ -12255,5 +12255,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "GgPcdwJ0/HHHWCThSeRoNtIQaddGE+7Abi4k+E7Xi7E="
+  "fingerprint": "H5SLcApUhD40MDLEB36Ci4gkKnm4zlUJGAsd+gMgyR4="
 }

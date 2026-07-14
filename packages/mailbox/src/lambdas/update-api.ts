@@ -11,7 +11,7 @@ export interface UpdateApiLambdaProps {
   readonly configTable: ITable;
   readonly artifactBucketBase: string;
   readonly artifactResolver: ICdkArtifactEngine;
-  readonly versionTagName: string;
+  readonly templateVersionParamName: string;
   readonly pointerBucket: string;
   readonly pointerKey: string;
   readonly templateUrlTemplate: string;
@@ -41,7 +41,7 @@ export class UpdateApiLambda extends GoLambda {
         ROOT_STACK_ARN: props.rootStackArn,
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
-        VERSION_TAG_NAME: props.versionTagName,
+        TEMPLATE_VERSION_PARAM_NAME: props.templateVersionParamName,
         POINTER_BUCKET: props.pointerBucket,
         POINTER_KEY: props.pointerKey,
         TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
