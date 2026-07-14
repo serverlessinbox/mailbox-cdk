@@ -279,6 +279,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
         package: packageName,
         distTag,
         region,
+        nonce: Date.now().toString(),
       });
       for (const [key, value] of Object.entries(properties)) {
         resource.addPropertyOverride(key, value);

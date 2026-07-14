@@ -26,6 +26,8 @@ export interface TrackResolverPropertiesInput {
   distTag?: string;
   /** AWS region of the artifact bucket for this package — `us-east-1` for edge-zone artifacts, the deployment region otherwise. Required. */
   region: string;
+  /** Per-synth nonce to force CloudFormation re-invocation on every deploy. Required. */
+  nonce: string;
 }
 
 /**
@@ -39,5 +41,6 @@ export function buildTrackResolverProperties(
     Package: input.package,
     DistTag: input.distTag ?? DEFAULT_DIST_TAG,
     Region: input.region,
+    Nonce: input.nonce,
   };
 }

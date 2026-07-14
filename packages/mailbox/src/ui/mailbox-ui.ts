@@ -17,7 +17,6 @@ import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
-import { createHash } from 'crypto';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackNamedBucket } from '../utils/named-bucket';
@@ -236,22 +235,15 @@ export class MailboxUi extends Construct {
       Tags.of(this.distribution).add(ServerlessInboxTagKeys.bucketName, this.bucket.bucketName);
     }
 
-    // Config and nonce are built eagerly
+    // Config is built eagerly
     const configJson = props.uiConfig
       ? JSON.stringify(props.uiConfig)
       : undefined;
-
-    const deploymentNonce = createHash('sha256')
-      .update(JSON.stringify({ key: uiResolved?.key, versionId: uiResolved?.versionId, config: props.uiConfig }))
-      .digest('hex')
-      .slice(0, 16);
 
     new CustomResource(this, 'ui-assets', {
       serviceToken: deployer.functionArn,
       serviceTimeout: Duration.minutes(15), // caps CFN's default multi-hour wait
       properties: {
-        deploymentNonce,
-
         targetBucket: this.bucket.bucketName,
 
         // Dedicated bucket: ensure stack deletion can fully clean it up.
