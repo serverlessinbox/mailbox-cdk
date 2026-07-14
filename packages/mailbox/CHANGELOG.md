@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.60](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.59...v0.0.60) (Tue Jul 14 2026)
+
+### fix
+
+* role update ([040ac3c](https://github.com/serverlessinbox/mailbox-cdk/commit/040ac3c7623c1e2fbe44fbd2e90b5773cefb3a39))
+
 ## [0.0.59](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.58...v0.0.59) (Tue Jul 14 2026)
 
 ### fix
