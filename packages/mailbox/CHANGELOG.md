@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.57](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.56...v0.0.57) (Tue Jul 14 2026)
+
+### fix
+
+* Added stack grants ([3017800](https://github.com/serverlessinbox/mailbox-cdk/commit/3017800ea6b03bbb2efcf35ea676244384e5a525))
+
 ## [0.0.56](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.55...v0.0.56) (Tue Jul 14 2026)
 
 ### fix
