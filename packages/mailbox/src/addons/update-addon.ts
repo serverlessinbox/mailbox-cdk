@@ -148,6 +148,8 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
           'acm:*',
           'route53:*',
           'states:*',
+          'resource-groups:*',
+          'sns:*',
           'ssm:PutParameter',
           'ssm:DeleteParameter',
           'ssm:GetParameter',
