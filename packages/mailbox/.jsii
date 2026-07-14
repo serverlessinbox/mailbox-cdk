@@ -12133,7 +12133,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/update-addon.ts",
-          "line": 245
+          "line": 252
         },
         "parameters": [
           {
@@ -12150,13 +12150,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/update-addon.ts",
-        "line": 244
+        "line": 251
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 247
+            "line": 254
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12199,7 +12199,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/update-addon.ts",
-        "line": 229
+        "line": 236
       },
       "name": "UpdateAddonProviderProps",
       "properties": [
@@ -12211,7 +12211,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 231
+            "line": 238
           },
           "name": "templateName",
           "type": {
@@ -12226,7 +12226,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 234
+            "line": 241
           },
           "name": "templateVersion",
           "type": {
@@ -12242,7 +12242,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/update-addon.ts",
-            "line": 237
+            "line": 244
           },
           "name": "distTag",
           "optional": true,
@@ -12255,5 +12255,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "H5SLcApUhD40MDLEB36Ci4gkKnm4zlUJGAsd+gMgyR4="
+  "fingerprint": "kOiKizX1w5ZrPutyJtUGouP9CBOhobeGVJOyCEyw6eo="
 }
