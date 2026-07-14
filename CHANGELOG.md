@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.59](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.58...v0.0.59) (Tue Jul 14 2026)
+
+### fix
+
+* Update api uses its own role for cloudformation ([2a133f5](https://github.com/serverlessinbox/mailbox-cdk/commit/2a133f5932b5f93436c80cc9f23f81f9bc68e645))
+
 ## [0.0.58](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.57...v0.0.58) (Tue Jul 14 2026)
 
 ### fix
