@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.58](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.57...v0.0.58) (Tue Jul 14 2026)
+
+### fix
+
+* IAM Permissions ([ec6215f](https://github.com/serverlessinbox/mailbox-cdk/commit/ec6215fe5663d8d2c5506413265955a871fdc037))
+
 ## [0.0.57](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.56...v0.0.57) (Tue Jul 14 2026)
 
 ### fix
