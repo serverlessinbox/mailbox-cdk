@@ -10,20 +10,20 @@ import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
-import { UpdateApiLambda } from '../lambdas/update-api';
+import { StackUpdateApiLambda } from '../lambdas/stack-update-api';
 
 /**
- * Props for constructing an UpdateAddon directly (internal use).
- * Not exported; users should use UpdateAddonProvider instead.
+ * Props for constructing a StackUpdateAddon directly (internal use).
+ * Not exported; users should use StackUpdateAddonProvider instead.
  */
-export interface UpdateAddonProps {
+export interface StackUpdateAddonProps {
   /** DynamoDB table for configuration. */
   readonly configTable: ITable;
 
   /** SQS queue for audit events (shared HTTP registry audit path). */
   readonly auditEventsQueue: IQueue;
 
-  /** Optional base path for mount routes; defaults to `/update`. */
+  /** Optional base path for mount routes; defaults to `/stack-update`. */
   readonly basePath?: string;
 
   /** Template artifact name (e.g., 'mailbox-standard'). */
@@ -39,25 +39,25 @@ export interface UpdateAddonProps {
 /**
  * Admin API addon for human-gated CloudFormation ChangeSet operations.
  *
- * Mounts the update-api Lambda on the Admin API with its own execution role
+ * Mounts the stack-update-api Lambda on the Admin API with its own execution role
  * that has CloudFormation ChangeSet permissions.
  *
- * Contributes { update: { available: true } } to the admin UI config.
+ * Contributes { stackUpdate: { available: true } } to the admin UI config.
  *
  * Implements IAdminApiAddon.
  */
-export class UpdateAddon extends Construct implements IAdminApiAddon {
+export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   public readonly basePath: string;
   public uiConfig?: Record<string, unknown>;
 
-  private readonly _lambdaConstruct: UpdateApiLambda;
+  private readonly _lambdaConstruct: StackUpdateApiLambda;
 
-  constructor(scope: Construct, id: string, props: UpdateAddonProps) {
+  constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
     super(scope, id);
 
-    this.basePath = props.basePath ?? '/update';
+    this.basePath = props.basePath ?? '/stack-update';
     this.uiConfig = {
-      update: {
+      stackUpdate: {
         available: true,
       },
     };
@@ -91,8 +91,8 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
       tier: ssm.ParameterTier.STANDARD,
     });
 
-    // Create the update-api Lambda with its own role and CFN permissions.
-    this._lambdaConstruct = new UpdateApiLambda(this, 'lambda', {
+    // Create the stack-update-api Lambda with its own role and CFN permissions.
+    this._lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
       configTable: props.configTable,
       artifactBucketBase,
@@ -113,16 +113,16 @@ export class UpdateAddon extends Construct implements IAdminApiAddon {
     api.addRoutes({
       path: `${this.basePath}/{proxy+}`,
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('update', this._lambdaConstruct),
+      integration: new HttpLambdaIntegration('stack-update', this._lambdaConstruct),
       authorizer,
     });
   }
 }
 
 /**
- * Props for constructing UpdateAddonProvider.
+ * Props for constructing StackUpdateAddonProvider.
  */
-export interface UpdateAddonProviderProps {
+export interface StackUpdateAddonProviderProps {
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
@@ -134,15 +134,15 @@ export interface UpdateAddonProviderProps {
 }
 
 /**
- * Provider for the Update addon. Pass this to Mailbox's adminApiAddonProviders
+ * Provider for the StackUpdate addon. Pass this to Mailbox's adminApiAddonProviders
  * to enable human-gated CloudFormation ChangeSet operations in the Admin API.
  */
-export class UpdateAddonProvider implements IAdminApiAddonProvider {
-  constructor(private readonly props: UpdateAddonProviderProps) {}
+export class StackUpdateAddonProvider implements IAdminApiAddonProvider {
+  constructor(private readonly props: StackUpdateAddonProviderProps) {}
 
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
-      new UpdateAddon(scope, 'update-addon', {
+      new StackUpdateAddon(scope, 'stack-update-addon', {
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
         templateName: this.props.templateName,

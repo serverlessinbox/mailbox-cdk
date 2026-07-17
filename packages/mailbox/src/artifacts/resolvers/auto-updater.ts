@@ -3,17 +3,14 @@ import { Aws, Duration, Fn, IAspect, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { buildArtifactBucketName, buildArtifactKey } from '@serverlessinbox/artifact-registry';
-import {
-  TRACK_RESOLVER_HANDLER_SOURCE,
-  TRACK_RESOLVER_VERSION_ATTR,
-  buildTrackResolverProperties,
-} from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver, ResolvedArtifact } from '../i-artifact-resolver';
-import { ScheduledUpdaterLambda } from '../../lambdas/scheduled-updater';
+import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
+import { ArtifactUpdaterAddon } from '../../addons/artifact-updater-addon';
 import { ServerlessInboxTagKeys } from '../../utils/serverless-inbox-tags';
 
 /**
@@ -54,14 +51,15 @@ export interface AutoUpdaterProps {
   readonly updateInterval?: Duration;
 }
 
-export class AutoUpdater extends Construct implements IArtifactResolver {
-  private readonly lambdaFn: lambda.Function;
-  private readonly customResources = new Map<string, cdk.CfnCustomResource>();
+export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider {
+  private readonly updater: ArtifactUpdaterLambda;
+
   private readonly distTag: string;
   private readonly bucketBase: string;
   private readonly project: string = 'serverlessinbox';
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
+  private readonly registeredPackages = new Set<string>();
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
@@ -72,58 +70,42 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
 
     const granularity = props.granularity ?? 'minor';
 
-    // Phase B (scheduled updater) support: Fn.conditionIf on code keys + all self-update infra
-    // IsTracking = NOT(granularity == 'pinned') — under pinned, no CRs, no updater, no rule, no DLQ
+    // Phase B (scheduled updater) support: Fn.conditionIf on code keys + gating self-update infra
+    // IsTracking = NOT(granularity == 'pinned') — under pinned, no CRs, no EventBridge rule (updater Lambda always-on)
     this.isTracking = new cdk.CfnCondition(this, 'IsTracking', {
       expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
     });
 
-    // Create the shared resolver Lambda (gated on IsTracking)
-    const fn = new lambda.Function(this, 'provider-handler', {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      architecture: lambda.Architecture.ARM_64,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(TRACK_RESOLVER_HANDLER_SOURCE),
-      timeout: Duration.seconds(30),
-      memorySize: 256,
-      description: `Serverless Inbox Mailbox: track-resolver provider (${Aws.STACK_NAME})`,
-      environment: {
-        ARTIFACT_BUCKET_BASE: this.bucketBase,
-        PROJECT: this.project,
-      },
-    });
+    // Self-register the package name before constructing the updater Lambda, which will resolve it.
+    // This happens before Mailbox (which also registers 'mailbox-cdk' later), ensuring the package
+    // is registered when the updater Lambda's code is first resolved.
+    this.pinned.registerPackages(['mailbox-cdk']);
 
-    // IAM: read-only, project-scoped wildcard covers all packages this resolver serves.
-    fn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject'],
-        resources: [
-          `arn:aws:s3:::${this.bucketBase}-${Aws.REGION}/${this.project}/packages/*/releases/*`,
-          `arn:aws:s3:::${this.bucketBase}-us-east-1/${this.project}/packages/*/releases/*`,
-        ],
-      }),
-    );
-
-    // Tag the provider-handler Lambda to exclude it from auto-update scanning.
-    Tags.of(fn).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
-
-    this.lambdaFn = fn;
-
-    // Phase B: Scheduled updater Lambda, EventBridge rule, DLQ (all gated on IsTracking)
+    // Artifact updater Lambda (always-on, exists even under pinned for the admin-UI trigger path)
     // Use pinned resolver (same composed instance) to resolve the handler code from stable release
     const updaterEngine = new CdkArtifactEngine(this, this.pinned, 'updater-engine');
-    const updater = new ScheduledUpdaterLambda(this, 'scheduled-updater', {
+    const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: updaterEngine,
       distTag: this.distTag,
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
     });
+    this.updater = updater;
 
     // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
     // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
     Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    // Updater IAM: comprehensive least-privilege
+    // Lock/status table for concurrency guard and status tracking (always-on)
+    const lockTable = new dynamodb.Table(this, 'update-lock-table', {
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // pure operational metadata, no user data
+      timeToLiveAttribute: 'ttl',
+    });
+
+    // Updater IAM: comprehensive least-privilege (all always-on, apply to updater Lambda for all three trigger paths)
     updater.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['tag:GetResources'],
@@ -233,80 +215,79 @@ export class AutoUpdater extends Construct implements IArtifactResolver {
       }),
     );
 
+    // Self-invoke grant (for CR's async self-invoke dispatch)
+    updater.grantInvoke(updater);
+
+    // Lock table grants for acquire/release operations
+    lockTable.grantReadWriteData(updater);
+
+    // Add REGISTERED_PACKAGES env var using Lazy.string to capture the current Set at synth time
+    updater.addEnvironment(
+      'REGISTERED_PACKAGES',
+      cdk.Lazy.string({ produce: () => JSON.stringify([...this.registeredPackages]) }),
+    );
+
+    // Add LOCK_TABLE_NAME for status reads in the HTTP trigger handler
+    updater.addEnvironment('LOCK_TABLE_NAME', lockTable.tableName);
+
+    // Gated subtree: deploy-end CR + EventBridge rule (both tied to IsTracking)
+    const trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {
+      updater,
+      isTracking: this.isTracking,
+      updateInterval: props.updateInterval ?? Duration.hours(6),
+    });
+
+    // Gate only the TrackedUpdateTriggers subtree (CR + EventBridge rule) on IsTracking
+    cdk.Aspects.of(trackedTriggers).add(new GateOnConditionAspect(this.isTracking));
+  }
+
+  /** Delegate to the pinned resolver for artifact resolution. */
+  resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact {
+    return this.pinned.resolve(packageName, objectPath, region);
+  }
+
+  /** Register packages for the updater to track (skips unregistered packages in tag-scan loop). */
+  registerPackages(names: string[]): void {
+    // Delegate to pinned resolver to ensure consistent validation on resolve()
+    this.pinned.registerPackages(names);
+    // Also track locally for the REGISTERED_PACKAGES env var (Lazy.string will capture this Set)
+    for (const n of names) {
+      this.registeredPackages.add(n);
+    }
+  }
+
+  /** Provide the artifact updater addon for admin API registration. */
+  createAdminApiAddons(_scope: Construct, _ctx: AdminApiAddonContext): IAdminApiAddon[] {
+    return [new ArtifactUpdaterAddon({ updaterFunction: this.updater })];
+  }
+}
+
+/**
+ * Child construct: holds the deploy-end CR and EventBridge rule, both gated on IsTracking.
+ * The Aspect applies only to this subtree, keeping the updater Lambda (always-on) outside the gate.
+ */
+class TrackedUpdateTriggers extends Construct {
+  constructor(scope: Construct, id: string, props: {
+    updater: lambda.IFunction;
+    isTracking: cdk.CfnCondition;
+    updateInterval: Duration;
+  }) {
+    super(scope, id);
+
+    // Deploy-end CR: fires when the stack is deployed with ArtifactTracking != pinned
+    // ServiceToken points to the updater Lambda; the handler detects CFN CR events and routes accordingly
+    const deployEndCr = new cdk.CfnCustomResource(this, 'deploy-end-cr', {
+      serviceToken: props.updater.functionArn,
+      // Fire-and-return category: 2x the backing Lambda's own 5min timeout = 10 min headroom
+      serviceTimeout: 600,
+    });
+    // Add nonce to force re-invocation on every deploy
+    deployEndCr.addPropertyOverride('Nonce', Date.now().toString());
+
     // EventBridge rule: trigger the updater on schedule (6-hourly self-healing loop)
     new events.Rule(this, 'scheduled-update-rule', {
-      schedule: events.Schedule.rate(props.updateInterval ?? Duration.hours(6)),
-      targets: [new targets.LambdaFunction(updater)],
+      schedule: events.Schedule.rate(props.updateInterval),
+      targets: [new targets.LambdaFunction(props.updater)],
     });
-
-    // Gate the entire AutoUpdater subtree (all CfnResources) on IsTracking using an Aspect.
-    // This ensures that under pinned mode, zero self-update infrastructure is generated:
-    // - provider-handler Lambda + role + policies
-    // - per-package CRs
-    // - updater Lambda + role + policies + permissions
-    // - EventBridge rule + target permissions
-    cdk.Aspects.of(this).add(new GateOnConditionAspect(this.isTracking));
-  }
-
-  /** Deploy-time: per-package CR reads `releases/{distTag}.json` → locked version token; key built from it.
-   *  In standard-app (token-granularity) mode with Fn.conditionIf: key is conditional (tracked vs pinned). */
-  resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact {
-    const key = this.getResolvedKeyToken(packageName, this.distTag, region, objectPath);
-    const bucket = buildArtifactBucketName(this.bucketBase, region);
-    return { bucket, key, versionId: undefined };
-  }
-
-  /**
-   * Gets or creates a per-package CfnCustomResource pointing at the shared Lambda, then returns
-   * the deploy-time-resolved artifact key as a token string via Fn.getAtt.
-   * In standard-app mode, returns Fn.conditionIf(IsTracking, <CR-token>, <pinned-literal>).
-   */
-  private getResolvedKeyToken(
-    packageName: string,
-    distTag: string,
-    region: string,
-    objectName: string,
-  ): string {
-    // Ensure the per-package CR exists (created once, then reused)
-    if (!this.customResources.has(packageName)) {
-      const resource = new cdk.CfnCustomResource(this, `resource-${packageName}`, {
-        serviceToken: this.lambdaFn.functionArn,
-        // Fire-and-return category: 2x the backing Lambda's own 30s timeout.
-        serviceTimeout: 60,
-      });
-
-      const properties = buildTrackResolverProperties({
-        package: packageName,
-        distTag,
-        region,
-        nonce: Date.now().toString(),
-      });
-      for (const [key, value] of Object.entries(properties)) {
-        resource.addPropertyOverride(key, value);
-      }
-
-      this.customResources.set(packageName, resource);
-    }
-
-    const resource = this.customResources.get(packageName)!;
-    const versionToken = cdk.Fn.getAtt(resource.logicalId, TRACK_RESOLVER_VERSION_ATTR).toString();
-
-    // Tracked key (from CR-resolved version token)
-    // cast: CFN token, not a runtime SemVer
-    const trackedKey = buildArtifactKey('package', packageName, {
-      type: 'release',
-      version: { version: versionToken } as any,
-      objectName,
-      project: this.project,
-    });
-
-    // Pinned key (from this.pinned resolver — synth-time literal)
-    const pinnedKey = this.pinned.resolve(packageName, objectName, region).key;
-
-    // Standard-app mode: Fn.conditionIf(IsTracking, trackedKey, pinnedKey)
-    // Bucket is identical; only the key is conditional
-    const conditionalKey = Fn.conditionIf(this.isTracking.logicalId, trackedKey, pinnedKey).toString();
-
-    return conditionalKey;
   }
 }

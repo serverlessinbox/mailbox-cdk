@@ -9466,7 +9466,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 405
+            "line": 409
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9576,7 +9576,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 435
+            "line": 439
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -10121,5 +10121,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "V//KicT0brNu5ViEX0qQTBd/btxrQKXXuFG6l2QFg5E="
+  "fingerprint": "EDyjgScFcfliDWTXfUN9lBVjDjEslxRiArWMCO8994I="
 }

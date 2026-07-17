@@ -1,5 +1,5 @@
 /**
- * Buffered logger for scheduled-updater Lambda.
+ * Buffered logger for artifact-updater Lambda.
  *
  * Collects log messages in memory and flushes (emits to console) only when:
  * - At least one resource was updated (state change), OR

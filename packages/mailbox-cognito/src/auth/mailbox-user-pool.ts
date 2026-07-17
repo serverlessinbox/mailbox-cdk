@@ -333,6 +333,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
     // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
     const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+
+    // Register this package for artifact updates
+    resolver.registerPackages(['mailbox-cognito']);
+
     this.artifacts = new CdkArtifactEngine(this, resolver);
 
     this.authzConfig = {

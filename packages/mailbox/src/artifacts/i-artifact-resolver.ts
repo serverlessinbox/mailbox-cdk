@@ -11,11 +11,14 @@ export interface ResolvedArtifact {
 
 /**
  * Artifact resolution strategy interface (jsii-exported from mailbox, D2).
- * ONE method only: resolve(pkg, objectPath, region) → ResolvedArtifact.
+ * Implements two methods: resolve(pkg, objectPath, region) → ResolvedArtifact, and
+ * registerPackages(names: string[]) → void (mandatory, new in subplan #10).
  * Structurally identical to mailbox-cdk-shared's own IArtifactResolver — structural typing,
  * no cast, no adapter needed.
- * Implemented by: PinnedResolver (mailbox-cdk-shared), AutoUpdater (mailbox, jsii-exported).
+ * Implemented by: PinnedResolver (mailbox-cdk-shared), ChannelResolver (infrastructure),
+ * AutoUpdater (mailbox, jsii-exported).
  */
 export interface IArtifactResolver {
   resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact;
+  registerPackages(names: string[]): void;
 }

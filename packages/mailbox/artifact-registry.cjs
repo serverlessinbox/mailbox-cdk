@@ -21,8 +21,8 @@ module.exports = {
       objectName: 'lambdas/resource-sweeper.zip',
     },
     {
-      source: '/tmp/scheduled-updater.zip',
-      objectName: 'lambdas/scheduled-updater.zip',
+      source: '/tmp/artifact-updater.zip',
+      objectName: 'lambdas/artifact-updater.zip',
     },
     {
       source: 'dist/data-stack-template.json',

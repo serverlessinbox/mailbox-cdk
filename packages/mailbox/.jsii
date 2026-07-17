@@ -9393,7 +9393,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 66
+          "line": 64
         },
         "parameters": [
           {
@@ -9418,21 +9418,81 @@
         ]
       },
       "interfaces": [
-        "@serverlessinbox/mailbox.IArtifactResolver"
+        "@serverlessinbox/mailbox.IArtifactResolver",
+        "@serverlessinbox/mailbox.IAdminApiAddonProvider"
       ],
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 57
+        "line": 54
       },
       "methods": [
         {
           "docs": {
-            "summary": "Deploy-time: per-package CR reads `releases/{distTag}.json` → locked version token; key built from it. In standard-app (token-granularity) mode with Fn.conditionIf: key is conditional (tracked vs pinned)."
+            "summary": "Provide the artifact updater addon for admin API registration."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 253
+            "line": 260
+          },
+          "name": "createAdminApiAddons",
+          "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
+          "parameters": [
+            {
+              "name": "_scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "_ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        },
+        {
+          "docs": {
+            "summary": "Register packages for the updater to track (skips unregistered packages in tag-scan loop)."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 250
+          },
+          "name": "registerPackages",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "names",
+              "type": {
+                "collection": {
+                  "elementtype": {
+                    "primitive": "string"
+                  },
+                  "kind": "array"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "docs": {
+            "summary": "Delegate to the pinned resolver for artifact resolution."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 245
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9477,7 +9537,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 48
+        "line": 45
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -9490,7 +9550,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 50
+            "line": 47
           },
           "name": "distTag",
           "optional": true,
@@ -9507,7 +9567,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 52
+            "line": 49
           },
           "name": "granularity",
           "optional": true,
@@ -9523,7 +9583,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 54
+            "line": 51
           },
           "name": "updateInterval",
           "optional": true,
@@ -9680,21 +9740,42 @@
     "@serverlessinbox/mailbox.IArtifactResolver": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "ONE method only: resolve(pkg, objectPath, region) → ResolvedArtifact.\nStructurally identical to mailbox-cdk-shared's own IArtifactResolver — structural typing,\nno cast, no adapter needed.\nImplemented by: PinnedResolver (mailbox-cdk-shared), AutoUpdater (mailbox, jsii-exported).",
+        "remarks": "Implements two methods: resolve(pkg, objectPath, region) → ResolvedArtifact, and\nregisterPackages(names: string[]) → void (mandatory, new in subplan #10).\nStructurally identical to mailbox-cdk-shared's own IArtifactResolver — structural typing,\nno cast, no adapter needed.\nImplemented by: PinnedResolver (mailbox-cdk-shared), ChannelResolver (infrastructure),\nAutoUpdater (mailbox, jsii-exported).",
         "summary": "Artifact resolution strategy interface (jsii-exported from mailbox, D2)."
       },
       "fqn": "@serverlessinbox/mailbox.IArtifactResolver",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/i-artifact-resolver.ts",
-        "line": 19
+        "line": 21
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/artifacts/i-artifact-resolver.ts",
-            "line": 20
+            "line": 23
+          },
+          "name": "registerPackages",
+          "parameters": [
+            {
+              "name": "names",
+              "type": {
+                "collection": {
+                  "elementtype": {
+                    "primitive": "string"
+                  },
+                  "kind": "array"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "abstract": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 22
           },
           "name": "resolve",
           "parameters": [
@@ -12123,23 +12204,23 @@
       ],
       "symbolId": "src/utils/serverless-inbox-tags:ServerlessInboxSubStackTagOptions"
     },
-    "@serverlessinbox/mailbox.UpdateAddonProvider": {
+    "@serverlessinbox/mailbox.StackUpdateAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
         "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable human-gated CloudFormation ChangeSet operations in the Admin API.",
-        "summary": "Provider for the Update addon."
+        "summary": "Provider for the StackUpdate addon."
       },
-      "fqn": "@serverlessinbox/mailbox.UpdateAddonProvider",
+      "fqn": "@serverlessinbox/mailbox.StackUpdateAddonProvider",
       "initializer": {
         "locationInModule": {
-          "filename": "src/addons/update-addon.ts",
+          "filename": "src/addons/stack-update-addon.ts",
           "line": 141
         },
         "parameters": [
           {
             "name": "props",
             "type": {
-              "fqn": "@serverlessinbox/mailbox.UpdateAddonProviderProps"
+              "fqn": "@serverlessinbox/mailbox.StackUpdateAddonProviderProps"
             }
           }
         ]
@@ -12149,13 +12230,13 @@
       ],
       "kind": "class",
       "locationInModule": {
-        "filename": "src/addons/update-addon.ts",
+        "filename": "src/addons/stack-update-addon.ts",
         "line": 140
       },
       "methods": [
         {
           "locationInModule": {
-            "filename": "src/addons/update-addon.ts",
+            "filename": "src/addons/stack-update-addon.ts",
             "line": 143
           },
           "name": "createAdminApiAddons",
@@ -12186,22 +12267,22 @@
           }
         }
       ],
-      "name": "UpdateAddonProvider",
-      "symbolId": "src/addons/update-addon:UpdateAddonProvider"
+      "name": "StackUpdateAddonProvider",
+      "symbolId": "src/addons/stack-update-addon:StackUpdateAddonProvider"
     },
-    "@serverlessinbox/mailbox.UpdateAddonProviderProps": {
+    "@serverlessinbox/mailbox.StackUpdateAddonProviderProps": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "summary": "Props for constructing UpdateAddonProvider."
+        "summary": "Props for constructing StackUpdateAddonProvider."
       },
-      "fqn": "@serverlessinbox/mailbox.UpdateAddonProviderProps",
+      "fqn": "@serverlessinbox/mailbox.StackUpdateAddonProviderProps",
       "kind": "interface",
       "locationInModule": {
-        "filename": "src/addons/update-addon.ts",
+        "filename": "src/addons/stack-update-addon.ts",
         "line": 125
       },
-      "name": "UpdateAddonProviderProps",
+      "name": "StackUpdateAddonProviderProps",
       "properties": [
         {
           "abstract": true,
@@ -12210,7 +12291,7 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/update-addon.ts",
+            "filename": "src/addons/stack-update-addon.ts",
             "line": 127
           },
           "name": "templateName",
@@ -12225,7 +12306,7 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/update-addon.ts",
+            "filename": "src/addons/stack-update-addon.ts",
             "line": 130
           },
           "name": "templateVersion",
@@ -12241,7 +12322,7 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/update-addon.ts",
+            "filename": "src/addons/stack-update-addon.ts",
             "line": 133
           },
           "name": "distTag",
@@ -12251,9 +12332,9 @@
           }
         }
       ],
-      "symbolId": "src/addons/update-addon:UpdateAddonProviderProps"
+      "symbolId": "src/addons/stack-update-addon:StackUpdateAddonProviderProps"
     }
   },
   "version": "0.0.0",
-  "fingerprint": "wSN7MLVJBnrB1qhGbE7Ympkx6s3MfZ1Irivf9JATcFY="
+  "fingerprint": "eZdX+s3gVgNdnqQlDbu+hDCj8ZhOox2JZInbn7fBdYg="
 }

@@ -6,7 +6,7 @@ import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
-export interface UpdateApiLambdaProps {
+export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;
   readonly configTable: ITable;
   readonly artifactBucketBase: string;
@@ -20,7 +20,7 @@ export interface UpdateApiLambdaProps {
 }
 
 /**
- * Update Lambda for human-gated CloudFormation ChangeSet operations
+ * StackUpdate Lambda for human-gated CloudFormation ChangeSet operations
  * against the root stack.
  *
  * Executes with a dedicated IAM role that grants CloudFormation ChangeSet operations
@@ -30,10 +30,10 @@ export interface UpdateApiLambdaProps {
  * Does NOT have cloudformation:SetStackPolicy — that is exclusively for the
  * Stack Policy custom resource.
  */
-export class UpdateApiLambda extends GoLambda {
-  constructor(scope: Construct, id: string, props: UpdateApiLambdaProps) {
+export class StackUpdateApiLambda extends GoLambda {
+  constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
     super(scope, id, {
-      lambdaId: 'update-api',
+      lambdaId: 'stack-update-api',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

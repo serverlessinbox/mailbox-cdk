@@ -68,8 +68,8 @@ export type { ResourceSweeperStarterLambdaProps } from './resource-sweeper-start
 export { ResourceSweeperWorkerLambda } from './resource-sweeper-worker';
 export type { ResourceSweeperWorkerLambdaProps } from './resource-sweeper-worker';
 
-export { ScheduledUpdaterLambda } from './scheduled-updater';
-export type { ScheduledUpdaterLambdaProps } from './scheduled-updater';
+export { ArtifactUpdaterLambda } from './artifact-updater';
+export type { ArtifactUpdaterLambdaProps } from './artifact-updater';
 
 export { StackDeployerStarterLambda } from './stack-deployer-starter';
 export type { StackDeployerStarterLambdaProps } from './stack-deployer-starter';
@@ -77,5 +77,5 @@ export type { StackDeployerStarterLambdaProps } from './stack-deployer-starter';
 export { StackDeployerWorkerLambda } from './stack-deployer-worker';
 export type { StackDeployerWorkerLambdaProps } from './stack-deployer-worker';
 
-export { UpdateApiLambda } from './update-api';
-export type { UpdateApiLambdaProps } from './update-api';
+export { StackUpdateApiLambda } from './stack-update-api';
+export type { StackUpdateApiLambdaProps } from './stack-update-api';

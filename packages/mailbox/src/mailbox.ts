@@ -279,6 +279,12 @@ export class Mailbox extends Construct {
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
     // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
     const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+
+    // Register packages for artifact updates
+    resolver.registerPackages([
+      'mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui',
+    ]);
+
     const artifactResolver = new CdkArtifactEngine(this, resolver);
     const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
@@ -488,12 +494,12 @@ export class Mailbox extends Construct {
 
       // Collect addons from auth provider
       if (typeof authProvider.createAdminApiAddons === 'function') {
-        addons.push(...authProvider.createAdminApiAddons(this, ctx));
+        addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
       }
 
       // Collect addons from optional addon providers
       for (const provider of props.adminApiAddonProviders ?? []) {
-        addons.push(...provider.createAdminApiAddons(this, ctx));
+        addons.push(...provider.createAdminApiAddons(groups.apis, ctx));
       }
 
       return addons;

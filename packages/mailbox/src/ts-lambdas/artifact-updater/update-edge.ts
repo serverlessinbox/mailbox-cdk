@@ -80,7 +80,7 @@ export async function advanceEdgeLambdaIfStale(
   const region = 'us-east-1'; // Edge lambdas are always us-east-1
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion);
+  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger);
   if (!stale) {
     return false;
   }

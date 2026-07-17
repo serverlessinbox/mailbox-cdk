@@ -26,7 +26,7 @@ export async function advanceLambdaIfStale(
   const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion);
+  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger);
   if (!stale) {
     return false;
   }

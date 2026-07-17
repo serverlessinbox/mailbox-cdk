@@ -3,7 +3,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-export interface ScheduledUpdaterLambdaProps {
+export interface ArtifactUpdaterLambdaProps {
   artifactResolver: ICdkArtifactEngine;
 
   /** Dist-tag to follow ('stable', 'beta', etc.). */
@@ -17,13 +17,14 @@ export interface ScheduledUpdaterLambdaProps {
 }
 
 /**
- * Scheduled updater Lambda wrapper.
- * Runs on a schedule to scan deployed resources and advance their code within a granularity bound.
+ * Artifact updater Lambda wrapper.
+ * Handles artifact updates via three trigger paths (deploy-end CR, EventBridge schedule, admin API invoke).
+ * Runs tag-scan discovery and swaps deployed artifacts out-of-band, bounded by granularity.
  */
-export class ScheduledUpdaterLambda extends TypeScriptLambda {
-  constructor(scope: Construct, id: string, props: ScheduledUpdaterLambdaProps) {
+export class ArtifactUpdaterLambda extends TypeScriptLambda {
+  constructor(scope: Construct, id: string, props: ArtifactUpdaterLambdaProps) {
     super(scope, id, {
-      lambdaId: 'scheduled-updater',
+      lambdaId: 'artifact-updater',
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       timeout: Duration.minutes(5),

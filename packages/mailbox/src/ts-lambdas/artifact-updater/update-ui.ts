@@ -37,7 +37,7 @@ export async function advanceUiBucketIfStale(
   const deploymentRegion = process.env.AWS_REGION || 'us-east-1';
 
   // Check staleness using deployment region (where the bundle artifact lives)
-  const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion);
+  const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion, logger);
   if (!stale) {
     return false;
   }

@@ -5,6 +5,7 @@
 
 import { deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { requireEnv } from './common';
 
 /** Result of checking staleness: pointer + parsed semver, or null if no update. */
@@ -27,6 +28,7 @@ export async function resolveStaleTarget(
   region: string,
   packageName: string,
   deployedVersion: string,
+  logger: LoggerBuffer,
 ): Promise<StaleTarget | null> {
   const distTag = requireEnv('DIST_TAG');
   const granularity = requireEnv('GRANULARITY');
@@ -44,13 +46,13 @@ export async function resolveStaleTarget(
   });
 
   if (!pointer) {
-    console.log('no pointer available', { packageName, distTag, track: myTrack });
+    logger.debug('no pointer available', { packageName, distTag, track: myTrack });
     return null;
   }
 
   // Guard against invalid versions: skip if either version isn't semver-valid.
   if (!semverValid(pointer.version) || !semverValid(deployedVersion)) {
-    console.log('invalid version format, skipping', {
+    logger.debug('invalid version format, skipping', {
       deployedVersion,
       candidateVersion: pointer.version,
       deployedVersionValid: semverValid(deployedVersion),
@@ -61,7 +63,7 @@ export async function resolveStaleTarget(
 
   // Check if the candidate version is strictly newer.
   if (!semverGt(pointer.version, deployedVersion)) {
-    console.log('version is not newer', {
+    logger.debug('version is not newer', {
       deployedVersion,
       candidateVersion: pointer.version,
     });
@@ -71,7 +73,7 @@ export async function resolveStaleTarget(
   // Parse the version (should never fail given the semverValid guard above).
   const parsed = semverParse(pointer.version);
   if (!parsed) {
-    console.log('failed to parse version (logic error: semverValid guard should have prevented this)', {
+    logger.debug('failed to parse version (logic error: semverValid guard should have prevented this)', {
       version: pointer.version,
     });
     return null;

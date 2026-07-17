@@ -1,18 +1,3 @@
-/**
- * Scheduled auto-updater Lambda handler (stack-self-update, Phase B).
- *
- * Discovers resources tagged with the root-stack, compares their deployed versions against
- * track-scoped release pointers, and updates code/ui/edge for any that are stale within the granularity bound.
- *
- * Three update paths:
- * - code: UpdateFunctionCode on Lambda functions
- * - ui: Extract bundle zip, upload to S3 bucket, invalidate CloudFront
- * - edge: UpdateFunctionCode + PublishVersion + CloudFront repoint
- *
- * Triggered by EventBridge on a schedule (default 6h).
- * NOT wrapped in wrapHandler — plain async function returning void.
- */
-
 import {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
@@ -21,29 +6,27 @@ import { LoggerBuffer } from '../shared/logger-buffer';
 import { advanceLambdaIfStale } from './update-code';
 import { advanceUiBucketIfStale } from './update-ui';
 import { advanceEdgeLambdaIfStale } from './update-edge';
-import { requireEnv, tagMapFrom } from './common';
-
-/** Tenant ID / root stack name (all resources in this stack share this tag value). */
-function getRootStackTag(): string {
-  return requireEnv('ROOT_STACK_TAG_VALUE');
-}
+import { getUpdaterEnv, tagMapFrom } from './common';
 
 /**
- * Main handler: EventBridge-triggered, scans both regions for targets and updates stale ones.
+ * Run the artifact update cycle: scan for stale resources and update them.
  * Implements buffered logging: only logs when updates occur or errors happen.
+ * Scans both regions and filters by registered packages.
  */
-export const handler = async (): Promise<void> => {
+export async function runUpdateCycle(): Promise<void> {
   const logger = new LoggerBuffer();
 
   try {
-    const rootStackTag = getRootStackTag();
+    const env = getUpdaterEnv();
+    const registeredPackages = new Set(JSON.parse(env.REGISTERED_PACKAGES));
     const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
     const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
 
-    logger.info('scheduled updater started', {
-      rootStackTag,
+    logger.info('artifact update cycle started', {
+      rootStackTag: env.ROOT_STACK_TAG_VALUE,
       regions: uniqueRegions,
-      granularity: process.env.GRANULARITY,
+      granularity: env.GRANULARITY,
+      registeredPackages: [...registeredPackages],
     });
 
     // Scan Lambda functions and CloudFront distributions in both regions.
@@ -54,7 +37,7 @@ export const handler = async (): Promise<void> => {
       do {
         const response = await tagging.send(
           new GetResourcesCommand({
-            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [rootStackTag] }],
+            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [env.ROOT_STACK_TAG_VALUE] }],
             ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
             PaginationToken: nextToken,
           }),
@@ -81,6 +64,12 @@ export const handler = async (): Promise<void> => {
 
             if (!pkg || !artifactName || !deployedVersion) {
               logger.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
+              continue;
+            }
+
+            // Filter by registered packages: skip any package not explicitly registered
+            if (!registeredPackages.has(pkg)) {
+              logger.debug('skipping unregistered package', { arn, pkg });
               continue;
             }
 
@@ -128,9 +117,9 @@ export const handler = async (): Promise<void> => {
       } while (nextToken);
     }
 
-    logger.info('scheduled updater completed');
+    logger.info('artifact update cycle completed');
   } catch (err: any) {
-    logger.error('scheduled updater failed', { error: err.message });
+    logger.error('artifact update cycle failed', { error: err.message });
     throw err;
   } finally {
     // Flush buffered logs only if there were updates or errors.
@@ -138,4 +127,4 @@ export const handler = async (): Promise<void> => {
       logger.flush();
     }
   }
-};
+}

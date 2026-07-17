@@ -1,16 +1,17 @@
 /**
- * Shared helpers for scheduled updater (env parsing, artifact bucket naming, tagging).
+ * Shared helpers for artifact updater (env parsing, artifact bucket naming, tagging).
  */
 
 import { LambdaClient, TagResourceCommand } from '@aws-sdk/client-lambda';
 
-/** Environment variables required for scheduled updater operations. */
+/** Environment variables required for artifact updater operations. */
 export interface UpdaterEnv {
   PROJECT: string;
   DIST_TAG: string;
   GRANULARITY: string;
   ARTIFACT_BUCKET_BASE: string;
   ROOT_STACK_TAG_VALUE: string;
+  REGISTERED_PACKAGES: string;
 }
 
 /**
@@ -36,6 +37,7 @@ export function getUpdaterEnv(): UpdaterEnv {
     GRANULARITY: requireEnv('GRANULARITY'),
     ARTIFACT_BUCKET_BASE: process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts',
     ROOT_STACK_TAG_VALUE: requireEnv('ROOT_STACK_TAG_VALUE'),
+    REGISTERED_PACKAGES: requireEnv('REGISTERED_PACKAGES'),
   };
 }
 

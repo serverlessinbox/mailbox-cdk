@@ -45,12 +45,41 @@ export interface VersionMapEntry {
 export type VersionMap = Record<string, VersionMapEntry>;
 
 /**
+ * Helper to track registered package names and validate resolve() calls.
+ * Shared by PinnedResolver, ChannelResolver, and AutoUpdater (via delegation).
+ * @internal
+ */
+class PackageRegistry {
+  private readonly registered = new Set<string>();
+
+  registerPackages(names: string[]): void {
+    for (const name of names) {
+      this.registered.add(name);
+    }
+  }
+
+  validatePackage(packageName: string): void {
+    if (!this.registered.has(packageName)) {
+      throw new Error(
+        `Artifact package "${packageName}" was not registered. ` +
+        `Call registerPackages([...]) before resolving unregistered packages at synth time.`
+      );
+    }
+  }
+
+  isRegistered(packageName: string): boolean {
+    return this.registered.has(packageName);
+  }
+}
+
+/**
  * Default strategy: resolves every artifact from a version map assembled from CDK context,
  * delegating ALL schema (release-vs-channel prefix, versionId, zone→region) to artifact-registry's
  * ArtifactResolver. ONE unified map (all packages; cognito is not special). Not jsii-exported.
  */
 export class PinnedResolver implements IArtifactResolver {
   private readonly inner: ArtifactResolver;
+  private readonly packageRegistry = new PackageRegistry();
 
   constructor(
     scope: IConstruct,
@@ -99,7 +128,12 @@ export class PinnedResolver implements IArtifactResolver {
   }
 
   resolve(packageName: string, objectPath: string, _region: string): ResolvedArtifact {
+    this.packageRegistry.validatePackage(packageName);
     return this.inner.resolve(packageName, objectPath);
+  }
+
+  registerPackages(names: string[]): void {
+    this.packageRegistry.registerPackages(names);
   }
 
   getVersion(packageName: string): string {

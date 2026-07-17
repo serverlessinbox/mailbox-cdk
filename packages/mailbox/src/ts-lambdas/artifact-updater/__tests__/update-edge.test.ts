@@ -13,6 +13,7 @@ import {
   UpdateFunctionCodeCommand,
   TagResourceCommand,
   PublishVersionCommand,
+  GetFunctionConfigurationCommand,
 } from '@aws-sdk/client-lambda';
 import {
   CloudFrontClient,
@@ -215,6 +216,9 @@ describe('advanceEdgeLambdaIfStale', () => {
     const newVersionArn = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda:5';
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+    });
     lambdaMock.on(PublishVersionCommand).resolves({
       FunctionArn: newVersionArn,
     });
@@ -298,6 +302,9 @@ describe('advanceEdgeLambdaIfStale', () => {
     const newVersionArn = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda:5';
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+    });
     lambdaMock.on(PublishVersionCommand).resolves({
       FunctionArn: newVersionArn,
     });
@@ -395,6 +402,9 @@ describe('advanceEdgeLambdaIfStale', () => {
     const edgeLambdaArn = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+    });
     lambdaMock.on(PublishVersionCommand).resolves({
       FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda:5',
     });
@@ -435,6 +445,9 @@ describe('advanceEdgeLambdaIfStale', () => {
     const edgeLambdaArn = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+    });
     lambdaMock.on(PublishVersionCommand).resolves({
       FunctionArn: edgeLambdaArn + ':5',
     });
