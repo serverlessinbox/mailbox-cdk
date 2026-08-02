@@ -27,6 +27,9 @@ export class MailboxEdgeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxEdgeStackProps) {
     super(scope, id, props);
 
+    this.templateOptions.description =
+      'Serverless JMAP email server on AWS edge tier — CloudFront distribution with Lambda@Edge for authentication and request routing.';
+
     const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
       type: 'String',
       description: 'Root (main) CloudFormation stack name (regional stack that created this edge stack)',

@@ -36,6 +36,9 @@ export class MailboxDataStack extends cdk.Stack {
     const terminationProtection = isDevelopmentMode(scope) ? false : (props.terminationProtection ?? true);
     super(scope, id, { ...props, terminationProtection });
 
+    this.templateOptions.description =
+      'Serverless JMAP email server on AWS data tier — DynamoDB tables for configuration and email storage, plus S3 blob store.';
+
     // S3 name base parameter (required).
     // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
     const s3NameBaseParam = new cdk.CfnParameter(this, 's3NameBase', {

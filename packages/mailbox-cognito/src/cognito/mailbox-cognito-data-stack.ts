@@ -27,6 +27,9 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     const terminationProtection = isDevelopmentMode(scope) ? false : (props.terminationProtection ?? true);
     super(scope, id, { ...props, terminationProtection });
 
+    this.templateOptions.description =
+      'Serverless JMAP email server on AWS identity tier — Cognito user pool, authentication domain, and user groups.';
+
     // --- CloudFormation Parameters ---
 
     const cognitoDomainPrefix = new cdk.CfnParameter(this, 'cognitoDomainPrefix', {
