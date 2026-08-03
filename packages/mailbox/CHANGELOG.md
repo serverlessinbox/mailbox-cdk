@@ -4,6 +4,14 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.66](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.65...v0.0.66) (Mon Aug 03 2026)
+
+### fix
+
+* Trigger lambda ([e992782](https://github.com/serverlessinbox/mailbox-cdk/commit/e99278233343b14cc08decfac4a22997e0212726))
+
+* Dependency for end trigger ([44e58fa](https://github.com/serverlessinbox/mailbox-cdk/commit/44e58fa16e509b3dbcff2d793e56fa2754e5e6c8))
+
 ## [0.0.65](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.64...v0.0.65) (Mon Aug 03 2026)
 
 ### fix
