@@ -60,7 +60,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
   private readonly registeredPackages = new Set<string>();
-  public readonly deployEndTrigger: cdk.CfnCustomResource;
+  private readonly deployEndTrigger: cdk.CfnCustomResource;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
@@ -265,6 +265,15 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   /** Provide the artifact updater addon for admin API registration. */
   createAdminApiAddons(_scope: Construct, _ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [new ArtifactUpdaterAddon({ updaterFunction: this.updater })];
+  }
+
+  /**
+   * Register a construct whose whole subtree the deploy-time update trigger must not fire
+   * before — e.g. a sub-stack or resource group that needs to finish deploying first. Safe to
+   * call multiple times (once per dependency).
+   */
+  addDeployEndDependency(dependency: IConstruct): void {
+    this.deployEndTrigger.node.addDependency(dependency);
   }
 }
 

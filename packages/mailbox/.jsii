@@ -9429,6 +9429,24 @@
       "methods": [
         {
           "docs": {
+            "summary": "Register a construct whose whole subtree the deploy-time update trigger must not fire before — e.g. a sub-stack or resource group that needs to finish deploying first. Safe to call multiple times (once per dependency)."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 275
+          },
+          "name": "addDeployEndDependency",
+          "parameters": [
+            {
+              "name": "dependency",
+              "type": {
+                "fqn": "constructs.IConstruct"
+              }
+            }
+          ]
+        },
+        {
+          "docs": {
             "summary": "Provide the artifact updater addon for admin API registration."
           },
           "locationInModule": {
@@ -9524,19 +9542,6 @@
         }
       ],
       "name": "AutoUpdater",
-      "properties": [
-        {
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 63
-          },
-          "name": "deployEndTrigger",
-          "type": {
-            "fqn": "aws-cdk-lib.CfnCustomResource"
-          }
-        }
-      ],
       "symbolId": "src/artifacts/resolvers/auto-updater:AutoUpdater"
     },
     "@serverlessinbox/mailbox.AutoUpdaterProps": {
@@ -10116,7 +10121,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 266
+          "line": 259
         },
         "parameters": [
           {
@@ -10166,21 +10171,6 @@
           "name": "data",
           "type": {
             "fqn": "@serverlessinbox/mailbox.MailboxDataRefs"
-          }
-        },
-        {
-          "docs": {
-            "remarks": "Constructs that must\nnot run before the edge stack exists should call `.node.addDependency(mailbox.edgeDeploymentComplete)`.",
-            "summary": "Dependency target: CloudFormation does not consider this COMPLETE until the edge (CloudFront + Lambda@Edge) sub-stack has actually finished deploying."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 264
-          },
-          "name": "edgeDeploymentComplete",
-          "type": {
-            "fqn": "constructs.IConstruct"
           }
         },
         {
@@ -12364,5 +12354,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "3OjUbwrGwDlvUamkHBqJhAiOW3quu4GgCR247/BqxPs="
+  "fingerprint": "DojPVNwcTndiV2BPTlPbLRBu8tqae5nfgZAKNkgaZww="
 }

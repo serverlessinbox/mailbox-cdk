@@ -1,4 +1,4 @@
-import { Construct, IConstruct } from 'constructs';
+import { Construct } from 'constructs';
 import { AuthKeyStore } from './features/auth-key-store';
 import { Cdn } from './features/cdn-construct';
 import { TantivySearch } from './search';
@@ -256,13 +256,6 @@ export class Mailbox extends Construct {
 
   public readonly certificates: MailboxCertificates;
 
-  /**
-   * Dependency target: CloudFormation does not consider this COMPLETE until the edge
-   * (CloudFront + Lambda@Edge) sub-stack has actually finished deploying. Constructs that must
-   * not run before the edge stack exists should call `.node.addDependency(mailbox.edgeDeploymentComplete)`.
-   */
-  public readonly edgeDeploymentComplete: IConstruct;
-
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
@@ -422,8 +415,6 @@ export class Mailbox extends Construct {
       productVersion: stackVersion,
       deployer,
     });
-
-    this.edgeDeploymentComplete = edgeStack;
 
     const edgeCertificate = edgeStack.edgeCertificate;
 
