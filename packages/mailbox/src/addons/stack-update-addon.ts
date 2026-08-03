@@ -6,10 +6,11 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
+import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
 import { StackUpdateApiLambda } from '../lambdas/stack-update-api';
 
 /**
@@ -22,6 +23,9 @@ export interface StackUpdateAddonProps {
 
   /** SQS queue for audit events (shared HTTP registry audit path). */
   readonly auditEventsQueue: IQueue;
+
+  /** Artifact resolver for resolving mailbox-go package. */
+  readonly artifactResolver: IArtifactResolver;
 
   /** Optional base path for mount routes; defaults to `/stack-update`. */
   readonly basePath?: string;
@@ -66,9 +70,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     const stack = cdk.Stack.of(this);
     const region = stack.region;
 
-    // Self-load the artifact engine using the established cognito pattern
-    const resolver = PinnedResolver.loadFromArtifactMetadata(this);
-    const artifactEngine = new CdkArtifactEngine(this, resolver);
+    const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
     const artifactBucketBase = artifactEngine.getBucketBase();
 
     // Build release pointer key and URL template using artifact-registry functions
@@ -123,6 +125,9 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
  * Props for constructing StackUpdateAddonProvider.
  */
 export interface StackUpdateAddonProviderProps {
+  /** Artifact resolver for resolving mailbox-go package. */
+  readonly artifactResolver: IArtifactResolver;
+
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
@@ -145,6 +150,7 @@ export class StackUpdateAddonProvider implements IAdminApiAddonProvider {
       new StackUpdateAddon(scope, 'stack-update-addon', {
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
+        artifactResolver: this.props.artifactResolver,
         templateName: this.props.templateName,
         templateVersion: this.props.templateVersion,
         distTag: this.props.distTag,

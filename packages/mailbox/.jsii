@@ -12232,7 +12232,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update-addon.ts",
-          "line": 141
+          "line": 146
         },
         "parameters": [
           {
@@ -12249,13 +12249,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 140
+        "line": 145
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 143
+            "line": 148
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12298,10 +12298,25 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 125
+        "line": 127
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Artifact resolver for resolving mailbox-go package."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/stack-update-addon.ts",
+            "line": 129
+          },
+          "name": "artifactResolver",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+          }
+        },
         {
           "abstract": true,
           "docs": {
@@ -12310,7 +12325,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 127
+            "line": 132
           },
           "name": "templateName",
           "type": {
@@ -12325,7 +12340,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 130
+            "line": 135
           },
           "name": "templateVersion",
           "type": {
@@ -12341,7 +12356,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 133
+            "line": 138
           },
           "name": "distTag",
           "optional": true,
@@ -12354,5 +12369,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "DojPVNwcTndiV2BPTlPbLRBu8tqae5nfgZAKNkgaZww="
+  "fingerprint": "Frm1WWg0CVidTtV1VUAaK/P4FYxpntSTYpAVHIJ7iJo="
 }
