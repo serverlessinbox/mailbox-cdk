@@ -7,11 +7,18 @@ import { runUpdateCycle } from './update-cycle';
  * Synchronously runs the artifact update cycle before responding to CloudFormation.
  * The serviceTimeout configured in the CDK construct (600s) covers this synchronous cost.
  *
- * Errors propagate uncaught out of the handler; wrapHandler converts them to CFN FAILED responses.
- * Logging is handled by LoggerBuffer in runUpdateCycle(), which flushes on error before rethrowing.
+ * If the artifact update cycle fails, the error is caught to prevent a CFN FAILED response.
+ * Errors are logged by LoggerBuffer in runUpdateCycle(), which flushes to CloudWatch before
+ * rethrowing. The handler catches and swallows the error (allowing deployment to continue),
+ * with full failure details captured in CloudWatch.
  */
 export const cfnTriggerHandler = wrapHandler(async (event) => {
-  await runUpdateCycle();
+  try {
+    await runUpdateCycle();
+  } catch (err: unknown) {
+    // runUpdateCycle() already logged the error via LoggerBuffer and flushed it to CloudWatch
+    // before rethrowing. We catch here to prevent CFN FAILED and allow deployment to continue.
+  }
 
   return {
     PhysicalResourceId: event.LogicalResourceId,
