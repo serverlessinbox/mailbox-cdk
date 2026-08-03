@@ -215,8 +215,11 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       }),
     );
 
-    // Self-invoke grant (for CR's async self-invoke dispatch)
-    updater.grantInvoke(updater);
+    // Self-invoke permission
+    updater.addPermission('self-invoke', {
+      principal: updater.grantPrincipal,
+      action: 'lambda:InvokeFunction',
+    });
 
     // Lock table grants for acquire/release operations
     lockTable.grantReadWriteData(updater);

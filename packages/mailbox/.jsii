@@ -9433,7 +9433,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 260
+            "line": 272
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9468,7 +9468,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 250
+            "line": 262
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9492,7 +9492,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 245
+            "line": 257
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -12336,5 +12336,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "eZdX+s3gVgNdnqQlDbu+hDCj8ZhOox2JZInbn7fBdYg="
+  "fingerprint": "jznCIi9gXQ7SZ+fOdnskyOGIXdQnaAl9m0CHlwe5wCE="
 }
