@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.68](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.67...v0.0.68) (Mon Aug 03 2026)
+
+### chore
+
+* Updated idl repo ([783319f](https://github.com/serverlessinbox/mailbox-cdk/commit/783319f03f5d56aa6017c0aa6f793a1cdbf50bd8))
+
 ## [0.0.67](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.66...v0.0.67) (Mon Aug 03 2026)
 
 ### fix
