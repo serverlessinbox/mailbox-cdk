@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.64](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.63...v0.0.64) (Mon Aug 03 2026)
+
+### fix
+
+* Circular dependency ([13e3ad0](https://github.com/serverlessinbox/mailbox-cdk/commit/13e3ad06cd1339aae5a9e55ff336da2eadae8cf0))
+
 ## [0.0.63](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.62...v0.0.63) (Sun Aug 02 2026)
 
 
