@@ -27,7 +27,9 @@ const cfnCrEventSchema = t.isObject(
     StackId: t.isString(),
     ResponseURL: t.isString(),
     LogicalResourceId: t.isString(),
-    PhysicalResourceId: t.isString(),
+    // PhysicalResourceId is omitted from CloudFormation Create events; only Update and Delete carry it.
+    // See @types/aws-lambda's CloudFormationCustomResourceEvent discriminated union.
+    PhysicalResourceId: t.isOptional(t.isString()),
     RequestId: t.isString(),
   },
   { extra: t.isRecord(t.isUnknown()) },
@@ -70,16 +72,24 @@ function isHttpApiEvent(event: unknown): event is APIGatewayProxyEventV2 {
  * HTTP API events: routed to handleHttpTrigger
  * EventBridge/self-invoked: runs update cycle directly
  *
- * Note: The CFN handler (cfnTriggerHandler) is NOT awaited when called from the dispatcher
- * because wrapHandler will send the response to CloudFormation independently and Lambda
- * will handle the async execution. We return its result immediately so Lambda can complete
- * the handler invocation.
+ * Note: The CFN handler (cfnTriggerHandler) is awaited; this async function returns its Promise,
+ * so the Lambda runtime waits for the full chain (including wrapHandler's HTTPS response PUT)
+ * before considering the invocation complete.
  */
 export const handler = async (
   event: unknown,
   context?: Context,
 ): Promise<any> => {
-  if (isCfnCrEvent(event)) {
+  // Compute dispatch mode once, log it via a single direct call — this line always emits
+  // regardless of outcome, so it never participates in LoggerBuffer's suppressed trace
+  // (see buffered-logging-pattern skill's narrow exception for always-on diagnostic markers).
+  const cfnCr = isCfnCrEvent(event);
+  const httpApi = !cfnCr && isHttpApiEvent(event);
+  console.info('artifact-updater dispatch', {
+    mode: cfnCr ? 'cfn-custom-resource' : httpApi ? 'http-api' : 'eventbridge-or-self-invoke',
+  });
+
+  if (cfnCr) {
     // CFN CR event: invoke the wrapped handler that guarantees response sent.
     // wrapHandler returns a CloudFormationCustomResourceHandler which has signature:
     // (event, context, callback?) => void | Promise<void>
@@ -87,7 +97,7 @@ export const handler = async (
     return cfnTriggerHandler(event, context!, () => {});
   }
 
-  if (isHttpApiEvent(event)) {
+  if (httpApi) {
     return handleHttpTrigger(event);
   }
 

@@ -9393,7 +9393,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 64
+          "line": 65
         },
         "parameters": [
           {
@@ -9433,7 +9433,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 263
+            "line": 266
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9468,7 +9468,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 253
+            "line": 256
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9492,7 +9492,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 248
+            "line": 251
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9524,6 +9524,19 @@
         }
       ],
       "name": "AutoUpdater",
+      "properties": [
+        {
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 63
+          },
+          "name": "deployEndTrigger",
+          "type": {
+            "fqn": "aws-cdk-lib.CfnCustomResource"
+          }
+        }
+      ],
       "symbolId": "src/artifacts/resolvers/auto-updater:AutoUpdater"
     },
     "@serverlessinbox/mailbox.AutoUpdaterProps": {
@@ -10103,7 +10116,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 259
+          "line": 266
         },
         "parameters": [
           {
@@ -10153,6 +10166,21 @@
           "name": "data",
           "type": {
             "fqn": "@serverlessinbox/mailbox.MailboxDataRefs"
+          }
+        },
+        {
+          "docs": {
+            "remarks": "Constructs that must\nnot run before the edge stack exists should call `.node.addDependency(mailbox.edgeDeploymentComplete)`.",
+            "summary": "Dependency target: CloudFormation does not consider this COMPLETE until the edge (CloudFront + Lambda@Edge) sub-stack has actually finished deploying."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 264
+          },
+          "name": "edgeDeploymentComplete",
+          "type": {
+            "fqn": "constructs.IConstruct"
           }
         },
         {
@@ -12336,5 +12364,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "QZ1IGh6iief9xYl8k9qhhMPc7yNIf8WG3/mZGf+Tg60="
+  "fingerprint": "3OjUbwrGwDlvUamkHBqJhAiOW3quu4GgCR247/BqxPs="
 }

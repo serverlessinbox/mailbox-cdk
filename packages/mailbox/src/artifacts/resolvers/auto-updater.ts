@@ -60,6 +60,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
   private readonly registeredPackages = new Set<string>();
+  public readonly deployEndTrigger: cdk.CfnCustomResource;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
@@ -240,6 +241,8 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       updateInterval: props.updateInterval ?? Duration.hours(6),
     });
 
+    this.deployEndTrigger = trackedTriggers.deployEndCr;
+
     // Gate only the TrackedUpdateTriggers subtree (CR + EventBridge rule) on IsTracking
     cdk.Aspects.of(trackedTriggers).add(new GateOnConditionAspect(this.isTracking));
   }
@@ -270,6 +273,8 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
  * The Aspect applies only to this subtree, keeping the updater Lambda (always-on) outside the gate.
  */
 class TrackedUpdateTriggers extends Construct {
+  readonly deployEndCr: cdk.CfnCustomResource;
+
   constructor(scope: Construct, id: string, props: {
     updater: lambda.IFunction;
     isTracking: cdk.CfnCondition;
@@ -286,6 +291,7 @@ class TrackedUpdateTriggers extends Construct {
     });
     // Add nonce to force re-invocation on every deploy
     deployEndCr.addPropertyOverride('Nonce', Date.now().toString());
+    this.deployEndCr = deployEndCr;
 
     // EventBridge rule: trigger the updater on schedule (6-hourly self-healing loop)
     new events.Rule(this, 'scheduled-update-rule', {
