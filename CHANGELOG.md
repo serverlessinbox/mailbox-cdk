@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.65](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.64...v0.0.65) (Mon Aug 03 2026)
+
+### fix
+
+* Run update trigger always succeeds ([e3fe3b7](https://github.com/serverlessinbox/mailbox-cdk/commit/e3fe3b7694fe1e45c79e383c0b4c4d5db0993129))
+
 ## [0.0.64](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.63...v0.0.64) (Mon Aug 03 2026)
 
 ### fix
