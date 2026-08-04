@@ -9,6 +9,11 @@ const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
 // with comfortable headroom before CFN gives up. 135 attempts × 20s interval ≈ 45 min.
 const MAX_POLL_ATTEMPTS = 135;
 
+// CloudFormation truncates auto-generated physical resource names to 64 characters for IAM roles
+// and Lambda functions. This limit applies to role names constructed from the stack name.
+// A conservative estimate ensures predictable behavior across all resource types.
+const MAX_ROOT_STACK_NAME_LENGTH = 24;
+
 function limitReason(reason: string, maxLen: number = 3500): string {
   // CloudFormation Reason has a size limit; keep some headroom.
   if (reason.length <= maxLen) return reason;
@@ -253,6 +258,27 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     LogicalResourceId: event.LogicalResourceId,
     ResourceType: event.ResourceType,
   };
+
+  // Validate root stack name length only on Create to catch configuration issues early.
+  // CloudFormation truncates auto-generated physical resource names (64 chars for IAM roles/Lambda functions)
+  // for long stack names, which can break name-prefix-based IAM lookups.
+  if (event.RequestType === 'Create') {
+    // StackId format: arn:aws:cloudformation:region:account-id:stack/stack-name/guid
+    const rootStackNameParts = event.StackId.split('/');
+    if (rootStackNameParts.length >= 2) {
+      const rootStackName = rootStackNameParts[1];
+      if (rootStackName.length > MAX_ROOT_STACK_NAME_LENGTH) {
+        await putCfnResponse({
+          cfn,
+          status: 'FAILED',
+          physicalResourceId,
+          reason: `Root stack name "${rootStackName}" exceeds maximum length of ${MAX_ROOT_STACK_NAME_LENGTH} characters (got ${rootStackName.length}). CloudFormation truncates auto-generated resource names to 64 characters, which can break name-based IAM lookups. Please use a shorter stack name.`,
+          logStreamName: context?.logStreamName,
+        });
+        return;
+      }
+    }
+  }
 
   if (!stateMachineArnRaw) {
     // Safety net: allow parent stack deletion/rollback to continue.

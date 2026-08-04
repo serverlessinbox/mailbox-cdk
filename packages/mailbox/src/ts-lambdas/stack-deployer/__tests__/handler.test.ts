@@ -4,6 +4,7 @@ import * as cfnResponse from '../cfn-response';
 import { SfnInvokeEvent } from '../types';
 
 jest.mock('../cfn-response');
+jest.mock('@aws-sdk/client-sfn');
 
 // Mock only the I/O operations, not the status checking logic
 jest.mock('../cfn-stack', () => ({
@@ -233,5 +234,145 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
         reason: expect.stringMatching(/Recent events:.*Access Denied/s),
       })
     );
+  });
+});
+
+describe('stack deployer handler - root stack name length validation', () => {
+  const baseCfnEvent = {
+    RequestType: 'Create' as const,
+    ResponseURL: 'https://example.com/cfn-response',
+    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123',
+    RequestId: 'test-request-id-123',
+    LogicalResourceId: 'StackDeployer',
+    ResourceType: 'AWS::CloudFormation::CustomResource',
+    ResourceProperties: {
+      stackName: 'edge-stack',
+      templateUrl: 'https://example.com/template.json',
+    },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+  });
+
+  afterEach(() => {
+    delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
+  });
+
+  it('Create request with too-long root stack name should respond FAILED and not call StartExecutionCommand', async () => {
+    // Stack name exceeds 24 chars (25 chars here: "this-is-a-very-long-names")
+    const longNameEvent = {
+      ...baseCfnEvent,
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
+    };
+
+    await handler.starterHandler(longNameEvent, {});
+
+    expect(mockPutCfnResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        reason: expect.stringMatching(/exceeds maximum length.*24.*CloudFormation truncates/),
+      })
+    );
+
+    // Verify StartExecutionCommand was NOT called
+    const sfnModule = require('@aws-sdk/client-sfn');
+    expect(sfnModule.SFNClient.prototype.send).not.toHaveBeenCalled();
+  });
+
+  it('Create request with valid-length root stack name should call StartExecutionCommand', async () => {
+    const validNameEvent = {
+      ...baseCfnEvent,
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/valid-short-name/abc123',
+    };
+
+    // Mock the SFN client send method
+    const sfnModule = require('@aws-sdk/client-sfn');
+    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
+
+    await handler.starterHandler(validNameEvent, {});
+
+    expect(mockPutCfnResponse).not.toHaveBeenCalled();
+    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
+  });
+
+  it('Update request with too-long root stack name should NOT be blocked', async () => {
+    const updateEvent = {
+      ...baseCfnEvent,
+      RequestType: 'Update' as const,
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
+    };
+
+    // Mock the SFN client send method
+    const sfnModule = require('@aws-sdk/client-sfn');
+    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
+
+    await handler.starterHandler(updateEvent, {});
+
+    // Should NOT respond with FAILED due to name length
+    if (mockPutCfnResponse.mock.calls.length > 0) {
+      expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'FAILED',
+          reason: expect.stringMatching(/exceeds maximum length/),
+        })
+      );
+    }
+
+    // Should proceed to StartExecutionCommand
+    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
+  });
+
+  it('Delete request with too-long root stack name should NOT be blocked', async () => {
+    const deleteEvent = {
+      ...baseCfnEvent,
+      RequestType: 'Delete' as const,
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
+    };
+
+    // Mock the SFN client send method
+    const sfnModule = require('@aws-sdk/client-sfn');
+    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
+
+    await handler.starterHandler(deleteEvent, {});
+
+    // Should NOT respond with FAILED due to name length
+    if (mockPutCfnResponse.mock.calls.length > 0) {
+      expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'FAILED',
+          reason: expect.stringMatching(/exceeds maximum length/),
+        })
+      );
+    }
+
+    // Should proceed to StartExecutionCommand
+    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
+  });
+
+  it('Create request at exactly the max length (24 chars) should be allowed', async () => {
+    // "exactly-twenty-four-char" is exactly 24 characters
+    const maxLengthEvent = {
+      ...baseCfnEvent,
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/exactly-twenty-four-char/abc123',
+    };
+
+    // Mock the SFN client send method
+    const sfnModule = require('@aws-sdk/client-sfn');
+    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
+
+    await handler.starterHandler(maxLengthEvent, {});
+
+    // Should NOT respond with FAILED
+    expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        reason: expect.stringMatching(/exceeds maximum length/),
+      })
+    );
+
+    // Should proceed to StartExecutionCommand
+    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
   });
 });
