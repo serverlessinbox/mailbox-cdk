@@ -134,4 +134,5 @@ tasks:
       - task: bundle:ui-deployer
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
+      - task: bundle:artifact-updater
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}
