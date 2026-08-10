@@ -14,6 +14,8 @@ import type {
   SetIdpUserEnabledResponse,
   SetIdpUserPasswordRequest,
   SetIdpUserPasswordResponse,
+  DeleteIdpUserRequest,
+  DeleteIdpUserResponse,
 } from './idp_users_pb';
 
 import {
@@ -27,6 +29,8 @@ import {
   SetIdpUserEnabledResponseSchema,
   SetIdpUserPasswordRequestSchema,
   SetIdpUserPasswordResponseSchema,
+  DeleteIdpUserRequestSchema,
+  DeleteIdpUserResponseSchema,
 } from './idp_users_pb';
 
 // Request types without protobuf Message metadata
@@ -35,6 +39,7 @@ type GetIdpUserRequestData = Omit<GetIdpUserRequest, keyof Message>;
 type CreateIdpUserRequestData = Omit<CreateIdpUserRequest, keyof Message>;
 type SetIdpUserEnabledRequestData = Omit<SetIdpUserEnabledRequest, keyof Message>;
 type SetIdpUserPasswordRequestData = Omit<SetIdpUserPasswordRequest, keyof Message>;
+type DeleteIdpUserRequestData = Omit<DeleteIdpUserRequest, keyof Message>;
 
 export interface IdpUsersServiceClientConfig {
   endpoint: string;
@@ -195,6 +200,34 @@ export class IdpUsersServiceClient {
 
     const responseData = (await response.json()) as any;
     return fromJson(SetIdpUserPasswordResponseSchema, responseData);
+  }
+
+  /**
+   * DeleteIdpUser removes an IdP user account.
+   */
+  async deleteIdpUser(request: DeleteIdpUserRequestData): Promise<DeleteIdpUserResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.authorization) {
+      headers['Authorization'] = this.authorization;
+    }
+
+    const requestMessage = create(DeleteIdpUserRequestSchema, request || {});
+    const response = await this.fetch(`${this.endpoint}/DeleteIdpUser`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(toJson(DeleteIdpUserRequestSchema, requestMessage)),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DeleteIdpUser failed: ${response.status} ${error}`);
+    }
+
+    const responseData = (await response.json()) as any;
+    return fromJson(DeleteIdpUserResponseSchema, responseData);
   }
 
 }

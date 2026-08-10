@@ -11,6 +11,8 @@ import type {
   SetIdpUserEnabledResponse,
   SetIdpUserPasswordRequest,
   SetIdpUserPasswordResponse,
+  DeleteIdpUserRequest,
+  DeleteIdpUserResponse,
 } from './idp_users_pb';
 
 import {
@@ -24,6 +26,8 @@ import {
   SetIdpUserEnabledResponseSchema,
   SetIdpUserPasswordRequestSchema,
   SetIdpUserPasswordResponseSchema,
+  DeleteIdpUserRequestSchema,
+  DeleteIdpUserResponseSchema,
 } from './idp_users_pb';
 
 export type HandlerContext<TAuth = unknown, TAudit = unknown> = {
@@ -38,6 +42,7 @@ export interface IdpUsersServiceHandlers<TAuth = unknown, TAudit = unknown> {
   createIdpUser(ctx: HandlerContext<TAuth, TAudit>, req: CreateIdpUserRequest): Promise<CreateIdpUserResponse>;
   setIdpUserEnabled(ctx: HandlerContext<TAuth, TAudit>, req: SetIdpUserEnabledRequest): Promise<SetIdpUserEnabledResponse>;
   setIdpUserPassword(ctx: HandlerContext<TAuth, TAudit>, req: SetIdpUserPasswordRequest): Promise<SetIdpUserPasswordResponse>;
+  deleteIdpUser(ctx: HandlerContext<TAuth, TAudit>, req: DeleteIdpUserRequest): Promise<DeleteIdpUserResponse>;
 }
 
 export const IdpUsersServiceRuntime = {
@@ -73,6 +78,12 @@ export const IdpUsersServiceRuntime = {
       handlerName: 'setIdpUserPassword',
       requestSchema: SetIdpUserPasswordRequestSchema,
       responseSchema: SetIdpUserPasswordResponseSchema,
+    },
+    DeleteIdpUser: {
+      name: 'DeleteIdpUser',
+      handlerName: 'deleteIdpUser',
+      requestSchema: DeleteIdpUserRequestSchema,
+      responseSchema: DeleteIdpUserResponseSchema,
     },
   },
 } as const;

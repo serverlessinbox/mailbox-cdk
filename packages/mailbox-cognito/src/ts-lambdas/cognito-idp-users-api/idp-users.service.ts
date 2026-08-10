@@ -1,12 +1,12 @@
 import type { AdminGetUserCommandOutput, UserType } from '@aws-sdk/client-cognito-identity-provider';
-import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminGetUserCommand, AdminSetUserPasswordCommand, CognitoIdentityProviderClient, ListUsersCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminGetUserCommand, AdminSetUserPasswordCommand, CognitoIdentityProviderClient, ListUsersCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 import type { AdminAuthContext, AuditContext, HandlerContext } from '@serverlessinbox/mailbox-admin-api';
 import { ConflictError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
 
-import type { CreateIdpUserRequest, CreateIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
+import type { CreateIdpUserRequest, CreateIdpUserResponse, DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
 import type { IdpUser } from './generated/idp_users_pb';
-import { CreateIdpUserResponseSchema, GetIdpUserResponseSchema, IdpUserSchema, ListIdpUsersResponseSchema, SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema } from './generated/idp_users_pb';
+import { CreateIdpUserResponseSchema, DeleteIdpUserResponseSchema, GetIdpUserResponseSchema, IdpUserSchema, ListIdpUsersResponseSchema, SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema } from './generated/idp_users_pb';
 
 import { create } from '@bufbuild/protobuf';
 
@@ -203,6 +203,30 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     }
 
     return create(SetIdpUserPasswordResponseSchema, {});
+  }
+
+  async deleteIdpUser(ctx: IdpUsersContext, req: DeleteIdpUserRequest): Promise<DeleteIdpUserResponse> {
+    ctx.audit.entityId = req.username;
+    ctx.audit.entityName = req.username;
+    ctx.audit.changes = [{ op: 'remove', path: '/user', value: { username: req.username } }];
+
+    try {
+      await this.cognito.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: req.username,
+        })
+      );
+    } catch (e: any) {
+      const name = e?.name ?? '';
+      if (name === 'UserNotFoundException') {
+        // Idempotent: already gone — treat as success.
+        return create(DeleteIdpUserResponseSchema, {});
+      }
+      throw e;
+    }
+
+    return create(DeleteIdpUserResponseSchema, {});
   }
 
   private static mapListUser(user: UserType): IdpUserInit {

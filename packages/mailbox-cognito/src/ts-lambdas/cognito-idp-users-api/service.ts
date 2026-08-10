@@ -29,6 +29,7 @@ export function createCognitoIdpUsersServiceSpec(
 		CreateIdpUser: validator.validateCreateIdpUser,
 		SetIdpUserEnabled: validator.validateSetIdpUserEnabled,
 		SetIdpUserPassword: validator.validateSetIdpUserPassword,
+		DeleteIdpUser: validator.validateDeleteIdpUser,
 	} satisfies Record<MethodName, (req: unknown) => unknown>;
 
 	return createServiceSpecFromRuntime<AdminAuthContext, AuditContext>(IdpUsersServiceRuntime as any, impl as any, {

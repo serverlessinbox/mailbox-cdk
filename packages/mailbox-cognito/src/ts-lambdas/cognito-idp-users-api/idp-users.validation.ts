@@ -2,8 +2,8 @@ import { create } from '@bufbuild/protobuf';
 
 import { createValidator, InvalidInputError } from '@serverlessinbox/mailbox-admin-api';
 
-import type { CreateIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest } from './generated/idp_users_pb';
-import { CreateIdpUserRequestSchema, GetIdpUserRequestSchema, ListIdpUsersRequestSchema, SetIdpUserEnabledRequestSchema, SetIdpUserPasswordRequestSchema } from './generated/idp_users_pb';
+import type { CreateIdpUserRequest, DeleteIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest } from './generated/idp_users_pb';
+import { CreateIdpUserRequestSchema, DeleteIdpUserRequestSchema, GetIdpUserRequestSchema, ListIdpUsersRequestSchema, SetIdpUserEnabledRequestSchema, SetIdpUserPasswordRequestSchema } from './generated/idp_users_pb';
 
 export class IdpUsersRequestValidator {
   validateListIdpUsers = createValidator<ListIdpUsersRequest>((req) => create(ListIdpUsersRequestSchema, (req ?? {}) as any), (msg) => this.assertListIdpUsers(msg));
@@ -15,6 +15,8 @@ export class IdpUsersRequestValidator {
   validateSetIdpUserEnabled = createValidator<SetIdpUserEnabledRequest>((req) => create(SetIdpUserEnabledRequestSchema, (req ?? {}) as any), (msg) => this.assertHasUsername(msg));
 
   validateSetIdpUserPassword = createValidator<SetIdpUserPasswordRequest>((req) => create(SetIdpUserPasswordRequestSchema, (req ?? {}) as any), (msg) => this.assertSetIdpUserPassword(msg));
+
+  validateDeleteIdpUser = createValidator<DeleteIdpUserRequest>((req) => create(DeleteIdpUserRequestSchema, (req ?? {}) as any), (msg) => this.assertHasUsername(msg));
 
   private assertListIdpUsers(msg: ListIdpUsersRequest): void {
     // Note: this currently enforces typing via schema creation; validate.rules are not executed at runtime.
