@@ -16,6 +16,28 @@ export function createErrorResponse(status: number, message: string) {
 }
 
 /**
+ * Decode a base64url-encoded blobId.
+ * Returns the decoded string, or null if decoding fails.
+ *
+ * Base64url alphabet: A-Za-z0-9-_ (no padding with =)
+ *
+ * @param blobId base64url-encoded blob ID (RFC 8620 compliant)
+ * @returns decoded string or null on failure
+ */
+export function decodeBase64UrlBlobId(blobId: string): string | null {
+  // Validate that input only contains base64url characters (A-Za-z0-9-_)
+  if (!blobId || !/^[A-Za-z0-9_-]*$/.test(blobId)) {
+    return null;
+  }
+
+  try {
+    return Buffer.from(blobId, 'base64url').toString('utf-8');
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Parsed representation of a blob ID.
  */
 export type ParsedBlobId =

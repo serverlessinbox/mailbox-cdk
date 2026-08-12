@@ -7,7 +7,8 @@ import {
   extractDownloadParams,
   parseBlobId,
   constructS3Key,
-  addDownloadHeaders
+  addDownloadHeaders,
+  decodeBase64UrlBlobId
 } from './utils';
 
 // Module-level DynamoDB client (lazy init — region is fixed per CloudFront distribution)
@@ -89,8 +90,14 @@ export const handler = async (event: any) => {
       return createErrorResponse(400, 'Missing required parameters: accountId and blobId');
     }
 
+    // Decode base64url-encoded blobId (RFC 8620 compliance)
+    const decodedBlobId = decodeBase64UrlBlobId(params.blobId);
+    if (!decodedBlobId) {
+      return createErrorResponse(400, 'Invalid blobId format');
+    }
+
     // Parse blob ID
-    const parsed = parseBlobId(params.blobId);
+    const parsed = parseBlobId(decodedBlobId);
     if (!parsed) {
       return createErrorResponse(400, 'Invalid blobId format');
     }
