@@ -4,6 +4,7 @@ node_modules/
 .pnp.*
 *.tsbuildinfo
 *.js
+!jest.config.js
 *.d.ts
 
 # Generated files - never commit
