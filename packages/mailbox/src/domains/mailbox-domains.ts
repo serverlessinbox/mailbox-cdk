@@ -35,6 +35,8 @@ export interface MailboxDomainNamesProps {
 export interface IMailboxDomainNames {
   readonly domainName: string;
   readonly prefix?: string;
+  /** The namespace suffix for relative labels: either ".{prefix}" or "", resolved once at construction. */
+  readonly relativeNamespaceSuffix: string;
 
   readonly ws: string;
   readonly api: string;
@@ -105,6 +107,7 @@ function normalizePrefix(prefix?: string): string | undefined {
 export class MailboxDomains implements IMailboxDomainNames {
   public readonly domainName: string;
   public readonly prefix?: string;
+  public readonly relativeNamespaceSuffix: string;
 
   public readonly ws: string;
   public readonly api: string;
@@ -123,6 +126,7 @@ export class MailboxDomains implements IMailboxDomainNames {
 
     this.prefix = normalizePrefix(props.prefix);
 
+    // Compute base domain (e.g. "example.com" or "mailbox.example.com")
     const base = (() => {
       if (this.prefix && Token.isUnresolved(this.prefix) && props.prefixConditionName) {
         return Fn.conditionIf(
@@ -132,6 +136,18 @@ export class MailboxDomains implements IMailboxDomainNames {
         ).toString();
       }
       return this.prefix ? `${this.prefix}.${this.domainName}` : this.domainName;
+    })();
+
+    // Compute relative namespace suffix (e.g. ".mailbox" or "") — resolved once via Fn.conditionIf if needed
+    this.relativeNamespaceSuffix = (() => {
+      if (this.prefix && Token.isUnresolved(this.prefix) && props.prefixConditionName) {
+        return Fn.conditionIf(
+          props.prefixConditionName,
+          `.${this.prefix}`,
+          '',
+        ).toString();
+      }
+      return this.prefix ? `.${this.prefix}` : '';
     })();
 
     const { subdomainOverrides } = props;
@@ -148,27 +164,15 @@ export class MailboxDomains implements IMailboxDomainNames {
 
     // Build relative record names (subdomain label + optional namespace, without the zone).
     // These are safe to pass as Route53 recordName — CDK will append the zone automatically.
-    const relativeLabel = (label: string): string => {
-      if (this.prefix && Token.isUnresolved(this.prefix) && props.prefixConditionName) {
-        // Use conditionIf so CloudFormation resolves the correct label at deployment time.
-        return Fn.conditionIf(
-          props.prefixConditionName,
-          `${label}.${this.prefix}`,
-          label,
-        ).toString();
-      }
-      return this.prefix ? `${label}.${this.prefix}` : label;
-    };
-
     this._relativeLabels = {
-      ws: relativeLabel(subdomainOverrides?.ws ?? 'ws'),
-      api: relativeLabel(subdomainOverrides?.api ?? 'api'),
-      jmap: relativeLabel(subdomainOverrides?.jmap ?? 'jmap'),
-      webmail: relativeLabel(subdomainOverrides?.webmail ?? 'webmail'),
-      admin: relativeLabel(subdomainOverrides?.admin ?? 'admin'),
-      cdn: relativeLabel('cdn'),
-      auth: relativeLabel('auth'),
-      mcp: relativeLabel('mcp'),
+      ws: `${subdomainOverrides?.ws ?? 'ws'}${this.relativeNamespaceSuffix}`,
+      api: `${subdomainOverrides?.api ?? 'api'}${this.relativeNamespaceSuffix}`,
+      jmap: `${subdomainOverrides?.jmap ?? 'jmap'}${this.relativeNamespaceSuffix}`,
+      webmail: `${subdomainOverrides?.webmail ?? 'webmail'}${this.relativeNamespaceSuffix}`,
+      admin: `${subdomainOverrides?.admin ?? 'admin'}${this.relativeNamespaceSuffix}`,
+      cdn: `cdn${this.relativeNamespaceSuffix}`,
+      auth: `auth${this.relativeNamespaceSuffix}`,
+      mcp: `mcp${this.relativeNamespaceSuffix}`,
     };
   }
 
