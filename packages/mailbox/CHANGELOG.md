@@ -4,6 +4,26 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.69](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.68...v0.0.69) (Thu Aug 13 2026)
+
+### fix
+
+* Misc tests ([cf0ad10](https://github.com/serverlessinbox/mailbox-cdk/commit/cf0ad10a9eca7705a0737f3cddae69fd451b28f1))
+
+* Dev publish fix ([e895552](https://github.com/serverlessinbox/mailbox-cdk/commit/e895552081d7dfac5f77dfc5b92a2242066fad19))
+
+* Cognito domain name and kms retry ([7b2aa0e](https://github.com/serverlessinbox/mailbox-cdk/commit/7b2aa0e67ba9c31dc0add0924178a1c1527da500))
+
+* Config for tests ([a255e73](https://github.com/serverlessinbox/mailbox-cdk/commit/a255e73320dc78c822fbfe402242ebdfe146c241))
+
+* Config ([3910b7b](https://github.com/serverlessinbox/mailbox-cdk/commit/3910b7be80d82163010eb41b3f18c29c5d15af39))
+
+### feat
+
+* Base64 public blob ids ([57d2a4e](https://github.com/serverlessinbox/mailbox-cdk/commit/57d2a4e37b9243ec885f2e711848c61f9e835c70))
+
+* Srv records ([f06d50c](https://github.com/serverlessinbox/mailbox-cdk/commit/f06d50c99447c061c703a20cce1e9bf8692a1f3e))
+
 ## [0.0.68](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.67...v0.0.68) (Mon Aug 03 2026)
 
 
