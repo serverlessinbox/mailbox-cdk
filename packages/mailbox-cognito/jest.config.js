@@ -5,8 +5,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   collectCoverageFrom: ['**/*.ts', '!**/__tests__/**', '!**/generated/**'],
   extensionsToTreatAsEsm: ['.ts'],
-  globals: {
-    'ts-jest': {
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', {
       useESM: true,
       tsconfig: {
         lib: ['es2022', 'dom'],
@@ -17,6 +17,6 @@ module.exports = {
         resolveJsonModule: true,
         isolatedModules: true,
       },
-    },
+    }],
   },
 };
