@@ -11,14 +11,15 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxUi } from '../ui/mailbox-ui';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { OAUTH_CLIENT_ADMIN_UI, AUTH_POLICY_ADMIN_API } from '../auth/types';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import {
-  CloudFormationPolicyStatement,
   CloudFormationResource,
   getPolicyStatements,
   isResourceOfType,
@@ -27,7 +28,7 @@ import {
 describe('MailboxUi.addUiDeployment IAM Policies', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: PinnedResolver;
+  let artifactResolver: ICdkArtifactEngine;
   let configTable: dynamodb.ITable;
 
   beforeEach(() => {
@@ -68,12 +69,12 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
 
   describe('S3 ListBucket Permission', () => {
     it('should scope s3:ListBucket to the specific UI bucket ARN', () => {
-      const ui = new MailboxUi(stack, 'admin-ui', {
+      new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
         configTable,
-        authPolicyName: 'oauth-policy-1',
-        oauthClientName: 'web-app',
+        authPolicyName: AUTH_POLICY_ADMIN_API,
+        oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
         uiBundle: {
           packageName: 'mailbox-cdk',
@@ -130,12 +131,12 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
 
   describe('S3 GetObject Permission', () => {
     it('should scope s3:GetObject to the specific artifact ARN', () => {
-      const ui = new MailboxUi(stack, 'admin-ui', {
+      new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
         configTable,
-        authPolicyName: 'oauth-policy-1',
-        oauthClientName: 'web-app',
+        authPolicyName: AUTH_POLICY_ADMIN_API,
+        oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
         uiBundle: {
           packageName: 'mailbox-cdk',
@@ -174,12 +175,12 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
     });
 
     it('should scope s3:GetObjectVersion to the specific artifact ARN', () => {
-      const ui = new MailboxUi(stack, 'admin-ui', {
+      new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
         configTable,
-        authPolicyName: 'oauth-policy-1',
-        oauthClientName: 'web-app',
+        authPolicyName: AUTH_POLICY_ADMIN_API,
+        oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
         uiBundle: {
           packageName: 'mailbox-cdk',
@@ -220,12 +221,12 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
 
   describe('CloudFront CreateInvalidation Permission', () => {
     it('should grant cloudfront:CreateInvalidation on "*" (accepted exception)', () => {
-      const ui = new MailboxUi(stack, 'admin-ui', {
+      new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
         configTable,
-        authPolicyName: 'oauth-policy-1',
-        oauthClientName: 'web-app',
+        authPolicyName: AUTH_POLICY_ADMIN_API,
+        oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
         uiBundle: {
           packageName: 'mailbox-cdk',
@@ -265,12 +266,12 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
 
   describe('UI Deployment without bundle', () => {
     it('should not grant S3 artifact access when uiBundle is omitted', () => {
-      const ui = new MailboxUi(stack, 'admin-ui-no-bundle', {
+      new MailboxUi(stack, 'admin-ui-no-bundle', {
         domainName: 'admin.example.com',
         label: 'admin-no-bundle',
         configTable,
-        authPolicyName: 'oauth-policy-1',
-        oauthClientName: 'web-app',
+        authPolicyName: AUTH_POLICY_ADMIN_API,
+        oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
         uiConfig: {
           apiUrl: 'https://api.example.com',

@@ -15,9 +15,6 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
 import {
-  CloudFormationTag,
-  CloudFormationPolicyStatement,
-  CloudFormationPolicyDocument,
   CloudFormationResource,
   KNOWN_WILDCARDS,
   getTagValue,

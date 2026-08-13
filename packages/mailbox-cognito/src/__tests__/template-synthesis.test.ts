@@ -9,21 +9,14 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxCognitoDataStack } from '../cognito/mailbox-cognito-data-stack';
-
-interface CloudFormationTag {
-  Key: string;
-  Value: string | { Ref: string } | { 'Fn::Sub': string };
-}
+import { MailboxUserPool } from '../auth/mailbox-user-pool';
+import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 interface CloudFormationPolicyStatement {
   Effect?: 'Allow' | 'Deny';
   Action: string | string[];
   Resource: string | string[];
   Condition?: Record<string, Record<string, string | string[]>>;
-}
-
-interface CloudFormationPolicyDocument {
-  Statement: CloudFormationPolicyStatement[];
 }
 
 interface CloudFormationResource {
@@ -49,10 +42,6 @@ const KNOWN_WILDCARDS: Record<string, string> = {
   'logs:CreateLogStream': 'CloudWatch log stream creation (standard Lambda execution permission)',
   'logs:PutLogEvents': 'CloudWatch log event writes (standard Lambda execution permission)',
 };
-
-function getTagValue(tag: CloudFormationTag): string | { Ref: string } | { 'Fn::Sub': string } {
-  return tag.Value;
-}
 
 function isResourceOfType(resource: CloudFormationResource, type: string): boolean {
   return resource.Type === type;
@@ -333,6 +322,187 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       expect(sawCreateStack).toBe(true);
       expect(violations).toEqual([]);
+    });
+  });
+
+  /**
+   * MailboxUserPool Domain Config Tests — discriminated union synthesis
+   *
+   * Verifies that the three domain config variants (cognito, cognito-auto, custom)
+   * synthesize correctly: StackHelpers singleton + CR for auto, literal prefix for explicit,
+   * and Aws.STACK_NAME for custom.
+   */
+  /**
+   * MailboxUserPool Domain Config Tests — discriminated union synthesis
+   *
+   * Verifies that the three domain config variants (cognito, cognito-auto, custom)
+   * synthesize correctly: StackHelpers singleton + CR for auto, literal prefix for explicit,
+   * and Aws.STACK_NAME for custom.
+   */
+  describe('MailboxUserPool Domain Config (Discriminated Union)', () => {
+    // Helper to set up CDK app context with artifact metadata
+    function setUpArtifactContext(app: App): void {
+      // Set up CDK context with artifact metadata so PinnedResolver can load it
+      app.node.setContext('artifacts', {
+        bucketBase: 'test-artifacts',
+        packages: {
+          'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
+          'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+          'mailbox': { kind: 'release', version: '0.0.1-test' },
+        },
+      });
+      app.node.setContext('artifactVersions', {});
+    }
+
+    // Helper to create a resolver for a stack
+    function createTestResolver(stack: cdk.Stack): PinnedResolver {
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+      // Register all packages that will be needed
+      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
+      return resolver;
+    }
+
+    it('kind: cognito-auto - synthesizes StackHelpers Lambda + CR with GetAtt token', () => {
+      const app = new App();
+      setUpArtifactContext(app);
+      const stack = new cdk.Stack(app, 'TestCognitoAutoStack', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const resolver = createTestResolver(stack);
+
+      // Construct with cognito-auto domain config
+      const userPool = new MailboxUserPool(stack, 'user-pool', {
+        domain: {
+          kind: 'cognito-auto',
+          hostedZoneId: 'Z1234567890ABC',
+        },
+        artifactResolver: resolver,
+      });
+
+      // Verify construct created
+      expect(userPool).toBeDefined();
+      expect(userPool.oauthDomain).toBeDefined();
+
+      // Synthesize and check template resources
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources in synthesized template');
+      }
+
+      // For cognito-auto, there should be Lambda and custom resource resources created
+      // (StackHelpers creates a Lambda and CfnCustomResource)
+      let hasLambda = false;
+      let hasCustomResource = false;
+
+      for (const [, resource] of Object.entries(resources)) {
+        if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
+          hasLambda = true;
+        }
+        if (isResourceOfType(resource, 'AWS::CloudFormation::CustomResource')) {
+          hasCustomResource = true;
+        }
+      }
+
+      // Both Lambda and CustomResource should be present for cognito-auto
+      expect(hasLambda).toBe(true);
+      expect(hasCustomResource).toBe(true);
+    });
+
+    it('kind: cognito - no StackHelpers Lambda/CR, uses explicit prefix', () => {
+      const app = new App();
+      setUpArtifactContext(app);
+      const stack = new cdk.Stack(app, 'TestCognitoExplicitStack', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const resolver = createTestResolver(stack);
+      const explicitPrefix = 'my-oauth-domain';
+
+      // Construct with explicit cognito domain config
+      const userPool = new MailboxUserPool(stack, 'user-pool', {
+        domain: {
+          kind: 'cognito',
+          cognitoDomainPrefix: explicitPrefix,
+        },
+        artifactResolver: resolver,
+      });
+
+      // Verify construct created
+      expect(userPool).toBeDefined();
+      expect(userPool.oauthDomain).toBeDefined();
+
+      // Synthesize and check template resources
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources in synthesized template');
+      }
+
+      // For explicit cognito domain, NO StackHelpers Lambda should be created
+      let stackHelpersLambda = false;
+
+      for (const [, resource] of Object.entries(resources)) {
+        if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
+          const props = resource.Properties as Record<string, unknown>;
+          if (props.Description && String(props.Description).includes('StackHelpers')) {
+            stackHelpersLambda = true;
+          }
+        }
+      }
+
+      // Should NOT have StackHelpers Lambda for explicit prefix
+      expect(stackHelpersLambda).toBe(false);
+    });
+
+    it('kind: custom - synthesizes with custom domain and Aws.STACK_NAME placeholder', () => {
+      const app = new App();
+      setUpArtifactContext(app);
+      const stack = new cdk.Stack(app, 'TestCustomDomainStack', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const resolver = createTestResolver(stack);
+
+      // Construct with custom domain config
+      const userPool = new MailboxUserPool(stack, 'user-pool', {
+        domain: {
+          kind: 'custom',
+          domainName: 'auth.example.com',
+          certificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test-cert',
+        },
+        artifactResolver: resolver,
+      });
+
+      // Verify construct created
+      expect(userPool).toBeDefined();
+      expect(userPool.oauthDomain).toBeDefined();
+
+      // Synthesize and check template resources
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources in synthesized template');
+      }
+
+      // For custom domain, NO StackHelpers Lambda should be created
+      let stackHelpersLambda = false;
+
+      for (const [, resource] of Object.entries(resources)) {
+        if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
+          const props = resource.Properties as Record<string, unknown>;
+          if (props.Description && String(props.Description).includes('StackHelpers')) {
+            stackHelpersLambda = true;
+          }
+        }
+      }
+
+      // Should NOT have StackHelpers Lambda for custom domain
+      expect(stackHelpersLambda).toBe(false);
     });
   });
 });

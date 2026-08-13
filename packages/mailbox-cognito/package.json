@@ -53,6 +53,7 @@
     "@serverlessinbox/mailbox-bundler": "workspace:*",
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*",
     "@types/aws-lambda": "^8.10.159",
+    "@types/jest": "^29.0.0",
     "@types/node": "^24.10.1",
     "aws-cdk-lib": "^2.261.0",
     "aws-sdk-client-mock": "^3.0.0",

@@ -16,6 +16,7 @@ import {
   Permission,
   ProvisionAdminUiClientParams,
   ProvisionJmapUiClientParams,
+  StackHelpers,
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider } from '@serverlessinbox/mailbox';
@@ -44,8 +45,15 @@ export interface ProvisionHeadlessClientConfig {
 
 export interface MailboxUserPoolCognitoDomain {
   readonly kind: 'cognito';
-  /** Managed domain prefix — must be globally unique across all AWS accounts. */
+  /** Explicit Cognito domain prefix for the OAuth endpoint. */
   readonly cognitoDomainPrefix: string;
+}
+
+export interface MailboxUserPoolCognitoAutoDomain {
+  readonly kind: 'cognito-auto';
+  /** Route53 hosted zone ID used to auto-derive `cognitoDomainPrefix`.
+   *  The prefix is derived + sanitized from the mail domain at deploy time via the shared StackHelpers singleton. */
+  readonly hostedZoneId: string;
 }
 
 export interface MailboxUserPoolCustomDomain {
@@ -56,12 +64,13 @@ export interface MailboxUserPoolCustomDomain {
   readonly certificateArn: string;
 }
 
-export type MailboxUserPoolDomainConfig = MailboxUserPoolCognitoDomain | MailboxUserPoolCustomDomain;
+export type MailboxUserPoolDomainConfig = MailboxUserPoolCognitoDomain | MailboxUserPoolCognitoAutoDomain | MailboxUserPoolCustomDomain;
 
 export interface MailboxUserPoolProps {
   /**
    * Domain configuration for the Cognito OAuth endpoint.
-   * Use `kind: 'cognito'` for a Cognito-managed prefix, or `kind: 'custom'` for a custom domain.
+   * Use `kind: 'cognito'` for an explicit prefix, `kind: 'cognito-auto'` to derive it from a hosted zone,
+   * or `kind: 'custom'` for a custom domain.
    */
   readonly domain: MailboxUserPoolDomainConfig;
 
@@ -365,8 +374,15 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       userSrp: false,
     };
 
+    const cognitoDomainPrefix = props.domain.kind === 'cognito'
+      ? props.domain.cognitoDomainPrefix
+      : props.domain.kind === 'cognito-auto'
+      ? StackHelpers.getOrCreate(this, resolver)
+          .resolveCognitoDomainPrefix(this, 'domain-prefix', props.domain.hostedZoneId)
+      : Aws.STACK_NAME;
+
     const deployer = new MailboxCognitoDataDeployer(this, 'cognito-deployer', {
-      cognitoDomainPrefix: props.domain.kind === 'cognito' ? props.domain.cognitoDomainPrefix : Aws.STACK_NAME,
+      cognitoDomainPrefix,
       customDomain: props.domain.kind === 'custom'
         ? { domainName: props.domain.domainName, certificateArn: props.domain.certificateArn }
         : undefined,

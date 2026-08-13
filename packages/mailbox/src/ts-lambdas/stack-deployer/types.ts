@@ -37,6 +37,8 @@ export type SfnInvokeEvent = {
   attempt?: number;
   /** Number of DeleteStack retries triggered by Lambda@Edge replica-drain failures. */
   deleteRetryCount?: number;
+  /** Number of CreateStack retries triggered by transient KMS key-availability failures. */
+  createRetryCount?: number;
 };
 
 export type CfnCustomResourceEvent = {

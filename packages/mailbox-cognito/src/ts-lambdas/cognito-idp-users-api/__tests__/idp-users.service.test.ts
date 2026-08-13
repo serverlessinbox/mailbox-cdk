@@ -9,8 +9,9 @@
  * - Interaction with mocked Cognito SDK client
  */
 
+import { create } from '@bufbuild/protobuf';
 import { CognitoIdpUsersService } from '../idp-users.service';
-import type { DeleteIdpUserRequest } from '../generated/idp_users_pb';
+import { DeleteIdpUserRequestSchema } from '../generated/idp_users_pb';
 
 describe('CognitoIdpUsersService', () => {
   let service: CognitoIdpUsersService;
@@ -49,7 +50,7 @@ describe('CognitoIdpUsersService', () => {
 
   describe('deleteIdpUser', () => {
     it('successfully deletes a user', async () => {
-      const req: DeleteIdpUserRequest = { username: 'testuser' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
 
       mockCognitoClient.send.mockResolvedValueOnce({});
@@ -61,7 +62,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('sets audit fields correctly on deletion', async () => {
-      const req: DeleteIdpUserRequest = { username: 'testuser@example.com' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser@example.com' });
       const ctx = createMockContext();
 
       mockCognitoClient.send.mockResolvedValueOnce({});
@@ -80,7 +81,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('treats UserNotFoundException as idempotent success', async () => {
-      const req: DeleteIdpUserRequest = { username: 'nonexistent' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'nonexistent' });
       const ctx = createMockContext();
 
       const error = new Error('User not found') as any;
@@ -95,7 +96,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('throws non-UserNotFoundException errors', async () => {
-      const req: DeleteIdpUserRequest = { username: 'testuser' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
 
       const error = new Error('Service unavailable') as any;
@@ -106,7 +107,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('throws when error has no name property', async () => {
-      const req: DeleteIdpUserRequest = { username: 'testuser' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
 
       const error = { message: 'Unknown error' };
@@ -119,7 +120,7 @@ describe('CognitoIdpUsersService', () => {
       const customPoolId = 'custom-pool-xyz';
       const customService = new CognitoIdpUsersService(mockCognitoClient, customPoolId);
 
-      const req: DeleteIdpUserRequest = { username: 'testuser' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
 
       mockCognitoClient.send.mockResolvedValueOnce({});
@@ -130,7 +131,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('responds with empty response on successful deletion', async () => {
-      const req: DeleteIdpUserRequest = { username: 'testuser' };
+      const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
 
       mockCognitoClient.send.mockResolvedValueOnce({});

@@ -54,6 +54,7 @@ export function createMailboxStackDeployerStateMachine(
       'op.$': '$.op',
       attempt: 0,
       deleteRetryCount: 0,
+      createRetryCount: 0,
     },
   });
 
@@ -83,6 +84,7 @@ export function createMailboxStackDeployerStateMachine(
       op: sfn.JsonPath.objectAt('$.op'),
       attempt: sfn.JsonPath.numberAt('$.attempt'),
       deleteRetryCount: sfn.JsonPath.numberAt('$.deleteRetryCount'),
+      createRetryCount: sfn.JsonPath.numberAt('$.createRetryCount'),
     }),
   });
 
@@ -94,6 +96,7 @@ export function createMailboxStackDeployerStateMachine(
       'check.$': '$.check',
       'attempt.$': 'States.MathAdd($.attempt, 1)',
       'deleteRetryCount.$': '$.check.deleteRetryCount',
+      'createRetryCount.$': '$.check.createRetryCount',
     },
   });
 

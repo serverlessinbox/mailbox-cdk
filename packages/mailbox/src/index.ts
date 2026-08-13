@@ -92,6 +92,10 @@ export type {
   MailboxKmsConfig,
 } from './utils/kms';
 
+// Stack helpers — domain and stack-name derivation singleton
+export { StackHelpers } from './utils/stack-helpers';
+export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './utils/stack-helpers';
+
 // Data stack
 export { MailboxDataStack } from './data';
 export type { MailboxDataStackProps } from './data';

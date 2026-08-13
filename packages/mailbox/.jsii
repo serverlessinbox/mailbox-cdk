@@ -12222,6 +12222,203 @@
       ],
       "symbolId": "src/utils/serverless-inbox-tags:ServerlessInboxSubStackTagOptions"
     },
+    "@serverlessinbox/mailbox.StackHelpers": {
+      "assembly": "@serverlessinbox/mailbox",
+      "base": "constructs.Construct",
+      "docs": {
+        "remarks": "One shared lookup/sanitization Lambda per Stack, with multiple consumers\neach attaching their own CfnCustomResource.",
+        "summary": "Singleton construct for domain name and S3-safe stack name derivation."
+      },
+      "fqn": "@serverlessinbox/mailbox.StackHelpers",
+      "kind": "class",
+      "locationInModule": {
+        "filename": "src/utils/stack-helpers.ts",
+        "line": 23
+      },
+      "methods": [
+        {
+          "docs": {
+            "remarks": "The singleton is placed under a \"shared\" group construct at stack root.",
+            "summary": "Get-or-create the one shared lookup/sanitization Lambda for this Stack."
+          },
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 30
+          },
+          "name": "getOrCreate",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "artifactResolver",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.StackHelpers"
+            }
+          },
+          "static": true
+        },
+        {
+          "docs": {
+            "remarks": "Returns a CloudFormation token for the derived prefix.",
+            "summary": "Attaches the caller's OWN custom resource for the sanitized Cognito domain prefix."
+          },
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 93
+          },
+          "name": "resolveCognitoDomainPrefix",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "id",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "hostedZoneId",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
+            "remarks": "Returns CloudFormation tokens for the derived values.",
+            "summary": "Attaches the caller's OWN custom resource for domain-name + S3-safe-stack-name derivation."
+          },
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 74
+          },
+          "name": "resolveMailboxData",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "id",
+              "type": {
+                "primitive": "string"
+              }
+            },
+            {
+              "name": "props",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.StackHelpersMailboxDataProps"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.StackHelpersMailboxData"
+            }
+          }
+        }
+      ],
+      "name": "StackHelpers",
+      "symbolId": "src/utils/stack-helpers:StackHelpers"
+    },
+    "@serverlessinbox/mailbox.StackHelpersMailboxData": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.StackHelpersMailboxData",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/utils/stack-helpers.ts",
+        "line": 13
+      },
+      "name": "StackHelpersMailboxData",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 14
+          },
+          "name": "derivedDomainName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 15
+          },
+          "name": "derivedS3SafeDataStackName",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/utils/stack-helpers:StackHelpersMailboxData"
+    },
+    "@serverlessinbox/mailbox.StackHelpersMailboxDataProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.StackHelpersMailboxDataProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/utils/stack-helpers.ts",
+        "line": 8
+      },
+      "name": "StackHelpersMailboxDataProps",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 10
+          },
+          "name": "dataStackName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/utils/stack-helpers.ts",
+            "line": 9
+          },
+          "name": "hostedZoneId",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/utils/stack-helpers:StackHelpersMailboxDataProps"
+    },
     "@serverlessinbox/mailbox.StackUpdateAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
@@ -12369,5 +12566,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "Frm1WWg0CVidTtV1VUAaK/P4FYxpntSTYpAVHIJ7iJo="
+  "fingerprint": "hsAm94arZwajmSqxGwys0X2VgGMP2prLbD8/cIKa65U="
 }

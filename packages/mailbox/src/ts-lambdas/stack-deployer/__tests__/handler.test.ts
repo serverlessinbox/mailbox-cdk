@@ -50,7 +50,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -69,7 +69,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -88,7 +88,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -102,7 +102,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -120,7 +120,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(eventAtCap, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -138,7 +138,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(eventBeyondCap, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -160,7 +160,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(deleteEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'SUCCESS',
@@ -177,7 +177,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'SUCCESS',
@@ -194,7 +194,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: false, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).not.toHaveBeenCalled();
   });
 
@@ -208,7 +208,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -227,7 +227,7 @@ describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations',
 
     const result = await handler.workerHandler(baseEvent, {});
 
-    expect(result).toEqual({ done: true, deleteRetryCount: 0 });
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
     expect(mockPutCfnResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'FAILED',
@@ -374,5 +374,209 @@ describe('stack deployer handler - root stack name length validation', () => {
 
     // Should proceed to StartExecutionCommand
     expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
+  });
+});
+
+describe('stack deployer handler - KMS transient-error retry (Create operations)', () => {
+  const baseEvent: SfnInvokeEvent = {
+    mode: 'check',
+    cfn: {
+      ResponseURL: 'https://example.com/cfn-response',
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/abc',
+      RequestId: 'test-request-id',
+      LogicalResourceId: 'TestResource',
+    },
+    op: {
+      requestType: 'Create',
+      stackName: 'test-stack',
+      templateUrl: 'https://example.com/template.json',
+    },
+    attempt: 1,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMakeCfClientFromOp.mockReturnValue({} as any);
+  });
+
+  it('(a) ROLLBACK_IN_PROGRESS + matching KMS signature + Create: wait for rollback (no delete/recreate)', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_IN_PROGRESS',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: com.amazonaws.services.kms.model.NotFoundException: Key does not exist',
+    ]);
+
+    const result = await handler.workerHandler(baseEvent, {});
+
+    // Should return done: false (continue polling) without calling putCfnResponse
+    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 0 });
+    expect(mockPutCfnResponse).not.toHaveBeenCalled();
+  });
+
+  it('(b) ROLLBACK_COMPLETE + matching KMS signature + budget remaining: recreate and increment count', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_COMPLETE',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'ItemTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException when validating alias/aws/dynamodb',
+    ]);
+
+    const baseEventWithCreateCount = {
+      ...baseEvent,
+      createRetryCount: 0,
+    };
+
+    const result = await handler.workerHandler(baseEventWithCreateCount as SfnInvokeEvent, {});
+
+    // Should return done: false with incremented createRetryCount
+    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 1 });
+    expect(mockPutCfnResponse).not.toHaveBeenCalled();
+  });
+
+  it('(c) Budget exhausted (createRetryCount=3): falls through to FAILED path', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_COMPLETE',
+      StackStatusReason: 'The following resource(s) failed to create: [DynamoDBTable]',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: NotFoundException',
+    ]);
+
+    const baseEventWithMaxRetries = {
+      ...baseEvent,
+      createRetryCount: 3,
+    };
+
+    const result = await handler.workerHandler(baseEventWithMaxRetries as SfnInvokeEvent, {});
+
+    // Should respond FAILED (createRetryCount exhausted)
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 3 });
+    expect(mockPutCfnResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+      })
+    );
+  });
+
+  it('(d) Non-matching KMS signature: falls through to FAILED path (regression guard)', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'CREATE_FAILED',
+      StackStatusReason: 'The following resource(s) failed to create: [S3Bucket]',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'S3Bucket (AWS::S3::Bucket) CREATE_FAILED: Access Denied',
+    ]);
+
+    const result = await handler.workerHandler(baseEvent, {});
+
+    // Should respond FAILED immediately (no KMS signature match)
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
+    expect(mockPutCfnResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+      })
+    );
+  });
+
+  it('(e) requestType=Update: new branches never fire (unchanged FAILED path)', async () => {
+    const updateEvent: SfnInvokeEvent = {
+      ...baseEvent,
+      op: {
+        ...baseEvent.op,
+        requestType: 'Update',
+      },
+    };
+
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'UPDATE_FAILED',
+      StackStatusReason: 'The following resource(s) failed to update: [DynamoDBTable]',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'DynamoDBTable (AWS::DynamoDB::Table) UPDATE_FAILED: KMS NotFoundException',
+    ]);
+
+    const result = await handler.workerHandler(updateEvent, {});
+
+    // Should respond FAILED immediately (Update request, not Create)
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
+    expect(mockPutCfnResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+      })
+    );
+  });
+
+  it('ROLLBACK_FAILED + matching KMS signature + budget remaining: should also trigger recreate', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_FAILED',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'ItemTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: NotFoundException for alias/aws/dynamodb',
+    ]);
+
+    const baseEventWithRetryCount = {
+      ...baseEvent,
+      createRetryCount: 1,
+    };
+
+    const result = await handler.workerHandler(baseEventWithRetryCount as SfnInvokeEvent, {});
+
+    // Should return done: false with incremented createRetryCount
+    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 2 });
+    expect(mockPutCfnResponse).not.toHaveBeenCalled();
+  });
+
+  it('ROLLBACK_COMPLETE + matching KMS signature at retry budget boundary (createRetryCount=2): should recreate', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_COMPLETE',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'Table (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException',
+    ]);
+
+    const baseEventAtBoundary = {
+      ...baseEvent,
+      createRetryCount: 2, // Still within budget (< 3)
+    };
+
+    const result = await handler.workerHandler(baseEventAtBoundary as SfnInvokeEvent, {});
+
+    // Should return done: false with incremented createRetryCount (now 3)
+    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 3 });
+    expect(mockPutCfnResponse).not.toHaveBeenCalled();
+  });
+
+  it('ROLLBACK_COMPLETE + matching KMS signature exceeding budget: should NOT retry', async () => {
+    mockDescribeStack.mockResolvedValue({
+      StackStatus: 'ROLLBACK_COMPLETE',
+      StackStatusReason: 'Failed to create stack',
+      Outputs: [],
+    });
+    mockDescribeRecentFailureEvents.mockResolvedValue([
+      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException',
+    ]);
+
+    const baseEventOverBudget = {
+      ...baseEvent,
+      createRetryCount: 3, // At budget limit
+    };
+
+    const result = await handler.workerHandler(baseEventOverBudget as SfnInvokeEvent, {});
+
+    // Should respond FAILED (budget exhausted)
+    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 3 });
+    expect(mockPutCfnResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+      })
+    );
   });
 });

@@ -1,6 +1,6 @@
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { putCfnResponse } from './cfn-response';
-import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, outputsToObject, safeStringify, startOrUpdateStack } from './cfn-stack';
+import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, safeStringify, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
@@ -13,6 +13,9 @@ const MAX_POLL_ATTEMPTS = 135;
 // and Lambda functions. This limit applies to role names constructed from the stack name.
 // A conservative estimate ensures predictable behavior across all resource types.
 const MAX_ROOT_STACK_NAME_LENGTH = 24;
+
+// Maximum retries for transient KMS key-availability failures during stack creation.
+const MAX_KMS_CREATE_RETRIES = 3;
 
 function limitReason(reason: string, maxLen: number = 3500): string {
   // CloudFormation Reason has a size limit; keep some headroom.
@@ -32,9 +35,10 @@ function formatAwsError(err: any): string {
   return meta ? `${name}: ${message} (${meta})` : `${name}: ${message}`;
 }
 
-async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number }> {
+async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
+  const createRetryCount = typeof (event as any)?.createRetryCount === 'number' ? (event as any).createRetryCount : 0;
   const attempt = typeof event.attempt === 'number' ? event.attempt : 0;
 
   console.log('Stack deployer op:', JSON.stringify({
@@ -112,7 +116,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         data: {},
         logStreamName: context?.logStreamName,
       });
-      return { done: true, deleteRetryCount };
+      return { done: true, deleteRetryCount, createRetryCount };
     }
 
     const status = stack.StackStatus;
@@ -129,7 +133,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       } catch (err: any) {
         console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
       }
-      return { done: false, deleteRetryCount: deleteRetryCount + 1 };
+      return { done: false, deleteRetryCount: deleteRetryCount + 1, createRetryCount };
     }
 
     if (isTerminalFailure(status)) {
@@ -144,7 +148,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         reason: limitReason((stack.StackStatusReason ?? `Stack delete failed with status ${status}`) + details),
         logStreamName: context?.logStreamName,
       });
-      return { done: true, deleteRetryCount };
+      return { done: true, deleteRetryCount, createRetryCount };
     }
 
     // Safety net: cap the Delete polling loop so the worker responds before the CloudFormation
@@ -159,10 +163,10 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         reason: `Stack deletion still in progress after ${attempt} attempts (${stack.StackStatus}); responding SUCCESS to unblock CloudFormation rollback.`,
         logStreamName: context?.logStreamName,
       });
-      return { done: true, deleteRetryCount };
+      return { done: true, deleteRetryCount, createRetryCount };
     }
 
-    return { done: false, deleteRetryCount };
+    return { done: false, deleteRetryCount, createRetryCount };
   }
 
   if (!stack) {
@@ -173,7 +177,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: `Stack ${op.stackName} does not exist`,
       logStreamName: context?.logStreamName,
     });
-    return { done: true, deleteRetryCount };
+    return { done: true, deleteRetryCount, createRetryCount };
   }
 
   console.log('Stack status:', JSON.stringify({
@@ -198,11 +202,34 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: limitReason(`Stack ${op.stackName} is being deleted (status ${status}); cannot deploy into a deleting stack.` + details),
       logStreamName: context?.logStreamName,
     });
-    return { done: true, deleteRetryCount };
+    return { done: true, deleteRetryCount, createRetryCount };
+  }
+
+  // Fetch failure events once for potential reuse in retry logic and terminal-failure handling.
+  const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+  const failureText = failures.join(' ');
+
+  // KMS transient-error retry on Create: if the stack is in ROLLBACK_IN_PROGRESS and the failure
+  // matches a KMS NotFoundException signature, wait for rollback to complete without deletion.
+  if (op.requestType === 'Create' && status === 'ROLLBACK_IN_PROGRESS' && matchesKmsTransientSignature(failureText)) {
+    console.log(`Stack ${op.stackName} is in ROLLBACK_IN_PROGRESS with KMS signature; waiting for rollback to complete (createRetryCount=${createRetryCount}).`);
+    return { done: false, deleteRetryCount, createRetryCount };
+  }
+
+  // KMS transient-error retry on Create: if the stack is in a recreate state (ROLLBACK_FAILED/ROLLBACK_COMPLETE)
+  // with a matching KMS signature, and we haven't exhausted retries, delete and recreate the stack.
+  if (op.requestType === 'Create' && requiresRecreate(status) && matchesKmsTransientSignature(failureText) && createRetryCount < MAX_KMS_CREATE_RETRIES) {
+    console.log(`Stack ${op.stackName} requires recreation due to KMS transient error (createRetryCount=${createRetryCount}/${MAX_KMS_CREATE_RETRIES}).`);
+    try {
+      await recreateStack(op, cfClient);
+    } catch (err: any) {
+      console.error('Recreate CreateStack failed:', formatAwsError(err));
+      // Fall through to terminal failure handling.
+    }
+    return { done: false, deleteRetryCount, createRetryCount: createRetryCount + 1 };
   }
 
   if (isTerminalFailure(status)) {
-    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
     await putCfnResponse({
       cfn,
@@ -211,7 +238,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: limitReason((stack.StackStatusReason ?? `Stack failed with status ${status}`) + details),
       logStreamName: context?.logStreamName,
     });
-    return { done: true, deleteRetryCount };
+    return { done: true, deleteRetryCount, createRetryCount };
   }
 
   if (isTerminalSuccess(status)) {
@@ -224,7 +251,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       data: outputs,
       logStreamName: context?.logStreamName,
     });
-    return { done: true, deleteRetryCount };
+    return { done: true, deleteRetryCount, createRetryCount };
   }
 
   // Cap the non-Delete polling loop so the worker responds within the CR serviceTimeout (60 min).
@@ -237,10 +264,10 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: limitReason(`Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status})`),
       logStreamName: context?.logStreamName,
     });
-    return { done: true, deleteRetryCount };
+    return { done: true, deleteRetryCount, createRetryCount };
   }
 
-  return { done: false, deleteRetryCount };
+  return { done: false, deleteRetryCount, createRetryCount };
 }
 
 async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<void> {

@@ -11,7 +11,7 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -22,11 +22,11 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { AdminApi } from '../api/admin-api';
 import { JMapApi } from '../api/jmap-api';
 import { McpApi } from '../api/mcp-api';
-import { AuthorizerLambda } from '../lambdas';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { IMailboxAuthProvider } from '../auth/types';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { Permission } from '../auth/jmap-scopes';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -43,8 +43,8 @@ function createMockAuthProvider(): IMailboxAuthProvider {
     authMethod: 'header',
     usePkce: false,
     scopeMap: {
-      'mail.read': ['JMAP_MAIL_READ'],
-      'mail.write': ['JMAP_MAIL_WRITE'],
+      'mail.read': [Permission.MAIL_READ],
+      'mail.write': [Permission.MAIL_WRITE],
     },
     policies: {
       adminApi: {
@@ -113,7 +113,7 @@ function findRouteResources(
 describe('API Authorizer Wiring', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: PinnedResolver;
+  let artifactResolver: ICdkArtifactEngine;
   let configTable: dynamodb.ITable;
   let itemTable: dynamodb.ITable;
   let changelogTable: dynamodb.ITable;

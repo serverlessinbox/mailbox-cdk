@@ -321,14 +321,13 @@ export class Mailbox extends Construct {
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
-    const stackHelpers = new StackHelpers(groups.ops, 'stack-helpers', {
-      artifactResolver,
-      hostedZoneId: props.hostedZoneId ?? '',
-      dataStackName: effectiveDataStackName,
-    });
+    const stackHelpers = StackHelpers.getOrCreate(this, resolver);
+    const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
+      groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
+    );
 
-    const domainName: string = stackHelpers.derivedDomainName;
-    const s3NameBase: string = stackHelpers.derivedS3SafeDataStackName;
+    const domainName: string = derivedDomainName;
+    const s3NameBase: string = derivedS3SafeDataStackName;
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', {
       hostedZoneId: props.hostedZoneId ?? '',

@@ -2988,7 +2988,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "ts-jest",\
-      "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#npm:29.4.6"\
+      "virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#npm:29.4.6"\
     ],\
     [\
       "ts-node",\
@@ -6045,9 +6045,11 @@ const RAW_RUNTIME_STATE =
           ["@types/aws-cdk-lib", null],\
           ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/constructs", null],\
+          ["@types/jest", "npm:29.5.14"],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/serverlessinbox__mailbox", null],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["aws-sdk-client-mock", "npm:3.1.0"],\
           ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
@@ -6055,7 +6057,7 @@ const RAW_RUNTIME_STATE =
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
-          ["ts-jest", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#npm:29.4.6"],\
+          ["ts-jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.4.6"],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
@@ -6081,8 +6083,10 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
           ["@serverlessinbox/mailbox-cognito", "workspace:packages/mailbox-cognito"],\
           ["@types/aws-lambda", "npm:8.10.159"],\
+          ["@types/jest", "npm:29.5.14"],\
           ["@types/node", "npm:24.10.1"],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["aws-sdk-client-mock", "npm:3.1.0"],\
           ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
@@ -6090,7 +6094,7 @@ const RAW_RUNTIME_STATE =
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
-          ["ts-jest", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#npm:29.4.6"],\
+          ["ts-jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.4.6"],\
           ["ts-node", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.9.2"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
@@ -13842,56 +13846,6 @@ const RAW_RUNTIME_STATE =
           ["ts-jest", "npm:29.4.6"]\
         ],\
         "linkType": "SOFT"\
-      }],\
-      ["virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#npm:29.4.6", {\
-        "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-8a721c46c9/6/.yarn/berry/cache/ts-jest-npm-29.4.6-a9cc323ce9-10c0.zip/node_modules/ts-jest/",\
-        "packageDependencies": [\
-          ["@babel/core", null],\
-          ["@jest/transform", null],\
-          ["@jest/types", null],\
-          ["@types/babel-jest", null],\
-          ["@types/babel__core", null],\
-          ["@types/esbuild", null],\
-          ["@types/jest", null],\
-          ["@types/jest-util", null],\
-          ["@types/jest__transform", null],\
-          ["@types/jest__types", null],\
-          ["@types/typescript", null],\
-          ["babel-jest", null],\
-          ["bs-logger", "npm:0.2.6"],\
-          ["esbuild", "npm:0.27.1"],\
-          ["fast-json-stable-stringify", "npm:2.1.0"],\
-          ["handlebars", "npm:4.7.8"],\
-          ["jest", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:29.7.0"],\
-          ["jest-util", null],\
-          ["json5", "npm:2.2.3"],\
-          ["lodash.memoize", "npm:4.1.2"],\
-          ["make-error", "npm:1.3.6"],\
-          ["semver", "npm:7.8.5"],\
-          ["ts-jest", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#npm:29.4.6"],\
-          ["type-fest", "npm:4.41.0"],\
-          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
-          ["yargs-parser", "npm:21.1.1"]\
-        ],\
-        "packagePeers": [\
-          "@babel/core",\
-          "@jest/transform",\
-          "@jest/types",\
-          "@types/babel-jest",\
-          "@types/babel__core",\
-          "@types/esbuild",\
-          "@types/jest-util",\
-          "@types/jest",\
-          "@types/jest__transform",\
-          "@types/jest__types",\
-          "@types/typescript",\
-          "babel-jest",\
-          "esbuild",\
-          "jest-util",\
-          "jest",\
-          "typescript"\
-        ],\
-        "linkType": "HARD"\
       }],\
       ["virtual:e003e734f6a9dfc52b192003fd89f2948037e3352b1d32f6976f248576e95154c1f408eaaf3bf8a5289f2de9d51e905c3fd09057a1ff2a4b1085bb6cffa64238#npm:29.4.6", {\
         "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-3236effa58/6/.yarn/berry/cache/ts-jest-npm-29.4.6-a9cc323ce9-10c0.zip/node_modules/ts-jest/",\

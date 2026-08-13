@@ -12,7 +12,7 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import { SweeperInfra } from '../features/sweeper/sweeper-infra';
@@ -20,7 +20,6 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import {
-  CloudFormationPolicyStatement,
   CloudFormationResource,
   getPolicyStatements,
   isResourceOfType,
@@ -29,7 +28,7 @@ import {
 describe('SweeperInfra IAM Policies', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: PinnedResolver;
+  let artifactResolver: ICdkArtifactEngine;
 
   beforeEach(() => {
     app = new App({
@@ -105,7 +104,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -154,7 +153,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -191,7 +190,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -230,7 +229,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -276,7 +275,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -322,7 +321,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
@@ -356,7 +355,7 @@ describe('SweeperInfra IAM Policies', () => {
       });
       const opsGroup = new Construct(parent, 'ops');
 
-      const sweeper = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
+      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver });
 
       const template = Template.fromStack(parent);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;

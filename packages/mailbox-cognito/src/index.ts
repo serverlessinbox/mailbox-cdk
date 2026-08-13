@@ -8,6 +8,7 @@ export type {
   MailboxUserPoolProps,
   MailboxUserPoolDomainConfig,
   MailboxUserPoolCognitoDomain,
+  MailboxUserPoolCognitoAutoDomain,
   MailboxUserPoolCustomDomain,
   MailboxUserPoolAuthorizationConfig,
   ProvisionHeadlessClientConfig,
