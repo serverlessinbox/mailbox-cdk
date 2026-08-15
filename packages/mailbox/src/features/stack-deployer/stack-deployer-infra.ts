@@ -1,4 +1,4 @@
-import { Aws, Duration, Fn } from 'aws-cdk-lib';
+import { Aws, Duration, Fn, Stack, ArnFormat } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -64,6 +64,23 @@ export class StackDeployerInfra extends Construct {
       new PolicyStatement({
         actions: ['states:StartExecution'],
         resources: [this.workflow.stateMachine.stateMachineArn],
+      }),
+    );
+
+    // Grant DescribeExecution permission on execution ARNs (needed to detect and retry on ExecutionAlreadyExists).
+    // Execution ARNs use colon format: arn:aws:states:region:account:execution:stateMachineName:*
+    // Build ARN token-safely from the same name source used for the state machine.
+    const stack = Stack.of(this);
+    const executionArnPattern = stack.formatArn({
+      service: 'states',
+      resource: 'execution',
+      resourceName: Fn.join(':', [stateMachineName, '*']),
+      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+    });
+    this.starter.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['states:DescribeExecution'],
+        resources: [executionArnPattern],
       }),
     );
   }

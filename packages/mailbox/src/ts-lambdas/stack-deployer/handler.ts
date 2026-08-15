@@ -1,4 +1,4 @@
-import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
+import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, safeStringify, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
@@ -33,6 +33,47 @@ function formatAwsError(err: any): string {
     requestId ? `requestId=${requestId}` : undefined,
   ].filter(Boolean).join(' ');
   return meta ? `${name}: ${message} (${meta})` : `${name}: ${message}`;
+}
+
+/**
+ * Attempt to start a Step Functions execution with retry logic.
+ * Tries the base name, then suffixed names (e.g., -r2, -r3, etc.) up to MAX_RETRY_ATTEMPTS.
+ * Returns true on success (execution started), false if all retries exhausted.
+ */
+async function startExecutionWithSuffixRetry(
+  executionName: string,
+  stateMachineArn: string,
+  input: Record<string, any>,
+): Promise<boolean> {
+  const MAX_RETRY_ATTEMPTS = 5;
+
+  for (let attempt = 2; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    const suffixedName = `${executionName}-r${attempt}`;
+    try {
+      await sfnClient.send(
+        new StartExecutionCommand({
+          stateMachineArn,
+          name: suffixedName,
+          input: JSON.stringify(input),
+        })
+      );
+      console.log('Retry execution started successfully', { suffixedName });
+      return true;
+    } catch (retryErr: any) {
+      if (retryErr?.name === 'ExecutionAlreadyExists' || String(retryErr?.message ?? '').includes('ExecutionAlreadyExists')) {
+        // The suffixed name also exists (unlikely but possible); continue to next attempt.
+        console.warn('Suffixed name also exists (retry)', { suffixedName, error: formatAwsError(retryErr) });
+        continue;
+      } else {
+        // Real error; stop retrying.
+        console.error('Retry execution failed (non-ExecutionAlreadyExists)', { suffixedName, error: formatAwsError(retryErr) });
+        break;
+      }
+    }
+  }
+
+  // All retries exhausted or a real error occurred.
+  return false;
 }
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
@@ -286,6 +327,20 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     ResourceType: event.ResourceType,
   };
 
+  // Operational logging: emit a single, greppable marker with all finalization details
+  // for manual stack-resource recovery in CloudWatch (see MANUAL_FINALIZE marker)
+  const finalizationBody = JSON.stringify({
+    Status: 'SUCCESS', // Placeholder; actual status determined below
+    PhysicalResourceId: physicalResourceId,
+    StackId: cfn.StackId,
+    RequestId: cfn.RequestId,
+    LogicalResourceId: cfn.LogicalResourceId,
+  });
+  console.log('MANUAL_FINALIZE stack=' + event.ResourceProperties.stackName + ' logical=' + event.LogicalResourceId + ' type=' + event.RequestType + ' requestId=' + event.RequestId);
+  console.log('MANUAL_FINALIZE responseUrl=' + event.ResponseURL);
+  console.log('MANUAL_FINALIZE body=' + finalizationBody);
+  console.log('MANUAL_FINALIZE hint=curl -X PUT -H "Content-Type:" --data-binary \'' + finalizationBody + '\' \'' + event.ResponseURL + '\'');
+
   // Validate root stack name length only on Create to catch configuration issues early.
   // CloudFormation truncates auto-generated physical resource names (64 chars for IAM roles/Lambda functions)
   // for long stack names, which can break name-prefix-based IAM lookups.
@@ -362,7 +417,9 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     console.error('Failed to start Step Functions execution:', safeStringify(err));
     const message = String(err?.message ?? '');
     if (err?.name === 'ExecutionAlreadyExists' || message.includes('ExecutionAlreadyExists')) {
-      // Safety net: for Delete, don't wait on a potentially stuck prior execution.
+      // ExecutionAlreadyExists: the same RequestId was retried by CloudFormation.
+      // The prior execution is handling (or has handled) the CFN response.
+      // For Delete requests, respond SUCCESS and return.
       if (event.RequestType === 'Delete') {
         await putCfnResponse({
           cfn,
@@ -371,8 +428,69 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
           reason: 'Delete already in progress (ExecutionAlreadyExists); continuing without waiting',
           logStreamName: context?.logStreamName,
         });
+        return;
       }
-      return;
+
+      // For Create/Update: check if the existing execution is still running.
+      // If running, return (it will send the CFN response on its own).
+      // If terminal, retry with a suffixed name up to 5 attempts.
+      // If retry fails, respond FAILED.
+      let executionRunning = false;
+
+      try {
+        // Build the execution ARN in colon format: arn:aws:states:region:account:execution:stateMachineName:executionName
+        const executionArn = `${stateMachineArn.replace(':stateMachine:', ':execution:')}:${executionName}`;
+        const descResp = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
+        const status = descResp.status ?? '';
+
+        if (status === 'RUNNING') {
+          // The existing execution is still running; it will send the CFN response.
+          console.log('Existing execution is RUNNING; returning without response', { executionArn, status });
+          executionRunning = true;
+        } else if (['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'].includes(status)) {
+          // The existing execution is terminal; try to start a new one with a suffixed name.
+          console.log('Existing execution is terminal; attempting retry with suffixed name', { executionArn, status });
+
+          const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input);
+          if (retrySucceeded) {
+            return;
+          }
+
+          // All retries exhausted or a real error occurred.
+          await putCfnResponse({
+            cfn,
+            status: 'FAILED',
+            physicalResourceId,
+            reason: limitReason(`Could not start execution after 5 retries: all suffixed names exhausted`),
+            logStreamName: context?.logStreamName,
+          });
+          return;
+        }
+      } catch (descErr: any) {
+        // DescribeExecution failed (e.g. execution not found, permission denied).
+        // Treat as a terminal state and attempt a retry.
+        console.warn('DescribeExecution failed; attempting retry with suffixed name', { error: formatAwsError(descErr) });
+
+        const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input);
+        if (retrySucceeded) {
+          return;
+        }
+
+        // All retries exhausted.
+        await putCfnResponse({
+          cfn,
+          status: 'FAILED',
+          physicalResourceId,
+          reason: limitReason(`DescribeExecution failed and could not start retry: ${formatAwsError(descErr)}`),
+          logStreamName: context?.logStreamName,
+        });
+        return;
+      }
+
+      // If the existing execution is running, return without sending a response.
+      if (executionRunning) {
+        return;
+      }
     }
 
     // Safety net: allow parent stack deletion/rollback to continue.
