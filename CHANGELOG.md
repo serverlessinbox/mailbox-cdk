@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.70](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.69...v0.0.70) (Sat Aug 15 2026)
+
+### feat
+
+* Stack deployer hardening ([09823cc](https://github.com/serverlessinbox/mailbox-cdk/commit/09823cc3a1f9acd219bb94ba8f441c9e3cabbfc9))
+
 ## [0.0.69](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.68...v0.0.69) (Thu Aug 13 2026)
 
 ### fix
