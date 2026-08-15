@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.71](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.70...v0.0.71) (Sat Aug 15 2026)
+
+### feat
+
+* Customer domain ([074a673](https://github.com/serverlessinbox/mailbox-cdk/commit/074a6730ebcc60eee6240586ba19794590c140df))
+
 ## [0.0.70](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.69...v0.0.70) (Sat Aug 15 2026)
 
 ### feat
