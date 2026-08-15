@@ -8,6 +8,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 export interface LicenseRefresherLambdaProps {
   configTable: ITable;
   artifactResolver: ICdkArtifactEngine;
+  coreDomain: string;
 }
 
 export class LicenseRefresherLambda extends GoLambda {
@@ -19,6 +20,7 @@ export class LicenseRefresherLambda extends GoLambda {
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         INSTANCE_ID: Aws.STACK_NAME,
+        CORE_DOMAIN: props.coreDomain,
       },
     });
 

@@ -11,6 +11,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 export interface LicenseRefreshProps {
   readonly configTable: ITable;
   readonly artifactResolver: ICdkArtifactEngine;
+  readonly coreDomain: string;
 }
 
 export class LicenseRefresh extends Construct {
@@ -23,6 +24,7 @@ export class LicenseRefresh extends Construct {
     const handler = new LicenseRefresherLambda(this, 'handler', {
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
+      coreDomain: props.coreDomain,
     });
 
     this.licenseFunction = handler;

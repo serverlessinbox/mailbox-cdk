@@ -588,6 +588,7 @@ export class Mailbox extends Construct {
     new LicenseRefresh(groups.ops, 'license-refresh', {
       configTable: dataRef.configTable,
       artifactResolver,
+      coreDomain: domainName,
     });
 
     // Lambda function to process incoming emails
