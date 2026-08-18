@@ -39,6 +39,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },
             'mailbox-go': { kind: 'release', version: '1.0.0' },
+            'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
           },
         },
       },
@@ -52,9 +53,10 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
     const packages: Record<string, ArtifactVersionsEntry> = {
       'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
       'mailbox-go': { version: '1.0.0', zone: 'regional' },
+      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
     };
     const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
+    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go', 'mailbox-cdk-shared']);
 
     // Wrap in CdkArtifactEngine for the full interface
     const engine = new CdkArtifactEngine(stack, pinnedResolver);
@@ -297,4 +299,5 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       expect(customResourceFound).toBe(false);
     });
   });
+
 });

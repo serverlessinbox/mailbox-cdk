@@ -9,10 +9,6 @@ module.exports = {
       objectName: 'lambdas/stack-deployer.zip',
     },
     {
-      source: '/tmp/ui-deployer.zip',
-      objectName: 'lambdas/ui-deployer.zip',
-    },
-    {
       source: '/tmp/stack-helpers.zip',
       objectName: 'lambdas/stack-helpers.zip',
     },

@@ -60,7 +60,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
   private readonly registeredPackages = new Set<string>();
-  private readonly deployEndTrigger: cdk.CfnCustomResource;
+  private readonly deployEndTrigger: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
@@ -282,7 +282,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
  * The Aspect applies only to this subtree, keeping the updater Lambda (always-on) outside the gate.
  */
 class TrackedUpdateTriggers extends Construct {
-  readonly deployEndCr: cdk.CfnCustomResource;
+  readonly deployEndCr: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: {
     updater: lambda.IFunction;
@@ -293,13 +293,14 @@ class TrackedUpdateTriggers extends Construct {
 
     // Deploy-end CR: fires when the stack is deployed with ArtifactTracking != pinned
     // ServiceToken points to the updater Lambda; the handler detects CFN CR events and routes accordingly
-    const deployEndCr = new cdk.CfnCustomResource(this, 'deploy-end-cr', {
+    const deployEndCr = new cdk.CustomResource(this, 'deploy-end-cr', {
       serviceToken: props.updater.functionArn,
-      // Fire-and-return category: 2x the backing Lambda's own 5min timeout = 10 min headroom
-      serviceTimeout: 600,
+      serviceTimeout: cdk.Duration.seconds(600),
+      resourceType: 'Custom::DeployEndTrigger',
+      properties: {
+        Nonce: Date.now().toString(),
+      },
     });
-    // Add nonce to force re-invocation on every deploy
-    deployEndCr.addPropertyOverride('Nonce', Date.now().toString());
     this.deployEndCr = deployEndCr;
 
     // EventBridge rule: trigger the updater on schedule (6-hourly self-healing loop)

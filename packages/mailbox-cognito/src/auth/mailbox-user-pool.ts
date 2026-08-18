@@ -19,12 +19,13 @@ import {
   StackHelpers,
 } from '@serverlessinbox/mailbox';
 
-import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider } from '@serverlessinbox/mailbox';
+import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
+import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 
 import { slugifyLabel } from '../utils/resource-names';
 import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
@@ -91,6 +92,12 @@ export interface MailboxUserPoolProps {
    * When omitted, defaults to pinned behavior (byte-identical to old behavior, zero infra).
    */
   readonly artifactResolver?: IArtifactResolver;
+
+  /**
+   * Enable OAuth 2.0 Dynamic Client Registration (RFC 7591) for the JMAP API.
+   * @default false
+   */
+  readonly enableJmapOAuthDiscovery?: boolean;
 }
 
 export interface BootstrapUserConfig {
@@ -129,6 +136,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly headlessClients = new Map<string, AuthClientConfig>();
   private readonly artifacts: ICdkArtifactEngine;
   private _bootstrapUserCount = 0;
+  private _enableJmapOAuthDiscovery = false;
 
   // Stored userPoolId for use in CfnUserPoolClient and grants
   private readonly _userPoolId: string;
@@ -323,6 +331,19 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     ];
   }
 
+  createJmapApiAddons(scope: Construct, ctx: JmapApiAddonContext): IJmapApiAddon[] {
+    if (!this._enableJmapOAuthDiscovery) return [];
+    return [
+      new JmapOAuthAddon(scope, 'jmap-oauth-addon', {
+        pool: this,
+        artifactResolver: this.artifacts,
+        auditEventsQueue: ctx.auditEventsQueue,
+        configTable: ctx.configTable,
+        apiBaseUrl: ctx.apiBaseUrl,
+      }),
+    ];
+  }
+
   adminUiConfig(): Record<string, unknown> {
     return { idp: { type: 'cognito' } };
   }
@@ -337,6 +358,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
     super(scope, id);
+
+    this._enableJmapOAuthDiscovery = props.enableJmapOAuthDiscovery ?? false;
 
     // Artifact resolution (stack-self-update subplan #3, Phase A):
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
@@ -378,7 +401,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       ? props.domain.cognitoDomainPrefix
       : props.domain.kind === 'cognito-auto'
       ? StackHelpers.getOrCreate(this, resolver)
-          .resolveCognitoDomainPrefix(this, 'domain-prefix', props.domain.hostedZoneId)
+          .resolveCognitoDomainPrefix(this, 'domain-prefix-v2', props.domain.hostedZoneId)
       : Aws.STACK_NAME;
 
     const deployer = new MailboxCognitoDataDeployer(this, 'cognito-deployer', {

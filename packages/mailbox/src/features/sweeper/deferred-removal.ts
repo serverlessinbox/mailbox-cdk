@@ -32,16 +32,15 @@ export class DeferredRemoval extends Construct {
       throw new Error('DeferredRemoval requires at least one of certArn or edgeFnArn');
     }
 
-    const cr = new cdk.CfnCustomResource(this, 'resource', {
+    const cr = new cdk.CustomResource(this, 'resource', {
       serviceToken: props.sweeperStarter.functionArn,
-      serviceTimeout: cdk.Duration.minutes(2).toSeconds(), // 2× Lambda timeout ceiling (60s); starter responds in ~1-2s via wrapHandler, so 120s fails fast without cutting off legitimate invocations
+      serviceTimeout: cdk.Duration.minutes(2), // 2× Lambda timeout ceiling (60s); starter responds in ~1-2s via wrapHandler, so 120s fails fast without cutting off legitimate invocations
+      resourceType: 'Custom::DeferredRemoval',
+      properties: {
+        CertArn: props.certArn,
+        EdgeFnArn: props.edgeFnArn,
+      },
     });
-
-    cr.addPropertyOverride('CertArn', props.certArn);
-    cr.addPropertyOverride('EdgeFnArn', props.edgeFnArn);
-
-    // Override logical ID to a single stable ID (not per-resource-kind anymore)
-    cr.overrideLogicalId('MailboxDeferredRemoval');
 
     // Physical resource ID: stable identifier combining both ARNs if present
     // This ensures CFN issues an Update (not Delete+Create) when only metadata changes.

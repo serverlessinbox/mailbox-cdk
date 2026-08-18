@@ -102,20 +102,20 @@ describe('StackHelpers Construct', () => {
       const callerScope = new Construct(stack, 'CallerScope');
 
       // First resolver call: resolveMailboxData
-      helpers.resolveMailboxData(callerScope, 'mailbox-data', {
+      helpers.resolveMailboxData(callerScope, 'stack-helpers-v2', {
         hostedZoneId: 'Z123',
         dataStackName: 'my-data-stack',
       });
 
       // Second resolver call: resolveCognitoDomainPrefix
-      helpers.resolveCognitoDomainPrefix(callerScope, 'cognito-prefix', 'Z456');
+      helpers.resolveCognitoDomainPrefix(callerScope, 'domain-prefix-v2', 'Z456');
 
       const template = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, any> | undefined;
 
       // Count custom resources
       const customResources = Object.values(resources || {}).filter(
-        (r: any) => r.Type === 'AWS::CloudFormation::CustomResource'
+        (r: any) => r.Type === 'Custom::StackHelpers'
       );
 
       // Should have exactly 2 custom resources (one per resolver call)

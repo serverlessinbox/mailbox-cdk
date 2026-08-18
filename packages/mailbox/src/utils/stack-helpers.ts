@@ -81,8 +81,8 @@ export class StackHelpers extends Construct {
       DataStackName: props.dataStackName,
     });
     return {
-      derivedDomainName: cdk.Fn.getAtt(cr.logicalId, 'domainName').toString(),
-      derivedS3SafeDataStackName: cdk.Fn.getAtt(cr.logicalId, 's3SafeDataStackName').toString(),
+      derivedDomainName: cr.getAttString('domainName'),
+      derivedS3SafeDataStackName: cr.getAttString('s3SafeDataStackName'),
     };
   }
 
@@ -95,21 +95,19 @@ export class StackHelpers extends Construct {
       HostedZoneId: hostedZoneId,
       Fallback: cdk.Aws.STACK_NAME,
     });
-    return cdk.Fn.getAtt(cr.logicalId, 'cognitoDomainPrefix').toString();
+    return cr.getAttString('cognitoDomainPrefix');
   }
 
   private attach(
     scope: Construct,
     id: string,
     properties: Record<string, string>,
-  ): cdk.CfnCustomResource {
-    const cr = new cdk.CfnCustomResource(scope, id, {
+  ): cdk.CustomResource {
+    return new cdk.CustomResource(scope, id, {
       serviceToken: this.fn.functionArn,
-      serviceTimeout: 120,
+      serviceTimeout: cdk.Duration.seconds(120),
+      resourceType: 'Custom::StackHelpers',
+      properties,
     });
-    for (const [k, v] of Object.entries(properties)) {
-      cr.addPropertyOverride(k, v);
-    }
-    return cr;
   }
 }

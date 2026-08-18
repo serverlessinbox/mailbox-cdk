@@ -18,7 +18,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
-import { deployZipToPrefix } from '../ui-ops';
+import { deployZipToPrefix } from '../content-ops';
 
 // Mock unzipper.Open.buffer to return test directory structure
 jest.mock('unzipper', () => ({

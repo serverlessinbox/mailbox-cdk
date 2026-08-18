@@ -37,15 +37,6 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
 
-  bundle:ui-deployer:
-    desc: Bundle ui-deployer lambda zip to /tmp
-    sources:
-      - src/ts-lambdas/ui-deployer/**/*.ts
-    generates:
-      - /tmp/ui-deployer.zip
-    cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
-
   bundle:stack-helpers:
     desc: Bundle stack-helpers lambda zip to /tmp
     sources:
@@ -78,7 +69,6 @@ tasks:
     cmds:
       - task: bundle:blob-authorizer
       - task: bundle:stack-deployer
-      - task: bundle:ui-deployer
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
@@ -112,12 +102,10 @@ tasks:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/ui-deployer/index.ts --out /tmp/ui-deployer.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out /tmp/artifact-updater.zip --external "@aws-sdk/*"
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/ui-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/resource-sweeper.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/artifact-updater.zip
@@ -131,7 +119,6 @@ tasks:
       - task: build:data-stack
       - task: bundle:blob-authorizer
       - task: bundle:stack-deployer
-      - task: bundle:ui-deployer
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater

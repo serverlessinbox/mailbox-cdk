@@ -44,6 +44,9 @@ jobs:
       - name: Bundle cognito lambdas
         working-directory: packages/mailbox-cognito
         run: task bundle
+      - name: Bundle mailbox-cdk-shared lambdas
+        working-directory: packages/mailbox-cdk-shared
+        run: task bundle
       - run: yarn gitversion pack
       - name: Start npm stub registry
         run: |

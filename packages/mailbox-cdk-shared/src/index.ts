@@ -8,6 +8,10 @@ export type { TypeScriptLambdaProps } from './ts-lambda';
 export { applyArtifactTags } from './apply-artifact-tags';
 export type { AutoUpdateType } from './apply-artifact-tags';
 
+// Static content deployer (used for UI bundles, well-known docs, etc.)
+export { StaticContentDeployer, StaticContentSource } from './content-deployer';
+export type { StaticContentDeploymentProps, StaticContentInvalidationProps, IStaticContentSource, StaticContentSourceSpec, StaticContentWriteOptions, StaticContentZipOptions } from './content-deployer';
+
 // Track resolver pure-data exports (for AutoUpdater)
 export { TRACK_RESOLVER_HANDLER_SOURCE } from './track-resolver/generated/track-resolver-handler-source';
 export { TRACK_RESOLVER_VERSION_ATTR } from './track-resolver/attr';

@@ -2,14 +2,16 @@ version: '3'
 
 tasks:
   publish:dev:
-    desc: Publish all CDK artifacts (mailbox + mailbox-cognito) to dev channel
+    desc: Publish all CDK artifacts (mailbox-cdk-shared + mailbox + mailbox-cognito) to dev channel
     cmds:
+      - task -d packages/mailbox-cdk-shared publish:dev
       - task -d packages/mailbox publish:dev
       - task -d packages/mailbox-cognito publish:dev
 
   pack:local:
     desc: Build all CDK artifacts locally (prerequisites for gitversion pack)
     cmds:
+      - task -d packages/mailbox-cdk-shared bundle
       - task -d packages/mailbox bundle
       - task -d packages/mailbox-cognito bundle
       - yarn workspace @serverlessinbox/mailbox build:data-stack

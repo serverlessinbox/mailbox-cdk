@@ -1,0 +1,26 @@
+version: '3'
+
+tasks:
+  bundle:content-deployer:
+    desc: Bundle content-deployer lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/content-deployer/**/*.ts
+      - src/ts-lambdas/shared/**/*.ts
+      - src/static-content-source-spec.ts
+    generates:
+      - /tmp/content-deployer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/content-deployer/index.ts --out /tmp/content-deployer.zip
+
+  bundle:
+    desc: Bundle all mailbox-cdk-shared lambdas to /tmp/*.zip
+    cmds:
+      - task: bundle:content-deployer
+
+  publish:dev:
+    desc: Publish mailbox-cdk-shared regional ts-lambdas to dev channel
+    env:
+      AWS_PROFILE: serverlessinbox-dev
+    cmds:
+      - task: bundle:content-deployer
+      - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/content-deployer.zip

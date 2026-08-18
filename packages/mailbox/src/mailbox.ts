@@ -7,7 +7,7 @@ import { AdminApi } from './api/admin-api';
 import { JMapApi } from './api/jmap-api';
 import { WebSocketPush } from './api/websocket';
 import { McpApi } from './api/mcp-api';
-import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from './api';
+import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
 import {
   AuthClientConfig,
@@ -282,7 +282,7 @@ export class Mailbox extends Construct {
 
     // Register packages for artifact updates
     resolver.registerPackages([
-      'mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui',
+      'mailbox-go', 'mailbox-cdk', 'mailbox-cdk-shared', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui',
     ]);
 
     const artifactResolver = new CdkArtifactEngine(this, resolver);
@@ -323,7 +323,7 @@ export class Mailbox extends Construct {
 
     const stackHelpers = StackHelpers.getOrCreate(this, resolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
-      groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
+      groups.ops, 'stack-helpers-v2', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
 
     const domainName: string = derivedDomainName;
@@ -502,6 +502,16 @@ export class Mailbox extends Construct {
       }
 
       return addons;
+    })();
+
+    const jmapApiAddons: IJmapApiAddon[] = (() => {
+      if (typeof authProvider.createJmapApiAddons !== 'function') return [];
+      const ctx: JmapApiAddonContext = {
+        apiBaseUrl: this.urls.jmapApi,
+        configTable: dataRef.configTable,
+        auditEventsQueue: auditWriting.auditEventsQueue,
+      };
+      return authProvider.createJmapApiAddons(groups.apis, ctx);
     })();
 
     if (enableAdminUi) {
@@ -790,6 +800,8 @@ export class Mailbox extends Construct {
 
       domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
       certificate: jmapCertificate,
+
+      jmapApiAddons,
 
       // WebSocket URL will be passed via environment variable, not here
     });

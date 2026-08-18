@@ -46,20 +46,16 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
   readReleasePointer: jest.fn(),
 }), { virtual: true });
 
-// Mock shared UI operations
-jest.mock('../../shared/ui-ops', () => ({
+// Mock mailbox-cdk-shared content operations
+jest.mock('@serverlessinbox/mailbox-cdk-shared', () => ({
   deployZipToPrefix: jest.fn(),
   normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
-}));
-
-jest.mock('../../shared/ui-cloudfront', () => ({
   invalidateCloudFront: jest.fn(),
 }));
 
-// Import mocks as any to work around unpublished package
+// Import mocks as any to work around jest.requireMock's untyped return
 const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock('@serverlessinbox/artifact-registry') as any;
-const { deployZipToPrefix } = jest.requireMock('../../shared/ui-ops') as any;
-const { invalidateCloudFront } = jest.requireMock('../../shared/ui-cloudfront') as any;
+const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock('@serverlessinbox/mailbox-cdk-shared') as any;
 
 // Fixture helpers to reduce boilerplate
 function lambdaResource(

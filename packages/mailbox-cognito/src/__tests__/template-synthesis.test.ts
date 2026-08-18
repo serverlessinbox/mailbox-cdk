@@ -401,7 +401,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
           hasLambda = true;
         }
-        if (isResourceOfType(resource, 'AWS::CloudFormation::CustomResource')) {
+        if (isResourceOfType(resource, 'Custom::StackHelpers')) {
           hasCustomResource = true;
         }
       }
@@ -503,6 +503,59 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Should NOT have StackHelpers Lambda for custom domain
       expect(stackHelpersLambda).toBe(false);
+    });
+  });
+
+  /**
+   * Integration: MailboxUserPool with OAuth Discovery enabled
+   *
+   * Verifies that MailboxUserPool with enableJmapOAuthDiscovery: true
+   * synthesizes correctly and creates the JmapOAuthAddon with its CustomResources.
+   */
+  describe('MailboxUserPool with OAuth Discovery enabled', () => {
+    it('should synth successfully with enableJmapOAuthDiscovery: true', () => {
+      const app = new App();
+      function setUpArtifactContext() {
+        app.node.setContext('artifacts', {
+          bucketBase: 'test-artifacts',
+          packages: {
+            'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
+            'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+            'mailbox': { kind: 'release', version: '0.0.1-test' },
+          },
+        });
+        app.node.setContext('artifactVersions', {});
+      }
+      setUpArtifactContext();
+
+      const stack = new cdk.Stack(app, 'TestOAuthDiscoveryStack', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
+
+      // Construct MailboxUserPool with enableJmapOAuthDiscovery enabled
+      const userPool = new MailboxUserPool(stack, 'user-pool-oauth', {
+        domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
+        artifactResolver: resolver,
+        enableJmapOAuthDiscovery: true,
+      });
+
+      // Verify the construct was created
+      expect(userPool).toBeDefined();
+
+      // Synthesize and verify template is valid
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources in synthesized template');
+      }
+
+      // OAuth addon should have created CustomResources or other resources
+      // The important thing is that synth doesn't crash with type errors
+      expect(userPool.oauthDomain).toBeDefined();
     });
   });
 });

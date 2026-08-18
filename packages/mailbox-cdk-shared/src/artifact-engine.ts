@@ -36,6 +36,7 @@ export interface ICdkArtifactEngine {
   getVersion(packageName: string): string;
   getBucketBase(): string;
   resolve(packageName: string, objectPath: string, region?: string): ResolvedArtifact;
+  registerPackages(names: string[]): void;
 }
 
 /** Synth-time version for one package. */
@@ -204,5 +205,13 @@ export class CdkArtifactEngine implements ICdkArtifactEngine {
 
   resolve(packageName: string, objectPath: string, region?: string): ResolvedArtifact {
     return this.resolver.resolve(packageName, objectPath, this.regionOr(region));
+  }
+
+  registerPackages(names: string[]): void {
+    // If the underlying resolver supports registerPackages, call it.
+    // This allows constructs to self-register their packages before resolution.
+    if (typeof (this.resolver as any).registerPackages === 'function') {
+      (this.resolver as any).registerPackages(names);
+    }
   }
 }

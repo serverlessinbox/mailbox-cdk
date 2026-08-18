@@ -9,8 +9,7 @@ import {
 } from '@aws-sdk/client-cloudfront';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer } from '../shared/logger-buffer';
-import { deployZipToPrefix, normalizePrefix } from '../shared/ui-ops';
-import { invalidateCloudFront } from '../shared/ui-cloudfront';
+import { deployZipToPrefix, normalizePrefix, invalidateCloudFront } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import { requireEnv, artifactBucketName } from './common';
 
