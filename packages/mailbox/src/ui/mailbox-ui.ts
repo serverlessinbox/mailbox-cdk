@@ -18,7 +18,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackNamedBucket } from '../utils/named-bucket';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
@@ -90,6 +90,9 @@ export class MailboxUi extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       abacStatus: true,
     });
+
+    // Attach bucket auto-empty handler to clean up bucket on stack deletion
+    BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
     const originAccessIdentity = new OriginAccessIdentity(this, 'origin-access-identity', {
       comment: `Mailbox ${Aws.STACK_NAME} ${props.label} OAI`,
