@@ -194,7 +194,7 @@ export class MailboxUi extends Construct {
 
     // Deploy UI config (if present)
     if (props.uiConfig) {
-      deployer.deploy(this, 'ui-config-v2', {
+      deployer.deploy(this, 'ui-config-v3', {
         targetBucket: this.bucket.bucketName,
         source: StaticContentSource.data('config/config.json', JSON.stringify(props.uiConfig), {
           contentType: 'application/json; charset=utf-8',
@@ -204,7 +204,7 @@ export class MailboxUi extends Construct {
     }
 
     // Invalidate CloudFront distribution cache for all UI content
-    deployer.invalidate(this, 'ui-invalidate-v2', {
+    deployer.invalidate(this, 'ui-invalidate-v3', {
       distributionId: this.distribution.distributionId,
       paths: ['/*'],
     });

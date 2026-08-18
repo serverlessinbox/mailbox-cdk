@@ -1,7 +1,7 @@
 import { wrapHandler } from 'aws-custom-resources';
 
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
-import { deletePrefix, deployZipToPrefix, writeObject, deleteObject } from '../shared/content-ops';
+import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
 import { isContentDeployerResourceProperties } from './types';
 
 export const handler = wrapHandler(async (event: any, context: any) => {
@@ -24,39 +24,14 @@ export const handler = wrapHandler(async (event: any, context: any) => {
   const currentPhysicalId = `content-assets:${event.StackId}:${event.LogicalResourceId}`;
 
   if (event.RequestType === 'Delete') {
-    // Identity guard: verify this Delete targets the current physical resource ID.
-    // If not, this Delete is targeting a superseded PhysicalResourceId scheme
-    // (e.g. the ui-assets: -> content-assets: migration) — the live resource is under
-    // the current ID. Deleting the old ID would wipe live content. No-op instead.
-    if (event.PhysicalResourceId !== currentPhysicalId) {
-      return {
-        PhysicalResourceId: event.PhysicalResourceId,
-        Data: { deleted: '0', objectsWritten: '0', cacheInvalidated: '0' },
-      };
-    }
-
-    let deleted = 0;
-
-    // Per-source deletion: iterate sources and delete based on kind.
-    // This handles the case where a source was removed from the template
-    // while the bucket persists.
-    const sources = props.sources ?? [];
-    for (const source of sources) {
-      if (source.kind === 'zip') {
-        deleted += await deletePrefix(targetBucket, source.targetPrefix);
-      } else if (source.kind === 'data') {
-        await deleteObject(targetBucket, source.key);
-        deleted += 1;
-      }
-    }
-
+    // CFN Delete: no-op. Bucket lifecycle cleanup is managed separately by
+    // a bucket-scoped construct, not by individual deployments' CustomResources.
+    // On resource replacement (logical-ID bump), CFN calls Delete on the old
+    // resource after creating the new one. If we delete here, we'd wipe the
+    // objects the new resource just wrote. Simply echo back a stable ID.
     return {
-      PhysicalResourceId: currentPhysicalId,
-      Data: {
-        deleted: String(deleted),
-        objectsWritten: '0',
-        cacheInvalidated: '0',
-      },
+      PhysicalResourceId: event.PhysicalResourceId,
+      Data: { deleted: '0', objectsWritten: '0', cacheInvalidated: '0' },
     };
   }
 

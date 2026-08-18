@@ -12,10 +12,21 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/content-deployer/index.ts --out /tmp/content-deployer.zip
 
+  bundle:bucket-auto-empty:
+    desc: Bundle bucket-auto-empty lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/bucket-auto-empty/**/*.ts
+      - src/ts-lambdas/shared/bucket-empty.ts
+    generates:
+      - /tmp/bucket-auto-empty.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bucket-auto-empty/index.ts --out /tmp/bucket-auto-empty.zip
+
   bundle:
     desc: Bundle all mailbox-cdk-shared lambdas to /tmp/*.zip
     cmds:
       - task: bundle:content-deployer
+      - task: bundle:bucket-auto-empty
 
   publish:dev:
     desc: Publish mailbox-cdk-shared regional ts-lambdas to dev channel
@@ -23,4 +34,6 @@ tasks:
       AWS_PROFILE: serverlessinbox-dev
     cmds:
       - task: bundle:content-deployer
+      - task: bundle:bucket-auto-empty
       - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/content-deployer.zip
+      - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/bucket-auto-empty.zip

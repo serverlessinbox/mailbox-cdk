@@ -5,6 +5,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { ICdkArtifactEngine } from './artifact-engine';
 import { TypeScriptLambda } from './ts-lambda';
 import type { StaticContentSourceSpec } from './static-content-source-spec';
+import { getOrCreateSharedGroup } from './shared-group';
 
 export type { StaticContentSourceSpec } from './static-content-source-spec';
 
@@ -84,26 +85,15 @@ export class StaticContentDeployer extends TypeScriptLambda {
   /**
    * Get-or-create the one shared content-deployer Lambda for this Stack.
    * The singleton is placed under a "shared" group construct at stack root.
-   * Note: TypeScriptLambda wraps the actual function in an intermediate Construct,
-   * so we need to look for the 'Resource' child within the 'content-deployer' wrapper.
    */
   static getOrCreate(scope: Construct, artifactResolver: ICdkArtifactEngine): StaticContentDeployer {
     const stack = Stack.of(scope);
-    const sharedGroup = StaticContentDeployer.getOrCreateSharedGroup(stack);
-    const wrapper = sharedGroup.node.tryFindChild('content-deployer');
-    if (wrapper) {
-      const resource = wrapper.node.tryFindChild('Resource');
-      if (resource instanceof StaticContentDeployer) {
-        return resource;
-      }
+    const sharedGroup = getOrCreateSharedGroup(stack);
+    const existing = sharedGroup.node.tryFindChild('content-deployer');
+    if (existing instanceof StaticContentDeployer) {
+      return existing;
     }
     return new StaticContentDeployer(sharedGroup, 'content-deployer', artifactResolver);
-  }
-
-  private static getOrCreateSharedGroup(stack: Construct): Construct {
-    const existing = stack.node.tryFindChild('shared');
-    if (existing) return existing as Construct;
-    return new Construct(stack, 'shared');
   }
 
   private constructor(scope: Construct, id: string, artifactResolver: ICdkArtifactEngine) {

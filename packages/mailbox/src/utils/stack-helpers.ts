@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { TypeScriptLambda, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda, CdkArtifactEngine, getOrCreateSharedGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
 import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
 
@@ -29,20 +29,12 @@ export class StackHelpers extends Construct {
    */
   static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): StackHelpers {
     const stack = cdk.Stack.of(scope);
-    const sharedGroup = StackHelpers.getOrCreateSharedGroup(stack);
+    const sharedGroup = getOrCreateSharedGroup(stack);
     const existing = sharedGroup.node.tryFindChild('stack-helpers');
     if (existing) {
       return existing as StackHelpers;
     }
     return new StackHelpers(sharedGroup, 'stack-helpers', artifactResolver);
-  }
-
-  private static getOrCreateSharedGroup(stack: Construct): Construct {
-    const existing = stack.node.tryFindChild('shared');
-    if (existing) {
-      return existing as Construct;
-    }
-    return new Construct(stack, 'shared');
   }
 
   private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {

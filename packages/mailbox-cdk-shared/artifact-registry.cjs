@@ -8,5 +8,9 @@ module.exports = {
       source: '/tmp/content-deployer.zip',
       objectName: 'lambdas/content-deployer.zip',
     },
+    {
+      source: '/tmp/bucket-auto-empty.zip',
+      objectName: 'lambdas/bucket-auto-empty.zip',
+    },
   ],
 };

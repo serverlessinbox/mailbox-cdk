@@ -12,6 +12,12 @@ export type { AutoUpdateType } from './apply-artifact-tags';
 export { StaticContentDeployer, StaticContentSource } from './content-deployer';
 export type { StaticContentDeploymentProps, StaticContentInvalidationProps, IStaticContentSource, StaticContentSourceSpec, StaticContentWriteOptions, StaticContentZipOptions } from './content-deployer';
 
+// Bucket auto-empty (removes all objects & versions on stack deletion, enabling RemovalPolicy.DESTROY)
+export { BucketAutoEmpty } from './bucket-auto-empty';
+
+// Shared group utility (for singleton constructs at stack root)
+export { getOrCreateSharedGroup } from './shared-group';
+
 // Track resolver pure-data exports (for AutoUpdater)
 export { TRACK_RESOLVER_HANDLER_SOURCE } from './track-resolver/generated/track-resolver-handler-source';
 export { TRACK_RESOLVER_VERSION_ATTR } from './track-resolver/attr';

@@ -620,7 +620,7 @@ export class Mailbox extends Construct {
       },
     });
 
-    const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
+    const bootstrap = new Bootstrap(groups.auth, 'bootstrap-v2', {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable: dataRef.configTable,
