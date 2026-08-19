@@ -1,7 +1,7 @@
 import { SecretValue } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Permission } from './jmap-scopes';
-import type { AdminApiAddonContext, IAdminApiAddon } from '../api/addons';
+import type { AdminApiAddonContext, IAdminApiAddon, JmapApiAddonContext, IJmapApiAddon } from '../api/addons';
 
 // ---- Names / keys used in the config table ----
 
@@ -182,6 +182,13 @@ export interface IMailboxAuthorizationConfigProvider {
 export interface IMailboxAuthProvider extends IMailboxAuthProviderBase {
   /** Optional: register additional Admin API routes (provider-specific). */
   createAdminApiAddons?(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[];
+  /** Optional: register additional JMAP API routes (provider-specific, e.g. OAuth DCR). */
+  createJmapApiAddons?(scope: Construct, ctx: JmapApiAddonContext): IJmapApiAddon[];
+  /** Optional: this provider's OAuth issuer URL, if OAuth DCR/discovery is enabled — undefined otherwise.
+   *  jmap-api core uses this to build its own RFC 9728 protected-resource metadata document (which describes
+   *  jmap-api itself as a resource server, not the authorization server) — deliberately narrower than handing
+   *  the provider a whole document/URL to own, since the document's subject is jmap-api, not the provider. */
+  jmapOAuthIssuerUrl?(): string | undefined;
   /** Optional: supply Admin UI runtime config. */
   adminUiConfig?(): Record<string, unknown>;
   /** Optional: publish an authorization mapping. */

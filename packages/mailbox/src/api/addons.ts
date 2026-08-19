@@ -18,6 +18,17 @@ export interface AdminApiAddonContext {
   readonly auditLogTable: ITable;
 }
 
+export interface IJmapApiAddon {
+  /** Mount additional routes directly on the JMAP API's HttpApi. Unlike Admin API addons, JMAP
+   *  addons do not share jmap-api's authorizer — each addon Lambda is
+   *  responsible for gating its own routes if it needs to. */
+  addRoutes(api: HttpApi): void;
+}
+
+export interface JmapApiAddonContext {
+  readonly apiBaseUrl: string;
+}
+
 /**
  * Provider for contributing admin-api routes and UI configuration.
  * Both auth providers (e.g. Cognito) and other capabilities (e.g. Update addon)

@@ -1,7 +1,7 @@
 import { Stack } from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
 import { createHash } from 'node:crypto';
-import { sanitizeStackName } from './sanitize-name';
+import { sanitizeStackName } from '@serverlessinbox/mailbox-cdk-shared';
 
 function slugifyPart(value: string): string {
   return value

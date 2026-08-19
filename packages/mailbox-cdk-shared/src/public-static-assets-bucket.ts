@@ -1,0 +1,56 @@
+import { Construct } from 'constructs';
+import { Stack, RemovalPolicy } from 'aws-cdk-lib';
+import { Bucket, IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import type { ICdkArtifactEngine } from './artifact-engine';
+import { BucketAutoEmpty } from './bucket-auto-empty';
+import { getOrCreateSharedGroup } from './shared-group';
+import { StackNamedBucket } from './named-bucket';
+
+/**
+ * Singleton construct for a shared, public S3 bucket used to store small public static assets
+ * (discovery documents, metadata, config files) that multiple CDK constructs need to serve.
+ *
+ * The bucket itself is public by design (only holds public static documents per RFC 6749 / RFC 9728),
+ * eliminating the need for one dedicated bucket per static-asset-serving construct.
+ *
+ * Singleton pattern: only one per Stack. The bucket is placed under a "shared" group construct
+ * at stack root, and BucketAutoEmpty is attached once (centrally, here) to clean up on stack deletion.
+ */
+export class PublicStaticAssetsBucket {
+  /**
+   * Get-or-create the one shared public static assets bucket for this Stack.
+   * Returns it as IBucket (no construct instance type-check needed).
+   * BucketAutoEmpty is wired once, centrally, inside this method.
+   */
+  static getOrCreate(scope: Construct, artifactResolver: ICdkArtifactEngine): IBucket {
+    const stack = Stack.of(scope);
+    const sharedGroup = getOrCreateSharedGroup(stack);
+
+    // Try to find an existing bucket by stable construct ID
+    const existing = sharedGroup.node.tryFindChild('public-static-assets');
+    if (existing instanceof Bucket) {
+      return existing;
+    }
+
+    // Create the bucket with stack-derived name and public-by-design ACL settings
+    const bucket = new StackNamedBucket(sharedGroup, 'public-static-assets', {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // Attach BucketAutoEmpty once, centrally, for cleanup on stack deletion
+    BucketAutoEmpty.getOrCreate(sharedGroup, artifactResolver).attach(sharedGroup, 'public-assets-auto-empty', bucket);
+
+    // Grant public read access to all objects in this bucket (it only holds public static docs by convention)
+    bucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        principals: [new iam.AnyPrincipal()],
+        resources: [bucket.arnForObjects('*')],
+      }),
+    );
+
+    return bucket;
+  }
+}

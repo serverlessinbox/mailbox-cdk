@@ -54,7 +54,7 @@ export type {
 export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 
 // Admin API addons
-export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from './api/addons';
+export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
 export { StackUpdateAddonProvider } from './addons/stack-update-addon';
 export type { StackUpdateAddonProviderProps } from './addons/stack-update-addon';
 
@@ -83,6 +83,7 @@ export type {
 // Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)
 export { MailboxResourceDescriptions } from './utils/resource-descriptions';
 export type { MailboxResourceDescriptionsOptions } from './utils/resource-descriptions';
+
 
 // Utils — KMS
 export type {

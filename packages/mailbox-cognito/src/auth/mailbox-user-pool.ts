@@ -337,11 +337,14 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       new JmapOAuthAddon(scope, 'jmap-oauth-addon', {
         pool: this,
         artifactResolver: this.artifacts,
-        auditEventsQueue: ctx.auditEventsQueue,
-        configTable: ctx.configTable,
         apiBaseUrl: ctx.apiBaseUrl,
       }),
     ];
+  }
+
+  jmapOAuthIssuerUrl(): string | undefined {
+    if (!this._enableJmapOAuthDiscovery) return undefined;
+    return this.issuer;
   }
 
   adminUiConfig(): Record<string, unknown> {

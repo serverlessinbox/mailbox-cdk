@@ -504,15 +504,16 @@ export class Mailbox extends Construct {
       return addons;
     })();
 
+    const jmapApiAddonContext: JmapApiAddonContext = {
+      apiBaseUrl: this.urls.jmapApi,
+    };
+
     const jmapApiAddons: IJmapApiAddon[] = (() => {
       if (typeof authProvider.createJmapApiAddons !== 'function') return [];
-      const ctx: JmapApiAddonContext = {
-        apiBaseUrl: this.urls.jmapApi,
-        configTable: dataRef.configTable,
-        auditEventsQueue: auditWriting.auditEventsQueue,
-      };
-      return authProvider.createJmapApiAddons(groups.apis, ctx);
+      return authProvider.createJmapApiAddons(groups.apis, jmapApiAddonContext);
     })();
+
+    const jmapOAuthIssuerUrl = authProvider.jmapOAuthIssuerUrl?.();
 
     if (enableAdminUi) {
       const providerAdminUiConfig = authProvider.adminUiConfig?.();
@@ -802,6 +803,7 @@ export class Mailbox extends Construct {
       certificate: jmapCertificate,
 
       jmapApiAddons,
+      oauthIssuerUrl: jmapOAuthIssuerUrl,
 
       // WebSocket URL will be passed via environment variable, not here
     });

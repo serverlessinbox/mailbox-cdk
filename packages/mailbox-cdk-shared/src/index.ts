@@ -15,6 +15,16 @@ export type { StaticContentDeploymentProps, StaticContentInvalidationProps, ISta
 // Bucket auto-empty (removes all objects & versions on stack deletion, enabling RemovalPolicy.DESTROY)
 export { BucketAutoEmpty } from './bucket-auto-empty';
 
+// Public static assets bucket (singleton shared bucket for discovery docs, config, etc.)
+export { PublicStaticAssetsBucket } from './public-static-assets-bucket';
+
+// Named bucket utility (creates S3 buckets with stack-derived names)
+export { StackNamedBucket } from './named-bucket';
+export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
+
+// Sanitize stack name utility (for AWS resource naming)
+export { sanitizeStackName } from './sanitize-name';
+
 // Shared group utility (for singleton constructs at stack root)
 export { getOrCreateSharedGroup } from './shared-group';
 

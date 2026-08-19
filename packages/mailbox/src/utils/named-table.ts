@@ -2,8 +2,8 @@ import { ITable, TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { sanitizeStackName } from '@serverlessinbox/mailbox-cdk-shared';
 import { BaseTable } from './base-table';
-import { sanitizeStackName } from './sanitize-name';
 
 export interface INamedTable extends ITable {
   readonly explicitTableName: string;

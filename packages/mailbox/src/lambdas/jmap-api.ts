@@ -30,6 +30,9 @@ export interface ApiHandlerLambdaProps {
   userProvisionionFunction: IFunction;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;
+  /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
+   *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
+  readonly oauthProtectedResourceUrl?: string;
 }
 
 export class ApiHandlerLambda extends GoLambda {
@@ -59,6 +62,7 @@ export class ApiHandlerLambda extends GoLambda {
           // Go expects map[string][]string; Permission[] is string[] at runtime.
           scopeMap: props.oauthHandlerConfig.scopeMap,
         }),
+        OAUTH_PROTECTED_RESOURCE_URL: props.oauthProtectedResourceUrl ?? '',
       },
     });
 
