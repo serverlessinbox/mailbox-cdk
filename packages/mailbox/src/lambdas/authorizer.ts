@@ -14,8 +14,8 @@ export interface AuthorizerLambdaProps {
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
   authPolicyName?: AuthPolicyName;
 
-  /** Whether requests without an access token can pass authorization. */
-  allowAnonymous?: boolean;
+  /** Comma-separated list of API Gateway route keys (e.g. 'GET /.well-known/jmap') that allow anonymous access. */
+  anonymousRoutes?: string[];
 }
 
 export class AuthorizerLambda extends GoLambda {
@@ -30,7 +30,7 @@ export class AuthorizerLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         USER_POOL_ISSUER: props.userPoolIssuer,
         AUTH_POLICY_NAME: props.authPolicyName ?? AUTH_POLICY_JMAP_API,
-        ALLOW_ANONYMOUS: (props.allowAnonymous ?? true) ? 'true' : 'false',
+        ALLOW_ANONYMOUS_ROUTES: (props.anonymousRoutes ?? []).join(','),
       },
     });
 

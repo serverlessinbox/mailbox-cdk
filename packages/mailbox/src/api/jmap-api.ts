@@ -89,6 +89,7 @@ export class JMapApi extends Construct {
       configTable: props.configTable,
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
+      anonymousRoutes: ['GET /.well-known/jmap'],
     });
 
     this.authorizerLambda = lambdaAuthorizer;
@@ -165,7 +166,13 @@ export class JMapApi extends Construct {
     });
     this.apiHandlerLambda = apiHandlerLambda;
 
+    // Instance A: default identity source and caching for authenticated routes
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+    // Instance B: no identity source, no caching for anonymous discovery route
+    const httpLambdaAuthorizeAnonymous = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
+      identitySource: [],
+      resultsCacheTtl: Duration.seconds(0),
+    });
     this.authorizerLambda = lambdaAuthorizer;
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
@@ -173,7 +180,7 @@ export class JMapApi extends Construct {
     api.addRoutes({
       path: '/.well-known/jmap',
       methods: [HttpMethod.GET],
-      authorizer: httpLambdaAuthorize,
+      authorizer: httpLambdaAuthorizeAnonymous,
       integration: httpLambdaIntegration,
     });
     api.addRoutes({

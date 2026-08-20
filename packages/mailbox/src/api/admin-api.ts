@@ -131,7 +131,6 @@ export class AdminApi extends Construct {
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       authPolicyName: AUTH_POLICY_ADMIN_API,
-      allowAnonymous: false,
     });
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);

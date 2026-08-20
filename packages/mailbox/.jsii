@@ -9682,14 +9682,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 27
+        "line": 38
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 28
+            "line": 39
           },
           "name": "createAdminApiAddons",
           "parameters": [
@@ -9826,6 +9826,39 @@
       "name": "IArtifactResolver",
       "symbolId": "src/artifacts/i-artifact-resolver:IArtifactResolver"
     },
+    "@serverlessinbox/mailbox.IJmapApiAddon": {
+      "assembly": "@serverlessinbox/mailbox",
+      "fqn": "@serverlessinbox/mailbox.IJmapApiAddon",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/api/addons.ts",
+        "line": 21
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Unlike Admin API addons, JMAP\naddons do not share jmap-api's authorizer — each addon Lambda is\nresponsible for gating its own routes if it needs to.",
+            "summary": "Mount additional routes directly on the JMAP API's HttpApi."
+          },
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 25
+          },
+          "name": "addRoutes",
+          "parameters": [
+            {
+              "name": "api",
+              "type": {
+                "fqn": "aws-cdk-lib.aws_apigatewayv2.HttpApi"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "IJmapApiAddon",
+      "symbolId": "src/api/addons:IJmapApiAddon"
+    },
     "@serverlessinbox/mailbox.IMailboxAuthProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
@@ -9849,7 +9882,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 186
+            "line": 193
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9870,7 +9903,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 188
+            "line": 195
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9911,6 +9944,59 @@
                 },
                 "kind": "array"
               }
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Optional: register additional JMAP API routes (provider-specific, e.g. OAuth DCR)."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 186
+          },
+          "name": "createJmapApiAddons",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.JmapApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IJmapApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "jmap-api core uses this to build its own RFC 9728 protected-resource metadata document (which describes\njmap-api itself as a resource server, not the authorization server) — deliberately narrower than handing\nthe provider a whole document/URL to own, since the document's subject is jmap-api, not the provider.",
+            "summary": "Optional: this provider's OAuth issuer URL, if OAuth DCR/discovery is enabled — undefined otherwise."
+          },
+          "locationInModule": {
+            "filename": "src/auth/types.ts",
+            "line": 191
+          },
+          "name": "jmapOAuthIssuerUrl",
+          "returns": {
+            "optional": true,
+            "type": {
+              "primitive": "string"
             }
           }
         }
@@ -10110,6 +10196,32 @@
       ],
       "name": "IMailboxAuthorizationConfigProvider",
       "symbolId": "src/auth/types:IMailboxAuthorizationConfigProvider"
+    },
+    "@serverlessinbox/mailbox.JmapApiAddonContext": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.JmapApiAddonContext",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/api/addons.ts",
+        "line": 28
+      },
+      "name": "JmapApiAddonContext",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 29
+          },
+          "name": "apiBaseUrl",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/api/addons:JmapApiAddonContext"
     },
     "@serverlessinbox/mailbox.Mailbox": {
       "assembly": "@serverlessinbox/mailbox",
@@ -12274,7 +12386,7 @@
           },
           "locationInModule": {
             "filename": "src/utils/stack-helpers.ts",
-            "line": 93
+            "line": 85
           },
           "name": "resolveCognitoDomainPrefix",
           "parameters": [
@@ -12310,7 +12422,7 @@
           },
           "locationInModule": {
             "filename": "src/utils/stack-helpers.ts",
-            "line": 74
+            "line": 66
           },
           "name": "resolveMailboxData",
           "parameters": [
@@ -12566,5 +12678,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "hsAm94arZwajmSqxGwys0X2VgGMP2prLbD8/cIKa65U="
+  "fingerprint": "2VCY3pRsFxnHFLAzLI9+kp51bSaK3NDyAKi0VYLtT2M="
 }
