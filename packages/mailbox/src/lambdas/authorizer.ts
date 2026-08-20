@@ -31,6 +31,7 @@ export class AuthorizerLambda extends GoLambda {
         USER_POOL_ISSUER: props.userPoolIssuer,
         AUTH_POLICY_NAME: props.authPolicyName ?? AUTH_POLICY_JMAP_API,
         ALLOW_ANONYMOUS_ROUTES: (props.anonymousRoutes ?? []).join(','),
+        TENANT_RESOLUTION_MODE: '',
       },
     });
 
