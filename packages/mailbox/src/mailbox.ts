@@ -227,7 +227,6 @@ export interface MailboxOAuthClients {
   readonly jmapUi?: AuthClientConfig;
 }
 
-
 /**
  * Main Mailbox construct
  */
@@ -504,8 +503,45 @@ export class Mailbox extends Construct {
       return addons;
     })();
 
+    // SES event processing infrastructure (SNS, SQS, Lambda)
+    const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
+      itemTable: dataRef.itemTable,
+      mailFeedbackTable: dataRef.mailFeedbackTable,
+      changelogTable: dataRef.changelogTable,
+      configTable: dataRef.configTable,
+      blobStore: this._blobStore,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      artifactResolver,
+      queueProps: encryptionPlan.queues,
+    });
+
+    // Email sending infrastructure (SQS, Lambda) - must be before API
+    const emailSending = new EmailSending(groups.email, 'email-sending', {
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
+      blobStore: this._blobStore,
+      artifactResolver,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      queueProps: encryptionPlan.queues,
+    });
+
+    const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
+      configTable: dataRef.configTable,
+      itemTable: dataRef.itemTable,
+      changelogTable: dataRef.changelogTable,
+      auditEventsQueue: auditWriting.auditEventsQueue,
+      artifactResolver,
+      adminUIURL: this.urls.adminUi,
+      blobStore: this._blobStore,
+      emailSubmissionQueue: emailSending.submissionQueue,
+      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+    });
+    identityProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
+
     const jmapApiAddonContext: JmapApiAddonContext = {
       apiBaseUrl: this.urls.jmapApi,
+      identityProvisionerFunction: identityProvisioner,
     };
 
     const jmapApiAddons: IJmapApiAddon[] = (() => {
@@ -735,30 +771,6 @@ export class Mailbox extends Construct {
     // tantivySearch is used for side-effects only at this level.
     void tantivySearch;
 
-    // SES event processing infrastructure (SNS, SQS, Lambda)
-    const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
-      itemTable: dataRef.itemTable,
-      mailFeedbackTable: dataRef.mailFeedbackTable,
-      changelogTable: dataRef.changelogTable,
-      configTable: dataRef.configTable,
-      blobStore: this._blobStore,
-      auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver,
-      queueProps: encryptionPlan.queues,
-    });
-
-
-    // Email sending infrastructure (SQS, Lambda) - must be before API
-    const emailSending = new EmailSending(groups.email, 'email-sending', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
-      blobStore: this._blobStore,
-      artifactResolver,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
-      queueProps: encryptionPlan.queues,
-    });
-
     // JMAP must always advertise the JMAP_UI OAuth client in its session response.
     // That client is provisioned when the Webmail UI is enabled.
     const jmapOAuthClientId = this.oauthClients.jmapUi?.clientId;
@@ -768,19 +780,6 @@ export class Mailbox extends Construct {
         'Enable the Webmail UI, or adjust the auth provider to provision JMAP_UI independently.',
       );
     }
-
-    const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
-      auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver,
-      adminUIURL: this.urls.adminUi,
-      blobStore: this._blobStore,
-      emailSubmissionQueue: emailSending.submissionQueue,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
-    });
-    identityProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
 
     this._jmapApi = new JMapApi(groups.apis, 'jmap-api', {
       configTable: dataRef.configTable,

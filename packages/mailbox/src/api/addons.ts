@@ -2,6 +2,7 @@ import type { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
 
 export interface IAdminApiAddon {
@@ -27,6 +28,8 @@ export interface IJmapApiAddon {
 
 export interface JmapApiAddonContext {
   readonly apiBaseUrl: string;
+  /** The `identity-provisioner` Lambda, e.g. for `JmapOAuthAddon`'s DCR route. */
+  readonly identityProvisionerFunction: IFunction;
 }
 
 /**

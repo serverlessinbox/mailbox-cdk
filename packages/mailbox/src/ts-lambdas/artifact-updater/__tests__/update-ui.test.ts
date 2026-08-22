@@ -22,8 +22,12 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
   readReleasePointer: jest.fn(),
 }), { virtual: true });
 
-// Mock mailbox-cdk-shared content operations
-jest.mock('@serverlessinbox/mailbox-cdk-shared', () => ({
+// Mock mailbox-cdk-shared content operations.
+// update-ui.ts imports from the '/lambda-runtime' subpath export (a distinct module
+// specifier from the package's root export), so the mock must target that same subpath
+// or Jest loads the real content-ops.ts module — including its module-scope S3Client —
+// and issues real AWS calls.
+jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   deployZipToPrefix: jest.fn(),
   normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
   invalidateCloudFront: jest.fn(),
@@ -31,7 +35,7 @@ jest.mock('@serverlessinbox/mailbox-cdk-shared', () => ({
 
 // Import mocks as any to work around jest.requireMock's untyped return
 const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock('@serverlessinbox/artifact-registry') as any;
-const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock('@serverlessinbox/mailbox-cdk-shared') as any;
+const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime') as any;
 
 describe('advanceUiBucketIfStale', () => {
   // aws-sdk-client-mock generic type is awkward (AwsStubbed<CloudFrontClient> loses command specifics);

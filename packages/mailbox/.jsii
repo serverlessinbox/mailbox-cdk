@@ -9041,7 +9041,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 15
+        "line": 16
       },
       "name": "AdminApiAddonContext",
       "properties": [
@@ -9050,7 +9050,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 16
+            "line": 17
           },
           "name": "auditEventsQueue",
           "type": {
@@ -9062,7 +9062,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 18
+            "line": 19
           },
           "name": "auditLogTable",
           "type": {
@@ -9074,7 +9074,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 17
+            "line": 18
           },
           "name": "configTable",
           "type": {
@@ -9618,7 +9618,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 7
+        "line": 8
       },
       "methods": [
         {
@@ -9628,7 +9628,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 9
+            "line": 10
           },
           "name": "addRoutes",
           "parameters": [
@@ -9656,7 +9656,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 12
+            "line": 13
           },
           "name": "uiConfig",
           "optional": true,
@@ -9682,14 +9682,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 38
+        "line": 41
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 39
+            "line": 42
           },
           "name": "createAdminApiAddons",
           "parameters": [
@@ -9832,7 +9832,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 21
+        "line": 22
       },
       "methods": [
         {
@@ -9843,7 +9843,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 25
+            "line": 26
           },
           "name": "addRoutes",
           "parameters": [
@@ -10204,7 +10204,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 28
+        "line": 29
       },
       "name": "JmapApiAddonContext",
       "properties": [
@@ -10213,11 +10213,26 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 29
+            "line": 30
           },
           "name": "apiBaseUrl",
           "type": {
             "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "The `identity-provisioner` Lambda, e.g. for `JmapOAuthAddon`'s DCR route."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 32
+          },
+          "name": "identityProvisionerFunction",
+          "type": {
+            "fqn": "aws-cdk-lib.aws_lambda.IFunction"
           }
         }
       ],
@@ -10233,7 +10248,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 259
+          "line": 258
         },
         "parameters": [
           {
@@ -10259,7 +10274,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 234
+        "line": 233
       },
       "name": "Mailbox",
       "properties": [
@@ -10267,7 +10282,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 257
+            "line": 256
           },
           "name": "certificates",
           "type": {
@@ -10278,7 +10293,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 255
+            "line": 254
           },
           "name": "data",
           "type": {
@@ -10292,7 +10307,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 251
+            "line": 250
           },
           "name": "oauthClients",
           "type": {
@@ -10303,7 +10318,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 253
+            "line": 252
           },
           "name": "urls",
           "type": {
@@ -10317,7 +10332,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 241
+            "line": 240
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -10329,7 +10344,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 242
+            "line": 241
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -10344,7 +10359,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 245
+            "line": 244
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -10356,7 +10371,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 246
+            "line": 245
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -12678,5 +12693,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "2VCY3pRsFxnHFLAzLI9+kp51bSaK3NDyAKi0VYLtT2M="
+  "fingerprint": "baXah+PIpQPxgUN6Yp0DZf8vXGffQJ5XJKK2hPbCvVU="
 }

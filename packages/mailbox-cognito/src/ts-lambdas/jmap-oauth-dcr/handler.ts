@@ -31,6 +31,13 @@ const DEFAULT_SCOPE = 'openid email profile offline_access';
  */
 const identityProvisioner = new IdentityProvisionerClient(config.identityProvisionerFunctionName);
 
+/**
+ * Constructed once at module load (cold start), not per request — matches `identityProvisioner`
+ * above. The client is stateless beyond its SDK client, so there is no benefit to rebuilding it
+ * on every invocation.
+ */
+const cognito = new CognitoUserPoolClientManager();
+
 function jsonResponse(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   return {
     statusCode,
@@ -129,7 +136,6 @@ async function processRegistration(event: APIGatewayProxyEventV2): Promise<APIGa
   const poolId = resolvePoolId(tenantId);
   const requestedScope = body.scope ?? DEFAULT_SCOPE;
   const cognitoScopes = cognitoBoundScopes(requestedScope);
-  const cognito = new CognitoUserPoolClientManager();
 
   let clientId: string;
   try {

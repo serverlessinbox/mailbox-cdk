@@ -94,10 +94,18 @@ export interface MailboxUserPoolProps {
   readonly artifactResolver?: IArtifactResolver;
 
   /**
-   * Enable OAuth 2.0 Dynamic Client Registration (RFC 7591) for the JMAP API.
+   * Enable RFC 8414 OIDC discovery (`GET /.well-known/openid-configuration`) for the JMAP API.
    * @default false
    */
   readonly enableJmapOAuthDiscovery?: boolean;
+
+  /**
+   * Enable RFC 7591 OAuth 2.0 Dynamic Client Registration (`POST /oauth/register`) for the JMAP API.
+   * Requires `enableJmapOAuthDiscovery` to be meaningful — the registration endpoint is advertised
+   * in the discovery document, which is otherwise not published.
+   * @default false
+   */
+  readonly enableDynamicClientRegistration?: boolean;
 }
 
 export interface BootstrapUserConfig {
@@ -137,6 +145,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly artifacts: ICdkArtifactEngine;
   private _bootstrapUserCount = 0;
   private _enableJmapOAuthDiscovery = false;
+  private _enableDynamicClientRegistration = false;
 
   // Stored userPoolId for use in CfnUserPoolClient and grants
   private readonly _userPoolId: string;
@@ -338,6 +347,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         pool: this,
         artifactResolver: this.artifacts,
         apiBaseUrl: ctx.apiBaseUrl,
+        identityProvisionerFunction: ctx.identityProvisionerFunction,
+        enableDynamicClientRegistration: this._enableDynamicClientRegistration,
       }),
     ];
   }
@@ -363,6 +374,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     super(scope, id);
 
     this._enableJmapOAuthDiscovery = props.enableJmapOAuthDiscovery ?? false;
+    this._enableDynamicClientRegistration = props.enableDynamicClientRegistration ?? false;
 
     // Artifact resolution (stack-self-update subplan #3, Phase A):
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned

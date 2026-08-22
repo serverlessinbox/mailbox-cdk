@@ -1,10 +1,16 @@
 import { Construct } from 'constructs';
 import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpUrlIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { IJmapApiAddon } from '@serverlessinbox/mailbox';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
+import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
+
+/** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
+const REGISTRATION_PATH = '/oauth/register';
 
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
@@ -13,6 +19,14 @@ export interface JmapOAuthAddonProps {
   readonly artifactResolver: ICdkArtifactEngine;
   /** Base URL of the JMAP API (where well-known docs are mounted). */
   readonly apiBaseUrl: string;
+  /** The `identity-provisioner` Lambda, invoked by the DCR route to provision new clients. */
+  readonly identityProvisionerFunction: IFunction;
+  /**
+   * Enable RFC 7591 Dynamic Client Registration (`POST /oauth/register`) and the
+   * `registration_endpoint` field in the discovery document.
+   * @default false
+   */
+  readonly enableDynamicClientRegistration?: boolean;
 }
 
 /**
@@ -20,14 +34,31 @@ export interface JmapOAuthAddonProps {
  *
  * Routes:
  * - `GET /.well-known/openid-configuration` (static S3)
+ * - `POST /oauth/register` (RFC 7591 DCR, Lambda-backed, no authorizer) — only when
+ *   `enableDynamicClientRegistration` is true.
  *
  * Well-known documents are served via direct S3 proxy with no Lambda invocation.
  * The openid-configuration document is hosted in the shared public-static-assets bucket.
  * RFC 9728 oauth-protected-resource is now owned and served by jmap-api core (not this addon).
  */
 export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
+  private readonly bucket: IBucket;
+  private readonly enableDynamicClientRegistration: boolean;
+  private readonly dcrLambda?: JmapOAuthDcrLambda;
+
   constructor(scope: Construct, id: string, props: JmapOAuthAddonProps) {
     super(scope, id);
+
+    this.enableDynamicClientRegistration = props.enableDynamicClientRegistration ?? false;
+
+    if (this.enableDynamicClientRegistration) {
+      this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
+        artifactResolver: props.artifactResolver,
+        identityProvisionerFunction: props.identityProvisionerFunction,
+        userPoolId: props.pool.userPoolId,
+        userPoolArn: props.pool.userPool.userPoolArn,
+      });
+    }
 
     // Use the shared public-static-assets bucket (singleton, centrally managed)
     const bucket = PublicStaticAssetsBucket.getOrCreate(this, props.artifactResolver);
@@ -38,6 +69,9 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       authorization_endpoint: props.pool.authorizationEndpoint,
       token_endpoint: props.pool.tokenEndpoint,
       userinfo_endpoint: `${props.pool.issuer}/oauth2/userInfo`,
+      ...(this.enableDynamicClientRegistration
+        ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
+        : {}),
       scopes_supported: ['openid', 'email', 'profile', 'offline_access'],
       response_types_supported: ['code'],
       response_modes_supported: ['query'],
@@ -67,8 +101,6 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     this.bucket = bucket;
   }
 
-  private bucket: any;
-
   addRoutes(api: HttpApi): void {
     // Static route for openid-configuration — direct S3 proxy, zero Lambda invocation
     const openidIntegration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}/.well-known/openid-configuration`);
@@ -89,6 +121,21 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       throttlingBurstLimit: 20,
       throttlingRateLimit: 10,
     };
+
+    if (this.enableDynamicClientRegistration) {
+      // POST /oauth/register — no authorizer, unauthenticated bootstrap endpoint (RFC 7591).
+      const dcrIntegration = new HttpLambdaIntegration('dcr-integration', this.dcrLambda!);
+      api.addRoutes({
+        path: REGISTRATION_PATH,
+        methods: [HttpMethod.POST],
+        integration: dcrIntegration,
+      });
+
+      routeSettings[`POST ${REGISTRATION_PATH}`] = {
+        throttlingBurstLimit: 5,
+        throttlingRateLimit: 2,
+      };
+    }
 
     cfnStage.routeSettings = routeSettings;
   }

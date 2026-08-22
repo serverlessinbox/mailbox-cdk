@@ -9049,7 +9049,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 103
+        "line": 111
       },
       "name": "BootstrapUserConfig",
       "properties": [
@@ -9058,7 +9058,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 106
+            "line": 114
           },
           "name": "groups",
           "type": {
@@ -9075,7 +9075,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 107
+            "line": 115
           },
           "name": "temporaryPassword",
           "optional": true,
@@ -9091,7 +9091,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 105
+            "line": 113
           },
           "name": "username",
           "optional": true,
@@ -9426,7 +9426,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/auth/mailbox-user-pool.ts",
-          "line": 362
+          "line": 373
         },
         "parameters": [
           {
@@ -9456,7 +9456,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 113
+        "line": 121
       },
       "methods": [
         {
@@ -9466,7 +9466,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 451
+            "line": 463
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9488,7 +9488,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 154
+            "line": 163
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9503,7 +9503,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 350
+            "line": 361
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9520,7 +9520,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 354
+            "line": 365
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9532,7 +9532,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 324
+            "line": 333
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9564,7 +9564,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 334
+            "line": 343
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9595,7 +9595,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 358
+            "line": 369
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9607,7 +9607,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 481
+            "line": 493
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9622,7 +9622,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 345
+            "line": 356
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -9638,7 +9638,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 280
+            "line": 289
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9659,7 +9659,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 247
+            "line": 256
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9682,7 +9682,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 302
+            "line": 311
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9707,7 +9707,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 129
+            "line": 137
           },
           "name": "authMethod",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9719,7 +9719,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 167
+            "line": 176
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9731,7 +9731,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 128
+            "line": 136
           },
           "name": "issuer",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9743,7 +9743,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 127
+            "line": 135
           },
           "name": "oauthDomain",
           "type": {
@@ -9757,7 +9757,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 132
+            "line": 140
           },
           "name": "policies",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9769,7 +9769,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 126
+            "line": 134
           },
           "name": "scopeMap",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9791,7 +9791,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 163
+            "line": 172
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9803,7 +9803,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 130
+            "line": 138
           },
           "name": "usePkce",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9815,7 +9815,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 114
+            "line": 122
           },
           "name": "userPool",
           "type": {
@@ -9826,7 +9826,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 146
+            "line": 155
           },
           "name": "userPoolId",
           "type": {
@@ -10115,7 +10115,24 @@
           "abstract": true,
           "docs": {
             "default": "false",
-            "summary": "Enable OAuth 2.0 Dynamic Client Registration (RFC 7591) for the JMAP API."
+            "summary": "Enable RFC 7591 OAuth 2.0 Dynamic Client Registration (`POST /oauth/register`) for the JMAP API. Requires `enableJmapOAuthDiscovery` to be meaningful — the registration endpoint is advertised in the discovery document, which is otherwise not published."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 108
+          },
+          "name": "enableDynamicClientRegistration",
+          "optional": true,
+          "type": {
+            "primitive": "boolean"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "false",
+            "summary": "Enable RFC 8414 OIDC discovery (`GET /.well-known/openid-configuration`) for the JMAP API."
           },
           "immutable": true,
           "locationInModule": {
@@ -10227,5 +10244,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "TVmlAtlEBHm7VaSf22nbK0X/LqqJp1p4CHYUze5ArtA="
+  "fingerprint": "4kaYNdkDHdqF7a5A1qg/ErkWaiKW1CjxoUAf/81MtMg="
 }
