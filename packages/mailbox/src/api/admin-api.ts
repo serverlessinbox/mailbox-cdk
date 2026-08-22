@@ -36,7 +36,7 @@ export interface AdminApiProps {
   readonly allowedOrigins?: string[];
   readonly artifactResolver: ICdkArtifactEngine;
   readonly authProvider: IMailboxAuthProvider;
-  readonly userProvisionerFunction: IFunction;
+  readonly identityProvisionerFunction: IFunction;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
@@ -121,7 +121,7 @@ export class AdminApi extends Construct {
       artifactResolver: props.artifactResolver,
       sesRuleSetName: props.sesRuleSetName,
       sesConfigSetName: props.sesConfigSetName,
-      userProvisionerFunction: props.userProvisionerFunction,
+      identityProvisionerFunction: props.identityProvisionerFunction,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 

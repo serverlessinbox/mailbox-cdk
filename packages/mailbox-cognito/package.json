@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
+    "@aws-sdk/client-lambda": "^3.946.0",
     "@aws-sdk/client-sqs": "^3.947.0",
     "@bufbuild/protobuf": "^2.2.3",
     "@serverlessinbox/artifact-registry": "^0.0.37",
@@ -66,6 +67,7 @@
     "jsii-rosetta": "^5.9.15",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.2",
+    "typanion": "^3.14.0",
     "typescript": "^5.9.3"
   },
   "files": [

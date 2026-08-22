@@ -2069,6 +2069,7 @@ __metadata:
   resolution: "@serverlessinbox/mailbox-cognito@workspace:packages/mailbox-cognito"
   dependencies:
     "@aws-sdk/client-cognito-identity-provider": "npm:^3.947.0"
+    "@aws-sdk/client-lambda": "npm:^3.946.0"
     "@aws-sdk/client-sqs": "npm:^3.947.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
     "@serverlessinbox/artifact-registry": "npm:^0.0.37"
@@ -2090,6 +2091,7 @@ __metadata:
     jsii-rosetta: "npm:^5.9.15"
     ts-jest: "npm:^29.0.0"
     ts-node: "npm:^10.9.2"
+    typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"
   peerDependencies:
     "@serverlessinbox/mailbox": "workspace:*"

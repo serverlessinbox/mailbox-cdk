@@ -54,7 +54,7 @@ const COMPONENT_DESCRIPTIONS: Record<string, string> = {
   'stack-helpers': 'Deploy-time helper custom resources (e.g. deriving the domain name from the hosted zone).',
   'audit-writing': 'Audit logging pipeline — buffers audit events via SQS and writes them to the audit DynamoDB table.',
   'license-refresh': 'Periodically refreshes the product license from the license server.',
-  'user-provisioner': 'Provisions new mailbox users — creates their mailbox structure and initial state.',
+  'identity-provisioner': 'Provisions new mailbox users — creates their mailbox structure and initial state.',
 };
 
 /**

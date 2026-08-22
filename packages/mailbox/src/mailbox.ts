@@ -14,7 +14,7 @@ import {
 } from './auth/types';
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
-import { SesReceivingMode, UserProvisionerLambda } from './lambdas';
+import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
@@ -769,7 +769,7 @@ export class Mailbox extends Construct {
       );
     }
 
-    const userProvisioner = new UserProvisionerLambda(groups.ops, 'user-provisioner', {
+    const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
@@ -780,7 +780,7 @@ export class Mailbox extends Construct {
       emailSubmissionQueue: emailSending.submissionQueue,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
     });
-    userProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
+    identityProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
 
     this._jmapApi = new JMapApi(groups.apis, 'jmap-api', {
       configTable: dataRef.configTable,
@@ -795,7 +795,7 @@ export class Mailbox extends Construct {
       artifactResolver,
       authProvider,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
-      userProvisionerFunction: userProvisioner,
+      identityProvisionerFunction: identityProvisioner,
 
       oauthClientId: jmapOAuthClientId,
 
@@ -837,7 +837,7 @@ export class Mailbox extends Construct {
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver,
       authProvider,
-      userProvisionerFunction: userProvisioner,
+      identityProvisionerFunction: identityProvisioner,
 
       addons: adminApiAddons,
 

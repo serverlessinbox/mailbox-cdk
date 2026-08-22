@@ -27,7 +27,7 @@ export interface ApiHandlerLambdaProps {
   apiBaseUrl: string;
   sesConfigSetName: string;
   artifactResolver: ICdkArtifactEngine;
-  userProvisionionFunction: IFunction;
+  identityProvisionerFunction: IFunction;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
@@ -53,7 +53,7 @@ export class ApiHandlerLambda extends GoLambda {
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
-        USER_PROVISIONER_FUNCTION_NAME: props.userProvisionionFunction.functionName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
         OAUTH_HANDLER_CONFIG: JSON.stringify({
           issuer: props.oauthHandlerConfig.issuer,
           tokenEndpoint: props.oauthHandlerConfig.tokenEndpoint,
@@ -83,7 +83,7 @@ export class ApiHandlerLambda extends GoLambda {
     props.auditEventsQueue.grantSendMessages(this);
 
     // Grant the User provisioning function to be invoked
-    props.userProvisionionFunction.grantInvoke(this);
+    props.identityProvisionerFunction.grantInvoke(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({

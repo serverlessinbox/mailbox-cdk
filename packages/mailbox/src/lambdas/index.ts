@@ -56,8 +56,8 @@ export type { AuditWriterLambdaProps } from './audit-writer';
 export { BootstrapLambda } from './bootstrap';
 export type { BootstrapLambdaProps, SesReceivingMode } from './bootstrap';
 
-export { UserProvisionerLambda } from './user-provisioner';
-export type { UserProvisionerLambdaProps } from './user-provisioner';
+export { IdentityProvisionerLambda } from './identity-provisioner';
+export type { IdentityProvisionerLambdaProps } from './identity-provisioner';
 
 export { LicenseRefresherLambda } from './license-refresher';
 export type { LicenseRefresherLambdaProps } from './license-refresher';

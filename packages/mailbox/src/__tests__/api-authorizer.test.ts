@@ -123,7 +123,7 @@ describe('API Authorizer Wiring', () => {
   let blobStore: s3.IBucket;
   let emailSubmissionQueue: sqs.IQueue;
   let auditEventsQueue: sqs.IQueue;
-  let userProvisionerFunction: lambda.IFunction;
+  let identityProvisionerFunction: lambda.IFunction;
   let mockAuthProvider: IMailboxAuthProvider;
   let certificate: acm.ICertificate;
 
@@ -189,8 +189,8 @@ describe('API Authorizer Wiring', () => {
     emailSubmissionQueue = new sqs.Queue(stack, 'email-submission-queue');
     auditEventsQueue = new sqs.Queue(stack, 'audit-events-queue');
 
-    // User provisioner function - use a minimal Node.js function for testing
-    userProvisionerFunction = new lambda.Function(stack, 'user-provisioner', {
+    // Identity provisioner function - use a minimal Node.js function for testing
+    identityProvisionerFunction = new lambda.Function(stack, 'identity-provisioner', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline('exports.handler = async () => {};'),
@@ -220,7 +220,7 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 
@@ -263,7 +263,7 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 
@@ -295,7 +295,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 
@@ -335,7 +335,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 
@@ -378,7 +378,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 
@@ -434,7 +434,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        userProvisionerFunction,
+        identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
       });
 

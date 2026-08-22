@@ -18,7 +18,7 @@ export interface AdminApiLambdaProps {
   emailSubmissionQueue: IQueue;
   auditEventsQueue: IQueue;
   artifactResolver: ICdkArtifactEngine;
-  userProvisionerFunction: IFunction;
+  identityProvisionerFunction: IFunction;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
   sesRuleSetName?: string;
   /** SES configuration set name for outbound email tracking. */
@@ -103,7 +103,7 @@ export class AdminApiLambda extends GoLambda {
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
-        USER_PROVISIONER_FUNCTION_NAME: props.userProvisionerFunction.functionName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
       },
     });
 
@@ -133,6 +133,6 @@ export class AdminApiLambda extends GoLambda {
     props.emailSubmissionQueue.grantSendMessages(this);
 
     // Grant the User provisioning function to be invoked
-    props.userProvisionerFunction.grantInvoke(this);
+    props.identityProvisionerFunction.grantInvoke(this);
   }
 }

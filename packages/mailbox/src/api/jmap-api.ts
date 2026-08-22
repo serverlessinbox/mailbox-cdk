@@ -49,8 +49,8 @@ export interface JMapApiProps {
 
   readonly sesConfigSetName: string;
 
-  /** Pre-constructed user-provisioner function. Passed through to ApiHandlerLambda. */
-  readonly userProvisionerFunction: IFunction;
+  /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */
+  readonly identityProvisionerFunction: IFunction;
 
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
   readonly domainName?: string;
@@ -140,7 +140,7 @@ export class JMapApi extends Construct {
 
     this.httpApi = api;
 
-    const userProvisionerLambda = props.userProvisionerFunction;
+    const identityProvisionerLambda = props.identityProvisionerFunction;
 
     const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
       configTable: props.configTable,
@@ -154,7 +154,7 @@ export class JMapApi extends Construct {
       apiBaseUrl: this.url,
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
-      userProvisionionFunction: userProvisionerLambda,
+      identityProvisionerFunction: identityProvisionerLambda,
       oauthHandlerConfig: {
         issuer: props.authProvider.issuer,
         tokenEndpoint: props.authProvider.tokenEndpoint,

@@ -7,7 +7,7 @@ import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
-export interface UserProvisionerLambdaProps {
+export interface IdentityProvisionerLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
@@ -23,10 +23,10 @@ export interface UserProvisionerLambdaProps {
   readonly sesConfigSetName: string;
 }
 
-export class UserProvisionerLambda extends GoLambda {
-  constructor(scope: Construct, id: string, props: UserProvisionerLambdaProps) {
+export class IdentityProvisionerLambda extends GoLambda {
+  constructor(scope: Construct, id: string, props: IdentityProvisionerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'user-provisioner',
+      lambdaId: 'identity-provisioner',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
       timeout: Duration.seconds(30),
