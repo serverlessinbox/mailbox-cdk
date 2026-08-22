@@ -3,7 +3,7 @@
  */
 
 // Auth — user pool construct
-export { MailboxUserPool } from './auth/mailbox-user-pool';
+export { MailboxUserPool, DynamicClientRegistrationMode } from './auth/mailbox-user-pool';
 export type {
   MailboxUserPoolProps,
   MailboxUserPoolDomainConfig,

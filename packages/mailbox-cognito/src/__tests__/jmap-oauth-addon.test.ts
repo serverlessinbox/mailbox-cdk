@@ -1,17 +1,23 @@
 /**
- * CDK Synth Tests — JmapOAuthAddon (Phase 7, jmap-oauth-dcr-poc registration plan)
+ * CDK Synth Tests — JmapOAuthAddon (DCR gating: `dynamicClientRegistration`)
  *
  * Exercises the real `JmapOAuthAddon` instance returned by
  * `MailboxUserPool.createJmapApiAddons()` — the exact production wiring path used by
  * `mailbox.ts` — rather than hand-constructing the addon, so these tests also cover the
- * `MailboxUserPoolProps.enableDynamicClientRegistration` threading.
+ * `MailboxUserPoolProps.dynamicClientRegistration` threading.
  *
- * Covers:
- *  1. Registration enabled -> POST /oauth/register route exists, no authorizer.
- *  2. Registration disabled -> zero registration resources (route + DCR Lambda both absent).
- *  3. Discovery document content: registration_endpoint absent when registration is off,
- *     present and correct when registration is on.
- *  4. Per-route throttle settings (burst 5 / rate 2) on the stage.
+ * `dynamicClientRegistration` is a real jsii `DynamicClientRegistrationMode` enum
+ * (`ENABLED`/`DISABLED`). A CFN-parameter token is still supported by casting the parameter's
+ * `valueAsString` through the enum type at the call site — the value is only resolvable at deploy
+ * time. Behavior differs by which:
+ *  - Literal `DISABLED` (or omitted, the default) turns DCR fully off AT SYNTH: no DCR Lambda,
+ *    no route, no `CfnCondition`, and a plain (non-`Fn::If`) discovery body with no
+ *    `registration_endpoint`.
+ *  - Literal `ENABLED` or an unresolved token (cast through the enum) both take the gated path: a
+ *    `CfnCondition` is built via `Fn::Equals`, the DCR Lambda is constructed unconditionally and
+ *    gated (along with its route/integration) via an Aspect, and the discovery body is an
+ *    `Fn::If` selecting between with/without `registration_endpoint`.
+ *  - Any other value cast through the enum (e.g. leftover `'true'`/`'false'`) throws at synth.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -20,7 +26,7 @@ import { Template, Match } from 'aws-cdk-lib/assertions';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxUserPool } from '../auth/mailbox-user-pool';
+import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 
 const API_BASE_URL = 'https://api.example.com';
@@ -45,11 +51,22 @@ interface Harness {
   api: HttpApi;
 }
 
-/** Builds a stack with a real MailboxUserPool + the real JmapOAuthAddon it produces via
- *  createJmapApiAddons() — the same call mailbox.ts makes. Discovery is always enabled here
- *  (required for the addon to be constructed at all); the `enableDynamicClientRegistration`
- *  flag is the thing under test. */
-function buildHarness(enableDynamicClientRegistration: boolean): Harness {
+/**
+ * Builds a stack with a real MailboxUserPool + the real JmapOAuthAddon it produces via
+ * createJmapApiAddons() — the same call mailbox.ts makes. Discovery is always enabled here
+ * (required for the addon to be constructed at all); `dynamicClientRegistration` is the thing
+ * under test.
+ *
+ * `dynamicClientRegistration` may be:
+ *  - omitted entirely (tests the `@default DynamicClientRegistrationMode.DISABLED` behavior)
+ *  - an enum member (or an arbitrary string cast through the enum, to exercise the invalid-value
+ *    throw path)
+ *  - a factory `(stack) => DynamicClientRegistrationMode` for building a value that needs the
+ *    stack first (e.g. a real `CfnParameter`'s `valueAsString`, cast through the enum)
+ */
+function buildHarness(
+  dynamicClientRegistration?: DynamicClientRegistrationMode | ((stack: cdk.Stack) => DynamicClientRegistrationMode),
+): Harness {
   const app = new App();
   setUpArtifactContext(app);
   const stack = new cdk.Stack(app, 'TestJmapOAuthAddonStack', {
@@ -60,11 +77,15 @@ function buildHarness(enableDynamicClientRegistration: boolean): Harness {
   const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
   resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
 
+  const mode = typeof dynamicClientRegistration === 'function'
+    ? dynamicClientRegistration(stack)
+    : dynamicClientRegistration;
+
   const pool = new MailboxUserPool(stack, 'user-pool', {
     domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
     artifactResolver: resolver,
     enableJmapOAuthDiscovery: true,
-    enableDynamicClientRegistration,
+    ...(mode !== undefined ? { dynamicClientRegistration: mode } : {}),
   });
 
   const identityProvisionerFn = new lambda.Function(stack, 'identity-provisioner-stub', {
@@ -83,25 +104,67 @@ function buildHarness(enableDynamicClientRegistration: boolean): Harness {
   return { stack, addon: addon as JmapOAuthAddon, api };
 }
 
+/** The single CfnCondition JmapOAuthAddon creates (when DCR isn't fully disabled) to gate DCR
+ *  resources takes the shape `{"Fn::Equals": [<flag>, "enabled"]}`. Finds it (there must be
+ *  exactly one in the template), asserts its first operand matches the flag value the harness was
+ *  built with — proving the condition is genuinely wired to the prop rather than a hardcoded
+ *  literal — and returns its logical ID so callers can assert individual resources carry it as
+ *  their `Condition`. `expectedFlag` is compared with `toEqual` so it can be either a literal
+ *  string or a resolved `{ Ref: ... }` token shape. */
+function findGatingConditionLogicalId(template: Template, expectedFlag: unknown): string {
+  const conditions = (template.toJSON().Conditions ?? {}) as Record<string, { 'Fn::Equals'?: [unknown, unknown] }>;
+  const matches = Object.entries(conditions).filter(
+    ([, expr]) => Array.isArray(expr['Fn::Equals']) && expr['Fn::Equals']![1] === DynamicClientRegistrationMode.ENABLED,
+  );
+  expect(matches).toHaveLength(1);
+  const [logicalId, expr] = matches[0];
+  expect(expr['Fn::Equals']![0]).toEqual(expectedFlag);
+  return logicalId;
+}
+
+/** The DCR Lambda (JmapOAuthDcrLambda) is the only function in this stack whose environment
+ *  carries IDENTITY_PROVISIONER_FUNCTION_NAME — a reliable, non-token discriminator
+ *  (functionName/description both embed unresolved CDK tokens and never string-match). */
+function findDcrFunctionEntries(template: Template): unknown[] {
+  const dcrFunctions = template.findResources('AWS::Lambda::Function', {
+    Properties: Match.objectLike({
+      Environment: Match.objectLike({
+        Variables: Match.objectLike({ IDENTITY_PROVISIONER_FUNCTION_NAME: Match.anyValue() }),
+      }),
+    }),
+  });
+  return Object.values(dcrFunctions);
+}
+
 /** The openid-configuration document is written via StaticContentDeployer as a `Custom::ContentDeployment`
- *  resource whose `Properties.sources[0].body` is the JSON.stringify'd document. Some document fields
- *  (issuer, authorization_endpoint, token_endpoint, userinfo_endpoint) embed CDK tokens (region,
- *  userPoolId), so the resolved `body` is a CloudFormation `Fn::Join` rather than a plain string. This
- *  flattens it back to searchable text by concatenating only the literal string fragments — sufficient
- *  because `registration_endpoint`'s value (apiBaseUrl + literal path, both token-free in this test) is
- *  never split across a token boundary. */
-function findDiscoveryDocumentBody(template: Template): string {
+ *  resource whose `Properties.sources[0].body` holds the document — either a plain (Fn::Join'd)
+ *  value when DCR is fully disabled at synth, or an `Fn::If` selecting between two complete,
+ *  JSON.stringify'd document variants (with/without `registration_endpoint`) when gated. */
+function findDiscoveryDocumentBody(template: Template): unknown {
   const resources = template.findResources('Custom::ContentDeployment');
   for (const resource of Object.values(resources)) {
     const sources = (resource as any).Properties?.sources as Array<Record<string, unknown>> | undefined;
     const match = sources?.find((s) => s.key === '.well-known/openid-configuration');
-    if (match) {
-      return flattenToSearchableText(match.body);
-    }
+    if (match) return match.body;
   }
   throw new Error('openid-configuration Custom::ContentDeployment resource not found in template');
 }
 
+function isFnIf(value: unknown): value is { 'Fn::If': [string, unknown, unknown] } {
+  return !!value && typeof value === 'object' && 'Fn::If' in (value as Record<string, unknown>);
+}
+
+/** Asserts the discovery body is gated (`Fn::If`) and returns its two branches. */
+function findDiscoveryDocumentFnIfBranches(template: Template): { trueBranch: unknown; falseBranch: unknown } {
+  const body = findDiscoveryDocumentBody(template);
+  if (!isFnIf(body)) throw new Error('expected discovery document body to be an Fn::If');
+  const [, trueBranch, falseBranch] = body['Fn::If'];
+  return { trueBranch, falseBranch };
+}
+
+/** Flattens a resolved CFN value back to searchable text by concatenating only the literal string
+ *  fragments of an `Fn::Join` (dropping token refs) — sufficient for substring/key-name checks
+ *  because doc keys are always literal, even where some field values are token-derived. */
 function flattenToSearchableText(value: unknown): string {
   if (typeof value === 'string') return value;
   if (value && typeof value === 'object' && 'Fn::Join' in (value as Record<string, unknown>)) {
@@ -111,9 +174,46 @@ function flattenToSearchableText(value: unknown): string {
   return '';
 }
 
-describe('JmapOAuthAddon — Phase 7 (DCR route, registration_endpoint, throttling)', () => {
-  it('registration enabled: POST /oauth/register route exists with no authorizer', () => {
-    const { stack, addon, api } = buildHarness(true);
+/** Extracts the ordered list of JSON object key names from flattened document text. Key names are
+ *  always literal (never token-derived), so this survives token fragments dropped by
+ *  flattenToSearchableText — letting the two Fn::If branches be compared by key set rather than by
+ *  brittle whole-string matching. */
+function extractDocumentKeys(flattenedText: string): string[] {
+  const keys: string[] = [];
+  const keyPattern = /"([a-zA-Z_]+)":/g;
+  let match: RegExpExecArray | null;
+  while ((match = keyPattern.exec(flattenedText)) !== null) {
+    keys.push(match[1]);
+  }
+  return keys;
+}
+
+/** Shared assertions for both ways DCR ends up fully disabled at synth (DISABLED literal, and
+ *  the omitted-prop default) — no Lambda, no route, no CfnCondition, plain discovery body. */
+function assertDcrFullyDisabled(harness: Harness): void {
+  const { stack, addon, api } = harness;
+  addon.addRoutes(api);
+  const template = Template.fromStack(stack);
+
+  const routes = template.findResources('AWS::ApiGatewayV2::Route', {
+    Properties: Match.objectLike({ RouteKey: REGISTRATION_ROUTE_KEY }),
+  });
+  expect(Object.values(routes)).toHaveLength(0);
+
+  expect(findDcrFunctionEntries(template)).toHaveLength(0);
+
+  const conditions = template.toJSON().Conditions ?? {};
+  expect(Object.keys(conditions)).toHaveLength(0);
+
+  const body = findDiscoveryDocumentBody(template);
+  expect(isFnIf(body)).toBe(false);
+  const keys = extractDocumentKeys(flattenToSearchableText(body));
+  expect(keys).not.toContain('registration_endpoint');
+}
+
+describe('JmapOAuthAddon — dynamicClientRegistration gating', () => {
+  it("enabled: registration route exists with no authorizer", () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
     addon.addRoutes(api);
 
     const template = Template.fromStack(stack);
@@ -129,59 +229,103 @@ describe('JmapOAuthAddon — Phase 7 (DCR route, registration_endpoint, throttli
     expect(['NONE', undefined]).toContain(props.AuthorizationType);
   });
 
-  it('registration disabled: zero registration resources (no route, no DCR Lambda)', () => {
-    const { stack, addon, api } = buildHarness(false);
+  it('enabled: DCR route, Lambda, and integration all carry the gating condition', () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
     addon.addRoutes(api);
 
     const template = Template.fromStack(stack);
+    const conditionId = findGatingConditionLogicalId(template, DynamicClientRegistrationMode.ENABLED);
+
+    // Route: mounted, and gated
+    const routes = template.findResources('AWS::ApiGatewayV2::Route', {
+      Properties: Match.objectLike({ RouteKey: REGISTRATION_ROUTE_KEY }),
+    });
+    const routeEntries = Object.values(routes);
+    expect(routeEntries).toHaveLength(1);
+    expect((routeEntries[0] as any).Condition).toBe(conditionId);
+
+    // DCR Lambda: mounted, and gated
+    const dcrFunctionEntries = findDcrFunctionEntries(template);
+    expect(dcrFunctionEntries).toHaveLength(1);
+    expect((dcrFunctionEntries[0] as any).Condition).toBe(conditionId);
+
+    // Its API Gateway Lambda integration: gated (the GET /.well-known integration must NOT carry
+    // this condition — asserting exactly one match proves that).
+    const integrations = template.findResources('AWS::ApiGatewayV2::Integration');
+    const gatedIntegrations = Object.values(integrations).filter((r: any) => r.Condition === conditionId);
+    expect(gatedIntegrations).toHaveLength(1);
+  });
+
+  it('enabled: discovery document — the true branch adds exactly one key (registration_endpoint) versus the false branch', () => {
+    const { stack } = buildHarness(DynamicClientRegistrationMode.ENABLED);
+    const template = Template.fromStack(stack);
+    const { trueBranch, falseBranch } = findDiscoveryDocumentFnIfBranches(template);
+
+    const trueText = flattenToSearchableText(trueBranch);
+    const falseText = flattenToSearchableText(falseBranch);
+
+    const trueKeys = extractDocumentKeys(trueText);
+    const falseKeys = extractDocumentKeys(falseText);
+
+    expect(new Set(trueKeys)).toEqual(new Set([...falseKeys, 'registration_endpoint']));
+    expect(trueKeys.filter((k) => k !== 'registration_endpoint')).toEqual(falseKeys);
+    expect(trueText).toContain(`"registration_endpoint":"${API_BASE_URL}/oauth/register"`);
+  });
+
+  it('enabled: carries the per-route throttle (burst 5 / rate 2) on POST /oauth/register, gated via the same Fn::If', () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
+    addon.addRoutes(api);
+
+    const template = Template.fromStack(stack);
+    const conditionId = findGatingConditionLogicalId(template, DynamicClientRegistrationMode.ENABLED);
+
+    const stages = template.findResources('AWS::ApiGatewayV2::Stage');
+    const stageEntries = Object.values(stages);
+    expect(stageEntries).toHaveLength(1);
+
+    const routeSettings = (stageEntries[0] as any).Properties.RouteSettings;
+    expect(routeSettings[REGISTRATION_ROUTE_KEY]).toEqual({
+      'Fn::If': [conditionId, { throttlingBurstLimit: 5, throttlingRateLimit: 2 }, { Ref: 'AWS::NoValue' }],
+    });
+  });
+
+  it("disabled literal: DCR fully off at synth — no Lambda, no route, no CfnCondition, plain discovery body", () => {
+    assertDcrFullyDisabled(buildHarness(DynamicClientRegistrationMode.DISABLED));
+  });
+
+  it('omitted dynamicClientRegistration: defaults to fully disabled, same as the disabled literal', () => {
+    assertDcrFullyDisabled(buildHarness());
+  });
+
+  it('a CFN-parameter token behaves like enabled — condition created, resources gated — and does not throw', () => {
+    let param!: cdk.CfnParameter;
+    let harness!: Harness;
+
+    expect(() => {
+      harness = buildHarness((stack) => {
+        param = new cdk.CfnParameter(stack, 'DcrModeParam', { type: 'String', default: 'enabled' });
+        return param.valueAsString as DynamicClientRegistrationMode;
+      });
+    }).not.toThrow();
+
+    const { stack, addon, api } = harness;
+    addon.addRoutes(api);
+
+    const template = Template.fromStack(stack);
+    const expectedFlag = { Ref: stack.getLogicalId(param) };
+    const conditionId = findGatingConditionLogicalId(template, expectedFlag);
+
+    const dcrFunctionEntries = findDcrFunctionEntries(template);
+    expect(dcrFunctionEntries).toHaveLength(1);
+    expect((dcrFunctionEntries[0] as any).Condition).toBe(conditionId);
 
     const routes = template.findResources('AWS::ApiGatewayV2::Route', {
       Properties: Match.objectLike({ RouteKey: REGISTRATION_ROUTE_KEY }),
     });
-    expect(Object.keys(routes)).toHaveLength(0);
-
-    // The DCR Lambda (JmapOAuthDcrLambda) is the only function in this stack whose
-    // environment carries IDENTITY_PROVISIONER_FUNCTION_NAME — a reliable, non-token
-    // discriminator (functionName/description both embed unresolved CDK tokens).
-    const dcrFunctions = template.findResources('AWS::Lambda::Function', {
-      Properties: Match.objectLike({
-        Environment: Match.objectLike({
-          Variables: Match.objectLike({ IDENTITY_PROVISIONER_FUNCTION_NAME: Match.anyValue() }),
-        }),
-      }),
-    });
-    expect(Object.keys(dcrFunctions)).toHaveLength(0);
+    expect((Object.values(routes)[0] as any).Condition).toBe(conditionId);
   });
 
-  describe('discovery document — registration_endpoint', () => {
-    it('is absent when discovery is enabled but registration is disabled', () => {
-      const { stack } = buildHarness(false);
-      const body = findDiscoveryDocumentBody(Template.fromStack(stack));
-      expect(body).not.toContain('registration_endpoint');
-    });
-
-    it('is present and equals apiBaseUrl + /oauth/register when registration is enabled', () => {
-      const { stack } = buildHarness(true);
-      const body = findDiscoveryDocumentBody(Template.fromStack(stack));
-      expect(body).toContain(`"registration_endpoint":"${API_BASE_URL}/oauth/register"`);
-    });
-  });
-
-  it('carries the per-route throttle (burst 5 / rate 2) on POST /oauth/register', () => {
-    const { stack, addon, api } = buildHarness(true);
-    addon.addRoutes(api);
-
-    const template = Template.fromStack(stack);
-    const stages = template.findResources('AWS::ApiGatewayV2::Stage', {
-      Properties: Match.objectLike({
-        RouteSettings: Match.objectLike({
-          [REGISTRATION_ROUTE_KEY]: Match.objectLike({
-            throttlingBurstLimit: 5,
-            throttlingRateLimit: 2,
-          }),
-        }),
-      }),
-    });
-    expect(Object.keys(stages)).toHaveLength(1);
+  it("an invalid value ('true') cast through the enum throws at synth with a clear message", () => {
+    expect(() => buildHarness('true' as DynamicClientRegistrationMode)).toThrow(/dynamicClientRegistration must be 'enabled' or 'disabled'/);
   });
 });

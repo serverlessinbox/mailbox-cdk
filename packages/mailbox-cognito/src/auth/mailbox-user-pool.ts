@@ -32,6 +32,16 @@ import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
 import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
 
+/**
+ * Dynamic Client Registration (RFC 7591) mode for the JMAP OAuth discovery addon.
+ * Co-located here (rather than a separate types module) because `MailboxUserPoolProps` is the
+ * prop's canonical, jsii-exported home; `JmapOAuthAddonProps` mirrors the same enum.
+ */
+export enum DynamicClientRegistrationMode {
+  ENABLED = 'enabled',
+  DISABLED = 'disabled',
+}
+
 export interface MailboxUserPoolAuthorizationConfig {
   readonly adminGroups?: string[];
   readonly userGroups?: string[];
@@ -100,12 +110,16 @@ export interface MailboxUserPoolProps {
   readonly enableJmapOAuthDiscovery?: boolean;
 
   /**
-   * Enable RFC 7591 OAuth 2.0 Dynamic Client Registration (`POST /oauth/register`) for the JMAP API.
-   * Requires `enableJmapOAuthDiscovery` to be meaningful — the registration endpoint is advertised
-   * in the discovery document, which is otherwise not published.
-   * @default false
+   * Dynamic Client Registration mode. Defaults to DISABLED. Requires `enableJmapOAuthDiscovery`
+   * to be meaningful — the registration endpoint is advertised in the discovery document, which
+   * is otherwise not published.
+   *
+   * To drive this from a CloudFormation parameter, cast the parameter's `valueAsString`
+   * to this enum — the value stays an unresolved token until deploy and is gated by a
+   * CfnCondition rather than evaluated at synth.
+   * @default DynamicClientRegistrationMode.DISABLED
    */
-  readonly enableDynamicClientRegistration?: boolean;
+  readonly dynamicClientRegistration?: DynamicClientRegistrationMode;
 }
 
 export interface BootstrapUserConfig {
@@ -145,7 +159,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly artifacts: ICdkArtifactEngine;
   private _bootstrapUserCount = 0;
   private _enableJmapOAuthDiscovery = false;
-  private _enableDynamicClientRegistration = false;
+  private _dynamicClientRegistration: DynamicClientRegistrationMode = DynamicClientRegistrationMode.DISABLED;
 
   // Stored userPoolId for use in CfnUserPoolClient and grants
   private readonly _userPoolId: string;
@@ -348,7 +362,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         artifactResolver: this.artifacts,
         apiBaseUrl: ctx.apiBaseUrl,
         identityProvisionerFunction: ctx.identityProvisionerFunction,
-        enableDynamicClientRegistration: this._enableDynamicClientRegistration,
+        dynamicClientRegistration: this._dynamicClientRegistration,
       }),
     ];
   }
@@ -374,7 +388,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     super(scope, id);
 
     this._enableJmapOAuthDiscovery = props.enableJmapOAuthDiscovery ?? false;
-    this._enableDynamicClientRegistration = props.enableDynamicClientRegistration ?? false;
+    this._dynamicClientRegistration = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
 
     // Artifact resolution (stack-self-update subplan #3, Phase A):
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned

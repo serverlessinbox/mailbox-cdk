@@ -1,4 +1,5 @@
-import { Construct } from 'constructs';
+import { Construct, IConstruct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -6,11 +7,35 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { IJmapApiAddon } from '@serverlessinbox/mailbox';
-import { MailboxUserPool } from '../auth/mailbox-user-pool';
+import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH = '/oauth/register';
+
+/**
+ * Aspect that gates all CfnResource children of a construct onto a condition, so the whole
+ * subtree "produces zero resources" when the condition is false.
+ *
+ * Local copy of the identical pattern in `mailbox`'s
+ * `src/artifacts/resolvers/auto-updater.ts` (`GateOnConditionAspect`). Not shared across
+ * packages: `mailbox-cdk-shared` does not yet expose a CDK-aspect helper, and adding one there
+ * (or exporting the `mailbox` copy) would be a new public export made unilaterally rather than
+ * owner-approved — so this is intentionally duplicated rather than shared.
+ */
+class GateOnConditionAspect implements cdk.IAspect {
+  constructor(private readonly condition: cdk.CfnCondition) {}
+
+  visit(node: IConstruct): void {
+    // Skip the condition itself (a condition cannot carry a condition)
+    if (node === this.condition) return;
+
+    // Gate every CfnResource in the subtree
+    if (cdk.CfnResource.isCfnResource(node)) {
+      node.cfnOptions.condition = this.condition;
+    }
+  }
+}
 
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
@@ -22,11 +47,14 @@ export interface JmapOAuthAddonProps {
   /** The `identity-provisioner` Lambda, invoked by the DCR route to provision new clients. */
   readonly identityProvisionerFunction: IFunction;
   /**
-   * Enable RFC 7591 Dynamic Client Registration (`POST /oauth/register`) and the
-   * `registration_endpoint` field in the discovery document.
-   * @default false
+   * Dynamic Client Registration mode. Defaults to DISABLED.
+   *
+   * To drive this from a CloudFormation parameter, cast the parameter's `valueAsString`
+   * to this enum — the value stays an unresolved token until deploy and is gated by a
+   * CfnCondition rather than evaluated at synth.
+   * @default DynamicClientRegistrationMode.DISABLED
    */
-  readonly enableDynamicClientRegistration?: boolean;
+  readonly dynamicClientRegistration?: DynamicClientRegistrationMode;
 }
 
 /**
@@ -34,42 +62,74 @@ export interface JmapOAuthAddonProps {
  *
  * Routes:
  * - `GET /.well-known/openid-configuration` (static S3)
- * - `POST /oauth/register` (RFC 7591 DCR, Lambda-backed, no authorizer) — only when
- *   `enableDynamicClientRegistration` is true.
+ * - `POST /oauth/register` (RFC 7591 DCR, Lambda-backed, no authorizer) — only mounted at all when
+ *   `dynamicClientRegistration` is `'enabled'` or an unresolved CFN-parameter token. When it's the
+ *   literal `'disabled'` (or omitted), DCR is fully off at synth: no Lambda, no route, no
+ *   `CfnCondition` — a clean template with no dead conditional machinery. Otherwise every resource
+ *   the DCR subtree adds (Lambda, role, policy, log group, API route, integration, invoke
+ *   permission) carries a `Condition` derived from `dynamicClientRegistration`, so it produces zero
+ *   live resources when a token resolves to disabled at deploy time.
  *
  * Well-known documents are served via direct S3 proxy with no Lambda invocation.
- * The openid-configuration document is hosted in the shared public-static-assets bucket.
+ * The openid-configuration document is hosted in the shared public-static-assets bucket. When DCR
+ * is gated (enabled literal or token), its body is a `Fn::If` selecting between a
+ * with-`registration_endpoint` and without-`registration_endpoint` variant of the same document,
+ * keyed off the same condition. When DCR is fully disabled, the body is the plain
+ * without-`registration_endpoint` document — no `Fn::If`.
  * RFC 9728 oauth-protected-resource is now owned and served by jmap-api core (not this addon).
  */
 export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   private readonly bucket: IBucket;
-  private readonly enableDynamicClientRegistration: boolean;
   private readonly dcrLambda?: JmapOAuthDcrLambda;
+  private readonly registrationEnabled?: cdk.CfnCondition;
 
   constructor(scope: Construct, id: string, props: JmapOAuthAddonProps) {
     super(scope, id);
 
-    this.enableDynamicClientRegistration = props.enableDynamicClientRegistration ?? false;
+    const mode = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
 
-    if (this.enableDynamicClientRegistration) {
+    // A literal typo (or an invalid string cast through the enum) must fail loudly at synth; an
+    // unresolved CFN-parameter token must pass through untouched (its value is only known at
+    // deploy time).
+    if (!cdk.Token.isUnresolved(mode) && !Object.values(DynamicClientRegistrationMode).includes(mode)) {
+      throw new Error(`dynamicClientRegistration must be 'enabled' or 'disabled', got '${mode}'`);
+    }
+
+    // A literal DISABLED is the only value that turns DCR fully off at synth — a token string
+    // never literally equals 'disabled', so both ENABLED and any token fall into the gated path.
+    const dcrFullyDisabled = mode === DynamicClientRegistrationMode.DISABLED;
+
+    if (!dcrFullyDisabled) {
+      // Drives both the gated DCR subtree (Lambda/role/policy/route/integration/permission) and
+      // the discovery document's registration_endpoint field. A literal or a CFN-parameter token
+      // is resolved here, once, via a CfnCondition — see GateOnConditionAspect above.
+      this.registrationEnabled = new cdk.CfnCondition(this, 'IsDcrEnabled', {
+        expression: cdk.Fn.conditionEquals(mode, DynamicClientRegistrationMode.ENABLED),
+      });
+
+      // Constructed unconditionally: the DCR Lambda must exist in the template for the condition
+      // to gate it. Its whole subtree (function, role, inline policy, log group) is gated below.
       this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
         artifactResolver: props.artifactResolver,
         identityProvisionerFunction: props.identityProvisionerFunction,
         userPoolId: props.pool.userPoolId,
         userPoolArn: props.pool.userPool.userPoolArn,
       });
+      cdk.Aspects.of(this.dcrLambda).add(new GateOnConditionAspect(this.registrationEnabled));
     }
 
     // Use the shared public-static-assets bucket (singleton, centrally managed)
     const bucket = PublicStaticAssetsBucket.getOrCreate(this, props.artifactResolver);
 
-    // Build the openid-configuration document as synth-time JSON
-    const openidConfigurationDoc = {
+    // Build the openid-configuration document as synth-time JSON. A single builder keeps the
+    // document's shape defined exactly once; only the presence of registration_endpoint varies
+    // between the two branches selected by Fn::If below.
+    const buildOpenidConfigurationDoc = (withRegistration: boolean) => ({
       issuer: props.pool.issuer,
       authorization_endpoint: props.pool.authorizationEndpoint,
       token_endpoint: props.pool.tokenEndpoint,
       userinfo_endpoint: `${props.pool.issuer}/oauth2/userInfo`,
-      ...(this.enableDynamicClientRegistration
+      ...(withRegistration
         ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
       scopes_supported: ['openid', 'email', 'profile', 'offline_access'],
@@ -83,7 +143,20 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       claims_parameter_supported: false,
       request_parameter_supported: false,
       request_uri_parameter_supported: false,
-    };
+    });
+
+    // When DCR is gated (enabled literal or token): two complete serialized bodies (built from the
+    // one shape above), selected at deploy time by the same condition that gates the DCR
+    // resources — a single JSON key can't be conditionally inserted into an already-serialized
+    // body, so the whole body is Fn::If-selected instead. When DCR is fully disabled at synth, skip
+    // the conditional machinery entirely and emit the plain without-registration document.
+    const openidConfigurationDocBody = this.registrationEnabled
+      ? cdk.Fn.conditionIf(
+          this.registrationEnabled.logicalId,
+          JSON.stringify(buildOpenidConfigurationDoc(true)),
+          JSON.stringify(buildOpenidConfigurationDoc(false)),
+        ).toString()
+      : JSON.stringify(buildOpenidConfigurationDoc(false));
 
     // Deploy openid-configuration document to the shared bucket using StaticContentDeployer
     const deployer = StaticContentDeployer.getOrCreate(this, props.artifactResolver);
@@ -92,7 +165,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       targetBucket: bucket.bucketName,
       source: StaticContentSource.data(
         '.well-known/openid-configuration',
-        JSON.stringify(openidConfigurationDoc),
+        openidConfigurationDocBody,
         { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
       ),
     });
@@ -122,19 +195,32 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       throttlingRateLimit: 10,
     };
 
-    if (this.enableDynamicClientRegistration) {
-      // POST /oauth/register — no authorizer, unauthenticated bootstrap endpoint (RFC 7591).
-      const dcrIntegration = new HttpLambdaIntegration('dcr-integration', this.dcrLambda!);
-      api.addRoutes({
+    // POST /oauth/register — only mounted at all when DCR isn't fully disabled at synth (literal
+    // 'disabled' means dcrLambda/registrationEnabled are both undefined and this block is skipped
+    // entirely, producing a clean template with no dead conditional machinery). When mounted
+    // (enabled literal or token), no authorizer — unauthenticated bootstrap endpoint (RFC 7591).
+    // CfnRoute, CfnIntegration and the apigateway invoke CfnPermission are all synthesized as
+    // children of the HttpRoute construct returned by addRoutes() (verified against aws-cdk-lib's
+    // HttpRoute/HttpRouteIntegration/HttpLambdaIntegration sources), so gating that construct's
+    // subtree gates all three.
+    if (this.dcrLambda && this.registrationEnabled) {
+      const registrationEnabled = this.registrationEnabled;
+      const dcrIntegration = new HttpLambdaIntegration('dcr-integration', this.dcrLambda);
+      const dcrRoutes = api.addRoutes({
         path: REGISTRATION_PATH,
         methods: [HttpMethod.POST],
         integration: dcrIntegration,
       });
+      dcrRoutes.forEach((route) => cdk.Aspects.of(route).add(new GateOnConditionAspect(registrationEnabled)));
 
-      routeSettings[`POST ${REGISTRATION_PATH}`] = {
-        throttlingBurstLimit: 5,
-        throttlingRateLimit: 2,
-      };
+      // RouteSettings is a property map on the always-present CfnStage, not a separate resource,
+      // so it can't carry its own Condition — omit the entry entirely when disabled via Fn::If +
+      // NoValue.
+      routeSettings[`POST ${REGISTRATION_PATH}`] = cdk.Fn.conditionIf(
+        registrationEnabled.logicalId,
+        { throttlingBurstLimit: 5, throttlingRateLimit: 2 },
+        cdk.Aws.NO_VALUE,
+      );
     }
 
     cfnStage.routeSettings = routeSettings;
