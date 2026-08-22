@@ -2,7 +2,6 @@
   "name": "@serverlessinbox/mailbox-cdk-shared",
   "version": "0.0.0",
   "description": "Shared CDK artifact-resolution infrastructure for mailbox packages",
-  "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -30,8 +29,11 @@
     }
   },
   "scripts": {
-    "build:inline-handler": "node -e \"const e=require('esbuild');const r=e.buildSync({entryPoints:['src/track-resolver/handler.ts'],bundle:true,minify:true,format:'cjs',write:false,external:['@aws-sdk/client-s3','aws-lambda','path','https','url'],platform:'node',target:'node20'});const code=r.outputFiles[0].text;const bytes=Buffer.byteLength(code,'utf-8');if(bytes>4096){console.error('FAIL: inline handler is '+bytes+' bytes, exceeds ~4KB limit');process.exit(1)}const fs=require('fs');const dir='src/track-resolver/generated';if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(dir+'/track-resolver-handler-source.ts','export const TRACK_RESOLVER_HANDLER_SOURCE = '+JSON.stringify(code)+';\\\\n');console.log('Generated inline handler: '+bytes+' bytes')\"",
-    "build": "yarn build:inline-handler && tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "yarn prepare-manifest build && yarn bundle",
+    "postpack": "yarn clean",
+    "bundle": "task bundle",
+    "publish:dev": "task publish:dev",
     "test": "jest",
     "clean": "rm -rf lib"
   },
