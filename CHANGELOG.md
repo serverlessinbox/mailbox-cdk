@@ -4,6 +4,32 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.72](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.71...v0.0.72) (Sat Aug 22 2026)
+
+### feat
+
+* Assets deployer ([9f9a5ee](https://github.com/serverlessinbox/mailbox-cdk/commit/9f9a5ee2494da0d91462910a72a287c729167958))
+
+* Bucket cleanup ([b868dc9](https://github.com/serverlessinbox/mailbox-cdk/commit/b868dc9147e64450cab7b2f37c22894bf30c4b68))
+
+* Attached the bucket auto empty ([09a521d](https://github.com/serverlessinbox/mailbox-cdk/commit/09a521d51a9df21be0f81143036beb3e12f3dc4b))
+
+* JMap addon ([797f91c](https://github.com/serverlessinbox/mailbox-cdk/commit/797f91cc6e87fee0c52ef08a722862ebd96355c2))
+
+* Route handling with anonymous ([d515917](https://github.com/serverlessinbox/mailbox-cdk/commit/d51591763f0d7dc1b44aaab1e9cd93893788c06c))
+
+* Dynamic client registration for oauth ([83feca3](https://github.com/serverlessinbox/mailbox-cdk/commit/83feca3987185f7d72b9aed4147b6d1066232f91))
+
+* Dynamic client registration with cfn condition ([8f8e6cc](https://github.com/serverlessinbox/mailbox-cdk/commit/8f8e6cca1f9e18a948702a59d8460e7ebf305182))
+
+### fix
+
+* Missing env var ([a96bdd2](https://github.com/serverlessinbox/mailbox-cdk/commit/a96bdd28609bad3a32e987688a6bd105224ed297))
+
+* Renamed user provisior to identity provisior ([f288012](https://github.com/serverlessinbox/mailbox-cdk/commit/f288012583887b4abd5da3433b7324cd29053ea5))
+
+* Renamed user provisior to identity provisior ([6653726](https://github.com/serverlessinbox/mailbox-cdk/commit/66537266ef451a44f53ebfcbd7133463b8a776fe))
+
 ## [0.0.71](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.70...v0.0.71) (Sat Aug 15 2026)
 
 ### feat
