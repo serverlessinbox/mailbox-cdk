@@ -8,6 +8,12 @@ cdk.out
 lib
 dist
 release
+
+# go-task's local up-to-date cache: one file per task holding a hash of its
+# `sources:` globs. Per-machine, rewritten on every build, meaningless to anyone
+# else's checkout. Was tracked until 2026-08-23, which made every build dirty the
+# working tree and produced conflicts on files nobody reads.
+.task/
 gitversion.out
 tsconfig.tsbuildinfo
 packages/mailbox-cdk-shared/tsconfig.build.tsbuildinfo
