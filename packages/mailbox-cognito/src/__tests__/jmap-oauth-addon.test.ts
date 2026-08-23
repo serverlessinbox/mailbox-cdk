@@ -283,10 +283,35 @@ describe('JmapOAuthAddon — dynamicClientRegistration gating', () => {
     const stageEntries = Object.values(stages);
     expect(stageEntries).toHaveLength(1);
 
+    // Keys MUST be PascalCase. This map reaches CloudFormation unmapped, and camelCase fails the
+    // deploy with `Unrecognized field "throttlingBurstLimit" ... not marked as ignorable`. An
+    // earlier version of this test asserted camelCase and let that defect reach a real deploy.
     const routeSettings = (stageEntries[0] as any).Properties.RouteSettings;
     expect(routeSettings[REGISTRATION_ROUTE_KEY]).toEqual({
-      'Fn::If': [conditionId, { throttlingBurstLimit: 5, throttlingRateLimit: 2 }, { Ref: 'AWS::NoValue' }],
+      'Fn::If': [conditionId, { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 }, { Ref: 'AWS::NoValue' }],
     });
+
+    // The two discovery routes go through the same unmapped path and were equally broken.
+    expect(routeSettings['GET /.well-known/openid-configuration']).toEqual({
+      ThrottlingBurstLimit: 20,
+      ThrottlingRateLimit: 10,
+    });
+
+    // API Gateway 404s a RouteSettings entry whose route does not exist yet, and CloudFormation
+    // updates the Stage before creating the Route unless there is an explicit DependsOn. Every
+    // route key in RouteSettings must therefore appear as a Stage dependency. This failed a real
+    // deploy with "Unable to find Route by key POST /oauth/register within the provided RouteSettings".
+    const stageDependsOn: string[] = ((stageEntries[0] as any).DependsOn ?? []) as string[];
+    const routes = template.findResources('AWS::ApiGatewayV2::Route');
+    const routeKeyToLogicalId = new Map<string, string>();
+    for (const [logicalId, res] of Object.entries(routes)) {
+      routeKeyToLogicalId.set((res as any).Properties.RouteKey, logicalId);
+    }
+    for (const routeKey of Object.keys(routeSettings)) {
+      const logicalId = routeKeyToLogicalId.get(routeKey);
+      expect(logicalId).toBeDefined();
+      expect(stageDependsOn).toContain(logicalId!);
+    }
   });
 
   it("disabled literal: DCR fully off at synth — no Lambda, no route, no CfnCondition, plain discovery body", () => {

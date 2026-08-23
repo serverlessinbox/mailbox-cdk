@@ -1,11 +1,11 @@
 import { Construct } from 'constructs';
 import { Stack, RemovalPolicy } from 'aws-cdk-lib';
-import { Bucket, IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { ICdkArtifactEngine } from './artifact-engine';
 import { BucketAutoEmpty } from './bucket-auto-empty';
 import { getOrCreateSharedGroup } from './shared-group';
-import { StackNamedBucket } from './named-bucket';
+import { StackNamedBucket, stackNamedBucketConstructId } from './named-bucket';
 
 /**
  * Singleton construct for a shared, public S3 bucket used to store small public static assets
@@ -27,9 +27,12 @@ export class PublicStaticAssetsBucket {
     const stack = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
 
-    // Try to find an existing bucket by stable construct ID
-    const existing = sharedGroup.node.tryFindChild('public-static-assets');
-    if (existing instanceof Bucket) {
+    // Try to find an existing bucket by its actual construct ID — StackNamedBucket derives its own ID
+    // from the (scope, bucketName) pair rather than using the literal 'public-static-assets' name, so
+    // the lookup must use the same derivation the constructor uses, via the shared helper.
+    const constructId = stackNamedBucketConstructId(sharedGroup, 'public-static-assets');
+    const existing = sharedGroup.node.tryFindChild(constructId);
+    if (existing instanceof StackNamedBucket) {
       return existing;
     }
 

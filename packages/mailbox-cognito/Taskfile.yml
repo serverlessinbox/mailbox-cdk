@@ -44,11 +44,21 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node22
 
+  bundle:jmap-oauth-dcr:
+    desc: Bundle RFC 7591 dynamic client registration lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/jmap-oauth-dcr/**/*.ts
+    generates:
+      - /tmp/jmap-oauth-dcr.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out /tmp/jmap-oauth-dcr.zip --target node22
+
   bundle:
     desc: Bundle all cognito lambdas to /tmp/*.zip
     cmds:
       - task: bundle:idp-users-api
       - task: bundle:bootstrap-user
+      - task: bundle:jmap-oauth-dcr
 
   publish:dev:
     desc: Publish cognito regional ts-lambdas and data stack template to dev channel
@@ -57,7 +67,9 @@ tasks:
     cmds:
       - task: bundle:idp-users-api
       - task: bundle:bootstrap-user
+      - task: bundle:jmap-oauth-dcr
       - task: build:cognito-data-stack
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-idp-users-api.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/cognito-bootstrap-user.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/jmap-oauth-dcr.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object cognito-data-stack-template.json

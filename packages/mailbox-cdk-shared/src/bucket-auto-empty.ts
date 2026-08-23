@@ -63,21 +63,35 @@ export class BucketAutoEmpty extends TypeScriptLambda {
    * Returns the CustomResource so it can be explicitly depended on if needed.
    */
   attach(scope: Construct, id: string, bucket: IBucket): CustomResource {
-    // Grant s3:ListBucket and s3:ListBucketVersions to enumerate all versions
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:ListBucket', 's3:ListBucketVersions'],
-        resources: [bucket.bucketArn],
-      }),
-    );
+    if (!this.role) {
+      throw new Error('BucketAutoEmpty.attach: Lambda has no execution role to grant on');
+    }
 
-    // Grant s3:DeleteObject and s3:DeleteObjectVersion to delete all objects and versions
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:DeleteObject', 's3:DeleteObjectVersion'],
-        resources: [bucket.arnForObjects('*')],
-      }),
-    );
+    // These grants MUST live in their own AWS::IAM::Policy resource, NOT in the Lambda role's
+    // shared DefaultPolicy via addToRolePolicy(). DefaultPolicy already exists across updates, so
+    // adding a statement to it is an UPDATE of an existing resource — and on a rollback CFN reverts
+    // that update to the prior document and *then* invokes this CustomResource's Delete. The
+    // handler is left without the permission the rollback is asking it to use:
+    //   "not authorized to perform: s3:ListBucketVersions" → CR Delete FAILED
+    //   → "The bucket you tried to delete is not empty" (409) → rollback stalls.
+    // There is no ordering handle for an updated resource, so the fix is a dedicated Policy that is
+    // CREATED and DELETED alongside this attachment, plus an explicit dependency below so CFN tears
+    // the CustomResource down BEFORE the policy that authorizes it.
+    // Do NOT "simplify" this back to addToRolePolicy().
+    const policy = new iam.Policy(scope, `${id}-policy`, {
+      roles: [this.role],
+      statements: [
+        // Enumerate every object and (if the bucket is versioned) every version.
+        new iam.PolicyStatement({
+          actions: ['s3:ListBucket', 's3:ListBucketVersions'],
+          resources: [bucket.bucketArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ['s3:DeleteObject', 's3:DeleteObjectVersion'],
+          resources: [bucket.arnForObjects('*')],
+        }),
+      ],
+    });
 
     // Create the CustomResource.
     // Embedding bucket.bucketName in properties creates an implicit CFN dependency
@@ -90,6 +104,10 @@ export class BucketAutoEmpty extends TypeScriptLambda {
         bucketName: bucket.bucketName,
       },
     });
+
+    // Deletion order is the whole point: CFN deletes dependents first, so the CustomResource's
+    // Delete (which empties the bucket) runs while `policy` is still in place.
+    resource.node.addDependency(policy);
 
     // Track attachments by scope for potential future coordination
     const tracked = this.attachments.get(scope) ?? [];

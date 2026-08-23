@@ -13,6 +13,12 @@ module.exports = {
       objectName: 'lambdas/cognito-bootstrap-user.zip',
     },
     {
+      // objectName MUST stay `lambdas/jmap-oauth-dcr.zip` — JmapOAuthDcrLambda passes
+      // `lambdaId: 'jmap-oauth-dcr'` and TypeScriptLambda resolves `lambdas/${lambdaId}.zip`.
+      source: '/tmp/jmap-oauth-dcr.zip',
+      objectName: 'lambdas/jmap-oauth-dcr.zip',
+    },
+    {
       source: 'dist/cognito-data-stack-template.json',
       objectName: 'cognito-data-stack-template.json',
     },

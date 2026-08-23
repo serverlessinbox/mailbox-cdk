@@ -112,6 +112,57 @@ describe('jmap-oauth-dcr handler', () => {
     expect(createInput.AllowedOAuthScopes).toEqual(['openid']);
   });
 
+  // REGRESSION (live dev, 2026-08-23): a client registered with a scope that reduces to nothing
+  // once `offline_access` is stripped. Cognito was then called with `AllowedOAuthScopes: []` and
+  // rejected the whole registration:
+  //   "InvalidParameterException: AllowedOAuthFlows and AllowedOAuthScopes are required if user
+  //    pool client is allowed to use OAuth flows."
+  // `AllowedOAuthScopes` must therefore never be empty, whatever the client asked for.
+  it.each([
+    ['only offline_access', 'offline_access'],
+    ['an empty string', ''],
+    ['whitespace only', '   '],
+  ])('substitutes the default scope when the request asks for %s', async (_label, scope) => {
+    mockIdentityProvisioner(lambdaMock, {});
+
+    const result = asObjectResult(await handler(requestEvent({ redirect_uris: ['http://127.0.0.1/cb'], scope })));
+
+    expect(result.statusCode).toBe(201);
+    const createInput = cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input;
+    expect(createInput.AllowedOAuthScopes).toEqual(['openid', 'email', 'profile']);
+    // The response reports what was actually granted, per RFC 7591 §3.2.1.
+    expect(JSON.parse(result.body as string).scope).toBe('openid email profile');
+  });
+
+  // RFC 7591 §3.2.2: a registration error is an HTTP 400. Cognito rejecting a submitted metadata
+  // value is a fault in the request, not in the server, and must not surface as a 500.
+  it('maps a Cognito InvalidParameterException to HTTP 400 invalid_client_metadata', async () => {
+    mockIdentityProvisioner(lambdaMock, {});
+    cognitoMock.on(CreateUserPoolClientCommand).rejects(
+      Object.assign(new Error('AllowedOAuthScopes are required'), { name: 'InvalidParameterException' }),
+    );
+
+    const result = asObjectResult(await handler(requestEvent({ redirect_uris: ['http://127.0.0.1/cb'] })));
+
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body as string)).toMatchObject({ error: 'invalid_client_metadata' });
+  });
+
+  // A genuine service failure stays a 500 — but must say `server_error`, not blame the client's
+  // metadata. Reporting `invalid_client_metadata` here tells a correct client to "fix" a correct
+  // request.
+  it('maps a Cognito service failure to HTTP 500 server_error', async () => {
+    mockIdentityProvisioner(lambdaMock, {});
+    cognitoMock.on(CreateUserPoolClientCommand).rejects(
+      Object.assign(new Error('rate exceeded'), { name: 'TooManyRequestsException' }),
+    );
+
+    const result = asObjectResult(await handler(requestEvent({ redirect_uris: ['http://127.0.0.1/cb'] })));
+
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body as string)).toMatchObject({ error: 'server_error' });
+  });
+
   it('defaults client_name when absent', async () => {
     mockIdentityProvisioner(lambdaMock, {});
 

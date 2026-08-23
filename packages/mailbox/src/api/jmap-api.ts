@@ -227,7 +227,7 @@ export class JMapApi extends Construct {
         `https://${bucket.bucketRegionalDomainName}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`,
       );
 
-      api.addRoutes({
+      const protectedResourceRoutes = api.addRoutes({
         path: JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
         methods: [HttpMethod.GET],
         integration: protectedResourceIntegration,
@@ -235,12 +235,21 @@ export class JMapApi extends Construct {
 
       // Apply per-route throttling via the L1 CfnStage (merge with any existing settings)
       const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
+
+      // API Gateway rejects a RouteSettings entry whose route does not exist yet, and CloudFormation
+      // updates the Stage before creating the Route unless told otherwise:
+      //   "Unable to find Route by key ... within the provided RouteSettings"
+      protectedResourceRoutes.forEach((route) => {
+        cfnStage.addDependency(route.node.defaultChild as CfnResource);
+      });
       const existingSettings = cfnStage.routeSettings as Record<string, any> || {};
       const routeSettings: Record<string, any> = { ...existingSettings };
 
+      // Keys MUST be PascalCase — this map is passed through to CloudFormation unmapped, and
+      // camelCase fails the deploy with `Unrecognized field "throttlingBurstLimit"`.
       routeSettings[`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`] = {
-        throttlingBurstLimit: 20,
-        throttlingRateLimit: 10,
+        ThrottlingBurstLimit: 20,
+        ThrottlingRateLimit: 10,
       };
 
       cfnStage.routeSettings = routeSettings;

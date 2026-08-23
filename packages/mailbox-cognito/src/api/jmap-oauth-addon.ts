@@ -178,7 +178,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     // Static route for openid-configuration — direct S3 proxy, zero Lambda invocation
     const openidIntegration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}/.well-known/openid-configuration`);
 
-    api.addRoutes({
+    const openidRoutes = api.addRoutes({
       path: '/.well-known/openid-configuration',
       methods: [HttpMethod.GET],
       integration: openidIntegration,
@@ -186,13 +186,27 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
 
     // Apply per-route throttling via the L1 CfnStage (merge with any existing settings)
     const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
+
+    // A RouteSettings entry is rejected by API Gateway unless the route it keys already exists, and
+    // CloudFormation will otherwise update the Stage before creating the Route:
+    //   "Unable to find Route by key POST /oauth/register within the provided RouteSettings"
+    // So every route named in routeSettings below must be an explicit CFN dependency of the Stage.
+    const dependOnRoute = (route: { node: { defaultChild: unknown } }): void => {
+      cfnStage.addDependency(route.node.defaultChild as cdk.CfnResource);
+    };
+    openidRoutes.forEach(dependOnRoute);
     const existingSettings = cfnStage.routeSettings as Record<string, any> || {};
     const routeSettings: Record<string, any> = { ...existingSettings };
 
+    // Keys MUST be PascalCase. This map is assigned straight onto the L1 CfnStage, which passes it
+    // through unmapped, so CloudFormation sees exactly what is written here. camelCase fails the
+    // deploy with `Unrecognized field "throttlingBurstLimit" ... not marked as ignorable`.
+    // Do not "correct" these to camelCase to match CDK's TS property style.
+
     // GET well-known route: generous burst/rate (cached, cheap operation)
     routeSettings['GET /.well-known/openid-configuration'] = {
-      throttlingBurstLimit: 20,
-      throttlingRateLimit: 10,
+      ThrottlingBurstLimit: 20,
+      ThrottlingRateLimit: 10,
     };
 
     // POST /oauth/register — only mounted at all when DCR isn't fully disabled at synth (literal
@@ -212,13 +226,14 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
         integration: dcrIntegration,
       });
       dcrRoutes.forEach((route) => cdk.Aspects.of(route).add(new GateOnConditionAspect(registrationEnabled)));
+      dcrRoutes.forEach(dependOnRoute);
 
       // RouteSettings is a property map on the always-present CfnStage, not a separate resource,
       // so it can't carry its own Condition — omit the entry entirely when disabled via Fn::If +
       // NoValue.
       routeSettings[`POST ${REGISTRATION_PATH}`] = cdk.Fn.conditionIf(
         registrationEnabled.logicalId,
-        { throttlingBurstLimit: 5, throttlingRateLimit: 2 },
+        { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 },
         cdk.Aws.NO_VALUE,
       );
     }

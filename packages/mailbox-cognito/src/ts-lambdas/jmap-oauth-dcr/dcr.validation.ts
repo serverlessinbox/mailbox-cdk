@@ -37,8 +37,18 @@ export interface ClientRegistrationResponse {
   readonly scope: string;
 }
 
-/** RFC 7591 §3.2.2 client registration error response. */
+/**
+ * RFC 7591 §3.2.2 client registration error response.
+ *
+ * §3.2.2 defines `invalid_redirect_uri`, `invalid_client_metadata`,
+ * `invalid_software_statement` and `unapproved_software_statement`, and mandates HTTP 400 for a
+ * registration error "unless otherwise specified". `server_error` is NOT one of those four — it is
+ * the RFC 6749 §4.1.2.1 / §5.2 code, carried here for the genuinely server-side failures (Cognito
+ * unavailable or throttled) that are not a fault in the submitted metadata. Reporting those as
+ * `invalid_client_metadata` tells the client its request was malformed and invites it to "fix" a
+ * request that was already correct.
+ */
 export interface ClientRegistrationErrorResponse {
-  readonly error: 'invalid_redirect_uri' | 'invalid_client_metadata';
+  readonly error: 'invalid_redirect_uri' | 'invalid_client_metadata' | 'server_error';
   readonly error_description?: string;
 }
