@@ -4,6 +4,16 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.76](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.75...v0.0.76) (Tue Aug 25 2026)
+
+### fix
+
+* Update fix ([d4492b1](https://github.com/serverlessinbox/mailbox-cdk/commit/d4492b1fee01fd3f7cebd4c33eee95b0b56f8a0b))
+
+### feat
+
+* Smoke test ([82c56a9](https://github.com/serverlessinbox/mailbox-cdk/commit/82c56a9048e947facffae977532c30c47632e370))
+
 ## [0.0.75](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.74...v0.0.75) (Sun Aug 23 2026)
 
 ### chore
