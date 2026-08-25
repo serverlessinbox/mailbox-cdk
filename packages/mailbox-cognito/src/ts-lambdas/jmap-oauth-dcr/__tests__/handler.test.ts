@@ -284,3 +284,27 @@ describe('jmap-oauth-dcr handler', () => {
     expect(resolveTenantPayload).toEqual({ kind: 'RESOLVE_TENANT' });
   });
 });
+
+describe('jmap-oauth-dcr handler — smoke test wrapper', () => {
+  const lambdaMock = mockClient(LambdaClient);
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+
+  beforeEach(() => {
+    lambdaMock.reset();
+    cognitoMock.reset();
+  });
+
+  it('responds to smoke test probe without invoking the real handler', async () => {
+    const probeEvent = { serverlessInboxSmokeTest: true };
+    const result = await handler(probeEvent, {});
+
+    expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+
+    // Verify no Lambda invocations (identity-provisioner calls) were made
+    expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
+
+    // Verify no Cognito operations were invoked
+    expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
+    expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)).toHaveLength(0);
+  });
+});
