@@ -6,7 +6,6 @@ import {
   LambdaClient,
   UpdateFunctionCodeCommand,
   PublishVersionCommand,
-  GetFunctionConfigurationCommand,
   ResourceConflictException,
 } from '@aws-sdk/client-lambda';
 import {
@@ -19,7 +18,7 @@ import {
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { resolveStaleTarget } from './staleness';
-import { requireEnv, artifactBucketName, bumpArtifactVersionTag } from './common';
+import { requireEnv, artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
 
 /**
  * Lambda@Edge association type from DistributionConfig.
@@ -142,39 +141,7 @@ export async function advanceEdgeLambdaIfStale(
     }
 
     // 1b. Poll for update completion
-    const maxPollAttempts = 30; // 60s total at 2s intervals
-    const pollIntervalMs = 2000;
-    let updateSettled = false;
-
-    for (let pollAttempt = 0; pollAttempt < maxPollAttempts; pollAttempt++) {
-      const cfgResp = await lambdaClient.send(
-        new GetFunctionConfigurationCommand({
-          FunctionName: edgeLambdaArn,
-        }),
-      );
-
-      const status = cfgResp.LastUpdateStatus;
-      if (status === 'Successful') {
-        updateSettled = true;
-        break;
-      }
-      if (status === 'Failed') {
-        const reason = cfgResp.LastUpdateStatusReason || 'unknown reason';
-        throw new Error(
-          `Function code update failed for ${edgeLambdaArn}: ${reason}`,
-        );
-      }
-
-      if (pollAttempt < maxPollAttempts - 1) {
-        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      }
-    }
-
-    if (!updateSettled) {
-      throw new Error(
-        `Timed out waiting for function code update to settle for ${edgeLambdaArn}`,
-      );
-    }
+    await waitForFunctionCodeUpdateSettled(lambdaClient, edgeLambdaArn);
 
     // 2. PublishVersion → new numeric version
     const versionResp = await lambdaClient.send(

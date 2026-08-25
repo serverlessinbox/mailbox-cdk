@@ -12,6 +12,10 @@
     "./lambda-runtime": {
       "types": "./src/lambda-runtime.ts",
       "default": "./src/lambda-runtime.ts"
+    },
+    "./smoke-test": {
+      "types": "./src/ts-lambdas/shared/with-smoke-test.ts",
+      "default": "./src/ts-lambdas/shared/with-smoke-test.ts"
     }
   },
   "publishConfig": {
@@ -25,6 +29,10 @@
       "./lambda-runtime": {
         "types": "./lib/lambda-runtime.d.ts",
         "default": "./lib/lambda-runtime.js"
+      },
+      "./smoke-test": {
+        "types": "./lib/ts-lambdas/shared/with-smoke-test.d.ts",
+        "default": "./lib/ts-lambdas/shared/with-smoke-test.js"
       }
     }
   },

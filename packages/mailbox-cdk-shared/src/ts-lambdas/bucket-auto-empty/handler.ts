@@ -1,8 +1,9 @@
 import { wrapHandler } from 'aws-custom-resources';
+import { withSmokeTest } from '../shared/with-smoke-test';
 import { emptyBucket } from '../shared/bucket-empty';
 import { isBucketAutoEmptyResourceProperties } from './types';
 
-export const handler = wrapHandler(async (event: any, _context: any) => {
+export const handler = withSmokeTest(wrapHandler(async (event: any, _context: any) => {
   const resourceProps = event.ResourceProperties ?? {};
   if (!isBucketAutoEmptyResourceProperties(resourceProps)) {
     throw new Error('Invalid ResourceProperties: bucketName must be a string when present');
@@ -38,4 +39,4 @@ export const handler = wrapHandler(async (event: any, _context: any) => {
   }
 
   throw new Error(`Unknown RequestType: ${event.RequestType}`);
-});
+}));

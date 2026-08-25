@@ -1,4 +1,5 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
 
 import { CognitoUserPoolClientManager } from './cognito-client';
 import { config } from './config';
@@ -213,11 +214,11 @@ async function processRegistration(event: APIGatewayProxyEventV2): Promise<APIGa
   return jsonResponse(201, buildSuccessResponse(body, clientId, grantedScope, clientName));
 }
 
-export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+export const handler = withSmokeTest(async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
   try {
     return await processRegistration(event);
   } catch (err) {
     console.error('jmap_oauth_dcr_unhandled_error', { error: String(err) });
     return errorResponse(500, 'server_error', 'Internal error processing registration');
   }
-}
+});

@@ -5,6 +5,7 @@ import {
 	type AdminAuthContext,
 	type AuditContext,
 } from '@serverlessinbox/mailbox-admin-api';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
 
 import { SqsAuditEmitter } from './audit';
 import { createCognitoIdpUsersServiceSpec } from './service';
@@ -29,7 +30,7 @@ const userGroups = parseJsonStringArrayEnv('USER_GROUPS');
 
 const emitAuditEvent = auditQueueUrl ? new SqsAuditEmitter(auditQueueUrl).emit : undefined;
 
-export const handler = createAdminApiHandler({
+export const handler = withSmokeTest(createAdminApiHandler({
 	registry,
 	extractAuth: (event) => extractAdminAuthContext(event, { adminGroups, userGroups }),
 	emitAuditEvent,
@@ -47,4 +48,4 @@ export const handler = createAdminApiHandler({
 			scopes: a.scopes,
 		};
 	},
-});
+}));

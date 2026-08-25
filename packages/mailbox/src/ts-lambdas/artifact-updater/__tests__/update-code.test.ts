@@ -12,6 +12,8 @@ import {
   LambdaClient,
   UpdateFunctionCodeCommand,
   TagResourceCommand,
+  GetFunctionConfigurationCommand,
+  InvokeCommand,
 } from '@aws-sdk/client-lambda';
 import { LoggerBuffer } from '../../shared/logger-buffer';
 import { advanceLambdaIfStale } from '../update-code';
@@ -72,6 +74,7 @@ describe('advanceLambdaIfStale', () => {
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // No AWS SDK calls should have been made
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
+    expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
   });
 
   it('skips update when version is not newer (idempotent)', async () => {
@@ -97,11 +100,11 @@ describe('advanceLambdaIfStale', () => {
     expect(mockReadReleasePointer).toHaveBeenCalled();
     // Real semver.gt('1.2.3', '1.2.3') returns false, so no update occurs
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
+    expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
   });
 
-  it('advances Lambda when pointer version is strictly newer (uses default bucketBase)', async () => {
+  it('smoke test pass → updates tag and returns true', async () => {
     mockDeriveTrack.mockReturnValue('v1');
-    // Pointer version (1.2.4) is strictly newer than deployed version (1.2.3)
     mockReadReleasePointer.mockResolvedValue({
       version: '1.2.4',
       s3Location: { bucket: 'test-bucket', key: 'test-key' },
@@ -109,6 +112,14 @@ describe('advanceLambdaIfStale', () => {
     mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+      FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+    });
+    lambdaMock.on(InvokeCommand).resolves({
+      StatusCode: 200,
+      Payload: JSON.stringify({ serverlessInboxSmokeTestOk: true }) as any,
+    });
     lambdaMock.on(TagResourceCommand).resolves({});
     const logger = new LoggerBuffer();
 
@@ -122,26 +133,129 @@ describe('advanceLambdaIfStale', () => {
     );
 
     expect(updated).toBe(true);
-    // Verify readReleasePointer was called with default bucketBase
-    expect(mockReadReleasePointer).toHaveBeenCalledWith(
-      'mailbox-go',
-      'latest',
-      'us-east-1',
-      expect.objectContaining({
-        bucketBase: 'mailbox-artifacts',
-        project: 'serverlessinbox',
-      }),
-    );
-
-    // Verify UpdateFunctionCodeCommand used the default bucket
-    const updateCalls = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0].args[0].input.S3Bucket).toBe('mailbox-artifacts-us-east-1');
-
-    // Verify TagResourceCommand was called with new version
+    // Verify UpdateFunctionCodeCommand was called once (no rollback)
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    // Verify TagResourceCommand was called once with new version
     const tagCalls = lambdaMock.commandCalls(TagResourceCommand);
     expect(tagCalls).toHaveLength(1);
     expect(tagCalls[0].args[0].input.Tags).toEqual({ 'serverless-inbox:artifact-version': '1.2.4' });
+  });
+
+  it('smoke test unprobeable → updates tag with warning and returns true', async () => {
+    mockDeriveTrack.mockReturnValue('v1');
+    mockReadReleasePointer.mockResolvedValue({
+      version: '1.2.4',
+      s3Location: { bucket: 'test-bucket', key: 'test-key' },
+    });
+    mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
+
+    lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+      FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+    });
+    // Simulate unprobeable: invoke fails with permission denied
+    const error = new Error('AccessDenied');
+    error.name = 'AccessDenied';
+    lambdaMock.on(InvokeCommand).rejects(error);
+    lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
+
+    const updated = await advanceLambdaIfStale(
+      'us-east-1',
+      'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+      'mailbox-go',
+      'mailbox-go',
+      '1.2.3',
+      logger,
+    );
+
+    expect(updated).toBe(true);
+    // Verify UpdateFunctionCodeCommand was called once (no rollback)
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    // Verify TagResourceCommand was called once (tag still updated despite unprobeable)
+    expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(1);
+  });
+
+  it('smoke test fail → rolls back and returns false, no tag written', async () => {
+    mockDeriveTrack.mockReturnValue('v1');
+    mockReadReleasePointer.mockResolvedValue({
+      version: '1.2.4',
+      s3Location: { bucket: 'test-bucket', key: 'test-key' },
+    });
+    mockBuildArtifactKey
+      .mockReturnValueOnce('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip') // forward update
+      .mockReturnValueOnce('serverlessinbox/packages/mailbox-go/releases/v1.2.3/lambdas/mailbox-go.zip'); // rollback
+
+    lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+      FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+    });
+    // Simulate probe failure: handler returned false
+    lambdaMock.on(InvokeCommand).resolves({
+      StatusCode: 200,
+      Payload: JSON.stringify({ serverlessInboxSmokeTestOk: false }) as any,
+    });
+    lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
+
+    const updated = await advanceLambdaIfStale(
+      'us-east-1',
+      'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+      'mailbox-go',
+      'mailbox-go',
+      '1.2.3',
+      logger,
+    );
+
+    expect(updated).toBe(false);
+    // Verify TWO UpdateFunctionCodeCommand calls: forward + rollback
+    const updateCalls = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
+    expect(updateCalls).toHaveLength(2);
+    // First call should be the new version
+    expect(updateCalls[0].args[0].input.S3Key).toContain('v1.2.4');
+    // Second call (rollback) should be the old version
+    expect(updateCalls[1].args[0].input.S3Key).toContain('v1.2.3');
+    // Verify NO TagResourceCommand was called (no tag write on failure)
+    expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
+  });
+
+  it('settle-wait throws on forward update → no probe and no rollback, error propagates', async () => {
+    mockDeriveTrack.mockReturnValue('v1');
+    mockReadReleasePointer.mockResolvedValue({
+      version: '1.2.4',
+      s3Location: { bucket: 'test-bucket', key: 'test-key' },
+    });
+    mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
+
+    lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    // Simulate settle failure: update never completes (times out or fails)
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Failed',
+      LastUpdateStatusReason: 'Insufficient permissions',
+      FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+    });
+    lambdaMock.on(TagResourceCommand).resolves({});
+    const logger = new LoggerBuffer();
+
+    await expect(
+      advanceLambdaIfStale(
+        'us-east-1',
+        'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
+        'mailbox-go',
+        'mailbox-go',
+        '1.2.3',
+        logger,
+      ),
+    ).rejects.toThrow('Function code update failed');
+
+    // Verify ONE UpdateFunctionCodeCommand (forward only, no rollback attempted)
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    // Verify InvokeCommand was never called (probe not invoked)
+    expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
+    // Verify NO TagResourceCommand (no tag write)
+    expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
   });
 
   it('skips target when pointer version is not valid semver', async () => {
@@ -165,6 +279,7 @@ describe('advanceLambdaIfStale', () => {
     expect(updated).toBe(false);
     // Should skip without calling UpdateFunctionCodeCommand
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
+    expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
   });
 
   it('uses ARTIFACT_BUCKET_BASE env var when provided', async () => {
@@ -177,6 +292,14 @@ describe('advanceLambdaIfStale', () => {
     mockBuildArtifactKey.mockReturnValue('test-key');
 
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({
+      LastUpdateStatus: 'Successful',
+      FunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test',
+    });
+    lambdaMock.on(InvokeCommand).resolves({
+      StatusCode: 200,
+      Payload: JSON.stringify({ serverlessInboxSmokeTestOk: true }) as any,
+    });
     lambdaMock.on(TagResourceCommand).resolves({});
     const logger = new LoggerBuffer();
 

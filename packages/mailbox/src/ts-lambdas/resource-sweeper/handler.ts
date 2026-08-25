@@ -1,4 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
 import {
   ACMClient,
   DescribeCertificateCommand,
@@ -48,7 +49,7 @@ export interface WorkerOutput {
  *   ResourceNotFoundException → already done. Ownership mismatch → FAILED. Other error → RETRY.
  * - Aggregate: FAILED if any hard error/mismatch; RETRY if any target not-done; SUCCESS if all done.
  */
-export const workerHandler = async (input: WorkerInput): Promise<WorkerOutput> => {
+export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
   console.log('Worker invoked', {
     hasCertArn: !!input.certArn,
     hasEdgeFnArn: !!input.edgeFnArn,
@@ -204,7 +205,7 @@ export const workerHandler = async (input: WorkerInput): Promise<WorkerOutput> =
 
   // All done
   return { status: 'SUCCESS' };
-};
+});
 
 /**
  * Starter handler: fires a Step Functions execution to sweep deferred resources.
@@ -214,7 +215,7 @@ export const workerHandler = async (input: WorkerInput): Promise<WorkerOutput> =
  * sweep runs asynchronously. StartExecution failures are logged but do not
  * prevent the custom resource from completing (best-effort).
  */
-export const starterHandler: CloudFormationCustomResourceHandler = wrapHandler(async (event) => {
+export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest(wrapHandler(async (event) => {
   console.log('Starter invoked', {
     requestType: event.RequestType,
     requestId: event.RequestId,
@@ -306,4 +307,4 @@ export const starterHandler: CloudFormationCustomResourceHandler = wrapHandler(a
     PhysicalResourceId: physicalResourceId,
     Data: {},
   };
-});
+}));

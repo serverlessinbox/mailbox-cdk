@@ -18,11 +18,14 @@ describe('config (cold-start env validation)', () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it('exposes both env vars once both are set', async () => {
+  it('exposes both env vars once both are set', () => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-name';
     process.env.USER_POOL_ID = 'pool-id';
 
-    const { config } = await import('../config');
+    let config: any;
+    jest.isolateModules(() => {
+      config = require('../config').config;
+    });
 
     expect(config).toEqual({ identityProvisionerFunctionName: 'fn-name', userPoolId: 'pool-id' });
   });
@@ -30,7 +33,7 @@ describe('config (cold-start env validation)', () => {
   it.each([
     ['missing', undefined],
     ['empty string', ''],
-  ] as const)('throws at module load when IDENTITY_PROVISIONER_FUNCTION_NAME is %s', async (_label, value) => {
+  ] as const)('throws at module load when IDENTITY_PROVISIONER_FUNCTION_NAME is %s', (_label: string, value: string | undefined) => {
     if (value === undefined) {
       delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
     } else {
@@ -38,13 +41,17 @@ describe('config (cold-start env validation)', () => {
     }
     process.env.USER_POOL_ID = 'pool-id';
 
-    await expect(import('../config')).rejects.toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
+    expect(() => {
+      jest.isolateModules(() => {
+        require('../config');
+      });
+    }).toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
   });
 
   it.each([
     ['missing', undefined],
     ['empty string', ''],
-  ] as const)('throws at module load when USER_POOL_ID is %s', async (_label, value) => {
+  ] as const)('throws at module load when USER_POOL_ID is %s', (_label: string, value: string | undefined) => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-name';
     if (value === undefined) {
       delete process.env.USER_POOL_ID;
@@ -52,6 +59,10 @@ describe('config (cold-start env validation)', () => {
       process.env.USER_POOL_ID = value;
     }
 
-    await expect(import('../config')).rejects.toThrow(/USER_POOL_ID is not configured/);
+    expect(() => {
+      jest.isolateModules(() => {
+        require('../config');
+      });
+    }).toThrow(/USER_POOL_ID is not configured/);
   });
 });

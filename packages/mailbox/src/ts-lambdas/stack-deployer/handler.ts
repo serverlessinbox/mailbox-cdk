@@ -1,4 +1,5 @@
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, safeStringify, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
@@ -515,12 +516,12 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
   }
 }
 
-export const starterHandler = async (event: any, context: any): Promise<any> => {
+export const starterHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
   console.log('Starter event:', JSON.stringify(event, null, 2));
   await handleCfn(event as CfnCustomResourceEvent, context);
-};
+});
 
-export const workerHandler = async (event: any, context: any): Promise<any> => {
+export const workerHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
   console.log('Worker event:', JSON.stringify(event, null, 2));
   return handleSfn(event as SfnInvokeEvent, context);
-};
+});

@@ -580,3 +580,30 @@ describe('stack deployer handler - KMS transient-error retry (Create operations)
     );
   });
 });
+
+describe('stack deployer handlers — smoke test wrapper', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('starterHandler', () => {
+    it('responds to smoke test probe without invoking the CFN handler', async () => {
+      const probeEvent = { serverlessInboxSmokeTest: true };
+
+      const result = await (handler.starterHandler as any)(probeEvent, {});
+
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+      expect(mockPutCfnResponse).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('workerHandler', () => {
+    it('responds to smoke test probe without invoking the SFN handler', async () => {
+      const probeEvent = { serverlessInboxSmokeTest: true };
+
+      const result = await (handler.workerHandler as any)(probeEvent, {});
+
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    });
+  });
+});

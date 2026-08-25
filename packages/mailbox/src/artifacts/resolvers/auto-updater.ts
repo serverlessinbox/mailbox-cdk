@@ -116,7 +116,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
     updater.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['lambda:GetFunction', 'lambda:UpdateFunctionCode'],
+        actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
         resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
           StringEquals: {

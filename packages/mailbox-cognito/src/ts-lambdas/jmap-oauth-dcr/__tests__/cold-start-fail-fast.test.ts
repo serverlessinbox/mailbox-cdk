@@ -30,7 +30,7 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
   it.each([
     ['missing', undefined],
     ['empty string', ''],
-  ] as const)('USER_POOL_ID %s: importing ../handler throws before any AWS call is possible', async (_label, value) => {
+  ] as const)('USER_POOL_ID %s: importing ../handler throws before any AWS call is possible', (_label: string, value: string | undefined) => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner-fn';
     if (value === undefined) {
       delete process.env.USER_POOL_ID;
@@ -38,13 +38,15 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
       process.env.USER_POOL_ID = value;
     }
 
-    const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
-    const { CognitoIdentityProviderClient, CreateUserPoolClientCommand } = await import('@aws-sdk/client-cognito-identity-provider');
-    const { mockClient } = await import('aws-sdk-client-mock');
+    const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+    const { CognitoIdentityProviderClient, CreateUserPoolClientCommand } = require('@aws-sdk/client-cognito-identity-provider');
+    const { mockClient } = require('aws-sdk-client-mock');
     const lambdaMock = mockClient(LambdaClient);
     const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
-    await expect(import('../handler')).rejects.toThrow(/USER_POOL_ID is not configured/);
+    expect(() => {
+      require('../handler');
+    }).toThrow(/USER_POOL_ID is not configured/);
 
     expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
@@ -53,7 +55,7 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
   it.each([
     ['missing', undefined],
     ['empty string', ''],
-  ] as const)('IDENTITY_PROVISIONER_FUNCTION_NAME %s: importing ../handler throws before any AWS call is possible', async (_label, value) => {
+  ] as const)('IDENTITY_PROVISIONER_FUNCTION_NAME %s: importing ../handler throws before any AWS call is possible', (_label: string, value: string | undefined) => {
     if (value === undefined) {
       delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
     } else {
@@ -61,13 +63,15 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
     }
     process.env.USER_POOL_ID = 'pool-1';
 
-    const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
-    const { CognitoIdentityProviderClient, CreateUserPoolClientCommand } = await import('@aws-sdk/client-cognito-identity-provider');
-    const { mockClient } = await import('aws-sdk-client-mock');
+    const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+    const { CognitoIdentityProviderClient, CreateUserPoolClientCommand } = require('@aws-sdk/client-cognito-identity-provider');
+    const { mockClient } = require('aws-sdk-client-mock');
     const lambdaMock = mockClient(LambdaClient);
     const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
-    await expect(import('../handler')).rejects.toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
+    expect(() => {
+      require('../handler');
+    }).toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
 
     expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);

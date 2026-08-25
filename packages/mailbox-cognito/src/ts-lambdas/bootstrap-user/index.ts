@@ -1,6 +1,7 @@
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserAttributesCommand, AdminAddUserToGroupCommand, UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import https from 'node:https';
 import { URL } from 'node:url';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
 
 type CloudFormationCustomResourceEvent = {
   RequestType: 'Create' | 'Update' | 'Delete';
@@ -135,7 +136,7 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
   }
 }
 
-export const handler = async (event: CloudFormationCustomResourceEvent): Promise<void> => {
+export const handler = withSmokeTest(async (event: CloudFormationCustomResourceEvent): Promise<void> => {
   const props = event.ResourceProperties as BootstrapUserProperties;
 
   const physicalResourceId = `BootstrapUser:${props.userPoolId}:${props.username ?? 'admin'}`;
@@ -180,4 +181,4 @@ export const handler = async (event: CloudFormationCustomResourceEvent): Promise
 
     throw e;
   }
-};
+});

@@ -1,10 +1,11 @@
 import { wrapHandler } from 'aws-custom-resources';
+import { withSmokeTest } from '../shared/with-smoke-test';
 
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
 import { isContentDeployerResourceProperties } from './types';
 
-export const handler = wrapHandler(async (event: any, context: any) => {
+export const handler = withSmokeTest(wrapHandler(async (event: any, context: any) => {
   const resourceProps = event.ResourceProperties ?? {};
   if (!isContentDeployerResourceProperties(resourceProps)) {
     throw new Error(
@@ -91,4 +92,4 @@ export const handler = wrapHandler(async (event: any, context: any) => {
       cacheInvalidated: String(cacheInvalidated),
     },
   };
-});
+}));
