@@ -1,36 +1,17 @@
 import { Construct, IConstruct } from 'constructs';
-import { Aws, Duration, Fn, IAspect, Tags } from 'aws-cdk-lib';
+import { Aws, Duration, Fn, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver, CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver, ResolvedArtifact } from '../i-artifact-resolver';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
 import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
 import { ArtifactUpdaterAddon } from '../../addons/artifact-updater-addon';
 import { ServerlessInboxTagKeys } from '../../utils/serverless-inbox-tags';
-
-/**
- * Aspect that gates all CfnResource children of a construct onto an IsTracking condition.
- * Used to ensure the entire self-update subtree (CRs, Lambda, rule, roles, policies, etc.)
- * produces zero resources under pinned mode.
- */
-class GateOnConditionAspect implements IAspect {
-  constructor(private condition: cdk.CfnCondition) {}
-
-  visit(node: IConstruct): void {
-    // Skip the condition itself (a condition cannot carry a condition)
-    if (node === this.condition) return;
-
-    // Gate every CfnResource in the subtree
-    if (cdk.CfnResource.isCfnResource(node)) {
-      node.cfnOptions.condition = this.condition;
-    }
-  }
-}
 
 /** Update-drift granularity for the Phase B scheduled updater (like npm ^/~). Unused at deploy. */
 export type Granularity = 'major' | 'minor';

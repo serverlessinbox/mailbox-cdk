@@ -7,8 +7,6 @@ import { IAdminApiAddon } from '../api/addons';
 
 export interface ArtifactUpdaterAddonProps {
   readonly updaterFunction: IFunction;
-  /** Optional base path for mounted routes; defaults to `/artifact-updates`. */
-  readonly basePath?: string;
 }
 
 /**
@@ -28,9 +26,8 @@ export class ArtifactUpdaterAddon implements IAdminApiAddon {
   constructor(private readonly props: ArtifactUpdaterAddonProps) {}
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
-    const basePath = this.props.basePath ?? '/artifact-updates';
     api.addRoutes({
-      path: `${basePath}/{proxy+}`,
+      path: '/artifact-updates/{proxy+}',
       methods: [HttpMethod.POST, HttpMethod.GET],
       integration: new HttpLambdaIntegration('artifact-updates', this.props.updaterFunction),
       authorizer,

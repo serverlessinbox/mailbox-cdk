@@ -57,6 +57,8 @@ export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
 export { StackUpdateAddonProvider } from './addons/stack-update-addon';
 export type { StackUpdateAddonProviderProps } from './addons/stack-update-addon';
+export { SupportAccessAddonProvider, SupportAccessMode } from './addons/support-access-addon';
+export type { SupportAccessAddonProviderProps } from './addons/support-access-addon';
 
 // Utils — development mode
 export {

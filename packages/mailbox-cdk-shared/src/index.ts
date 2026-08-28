@@ -2,6 +2,9 @@
 export { PinnedResolver, CdkArtifactEngine } from './artifact-engine';
 export type { IArtifactResolver, ICdkArtifactEngine, ResolvedArtifact, VersionMap, VersionMapEntry } from './artifact-engine';
 
+// CDK aspects & patterns
+export { GateOnConditionAspect } from './gate-on-condition-aspect';
+
 // Lambda constructs & artifact tagging (used by mailbox, mailbox-cognito, and other sub-stack packages)
 export { TypeScriptLambda } from './ts-lambda';
 export type { TypeScriptLambdaProps } from './ts-lambda';

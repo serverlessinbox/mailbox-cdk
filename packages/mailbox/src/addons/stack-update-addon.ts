@@ -27,9 +27,6 @@ export interface StackUpdateAddonProps {
   /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;
 
-  /** Optional base path for mount routes; defaults to `/stack-update`. */
-  readonly basePath?: string;
-
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
@@ -51,7 +48,6 @@ export interface StackUpdateAddonProps {
  * Implements IAdminApiAddon.
  */
 export class StackUpdateAddon extends Construct implements IAdminApiAddon {
-  public readonly basePath: string;
   public uiConfig?: Record<string, unknown>;
 
   private readonly _lambdaConstruct: StackUpdateApiLambda;
@@ -59,7 +55,6 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
     super(scope, id);
 
-    this.basePath = props.basePath ?? '/stack-update';
     this.uiConfig = {
       stackUpdate: {
         available: true,
@@ -113,7 +108,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
-      path: `${this.basePath}/{proxy+}`,
+      path: '/stack-update/{proxy+}',
       methods: [HttpMethod.POST],
       integration: new HttpLambdaIntegration('stack-update', this._lambdaConstruct),
       authorizer,

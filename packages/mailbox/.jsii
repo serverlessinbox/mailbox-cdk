@@ -9393,7 +9393,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 65
+          "line": 46
         },
         "parameters": [
           {
@@ -9424,7 +9424,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 54
+        "line": 35
       },
       "methods": [
         {
@@ -9433,7 +9433,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 275
+            "line": 256
           },
           "name": "addDeployEndDependency",
           "parameters": [
@@ -9451,7 +9451,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 266
+            "line": 247
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9486,7 +9486,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 256
+            "line": 237
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9510,7 +9510,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 251
+            "line": 232
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9555,7 +9555,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 45
+        "line": 26
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -9568,7 +9568,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 47
+            "line": 28
           },
           "name": "distTag",
           "optional": true,
@@ -9585,7 +9585,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 49
+            "line": 30
           },
           "name": "granularity",
           "optional": true,
@@ -9601,7 +9601,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 51
+            "line": 32
           },
           "name": "updateInterval",
           "optional": true,
@@ -12556,7 +12556,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update-addon.ts",
-          "line": 146
+          "line": 141
         },
         "parameters": [
           {
@@ -12573,13 +12573,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 145
+        "line": 140
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 148
+            "line": 143
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12622,7 +12622,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 127
+        "line": 122
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
@@ -12634,7 +12634,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 129
+            "line": 124
           },
           "name": "artifactResolver",
           "type": {
@@ -12649,7 +12649,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 132
+            "line": 127
           },
           "name": "templateName",
           "type": {
@@ -12664,7 +12664,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 135
+            "line": 130
           },
           "name": "templateVersion",
           "type": {
@@ -12680,7 +12680,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 138
+            "line": 133
           },
           "name": "distTag",
           "optional": true,
@@ -12690,8 +12690,149 @@
         }
       ],
       "symbolId": "src/addons/stack-update-addon:StackUpdateAddonProviderProps"
+    },
+    "@serverlessinbox/mailbox.SupportAccessAddonProvider": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable support access case management and cross-account trust mechanics in the Admin API.",
+        "summary": "Provider for the SupportAccess addon."
+      },
+      "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProvider",
+      "initializer": {
+        "locationInModule": {
+          "filename": "src/addons/support-access-addon.ts",
+          "line": 141
+        },
+        "parameters": [
+          {
+            "name": "props",
+            "type": {
+              "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProviderProps"
+            }
+          }
+        ]
+      },
+      "interfaces": [
+        "@serverlessinbox/mailbox.IAdminApiAddonProvider"
+      ],
+      "kind": "class",
+      "locationInModule": {
+        "filename": "src/addons/support-access-addon.ts",
+        "line": 140
+      },
+      "methods": [
+        {
+          "locationInModule": {
+            "filename": "src/addons/support-access-addon.ts",
+            "line": 143
+          },
+          "name": "createAdminApiAddons",
+          "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
+          "parameters": [
+            {
+              "name": "scope",
+              "type": {
+                "fqn": "constructs.Construct"
+              }
+            },
+            {
+              "name": "ctx",
+              "type": {
+                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "collection": {
+                "elementtype": {
+                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
+                },
+                "kind": "array"
+              }
+            }
+          }
+        }
+      ],
+      "name": "SupportAccessAddonProvider",
+      "symbolId": "src/addons/support-access-addon:SupportAccessAddonProvider"
+    },
+    "@serverlessinbox/mailbox.SupportAccessAddonProviderProps": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "summary": "Props for constructing SupportAccessAddonProvider."
+      },
+      "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProviderProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/addons/support-access-addon.ts",
+        "line": 129
+      },
+      "name": "SupportAccessAddonProviderProps",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Artifact resolver for resolving mailbox-go package."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/support-access-addon.ts",
+            "line": 133
+          },
+          "name": "artifactResolver",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Support Access feature mode."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/support-access-addon.ts",
+            "line": 131
+          },
+          "name": "mode",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.SupportAccessMode"
+          }
+        }
+      ],
+      "symbolId": "src/addons/support-access-addon:SupportAccessAddonProviderProps"
+    },
+    "@serverlessinbox/mailbox.SupportAccessMode": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "Support Access feature mode."
+      },
+      "fqn": "@serverlessinbox/mailbox.SupportAccessMode",
+      "kind": "enum",
+      "locationInModule": {
+        "filename": "src/addons/support-access-addon.ts",
+        "line": 19
+      },
+      "members": [
+        {
+          "docs": {
+            "summary": "Support access feature is enabled."
+          },
+          "name": "ENABLED"
+        },
+        {
+          "docs": {
+            "summary": "Support access feature is disabled."
+          },
+          "name": "DISABLED"
+        }
+      ],
+      "name": "SupportAccessMode",
+      "symbolId": "src/addons/support-access-addon:SupportAccessMode"
     }
   },
   "version": "0.0.0",
-  "fingerprint": "baXah+PIpQPxgUN6Yp0DZf8vXGffQJ5XJKK2hPbCvVU="
+  "fingerprint": "PsQONzfImnCeJd7rEK1ZlmPTJ+9tq2ZyzOamKlL37VI="
 }

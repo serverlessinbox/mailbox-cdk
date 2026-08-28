@@ -1,10 +1,10 @@
-import { Construct, IConstruct } from 'constructs';
+import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket } from '@serverlessinbox/mailbox-cdk-shared';
+import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { IJmapApiAddon } from '@serverlessinbox/mailbox';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
@@ -12,30 +12,6 @@ import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH = '/oauth/register';
-
-/**
- * Aspect that gates all CfnResource children of a construct onto a condition, so the whole
- * subtree "produces zero resources" when the condition is false.
- *
- * Local copy of the identical pattern in `mailbox`'s
- * `src/artifacts/resolvers/auto-updater.ts` (`GateOnConditionAspect`). Not shared across
- * packages: `mailbox-cdk-shared` does not yet expose a CDK-aspect helper, and adding one there
- * (or exporting the `mailbox` copy) would be a new public export made unilaterally rather than
- * owner-approved — so this is intentionally duplicated rather than shared.
- */
-class GateOnConditionAspect implements cdk.IAspect {
-  constructor(private readonly condition: cdk.CfnCondition) {}
-
-  visit(node: IConstruct): void {
-    // Skip the condition itself (a condition cannot carry a condition)
-    if (node === this.condition) return;
-
-    // Gate every CfnResource in the subtree
-    if (cdk.CfnResource.isCfnResource(node)) {
-      node.cfnOptions.condition = this.condition;
-    }
-  }
-}
 
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
