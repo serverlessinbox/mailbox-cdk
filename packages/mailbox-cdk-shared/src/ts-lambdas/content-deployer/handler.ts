@@ -1,11 +1,15 @@
 import { wrapHandler } from 'aws-custom-resources';
 import { withSmokeTest } from '../shared/with-smoke-test';
+import { emitManualFinalize } from '../shared/manual-finalize';
 
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
 import { isContentDeployerResourceProperties } from './types';
 
 export const handler = withSmokeTest(wrapHandler(async (event: any, context: any) => {
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event);
+
   const resourceProps = event.ResourceProperties ?? {};
   if (!isContentDeployerResourceProperties(resourceProps)) {
     throw new Error(

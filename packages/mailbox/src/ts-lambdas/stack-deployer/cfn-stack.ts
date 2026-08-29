@@ -6,6 +6,7 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
 } from '@aws-sdk/client-cloudformation';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { OperationInput } from './types';
 
 function makeCfClient(region: string): CloudFormationClient {
@@ -54,7 +55,7 @@ export async function describeStack(stackName: string, cfClient: CloudFormationC
   }
 }
 
-export async function describeRecentFailureEvents(stackName: string, cfClient: CloudFormationClient, limit: number = 10): Promise<string[]> {
+export async function describeRecentFailureEvents(stackName: string, cfClient: CloudFormationClient, limit: number = 10, logger: LoggerBuffer): Promise<string[]> {
   try {
     const resp = await cfClient.send(new DescribeStackEventsCommand({ StackName: stackName }));
     const events = resp.StackEvents ?? [];
@@ -81,7 +82,7 @@ export async function describeRecentFailureEvents(stackName: string, cfClient: C
     return lines;
   } catch (err: any) {
     const message = String(err?.message ?? err);
-    console.warn(`Failed to describe stack events for ${stackName}: ${message}`);
+    logger.warn(`Failed to describe stack events for ${stackName}`, { error: message });
     return [];
   }
 }
@@ -109,17 +110,19 @@ export function requiresRecreate(status?: string): boolean {
   return status === 'ROLLBACK_FAILED' || status === 'ROLLBACK_COMPLETE';
 }
 
-export async function startOrUpdateStack(op: OperationInput): Promise<void> {
+export async function startOrUpdateStack(op: OperationInput, logger: LoggerBuffer): Promise<void> {
   const cfClient = makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
   const parameters = toCfnParameters(op.parameters);
   const tags = toCfnTags(op.tags);
-  console.log('CloudFormation parameters:', JSON.stringify(parameters, null, 2));
-  console.log('CloudFormation tags:', JSON.stringify(tags, null, 2));
-  console.log('Stack operation:', JSON.stringify({
+  // Log parameter keys only (not values, which may contain sensitive data like adminUsername)
+  const parameterKeys = parameters.map(p => p.ParameterKey);
+  logger.debug('CloudFormation parameters', { parameterKeys });
+  logger.debug('CloudFormation tags', { tags });
+  logger.debug('Stack operation', {
     stackName: op.stackName,
     templateUrl: op.templateUrl,
     terminationProtection: op.terminationProtection,
-  }, null, 2));
+  });
 
   let existing = await describeStack(op.stackName, cfClient);
   if (!existing) {
@@ -139,16 +142,16 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
       if (err?.name === 'AlreadyExistsException' || message.includes('already exists')) {
         // Race: stack appeared between describeStack and CreateStack.
         // Re-describe and fall through to the requiresRecreate / UpdateStack path below.
-        console.log(`Stack ${op.stackName} AlreadyExistsException on CreateStack; re-describing to resolve.`);
+        logger.debug(`Stack ${op.stackName} AlreadyExistsException on CreateStack; re-describing to resolve.`);
         existing = await describeStack(op.stackName, cfClient);
         if (!existing) {
           // Should not happen, but if we still can't see it, re-throw the original error.
-          console.error('CreateStack AlreadyExistsException but stack not found on re-describe:', safeStringify(err));
+          logger.error('CreateStack AlreadyExistsException but stack not found on re-describe', { error: safeStringify(err) });
           throw err;
         }
         // Fall through to requiresRecreate / UpdateStack logic below.
       } else {
-        console.error('CreateStack failed:', safeStringify(err));
+        logger.error('CreateStack failed', { error: safeStringify(err) });
         throw err;
       }
     }
@@ -159,8 +162,8 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
   }
 
   if (requiresRecreate(existing.StackStatus)) {
-    console.log(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
-    await recreateStack(op, cfClient);
+    logger.debug(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
+    await recreateStack(op, cfClient, logger);
     return;
   }
 
@@ -179,7 +182,7 @@ export async function startOrUpdateStack(op: OperationInput): Promise<void> {
     if (err?.name === 'ValidationError' && message.includes('No updates are to be performed')) {
       return;
     }
-    console.error('UpdateStack failed:', safeStringify(err));
+    logger.error('UpdateStack failed', { error: safeStringify(err) });
     throw err;
   }
 }
@@ -192,10 +195,10 @@ export async function deleteStackIfExists(stackName: string, cfClient: CloudForm
   await cfClient.send(new DeleteStackCommand({ StackName: stackName }));
 }
 
-export async function recreateStack(op: OperationInput, cfClient: CloudFormationClient): Promise<void> {
+export async function recreateStack(op: OperationInput, cfClient: CloudFormationClient, logger: LoggerBuffer): Promise<void> {
   const parameters = toCfnParameters(op.parameters);
   const tags = toCfnTags(op.tags);
-  console.log(`Stack ${op.stackName} requires recreation; deleting and recreating.`);
+  logger.debug(`Stack ${op.stackName} requires recreation; deleting and recreating.`);
   await deleteStackIfExists(op.stackName, cfClient);
   try {
     await cfClient.send(
@@ -209,7 +212,7 @@ export async function recreateStack(op: OperationInput, cfClient: CloudFormation
       })
     );
   } catch (err: any) {
-    console.error('Recreate CreateStack failed:', safeStringify(err));
+    logger.error('Recreate CreateStack failed', { error: safeStringify(err) });
     throw err;
   }
 }

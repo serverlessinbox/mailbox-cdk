@@ -1,7 +1,9 @@
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
 import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { putCfnResponse } from './cfn-response';
-import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, safeStringify, startOrUpdateStack } from './cfn-stack';
+import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
@@ -45,6 +47,7 @@ async function startExecutionWithSuffixRetry(
   executionName: string,
   stateMachineArn: string,
   input: Record<string, any>,
+  logger: LoggerBuffer,
 ): Promise<boolean> {
   const MAX_RETRY_ATTEMPTS = 5;
 
@@ -58,16 +61,16 @@ async function startExecutionWithSuffixRetry(
           input: JSON.stringify(input),
         })
       );
-      console.log('Retry execution started successfully', { suffixedName });
+      logger.info('Retry execution started successfully', { suffixedName });
       return true;
     } catch (retryErr: any) {
       if (retryErr?.name === 'ExecutionAlreadyExists' || String(retryErr?.message ?? '').includes('ExecutionAlreadyExists')) {
         // The suffixed name also exists (unlikely but possible); continue to next attempt.
-        console.warn('Suffixed name also exists (retry)', { suffixedName, error: formatAwsError(retryErr) });
+        logger.warn('Suffixed name also exists (retry)', { suffixedName, error: formatAwsError(retryErr) });
         continue;
       } else {
         // Real error; stop retrying.
-        console.error('Retry execution failed (non-ExecutionAlreadyExists)', { suffixedName, error: formatAwsError(retryErr) });
+        logger.error('Retry execution failed (non-ExecutionAlreadyExists)', { suffixedName, error: formatAwsError(retryErr) });
         break;
       }
     }
@@ -78,28 +81,32 @@ async function startExecutionWithSuffixRetry(
 }
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
+  const logger = new LoggerBuffer();
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
   const createRetryCount = typeof (event as any)?.createRetryCount === 'number' ? (event as any).createRetryCount : 0;
   const attempt = typeof event.attempt === 'number' ? event.attempt : 0;
 
-  console.log('Stack deployer op:', JSON.stringify({
+  logger.info('Stack deployer op', {
     mode,
     requestType: op.requestType,
     stackName: op.stackName,
     templateUrl: op.templateUrl,
     terminationProtection: op.terminationProtection,
     parameterKeys: Object.keys(op.parameters ?? {}),
-  }, null, 2));
+  });
 
   const cfClient = makeCfClientFromOp(op);
 
   const fail = async (err: any, fallbackMessage: string): Promise<{ done: boolean }> => {
-    console.error('Stack deployer failed:', err);
+    logger.error('Stack deployer failed', {
+      errorName: err?.name,
+      errorMessage: formatAwsError(err),
+    });
     const msg = err ? formatAwsError(err) : fallbackMessage;
 
     // Try to attach recent stack event reasons (best-effort).
-    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8, logger);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
 
     const reason = limitReason(`${fallbackMessage}: ${msg}${details}`);
@@ -114,6 +121,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       logStreamName: context?.logStreamName,
     });
 
+    logger.flush();
     return { done: true };
   };
 
@@ -133,7 +141,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         }
         await deleteStackIfExists(op.stackName, cfClient);
       } else {
-        await startOrUpdateStack(op);
+        await startOrUpdateStack(op, logger);
       }
       return { done: false };
     } catch (err: any) {
@@ -169,17 +177,21 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     // to avoid blocking parent stack rollback/deletion.
     if (status === 'DELETE_FAILED') {
       const maxDeleteRetries = 180; // ~60 min with 20s interval
-      console.log(`Stack delete failed (DELETE_FAILED); retrying delete (deleteRetryCount=${deleteRetryCount}/${maxDeleteRetries}). Reason: ${stack.StackStatusReason ?? 'unknown'}`);
+      logger.info('Stack delete failed (DELETE_FAILED); retrying delete', {
+        deleteRetryCount,
+        maxDeleteRetries,
+        reason: stack.StackStatusReason ?? 'unknown',
+      });
       try {
         await deleteStackIfExists(op.stackName, cfClient);
       } catch (err: any) {
-        console.warn('Retry DeleteStack failed (will keep polling):', formatAwsError(err));
+        logger.warn('Retry DeleteStack failed (will keep polling)', { error: formatAwsError(err) });
       }
       return { done: false, deleteRetryCount: deleteRetryCount + 1, createRetryCount };
     }
 
     if (isTerminalFailure(status)) {
-      const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+      const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8, logger);
       const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
 
       // Safety net: don't block parent delete/rollback on stack delete failure.
@@ -197,7 +209,11 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     // custom resource serviceTimeout (60 min). On cap, respond SUCCESS to unblock parent stack
     // rollback/deletion; data stack resources are retained via DeletionPolicy.
     if (attempt >= MAX_POLL_ATTEMPTS) {
-      console.warn(`Delete polling reached attempt ${attempt}/${MAX_POLL_ATTEMPTS}; responding SUCCESS to unblock CloudFormation (stack status: ${stack.StackStatus}).`);
+      logger.warn('Delete polling cap reached; responding SUCCESS to unblock CloudFormation', {
+        attempt,
+        MAX_POLL_ATTEMPTS,
+        stackStatus: stack.StackStatus,
+      });
       await putCfnResponse({
         cfn,
         status: 'SUCCESS',
@@ -205,6 +221,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         reason: `Stack deletion still in progress after ${attempt} attempts (${stack.StackStatus}); responding SUCCESS to unblock CloudFormation rollback.`,
         logStreamName: context?.logStreamName,
       });
+      logger.flush();
       return { done: true, deleteRetryCount, createRetryCount };
     }
 
@@ -212,6 +229,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
   }
 
   if (!stack) {
+    logger.error('Stack does not exist', { stackName: op.stackName });
     await putCfnResponse({
       cfn,
       status: 'FAILED',
@@ -219,23 +237,24 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       reason: `Stack ${op.stackName} does not exist`,
       logStreamName: context?.logStreamName,
     });
+    logger.flush();
     return { done: true, deleteRetryCount, createRetryCount };
   }
 
-  console.log('Stack status:', JSON.stringify({
+  logger.info('Stack status check', {
     stackName: op.stackName,
     stackId: stack.StackId,
     status: stack.StackStatus,
     statusReason: stack.StackStatusReason,
-    outputs: (stack.Outputs ?? []).map((o: any) => ({ key: o.OutputKey, hasValue: o.OutputValue !== undefined && o.OutputValue !== '' })),
-  }, null, 2));
+    outputCount: (stack.Outputs ?? []).length,
+  });
 
   const status = stack.StackStatus;
 
   // Hard-fail on DELETE_* status during non-Delete operations: a stack being torn down
   // can never satisfy a create/update/redeploy. This blocks unbounded polling on DELETE_IN_PROGRESS.
   if (status.startsWith('DELETE_')) {
-    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+    const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8, logger);
     const details = failures.length > 0 ? ` Recent events: ${failures.join(' | ')}` : '';
     await putCfnResponse({
       cfn,
@@ -248,24 +267,33 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
   }
 
   // Fetch failure events once for potential reuse in retry logic and terminal-failure handling.
-  const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8);
+  const failures = await describeRecentFailureEvents(op.stackName, cfClient, 8, logger);
   const failureText = failures.join(' ');
 
   // KMS transient-error retry on Create: if the stack is in ROLLBACK_IN_PROGRESS and the failure
   // matches a KMS NotFoundException signature, wait for rollback to complete without deletion.
   if (op.requestType === 'Create' && status === 'ROLLBACK_IN_PROGRESS' && matchesKmsTransientSignature(failureText)) {
-    console.log(`Stack ${op.stackName} is in ROLLBACK_IN_PROGRESS with KMS signature; waiting for rollback to complete (createRetryCount=${createRetryCount}).`);
+    logger.info('Stack in ROLLBACK_IN_PROGRESS with KMS transient error; waiting for rollback', {
+      stackName: op.stackName,
+      createRetryCount,
+    });
     return { done: false, deleteRetryCount, createRetryCount };
   }
 
   // KMS transient-error retry on Create: if the stack is in a recreate state (ROLLBACK_FAILED/ROLLBACK_COMPLETE)
   // with a matching KMS signature, and we haven't exhausted retries, delete and recreate the stack.
   if (op.requestType === 'Create' && requiresRecreate(status) && matchesKmsTransientSignature(failureText) && createRetryCount < MAX_KMS_CREATE_RETRIES) {
-    console.log(`Stack ${op.stackName} requires recreation due to KMS transient error (createRetryCount=${createRetryCount}/${MAX_KMS_CREATE_RETRIES}).`);
+    logger.info('Stack requires recreation due to KMS transient error', {
+      stackName: op.stackName,
+      createRetryCount,
+      MAX_KMS_CREATE_RETRIES,
+    });
     try {
-      await recreateStack(op, cfClient);
+      await recreateStack(op, cfClient, logger);
     } catch (err: any) {
-      console.error('Recreate CreateStack failed:', formatAwsError(err));
+      logger.error('Recreate CreateStack failed', {
+        error: formatAwsError(err),
+      });
       // Fall through to terminal failure handling.
     }
     return { done: false, deleteRetryCount, createRetryCount: createRetryCount + 1 };
@@ -285,7 +313,10 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 
   if (isTerminalSuccess(status)) {
     const outputs = outputsToObject(stack.Outputs);
-    console.log('Stack outputs keys:', Object.keys(outputs));
+    logger.info('Stack reached terminal success state', {
+      stackName: op.stackName,
+      outputCount: Object.keys(outputs).length,
+    });
     await putCfnResponse({
       cfn,
       status: 'SUCCESS',
@@ -293,6 +324,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
       data: outputs,
       logStreamName: context?.logStreamName,
     });
+    logger.flush();
     return { done: true, deleteRetryCount, createRetryCount };
   }
 
@@ -313,6 +345,8 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 }
 
 async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<void> {
+  const logger = new LoggerBuffer();
+
   if (!event?.ResponseURL || !event?.RequestId || !event?.ResourceProperties) {
     throw new Error('Invalid event: expected CloudFormation custom resource event');
   }
@@ -328,19 +362,16 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     ResourceType: event.ResourceType,
   };
 
-  // Operational logging: emit a single, greppable marker with all finalization details
-  // for manual stack-resource recovery in CloudWatch (see MANUAL_FINALIZE marker)
-  const finalizationBody = JSON.stringify({
-    Status: 'SUCCESS', // Placeholder; actual status determined below
-    PhysicalResourceId: physicalResourceId,
-    StackId: cfn.StackId,
-    RequestId: cfn.RequestId,
-    LogicalResourceId: cfn.LogicalResourceId,
+  // Emit break-glass finalization details for manual stack-resource recovery.
+  // This is visibility into the CloudFormation response that can be manually sent
+  // if the handler hangs and never returns normally.
+  emitManualFinalize(event, physicalResourceId);
+
+  logger.debug('CFN handler invoked', {
+    requestType: event.RequestType,
+    logicalResourceId: event.LogicalResourceId,
+    stackName: event.ResourceProperties.stackName,
   });
-  console.log('MANUAL_FINALIZE stack=' + event.ResourceProperties.stackName + ' logical=' + event.LogicalResourceId + ' type=' + event.RequestType + ' requestId=' + event.RequestId);
-  console.log('MANUAL_FINALIZE responseUrl=' + event.ResponseURL);
-  console.log('MANUAL_FINALIZE body=' + finalizationBody);
-  console.log('MANUAL_FINALIZE hint=curl -X PUT -H "Content-Type:" --data-binary \'' + finalizationBody + '\' \'' + event.ResponseURL + '\'');
 
   // Validate root stack name length only on Create to catch configuration issues early.
   // CloudFormation truncates auto-generated physical resource names (64 chars for IAM roles/Lambda functions)
@@ -358,6 +389,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
           reason: `Root stack name "${rootStackName}" exceeds maximum length of ${MAX_ROOT_STACK_NAME_LENGTH} characters (got ${rootStackName.length}). CloudFormation truncates auto-generated resource names to 64 characters, which can break name-based IAM lookups. Please use a shorter stack name.`,
           logStreamName: context?.logStreamName,
         });
+        logger.flush();
         return;
       }
     }
@@ -373,6 +405,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       reason: 'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set',
       logStreamName: context?.logStreamName,
     });
+    logger.flush();
     return;
   }
 
@@ -389,6 +422,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       reason: `MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is invalid (expected ':stateMachine:{name}', got ':stateMachine/{name}'): ${stateMachineArnRaw}`,
       logStreamName: context?.logStreamName,
     });
+    logger.flush();
     return;
   }
 
@@ -407,6 +441,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
   };
 
   try {
+    logger.debug('Starting Step Functions execution', { executionName, stateMachineArn });
     await sfnClient.send(
       new StartExecutionCommand({
         stateMachineArn,
@@ -414,14 +449,19 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
         input: JSON.stringify(input),
       })
     );
+    logger.info('Step Functions execution started successfully', { executionName });
   } catch (err: any) {
-    console.error('Failed to start Step Functions execution:', safeStringify(err));
+    logger.error('Failed to start Step Functions execution', {
+      errorName: err?.name,
+      errorMessage: formatAwsError(err),
+    });
     const message = String(err?.message ?? '');
     if (err?.name === 'ExecutionAlreadyExists' || message.includes('ExecutionAlreadyExists')) {
       // ExecutionAlreadyExists: the same RequestId was retried by CloudFormation.
       // The prior execution is handling (or has handled) the CFN response.
       // For Delete requests, respond SUCCESS and return.
       if (event.RequestType === 'Delete') {
+        logger.debug('ExecutionAlreadyExists on Delete; responding SUCCESS');
         await putCfnResponse({
           cfn,
           status: 'SUCCESS',
@@ -429,6 +469,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
           reason: 'Delete already in progress (ExecutionAlreadyExists); continuing without waiting',
           logStreamName: context?.logStreamName,
         });
+        logger.flush();
         return;
       }
 
@@ -441,23 +482,26 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       try {
         // Build the execution ARN in colon format: arn:aws:states:region:account:execution:stateMachineName:executionName
         const executionArn = `${stateMachineArn.replace(':stateMachine:', ':execution:')}:${executionName}`;
+        logger.debug('Checking existing execution status', { executionArn });
         const descResp = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
         const status = descResp.status ?? '';
 
         if (status === 'RUNNING') {
           // The existing execution is still running; it will send the CFN response.
-          console.log('Existing execution is RUNNING; returning without response', { executionArn, status });
+          logger.info('Existing execution is RUNNING; returning without response', { executionArn, status });
           executionRunning = true;
         } else if (['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'].includes(status)) {
           // The existing execution is terminal; try to start a new one with a suffixed name.
-          console.log('Existing execution is terminal; attempting retry with suffixed name', { executionArn, status });
+          logger.info('Existing execution is terminal; attempting retry with suffixed name', { executionArn, status });
 
-          const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input);
+          const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input, logger);
           if (retrySucceeded) {
+            logger.flush();
             return;
           }
 
           // All retries exhausted or a real error occurred.
+          logger.error('Could not start execution after 5 retries');
           await putCfnResponse({
             cfn,
             status: 'FAILED',
@@ -465,19 +509,22 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
             reason: limitReason(`Could not start execution after 5 retries: all suffixed names exhausted`),
             logStreamName: context?.logStreamName,
           });
+          logger.flush();
           return;
         }
       } catch (descErr: any) {
         // DescribeExecution failed (e.g. execution not found, permission denied).
         // Treat as a terminal state and attempt a retry.
-        console.warn('DescribeExecution failed; attempting retry with suffixed name', { error: formatAwsError(descErr) });
+        logger.warn('DescribeExecution failed; attempting retry with suffixed name', { error: formatAwsError(descErr) });
 
-        const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input);
+        const retrySucceeded = await startExecutionWithSuffixRetry(executionName, stateMachineArn, input, logger);
         if (retrySucceeded) {
+          logger.flush();
           return;
         }
 
         // All retries exhausted.
+        logger.error('All retries exhausted after DescribeExecution failure');
         await putCfnResponse({
           cfn,
           status: 'FAILED',
@@ -485,17 +532,20 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
           reason: limitReason(`DescribeExecution failed and could not start retry: ${formatAwsError(descErr)}`),
           logStreamName: context?.logStreamName,
         });
+        logger.flush();
         return;
       }
 
       // If the existing execution is running, return without sending a response.
       if (executionRunning) {
+        logger.flush();
         return;
       }
     }
 
     // Safety net: allow parent stack deletion/rollback to continue.
     if (event.RequestType === 'Delete') {
+      logger.error('Failed to start SFN execution on Delete; allowing parent stack rollback');
       await putCfnResponse({
         cfn,
         status: 'SUCCESS',
@@ -503,9 +553,11 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
         reason: limitReason(`Failed to start Step Functions execution (ignored for Delete): ${formatAwsError(err)}`),
         logStreamName: context?.logStreamName,
       });
+      logger.flush();
       return;
     }
 
+    logger.error('Failed to start SFN execution; responding FAILED');
     await putCfnResponse({
       cfn,
       status: 'FAILED',
@@ -513,15 +565,24 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
       reason: limitReason(`Failed to start Step Functions execution: ${formatAwsError(err)}`),
       logStreamName: context?.logStreamName,
     });
+    logger.flush();
   }
 }
 
 export const starterHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
-  console.log('Starter event:', JSON.stringify(event, null, 2));
+  // Emit a single always-emit diagnostic marker for this trigger mode
+  console.info('stack-deployer-starter dispatch', {
+    requestType: (event as CfnCustomResourceEvent)?.RequestType,
+    logicalResourceId: (event as CfnCustomResourceEvent)?.LogicalResourceId,
+  });
   await handleCfn(event as CfnCustomResourceEvent, context);
 });
 
 export const workerHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
-  console.log('Worker event:', JSON.stringify(event, null, 2));
+  // Emit a single always-emit diagnostic marker for this trigger mode
+  console.info('stack-deployer-worker dispatch', {
+    mode: (event as SfnInvokeEvent)?.mode,
+    attempt: (event as SfnInvokeEvent)?.attempt,
+  });
   return handleSfn(event as SfnInvokeEvent, context);
 });

@@ -1,9 +1,13 @@
 import { wrapHandler } from 'aws-custom-resources';
 import { withSmokeTest } from '../shared/with-smoke-test';
 import { emptyBucket } from '../shared/bucket-empty';
+import { emitManualFinalize } from '../shared/manual-finalize';
 import { isBucketAutoEmptyResourceProperties } from './types';
 
 export const handler = withSmokeTest(wrapHandler(async (event: any, _context: any) => {
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event);
+
   const resourceProps = event.ResourceProperties ?? {};
   if (!isBucketAutoEmptyResourceProperties(resourceProps)) {
     throw new Error('Invalid ResourceProperties: bucketName must be a string when present');

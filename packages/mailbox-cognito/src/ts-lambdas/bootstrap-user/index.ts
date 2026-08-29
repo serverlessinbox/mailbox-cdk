@@ -2,6 +2,7 @@ import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserA
 import https from 'node:https';
 import { URL } from 'node:url';
 import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
 
 type CloudFormationCustomResourceEvent = {
   RequestType: 'Create' | 'Update' | 'Delete';
@@ -137,6 +138,9 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
 }
 
 export const handler = withSmokeTest(async (event: CloudFormationCustomResourceEvent): Promise<void> => {
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event);
+
   const props = event.ResourceProperties as BootstrapUserProperties;
 
   const physicalResourceId = `BootstrapUser:${props.userPoolId}:${props.username ?? 'admin'}`;

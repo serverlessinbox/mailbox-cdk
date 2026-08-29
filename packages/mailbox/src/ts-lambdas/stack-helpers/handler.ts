@@ -1,4 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
 import { Route53Client, GetHostedZoneCommand } from '@aws-sdk/client-route-53';
 
 const r53 = new Route53Client({});
@@ -46,6 +47,9 @@ export function deriveCognitoDomainPrefix(domainName: string, fallback: string):
 }
 
 export const handler = wrapHandler(async (event) => {
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event as any);
+
   if (event.RequestType === 'Delete') return {};
 
   const hostedZoneId: string  = event.ResourceProperties?.HostedZoneId ?? '';

@@ -1,4 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
 import { runUpdateCycle } from './update-cycle';
 
 /**
@@ -27,6 +28,9 @@ import { runUpdateCycle } from './update-cycle';
  * wrapper's own fallback avoids needing an unsound cast to reach it.)
  */
 export const cfnTriggerHandler = wrapHandler(async (event) => {
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event as any);
+
   if (event.RequestType === 'Delete') {
     return {
       Data: {},

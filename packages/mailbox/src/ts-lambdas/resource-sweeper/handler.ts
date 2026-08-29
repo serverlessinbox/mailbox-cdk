@@ -1,5 +1,7 @@
 import { wrapHandler } from 'aws-custom-resources';
 import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import {
   ACMClient,
   DescribeCertificateCommand,
@@ -50,7 +52,9 @@ export interface WorkerOutput {
  * - Aggregate: FAILED if any hard error/mismatch; RETRY if any target not-done; SUCCESS if all done.
  */
 export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
-  console.log('Worker invoked', {
+  const logger = new LoggerBuffer();
+
+  logger.debug('Worker invoked', {
     hasCertArn: !!input.certArn,
     hasEdgeFnArn: !!input.edgeFnArn,
     rootStackName: input.rootStackName,
@@ -65,7 +69,7 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
       const certArn = input.certArn;
 
       // Verify ownership via tags
-      console.log('Verifying ACM cert ownership', { certArn });
+      logger.debug('Verifying ACM cert ownership');
       try {
         const tagsResp = await acmClient.send(
           new ListTagsForCertificateCommand({ CertificateArn: certArn })
@@ -73,8 +77,7 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
         const tags = tagsResp.Tags ?? [];
         const ownerTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
         if (ownerTag?.Value !== input.rootStackName) {
-          console.warn('ACM cert ownership mismatch', {
-            certArn,
+          logger.warn('ACM cert ownership mismatch', {
             expectedStack: input.rootStackName,
             actualStack: ownerTag?.Value,
           });
@@ -85,33 +88,32 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
           });
         } else {
           // Ownership verified; check if cert is still in use
-          console.log('ACM cert ownership verified; checking InUseBy', { certArn });
+          logger.debug('ACM cert ownership verified; checking InUseBy');
           const descResp = await acmClient.send(
             new DescribeCertificateCommand({ CertificateArn: certArn })
           );
           const inUseBy = descResp.Certificate?.InUseBy ?? [];
           if (inUseBy.length > 0) {
-            console.log('ACM cert still in use; will retry', { certArn, inUseBy });
+            logger.info('ACM cert still in use; will retry', { inUseByCount: inUseBy.length });
             results.push({ target: 'cert', status: 'retry', reason: `InUseBy: ${inUseBy.join(', ')}` });
           } else {
             // Ready to delete
-            console.log('ACM cert not in use; attempting delete', { certArn });
+            logger.info('ACM cert not in use; attempting delete');
             await acmClient.send(new DeleteCertificateCommand({ CertificateArn: certArn }));
-            console.log('ACM cert deleted successfully', { certArn });
+            logger.info('ACM cert deleted successfully');
             results.push({ target: 'cert', status: 'done' });
           }
         }
       } catch (err: any) {
         if (err.name === 'ResourceNotFoundException') {
-          console.log('ACM cert not found; treating as deleted', { certArn });
+          logger.debug('ACM cert not found; treating as deleted');
           results.push({ target: 'cert', status: 'done' });
         } else {
           throw err;
         }
       }
     } catch (err: any) {
-      console.warn('ACM cert deletion error', {
-        certArn: input.certArn,
+      logger.error('ACM cert deletion error', {
         errorName: err?.name,
         errorMessage: err?.message,
       });
@@ -135,15 +137,14 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
 
       try {
         // Verify ownership via tags
-        console.log('Verifying Lambda function ownership', { functionName });
+        logger.debug('Verifying Lambda function ownership');
         const getResp = await lambdaClient.send(
           new GetFunctionCommand({ FunctionName: functionName })
         );
         const tags = getResp.Tags ?? {};
         const ownerStack = tags['serverless-inbox:root-stack'];
         if (ownerStack !== input.rootStackName) {
-          console.warn('Lambda function ownership mismatch', {
-            functionName,
+          logger.warn('Lambda function ownership mismatch', {
             expectedStack: input.rootStackName,
             actualStack: ownerStack,
           });
@@ -154,14 +155,14 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
           });
         } else {
           // Ownership verified; proceed to delete
-          console.log('Lambda function ownership verified; attempting delete', { functionName });
+          logger.info('Lambda function ownership verified; attempting delete');
           await lambdaClient.send(new DeleteFunctionCommand({ FunctionName: functionName }));
-          console.log('Lambda function deleted successfully', { functionName });
+          logger.info('Lambda function deleted successfully');
           results.push({ target: 'edge-fn', status: 'done' });
         }
       } catch (err: any) {
         if (err.name === 'ResourceNotFoundException') {
-          console.log('Lambda function not found; treating as deleted', { functionName });
+          logger.debug('Lambda function not found; treating as deleted');
           results.push({ target: 'edge-fn', status: 'done' });
         } else {
           throw err;
@@ -169,8 +170,7 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
       }
     } catch (err: any) {
       // Replicas draining or other transient error → RETRY
-      console.warn('Lambda function deletion error (will retry)', {
-        edgeFnArn: input.edgeFnArn,
+      logger.warn('Lambda function deletion error (will retry)', {
         errorName: err?.name,
         errorMessage: err?.message,
       });
@@ -182,12 +182,23 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
     }
   }
 
-  // Aggregate results
-  console.log('Worker results', { results });
+  // Aggregate results and check for failures/retries
+  logger.info('Worker results aggregation', { resultCount: results.length, failureCount: results.filter((r) => r.status === 'failed').length });
+
+  // Record successful deletions as updates
+  const successes = results.filter((r) => r.status === 'done');
+  for (let i = 0; i < successes.length; i++) {
+    logger.recordUpdate();
+  }
 
   // Check for failures
   const failures = results.filter((r) => r.status === 'failed');
   if (failures.length > 0) {
+    logger.error('Worker failed', {
+      failureCount: failures.length,
+      failures: failures.map((f) => `${f.target}: ${f.reason}`).join('; '),
+    });
+    logger.flush();
     return {
       status: 'FAILED',
       reason: failures.map((f) => `${f.target}: ${f.reason}`).join('; '),
@@ -197,6 +208,11 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
   // Check for retries
   const retries = results.filter((r) => r.status === 'retry');
   if (retries.length > 0) {
+    logger.info('Worker needs retry', {
+      retryCount: retries.length,
+      reasons: retries.map((r) => `${r.target}: ${r.reason}`).join('; '),
+    });
+    logger.flush();
     return {
       status: 'RETRY',
       reason: retries.map((r) => `${r.target}: ${r.reason}`).join('; '),
@@ -204,6 +220,8 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
   }
 
   // All done
+  logger.info('Worker completed successfully');
+  logger.flush();
   return { status: 'SUCCESS' };
 });
 
@@ -216,9 +234,20 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
  * prevent the custom resource from completing (best-effort).
  */
 export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest(wrapHandler(async (event) => {
-  console.log('Starter invoked', {
+  const logger = new LoggerBuffer();
+
+  // Emit finalization details for manual recovery of hung custom resources
+  emitManualFinalize(event as any);
+
+  // Emit single always-emit diagnostic marker for this trigger mode
+  console.info('resource-sweeper-starter dispatch', {
     requestType: event.RequestType,
     requestId: event.RequestId,
+    logicalResourceId: event.LogicalResourceId,
+  });
+
+  logger.debug('Starter invoked', {
+    requestType: event.RequestType,
     logicalResourceId: event.LogicalResourceId,
   });
 
@@ -250,14 +279,12 @@ export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest
     if (oldEdgeFnArn) arnsToSweep.edgeFnArn = oldEdgeFnArn;
   }
 
-  console.log('Determining sweep targets', {
+  logger.info('Determining sweep targets', {
     requestType: event.RequestType,
-    certArn,
-    edgeFnArn,
-    oldCertArn,
-    oldEdgeFnArn,
+    hasCertArn: !!certArn,
+    hasEdgeFnArn: !!edgeFnArn,
     isReplaced,
-    arnsToSweep,
+    hasSweepTargets: !!(arnsToSweep.certArn || arnsToSweep.edgeFnArn),
   });
 
   // Physical resource ID: stable identifier
@@ -273,7 +300,7 @@ export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest
         rootStackName,
       };
 
-      console.log('Starting SFN execution', { executionName: event.RequestId, stateMachineArn: smArn });
+      logger.info('Starting SFN execution', { executionName: event.RequestId });
 
       await sfnClient.send(
         new StartExecutionCommand({
@@ -283,22 +310,29 @@ export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest
         })
       );
 
-      console.log('SFN execution started successfully');
+      logger.recordUpdate();
+      logger.info('SFN execution started successfully');
     } catch (err: any) {
       // ExecutionAlreadyExists means the execution is already running (likely a retry)
       if (err.name === 'ExecutionAlreadyExists') {
-        console.log('Execution already exists (likely a retry); treating as success');
+        logger.info('Execution already exists (likely a retry); treating as success');
+        logger.recordUpdate();
       } else {
         // Any other error: log but do NOT throw. Delete must always succeed so
         // CloudFormation never hangs waiting for a response.
-        console.warn('Failed to start SFN execution (best-effort, will not propagate):', {
+        logger.warn('Failed to start SFN execution (best-effort, will not propagate)', {
           errorName: err?.name,
           errorMessage: err?.message,
         });
       }
     }
   } else {
-    console.log('No sweep targets; skipping execution start (Create or Update with unchanged ARNs)');
+    logger.debug('No sweep targets; skipping execution start (Create or Update with unchanged ARNs)');
+  }
+
+  // Flush if there's anything to report
+  if (logger.shouldFlush()) {
+    logger.flush();
   }
 
   // Return response object. wrapHandler will always send this to CloudFormation,
