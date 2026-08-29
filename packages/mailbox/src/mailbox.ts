@@ -536,8 +536,8 @@ export class Mailbox extends Construct {
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      systemSenderAddress: `noreply@${domainName}`,
     });
-    identityProvisioner.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
 
     const jmapApiAddonContext: JmapApiAddonContext = {
       apiBaseUrl: this.urls.jmapApi,
@@ -845,8 +845,8 @@ export class Mailbox extends Construct {
 
       sesRuleSetName: sesRules.ruleSetName,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      systemSenderAddress: `noreply@${domainName}`,
     });
-    adminApi.apiHandlerLambda.addEnvironment('SYSTEM_SENDER_ADDRESS', `noreply@${domainName}`);
 
     const mcpApi = props.enableMcp ? new McpApi(groups.apis, 'mcp-api', {
       configTable: this._configTable,

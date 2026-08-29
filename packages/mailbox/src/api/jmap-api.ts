@@ -21,9 +21,8 @@ import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { IMailboxAuthProvider } from '../auth/types';
-import { GoLambda } from '../utils/go-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { IWebSocketBroadcastPublisher } from './websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
 import type { IJmapApiAddon } from './addons';
 
 export interface JMapApiProps {
@@ -74,8 +73,8 @@ export class JMapApi extends Construct {
   url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  authorizerLambda: GoLambda; // Exposed for reuse in WebSocket API
-  apiHandlerLambda: GoLambda; // Exposed to add WebSocket URL env var
+  authorizerLambda: AuthorizerLambda; // Exposed for reuse in WebSocket API
+  private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
   /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
   public readonly httpApi: HttpApi;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
@@ -257,10 +256,7 @@ export class JMapApi extends Construct {
   }
 
   public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
-    this.apiHandlerLambda.addEnvironment('WEBSOCKET_URL', webSocketUrl);
-
-    this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this.apiHandlerLambda);
+    this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, broadcaster);
   }
 
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */

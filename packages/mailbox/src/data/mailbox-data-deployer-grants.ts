@@ -1,6 +1,6 @@
 import { Aws, Stack } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
 export interface DataDeployerGrantProps {
   stack: Stack;
@@ -10,7 +10,7 @@ export interface DataDeployerGrantProps {
 }
 
 export function grantDataDeployerWorkerPermissions(
-  worker: TypeScriptLambda,
+  worker: IFunction,
   props: DataDeployerGrantProps,
 ): void {
   // CloudFormation management of the data stack

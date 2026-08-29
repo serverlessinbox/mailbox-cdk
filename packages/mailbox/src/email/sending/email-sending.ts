@@ -3,11 +3,10 @@ import { Construct } from 'constructs';
 import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IWebSocketBroadcastPublisher } from '../../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket';
 
 export interface EmailSendingProps {
   readonly configTable: ITable;
@@ -30,7 +29,7 @@ export interface EmailSendingProps {
 export class EmailSending extends Construct {
   public readonly submissionQueue: BaseQueue;
   public readonly submissionDlq: BaseQueue;
-  public readonly emailSenderLambda: lambda.Function;
+  private readonly emailSenderLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
@@ -54,7 +53,7 @@ export class EmailSending extends Construct {
     });
 
     // Email Sender Lambda - processes submissions from SQS and sends via SES
-    this.emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
+    const emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
       configTable: props.configTable,
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
@@ -63,13 +62,14 @@ export class EmailSending extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    this.emailSenderLambda.addEventSource(
+    emailSenderLambda.addEventSource(
       new SqsEventSource(this.submissionQueue, { batchSize: 1 })
     );
+
+    this.emailSenderLambda = emailSenderLambda;
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.emailSenderLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this.emailSenderLambda);
+    this.emailSenderLambda.enableWebSocketPush(broadcaster);
   }
 }

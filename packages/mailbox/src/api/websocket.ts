@@ -19,6 +19,7 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { RemovalPolicy, Aws, CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { StackNamedTable } from '../utils/named-table';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -29,9 +30,19 @@ export interface IWebSocketBroadcastPublisher {
   grantInvoke(grantee: IGrantable): void;
 }
 
+/** WebSocket push capability for lambdas that send WebSocket broadcasts (basic signature). */
+export interface IWebSocketPushTarget extends IFunction {
+  enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void;
+}
+
+/** WebSocket push capability for lambdas that need both a WebSocket URL and broadcast capability (e.g. JMAP API). */
+export interface IWebSocketPushTargetWithUrl extends IFunction {
+  enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void;
+}
+
 
 class WebSocketBroadcastPublisherImpl implements IWebSocketBroadcastPublisher {
-  constructor(private readonly fn: lambda.Function) { }
+  constructor(private readonly fn: lambda.IFunction) { }
 
   public get functionName(): string {
     return this.fn.functionName;
@@ -63,7 +74,7 @@ export class WebSocketPush extends Construct {
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
   public readonly connectionsTable: Table;
-  private readonly broadcastLambda: lambda.Function;
+  private readonly broadcastLambda: lambda.IFunction;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
   private _domainCfnResource?: CfnResource;

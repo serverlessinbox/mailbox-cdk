@@ -6,6 +6,7 @@ import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -35,7 +36,7 @@ export interface ApiHandlerLambdaProps {
   readonly oauthProtectedResourceUrl?: string;
 }
 
-export class ApiHandlerLambda extends GoLambda {
+export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
   constructor(scope: Construct, id: string, props: ApiHandlerLambdaProps) {
     super(scope, id, {
       lambdaId: 'jmap-api',
@@ -90,5 +91,11 @@ export class ApiHandlerLambda extends GoLambda {
       actions: ['execute-api:Invoke'],
       resources: ['*'],
     }));
+  }
+
+  public enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_URL', webSocketUrl);
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

@@ -21,6 +21,8 @@ export interface IdentityProvisionerLambdaProps {
   readonly emailSubmissionQueue: IQueue;
   /** SES configuration set name for sending emails. */
   readonly sesConfigSetName: string;
+  /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
+  readonly systemSenderAddress: string;
 }
 
 export class IdentityProvisionerLambda extends GoLambda {
@@ -39,6 +41,7 @@ export class IdentityProvisionerLambda extends GoLambda {
         BLOB_STORAGE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
+        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
       },
     });
 

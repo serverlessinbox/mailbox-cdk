@@ -13,6 +13,12 @@ export interface CognitoIdpUsersApiLambdaProps {
 
   /** Audit event queue URL (SQS). */
   auditEventsQueueUrl: string;
+
+  /** Optional admin group names (JSON-encoded array). */
+  readonly adminGroups?: string;
+
+  /** Optional user group names (JSON-encoded array). */
+  readonly userGroups?: string;
 }
 
 /**
@@ -23,16 +29,26 @@ export interface CognitoIdpUsersApiLambdaProps {
  */
 export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoIdpUsersApiLambdaProps) {
+    const environment: Record<string, string> = {
+      USER_POOL_ID: props.userPoolId,
+      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
+    };
+
+    // Only set authorization groups if provided
+    if (props.adminGroups !== undefined) {
+      environment.ADMIN_GROUPS = props.adminGroups;
+    }
+    if (props.userGroups !== undefined) {
+      environment.USER_GROUPS = props.userGroups;
+    }
+
     super(scope, id, {
       lambdaId: 'cognito-idp-users-api',
       artifactResolver: props.artifactResolver,
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(15),
       memorySize: 256,
-      environment: {
-        USER_POOL_ID: props.userPoolId,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
-      },
+      environment,
     });
   }
 }

@@ -66,17 +66,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     // Artifact updater Lambda (always-on, exists even under pinned for the admin-UI trigger path)
     // Use pinned resolver (same composed instance) to resolve the handler code from stable release
     const updaterEngine = new CdkArtifactEngine(this, this.pinned, 'updater-engine');
-    const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
-      artifactResolver: updaterEngine,
-      distTag: this.distTag,
-      granularity,
-      rootStackTagValue: Aws.STACK_NAME,
-    });
-    this.updater = updater;
-
-    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
-    // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
-    Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     // Lock/status table for concurrency guard and status tracking (always-on)
     const lockTable = new dynamodb.Table(this, 'update-lock-table', {
@@ -86,6 +75,20 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       removalPolicy: cdk.RemovalPolicy.DESTROY, // pure operational metadata, no user data
       timeToLiveAttribute: 'ttl',
     });
+
+    const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
+      artifactResolver: updaterEngine,
+      distTag: this.distTag,
+      granularity,
+      rootStackTagValue: Aws.STACK_NAME,
+      lockTable,
+      registeredPackagesSet: this.registeredPackages,
+    });
+    this.updater = updater;
+
+    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
+    // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
+    Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     // Updater IAM: comprehensive least-privilege (all always-on, apply to updater Lambda for all three trigger paths)
     updater.addToRolePolicy(
@@ -202,18 +205,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       principal: updater.grantPrincipal,
       action: 'lambda:InvokeFunction',
     });
-
-    // Lock table grants for acquire/release operations
-    lockTable.grantReadWriteData(updater);
-
-    // Add REGISTERED_PACKAGES env var using Lazy.string to capture the current Set at synth time
-    updater.addEnvironment(
-      'REGISTERED_PACKAGES',
-      cdk.Lazy.string({ produce: () => JSON.stringify([...this.registeredPackages]) }),
-    );
-
-    // Add LOCK_TABLE_NAME for status reads in the HTTP trigger handler
-    updater.addEnvironment('LOCK_TABLE_NAME', lockTable.tableName);
 
     // Gated subtree: deploy-end CR + EventBridge rule (both tied to IsTracking)
     const trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {

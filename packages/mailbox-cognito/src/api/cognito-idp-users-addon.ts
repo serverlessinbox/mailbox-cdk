@@ -73,18 +73,15 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
         },
       } as const);
 
+    const authz = props.pool.fetchAuthorizationConfig?.();
     this._lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
       auditEventsQueueUrl: props.auditEventsQueue.queueUrl,
+      adminGroups: authz ? JSON.stringify(authz.adminGroups ?? []) : undefined,
+      userGroups: authz ? JSON.stringify(authz.userGroups ?? []) : undefined,
     });
     this.lambdaFunction = this._lambdaConstruct;
-
-    const authz = props.pool.fetchAuthorizationConfig?.();
-    if (authz) {
-      this._lambdaConstruct.addEnvironment('ADMIN_GROUPS', JSON.stringify(authz.adminGroups ?? []));
-      this._lambdaConstruct.addEnvironment('USER_GROUPS', JSON.stringify(authz.userGroups ?? []));
-    }
 
     props.pool.grantAdminAccess(this._lambdaConstruct);
     props.auditEventsQueue.grantSendMessages(this._lambdaConstruct);

@@ -7,6 +7,7 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
 
 export interface AdminApiLambdaProps {
   configTable: ITable;
@@ -23,9 +24,11 @@ export interface AdminApiLambdaProps {
   sesRuleSetName?: string;
   /** SES configuration set name for outbound email tracking. */
   readonly sesConfigSetName: string;
+  /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
+  readonly systemSenderAddress: string;
 }
 
-export class AdminApiLambda extends GoLambda {
+export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   private grantStatusAccess() {
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
@@ -104,6 +107,7 @@ export class AdminApiLambda extends GoLambda {
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
+        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
       },
     });
 
@@ -134,5 +138,10 @@ export class AdminApiLambda extends GoLambda {
 
     // Grant the User provisioning function to be invoked
     props.identityProvisionerFunction.grantInvoke(this);
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

@@ -46,7 +46,7 @@ export interface TantivySearchProps {
  * - Search is performed in-process by api-handler using tantivysearch Go package
  */
 export class TantivySearch extends Construct {
-  public readonly indexer: lambda.Function;
+  public readonly indexer: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props: TantivySearchProps) {
     super(scope, id);

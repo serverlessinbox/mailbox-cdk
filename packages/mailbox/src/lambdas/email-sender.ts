@@ -5,6 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
 
 export interface EmailSenderLambdaProps {
   configTable: ITable;
@@ -15,7 +16,7 @@ export interface EmailSenderLambdaProps {
   artifactResolver: ICdkArtifactEngine;
 }
 
-export class EmailSenderLambda extends GoLambda {
+export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: EmailSenderLambdaProps) {
     super(scope, id, {
       lambdaId: 'email-sender',
@@ -45,5 +46,10 @@ export class EmailSenderLambda extends GoLambda {
         resources: ['*'],
       })
     );
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

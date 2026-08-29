@@ -1,6 +1,7 @@
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Lazy } from 'aws-cdk-lib';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 export interface ArtifactUpdaterLambdaProps {
@@ -14,6 +15,12 @@ export interface ArtifactUpdaterLambdaProps {
 
   /** Root stack name (Aws.STACK_NAME). */
   rootStackTagValue: string;
+
+  /** DynamoDB lock table for update concurrency control. */
+  readonly lockTable: ITable;
+
+  /** Set of registered package names to track for updates (captured at synth time). */
+  readonly registeredPackagesSet: Set<string>;
 }
 
 /**
@@ -34,7 +41,12 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         GRANULARITY: props.granularity,
         PROJECT: 'serverlessinbox',
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
+        LOCK_TABLE_NAME: props.lockTable.tableName,
+        REGISTERED_PACKAGES: Lazy.string({ produce: () => JSON.stringify([...props.registeredPackagesSet]) }),
       },
     });
+
+    // Grant permissions to read/write the lock table
+    props.lockTable.grantReadWriteData(this);
   }
 }

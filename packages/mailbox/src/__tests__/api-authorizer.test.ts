@@ -222,6 +222,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        systemSenderAddress: 'noreply@example.com',
       });
 
       const template = Template.fromStack(stack);
@@ -265,6 +266,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        systemSenderAddress: 'noreply@example.com',
       });
 
       const template = Template.fromStack(stack);
@@ -277,6 +279,35 @@ describe('API Authorizer Wiring', () => {
         const props = route.Properties as Record<string, unknown> | undefined;
         expect(props?.AuthorizerId).toBeDefined();
       }
+    });
+
+    it('should set SYSTEM_SENDER_ADDRESS environment variable', () => {
+      const apiGroup = new Construct(stack, 'api-group-env');
+      new AdminApi(apiGroup, 'admin-api', {
+        configTable,
+        itemTable,
+        auditLogTable,
+        changelogTable,
+        mailFeedbackTable,
+        authKeyStoreTable,
+        blobStore,
+        emailSubmissionQueue,
+        auditEventsQueue,
+        artifactResolver,
+        authProvider: mockAuthProvider,
+        identityProvisionerFunction,
+        sesConfigSetName: 'test-config-set',
+        systemSenderAddress: 'noreply@example.com',
+      });
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: {
+          Variables: {
+            'SYSTEM_SENDER_ADDRESS': 'noreply@example.com',
+          },
+        },
+      });
     });
   });
 

@@ -21,7 +21,7 @@ import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { IAdminApiAddon } from './addons';
-import type { IWebSocketBroadcastPublisher } from './websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from './websocket';
 
 export interface AdminApiProps {
   readonly configTable: ITable;
@@ -51,14 +51,15 @@ export interface AdminApiProps {
   readonly sesRuleSetName?: string;
   /** SES configuration set name for outbound email tracking. */
   readonly sesConfigSetName: string;
+  /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
+  readonly systemSenderAddress: string;
 }
 
 export class AdminApi extends Construct {
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  /** Exposed so callers can set additional env vars (e.g. SYSTEM_SENDER_ADDRESS) after construction. */
-  public readonly apiHandlerLambda: AdminApiLambda;
+  private readonly apiHandlerLambda: IWebSocketPushTarget;
   /** L1 CfnDomainName for logical-ID pinning. Present only when domainName is provided. */
   private _domainCfnResource?: CfnResource;
 
@@ -122,6 +123,7 @@ export class AdminApi extends Construct {
       sesRuleSetName: props.sesRuleSetName,
       sesConfigSetName: props.sesConfigSetName,
       identityProvisionerFunction: props.identityProvisionerFunction,
+      systemSenderAddress: props.systemSenderAddress,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 
@@ -150,8 +152,7 @@ export class AdminApi extends Construct {
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.apiHandlerLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this.apiHandlerLambda);
+    this.apiHandlerLambda.enableWebSocketPush(broadcaster);
   }
 
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */

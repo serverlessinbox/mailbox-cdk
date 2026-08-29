@@ -1,6 +1,6 @@
 import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
 
 export interface EdgeDeployerGrantProps {
@@ -32,7 +32,7 @@ export interface EdgeDeployerGrantProps {
  * edge template applies to the function.
  */
 export function grantEdgeDeployerWorkerPermissions(
-  worker: TypeScriptLambda,
+  worker: IFunction,
   props: EdgeDeployerGrantProps,
 ): void {
   const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;

@@ -1,5 +1,6 @@
 import { Aws, Duration, Fn, Stack, ArnFormat } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerWorkerLambda } from '../../lambdas/stack-deployer-worker';
@@ -30,8 +31,8 @@ export interface StackDeployerInfraProps {
  * `resource.node.addDependency(infra.workflow.stateMachine)`.
  */
 export class StackDeployerInfra extends Construct {
-  public readonly worker: StackDeployerWorkerLambda;
-  public readonly starter: StackDeployerStarterLambda;
+  public readonly worker: IFunction;
+  public readonly starter: IFunction;
   public readonly workflow: MailboxStackDeployerWorkflow;
 
   constructor(scope: Construct, id: string, props: StackDeployerInfraProps) {

@@ -5,6 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
 
 export interface SESEventProcessorLambdaProps {
   itemTable: ITable;
@@ -16,7 +17,7 @@ export interface SESEventProcessorLambdaProps {
   artifactResolver: ICdkArtifactEngine;
 }
 
-export class SESEventProcessorLambda extends GoLambda {
+export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: SESEventProcessorLambdaProps) {
     super(scope, id, {
       lambdaId: 'sqs-ses-event-processor',
@@ -40,5 +41,10 @@ export class SESEventProcessorLambda extends GoLambda {
     props.configTable.grantReadWriteData(this);
     props.blobStore.grantReadWrite(this);
     props.auditEventsQueue.grantSendMessages(this);
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

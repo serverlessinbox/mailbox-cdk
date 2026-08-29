@@ -6,7 +6,6 @@ import { Construct } from 'constructs';
 import { SESEventProcessorLambda } from '../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
 import { IQueue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -14,7 +13,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { makePhysicalName } from '../utils/resource-names';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';
-import type { IWebSocketBroadcastPublisher } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
 
 export interface SESEventProcessingProps {
   readonly itemTable: ITable;
@@ -41,7 +40,7 @@ export interface SESEventProcessingProps {
 export class SESEventProcessing extends Construct {
   public readonly sesNotificationsTopic: Topic;
   public readonly sesNotificationsQueue: BaseQueue;
-  public readonly sesEventProcessorLambda: lambda.Function;
+  private readonly sesEventProcessorLambda: IWebSocketPushTarget;
   public readonly sesConfigSetName: string;
 
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
@@ -129,7 +128,7 @@ export class SESEventProcessing extends Construct {
     });
 
     // SES Event Processor Lambda - processes SES notifications from SQS
-    this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
+    const sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
@@ -140,7 +139,7 @@ export class SESEventProcessing extends Construct {
     });
 
     // Add SQS event source for SES notifications
-    this.sesEventProcessorLambda.addEventSource(
+    sesEventProcessorLambda.addEventSource(
       new SqsEventSource(this.sesNotificationsQueue, {
         batchSize: 100,
         maxConcurrency: 5,
@@ -148,10 +147,11 @@ export class SESEventProcessing extends Construct {
         maxBatchingWindow: Duration.seconds(30),
       })
     );
+
+    this.sesEventProcessorLambda = sesEventProcessorLambda;
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.sesEventProcessorLambda.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this.sesEventProcessorLambda);
+    this.sesEventProcessorLambda.enableWebSocketPush(broadcaster);
   }
 }
