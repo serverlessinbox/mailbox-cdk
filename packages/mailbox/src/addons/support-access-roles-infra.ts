@@ -3,19 +3,135 @@ import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
 
 /**
+ * Vendor AWS account ID.
+ * This is a placeholder and MUST be replaced with the real vendor account ID before deploy.
+ * It appears in the hop role's static trust policy (as :root principal) and is customer-readable in the template.
+ */
+export const VENDOR_ACCOUNT_ID = '791990038981';
+
+// D15: Tier action lists (ported from Go)
+// Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
+const SUPPORT_DIAG_ALLOWED_ACTIONS = [
+  'logs:DescribeLogGroups',
+  'logs:DescribeLogStreams',
+  'logs:GetLogEvents',
+  'logs:FilterLogEvents',
+  'logs:GetLogGroupFields',
+  'logs:StartQuery',
+  'logs:GetQueryResults',
+  'logs:StopQuery',
+  'cloudwatch:GetMetricData',
+  'cloudwatch:GetMetricStatistics',
+  'cloudwatch:ListMetrics',
+];
+
+// Tier 2 delta — support-config: infrastructure config read (additional actions beyond diag)
+const SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS = [
+  'lambda:GetFunctionConfiguration',
+  'lambda:ListFunctions',
+  'lambda:ListVersionsByFunction',
+  'lambda:ListAliases',
+  'lambda:GetPolicy',
+  'states:DescribeStateMachine',
+  'states:ListStateMachines',
+  'states:DescribeExecution',
+  'states:ListExecutions',
+  'states:GetExecutionHistory',
+  'dynamodb:DescribeTable',
+  'dynamodb:DescribeTimeToLive',
+  'dynamodb:ListTables',
+  'sqs:GetQueueAttributes',
+  'sqs:ListQueues',
+  'sqs:ListDeadLetterSourceQueues',
+  'events:DescribeRule',
+  'events:ListRules',
+  'events:ListTargetsByRule',
+  'cloudformation:DescribeStacks',
+  'ssm:GetParameter',
+  'ssm:GetParameters',
+  'ses:GetAccount',
+  'ses:GetEmailIdentity',
+  'ses:ListEmailIdentities',
+  'ses:DescribeActiveReceiptRuleSet',
+  'ses:GetConfigurationSetEventDestinations',
+];
+
+// Tier 2 effective = diag + delta (computed, not hand-maintained)
+const SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS = [
+  ...SUPPORT_DIAG_ALLOWED_ACTIONS,
+  ...SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS,
+];
+
+/**
+ * Support tier descriptor.
+ * Drives tier-specific role creation, policies, trust conditions, and env var naming.
+ */
+interface SupportTier {
+  /** Construct ID for the role — must match existing values exactly for template stability */
+  readonly constructId: string;
+  /** Role name slug used in Fn::join construction */
+  readonly roleNameSlug: string;
+  /** IAM tag key used in trust policy condition */
+  readonly tagKey: string;
+  /** Inline policy name */
+  readonly inlinePolicyName: string;
+  /** IAM actions for this tier */
+  readonly actions: string[];
+  /** Environment variable name for the role ARN */
+  readonly envVarName: string;
+  /** Role description */
+  readonly description: string;
+}
+
+/**
+ * Registry of support tiers.
+ * Order is significant: matches current template (diag before config-read).
+ */
+const SUPPORT_TIERS: SupportTier[] = [
+  {
+    constructId: 'support-diag',
+    roleNameSlug: 'diag',
+    tagKey: 'supportDiagCases',
+    inlinePolicyName: 'support-diag-access',
+    actions: SUPPORT_DIAG_ALLOWED_ACTIONS,
+    envVarName: 'SUPPORT_DIAG_ROLE_ARN',
+    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role supportDiagCases tag.',
+  },
+  {
+    constructId: 'support-config-read',
+    roleNameSlug: 'config-read',
+    tagKey: 'supportConfigCases',
+    inlinePolicyName: 'support-config-read-access',
+    actions: SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
+    envVarName: 'SUPPORT_CONFIG_READ_ROLE_ARN',
+    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role supportConfigCases tag.',
+  },
+];
+
+/**
  * Support Access IAM roles infrastructure.
  *
- * Creates two support roles with:
- * - Explicit deterministic names (folded in parent-group id + stackGuid)
- * - Empty/deny default trust policy
- * - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
- * - NO permissions policy at creation — PutRolePolicy writes tier-specific permissions only when a case opens
+ * Creates three roles:
+ *
+ * 1. support-hop: Intermediate role with static trust to vendor support account.
+ *    - Trust policy names vendor account (static, in template, customer-readable)
+ *    - Single permission: sts:AssumeRole on the two support roles
+ *    - Tagged at runtime by support-access-api for case/window toggles
+ *    - Cannot be modified by the lambda beyond tag writes
+ *
+ * 2. support-diag: Observability access (CloudWatch, Lambda, Step Functions, DynamoDB, SQS).
+ *    - Trust policy: static, names hop role with ExternalId and CurrentTime conditions (tag variables)
+ *    - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
+ *    - Tier-specific inline policy permanently attached (static, immutable from lambda)
+ *
+ * 3. support-config-read: Read-only config access.
+ *    - Trust policy: static, names hop role with ExternalId and CurrentTime conditions (tag variables)
+ *    - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
+ *    - Tier-specific inline policy permanently attached (static, immutable from lambda)
  */
 export class SupportAccessRolesInfra extends Construct {
-  readonly supportDiagRole: iam.Role;
-  readonly supportDiagRoleArn: string;
-  readonly supportConfigReadRole: iam.Role;
-  readonly supportConfigReadRoleArn: string;
+  readonly supportHopRoleArn: string;
+  readonly tierArns: Record<string, string>;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -28,55 +144,123 @@ export class SupportAccessRolesInfra extends Construct {
     // Derive parent group id (e.g., 'ops') to make names unique per construct position.
     const parentGroupId = (this.node.scope as any)?.node?.id ?? 'default';
 
-    // Deterministic role names with group id and stack GUID to ensure uniqueness if construct moves.
-    const supportDiagRoleName = Fn.join('', ['support-diag-', parentGroupId, '-', stackGuid]);
-    const supportConfigReadRoleName = Fn.join('', ['support-config-read-', parentGroupId, '-', stackGuid]);
+    // Deterministic hop role name with group id and stack GUID to ensure uniqueness if construct moves.
+    const supportHopRoleName = Fn.join('', ['support-hop-', parentGroupId, '-', stackGuid]);
 
-    // Pre-built ARN strings using formatArn — required for trust-writer policy scoping.
-    this.supportDiagRoleArn = stack.formatArn({
+    // Pre-built hop role ARN using formatArn — required for trust-writer policy scoping.
+    this.supportHopRoleArn = stack.formatArn({
       service: 'iam',
       region: '',
       resource: 'role',
-      resourceName: supportDiagRoleName,
+      resourceName: supportHopRoleName,
     });
 
-    this.supportConfigReadRoleArn = stack.formatArn({
-      service: 'iam',
-      region: '',
-      resource: 'role',
-      resourceName: supportConfigReadRoleName,
-    });
+    // Build tier role ARNs indexed by tier name for consumer access
+    this.tierArns = {};
+    const tierRoleNames: Record<string, string> = {};
 
-    // support-diag role: CloudWatch Logs/metrics + Lambda/Step Functions/DynamoDB/SQS introspection.
-    // Empty/deny default trust — no principal can assume until a case opens and trust-writer writes the policy.
-    // CDK requires an assumedBy principal; to achieve a non-assumable default, we use a service principal
-    // for a non-existent AWS service. An AssumeRolePolicyDocument that names only a non-existent service
-    // will never match any real assume attempt, effectively denying all assumes until the trust-writer
-    // lambda (invoked by admin-api) calls UpdateAssumeRolePolicy to overwrite this with a real trust policy
-    // scoped to the vendor role + ExternalId for each open case.
-    this.supportDiagRole = new iam.Role(this, 'support-diag', {
-      roleName: supportDiagRoleName,
-      assumedBy: new iam.ServicePrincipal('empty-deny-placeholder.amazonaws.com'),
+    for (const tier of SUPPORT_TIERS) {
+      const roleName = Fn.join('', [`support-${tier.roleNameSlug}-`, parentGroupId, '-', stackGuid]);
+      tierRoleNames[tier.constructId] = roleName;
+      this.tierArns[tier.constructId] = stack.formatArn({
+        service: 'iam',
+        region: '',
+        resource: 'role',
+        resourceName: roleName,
+      });
+    }
+
+    // support-hop role: Intermediate hop for vendor support account trust.
+    // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
+    // Tagged at runtime by support-access-api (supportDiagCases, supportConfigCases keys).
+    // Cannot be modified by the lambda beyond tag writes.
+    const hopRole = new iam.Role(this, 'support-hop', {
+      roleName: supportHopRoleName,
+      assumedBy: new iam.ServicePrincipal('sts.amazonaws.com'),
       maxSessionDuration: Duration.seconds(3600),
-      description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Permissions written per-case at runtime.',
+      inlinePolicies: {
+        'support-hop-assume': new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ['sts:AssumeRole'],
+              resources: Object.values(this.tierArns),
+            }),
+          ],
+        }),
+      },
+      description: 'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
     });
 
-    // support-config-read role: Read-only access to config table and stack parameters.
-    // Empty/deny default trust — no principal can assume until a case opens and trust-writer writes the policy.
-    // CDK requires an assumedBy principal; to achieve a non-assumable default, we use a service principal
-    // for a non-existent AWS service. An AssumeRolePolicyDocument that names only a non-existent service
-    // will never match any real assume attempt, effectively denying all assumes until the trust-writer
-    // lambda (invoked by admin-api) calls UpdateAssumeRolePolicy to overwrite this with a real trust policy
-    // scoped to the vendor role + ExternalId for each open case.
-    this.supportConfigReadRole = new iam.Role(this, 'support-config-read', {
-      roleName: supportConfigReadRoleName,
-      assumedBy: new iam.ServicePrincipal('empty-deny-placeholder.amazonaws.com'),
-      maxSessionDuration: Duration.seconds(3600),
-      description: 'Support access role for config reading (DynamoDB config table, stack parameters). Permissions written per-case at runtime.',
-    });
+    // Override the trust policy with vendor account root principal
+    const hopCfnRole = hopRole.node.defaultChild as iam.CfnRole;
+    hopCfnRole.assumeRolePolicyDocument = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root`,
+          },
+          Action: 'sts:AssumeRole',
+        },
+      ],
+    };
 
-    // No permissions policy is attached at creation. D15 specifies that tier-specific permissions
-    // (the allowlists) are written by the trust-writer lambda at case-open via PutRolePolicy,
-    // and stripped via DeleteRolePolicy at case-close.
+    // Create support roles from tier registry, iterating in order for template stability.
+    for (const tier of SUPPORT_TIERS) {
+      // Create inline policy for this tier (D15)
+      const policyDoc = new iam.PolicyDocument({
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: tier.actions,
+            resources: ['*'],
+          }),
+        ],
+      });
+
+      // Create the role with tier-specific configuration
+      new iam.Role(this, tier.constructId, {
+        roleName: tierRoleNames[tier.constructId],
+        assumedBy: new iam.PrincipalWithConditions(
+          new iam.ArnPrincipal(this.supportHopRoleArn),
+          {
+            StringLike: {
+              [`aws:PrincipalTag/${tier.tagKey}`]: '*|${sts:ExternalId}|*',
+            },
+          }
+        ),
+        maxSessionDuration: Duration.seconds(3600),
+        inlinePolicies: {
+          [tier.inlinePolicyName]: policyDoc,
+        },
+        description: tier.description,
+      });
+    }
   }
+}
+
+/**
+ * Get the list of tier tag keys (for consumers that need them).
+ * Exposed for IAM grant scoping in lambdas.
+ */
+export function getSupportTierTagKeys(): string[] {
+  return SUPPORT_TIERS.map(tier => tier.tagKey);
+}
+
+/**
+ * Build environment variables for support role tiers.
+ * Maps tier environment variable names to their ARNs from the tierRoleArns map.
+ * Order is fixed to match the registry order (diag, then config-read) for CloudFormation stability.
+ *
+ * @param tierRoleArns A map of tier constructId to role ARN, typically from SupportAccessRolesInfra.tierArns
+ * @returns An object with SUPPORT_DIAG_ROLE_ARN and SUPPORT_CONFIG_READ_ROLE_ARN
+ */
+export function buildSupportTierEnvironment(tierRoleArns: Record<string, string>): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const tier of SUPPORT_TIERS) {
+    env[tier.envVarName] = tierRoleArns[tier.constructId];
+  }
+  return env;
 }

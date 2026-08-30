@@ -12701,7 +12701,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/support-access-addon.ts",
-          "line": 141
+          "line": 169
         },
         "parameters": [
           {
@@ -12718,13 +12718,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 140
+        "line": 168
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 143
+            "line": 171
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12767,7 +12767,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 129
+        "line": 157
       },
       "name": "SupportAccessAddonProviderProps",
       "properties": [
@@ -12779,7 +12779,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 133
+            "line": 161
           },
           "name": "artifactResolver",
           "type": {
@@ -12794,7 +12794,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 131
+            "line": 159
           },
           "name": "mode",
           "type": {
@@ -12813,7 +12813,7 @@
       "kind": "enum",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 19
+        "line": 23
       },
       "members": [
         {
@@ -12834,5 +12834,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "mTTCLszqFzjloy9oyCd0NIrZrs5aHCYES6E1OlOg2fg="
+  "fingerprint": "/m+dCEFPm9JzZhIz39JlFIv7BXdpDFhlDoJMV4r/2Qs="
 }

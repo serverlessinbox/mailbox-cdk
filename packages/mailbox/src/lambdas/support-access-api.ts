@@ -5,12 +5,13 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
+import { getSupportTierTagKeys, buildSupportTierEnvironment } from '../addons/support-access-roles-infra';
 
 export interface SupportAccessApiLambdaProps {
-  /** Support-diag role ARN — scoped for trust/permissions policy writes. */
-  readonly supportDiagRoleArn: string;
-  /** Support-config-read role ARN — scoped for trust/permissions policy writes. */
-  readonly supportConfigReadRoleArn: string;
+  /** Support-hop role ARN — scoped for tag-based access control. */
+  readonly supportHopRoleArn: string;
+  /** Support tier role ARNs (constructId -> arn), keyed by tier constructId for env var generation. */
+  readonly tierRoleArns: Record<string, string>;
   /** DynamoDB config table for support access grant records. */
   readonly configTable: ITable;
   /** SQS queue for audit events. */
@@ -24,70 +25,77 @@ export interface SupportAccessApiLambdaProps {
  *
  * Go lambda that handles:
  * - Case RPCs: OpenSupportAccessCase, CloseSupportAccessCase, ListSupportAccessCases
- * - IAM trust/permissions write: UpdateAssumeRolePolicy, PutRolePolicy, DeleteRolePolicy
- * - CloudTrail health check: DescribeTrails, GetTrailStatus (read-only)
+ * - Tag-based access control: TagRole/UntagRole on support-hop for supportCase and supportWindow
+ * - Session listing via live CloudTrail query: hybrid approach with the hourly collector
  *
  * Execution role permissions:
- * - iam:UpdateAssumeRolePolicy: write trust policy to both support roles
- * - iam:PutRolePolicy: write permissions policy to both support roles
- * - iam:DeleteRolePolicy: strip permissions policy from both support roles (on close)
+ * - iam:TagRole + iam:UntagRole: scoped to support-hop role only, constrained by aws:TagKeys to
+ *   supportDiagCases and supportConfigCases only. Cannot modify any other role or tag any other keys.
+ *   This is the ONLY IAM action the lambda holds. Tag visibility on support-diag/support-config-read
+ *   trust policies gates access. Tier policies and permissions boundary are immutable from the lambda.
+ * - iam:PutRolePermissionsBoundary / iam:DeleteRolePermissionsBoundary / iam:AttachRolePolicy /
+ *   iam:DetachRolePolicy / iam:PutRolePolicy / iam:DeleteRolePolicy / iam:UpdateAssumeRolePolicy /
+ *   iam:GetRole: NEVER granted. These are blocked by design.
  * - Config table read/write for support access grant records
- * - Read-only CloudTrail actions for health check (DescribeTrails, GetTrailStatus)
+ * - CloudTrail LookupEvents for querying recent assume-role events (live half of hybrid read)
  * - SQS send for audit events
  *
- * Scoped to exactly the two support role ARNs for the IAM actions.
+ * Scoped to exactly the support-hop role ARN for the tag-write actions.
+ * Tier permissions on support roles are visible in the synthesized template; the lambda cannot modify them.
  */
 export class SupportAccessApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SupportAccessApiLambdaProps) {
+    // Build environment object with fixed order for CloudFormation template stability:
+    // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, then tier vars (from registry order)
+    const tierEnv = buildSupportTierEnvironment(props.tierRoleArns);
+    const environment: Record<string, string> = {
+      SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
+      CONFIG_TABLE_NAME: props.configTable.tableName,
+      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+      ...tierEnv,
+    };
+
     super(scope, id, {
       lambdaId: 'support-access-api',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,
-      environment: {
-        SUPPORT_DIAG_ROLE_ARN: props.supportDiagRoleArn,
-        SUPPORT_CONFIG_READ_ROLE_ARN: props.supportConfigReadRoleArn,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        // Fixed inline policy names: written per-case via PutRolePolicy
-        SUPPORT_DIAG_POLICY_NAME: 'support-diag-access',
-        SUPPORT_CONFIG_READ_POLICY_NAME: 'support-config-read-access',
-      },
+      environment,
     });
 
-    this.grantSupportRolePolicyWrites(props);
+    this.grantSupportHopRoleTagWrites(props);
     // Config table access for support access grant records.
     props.configTable.grantReadWriteData(this);
     // Grant send permission on the audit-events queue
     props.auditEventsQueue.grantSendMessages(this);
-    this.grantCloudTrailHealthRead();
+    this.grantCloudTrailLookup();
   }
 
-  private grantSupportRolePolicyWrites(props: SupportAccessApiLambdaProps): void {
-    // Scoped precisely to the two support roles — nothing else, no wildcards, no other resources.
-    const roleArns = [props.supportDiagRoleArn, props.supportConfigReadRoleArn].filter(arn => arn);
-
-    if (roleArns.length > 0) {
-      this.addToRolePolicy(new PolicyStatement({
-        actions: [
-          'iam:GetRole',
-          'iam:UpdateAssumeRolePolicy',
-          'iam:PutRolePolicy',
-          'iam:DeleteRolePolicy',
-        ],
-        resources: roleArns,
-      }));
-    }
+  private grantSupportHopRoleTagWrites(props: SupportAccessApiLambdaProps): void {
+    // Scoped precisely to the support-hop role — nothing else, no wildcards, no other resources.
+    // Tag writes only: TagRole and UntagRole, constrained by aws:TagKeys to tier-specific tag keys.
+    // Cannot modify any other role or tag any other keys.
+    this.addToRolePolicy(new PolicyStatement({
+      actions: [
+        'iam:TagRole',
+        'iam:UntagRole',
+      ],
+      resources: [props.supportHopRoleArn],
+      conditions: {
+        StringEquals: {
+          'aws:TagKeys': getSupportTierTagKeys(),
+        },
+      },
+    }));
   }
 
-  private grantCloudTrailHealthRead(): void {
-    // Grant read-only CloudTrail access for health check (D13)
-    // Trail ARNs are not knowable at synth time, so use resources: ["*"]
+  private grantCloudTrailLookup(): void {
+    // Grant CloudTrail LookupEvents for querying assume-role events in the live read path.
+    // CloudTrail actions declare no resource types, so resources: ['*'] is correct per IAM scoping.
     this.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: [
-        'cloudtrail:DescribeTrails',
-        'cloudtrail:GetTrailStatus',
+        'cloudtrail:LookupEvents',
       ],
       resources: ['*'],
     }));

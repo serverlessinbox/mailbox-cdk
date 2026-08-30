@@ -159,14 +159,14 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       template = Template.fromStack(stack);
     });
 
-    it('ASSERTION 1: support-access-api lambda execution-role policy names ONLY the two support role ARNs', () => {
+    it('ASSERTION 1: support-access-api lambda execution-role policy names ONLY the hop role ARN', () => {
       // Find the support-access-api lambda function
       const allLambdas = template.findResources('AWS::Lambda::Function');
       const apiLambdas: Record<string, any> = {};
 
       for (const [logicalId, lambda] of Object.entries(allLambdas)) {
         const props = (lambda as any).Properties;
-        if (props.Environment?.Variables?.SUPPORT_DIAG_ROLE_ARN) {
+        if (props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN) {
           apiLambdas[logicalId] = lambda;
         }
       }
@@ -200,7 +200,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       // Find policies attached to this role
       const allPolicies = template.findResources('AWS::IAM::Policy');
-      let foundIamTrustWriteStatement = false;
+      let foundTagWriteStatement = false;
 
       for (const [, policy] of Object.entries(allPolicies)) {
         const policyProps = (policy as any).Properties;
@@ -217,41 +217,54 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
                 ? statement.Resource
                 : [statement.Resource];
 
-              // Check for support role ARNs
-              const supportRoleArns = resources.filter((r: any) => {
+              // Check for hop role ARN
+              const hopRoleArns = resources.filter((r: any) => {
                 const resourceStr = typeof r === 'string' ? r : JSON.stringify(r);
-                return resourceStr.includes('role/support-');
+                return resourceStr.includes('role/support-hop-');
               });
 
-              if (supportRoleArns.length > 0) {
-                foundIamTrustWriteStatement = true;
+              if (hopRoleArns.length > 0) {
+                foundTagWriteStatement = true;
 
-                // Verify resources contain support role ARNs
-                for (const resource of supportRoleArns) {
+                // Verify resource is the hop role
+                for (const resource of hopRoleArns) {
                   const resourceStr = typeof resource === 'string' ? resource : JSON.stringify(resource);
-                  expect(resourceStr).toMatch(/support-(diag|config-read)-/);
+                  expect(resourceStr).toMatch(/support-hop-/);
                 }
 
-                // Verify actions are exactly the four required IAM actions, no wildcards
+                // Verify actions are ONLY tag-write (TagRole, UntagRole)
                 const actions = Array.isArray(statement.Action)
                   ? statement.Action
                   : [statement.Action];
 
-                const expectedActions = [
+                // Permitted tag-write actions
+                const expectedTagActions = [
+                  'iam:TagRole',
+                  'iam:UntagRole',
+                ];
+
+                // Verify all actions are in the permitted set
+                for (const action of actions) {
+                  expect(expectedTagActions).toContain(action);
+                }
+
+                // Verify forbidden actions are NOT present
+                const forbiddenActions = [
                   'iam:GetRole',
                   'iam:UpdateAssumeRolePolicy',
+                  'iam:AttachRolePolicy',
+                  'iam:DetachRolePolicy',
                   'iam:PutRolePolicy',
                   'iam:DeleteRolePolicy',
                 ];
 
-                // Verify all expected actions are present
-                for (const expectedAction of expectedActions) {
-                  expect(actions).toContain(expectedAction);
-                }
-                // Verify no extra actions beyond expected
                 for (const action of actions) {
-                  expect(expectedActions).toContain(action);
+                  for (const forbidden of forbiddenActions) {
+                    expect(action).not.toBe(forbidden);
+                  }
                 }
+
+                // Verify no wildcard actions
                 expect(actions).not.toContain('iam:*');
               }
             }
@@ -259,7 +272,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
         }
       }
 
-      expect(foundIamTrustWriteStatement).toBe(true);
+      expect(foundTagWriteStatement).toBe(true);
     });
 
     it('ASSERTION 2: support-access-api lambda execution-role has config-table access (D16)', () => {
@@ -269,7 +282,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       for (const [, lambda] of Object.entries(allLambdas)) {
         const props = (lambda as any).Properties;
-        if (props.Environment?.Variables?.SUPPORT_DIAG_ROLE_ARN) {
+        if (props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN) {
           const roleRef = (lambda as any).Properties.Role;
           if (roleRef?.Ref) {
             apiLambdaRoleLogicalId = roleRef.Ref;
@@ -348,7 +361,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       for (const [, lambda] of Object.entries(allLambdas)) {
         const props = (lambda as any).Properties;
-        if (props.Environment?.Variables?.SUPPORT_DIAG_ROLE_ARN) {
+        if (props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN) {
           const roleRef = (lambda as any).Properties.Role;
           if (roleRef?.Ref) {
             apiLambdaRoleLogicalId = roleRef.Ref;
@@ -380,12 +393,12 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
                 : [statement.Action];
 
               // Check for CloudTrail actions
-              if (actions.includes('cloudtrail:DescribeTrails') || actions.includes('cloudtrail:GetTrailStatus')) {
+              if (actions.includes('cloudtrail:LookupEvents')) {
                 foundCloudTrailGrant = true;
 
                 // Verify ONLY the read-only actions
                 for (const action of actions) {
-                  expect(action).toMatch(/^cloudtrail:(DescribeTrails|GetTrailStatus)$/);
+                  expect(action).toMatch(/^cloudtrail:LookupEvents$/);
                 }
                 expect(actions).not.toContain('cloudtrail:*');
               }
@@ -395,6 +408,78 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       }
 
       expect(foundCloudTrailGrant).toBe(true);
+    });
+
+    it('ASSERTION 4: Tier inline policies ARE attached at deploy time', () => {
+      // Tier inline policies are permanently attached at CloudFormation synthesis.
+      // They are immutable from the lambda: the lambda can only modify trust policies.
+      // Inline policies are bound to the role and deleted when the role is deleted.
+
+      // Find all IAM roles in the template
+      const allRoles = template.findResources('AWS::IAM::Role');
+
+      // Identify the support-diag and support-config-read roles
+      // Role names are generated dynamically, so we search for roles in the support-access-addon construct tree
+      let supportDiagRole: any;
+      let supportConfigReadRole: any;
+
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+        const roleName = props?.RoleName;
+
+        // Roles may have a Fn::Join for their name (dynamically constructed)
+        if (typeof roleName === 'string') {
+          if (roleName.includes('support-diag-')) {
+            supportDiagRole = role;
+          } else if (roleName.includes('support-config-read-')) {
+            supportConfigReadRole = role;
+          }
+        } else if (typeof roleName === 'object' && roleName['Fn::Join']) {
+          // Check if this is a dynamically constructed role name
+          const joinParts = JSON.stringify(roleName);
+          if (joinParts.includes('support-diag-') || joinParts.includes('support-diag')) {
+            supportDiagRole = role;
+          } else if (joinParts.includes('support-config-read-') || joinParts.includes('support-config-read')) {
+            supportConfigReadRole = role;
+          }
+        }
+      }
+
+      // Both support roles should exist
+      expect(supportDiagRole).toBeDefined();
+      expect(supportConfigReadRole).toBeDefined();
+
+      // Verify both roles have inline policies attached at deploy time
+      const supportRoles = [
+        { name: 'support-diag', role: supportDiagRole },
+        { name: 'support-config-read', role: supportConfigReadRole },
+      ];
+
+      for (const { role } of supportRoles) {
+        const properties = (role as any).Properties;
+
+        // Inline policies MUST be present
+        const inlinePolicies = properties.Policies || [];
+        expect(inlinePolicies.length).toBeGreaterThan(0);
+
+        // Verify the inline policies contain the tier actions
+        let foundTierPolicy = false;
+        for (const policy of inlinePolicies) {
+          const statements = policy.PolicyDocument?.Statement || [];
+          for (const stmt of statements) {
+            const actions = stmt.Action || [];
+            if (actions.length > 0) {
+              foundTierPolicy = true;
+              // At least one action should be present (verify non-empty)
+              expect(actions.length).toBeGreaterThan(0);
+            }
+          }
+        }
+        expect(foundTierPolicy).toBe(true);
+
+        // PermissionsBoundary should NOT be set (boundary removed, roles are scoped by trust policy only)
+        expect(properties.PermissionsBoundary).toBeUndefined();
+      }
     });
   });
 
