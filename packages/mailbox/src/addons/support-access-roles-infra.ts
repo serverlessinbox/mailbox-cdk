@@ -4,7 +4,6 @@ import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
 
 /**
  * Vendor AWS account ID.
- * This is a placeholder and MUST be replaced with the real vendor account ID before deploy.
  * It appears in the hop role's static trust policy (as :root principal) and is customer-readable in the template.
  */
 export const VENDOR_ACCOUNT_ID = '791990038981';
@@ -91,20 +90,20 @@ const SUPPORT_TIERS: SupportTier[] = [
   {
     constructId: 'support-diag',
     roleNameSlug: 'diag',
-    tagKey: 'supportDiagCases',
+    tagKey: 'serverless-inbox:support-access:diag',
     inlinePolicyName: 'support-diag-access',
     actions: SUPPORT_DIAG_ALLOWED_ACTIONS,
     envVarName: 'SUPPORT_DIAG_ROLE_ARN',
-    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role supportDiagCases tag.',
+    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support-access:diag tag.',
   },
   {
     constructId: 'support-config-read',
     roleNameSlug: 'config-read',
-    tagKey: 'supportConfigCases',
+    tagKey: 'serverless-inbox:support-access:config-read',
     inlinePolicyName: 'support-config-read-access',
     actions: SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
     envVarName: 'SUPPORT_CONFIG_READ_ROLE_ARN',
-    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role supportConfigCases tag.',
+    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support-access:config-read tag.',
   },
 ];
 
@@ -139,13 +138,13 @@ export class SupportAccessRolesInfra extends Construct {
     const stack = Stack.of(this);
 
     // Derive stack GUID for uniqueness — fixed for a stack's lifetime, differs after destroy+redeploy.
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    // Use only the first 8-character segment (UUID format: 8-4-4-4-12) to stay within the 64-char IAM role-name limit.
+    const fullStackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    const stackGuidSegment = Fn.select(0, Fn.split('-', fullStackGuid));
 
-    // Derive parent group id (e.g., 'ops') to make names unique per construct position.
-    const parentGroupId = (this.node.scope as any)?.node?.id ?? 'default';
-
-    // Deterministic hop role name with group id and stack GUID to ensure uniqueness if construct moves.
-    const supportHopRoleName = Fn.join('', ['support-hop-', parentGroupId, '-', stackGuid]);
+    // Deterministic hop role name with stack GUID segment for uniqueness.
+    // Dropping parentGroupId keeps the name length fixed and independent of construct position.
+    const supportHopRoleName = Fn.join('', ['support-hop-', stackGuidSegment]);
 
     // Pre-built hop role ARN using formatArn — required for trust-writer policy scoping.
     this.supportHopRoleArn = stack.formatArn({
@@ -160,7 +159,7 @@ export class SupportAccessRolesInfra extends Construct {
     const tierRoleNames: Record<string, string> = {};
 
     for (const tier of SUPPORT_TIERS) {
-      const roleName = Fn.join('', [`support-${tier.roleNameSlug}-`, parentGroupId, '-', stackGuid]);
+      const roleName = Fn.join('', [`support-${tier.roleNameSlug}-`, stackGuidSegment]);
       tierRoleNames[tier.constructId] = roleName;
       this.tierArns[tier.constructId] = stack.formatArn({
         service: 'iam',
@@ -172,7 +171,7 @@ export class SupportAccessRolesInfra extends Construct {
 
     // support-hop role: Intermediate hop for vendor support account trust.
     // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
-    // Tagged at runtime by support-access-api (supportDiagCases, supportConfigCases keys).
+    // Tagged at runtime by support-access-api (serverless-inbox:support-access:diag, serverless-inbox:support-access:config-read keys).
     // Cannot be modified by the lambda beyond tag writes.
     const hopRole = new iam.Role(this, 'support-hop', {
       roleName: supportHopRoleName,
@@ -221,13 +220,15 @@ export class SupportAccessRolesInfra extends Construct {
       });
 
       // Create the role with tier-specific configuration
-      new iam.Role(this, tier.constructId, {
+      const supportRole = new iam.Role(this, tier.constructId, {
         roleName: tierRoleNames[tier.constructId],
         assumedBy: new iam.PrincipalWithConditions(
           new iam.ArnPrincipal(this.supportHopRoleArn),
           {
             StringLike: {
-              [`aws:PrincipalTag/${tier.tagKey}`]: '*|${sts:ExternalId}|*',
+              // Delimiter is '/' not '|': IAM tag values reject '|' (not in [\p{L}\p{Z}\p{N}_.:/=+\-@]).
+              // Nanoid IDs use alphabet A-Za-z0-9_- so '/' never appears in case IDs, making it a safe separator.
+              [`aws:PrincipalTag/${tier.tagKey}`]: '*/${sts:ExternalId}/*',
             },
           }
         ),
@@ -237,6 +238,13 @@ export class SupportAccessRolesInfra extends Construct {
         },
         description: tier.description,
       });
+
+      // Make the hop role's creation explicit as a hard dependency.
+      // Rationale: IAM validates principals in trust policies at creation time; the support role trusts the hop role,
+      // so the hop role must exist first. IAM does NOT validate resource ARNs in identity policies, so the hop role
+      // (which names the two support role ARNs in its inline policy) can be created before the support roles. Thus
+      // the dependency is strictly one-way: hop role first, then support roles.
+      supportRole.node.addDependency(hopRole);
     }
   }
 }

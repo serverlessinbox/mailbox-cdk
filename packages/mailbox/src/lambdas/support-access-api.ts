@@ -25,12 +25,12 @@ export interface SupportAccessApiLambdaProps {
  *
  * Go lambda that handles:
  * - Case RPCs: OpenSupportAccessCase, CloseSupportAccessCase, ListSupportAccessCases
- * - Tag-based access control: TagRole/UntagRole on support-hop for supportCase and supportWindow
+ * - Tag-based access control: TagRole/UntagRole on support-hop for serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read tags
  * - Session listing via live CloudTrail query: hybrid approach with the hourly collector
  *
  * Execution role permissions:
  * - iam:TagRole + iam:UntagRole: scoped to support-hop role only, constrained by aws:TagKeys to
- *   supportDiagCases and supportConfigCases only. Cannot modify any other role or tag any other keys.
+ *   serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read only. Cannot modify any other role or tag any other keys.
  *   This is the ONLY IAM action the lambda holds. Tag visibility on support-diag/support-config-read
  *   trust policies gates access. Tier policies and permissions boundary are immutable from the lambda.
  * - iam:PutRolePermissionsBoundary / iam:DeleteRolePermissionsBoundary / iam:AttachRolePolicy /
@@ -75,6 +75,11 @@ export class SupportAccessApiLambda extends GoLambda {
     // Scoped precisely to the support-hop role — nothing else, no wildcards, no other resources.
     // Tag writes only: TagRole and UntagRole, constrained by aws:TagKeys to tier-specific tag keys.
     // Cannot modify any other role or tag any other keys.
+    // IMPORTANT: aws:TagKeys is a multivalued condition key and requires the ForAllValues set operator.
+    // Using plain StringEquals would cause silent denials (the condition never matches). ForAllValues ensures
+    // that every tag key in the request is in the allowed set, preventing the lambda from writing keys outside
+    // serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read. Do not "simplify" this back to StringEquals — that change
+    // would silently break all tag writes.
     this.addToRolePolicy(new PolicyStatement({
       actions: [
         'iam:TagRole',
@@ -82,7 +87,7 @@ export class SupportAccessApiLambda extends GoLambda {
       ],
       resources: [props.supportHopRoleArn],
       conditions: {
-        StringEquals: {
+        'ForAllValues:StringEquals': {
           'aws:TagKeys': getSupportTierTagKeys(),
         },
       },

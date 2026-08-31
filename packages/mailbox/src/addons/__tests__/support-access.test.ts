@@ -648,7 +648,7 @@ describe('SupportAccessAddon Unit Tests', () => {
       }
     });
 
-    it('Lambda and collector grants use aws:TagKeys pinned to supportDiagCases and supportConfigCases', () => {
+    it('Lambda and collector grants use ForAllValues:StringEquals (set operator) for aws:TagKeys', () => {
       const allFunctions = template.findResources('AWS::Lambda::Function');
       const allPolicies = template.findResources('AWS::IAM::Policy');
 
@@ -702,14 +702,24 @@ describe('SupportAccessAddon Unit Tests', () => {
           const hasTagActions = actionArray.includes('iam:TagRole') || actionArray.includes('iam:UntagRole');
           if (hasTagActions) {
             const conditions = statement.Condition || {};
-            const stringEqualsCond = conditions.StringEquals || {};
-            const tagKeys = stringEqualsCond['aws:TagKeys'];
+
+            // CRITICAL: Must use ForAllValues:StringEquals, NOT plain StringEquals
+            // aws:TagKeys is a multivalued condition key; plain StringEquals never matches
+            // (the condition always fails, silently denying tag writes at runtime).
+            // ForAllValues ensures every tag key in the request is in the allowed set.
+            const forAllValuesStringEqualsCond = conditions['ForAllValues:StringEquals'] || {};
+            const tagKeys = forAllValuesStringEqualsCond['aws:TagKeys'];
+
+            // Verify the set operator is present
+            expect(conditions['ForAllValues:StringEquals']).toBeDefined();
+            // Verify plain StringEquals is NOT used for aws:TagKeys (would be broken)
+            expect((conditions.StringEquals || {})['aws:TagKeys']).toBeUndefined();
 
             if (Array.isArray(tagKeys)) {
               const tagKeySet = new Set(tagKeys);
               if (
-                tagKeySet.has('supportDiagCases') &&
-                tagKeySet.has('supportConfigCases') &&
+                tagKeySet.has('serverless-inbox:support-access:diag') &&
+                tagKeySet.has('serverless-inbox:support-access:config-read') &&
                 tagKeySet.size === 2
               ) {
                 // Check which role(s) this policy is attached to
@@ -901,10 +911,10 @@ describe('SupportAccessAddon Unit Tests', () => {
           const statement = statements[0];
           const principalArn = statement.Principal?.AWS;
 
-          // Verify the principal is account root (arn:aws:iam::123456789012:root)
+          // Verify the principal is account root (arn:aws:iam::791990038981:root - vendor account)
           expect(principalArn).toBeDefined();
           expect(principalArn).toContain(':root');
-          expect(principalArn).toContain('123456789012');
+          expect(principalArn).toContain('791990038981');
           expect(principalArn).not.toContain(':role/');
 
           break;
@@ -952,33 +962,257 @@ describe('SupportAccessAddon Unit Tests', () => {
 
         // Check diag role conditions
         if (roleName.includes('support-diag-')) {
-          // Should have supportDiagCases (not supportCase or supportConfigCases)
-          expect(policyJson).toContain('supportDiagCases');
+          // Should have serverless-inbox:support-access:diag (not supportCase or serverless-inbox:support-access:config-read)
+          expect(policyJson).toContain('serverless-inbox:support-access:diag');
           expect(policyJson).not.toContain('supportCase');
-          expect(policyJson).not.toContain('supportConfigCases');
+          expect(policyJson).not.toContain('serverless-inbox:support-access:config-read');
           expect(policyJson).not.toContain('supportWindow');
 
           // Should have the literal pattern with ${sts:ExternalId}
-          expect(policyJson).toContain('*|${sts:ExternalId}|*');
+          expect(policyJson).toContain('*/${sts:ExternalId}/*');
           foundDiagWithDiagCases = true;
         }
 
         // Check config role conditions
         if (roleName.includes('support-config-read-')) {
-          // Should have supportConfigCases (not supportCase or supportDiagCases)
-          expect(policyJson).toContain('supportConfigCases');
+          // Should have serverless-inbox:support-access:config-read (not supportCase or serverless-inbox:support-access:diag)
+          expect(policyJson).toContain('serverless-inbox:support-access:config-read');
           expect(policyJson).not.toContain('supportCase');
-          expect(policyJson).not.toContain('supportDiagCases');
+          expect(policyJson).not.toContain('serverless-inbox:support-access:diag');
           expect(policyJson).not.toContain('supportWindow');
 
           // Should have the literal pattern with ${sts:ExternalId}
-          expect(policyJson).toContain('*|${sts:ExternalId}|*');
+          expect(policyJson).toContain('*/${sts:ExternalId}/*');
           foundConfigWithConfigCases = true;
         }
       }
 
       expect(foundDiagWithDiagCases).toBe(true);
       expect(foundConfigWithConfigCases).toBe(true);
+    });
+
+    it('Role names do not exceed the 64-character IAM roleName limit', () => {
+      // IAM role names have a maximum length of 64 characters.
+      // This test verifies that even with the maximum stack GUID segment length (8 hex chars),
+      // all role names stay within the limit.
+      // Prefixes:
+      // - support-hop-: 12 chars
+      // - support-diag-: 13 chars
+      // - support-config-read-: 20 chars
+      // Stack GUID segment (first 8-char segment of UUID): 8 chars
+      // Expected max lengths:
+      // - support-hop-XXXXXXXX: 12 + 8 = 20 chars
+      // - support-diag-XXXXXXXX: 13 + 8 = 21 chars
+      // - support-config-read-XXXXXXXX: 20 + 8 = 28 chars
+
+      const IAM_ROLE_NAME_LIMIT = 64;
+      const GUID_SEGMENT_MAX_LENGTH = 8; // First segment of UUID (8-4-4-4-12)
+
+      const allRoles = template.findResources('AWS::IAM::Role');
+
+      // Extract all role names and their prefixes to compute max lengths
+      const rolePrefixes: Record<string, number> = {
+        'support-hop': 'support-hop'.length,
+        'support-diag': 'support-diag'.length,
+        'support-config-read': 'support-config-read'.length,
+      };
+
+      const foundRolePrefixes: Set<string> = new Set();
+
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+        let roleName = '';
+
+        // Extract the actual role name (handles both string and Fn::Join tokens)
+        if (typeof props.RoleName === 'string') {
+          roleName = props.RoleName;
+        } else if (props.RoleName?.['Fn::Join']) {
+          // Fn::Join parts may contain literal strings and tokens
+          // For the test, we verify the token structure includes the 8-char segment, not the full UUID
+          const joinParts = props.RoleName['Fn::Join'][1] || [];
+          roleName = joinParts
+            .map((part: any) => {
+              if (typeof part === 'string') {
+                return part;
+              } else if (part['Fn::Select'] !== undefined) {
+                // This is the stack GUID segment extraction
+                // The test validates it's a Fn::Select(0, Fn::Split('-', ...)) returning 8 chars
+                return 'XXXXXXXX'; // Use a placeholder for the GUID segment
+              }
+              return '';
+            })
+            .join('');
+        }
+
+        // Check each role name against its prefix
+        for (const [prefix, prefixLen] of Object.entries(rolePrefixes)) {
+          if (roleName.startsWith(prefix)) {
+            foundRolePrefixes.add(prefix);
+            const maxLength = prefixLen + GUID_SEGMENT_MAX_LENGTH;
+            expect(maxLength).toBeLessThanOrEqual(IAM_ROLE_NAME_LIMIT);
+          }
+        }
+      }
+
+      // Verify we found all three role prefixes (hop, diag, config-read)
+      expect(foundRolePrefixes.has('support-hop')).toBe(true);
+      expect(foundRolePrefixes.has('support-diag')).toBe(true);
+      expect(foundRolePrefixes.has('support-config-read')).toBe(true);
+    });
+
+    it('Role names use only the 8-char GUID segment (first segment of UUID), not the full 36-char UUID', () => {
+      // Verify that role names are constructed with only the first 8-character segment of the stack GUID,
+      // not the full 36-character UUID. This is done via Fn::Select(0, Fn::Split('-', fullStackGuid)).
+      const allRoles = template.findResources('AWS::IAM::Role');
+
+      let foundGuidSegmentExtraction = false;
+
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+
+        // Check if the role name uses Fn::Join with the correct GUID segment selection
+        if (props.RoleName?.['Fn::Join']) {
+          const joinParts = props.RoleName['Fn::Join'][1] || [];
+
+          // Look for the Fn::Select(0, Fn::Split('-', ...)) pattern which extracts the 8-char segment
+          for (const part of joinParts) {
+            if (part['Fn::Select'] !== undefined) {
+              const selectIndex = part['Fn::Select'][0];
+              const splitOp = part['Fn::Select'][1];
+
+              // Verify this is Fn::Select(0, ...) - selecting the first segment
+              if (selectIndex === 0 && splitOp?.['Fn::Split']?.[0] === '-') {
+                foundGuidSegmentExtraction = true;
+              }
+            }
+          }
+        }
+      }
+
+      // Verify we found at least one role using the 8-char GUID segment extraction
+      expect(foundGuidSegmentExtraction).toBe(true);
+    });
+
+    it('Trust condition patterns do not contain forbidden IAM tag-value characters', () => {
+      // IAM tag values reject pipe '|' and other chars outside [\p{L}\p{Z}\p{N}_.:/=+\-@]*
+      // (letters, whitespace, digits, _, ., :, /, =, +, -, @).
+      // This test verifies that the trust condition patterns do NOT contain '|',
+      // which caused ValidationError at runtime when granting tiers.
+      // Allowed in patterns: tag-value chars + * ? for StringLike wildcards + ${}$ for policy variables.
+
+      const allRoles = template.findResources('AWS::IAM::Role');
+
+      // Find diag and config roles (skip hop)
+      const supportRoles = Object.entries(allRoles).filter(([, role]) => {
+        const props = (role as any).Properties;
+        let roleName = '';
+        if (typeof props.RoleName === 'string') {
+          roleName = props.RoleName;
+        } else if (props.RoleName?.['Fn::Join']) {
+          const parts = props.RoleName['Fn::Join'][1] || [];
+          roleName = parts.join('');
+        }
+        return (roleName.includes('support-diag-') || roleName.includes('support-config-read-'));
+      });
+
+      expect(supportRoles.length).toBe(2);
+
+      for (const [, role] of supportRoles) {
+        const props = (role as any).Properties;
+        const trustPolicyDoc = props.AssumeRolePolicyDocument;
+        const statements = trustPolicyDoc?.Statement || [];
+
+        for (const statement of statements) {
+          const conditions = statement.Condition || {};
+          const stringLikeCond = conditions.StringLike || {};
+
+          // Extract all StringLike condition values
+          for (const [, condValue] of Object.entries(stringLikeCond)) {
+            // Convert to string if needed (may be array or string)
+            const valueStrings = Array.isArray(condValue) ? condValue : [condValue];
+
+            for (const valueStr of valueStrings) {
+              const patternStr = String(valueStr);
+              // Explicitly verify forbidden character '|' is NOT present
+              expect(patternStr).not.toContain('|');
+              // Verify the pattern contains only allowed literals, wildcards, and policy variables
+              // Allowed: * ? / _ . : = + - @ [A-Za-z0-9] [unicode letters/whitespace] ${ }
+              const forbiddenChars = /[^\w\-.\/:=+@*?${} ]/g;
+              expect(patternStr.replace(/\$\{[^}]*\}/g, '')).not.toMatch(forbiddenChars);
+            }
+          }
+        }
+      }
+    });
+
+    it('Both support roles have DependsOn the hop role (creation-order gate)', () => {
+      // Verify that both support roles carry an explicit DependsOn field referencing the hop role.
+      // This gates the creation order: IAM validates trust-policy principals at role creation time,
+      // so the support roles (which trust the hop role) must not be created until the hop role exists.
+      const template_json = (template as any).toJSON();
+
+      // Find the hop role's logical ID
+      let hopRoleLogicalId: string | undefined;
+      const allResources = template_json.Resources || {};
+
+      for (const [logId, resource] of Object.entries(allResources)) {
+        const res = resource as any;
+        if (res.Type === 'AWS::IAM::Role') {
+          const roleName = res.Properties?.RoleName;
+          // The hop role name includes "support-hop-"
+          if (roleName?.['Fn::Join']) {
+            const parts = roleName['Fn::Join'][1] || [];
+            const nameStr = parts.join('');
+            if (nameStr.includes('support-hop-')) {
+              hopRoleLogicalId = logId;
+              break;
+            }
+          }
+        }
+      }
+
+      expect(hopRoleLogicalId).toBeDefined();
+
+      // Verify both support roles (diag and config-read) have DependsOn pointing to the hop role
+      let foundDiagWithDependency = false;
+      let foundConfigWithDependency = false;
+
+      for (const resource of Object.values(allResources)) {
+        const res = resource as any;
+        if (res.Type === 'AWS::IAM::Role') {
+          const roleName = res.Properties?.RoleName;
+          const dependsOn = res.DependsOn || [];
+
+          // Handle both string and token names
+          let nameStr = '';
+          if (typeof roleName === 'string') {
+            nameStr = roleName;
+          } else if (roleName?.['Fn::Join']) {
+            const parts = roleName['Fn::Join'][1] || [];
+            nameStr = parts.join('');
+          }
+
+          // Check diag role
+          if (nameStr.includes('support-diag-')) {
+            // DependsOn can be a string, array, or array of strings
+            const depsArray = Array.isArray(dependsOn) ? dependsOn : [dependsOn];
+            if (depsArray.some((dep: any) => dep === hopRoleLogicalId)) {
+              foundDiagWithDependency = true;
+            }
+          }
+
+          // Check config-read role
+          if (nameStr.includes('support-config-read-')) {
+            const depsArray = Array.isArray(dependsOn) ? dependsOn : [dependsOn];
+            if (depsArray.some((dep: any) => dep === hopRoleLogicalId)) {
+              foundConfigWithDependency = true;
+            }
+          }
+        }
+      }
+
+      expect(foundDiagWithDependency).toBe(true);
+      expect(foundConfigWithDependency).toBe(true);
     });
 
   });

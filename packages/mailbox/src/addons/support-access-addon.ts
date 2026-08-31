@@ -102,7 +102,7 @@ export class SupportAccessAddon extends Construct implements IAdminApiAddon {
       // Handles case RPCs and tag-based access control via support-hop role.
       // Uses the existing config table for grant records (D16).
       // Tier inline policies are permanently attached in CDK (rolesInfra) and immutable from the lambda.
-      // Can only tag/untag the support-hop role (supportDiagCases, supportConfigCases keys).
+      // Can only tag/untag the support-hop role (serverless-inbox:support-access:diag, serverless-inbox:support-access:config-read keys).
       this.apiHandler = new SupportAccessApiLambda(this, 'lambda', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,

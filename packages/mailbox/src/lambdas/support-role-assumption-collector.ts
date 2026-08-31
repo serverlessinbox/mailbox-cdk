@@ -7,7 +7,7 @@ import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { getSupportTierTagKeys, buildSupportTierEnvironment } from '../addons/support-access-roles-infra';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
-  /** Support-hop role ARN — scoped for expiry enforcement via untagging. */
+  /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */
   readonly supportHopRoleArn: string;
   /** Support tier role ARNs (constructId -> arn), keyed by tier constructId for env var generation. */
   readonly tierRoleArns: Record<string, string>;
@@ -22,16 +22,19 @@ export interface SupportRoleAssumptionCollectorLambdaProps {
  *
  * Go lambda that is invoked hourly by EventBridge to:
  * 1. Archive CloudTrail assume-role events into DynamoDB before the 90-day Event-history window closes.
- * 2. Enforce expiry by untagging support-hop for any case past its expiresAt timestamp.
+ * 2. Enforce expiry by recomputing support-hop's tier tags, excluding expired cases and writing the updated tag values.
  *
  * Works in conjunction with the support-access-api lambda's live query path for a hybrid approach:
  * - Stored (archived) + Live (recent) = complete role assumption history per case
  * - Deduplicated by CloudTrail eventID (UUID) for idempotent re-collection
- * - Scheduled expiry: untagging revokes access when expiresAt has passed
+ * - Scheduled expiry: recompute and write tier tags, excluding expired cases, revokes access when expiresAt has passed
  *
  * Execution role permissions:
  * - cloudtrail:LookupEvents: query assume-role events in a narrow recent window
- * - iam:UntagRole: scoped to support-hop role only, constrained by aws:TagKeys to supportDiagCases and supportConfigCases
+ * - iam:TagRole and iam:UntagRole: scoped to support-hop role only, constrained by aws:TagKeys to serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read.
+ *   TagRole is required for expiry enforcement (recompute-and-write model); UntagRole retained for removal path.
+ * - iam:ListRoleTags: read-only access to compare current tag values so the recompute can skip a no-op write,
+ *   avoiding a ~60s access-deny window that every TagRole write causes.
  * - Config table read/write: update lastCollectedAt timestamp and store role assumptions
  *
  * Schedule:
@@ -84,18 +87,35 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
 
   private grantExpiryEnforcement(supportHopRoleArn: string): void {
     // Scoped precisely to the support-hop role — nothing else, no wildcards, no other resources.
-    // Untag only: UntagRole, constrained by aws:TagKeys to tier-specific tag keys.
+    // TagRole and UntagRole: expiry is enforced by recomputing and writing the full tier-tag values
+    // from DynamoDB, excluding expired cases. UntagRole retained for the removal path.
     // Cannot tag, modify any other role, or remove any other keys.
+    // IMPORTANT: aws:TagKeys is a multivalued condition key and requires the ForAllValues set operator.
+    // Using plain StringEquals would cause silent denials (the condition never matches). ForAllValues ensures
+    // that every tag key in the request is in the allowed set, preventing the lambda from removing keys outside
+    // serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read. Do not "simplify" this back to StringEquals — that change
+    // would silently break all tag removals.
     this.addToRolePolicy(new PolicyStatement({
       actions: [
+        'iam:TagRole',
         'iam:UntagRole',
       ],
       resources: [supportHopRoleArn],
       conditions: {
-        StringEquals: {
+        'ForAllValues:StringEquals': {
           'aws:TagKeys': getSupportTierTagKeys(),
         },
       },
+    }));
+
+    // Read-only access to list current role tags on the support-hop role.
+    // Scoped to the support-hop role only, no conditions — ListRoleTags carries no request
+    // tag keys, so the TagKeys condition would be fragile and obscure intent.
+    this.addToRolePolicy(new PolicyStatement({
+      actions: [
+        'iam:ListRoleTags',
+      ],
+      resources: [supportHopRoleArn],
     }));
   }
 }
