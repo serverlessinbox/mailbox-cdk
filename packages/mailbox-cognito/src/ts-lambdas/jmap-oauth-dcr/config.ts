@@ -15,13 +15,7 @@
  * before any request — including its cap-counter side effect — is ever processed.
  */
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is not configured`);
-  }
-  return value;
-}
+import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 export interface JmapOAuthDcrConfig {
   readonly identityProvisionerFunctionName: string;
@@ -29,6 +23,6 @@ export interface JmapOAuthDcrConfig {
 }
 
 export const config: JmapOAuthDcrConfig = {
-  identityProvisionerFunctionName: requireEnv('IDENTITY_PROVISIONER_FUNCTION_NAME'),
-  userPoolId: requireEnv('USER_POOL_ID'),
+  identityProvisionerFunctionName: env.mustGet('IDENTITY_PROVISIONER_FUNCTION_NAME'),
+  userPoolId: env.mustGet('USER_POOL_ID'),
 };

@@ -1,8 +1,7 @@
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserAttributesCommand, AdminAddUserToGroupCommand, UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import https from 'node:https';
 import { URL } from 'node:url';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 type CloudFormationCustomResourceEvent = {
   RequestType: 'Create' | 'Update' | 'Delete';
@@ -138,8 +137,15 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
 }
 
 export const handler = withSmokeTest(async (event: CloudFormationCustomResourceEvent): Promise<void> => {
-  // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event);
+  // Read SERVICE_NAME at entry point; thread to sub-functions
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+
+  // Emit finalization details for manual recovery of hung custom resources.
+  // Intentionally omit physicalResourceId (which would be BootstrapUser:${userPoolId}:${username})
+  // to avoid writing the admin username into CloudWatch logs.
+  emitManualFinalize(event, { service });
 
   const props = event.ResourceProperties as BootstrapUserProperties;
 

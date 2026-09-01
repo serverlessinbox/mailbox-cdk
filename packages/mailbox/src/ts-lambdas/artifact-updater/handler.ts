@@ -8,7 +8,8 @@
 import * as t from 'typanion';
 import { Context, APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { cfnTriggerHandler } from './cfn-trigger';
+import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { createCfnTriggerHandler } from './cfn-trigger';
 import { handleHttpTrigger } from './http-trigger';
 import { runUpdateCycle } from './update-cycle';
 
@@ -80,6 +81,11 @@ export const handler = async (
   event: unknown,
   context?: Context,
 ): Promise<any> => {
+  // Read SERVICE_NAME at entry point; thread to sub-functions
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+
   // Compute dispatch mode once, log it via a single direct call — this line always emits
   // regardless of outcome, so it never participates in LoggerBuffer's suppressed trace
   // (see buffered-logging-pattern skill's narrow exception for always-on diagnostic markers).
@@ -94,13 +100,14 @@ export const handler = async (
     // wrapHandler returns a CloudFormationCustomResourceHandler which has signature:
     // (event, context, callback?) => void | Promise<void>
     // Since wrapHandler handles responses internally, the callback is unused; pass no-op.
+    const cfnTriggerHandler = createCfnTriggerHandler(service);
     return cfnTriggerHandler(event, context!, () => {});
   }
 
   if (httpApi) {
-    return handleHttpTrigger(event);
+    return handleHttpTrigger(event, service);
   }
 
   // EventBridge or self-invoked: run the update cycle
-  return runUpdateCycle();
+  return runUpdateCycle(service);
 };

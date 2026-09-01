@@ -74,6 +74,7 @@ export class TypeScriptLambda extends LambdaFunction {
       packageName = 'mailbox-cdk',
       handler = 'index.handler',
       logGroupRetention = RetentionDays.ONE_MONTH,
+      environment: callerEnvironment,
       ...lambdaProps
     } = props;
 
@@ -103,6 +104,12 @@ export class TypeScriptLambda extends LambdaFunction {
       ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
       description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...(logGroup ? { logGroup } : {}),
+      // SERVICE_NAME carries the stable lambdaId to every log line for attribution.
+      // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
+      environment: {
+        ...callerEnvironment,
+        SERVICE_NAME: lambdaId,
+      },
       ...lambdaProps,
     });
 

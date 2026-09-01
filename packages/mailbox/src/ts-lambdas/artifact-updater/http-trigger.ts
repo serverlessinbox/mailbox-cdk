@@ -11,11 +11,11 @@ import { dispatchSelfInvoke } from './self-invoke';
  * - GET  /artifact-updates/status:  sync GetItem on lock table, respond 200 with status
  * - else: respond 404
  */
-export async function handleHttpTrigger(event: APIGatewayProxyEventV2): Promise<{
+export async function handleHttpTrigger(event: APIGatewayProxyEventV2, service?: string): Promise<{
   statusCode: number;
   body: string;
 }> {
-  const logger = new LoggerBuffer();
+  const logger = new LoggerBuffer(service);
   const method = event.requestContext?.http?.method ?? '';
   const path = event.requestContext?.http?.path ?? event.rawPath ?? '';
   logger.debug('http trigger received', { method, path });

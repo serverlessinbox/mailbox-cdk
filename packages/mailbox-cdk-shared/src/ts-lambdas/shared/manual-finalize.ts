@@ -1,4 +1,14 @@
 /**
+ * Options for emitManualFinalize.
+ */
+export interface EmitManualFinalizeOptions {
+  /** The physical resource ID for the response. If not provided, falls back to event.LogicalResourceId. */
+  physicalResourceId?: string;
+  /** Service name for attribution in logs. */
+  service?: string;
+}
+
+/**
  * Emit CloudFormation custom-resource finalization details for manual recovery.
  *
  * This is break-glass tooling for releasing custom resources that hang during early-stage
@@ -18,8 +28,7 @@
  * spurious MANUAL_FINALIZE output during smoke-test probes, which do not carry a ResponseURL.
  *
  * @param event - CloudFormation custom-resource event
- * @param physicalResourceId - (optional) the physical resource ID for the response. If not provided,
- *                              falls back to event.LogicalResourceId to ensure the curl is always valid.
+ * @param options - (optional) configuration object with physicalResourceId and service
  */
 export function emitManualFinalize(
   event: {
@@ -30,8 +39,9 @@ export function emitManualFinalize(
     RequestType?: string;
     ResourceProperties?: Record<string, any>;
   },
-  physicalResourceId?: string,
+  options?: EmitManualFinalizeOptions,
 ): void {
+  const { physicalResourceId, service } = options ?? {};
   // Guard: if no ResponseURL, this is not a real CFN event (likely a smoke test).
   // Emit nothing and return silently.
   if (!event.ResponseURL) {
@@ -56,16 +66,18 @@ export function emitManualFinalize(
 
   // Emit greppable lines using raw console.log (not LoggerBuffer).
   // Each line is independently greppable and includes the key detail.
-  console.log(
-    'MANUAL_FINALIZE stack=' +
-      (event.ResourceProperties?.stackName ?? event.LogicalResourceId ?? 'unknown') +
-      ' logical=' +
-      (event.LogicalResourceId ?? 'unknown') +
-      ' type=' +
-      (event.RequestType ?? 'unknown') +
-      ' requestId=' +
-      (event.RequestId ?? 'unknown')
-  );
+  let firstLine = 'MANUAL_FINALIZE stack=' +
+    (event.ResourceProperties?.stackName ?? event.LogicalResourceId ?? 'unknown') +
+    ' logical=' +
+    (event.LogicalResourceId ?? 'unknown') +
+    ' type=' +
+    (event.RequestType ?? 'unknown') +
+    ' requestId=' +
+    (event.RequestId ?? 'unknown');
+  if (service) {
+    firstLine += ' service=' + service;
+  }
+  console.log(firstLine);
   console.log('MANUAL_FINALIZE responseUrl=' + event.ResponseURL);
   console.log('MANUAL_FINALIZE body=' + finalizationBody);
   console.log(

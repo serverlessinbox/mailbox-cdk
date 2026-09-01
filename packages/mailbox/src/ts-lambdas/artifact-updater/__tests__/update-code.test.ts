@@ -55,6 +55,13 @@ describe('advanceLambdaIfStale', () => {
     process.env.PROJECT = 'serverlessinbox';
   });
 
+  const testConfig = {
+    distTag: 'latest',
+    granularity: 'major',
+    project: 'serverlessinbox',
+    artifactBucketBase: 'mailbox-artifacts',
+  };
+
   it('skips update when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
@@ -67,6 +74,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -93,6 +101,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -130,6 +139,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(true);
@@ -168,6 +178,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(true);
@@ -207,6 +218,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -247,6 +259,7 @@ describe('advanceLambdaIfStale', () => {
         'mailbox-go',
         '1.2.3',
         logger,
+        testConfig,
       ),
     ).rejects.toThrow('Function code update failed');
 
@@ -274,6 +287,7 @@ describe('advanceLambdaIfStale', () => {
       'mailbox-go',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -284,6 +298,7 @@ describe('advanceLambdaIfStale', () => {
 
   it('uses ARTIFACT_BUCKET_BASE env var when provided', async () => {
     process.env.ARTIFACT_BUCKET_BASE = 'custom-artifacts';
+    const customConfig = { ...testConfig, artifactBucketBase: 'custom-artifacts' };
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue({
       version: '1.0.1',
@@ -303,7 +318,7 @@ describe('advanceLambdaIfStale', () => {
     lambdaMock.on(TagResourceCommand).resolves({});
     const logger = new LoggerBuffer();
 
-    const updated = await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0', logger);
+    const updated = await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0', logger, customConfig);
 
     expect(updated).toBe(true);
     // Verify both the readReleasePointer and UpdateFunctionCodeCommand use custom bucket

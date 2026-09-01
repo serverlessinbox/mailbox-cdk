@@ -35,7 +35,7 @@ export interface GoLambda2Props extends FunctionOptions {
 /** @internal */
 export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
-    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, ...lambdaProps } = props;
+    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, environment: callerEnvironment, ...restProps } = props;
 
     const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
@@ -60,10 +60,16 @@ export class GoLambda extends LambdaFunction {
       handler: 'bootstrap',
       architecture: Architecture.ARM_64,
       memorySize: 640,
-      ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
-      description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
+      ...(restProps.functionName ? { functionName: restProps.functionName } : {}),
+      description: restProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...(logGroup ? { logGroup } : {}),
-      ...lambdaProps,
+      // SERVICE_NAME carries the stable lambdaId to every log line for attribution.
+      // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
+      environment: {
+        ...callerEnvironment,
+        SERVICE_NAME: lambdaId,
+      },
+      ...restProps,
     });
 
     applyArtifactTags(this, 'mailbox-go', lambdaId, artifactResolver.getVersion('mailbox-go'));

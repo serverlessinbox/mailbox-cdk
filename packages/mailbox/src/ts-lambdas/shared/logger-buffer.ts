@@ -20,34 +20,50 @@ export class LoggerBuffer {
   private entries: LogEntry[] = [];
   private updateCount: number = 0;
   private errorCount: number = 0;
+  private service?: string;
+
+  constructor(service?: string) {
+    this.service = service;
+  }
 
   /**
    * Record a debug log (high-volume, typically skipped info).
    */
   debug(message: string, data?: Record<string, unknown>): void {
-    this.entries.push({ level: 'debug', message, data });
+    this.entries.push({ level: 'debug', message, data: this.attachService(data) });
   }
 
   /**
    * Record an info log (business state changes, updates).
    */
   info(message: string, data?: Record<string, unknown>): void {
-    this.entries.push({ level: 'info', message, data });
+    this.entries.push({ level: 'info', message, data: this.attachService(data) });
   }
 
   /**
    * Record a warning log.
    */
   warn(message: string, data?: Record<string, unknown>): void {
-    this.entries.push({ level: 'warn', message, data });
+    this.entries.push({ level: 'warn', message, data: this.attachService(data) });
   }
 
   /**
    * Record an error log and increment error counter.
    */
   error(message: string, data?: Record<string, unknown>): void {
-    this.entries.push({ level: 'error', message, data });
+    this.entries.push({ level: 'error', message, data: this.attachService(data) });
     this.errorCount++;
+  }
+
+  /**
+   * Attach the service field to data if service is set.
+   * When service is not set, returns data unchanged (field absent, not empty).
+   */
+  private attachService(data?: Record<string, unknown>): Record<string, unknown> | undefined {
+    if (!this.service) {
+      return data;
+    }
+    return { ...data, service: this.service };
   }
 
   /**

@@ -12,7 +12,7 @@
 
 import * as https from 'https';
 import type { Context, CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { cfnTriggerHandler } from '../cfn-trigger';
+import { createCfnTriggerHandler } from '../cfn-trigger';
 import { runUpdateCycle } from '../update-cycle';
 
 jest.mock('../update-cycle', () => ({
@@ -53,10 +53,12 @@ const baseFields = {
 
 describe('cfnTriggerHandler', () => {
   let writtenBodies: string[];
+  let cfnTriggerHandler: ReturnType<typeof createCfnTriggerHandler>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     writtenBodies = [];
+    cfnTriggerHandler = createCfnTriggerHandler();
     mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
       // Simulate CloudFormation accepting the PUT immediately.
       process.nextTick(() => callback({ statusCode: 200, headers: {} }));

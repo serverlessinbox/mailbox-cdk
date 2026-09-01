@@ -19,14 +19,14 @@
 /**
  * Smoke test probe payload (always single-property JSON).
  */
-interface SmokeTestProbe {
+export interface SmokeTestProbe {
   serverlessInboxSmokeTest?: true;
 }
 
 /**
  * Smoke test response payload.
  */
-interface SmokeTestResponse {
+export interface SmokeTestResponse {
   serverlessInboxSmokeTestOk: boolean;
 }
 
@@ -34,7 +34,9 @@ interface SmokeTestResponse {
  * Wraps a Lambda handler to intercept smoke test probes.
  *
  * @param handler The underlying Lambda handler (any shape: async function, CloudFormationCustomResourceHandler, etc.)
- * @returns A wrapped handler that intercepts probes and delegates real traffic to the original handler
+ * @returns A wrapped handler that intercepts probes and delegates real traffic to the original handler.
+ *          The returned handler accepts the original handler's event type OR a SmokeTestProbe,
+ *          and returns either the handler's result OR a SmokeTestResponse.
  *
  * For event-based handlers:
  *   - Probe: returns `{ serverlessInboxSmokeTestOk: true }` without invoking handler
@@ -47,7 +49,13 @@ interface SmokeTestResponse {
  * The handler's own error handling is unchanged — no special behavior on errors.
  * If the handler throws during a real invocation, the error propagates normally.
  */
-export function withSmokeTest<T extends (...args: any[]) => any>(handler: T): T {
+export function withSmokeTest<T extends (...args: any[]) => any>(
+  handler: T,
+): (
+  event: Parameters<T>[0] | SmokeTestProbe | string,
+  context?: Parameters<T>[1],
+  callback?: Parameters<T>[2],
+) => Promise<Awaited<ReturnType<T>> | SmokeTestResponse> {
   return (async (event: any, context: any, callback: any) => {
     // Check if this is a smoke test probe:
     // - Parse as JSON if it's a string
@@ -112,5 +120,9 @@ export function withSmokeTest<T extends (...args: any[]) => any>(handler: T): T 
         throw error;
       }
     }
-  }) as T;
+  }) as (
+    event: Parameters<T>[0] | SmokeTestProbe | string,
+    context?: Parameters<T>[1],
+    callback?: Parameters<T>[2],
+  ) => Promise<Awaited<ReturnType<T>> | SmokeTestResponse>;
 }

@@ -1,5 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { Route53Client, GetHostedZoneCommand } from '@aws-sdk/client-route-53';
 
 const r53 = new Route53Client({});
@@ -47,8 +47,13 @@ export function deriveCognitoDomainPrefix(domainName: string, fallback: string):
 }
 
 export const handler = wrapHandler(async (event) => {
+  // Read SERVICE_NAME at entry point; thread to sub-functions
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+
   // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event as any);
+  emitManualFinalize(event, { service });
 
   if (event.RequestType === 'Delete') return {};
 

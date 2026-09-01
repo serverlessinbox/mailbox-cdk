@@ -31,6 +31,16 @@ jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   deployZipToPrefix: jest.fn(),
   normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
   invalidateCloudFront: jest.fn(),
+  env: {
+    get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,
+    mustGet: (name: string) => {
+      const value = process.env[name];
+      if (!value) throw new Error(`required environment variable ${name} is not set`);
+      return value;
+    },
+  },
+  withSmokeTest: (handler: any) => handler,
+  emitManualFinalize: jest.fn(),
 }));
 
 // Import mocks as any to work around jest.requireMock's untyped return
@@ -60,6 +70,13 @@ describe('advanceUiBucketIfStale', () => {
     cloudFrontMock.restore();
   });
 
+  const testConfig = {
+    distTag: 'latest',
+    granularity: 'major',
+    project: 'serverlessinbox',
+    artifactBucketBase: 'mailbox-artifacts',
+  };
+
   it('skips when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
@@ -73,6 +90,7 @@ describe('advanceUiBucketIfStale', () => {
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -98,6 +116,7 @@ describe('advanceUiBucketIfStale', () => {
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -127,6 +146,7 @@ describe('advanceUiBucketIfStale', () => {
       '1.2.3',
       distributionArn,
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(true);
@@ -175,6 +195,7 @@ describe('advanceUiBucketIfStale', () => {
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -184,6 +205,7 @@ describe('advanceUiBucketIfStale', () => {
 
   it('uses custom ARTIFACT_BUCKET_BASE when provided', async () => {
     process.env.ARTIFACT_BUCKET_BASE = 'custom-artifacts';
+    const customConfig = { ...testConfig, artifactBucketBase: 'custom-artifacts' };
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue({
       version: '1.2.4',
@@ -204,6 +226,7 @@ describe('advanceUiBucketIfStale', () => {
       '1.2.3',
       'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
       logger,
+      customConfig,
     );
 
     expect(updated).toBe(true);

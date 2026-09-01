@@ -13,19 +13,26 @@ import { getUpdaterEnv, tagMapFrom } from './common';
  * Implements buffered logging: only logs when updates occur or errors happen.
  * Scans both regions and filters by registered packages.
  */
-export async function runUpdateCycle(): Promise<void> {
-  const logger = new LoggerBuffer();
+export async function runUpdateCycle(service?: string): Promise<void> {
+  const logger = new LoggerBuffer(service);
 
   try {
-    const env = getUpdaterEnv();
-    const registeredPackages = new Set(JSON.parse(env.REGISTERED_PACKAGES));
+    const updaterEnv = getUpdaterEnv();
+    // Extract config needed for update functions
+    const updateConfig = {
+      distTag: updaterEnv.distTag,
+      granularity: updaterEnv.granularity,
+      project: updaterEnv.project,
+      artifactBucketBase: updaterEnv.artifactBucketBase,
+    };
+    const registeredPackages = new Set(JSON.parse(updaterEnv.registeredPackages));
     const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
     const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
 
     logger.info('artifact update cycle started', {
-      rootStackTag: env.ROOT_STACK_TAG_VALUE,
+      rootStackTag: updaterEnv.rootStackTagValue,
       regions: uniqueRegions,
-      granularity: env.GRANULARITY,
+      granularity: updaterEnv.granularity,
       registeredPackages: [...registeredPackages],
     });
 
@@ -37,7 +44,7 @@ export async function runUpdateCycle(): Promise<void> {
       do {
         const response = await tagging.send(
           new GetResourcesCommand({
-            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [env.ROOT_STACK_TAG_VALUE] }],
+            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [updaterEnv.rootStackTagValue] }],
             ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
             PaginationToken: nextToken,
           }),
@@ -83,7 +90,7 @@ export async function runUpdateCycle(): Promise<void> {
                     logger.debug('UI distribution missing bucket-name tag', { arn });
                     continue;
                   }
-                  await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn, logger);
+                  await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn, logger, updateConfig);
                 } else {
                   logger.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
                 }
@@ -91,11 +98,11 @@ export async function runUpdateCycle(): Promise<void> {
                 // Lambda function: code or edge types
                 switch (autoUpdateType) {
                   case 'code':
-                    await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion, logger);
+                    await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
                     break;
                   case 'edge':
                     if (region === 'us-east-1') {
-                      await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion, logger);
+                      await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion, logger, updateConfig);
                     } else {
                       logger.debug('skipping edge update in non-us-east-1 region', { arn, region });
                     }

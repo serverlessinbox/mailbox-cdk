@@ -1,5 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { runUpdateCycle } from './update-cycle';
 
 /**
@@ -27,25 +27,27 @@ import { runUpdateCycle } from './update-cycle';
  * isn't reachable here even after narrowing on RequestType === 'Delete' -- relying on the
  * wrapper's own fallback avoids needing an unsound cast to reach it.)
  */
-export const cfnTriggerHandler = wrapHandler(async (event) => {
-  // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event as any);
+export function createCfnTriggerHandler(service?: string) {
+  return wrapHandler(async (event) => {
+    // Emit finalization details for manual recovery of hung custom resources
+    emitManualFinalize(event, { service });
 
-  if (event.RequestType === 'Delete') {
+    if (event.RequestType === 'Delete') {
+      return {
+        Data: {},
+      };
+    }
+
+    try {
+      await runUpdateCycle(service);
+    } catch (err: unknown) {
+      // runUpdateCycle() already logged the error via LoggerBuffer and flushed it to CloudWatch
+      // before rethrowing. We catch here to prevent CFN FAILED and allow deployment to continue.
+    }
+
     return {
+      PhysicalResourceId: event.LogicalResourceId,
       Data: {},
     };
-  }
-
-  try {
-    await runUpdateCycle();
-  } catch (err: unknown) {
-    // runUpdateCycle() already logged the error via LoggerBuffer and flushed it to CloudWatch
-    // before rethrowing. We catch here to prevent CFN FAILED and allow deployment to continue.
-  }
-
-  return {
-    PhysicalResourceId: event.LogicalResourceId,
-    Data: {},
-  };
-});
+  });
+}

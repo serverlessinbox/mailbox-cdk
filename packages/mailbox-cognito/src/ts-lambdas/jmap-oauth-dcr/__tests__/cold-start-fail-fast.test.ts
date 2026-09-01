@@ -46,7 +46,7 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
 
     expect(() => {
       require('../handler');
-    }).toThrow(/USER_POOL_ID is not configured/);
+    }).toThrow(/required environment variable USER_POOL_ID is not set/);
 
     expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
@@ -71,7 +71,7 @@ describe('cold-start fail-fast: no identity-provisioner invoke, no Cognito call 
 
     expect(() => {
       require('../handler');
-    }).toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
+    }).toThrow(/required environment variable IDENTITY_PROVISIONER_FUNCTION_NAME is not set/);
 
     expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);

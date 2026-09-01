@@ -11,7 +11,8 @@ import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { deployZipToPrefix, normalizePrefix, invalidateCloudFront } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
-import { requireEnv, artifactBucketName } from './common';
+import type { UpdaterTargetConfig } from './common';
+import { artifactBucketName } from './common';
 
 /**
  * Update a UI bucket's contents if a newer bundle version is available.
@@ -30,13 +31,13 @@ export async function advanceUiBucketIfStale(
   deployedVersion: string,
   distributionArn: string,
   logger: LoggerBuffer,
+  config: UpdaterTargetConfig,
 ): Promise<boolean> {
-  const project = requireEnv('PROJECT');
-  const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
+  const { project, artifactBucketBase } = config;
   const deploymentRegion = process.env.AWS_REGION || 'us-east-1';
 
   // Check staleness using deployment region (where the bundle artifact lives)
-  const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion, logger);
+  const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -50,7 +51,7 @@ export async function advanceUiBucketIfStale(
     objectName: artifactName,
     project,
   });
-  const bucket = artifactBucketName(bucketBase, deploymentRegion);
+  const bucket = artifactBucketName(artifactBucketBase, deploymentRegion);
 
   try {
     logger.info('updating UI bucket', { bucketName, artifactBucket: bucket, artifactKey, newVersion: pointer.version, deploymentRegion });

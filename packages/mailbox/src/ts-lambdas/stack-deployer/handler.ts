@@ -1,6 +1,5 @@
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, startOrUpdateStack } from './cfn-stack';
@@ -81,7 +80,10 @@ async function startExecutionWithSuffixRetry(
 }
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
-  const logger = new LoggerBuffer();
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+  const logger = new LoggerBuffer(service);
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
   const createRetryCount = typeof (event as any)?.createRetryCount === 'number' ? (event as any).createRetryCount : 0;
@@ -345,7 +347,10 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 }
 
 async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<void> {
-  const logger = new LoggerBuffer();
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+  const logger = new LoggerBuffer(service);
 
   if (!event?.ResponseURL || !event?.RequestId || !event?.ResourceProperties) {
     throw new Error('Invalid event: expected CloudFormation custom resource event');
@@ -365,7 +370,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
   // Emit break-glass finalization details for manual stack-resource recovery.
   // This is visibility into the CloudFormation response that can be manually sent
   // if the handler hangs and never returns normally.
-  emitManualFinalize(event, physicalResourceId);
+  emitManualFinalize(event, { physicalResourceId });
 
   logger.debug('CFN handler invoked', {
     requestType: event.RequestType,

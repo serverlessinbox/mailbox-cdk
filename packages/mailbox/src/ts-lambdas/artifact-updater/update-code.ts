@@ -7,7 +7,8 @@ import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { parse as semverParse } from 'semver';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { resolveStaleTarget } from './staleness';
-import { requireEnv, artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
+import type { UpdaterTargetConfig } from './common';
+import { artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
 import { invokeSmokeTest } from './smoke-test';
 
 /**
@@ -24,12 +25,12 @@ export async function advanceLambdaIfStale(
   artifactName: string,
   deployedVersion: string,
   logger: LoggerBuffer,
+  config: UpdaterTargetConfig,
 ): Promise<boolean> {
-  const project = requireEnv('PROJECT');
-  const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
+  const { project, artifactBucketBase } = config;
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger);
+  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -43,7 +44,7 @@ export async function advanceLambdaIfStale(
     objectName: `lambdas/${artifactName}.zip`,
     project,
   });
-  const bucket = artifactBucketName(bucketBase, region);
+  const bucket = artifactBucketName(artifactBucketBase, region);
 
   const lambdaClient = new LambdaClient({ region });
   try {

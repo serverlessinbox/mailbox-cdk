@@ -3,28 +3,23 @@
  */
 
 import { LambdaClient, TagResourceCommand, GetFunctionConfigurationCommand } from '@aws-sdk/client-lambda';
+import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** Environment variables required for artifact updater operations. */
 export interface UpdaterEnv {
-  PROJECT: string;
-  DIST_TAG: string;
-  GRANULARITY: string;
-  ARTIFACT_BUCKET_BASE: string;
-  ROOT_STACK_TAG_VALUE: string;
-  REGISTERED_PACKAGES: string;
+  readonly project: string;
+  readonly distTag: string;
+  readonly granularity: string;
+  readonly artifactBucketBase: string;
+  readonly rootStackTagValue: string;
+  readonly registeredPackages: string;
 }
 
-/**
- * Read a required environment variable.
- * Throws if the variable is not set.
- */
-export function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`required environment variable ${name} is not set`);
-  }
-  return value;
-}
+/** Configuration for artifact staleness checking and resolution. Subset of UpdaterEnv. */
+export type UpdaterTargetConfig = Pick<
+  UpdaterEnv,
+  'project' | 'distTag' | 'granularity' | 'artifactBucketBase'
+>;
 
 /**
  * Parse and validate all required environment variables into a typed interface.
@@ -32,12 +27,12 @@ export function requireEnv(name: string): string {
  */
 export function getUpdaterEnv(): UpdaterEnv {
   return {
-    PROJECT: requireEnv('PROJECT'),
-    DIST_TAG: requireEnv('DIST_TAG'),
-    GRANULARITY: requireEnv('GRANULARITY'),
-    ARTIFACT_BUCKET_BASE: process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts',
-    ROOT_STACK_TAG_VALUE: requireEnv('ROOT_STACK_TAG_VALUE'),
-    REGISTERED_PACKAGES: requireEnv('REGISTERED_PACKAGES'),
+    project: env.mustGet('PROJECT'),
+    distTag: env.mustGet('DIST_TAG'),
+    granularity: env.mustGet('GRANULARITY'),
+    artifactBucketBase: env.mustGet('ARTIFACT_BUCKET_BASE'),
+    rootStackTagValue: env.mustGet('ROOT_STACK_TAG_VALUE'),
+    registeredPackages: env.mustGet('REGISTERED_PACKAGES'),
   };
 }
 

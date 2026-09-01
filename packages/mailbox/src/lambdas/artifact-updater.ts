@@ -16,6 +16,9 @@ export interface ArtifactUpdaterLambdaProps {
   /** Root stack name (Aws.STACK_NAME). */
   rootStackTagValue: string;
 
+  /** Base name for artifact S3 buckets (e.g., 'mailbox-artifacts'). */
+  artifactBucketBase: string;
+
   /** DynamoDB lock table for update concurrency control. */
   readonly lockTable: ITable;
 
@@ -37,6 +40,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       timeout: Duration.minutes(5),
       memorySize: 256,
       environment: {
+        ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
         DIST_TAG: props.distTag,
         GRANULARITY: props.granularity,
         PROJECT: 'serverlessinbox',

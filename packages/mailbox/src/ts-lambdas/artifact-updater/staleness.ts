@@ -6,7 +6,7 @@
 import { deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
 import { LoggerBuffer } from '../shared/logger-buffer';
-import { requireEnv } from './common';
+import type { UpdaterTargetConfig } from './common';
 
 /** Result of checking staleness: pointer + parsed semver, or null if no update. */
 export interface StaleTarget {
@@ -29,18 +29,16 @@ export async function resolveStaleTarget(
   packageName: string,
   deployedVersion: string,
   logger: LoggerBuffer,
+  config: UpdaterTargetConfig,
 ): Promise<StaleTarget | null> {
-  const distTag = requireEnv('DIST_TAG');
-  const granularity = requireEnv('GRANULARITY');
-  const project = requireEnv('PROJECT');
-  const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
+  const { distTag, granularity, project, artifactBucketBase } = config;
 
   // Derive the track from the deployed version.
   const myTrack = deriveTrack(deployedVersion, granularity as 'major' | 'minor');
 
   // Read the track-scoped pointer.
   const pointer = await readReleasePointer(packageName, distTag, region, {
-    bucketBase,
+    bucketBase: artifactBucketBase,
     project,
     track: myTrack,
   });

@@ -5,7 +5,7 @@ import {
 	type AdminAuthContext,
 	type AuditContext,
 } from '@serverlessinbox/mailbox-admin-api';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { SqsAuditEmitter } from './audit';
 import { createCognitoIdpUsersServiceSpec } from './service';

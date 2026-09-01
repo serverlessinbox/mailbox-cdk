@@ -4,3 +4,6 @@
 
 export { deployZipToPrefix, normalizePrefix } from './ts-lambdas/shared/content-ops';
 export { invalidateCloudFront } from './ts-lambdas/shared/ui-cloudfront';
+export * as env from './ts-lambdas/shared/env';
+export { withSmokeTest, SmokeTestProbe, SmokeTestResponse } from './ts-lambdas/shared/with-smoke-test';
+export { emitManualFinalize, type EmitManualFinalizeOptions } from './ts-lambdas/shared/manual-finalize';

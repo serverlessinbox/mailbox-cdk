@@ -45,7 +45,7 @@ describe('config (cold-start env validation)', () => {
       jest.isolateModules(() => {
         require('../config');
       });
-    }).toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME is not configured/);
+    }).toThrow(/required environment variable IDENTITY_PROVISIONER_FUNCTION_NAME is not set/);
   });
 
   it.each([
@@ -63,6 +63,6 @@ describe('config (cold-start env validation)', () => {
       jest.isolateModules(() => {
         require('../config');
       });
-    }).toThrow(/USER_POOL_ID is not configured/);
+    }).toThrow(/required environment variable USER_POOL_ID is not set/);
   });
 });

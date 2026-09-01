@@ -1,6 +1,5 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/manual-finalize';
+import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import {
   ACMClient,
@@ -14,7 +13,6 @@ import {
   DeleteFunctionCommand,
 } from '@aws-sdk/client-lambda';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import type { CloudFormationCustomResourceHandler } from 'aws-lambda';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
 
@@ -52,7 +50,10 @@ export interface WorkerOutput {
  * - Aggregate: FAILED if any hard error/mismatch; RETRY if any target not-done; SUCCESS if all done.
  */
 export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
-  const logger = new LoggerBuffer();
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+  const logger = new LoggerBuffer(service);
 
   logger.debug('Worker invoked', {
     hasCertArn: !!input.certArn,
@@ -233,11 +234,14 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
  * sweep runs asynchronously. StartExecution failures are logged but do not
  * prevent the custom resource from completing (best-effort).
  */
-export const starterHandler: CloudFormationCustomResourceHandler = withSmokeTest(wrapHandler(async (event) => {
-  const logger = new LoggerBuffer();
+export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
+  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
+  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
+  const service = env.get('SERVICE_NAME', undefined);
+  const logger = new LoggerBuffer(service);
 
   // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event as any);
+  emitManualFinalize(event, { service });
 
   // Emit single always-emit diagnostic marker for this trigger mode
   console.info('resource-sweeper-starter dispatch', {

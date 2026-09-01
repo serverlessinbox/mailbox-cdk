@@ -52,11 +52,23 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
 // package's root export), so the mock must target that same subpath or Jest loads the
 // real content-ops.ts module — including its module-scope S3Client — and issues real
 // AWS calls.
-jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
-  deployZipToPrefix: jest.fn(),
-  normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
-  invalidateCloudFront: jest.fn(),
-}));
+jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => {
+  return {
+    deployZipToPrefix: jest.fn(),
+    normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
+    invalidateCloudFront: jest.fn(),
+    env: {
+      get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,
+      mustGet: (name: string) => {
+        const value = process.env[name];
+        if (!value) throw new Error(`required environment variable ${name} is not set`);
+        return value;
+      },
+    },
+    withSmokeTest: (handler: any) => handler,
+    emitManualFinalize: jest.fn(),
+  };
+});
 
 // Import mocks as any to work around jest.requireMock's untyped return
 const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock('@serverlessinbox/artifact-registry') as any;
@@ -191,6 +203,9 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       // Include all packages used in tests (main production packages + test fixtures)
       process.env.REGISTERED_PACKAGES = JSON.stringify(['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui', 'pkg1', 'pkg2', 'admin-api', 'ui-bundle']);
     });
@@ -219,6 +234,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
@@ -282,6 +298,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.AWS_REGION = 'us-east-1';
       process.env.AWS_ACCOUNT_ID = '123456789012';
 
@@ -330,6 +347,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
@@ -631,6 +649,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
       process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       // Include all packages used in tests
       process.env.REGISTERED_PACKAGES = JSON.stringify(['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui']);
@@ -673,6 +692,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.PROJECT = 'serverlessinbox';
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 

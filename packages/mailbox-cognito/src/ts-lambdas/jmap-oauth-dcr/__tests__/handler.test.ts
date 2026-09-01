@@ -10,6 +10,7 @@ import {
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
+import { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { handler } from '../handler';
 
@@ -295,8 +296,8 @@ describe('jmap-oauth-dcr handler — smoke test wrapper', () => {
   });
 
   it('responds to smoke test probe without invoking the real handler', async () => {
-    const probeEvent = { serverlessInboxSmokeTest: true };
-    const result = await handler(probeEvent, {});
+    const probeEvent: SmokeTestProbe = { serverlessInboxSmokeTest: true };
+    const result = await handler(probeEvent);
 
     expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
 

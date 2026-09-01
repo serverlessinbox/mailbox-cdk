@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/smoke-test';
+import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { CognitoUserPoolClientManager } from './cognito-client';
 import { config } from './config';

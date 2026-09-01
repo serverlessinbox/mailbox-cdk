@@ -78,6 +78,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
     const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: updaterEngine,
+      artifactBucketBase: this.bucketBase,
       distTag: this.distTag,
       granularity,
       rootStackTagValue: Aws.STACK_NAME,

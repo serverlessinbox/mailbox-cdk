@@ -142,6 +142,13 @@ describe('advanceEdgeLambdaIfStale', () => {
     process.env.PROJECT = 'serverlessinbox';
   });
 
+  const testConfig = {
+    distTag: 'latest',
+    granularity: 'major',
+    project: 'serverlessinbox',
+    artifactBucketBase: 'mailbox-artifacts',
+  };
+
   it('skips when no pointer is available', async () => {
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue(null);
@@ -153,6 +160,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -177,6 +185,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -198,6 +207,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(false);
@@ -255,6 +265,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(true);
@@ -371,6 +382,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      testConfig,
     );
 
     expect(updated).toBe(true);
@@ -429,12 +441,14 @@ describe('advanceEdgeLambdaIfStale', () => {
         'edge-lambda',
         '1.2.3',
         logger,
+        testConfig,
       ),
     ).rejects.toThrow(`No CloudFront distribution found for edge lambda ${edgeLambdaArn}`);
   });
 
   it('uses custom ARTIFACT_BUCKET_BASE when provided', async () => {
     process.env.ARTIFACT_BUCKET_BASE = 'custom-artifacts';
+    const customConfig = { ...testConfig, artifactBucketBase: 'custom-artifacts' };
     mockDeriveTrack.mockReturnValue('v1');
     mockReadReleasePointer.mockResolvedValue({
       version: '1.2.4',
@@ -479,6 +493,7 @@ describe('advanceEdgeLambdaIfStale', () => {
       'edge-lambda',
       '1.2.3',
       logger,
+      customConfig,
     );
 
     expect(updated).toBe(true);

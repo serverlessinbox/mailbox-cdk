@@ -18,7 +18,8 @@ import {
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { resolveStaleTarget } from './staleness';
-import { requireEnv, artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
+import type { UpdaterTargetConfig } from './common';
+import { artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
 
 /**
  * Lambda@Edge association type from DistributionConfig.
@@ -73,13 +74,13 @@ export async function advanceEdgeLambdaIfStale(
   artifactName: string,
   deployedVersion: string,
   logger: LoggerBuffer,
+  config: UpdaterTargetConfig,
 ): Promise<boolean> {
-  const project = requireEnv('PROJECT');
-  const bucketBase = process.env.ARTIFACT_BUCKET_BASE ?? 'mailbox-artifacts';
+  const { project, artifactBucketBase } = config;
   const region = 'us-east-1'; // Edge lambdas are always us-east-1
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger);
+  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -93,7 +94,7 @@ export async function advanceEdgeLambdaIfStale(
     objectName: `lambdas/${artifactName}.zip`,
     project,
   });
-  const bucket = artifactBucketName(bucketBase, region);
+  const bucket = artifactBucketName(artifactBucketBase, region);
 
   const lambdaClient = new LambdaClient({ region });
   const cfClient = new CloudFrontClient({ region });

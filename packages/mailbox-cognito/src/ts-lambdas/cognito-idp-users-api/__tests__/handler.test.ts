@@ -15,6 +15,7 @@ process.env.USER_GROUPS = JSON.stringify(['user']);
 
 import { CognitoIdentityProviderClient, AdminCreateUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { mockClient } from 'aws-sdk-client-mock';
+import { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { handler } from '../index';
 
 describe('CognitoIdpUsersApi handler — smoke test wrapper', () => {
@@ -25,8 +26,8 @@ describe('CognitoIdpUsersApi handler — smoke test wrapper', () => {
   });
 
   it('responds to smoke test probe without invoking the real handler', async () => {
-    const probeEvent = { serverlessInboxSmokeTest: true };
-    const result = await handler(probeEvent, {});
+    const probeEvent: SmokeTestProbe = { serverlessInboxSmokeTest: true };
+    const result = await handler(probeEvent);
 
     expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
 
