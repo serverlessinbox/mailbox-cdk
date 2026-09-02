@@ -1,5 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { dispatchSelfInvoke } from './self-invoke';
 
@@ -16,6 +17,7 @@ export async function handleHttpTrigger(event: APIGatewayProxyEventV2, service?:
   body: string;
 }> {
   const logger = new LoggerBuffer(service);
+  const tableName = env.get('LOCK_TABLE_NAME', '');
   const method = event.requestContext?.http?.method ?? '';
   const path = event.requestContext?.http?.path ?? event.rawPath ?? '';
   logger.debug('http trigger received', { method, path });
@@ -47,7 +49,6 @@ export async function handleHttpTrigger(event: APIGatewayProxyEventV2, service?:
   // GET /artifact-updates/status: sync read from lock table
   if (method === 'GET' && path.includes('/status')) {
     const dynamoClient = new DynamoDBClient({});
-    const tableName = process.env.LOCK_TABLE_NAME || '';
 
     if (!tableName) {
       logger.error('LOCK_TABLE_NAME not set');

@@ -356,7 +356,7 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     throw new Error('Invalid event: expected CloudFormation custom resource event');
   }
 
-  const stateMachineArnRaw = process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
+  const stateMachineArnRaw = env.get('MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN');
   const physicalResourceId = event.ResourceProperties.stackName ?? 'MailboxStack';
 
   const cfn = {

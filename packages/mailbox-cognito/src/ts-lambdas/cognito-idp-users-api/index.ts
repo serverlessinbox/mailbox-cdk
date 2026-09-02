@@ -5,9 +5,10 @@ import {
 	type AdminAuthContext,
 	type AuditContext,
 } from '@serverlessinbox/mailbox-admin-api';
-import { withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { SqsAuditEmitter } from './audit';
+import { CognitoIdpUsersService } from './idp-users.service';
 import { createCognitoIdpUsersServiceSpec } from './service';
 
 function parseJsonStringArrayEnv(name: string): string[] | undefined {
@@ -21,12 +22,13 @@ function parseJsonStringArrayEnv(name: string): string[] | undefined {
 	}
 }
 
-const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
-registry.register(createCognitoIdpUsersServiceSpec());
-
-const auditQueueUrl = process.env.AUDIT_EVENTS_QUEUE_URL;
+const userPoolId = env.mustGet('USER_POOL_ID');
+const auditQueueUrl = env.get('AUDIT_EVENTS_QUEUE_URL');
 const adminGroups = parseJsonStringArrayEnv('ADMIN_GROUPS');
 const userGroups = parseJsonStringArrayEnv('USER_GROUPS');
+
+const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
+registry.register(createCognitoIdpUsersServiceSpec({ service: new CognitoIdpUsersService(undefined, userPoolId) }));
 
 const emitAuditEvent = auditQueueUrl ? new SqsAuditEmitter(auditQueueUrl).emit : undefined;
 

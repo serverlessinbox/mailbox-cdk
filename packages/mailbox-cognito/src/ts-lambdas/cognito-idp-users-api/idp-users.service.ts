@@ -20,15 +20,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
   private readonly cognito: CognitoIdentityProviderClient;
   private readonly userPoolId: string;
 
-  constructor(client?: CognitoIdentityProviderClient, userPoolId?: string) {
+  constructor(client: CognitoIdentityProviderClient | undefined, userPoolId: string) {
     this.cognito = client ?? new CognitoIdentityProviderClient({});
-    this.userPoolId = userPoolId ?? CognitoIdpUsersService.requireUserPoolIdFromEnv();
-  }
-
-  private static requireUserPoolIdFromEnv(): string {
-    const id = process.env.USER_POOL_ID;
-    if (!id) throw new Error('Missing USER_POOL_ID');
-    return id;
+    this.userPoolId = userPoolId;
   }
 
   async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {

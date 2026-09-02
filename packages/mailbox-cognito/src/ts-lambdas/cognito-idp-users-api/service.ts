@@ -13,14 +13,14 @@ function isMethodName(x: string): x is MethodName {
 }
 
 export type CognitoIdpUsersServiceSpecOptions = {
-	service?: IdpUsersServiceHandlers<AdminAuthContext, AuditContext>;
+	service: IdpUsersServiceHandlers<AdminAuthContext, AuditContext>;
 	validator?: IdpUsersRequestValidator;
 };
 
 export function createCognitoIdpUsersServiceSpec(
-	opts: CognitoIdpUsersServiceSpecOptions = {}
+	opts: CognitoIdpUsersServiceSpecOptions
 ): ServiceSpec<AdminAuthContext, AuditContext> {
-	const impl = opts.service ?? new CognitoIdpUsersService();
+	const impl = opts.service;
 	const validator = opts.validator ?? new IdpUsersRequestValidator();
 
 	const validatorByMethodName = {
