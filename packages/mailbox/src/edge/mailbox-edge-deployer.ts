@@ -40,6 +40,9 @@ export interface MailboxEdgeDeployerProps {
   /** Product/stack version used for tagging edge resources. */
   readonly productVersion: string;
 
+  /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
+  readonly logGroupName: string;
+
   /** Optional deployer label used for tagging (default: 'cfn'). */
   readonly deployer?: 'cdk' | 'cfn' | 'marketplace';
 }
@@ -108,6 +111,7 @@ export class MailboxEdgeDeployer extends Construct {
       itemTableArn: props.itemTableArn,
       configTableArn: props.configTableArn,
       authKeyStoreTableArn: props.authKeyStoreTableArn,
+      logGroupName: props.logGroupName,
 
       // Tagging/back-reference parameters (consumed by the edge stack template).
       // Keys MUST match the edge stack's CfnParameter overrideLogicalId (rootStack / rootRegion).

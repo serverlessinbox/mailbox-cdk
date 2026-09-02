@@ -163,6 +163,12 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     authKeyStoreTableArnParam.overrideLogicalId('authKeyStoreTableArn');
 
+    const logGroupNameParam = new cdk.CfnParameter(this, 'log-group-name', {
+      type: 'String',
+      description: 'Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into',
+    });
+    logGroupNameParam.overrideLogicalId('logGroupName');
+
     // Build artifact reference from parameters
     const blobAuthorizerReference: ResolvedArtifact = {
       key: blobAuthorizerKeyParam.valueAsString,
@@ -184,6 +190,7 @@ export class MailboxEdgeStack extends cdk.Stack {
       configTableArn: configTableArnParam.valueAsString,
       authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
       productVersion: productVersionParam.valueAsString,
+      logGroupName: logGroupNameParam.valueAsString,
     };
 
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);

@@ -237,6 +237,29 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       expect(parameters).toHaveProperty('hostedZoneId');
       expect(parameters).toHaveProperty('rootStack');
       expect(parameters).toHaveProperty('artifactBucket');
+      expect(parameters).toHaveProperty('logGroupName');
+    });
+
+    it('edge stack: blob-authorizer LoggingConfig.LogGroup resolves to a Ref on the logGroupName parameter', () => {
+      const app = new App();
+      const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
+        env: { account: '123456789012', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources found in template');
+      }
+
+      const blobAuthorizerFn = Object.values(resources).find(
+        (r) => isResourceOfType(r, 'AWS::Lambda::Function') && r.Properties?.Handler === 'index.handler'
+      );
+
+      expect(blobAuthorizerFn).toBeDefined();
+      const loggingConfig = blobAuthorizerFn?.Properties?.LoggingConfig as { LogGroup?: unknown } | undefined;
+      expect(loggingConfig?.LogGroup).toEqual({ Ref: 'logGroupName' });
     });
   });
 

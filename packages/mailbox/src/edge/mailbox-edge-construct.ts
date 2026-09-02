@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Aws, Fn } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -44,6 +45,9 @@ export interface MailboxEdgeConstructProps {
 
   /** Product version for artifact tagging (e.g., '1.2.3') */
   readonly productVersion: string;
+
+  /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
+  readonly logGroupName: string;
 }
 
 /**
@@ -131,10 +135,12 @@ export class MailboxEdgeConstruct extends Construct {
       role: blobAuthorizerRole,
       memorySize: 512,
       description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge (${Aws.STACK_NAME})`,
-      // logGroup: new LogGroup(this, 'blob-authorizer-log-group', {
-      //   retention: RetentionDays.ONE_MONTH,
-      //   removalPolicy: RemovalPolicy.RETAIN,
-      // }),
+      // Lambda@Edge sends logs to the SAME custom group name in every invocation region (no
+      // Region prefix). In the home region that name already belongs to the CFN-created "jmap"
+      // pipeline group, so home-region edge logs merge into it; other regions get same-named,
+      // service-created, untagged groups — an accepted gap. Reference by name only: this stack
+      // cannot construct the home-region LogGroup directly.
+      logGroup: logs.LogGroup.fromLogGroupName(this, 'shared-log-group', props.logGroupName),
     });
 
     // Apply artifact tags for auto-update tracking.

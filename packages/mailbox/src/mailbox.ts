@@ -16,7 +16,7 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra } from './features/sweeper';
@@ -412,6 +412,7 @@ export class Mailbox extends Construct {
       authKeyStoreTableArn: authKeyStore.table.tableArn,
       productVersion: stackVersion,
       deployer,
+      logGroupName: getOrCreatePipelineLogGroup(groups.edge, 'jmap').logGroupName,
     });
 
     const edgeCertificate = edgeStack.edgeCertificate;
