@@ -18,6 +18,7 @@ export class CognitoDeployerStarterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoDeployerStarterLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-deployer',
+      serviceName: 'stack-deployer-cognito-starter',
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       handler: 'index.starterHandler',

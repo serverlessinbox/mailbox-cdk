@@ -8,6 +8,9 @@ export interface StackDeployerStarterLambdaProps {
 
   /** ARN of the state machine to start */
   stateMachineArn: string;
+
+  /** SERVICE_NAME for this physical function; distinguishes it from other StackDeployerStarterLambda instances sharing the 'stack-deployer' lambdaId. */
+  serviceName: string;
 }
 
 /**
@@ -18,6 +21,7 @@ export class StackDeployerStarterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackDeployerStarterLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-deployer',
+      serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       handler: 'index.starterHandler',

@@ -7,6 +7,9 @@ import { StackDeployerWorkerLambda } from '../../lambdas/stack-deployer-worker';
 import { StackDeployerStarterLambda } from '../../lambdas/stack-deployer-starter';
 import { MailboxStackDeployerWorkflow } from './stack-deployer-workflow';
 
+/** Which parent subsystem owns this deployer instance — composes the starter/worker `SERVICE_NAME`s. */
+export type StackDeployerParent = 'data' | 'edge';
+
 export interface StackDeployerInfraProps {
   readonly artifactResolver: ICdkArtifactEngine;
   /**
@@ -14,6 +17,13 @@ export interface StackDeployerInfraProps {
    * The stack GUID is appended to keep the name unique and under 80 chars.
    */
   readonly stateMachineNamePrefix: string;
+
+  /**
+   * Which parent subsystem owns this deployer instance.
+   * Composes into the starter/worker `SERVICE_NAME` (e.g. `stack-deployer-data-starter`)
+   * so distinct physical functions sharing the `stack-deployer` lambdaId stay attributable.
+   */
+  readonly parent: StackDeployerParent;
 }
 
 /**
@@ -41,6 +51,7 @@ export class StackDeployerInfra extends Construct {
     // Worker Lambda: performs CloudFormation operations and polls for completion.
     this.worker = new StackDeployerWorkerLambda(this, 'worker', {
       artifactResolver: props.artifactResolver,
+      serviceName: `stack-deployer-${props.parent}-worker`,
     });
 
     // Step Functions state machine name, derived from the stack GUID for uniqueness.
@@ -59,6 +70,7 @@ export class StackDeployerInfra extends Construct {
     this.starter = new StackDeployerStarterLambda(this, 'starter', {
       artifactResolver: props.artifactResolver,
       stateMachineArn: this.workflow.stateMachine.stateMachineArn,
+      serviceName: `stack-deployer-${props.parent}-starter`,
     });
 
     this.starter.addToRolePolicy(

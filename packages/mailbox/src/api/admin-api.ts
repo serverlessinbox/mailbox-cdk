@@ -48,7 +48,7 @@ export interface AdminApiProps {
   readonly certificate?: acm.ICertificate;
 
   /** Name of the SES receipt rule set. Passed to the handler for setup-flow SES readiness checks. */
-  readonly sesRuleSetName?: string;
+  readonly sesRuleSetName: string;
   /** SES configuration set name for outbound email tracking. */
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
@@ -133,6 +133,7 @@ export class AdminApi extends Construct {
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       authPolicyName: AUTH_POLICY_ADMIN_API,
+      serviceName: 'authorizer-admin-api',
     });
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);

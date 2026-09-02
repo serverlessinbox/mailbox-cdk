@@ -28,10 +28,8 @@ export interface BootstrapProps {
   readonly oauthClients?: OAuthClientsConfig;
 
   readonly artifactResolver: ICdkArtifactEngine;
-  readonly sesReceiving?: {
-    ruleSet: IReceiptRuleSet;
-    mode: SesReceivingMode;
-  };
+  readonly sesRuleSet: IReceiptRuleSet;
+  readonly sesReceivingMode?: SesReceivingMode;
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
   readonly hostedZone?: route53.IHostedZone;
@@ -61,7 +59,8 @@ export class Bootstrap extends Construct {
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
       domain: props.domain,
-      sesReceiving: props.sesReceiving,
+      sesRuleSet: props.sesRuleSet,
+      sesReceivingMode: props.sesReceivingMode,
       sesSendEnabled: props.sesSendEnabled,
       hostedZone: props.hostedZone,
     });

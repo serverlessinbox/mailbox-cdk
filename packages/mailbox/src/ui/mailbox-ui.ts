@@ -51,6 +51,9 @@ export interface MailboxUiProps {
   /** Human-friendly label used for CloudFront comments. */
   label: string;
 
+  /** SERVICE_NAME for the token-exchange lambda; distinguishes Admin UI vs Webmail UI instances. */
+  tokenExchangeServiceName: string;
+
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   uiBundle?: UiBundleSource;
 
@@ -156,6 +159,7 @@ export class MailboxUi extends Construct {
       props.auditEventsQueue,
       props.authPolicyName,
       props.oauthClientName,
+      props.tokenExchangeServiceName,
     );
 
     if (props.uiBundle || props.uiConfig) {
@@ -219,6 +223,7 @@ export class MailboxUi extends Construct {
     auditEventsQueue: IQueue | undefined,
     authPolicyName: AuthPolicyName,
     oauthClientName: OAuthClientName,
+    tokenExchangeServiceName: string,
   ): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver,
@@ -226,6 +231,7 @@ export class MailboxUi extends Construct {
       auditEventsQueue,
       authPolicyName,
       oauthClientName,
+      serviceName: tokenExchangeServiceName,
     });
 
     // Token exchange API is internal behind CloudFront.

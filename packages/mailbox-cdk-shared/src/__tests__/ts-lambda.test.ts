@@ -11,7 +11,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { PinnedResolver, CdkArtifactEngine, TypeScriptLambda } from '../index';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '../artifact-engine';
@@ -108,6 +108,51 @@ describe('TypeScriptLambda Construct', () => {
             OTHER_VAR: 'should-be-preserved',
           },
         },
+      });
+    });
+
+    it('should use serviceName for SERVICE_NAME when provided, while artifact key and tag stay on lambdaId', () => {
+      new TypeScriptLambda(stack, 'test-lambda-service-name', {
+        lambdaId: 'stack-deployer',
+        serviceName: 'stack-deployer-data-starter',
+        artifactResolver,
+      });
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: {
+          Variables: {
+            SERVICE_NAME: 'stack-deployer-data-starter',
+          },
+        },
+        Code: {
+          S3Key: Match.stringLikeRegexp('lambdas/stack-deployer\\.zip'),
+        },
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' },
+        ]),
+      });
+    });
+
+    it('should default SERVICE_NAME to lambdaId when serviceName is not provided, with the same artifact key and tag', () => {
+      new TypeScriptLambda(stack, 'test-lambda-no-service-name', {
+        lambdaId: 'stack-deployer',
+        artifactResolver,
+      });
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: {
+          Variables: {
+            SERVICE_NAME: 'stack-deployer',
+          },
+        },
+        Code: {
+          S3Key: Match.stringLikeRegexp('lambdas/stack-deployer\\.zip'),
+        },
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' },
+        ]),
       });
     });
 

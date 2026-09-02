@@ -11,7 +11,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -109,6 +109,51 @@ describe('GoLambda Construct', () => {
             OTHER_VAR: 'should-be-preserved',
           },
         },
+      });
+    });
+
+    it('should use serviceName for SERVICE_NAME when provided, while artifact key and tag stay on lambdaId', () => {
+      new GoLambda(stack, 'test-lambda-service-name', {
+        lambdaId: 'authorizer',
+        serviceName: 'authorizer-admin-api',
+        artifactResolver,
+      });
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: {
+          Variables: {
+            SERVICE_NAME: 'authorizer-admin-api',
+          },
+        },
+        Code: {
+          S3Key: Match.stringLikeRegexp('lambdas/authorizer\\.zip'),
+        },
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:artifact-name', Value: 'authorizer' },
+        ]),
+      });
+    });
+
+    it('should default SERVICE_NAME to lambdaId when serviceName is not provided, with the same artifact key and tag', () => {
+      new GoLambda(stack, 'test-lambda-no-service-name', {
+        lambdaId: 'authorizer',
+        artifactResolver,
+      });
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: {
+          Variables: {
+            SERVICE_NAME: 'authorizer',
+          },
+        },
+        Code: {
+          S3Key: Match.stringLikeRegexp('lambdas/authorizer\\.zip'),
+        },
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:artifact-name', Value: 'authorizer' },
+        ]),
       });
     });
 

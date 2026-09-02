@@ -30,12 +30,21 @@ export interface GoLambda2Props extends FunctionOptions {
    * Default: ONE_MONTH.
    */
   logGroupRetention?: RetentionDays | false;
+
+  /**
+   * Value written to the `SERVICE_NAME` environment variable.
+   *
+   * Defaults to `lambdaId`. Set this when several physical Lambda functions
+   * share one `lambdaId` (and therefore one artifact) so each function still
+   * gets a distinct `SERVICE_NAME` for log attribution.
+   */
+  readonly serviceName?: string;
 }
 
 /** @internal */
 export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
-    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, environment: callerEnvironment, ...restProps } = props;
+    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, serviceName, environment: callerEnvironment, ...restProps } = props;
 
     const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
@@ -67,7 +76,7 @@ export class GoLambda extends LambdaFunction {
       // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
       environment: {
         ...callerEnvironment,
-        SERVICE_NAME: lambdaId,
+        SERVICE_NAME: serviceName ?? lambdaId,
       },
       ...restProps,
     });

@@ -16,12 +16,16 @@ export interface AuthorizerLambdaProps {
 
   /** Comma-separated list of API Gateway route keys (e.g. 'GET /.well-known/jmap') that allow anonymous access. */
   anonymousRoutes?: string[];
+
+  /** SERVICE_NAME for this physical function; distinguishes it from other AuthorizerLambda instances sharing the 'authorizer' lambdaId. */
+  serviceName: string;
 }
 
 export class AuthorizerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthorizerLambdaProps) {
     super(scope, id, {
       lambdaId: 'authorizer',
+      serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       memorySize: 256,
       timeout: Duration.seconds(30),

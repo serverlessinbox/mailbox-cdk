@@ -89,6 +89,7 @@ export class JMapApi extends Construct {
       userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       anonymousRoutes: ['GET /.well-known/jmap'],
+      serviceName: 'authorizer-jmap-api',
     });
 
     this.authorizerLambda = lambdaAuthorizer;

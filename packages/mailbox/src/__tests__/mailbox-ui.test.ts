@@ -74,6 +74,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
+        tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
@@ -136,6 +137,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
+        tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
@@ -180,6 +182,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
+        tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
@@ -226,6 +229,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
+        tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
@@ -271,6 +275,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       new MailboxUi(stack, 'admin-ui-no-bundle', {
         domainName: 'admin.example.com',
         label: 'admin-no-bundle',
+        tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,

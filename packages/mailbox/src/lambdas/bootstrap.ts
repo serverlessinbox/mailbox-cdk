@@ -15,10 +15,8 @@ export interface BootstrapLambdaProps {
   authKeyStoreTable: ITable;
   artifactResolver: ICdkArtifactEngine;
   domain: string;
-  sesReceiving?: {
-    ruleSet: IReceiptRuleSet;
-    mode: SesReceivingMode;
-  };
+  sesRuleSet: IReceiptRuleSet;
+  sesReceivingMode?: SesReceivingMode;
   /** When true, sets SES_SEND_ENABLED=on so the bootstrap marks the default domain as send-capable. */
   sesSendEnabled?: boolean;
   hostedZone?: route53.IHostedZone;
@@ -61,15 +59,20 @@ export class BootstrapLambda extends GoLambda {
       resources: ['*'],
     }));
 
-    if (props.sesReceiving) {
-      const { ruleSet, mode } = props.sesReceiving;
-      this.addEnvironment('SES_RULE_SET_NAME', ruleSet.receiptRuleSetName);
-      this.addEnvironment('SES_RECEIVING_MODE', mode);
-      this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-        actions: ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
-        resources: ['*'],
-      }));
+    this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSet.receiptRuleSetName);
+    if (props.sesReceivingMode) {
+      this.addEnvironment('SES_RECEIVING_MODE', props.sesReceivingMode);
     }
+    // Granted unconditionally: deactivateSESRuleSetIfActive (bootstrap Go handler) always calls
+    // Describe, and calls SetActive (empty input, to release the slot) only if this stack turns
+    // out to own the currently-active rule set — knowable only at delete time, never at synth
+    // time, so no synth-time signal (sesReceivingMode) can predict it. Gating SetActive on the
+    // mode would strand the on -> off -> delete case without the permission needed to release
+    // the account's active slot.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
+      resources: ['*'],
+    }));
 
     if (props.sesSendEnabled) {
       this.addEnvironment('SES_SEND_ENABLED', 'on');

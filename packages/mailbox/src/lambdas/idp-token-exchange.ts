@@ -12,12 +12,16 @@ export interface IdpTokenExchangeLambdaProps {
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
   artifactResolver: ICdkArtifactEngine;
+
+  /** SERVICE_NAME for this physical function; distinguishes it from other IdpTokenExchangeLambda instances sharing the 'idp-token-exchange' lambdaId. */
+  serviceName: string;
 }
 
 export class IdpTokenExchangeLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: IdpTokenExchangeLambdaProps) {
     super(scope, id, {
       lambdaId: 'idp-token-exchange',
+      serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       memorySize: 256,
       timeout: Duration.seconds(30),

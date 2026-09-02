@@ -79,6 +79,7 @@ export class MailboxEdgeDeployer extends Construct {
     const infra = new StackDeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
+      parent: 'edge',
     });
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');

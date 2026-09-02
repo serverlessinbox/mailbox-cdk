@@ -221,6 +221,7 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
+        sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
       });
@@ -265,6 +266,7 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
+        sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
       });
@@ -296,6 +298,7 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
+        sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
       });

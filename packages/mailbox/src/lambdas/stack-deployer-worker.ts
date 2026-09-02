@@ -5,6 +5,9 @@ import { Construct } from 'constructs';
 
 export interface StackDeployerWorkerLambdaProps {
   artifactResolver: ICdkArtifactEngine;
+
+  /** SERVICE_NAME for this physical function; distinguishes it from other StackDeployerWorkerLambda instances sharing the 'stack-deployer' lambdaId. */
+  serviceName: string;
 }
 
 /**
@@ -15,6 +18,7 @@ export class StackDeployerWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackDeployerWorkerLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-deployer',
+      serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       handler: 'index.workerHandler',

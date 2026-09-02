@@ -50,6 +50,7 @@ export class MailboxDataDeployer extends Construct {
     const infra = new StackDeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
+      parent: 'data',
     });
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');

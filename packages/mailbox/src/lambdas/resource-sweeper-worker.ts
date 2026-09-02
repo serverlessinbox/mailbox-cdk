@@ -19,6 +19,7 @@ export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ResourceSweeperWorkerLambdaProps) {
     super(scope, id, {
       lambdaId: 'resource-sweeper',
+      serviceName: 'resource-sweeper-worker',
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       handler: 'index.workerHandler',

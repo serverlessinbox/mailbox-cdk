@@ -27,6 +27,9 @@ export interface IdpTokenExchangeApiProps {
    * Name of OAUTH_CLIENT record to use (e.g. ADMIN_UI).
    */
   oauthClientName?: OAuthClientName;
+
+  /** SERVICE_NAME for the underlying IdpTokenExchangeLambda; distinguishes callers of this API. */
+  serviceName: string;
 }
 
 export class IdpTokenExchangeApi extends Construct {
@@ -46,6 +49,7 @@ export class IdpTokenExchangeApi extends Construct {
       authPolicyName: props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
       oauthClientName: props.oauthClientName ?? OAUTH_CLIENT_ADMIN_UI,
       artifactResolver: props.artifactResolver,
+      serviceName: props.serviceName,
     });
 
     this.api.addRoutes({

@@ -21,7 +21,7 @@ export interface AdminApiLambdaProps {
   artifactResolver: ICdkArtifactEngine;
   identityProvisionerFunction: IFunction;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
-  sesRuleSetName?: string;
+  sesRuleSetName: string;
   /** SES configuration set name for outbound email tracking. */
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
@@ -118,10 +118,8 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.grantServiceQuotasAccess();
     this.grantLicenseApiAccess();
 
-    if (props.sesRuleSetName) {
-      this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
-      this.grantSesReceivingAccess();
-    }
+    this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
+    this.grantSesReceivingAccess();
 
     props.auditLogTable.grantReadData(this);
     props.mailFeedbackTable.grantReadData(this);
