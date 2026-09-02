@@ -30,3 +30,7 @@ export { sanitizeStackName } from './sanitize-name';
 
 // Shared group utility (for singleton constructs at stack root)
 export { getOrCreateSharedGroup } from './shared-group';
+
+// Pipeline taxonomy & shared per-pipeline log groups
+export type { Pipeline } from './pipelines';
+export { getOrCreatePipelineLogGroup } from './pipeline-log-groups';
