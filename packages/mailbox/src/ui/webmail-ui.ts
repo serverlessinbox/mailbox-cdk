@@ -27,8 +27,8 @@ export interface WebmailUiProps {
   /** Auth provider used to provision the OAuth client for this UI. */
   readonly authProvider: IMailboxAuthProvider;
 
-  /** Optional audit events queue for publishing audit logs from token exchange. */
-  readonly auditEventsQueue?: IQueue;
+  /** Audit events queue for publishing audit logs from token exchange. */
+  readonly auditEventsQueue: IQueue;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   readonly uiBundle?: UiBundleSource;

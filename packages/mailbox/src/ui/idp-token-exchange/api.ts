@@ -16,7 +16,7 @@ import { Aws } from 'aws-cdk-lib';
 export interface IdpTokenExchangeApiProps {
   artifactResolver: ICdkArtifactEngine;
   configTable: ITable;
-  auditEventsQueue?: IQueue;
+  auditEventsQueue: IQueue;
 
   /**
    * Name of AUTH_POLICY record to use (e.g. ADMIN_API).

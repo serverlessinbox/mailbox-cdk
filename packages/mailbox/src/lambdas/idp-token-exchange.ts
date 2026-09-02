@@ -8,7 +8,7 @@ import { AuthPolicyName, OAuthClientName } from '../auth/types';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: ITable;
-  auditEventsQueue?: IQueue;
+  auditEventsQueue: IQueue;
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
   artifactResolver: ICdkArtifactEngine;
@@ -29,14 +29,11 @@ export class IdpTokenExchangeLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         AUTH_POLICY_NAME: props.authPolicyName ?? 'ADMIN_API',
         OAUTH_CLIENT_NAME: props.oauthClientName ?? 'ADMIN_UI',
-        ...(props.auditEventsQueue ? { AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl } : {}),
+        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
       },
     });
 
     props.configTable.grantReadData(this);
-
-    if (props.auditEventsQueue) {
-      props.auditEventsQueue.grantSendMessages(this);
-    }
+    props.auditEventsQueue.grantSendMessages(this);
   }
 }

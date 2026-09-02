@@ -21,8 +21,8 @@ export interface AdminUiProps {
   /** Shared config table used by token exchange API. */
   readonly configTable: ITable;
 
-  /** Optional audit events queue for admin login audit records. */
-  readonly auditEventsQueue?: IQueue;
+  /** Audit events queue for admin login audit records. */
+  readonly auditEventsQueue: IQueue;
 
   /** Auth provider used to provision the OAuth client for this UI. */
   readonly authProvider: IMailboxAuthProvider;

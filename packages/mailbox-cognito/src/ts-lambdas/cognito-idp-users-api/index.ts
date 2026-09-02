@@ -23,14 +23,14 @@ function parseJsonStringArrayEnv(name: string): string[] | undefined {
 }
 
 const userPoolId = env.mustGet('USER_POOL_ID');
-const auditQueueUrl = env.get('AUDIT_EVENTS_QUEUE_URL');
+const auditQueueUrl = env.mustGet('AUDIT_EVENTS_QUEUE_URL');
 const adminGroups = parseJsonStringArrayEnv('ADMIN_GROUPS');
 const userGroups = parseJsonStringArrayEnv('USER_GROUPS');
 
 const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
 registry.register(createCognitoIdpUsersServiceSpec({ service: new CognitoIdpUsersService(undefined, userPoolId) }));
 
-const emitAuditEvent = auditQueueUrl ? new SqsAuditEmitter(auditQueueUrl).emit : undefined;
+const emitAuditEvent = new SqsAuditEmitter(auditQueueUrl).emit;
 
 export const handler = withSmokeTest(createAdminApiHandler({
 	registry,

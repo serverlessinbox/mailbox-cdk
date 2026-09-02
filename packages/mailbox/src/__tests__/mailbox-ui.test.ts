@@ -19,6 +19,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { OAUTH_CLIENT_ADMIN_UI, AUTH_POLICY_ADMIN_API } from '../auth/types';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import {
   CloudFormationResource,
   getPolicyStatements,
@@ -30,6 +31,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
   let configTable: dynamodb.ITable;
+  let auditEventsQueue: sqs.IQueue;
 
   beforeEach(() => {
     app = new App({
@@ -67,6 +69,8 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
+
+    auditEventsQueue = new sqs.Queue(stack, 'audit-events-queue');
   });
 
   describe('S3 ListBucket Permission', () => {
@@ -76,6 +80,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         label: 'admin',
         tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
+        auditEventsQueue,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
@@ -139,6 +144,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         label: 'admin',
         tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
+        auditEventsQueue,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
@@ -184,6 +190,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         label: 'admin',
         tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
+        auditEventsQueue,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
@@ -231,6 +238,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         label: 'admin',
         tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
+        auditEventsQueue,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
@@ -277,6 +285,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         label: 'admin-no-bundle',
         tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
         configTable,
+        auditEventsQueue,
         authPolicyName: AUTH_POLICY_ADMIN_API,
         oauthClientName: OAUTH_CLIENT_ADMIN_UI,
         artifactResolver,
