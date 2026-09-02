@@ -53,6 +53,7 @@ describe('TypeScriptLambda Construct', () => {
     it('should set SERVICE_NAME to the lambdaId', () => {
       new TypeScriptLambda(stack, 'test-lambda', {
         lambdaId: 'artifact-updater',
+        pipeline: 'infra',
         artifactResolver,
       });
 
@@ -69,6 +70,7 @@ describe('TypeScriptLambda Construct', () => {
     it('should preserve caller-supplied environment variables', () => {
       new TypeScriptLambda(stack, 'test-lambda-env', {
         lambdaId: 'resource-sweeper',
+        pipeline: 'infra',
         artifactResolver,
         environment: {
           CUSTOM_VAR: 'custom-value',
@@ -93,6 +95,7 @@ describe('TypeScriptLambda Construct', () => {
       // the construct should enforce its own value based on lambdaId
       new TypeScriptLambda(stack, 'test-lambda-override', {
         lambdaId: 'stack-deployer',
+        pipeline: 'infra',
         artifactResolver,
         environment: {
           SERVICE_NAME: 'wrong-value',
@@ -114,6 +117,7 @@ describe('TypeScriptLambda Construct', () => {
     it('should use serviceName for SERVICE_NAME when provided, while artifact key and tag stay on lambdaId', () => {
       new TypeScriptLambda(stack, 'test-lambda-service-name', {
         lambdaId: 'stack-deployer',
+        pipeline: 'infra',
         serviceName: 'stack-deployer-data-starter',
         artifactResolver,
       });
@@ -137,6 +141,7 @@ describe('TypeScriptLambda Construct', () => {
     it('should default SERVICE_NAME to lambdaId when serviceName is not provided, with the same artifact key and tag', () => {
       new TypeScriptLambda(stack, 'test-lambda-no-service-name', {
         lambdaId: 'stack-deployer',
+        pipeline: 'infra',
         artifactResolver,
       });
 
@@ -186,6 +191,7 @@ describe('TypeScriptLambda Construct', () => {
 
         new TypeScriptLambda(testStack, 'lambda', {
           lambdaId,
+          pipeline: 'infra',
           artifactResolver: engine,
         });
 

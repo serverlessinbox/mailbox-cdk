@@ -20,6 +20,7 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
   constructor(scope: Construct, id: string, props: EmailSenderLambdaProps) {
     super(scope, id, {
       lambdaId: 'email-sender',
+      pipeline: 'mail-out',
       artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(5),
       memorySize: 512,

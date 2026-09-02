@@ -4,6 +4,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
+import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: ITable;
@@ -19,12 +20,16 @@ export interface AuthorizerLambdaProps {
 
   /** SERVICE_NAME for this physical function; distinguishes it from other AuthorizerLambda instances sharing the 'authorizer' lambdaId. */
   serviceName: string;
+
+  /** This one code site is instantiated for both admin-api ('admin') and jmap-api ('jmap'); the caller states which. */
+  readonly pipeline: Pipeline;
 }
 
 export class AuthorizerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthorizerLambdaProps) {
     super(scope, id, {
       lambdaId: 'authorizer',
+      pipeline: props.pipeline,
       serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       memorySize: 256,

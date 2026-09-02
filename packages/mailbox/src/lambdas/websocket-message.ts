@@ -21,6 +21,7 @@ export class WebSocketMessageLambda extends GoLambda {
 
     super(scope, id, {
       lambdaId: 'websocket-message',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

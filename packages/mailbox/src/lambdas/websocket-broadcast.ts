@@ -19,6 +19,7 @@ export class WebSocketBroadcastLambda extends GoLambda {
 
     super(scope, id, {
       lambdaId: 'websocket-broadcast',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(60),
       memorySize: 512,

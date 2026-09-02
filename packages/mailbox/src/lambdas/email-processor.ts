@@ -18,6 +18,7 @@ export class EmailProcessorLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: EmailProcessorLambdaProps) {
     super(scope, id, {
       lambdaId: 'email-processor',
+      pipeline: 'mail-in',
       artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(1),
       memorySize: 1024,

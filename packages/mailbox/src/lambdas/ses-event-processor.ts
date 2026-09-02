@@ -21,6 +21,7 @@ export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushT
   constructor(scope: Construct, id: string, props: SESEventProcessorLambdaProps) {
     super(scope, id, {
       lambdaId: 'sqs-ses-event-processor',
+      pipeline: 'mail-out',
       artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(5),
       memorySize: 256,

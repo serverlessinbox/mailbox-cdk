@@ -29,6 +29,7 @@ export class IdentityProvisionerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: IdentityProvisionerLambdaProps) {
     super(scope, id, {
       lambdaId: 'identity-provisioner',
+      pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
       timeout: Duration.seconds(30),

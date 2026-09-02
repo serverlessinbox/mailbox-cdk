@@ -83,6 +83,7 @@ export class AdminUi extends MailboxUi {
     super(scope, id, {
       label: 'Admin UI',
       tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
+      tokenExchangePipeline: 'admin',
       domainName: props.domainName,
       certificate: props.certificate,
       configTable: props.configTable,

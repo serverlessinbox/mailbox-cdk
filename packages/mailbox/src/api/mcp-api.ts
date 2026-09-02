@@ -61,6 +61,7 @@ export class McpApi extends Construct {
 
     const handlerLambda = new GoLambda(this, 'handler', {
       lambdaId: 'mcp-api',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       memorySize: 256,
       timeout: Duration.seconds(29),

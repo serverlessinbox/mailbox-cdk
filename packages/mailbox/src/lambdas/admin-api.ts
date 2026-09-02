@@ -93,6 +93,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
       lambdaId: 'admin-api',
+      pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
       timeout: Duration.seconds(30),

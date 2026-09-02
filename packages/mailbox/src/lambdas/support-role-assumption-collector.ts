@@ -59,6 +59,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
 
     super(scope, id, {
       lambdaId: 'support-role-assumption-collector',
+      pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

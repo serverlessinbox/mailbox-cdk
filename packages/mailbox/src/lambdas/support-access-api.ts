@@ -57,6 +57,7 @@ export class SupportAccessApiLambda extends GoLambda {
 
     super(scope, id, {
       lambdaId: 'support-access-api',
+      pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

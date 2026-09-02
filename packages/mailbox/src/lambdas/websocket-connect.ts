@@ -16,6 +16,7 @@ export class WebSocketConnectLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketConnectLambdaProps) {
     super(scope, id, {
       lambdaId: 'websocket-connect',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

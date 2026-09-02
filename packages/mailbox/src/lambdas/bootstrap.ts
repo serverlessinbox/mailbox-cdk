@@ -26,6 +26,7 @@ export class BootstrapLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: BootstrapLambdaProps) {
     super(scope, id, {
       lambdaId: 'bootstrap',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       environment: {

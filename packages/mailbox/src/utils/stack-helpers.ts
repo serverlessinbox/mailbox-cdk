@@ -48,6 +48,7 @@ export class StackHelpers extends Construct {
 
     this.fn = new TypeScriptLambda(this, 'handler', {
       lambdaId: 'stack-helpers',
+      pipeline: 'infra',
       artifactResolver: cdkArtifactResolver,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,

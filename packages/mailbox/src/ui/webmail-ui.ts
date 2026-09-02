@@ -48,6 +48,7 @@ export class WebmailUi extends MailboxUi {
     super(scope, id, {
       label: 'Webmail UI',
       tokenExchangeServiceName: 'idp-token-exchange-webmail-ui',
+      tokenExchangePipeline: 'jmap',
       domainName: props.domainName,
       certificate: props.certificate,
       configTable: props.configTable,

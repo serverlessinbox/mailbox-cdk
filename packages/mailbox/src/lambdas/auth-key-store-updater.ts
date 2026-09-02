@@ -13,6 +13,7 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthKeyStoreUpdaterLambdaProps) {
     super(scope, id, {
       lambdaId: 'auth-key-store-updater',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       memorySize: 128,
       environment: {

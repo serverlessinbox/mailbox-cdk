@@ -1,7 +1,7 @@
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import { IdpTokenExchangeLambda } from "../../lambdas";
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
@@ -30,6 +30,9 @@ export interface IdpTokenExchangeApiProps {
 
   /** SERVICE_NAME for the underlying IdpTokenExchangeLambda; distinguishes callers of this API. */
   serviceName: string;
+
+  /** Pipeline for the underlying IdpTokenExchangeLambda: 'admin' for Admin UI, 'jmap' for Webmail UI. */
+  readonly pipeline: Pipeline;
 }
 
 export class IdpTokenExchangeApi extends Construct {
@@ -50,6 +53,7 @@ export class IdpTokenExchangeApi extends Construct {
       oauthClientName: props.oauthClientName ?? OAUTH_CLIENT_ADMIN_UI,
       artifactResolver: props.artifactResolver,
       serviceName: props.serviceName,
+      pipeline: props.pipeline,
     });
 
     this.api.addRoutes({

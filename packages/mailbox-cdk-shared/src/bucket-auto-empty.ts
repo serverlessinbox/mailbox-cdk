@@ -41,6 +41,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
 
     super(scope, id, {
       lambdaId: 'bucket-auto-empty',
+      pipeline: 'infra',
       artifactResolver,
       packageName: 'mailbox-cdk-shared',
       handler: 'index.handler',

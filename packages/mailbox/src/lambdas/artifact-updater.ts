@@ -35,6 +35,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ArtifactUpdaterLambdaProps) {
     super(scope, id, {
       lambdaId: 'artifact-updater',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',
       timeout: Duration.minutes(5),

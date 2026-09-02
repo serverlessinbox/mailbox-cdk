@@ -5,6 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
+import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: ITable;
@@ -15,12 +16,16 @@ export interface IdpTokenExchangeLambdaProps {
 
   /** SERVICE_NAME for this physical function; distinguishes it from other IdpTokenExchangeLambda instances sharing the 'idp-token-exchange' lambdaId. */
   serviceName: string;
+
+  /** This one code site is instantiated for both webmail-ui ('jmap') and admin-ui ('admin'); the caller states which. */
+  readonly pipeline: Pipeline;
 }
 
 export class IdpTokenExchangeLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: IdpTokenExchangeLambdaProps) {
     super(scope, id, {
       lambdaId: 'idp-token-exchange',
+      pipeline: props.pipeline,
       serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       memorySize: 256,

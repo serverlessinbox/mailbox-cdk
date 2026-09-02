@@ -14,6 +14,7 @@ export class WebSocketDisconnectLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketDisconnectLambdaProps) {
     super(scope, id, {
       lambdaId: 'websocket-disconnect',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(10),
       memorySize: 128,

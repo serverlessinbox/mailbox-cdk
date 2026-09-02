@@ -34,6 +34,7 @@ export class StackUpdateApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-update-api',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 256,

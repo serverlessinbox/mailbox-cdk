@@ -15,6 +15,7 @@ export class CognitoDeployerWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoDeployerWorkerLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-deployer',
+      pipeline: 'infra',
       serviceName: 'stack-deployer-cognito-worker',
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',

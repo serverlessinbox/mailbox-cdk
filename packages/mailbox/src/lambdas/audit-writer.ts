@@ -13,6 +13,7 @@ export class AuditWriterLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuditWriterLambdaProps) {
     super(scope, id, {
       lambdaId: 'audit-writer',
+      pipeline: 'audit',
       artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(2),
       memorySize: 256,

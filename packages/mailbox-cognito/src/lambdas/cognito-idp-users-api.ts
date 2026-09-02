@@ -44,6 +44,7 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
 
     super(scope, id, {
       lambdaId: 'cognito-idp-users-api',
+      pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(15),

@@ -45,6 +45,7 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: JmapOAuthDcrLambdaProps) {
     super(scope, id, {
       lambdaId: 'jmap-oauth-dcr',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(30),

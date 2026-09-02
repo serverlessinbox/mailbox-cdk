@@ -40,6 +40,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
   constructor(scope: Construct, id: string, props: ApiHandlerLambdaProps) {
     super(scope, id, {
       lambdaId: 'jmap-api',
+      pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
       memorySize: 640,
       timeout: Duration.seconds(30),

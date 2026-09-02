@@ -4,13 +4,10 @@ import {
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyArtifactTags, getOrCreatePipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**
@@ -24,12 +21,9 @@ export interface GoLambda2Props extends FunctionOptions {
   artifactResolver: ICdkArtifactEngine;
 
   /**
-   * Log retention policy for the lambda's default log group.
-   * Set to `false` to skip log retention management.
-   *
-   * Default: ONE_MONTH.
+   * The pipeline this Lambda belongs to. Selects the shared CloudWatch log group it writes to.
    */
-  logGroupRetention?: RetentionDays | false;
+  readonly pipeline: Pipeline;
 
   /**
    * Value written to the `SERVICE_NAME` environment variable.
@@ -44,24 +38,11 @@ export interface GoLambda2Props extends FunctionOptions {
 /** @internal */
 export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
-    const { lambdaId, artifactResolver, logGroupRetention = RetentionDays.ONE_MONTH, serviceName, environment: callerEnvironment, ...restProps } = props;
+    const { lambdaId, artifactResolver, pipeline, serviceName, environment: callerEnvironment, ...restProps } = props;
 
     const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
-    // Unnamed (CFN-generated) log group passed via the `logGroup` prop (renders LoggingConfig —
-    // a plain AWS::Logs::LogGroup, no LogRetention custom resource; the prop also makes the
-    // `fn.logGroup` getter safe, which would otherwise lazily create that CR). Deriving the name
-    // from the function (`/aws/lambda/<fn>`) is unsafe combined with RETAIN: the name stays
-    // identical across logical-id churn (construct moves/renames), so a replacement LogGroup
-    // collides with the still-existing or retained-orphan one ("already exists in stack …").
-    // A generated name is unique per logical resource — replacements and retained orphans can
-    // never collide, and Lambda can't auto-create the group before CFN does.
-    const logGroup = logGroupRetention !== false && !props.logGroup
-      ? new logs.LogGroup(scope, `${id}-log-group`, {
-        retention: logGroupRetention,
-        removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-      })
-      : undefined;
+    const logGroup = props.logGroup ?? getOrCreatePipelineLogGroup(scope, pipeline);
 
     super(scope, id, {
       code,

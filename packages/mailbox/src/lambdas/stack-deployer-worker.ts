@@ -18,6 +18,7 @@ export class StackDeployerWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackDeployerWorkerLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-deployer',
+      pipeline: 'infra',
       serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
       packageName: 'mailbox-cdk',

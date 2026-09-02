@@ -15,6 +15,7 @@ export class LicenseRefresherLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: LicenseRefresherLambdaProps) {
     super(scope, id, {
       lambdaId: 'license-refresher',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       environment: {

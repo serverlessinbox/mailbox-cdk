@@ -17,7 +17,7 @@ import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '../utils/resource-names';
@@ -53,6 +53,9 @@ export interface MailboxUiProps {
 
   /** SERVICE_NAME for the token-exchange lambda; distinguishes Admin UI vs Webmail UI instances. */
   tokenExchangeServiceName: string;
+
+  /** Pipeline for the token-exchange lambda: 'admin' for Admin UI, 'jmap' for Webmail UI. */
+  readonly tokenExchangePipeline: Pipeline;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   uiBundle?: UiBundleSource;
@@ -160,6 +163,7 @@ export class MailboxUi extends Construct {
       props.authPolicyName,
       props.oauthClientName,
       props.tokenExchangeServiceName,
+      props.tokenExchangePipeline,
     );
 
     if (props.uiBundle || props.uiConfig) {
@@ -224,6 +228,7 @@ export class MailboxUi extends Construct {
     authPolicyName: AuthPolicyName,
     oauthClientName: OAuthClientName,
     tokenExchangeServiceName: string,
+    tokenExchangePipeline: Pipeline,
   ): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver,
@@ -232,6 +237,7 @@ export class MailboxUi extends Construct {
       authPolicyName,
       oauthClientName,
       serviceName: tokenExchangeServiceName,
+      pipeline: tokenExchangePipeline,
     });
 
     // Token exchange API is internal behind CloudFront.

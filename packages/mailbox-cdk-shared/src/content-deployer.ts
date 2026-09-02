@@ -104,6 +104,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
 
     super(scope, id, {
       lambdaId: 'content-deployer', // artifact identifier in mailbox-cdk-shared package
+      pipeline: 'infra',
       artifactResolver,
       packageName: 'mailbox-cdk-shared', // Lambda artifacts published under mailbox-cdk-shared package
       handler: 'index.handler',

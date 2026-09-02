@@ -23,6 +23,7 @@ export class SesReceiptForwarderLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SesReceiptForwarderLambdaProps) {
     super(scope, id, {
       lambdaId: 'ses-receipt-forwarder',
+      pipeline: 'mail-in',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
       memorySize: 128,

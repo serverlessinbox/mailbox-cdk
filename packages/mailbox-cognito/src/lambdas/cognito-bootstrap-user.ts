@@ -19,6 +19,7 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoBootstrapUserLambdaProps) {
     super(scope, id, {
       lambdaId: 'cognito-bootstrap-user',
+      pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.minutes(2),

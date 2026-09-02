@@ -54,6 +54,7 @@ describe('GoLambda Construct', () => {
     it('should set SERVICE_NAME to the lambdaId', () => {
       new GoLambda(stack, 'test-lambda', {
         lambdaId: 'email-processor',
+        pipeline: 'mail-in',
         artifactResolver,
       });
 
@@ -70,6 +71,7 @@ describe('GoLambda Construct', () => {
     it('should preserve caller-supplied environment variables', () => {
       new GoLambda(stack, 'test-lambda-env', {
         lambdaId: 'support-access-api',
+        pipeline: 'admin',
         artifactResolver,
         environment: {
           CUSTOM_VAR: 'custom-value',
@@ -94,6 +96,7 @@ describe('GoLambda Construct', () => {
       // the construct should enforce its own value based on lambdaId
       new GoLambda(stack, 'test-lambda-override', {
         lambdaId: 'authorizer',
+        pipeline: 'jmap',
         artifactResolver,
         environment: {
           SERVICE_NAME: 'wrong-value',
@@ -115,6 +118,7 @@ describe('GoLambda Construct', () => {
     it('should use serviceName for SERVICE_NAME when provided, while artifact key and tag stay on lambdaId', () => {
       new GoLambda(stack, 'test-lambda-service-name', {
         lambdaId: 'authorizer',
+        pipeline: 'admin',
         serviceName: 'authorizer-admin-api',
         artifactResolver,
       });
@@ -138,6 +142,7 @@ describe('GoLambda Construct', () => {
     it('should default SERVICE_NAME to lambdaId when serviceName is not provided, with the same artifact key and tag', () => {
       new GoLambda(stack, 'test-lambda-no-service-name', {
         lambdaId: 'authorizer',
+        pipeline: 'jmap',
         artifactResolver,
       });
 
@@ -187,6 +192,7 @@ describe('GoLambda Construct', () => {
 
         new GoLambda(testStack, 'lambda', {
           lambdaId,
+          pipeline: 'infra',
           artifactResolver: engine,
         });
 

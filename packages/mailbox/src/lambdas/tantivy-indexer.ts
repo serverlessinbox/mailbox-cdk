@@ -17,6 +17,7 @@ export class TantivyIndexerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: TantivyIndexerLambdaProps) {
     super(scope, id, {
       lambdaId: 'tantivy-indexer',
+      pipeline: 'mail-in',
       artifactResolver: props.artifactResolver,
       timeout: Duration.minutes(5),
       memorySize: 1024,

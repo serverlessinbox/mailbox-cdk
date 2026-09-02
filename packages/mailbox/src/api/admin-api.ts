@@ -134,6 +134,7 @@ export class AdminApi extends Construct {
       artifactResolver: props.artifactResolver,
       authPolicyName: AUTH_POLICY_ADMIN_API,
       serviceName: 'authorizer-admin-api',
+      pipeline: 'admin',
     });
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
