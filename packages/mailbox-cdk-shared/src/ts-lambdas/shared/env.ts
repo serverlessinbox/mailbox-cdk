@@ -1,9 +1,9 @@
 /**
  * Environment variable helpers matching Go's `env` package semantics.
  *
- * Treats empty-string values as absent (unlike JavaScript's `??` operator,
- * which only treats null/undefined as falsy). This matches the behavior of
- * Go's env.Get() and env.MustGet() for consistency across the codebase.
+ * Like Go's env.Get() and env.MustGet(), treats empty-string values as absent
+ * (unlike JavaScript's `??` operator, which only treats null/undefined as falsy).
+ * This ensures consistency with Go semantics across the codebase.
  */
 
 /**
