@@ -23,6 +23,7 @@ tasks:
     desc: Bundle blob-authorizer lambda zip to /tmp
     sources:
       - src/ts-lambdas/blob-authorizer/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
       - /tmp/blob-authorizer.zip
     cmds:
@@ -32,6 +33,7 @@ tasks:
     desc: Bundle stack-deployer lambda zip to /tmp
     sources:
       - src/ts-lambdas/stack-deployer/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
       - /tmp/stack-deployer.zip
     cmds:
@@ -41,6 +43,7 @@ tasks:
     desc: Bundle stack-helpers lambda zip to /tmp
     sources:
       - src/ts-lambdas/stack-helpers/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
       - /tmp/stack-helpers.zip
     cmds:
@@ -50,6 +53,7 @@ tasks:
     desc: Bundle resource-sweeper lambda zip to /tmp
     sources:
       - src/ts-lambdas/resource-sweeper/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
       - /tmp/resource-sweeper.zip
     cmds:
@@ -59,6 +63,7 @@ tasks:
     desc: Bundle artifact-updater lambda zip to /tmp
     sources:
       - src/ts-lambdas/artifact-updater/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
       - /tmp/artifact-updater.zip
     cmds:
