@@ -1,6 +1,7 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Vendor AWS account ID.
@@ -8,7 +9,6 @@ import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
  */
 export const VENDOR_ACCOUNT_ID = '791990038981';
 
-// D15: Tier action lists (ported from Go)
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
   'logs:DescribeLogGroups',
@@ -59,6 +59,30 @@ const SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS = [
 const SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS = [
   ...SUPPORT_DIAG_ALLOWED_ACTIONS,
   ...SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS,
+];
+
+// Actions that cannot be scoped by resource tag (enumeration/account-level — declare no resource type).
+// These stay on resources: ['*'].
+const ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS = [
+  // Tier 1
+  'logs:DescribeLogGroups',
+  'logs:StopQuery',
+  'cloudwatch:GetMetricData',
+  'cloudwatch:GetMetricStatistics',
+  'cloudwatch:ListMetrics',
+  // Tier 2 additional
+  'lambda:ListFunctions',
+  'lambda:ListVersionsByFunction',
+  'lambda:ListAliases',
+  'states:ListStateMachines',
+  'states:ListExecutions',
+  'dynamodb:ListTables',
+  'sqs:ListQueues',
+  'sqs:ListDeadLetterSourceQueues',
+  'events:ListRules',
+  'events:ListTargetsByRule',
+  'ses:GetAccount',
+  'ses:ListEmailIdentities',
 ];
 
 /**
@@ -208,15 +232,81 @@ export class SupportAccessRolesInfra extends Construct {
 
     // Create support roles from tier registry, iterating in order for template stability.
     for (const tier of SUPPORT_TIERS) {
-      // Create inline policy for this tier (D15)
-      const policyDoc = new iam.PolicyDocument({
-        statements: [
+      // Categorize actions: enumeration/account-level stay on resources: ['*'];
+      // resource-naming actions are scoped by serverless-inbox:root-stack tag condition.
+      const tagScopedActions = tier.actions.filter(a => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+      const enumerationActions = tier.actions.filter(a => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+
+      const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
+
+      // Build the exact edge log group ARN for tier 1 — CloudFront service-creates this group
+      // in every replica region, untagged and inaccessible by tag conditions.
+      // Use the same intrinsics as pipeline-log-groups.ts to ensure exact name match.
+      const edgeLogGroupArn = tier.constructId === 'support-diag'
+        ? Fn.join('', [
+            'arn:aws:logs:*:',
+            stack.account,
+            ':log-group:/serverlessinbox/',
+            Aws.STACK_NAME,
+            '/jmap-',
+            Fn.select(0, Fn.split('-', Fn.select(2, Fn.split('/', Aws.STACK_ID)))),
+            ':*',
+          ])
+        : '';
+
+      // Construct tag-scoped statement (resource-naming actions only)
+      const statements: iam.PolicyStatement[] = [];
+
+      if (tagScopedActions.length > 0) {
+        statements.push(
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: tier.actions,
+            actions: tagScopedActions,
             resources: ['*'],
-          }),
-        ],
+            conditions: {
+              StringEquals: {
+                [rootStackTagKey]: Aws.STACK_NAME,
+              },
+            },
+          })
+        );
+      }
+
+      // Enumeration/account-level statement stays on resources: ['*'] (cannot bind tag conditions)
+      if (enumerationActions.length > 0) {
+        statements.push(
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: enumerationActions,
+            resources: ['*'],
+          })
+        );
+      }
+
+      // Tier 1 specific: separate statement for edge log group log-read actions.
+      // These groups are service-created by CloudFront in each replica region and are untagged,
+      // so they cannot be reached by tag conditions. Grant log-read actions on the edge group ARN only.
+      if (tier.constructId === 'support-diag' && edgeLogGroupArn) {
+        const edgeLogGroupActions = [
+          'logs:DescribeLogStreams',
+          'logs:GetLogEvents',
+          'logs:FilterLogEvents',
+          'logs:GetLogGroupFields',
+          'logs:StartQuery',
+          'logs:GetQueryResults',
+        ];
+        statements.push(
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: edgeLogGroupActions,
+            resources: [edgeLogGroupArn],
+          })
+        );
+      }
+
+      // Create inline policy for this tier
+      const policyDoc = new iam.PolicyDocument({
+        statements,
       });
 
       // Create the role with tier-specific configuration
