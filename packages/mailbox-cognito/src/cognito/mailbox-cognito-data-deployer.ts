@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
 import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
-import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox';
+import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
