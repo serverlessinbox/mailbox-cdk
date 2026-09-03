@@ -6,7 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CdnProps {
   readonly blobStore: IBucket;

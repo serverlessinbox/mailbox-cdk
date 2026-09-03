@@ -9,11 +9,8 @@ import { MailFeedbackTable } from '../resources/mailfeedback-table';
 import { MailboxKmsConfig } from '../utils/kms';
 import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
 import { isDevelopmentMode } from '../utils/development-mode';
-import {
-  applyServerlessInboxBaseTags,
-  applyServerlessInboxComponentTag,
-  type ServerlessInboxDeployer,
-} from '../utils/serverless-inbox-tags';
+import { applyServerlessInboxBaseTags, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {

@@ -6,7 +6,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
-import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
+import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: ICdkArtifactEngine;

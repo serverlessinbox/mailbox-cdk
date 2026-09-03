@@ -6,8 +6,8 @@ import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
-  type ServerlessInboxDeployer,
-} from '../utils/serverless-inbox-tags';
+} from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 import { addServerlessInboxResourceGroup } from '../utils/resource-group';
 

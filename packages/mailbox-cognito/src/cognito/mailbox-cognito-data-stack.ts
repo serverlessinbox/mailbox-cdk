@@ -5,11 +5,13 @@ import { Construct } from 'constructs';
 import {
   isDevelopmentMode,
   JMAP_SCOPE_DESCRIPTIONS,
+  MailboxResourceDescriptions,
+} from '@serverlessinbox/mailbox';
+import {
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
-  MailboxResourceDescriptions,
-  type ServerlessInboxDeployer,
-} from '@serverlessinbox/mailbox';
+} from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
 import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
 
 /**

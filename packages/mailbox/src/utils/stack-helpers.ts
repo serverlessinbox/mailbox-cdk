@@ -3,7 +3,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { TypeScriptLambda, CdkArtifactEngine, getOrCreateSharedGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
-import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
+import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface StackHelpersMailboxDataProps {
   readonly hostedZoneId: string;

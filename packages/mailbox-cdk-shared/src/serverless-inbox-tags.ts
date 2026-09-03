@@ -15,9 +15,6 @@ export type ServerlessInboxComponent =
 
 export type ServerlessInboxDeployer = 'cdk' | 'cfn' | 'marketplace';
 
-/** Auto-update type: how a lambda is kept current with new versions. */
-export type AutoUpdateType = 'code' | 'ui' | 'edge' | 'none';
-
 const TAG_PREFIX = 'serverless-inbox:' as const;
 
 export const ServerlessInboxTagKeys = {

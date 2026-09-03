@@ -5,7 +5,7 @@ import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
-import { serverlessInboxSubStackTags } from '../utils/serverless-inbox-tags';
+import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxEdgeDeployerProps {
   /**

@@ -5,7 +5,7 @@ import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import { IConstruct } from 'constructs';
-import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 /** AWS tag-value maximum length. */
 const MAX_TAG_VALUE_LENGTH = 256;

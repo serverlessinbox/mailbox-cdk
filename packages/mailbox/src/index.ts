@@ -66,21 +66,16 @@ export {
   isDevelopmentMode,
 } from './utils/development-mode';
 
-// Utils — tagging & correlation (used by sibling sub-stack packages, e.g. mailbox-cognito)
+// Utils — tagging & correlation (moved to shared package; re-exported from mailbox-cdk-shared)
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
-  applyServerlessInboxEdgeTags,
-  serverlessInboxSubStackTags,
-} from './utils/serverless-inbox-tags';
+} from '@serverlessinbox/mailbox-cdk-shared';
 export type {
   ServerlessInboxComponent,
-  ServerlessInboxDeployer,
   ApplyServerlessInboxTagsOptions,
-  ApplyServerlessInboxEdgeTagsOptions,
-  ServerlessInboxSubStackTagOptions,
-} from './utils/serverless-inbox-tags';
+} from '@serverlessinbox/mailbox-cdk-shared';
 
 // Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)
 export { MailboxResourceDescriptions } from './utils/resource-descriptions';

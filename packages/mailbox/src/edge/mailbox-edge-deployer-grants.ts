@@ -1,7 +1,7 @@
 import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { ServerlessInboxTagKeys } from '../utils/serverless-inbox-tags';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface EdgeDeployerGrantProps {
   stack: Stack;

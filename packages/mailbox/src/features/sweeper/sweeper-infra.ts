@@ -4,7 +4,7 @@ import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../..
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SweeperWorkflow } from './sweeper-workflow';
 import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
-import { ServerlessInboxTagKeys } from '../../utils/serverless-inbox-tags';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: ICdkArtifactEngine;

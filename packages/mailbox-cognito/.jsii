@@ -9269,7 +9269,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/cognito/mailbox-cognito-data-stack.ts",
-          "line": 26
+          "line": 28
         },
         "parameters": [
           {
@@ -9296,7 +9296,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-stack.ts",
-        "line": 25
+        "line": 27
       },
       "name": "MailboxCognitoDataStack",
       "symbolId": "src/cognito/mailbox-cognito-data-stack:MailboxCognitoDataStack"
@@ -10268,5 +10268,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "2eu0Nfv/5MFZOtWUGpu8sGph0Y1ZtjFFQ/e0jcWF8QU="
+  "fingerprint": "REiIIGtUSqCclOZ6rtfZa4JBPpm5OziTD9J6amCSkcY="
 }

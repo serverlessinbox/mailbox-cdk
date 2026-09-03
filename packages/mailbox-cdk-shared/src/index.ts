@@ -11,6 +11,22 @@ export type { TypeScriptLambdaProps } from './ts-lambda';
 export { applyArtifactTags } from './apply-artifact-tags';
 export type { AutoUpdateType } from './apply-artifact-tags';
 
+// Serverless Inbox tagging (moved from mailbox to shared to allow shared-group.ts to use it)
+export {
+  ServerlessInboxTagKeys,
+  applyServerlessInboxBaseTags,
+  applyServerlessInboxComponentTag,
+  applyServerlessInboxEdgeTags,
+  serverlessInboxSubStackTags,
+} from './serverless-inbox-tags';
+export type {
+  ServerlessInboxComponent,
+  ServerlessInboxDeployer,
+  ApplyServerlessInboxTagsOptions,
+  ApplyServerlessInboxEdgeTagsOptions,
+  ServerlessInboxSubStackTagOptions,
+} from './serverless-inbox-tags';
+
 // Static content deployer (used for UI bundles, well-known docs, etc.)
 export { StaticContentDeployer, StaticContentSource } from './content-deployer';
 export type { StaticContentDeploymentProps, StaticContentInvalidationProps, IStaticContentSource, StaticContentSourceSpec, StaticContentWriteOptions, StaticContentZipOptions } from './content-deployer';

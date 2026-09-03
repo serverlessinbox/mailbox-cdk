@@ -16,7 +16,8 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
-import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra } from './features/sweeper';
@@ -35,11 +36,6 @@ import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
 import { MailboxDataDeployer } from './data';
 import { MailboxDataStackRef } from './data';
-import {
-  applyServerlessInboxBaseTags,
-  applyServerlessInboxComponentTag,
-  type ServerlessInboxDeployer,
-} from './utils/serverless-inbox-tags';
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { StackHelpers } from './utils/stack-helpers';
