@@ -64,7 +64,6 @@ export class Cdn extends Construct {
         'x-jwt-algorithms': (props.jwtAlgorithms && props.jwtAlgorithms.length > 0) ? props.jwtAlgorithms.join(',') : 'RS256',
         // Policy-driven auth (audiences + required group) for JMAP downloads
         'x-auth-policy-name': 'JMAP_API',
-        'x-pipeline': 'jmap',
       },
     });
 

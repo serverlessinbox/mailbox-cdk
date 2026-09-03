@@ -58,7 +58,6 @@ export class GoLambda extends LambdaFunction {
       environment: {
         ...callerEnvironment,
         SERVICE_NAME: serviceName ?? lambdaId,
-        PIPELINE: pipeline,
       },
       ...restProps,
     });
