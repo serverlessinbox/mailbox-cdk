@@ -31,6 +31,28 @@ export interface SmokeTestResponse {
 }
 
 /**
+ * Type guard: detects a smoke test probe payload.
+ *
+ * - Parses `event` as JSON first if it's a string.
+ * - Requires ONLY the `serverlessInboxSmokeTest: true` flag and nothing else,
+ *   to minimize false positives: a real event that happens to carry this flag
+ *   alongside RequestType/method/etc. is treated as real traffic, not a probe.
+ */
+function isSmokeTestProbe(event: unknown): event is SmokeTestProbe {
+  let probe: SmokeTestProbe | null = null;
+  if (typeof event === 'object' && event !== null) {
+    probe = event as SmokeTestProbe;
+  } else if (typeof event === 'string') {
+    try {
+      probe = JSON.parse(event) as SmokeTestProbe;
+    } catch {
+      probe = null;
+    }
+  }
+  return probe !== null && probe.serverlessInboxSmokeTest === true && Object.keys(probe).length === 1;
+}
+
+/**
  * Wraps a Lambda handler to intercept smoke test probes.
  *
  * @param handler The underlying Lambda handler (any shape: async function, CloudFormationCustomResourceHandler, etc.)
@@ -47,82 +69,35 @@ export interface SmokeTestResponse {
  *   - CFN event (has RequestType/ResponseURL): delegates to handler unchanged
  *
  * The handler's own error handling is unchanged — no special behavior on errors.
- * If the handler throws during a real invocation, the error propagates normally.
+ * If the handler throws (or its returned promise rejects) during a real
+ * invocation, the error propagates normally as a rejected promise.
  */
-export function withSmokeTest<T extends (...args: any[]) => any>(
-  handler: T,
+export function withSmokeTest<TEvent, TContext, TResult>(
+  handler: (event: TEvent, context: TContext, ...rest: never[]) => Promise<TResult> | void,
 ): (
-  event: Parameters<T>[0] | SmokeTestProbe | string,
-  context?: Parameters<T>[1],
-  callback?: Parameters<T>[2],
-) => Promise<Awaited<ReturnType<T>> | SmokeTestResponse> {
-  return (async (event: any, context: any, callback: any) => {
-    // Check if this is a smoke test probe:
-    // - Parse as JSON if it's a string
-    // - Check for the telltale serverlessInboxSmokeTest flag
-    let probe: SmokeTestProbe | null = null;
-    if (typeof event === 'object' && event !== null) {
-      probe = event as SmokeTestProbe;
-    } else if (typeof event === 'string') {
-      try {
-        const parsed = JSON.parse(event);
-        probe = parsed as SmokeTestProbe;
-      } catch {
-        // Not JSON, treat as real event
-        probe = null;
-      }
-    }
-
-    // If this is a probe (has serverlessInboxSmokeTest: true) and nothing else:
-    // For safety, we require ONLY the probe flag to minimize false positives.
-    // A real event that happens to have this flag alongside RequestType/method/etc.
-    // should be treated as real traffic, not a probe.
-    const isProbe =
-      probe !== null &&
-      probe.serverlessInboxSmokeTest === true &&
-      Object.keys(probe).length === 1; // Only the probe flag, nothing else
-
-    if (isProbe) {
-      // Return success response and do not invoke the real handler
+  event: TEvent | SmokeTestProbe | string,
+  context?: TContext,
+) => Promise<TResult | SmokeTestResponse> {
+  // Node.js Lambda runtimes reject a handler declared with a third formal
+  // parameter at Init, before any invocation — the function returned here
+  // must declare exactly two (event, context).
+  return async (event, context) => {
+    if (isSmokeTestProbe(event)) {
       const response: SmokeTestResponse = {
         serverlessInboxSmokeTestOk: true,
       };
-
-      // Handle different Lambda invocation modes
-      if (callback) {
-        // Callback-style invocation
-        callback(null, response);
-      } else if (context && typeof context.succeed === 'function') {
-        // ALB/API Gateway style
-        context.succeed(response);
-      } else {
-        // Promise-based (default for Node.js)
-        return response;
-      }
-      return;
+      return response;
     }
 
-    // Real traffic: invoke the underlying handler unchanged
-    // Preserve the original function signature and error handling
-    try {
-      const result = await handler(event, context, callback);
-      // If handler uses callbacks (callback provided and handler returned), callback handles response
-      // If handler returns a Promise, we need to resolve it and call callback if provided
-      if (callback && typeof result !== 'undefined') {
-        callback(null, result);
-      } else {
-        return result;
-      }
-    } catch (error) {
-      if (callback) {
-        callback(error);
-      } else {
-        throw error;
-      }
-    }
-  }) as (
-    event: Parameters<T>[0] | SmokeTestProbe | string,
-    context?: Parameters<T>[1],
-    callback?: Parameters<T>[2],
-  ) => Promise<Awaited<ReturnType<T>> | SmokeTestResponse>;
+    // cast (event): a string that failed JSON parsing above is real traffic
+    // in the handler's own event shape, not further narrowable structurally.
+    // cast (context): optional here so callers whose handler ignores context
+    // can omit it; handlers that use context are always invoked by the real
+    // Lambda runtime with one present.
+    // cast (result): aws-lambda's Handler type permits a legacy callback-style
+    // (void) return alongside the Promise; every handler in this codebase is
+    // async, so this always resolves to TResult at runtime.
+    const result = (await handler(event as TEvent, context as TContext)) as TResult;
+    return result;
+  };
 }

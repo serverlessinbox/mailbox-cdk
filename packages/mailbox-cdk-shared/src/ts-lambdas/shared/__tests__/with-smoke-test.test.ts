@@ -18,7 +18,7 @@ describe('withSmokeTest', () => {
       const wrapped = withSmokeTest(handlerMock);
 
       const probePayload = { serverlessInboxSmokeTest: true };
-      const result = await wrapped(probePayload, {}, undefined);
+      const result = await wrapped(probePayload, {});
 
       // Handler must not have been called
       expect(handlerMock).not.toHaveBeenCalled();
@@ -37,7 +37,7 @@ describe('withSmokeTest', () => {
       const wrapped = withSmokeTest(handlerMock);
 
       const probeString = JSON.stringify({ serverlessInboxSmokeTest: true });
-      const result = await wrapped(probeString, {}, undefined);
+      const result = await wrapped(probeString, {});
 
       expect(handlerMock).not.toHaveBeenCalled();
       expect(result).toEqual({
@@ -59,10 +59,10 @@ describe('withSmokeTest', () => {
         RequestType: 'Create', // Looks like a real CloudFormation event
       };
 
-      const result = await wrapped(fakeProbe, {}, undefined);
+      const result = await wrapped(fakeProbe, {});
 
       // Should treat this as real traffic
-      expect(handlerMock).toHaveBeenCalledWith(fakeProbe, {}, undefined);
+      expect(handlerMock).toHaveBeenCalledWith(fakeProbe, {});
       expect(result).toEqual({
         statusCode: 200,
         body: 'real response',
@@ -93,9 +93,9 @@ describe('withSmokeTest', () => {
       const handlerMock = jest.fn(async () => cfnResponse);
       const wrapped = withSmokeTest(handlerMock);
 
-      const result = await wrapped(cfnEvent, {}, undefined);
+      const result = await wrapped(cfnEvent, {});
 
-      expect(handlerMock).toHaveBeenCalledWith(cfnEvent, {}, undefined);
+      expect(handlerMock).toHaveBeenCalledWith(cfnEvent, {});
       expect(result).toEqual(cfnResponse);
     });
 
@@ -114,9 +114,9 @@ describe('withSmokeTest', () => {
       const handlerMock = jest.fn(async () => apiResponse);
       const wrapped = withSmokeTest(handlerMock);
 
-      const result = await wrapped(apiEvent, {}, undefined);
+      const result = await wrapped(apiEvent, {});
 
-      expect(handlerMock).toHaveBeenCalledWith(apiEvent, {}, undefined);
+      expect(handlerMock).toHaveBeenCalledWith(apiEvent, {});
       expect(result).toEqual(apiResponse);
     });
 
@@ -133,9 +133,9 @@ describe('withSmokeTest', () => {
       const handlerMock = jest.fn(async () => ({}));
       const wrapped = withSmokeTest(handlerMock);
 
-      const result = await wrapped(sqsEvent, {}, undefined);
+      const result = await wrapped(sqsEvent, {});
 
-      expect(handlerMock).toHaveBeenCalledWith(sqsEvent, {}, undefined);
+      expect(handlerMock).toHaveBeenCalledWith(sqsEvent, {});
     });
   });
 
@@ -150,8 +150,8 @@ describe('withSmokeTest', () => {
 
       const realEvent = { method: 'GET', path: '/' };
 
-      await expect(wrapped(realEvent, {}, undefined)).rejects.toThrow('Handler failed');
-      expect(handlerMock).toHaveBeenCalledWith(realEvent, {}, undefined);
+      await expect(wrapped(realEvent, {})).rejects.toThrow('Handler failed');
+      expect(handlerMock).toHaveBeenCalledWith(realEvent, {});
     });
 
     it('swallows handler errors on probe invocation (handler not called)', async () => {
@@ -163,52 +163,18 @@ describe('withSmokeTest', () => {
 
       const wrapped = withSmokeTest(handlerMock);
 
-      const result = await wrapped({ serverlessInboxSmokeTest: true }, {}, undefined);
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
 
       expect(handlerMock).not.toHaveBeenCalled();
       expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
     });
   });
 
-  describe('callback-style invocation', () => {
-    it('supports callback-based Lambda runtime', (done) => {
-      const handlerMock = jest.fn(async () => ({
-        result: 'data',
-      }));
-
-      const wrapped = withSmokeTest(handlerMock);
-
-      const callback = jest.fn((err: any, result: any) => {
-        expect(err).toBeNull();
-        expect(result).toEqual({
-          serverlessInboxSmokeTestOk: true,
-        });
-        expect(handlerMock).not.toHaveBeenCalled();
-        done();
-      });
-
-      wrapped({ serverlessInboxSmokeTest: true }, {}, callback);
-    });
-
-    it('delegates real events to handler with callback', (done) => {
-      const handlerMock = jest.fn(async (event: any) => ({
-        processed: event.id,
-      }));
-
-      const wrapped = withSmokeTest(handlerMock);
-
-      const callback = jest.fn((err: any, result: any) => {
-        expect(err).toBeNull();
-        expect(result).toEqual({
-          processed: 123,
-        });
-        expect(handlerMock).toHaveBeenCalledWith({ id: 123 }, {}, callback);
-        done();
-      });
-
-      wrapped({ id: 123 }, {}, callback);
-    });
-  });
+  // Callback-style invocation is intentionally unsupported: Node.js Lambda runtimes
+  // reject a handler declared with a third formal parameter at Init starting with
+  // Node.js 24 (Runtime.CallbackHandlerDeprecated), regardless of whether the
+  // parameter is ever invoked. withSmokeTest's returned function must declare
+  // exactly two parameters (event, context) to stay eligible on that runtime.
 
   describe('malformed probe handling', () => {
     it('treats invalid JSON as real event', async () => {
@@ -219,9 +185,9 @@ describe('withSmokeTest', () => {
       const wrapped = withSmokeTest(handlerMock);
 
       // Invalid JSON string
-      const result = await wrapped('not valid json', {}, undefined);
+      const result = await wrapped('not valid json', {});
 
-      expect(handlerMock).toHaveBeenCalledWith('not valid json', {}, undefined);
+      expect(handlerMock).toHaveBeenCalledWith('not valid json', {});
       expect(result).toEqual({ statusCode: 200 });
     });
 
@@ -232,8 +198,8 @@ describe('withSmokeTest', () => {
 
       const wrapped = withSmokeTest(handlerMock);
 
-      await wrapped(null, {}, undefined);
-      await wrapped(undefined, {}, undefined);
+      await wrapped(null, {});
+      await wrapped(undefined, {});
 
       expect(handlerMock).toHaveBeenCalledTimes(2);
     });
