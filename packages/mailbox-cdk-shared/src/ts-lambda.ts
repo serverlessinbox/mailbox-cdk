@@ -102,6 +102,7 @@ export class TypeScriptLambda extends LambdaFunction {
       environment: {
         ...callerEnvironment,
         SERVICE_NAME: serviceName ?? lambdaId,
+        PIPELINE: pipeline,
       },
       ...lambdaProps,
     });

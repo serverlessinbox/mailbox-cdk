@@ -126,6 +126,39 @@ describe('Mailbox stack pipeline log groups', () => {
     }
   });
 
+  it('every Lambda function has a PIPELINE env var matching its resolved log group', () => {
+    const template = synth();
+    const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
+
+    const logGroupPipelineByLogicalId = new Map<string, string>();
+    for (const [logicalId, resource] of Object.entries(resources)) {
+      if (resource.Type !== 'AWS::Logs::LogGroup') continue;
+      const nameProp = resource.Properties?.LogGroupName;
+      const joinParts = nameProp?.['Fn::Join']?.[1] as unknown[] | undefined;
+      // Adjacent literal segments ('/' + pipeline + '-') are merged by CDK's token resolution into
+      // a single "/<pipeline>-" element, distinct from the surrounding tokens (stack name, guid).
+      const segment = Array.isArray(joinParts) ? joinParts[2] : undefined;
+      const match = typeof segment === 'string' ? segment.match(/^\/(.+)-$/) : null;
+      if (match) {
+        logGroupPipelineByLogicalId.set(logicalId, match[1]);
+      }
+    }
+
+    const functions = Object.entries(resources).filter(([, r]) => r.Type === 'AWS::Lambda::Function');
+    expect(functions.length).toBeGreaterThan(5);
+
+    for (const [, fn] of functions) {
+      const envVars = fn.Properties?.Environment?.Variables ?? {};
+      const pipelineEnv = envVars.PIPELINE;
+      expect(typeof pipelineEnv).toBe('string');
+
+      const logGroupRef = fn.Properties?.LoggingConfig?.LogGroup?.Ref;
+      const resolvedPipeline = logGroupPipelineByLogicalId.get(logGroupRef);
+      expect(resolvedPipeline).toBeDefined();
+      expect(pipelineEnv).toBe(resolvedPipeline);
+    }
+  });
+
   it('the CloudFront distribution origin carries x-pipeline: jmap', () => {
     const template = synth();
     const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
