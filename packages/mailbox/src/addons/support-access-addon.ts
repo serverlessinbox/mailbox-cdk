@@ -40,6 +40,8 @@ export interface SupportAccessAddonProps {
   readonly configTable: ITable;
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IQueue;
+  /** Vendor AWS account IDs permitted to assume the support hop role. Defaults to the ServerlessInbox production account. */
+  readonly vendorAccountIds?: string[];
 }
 
 /**
@@ -93,7 +95,9 @@ export class SupportAccessAddon extends Construct implements IAdminApiAddon {
       // so they produce zero live resources when the condition evaluates to false at deploy.
 
       // Support roles: hop + two support roles with static trust scoped by hop role tags
-      const rolesInfra = new SupportAccessRolesInfra(this, 'roles-infra');
+      const rolesInfra = new SupportAccessRolesInfra(this, 'roles-infra', {
+        vendorAccountIds: props.vendorAccountIds,
+      });
 
       // Wrap the artifact resolver in a CDK artifact engine
       const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
@@ -159,6 +163,9 @@ export interface SupportAccessAddonProviderProps {
   readonly mode: SupportAccessMode;
   /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;
+  /** Vendor AWS account IDs permitted to assume the support hop role.
+   *  Defaults to the ServerlessInbox production account. */
+  readonly vendorAccountIds?: string[];
 }
 
 /**
@@ -175,6 +182,7 @@ export class SupportAccessAddonProvider implements IAdminApiAddonProvider {
         artifactResolver: this.props.artifactResolver,
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
+        vendorAccountIds: this.props.vendorAccountIds,
       }),
     ];
   }

@@ -132,6 +132,14 @@ const SUPPORT_TIERS: SupportTier[] = [
 ];
 
 /**
+ * Props for SupportAccessRolesInfra.
+ */
+export interface SupportAccessRolesInfraProps {
+  /** Vendor AWS account IDs permitted to assume the support hop role. */
+  readonly vendorAccountIds?: string[];
+}
+
+/**
  * Support Access IAM roles infrastructure.
  *
  * Creates three roles:
@@ -156,7 +164,7 @@ export class SupportAccessRolesInfra extends Construct {
   readonly supportHopRoleArn: string;
   readonly tierArns: Record<string, string>;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props?: SupportAccessRolesInfraProps) {
     super(scope, id);
 
     const stack = Stack.of(this);
@@ -193,6 +201,20 @@ export class SupportAccessRolesInfra extends Construct {
       });
     }
 
+    // Determine vendor account IDs: use provided ones or default to prod account
+    const vendorAccounts = props?.vendorAccountIds && props.vendorAccountIds.length > 0
+      ? props.vendorAccountIds
+      : [VENDOR_ACCOUNT_ID];
+
+    // Validate that all account IDs are 12-digit strings
+    for (const accountId of vendorAccounts) {
+      if (!/^\d{12}$/.test(accountId)) {
+        throw new Error(
+          `Invalid AWS account ID: ${accountId}. Account IDs must be 12-digit strings.`
+        );
+      }
+    }
+
     // support-hop role: Intermediate hop for vendor support account trust.
     // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
     // Tagged at runtime by support-access-api (serverless-inbox:support-access:diag, serverless-inbox:support-access:config-read keys).
@@ -215,15 +237,19 @@ export class SupportAccessRolesInfra extends Construct {
       description: 'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
     });
 
-    // Override the trust policy with vendor account root principal
+    // Override the trust policy with vendor account root principals
+    // For a single account, use the simple ARN format.
+    // For multiple accounts, use the principal list format which is more explicit.
     const hopCfnRole = hopRole.node.defaultChild as iam.CfnRole;
+    const vendorPrincipals = vendorAccounts.map(accountId => `arn:aws:iam::${accountId}:root`);
+
     hopCfnRole.assumeRolePolicyDocument = {
       Version: '2012-10-17',
       Statement: [
         {
           Effect: 'Allow',
           Principal: {
-            AWS: `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root`,
+            AWS: vendorPrincipals.length === 1 ? vendorPrincipals[0] : vendorPrincipals,
           },
           Action: 'sts:AssumeRole',
         },

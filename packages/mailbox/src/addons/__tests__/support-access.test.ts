@@ -1214,6 +1214,218 @@ describe('SupportAccessAddon Unit Tests', () => {
       expect(foundDiagWithDependency).toBe(true);
       expect(foundConfigWithDependency).toBe(true);
     });
-
   });
+
+  describe('Vendor account IDs configuration', () => {
+    it('Default (prop omitted) → hop role trust contains exactly the prod account', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-default-vendor', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITHOUT vendorAccountIds prop
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allRoles = testTemplate.findResources('AWS::IAM::Role');
+
+      // Find hop role
+      let foundHopRoleWithProdAccount = false;
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+        let roleName = '';
+        if (typeof props.RoleName === 'string') {
+          roleName = props.RoleName;
+        } else if (props.RoleName?.['Fn::Join']) {
+          const parts = props.RoleName['Fn::Join'][1] || [];
+          roleName = parts.join('');
+        }
+
+        if (roleName.includes('support-hop-')) {
+          const trustPolicyDoc = props.AssumeRolePolicyDocument;
+          const statements = trustPolicyDoc?.Statement || [];
+
+          for (const statement of statements) {
+            const principalArn = statement.Principal?.AWS;
+
+            // Should contain exactly the prod account ARN
+            if (principalArn === 'arn:aws:iam::791990038981:root') {
+              foundHopRoleWithProdAccount = true;
+              // Verify it's not an array (single account case)
+              expect(Array.isArray(principalArn)).toBe(false);
+            }
+          }
+        }
+      }
+
+      expect(foundHopRoleWithProdAccount).toBe(true);
+    });
+
+    it('Explicit two-account list → trust contains both', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-multi-vendor', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITH explicit two-account list
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+        vendorAccountIds: ['111122223333', '444455556666'],
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allRoles = testTemplate.findResources('AWS::IAM::Role');
+
+      // Find hop role
+      let foundHopRoleWithBothAccounts = false;
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+        let roleName = '';
+        if (typeof props.RoleName === 'string') {
+          roleName = props.RoleName;
+        } else if (props.RoleName?.['Fn::Join']) {
+          const parts = props.RoleName['Fn::Join'][1] || [];
+          roleName = parts.join('');
+        }
+
+        if (roleName.includes('support-hop-')) {
+          const trustPolicyDoc = props.AssumeRolePolicyDocument;
+          const statements = trustPolicyDoc?.Statement || [];
+
+          for (const statement of statements) {
+            const principalArn = statement.Principal?.AWS;
+
+            // Should contain both accounts (as an array)
+            if (Array.isArray(principalArn)) {
+              const arns = new Set(principalArn);
+              if (
+                arns.has('arn:aws:iam::111122223333:root') &&
+                arns.has('arn:aws:iam::444455556666:root') &&
+                arns.size === 2
+              ) {
+                foundHopRoleWithBothAccounts = true;
+              }
+            }
+          }
+        }
+      }
+
+      expect(foundHopRoleWithBothAccounts).toBe(true);
+    });
+
+    it('Empty array → treat as default (use prod account)', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-empty-vendor', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITH empty array
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+        vendorAccountIds: [],
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allRoles = testTemplate.findResources('AWS::IAM::Role');
+
+      // Find hop role
+      let foundHopRoleWithProdAccount = false;
+      for (const [, role] of Object.entries(allRoles)) {
+        const props = (role as any).Properties;
+        let roleName = '';
+        if (typeof props.RoleName === 'string') {
+          roleName = props.RoleName;
+        } else if (props.RoleName?.['Fn::Join']) {
+          const parts = props.RoleName['Fn::Join'][1] || [];
+          roleName = parts.join('');
+        }
+
+        if (roleName.includes('support-hop-')) {
+          const trustPolicyDoc = props.AssumeRolePolicyDocument;
+          const statements = trustPolicyDoc?.Statement || [];
+
+          for (const statement of statements) {
+            const principalArn = statement.Principal?.AWS;
+
+            // Should fall back to prod account ARN
+            if (principalArn === 'arn:aws:iam::791990038981:root') {
+              foundHopRoleWithProdAccount = true;
+              expect(Array.isArray(principalArn)).toBe(false);
+            }
+          }
+        }
+      }
+
+      expect(foundHopRoleWithProdAccount).toBe(true);
+    });
+  });
+
 });

@@ -12595,7 +12595,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/support-access-addon.ts",
-          "line": 169
+          "line": 176
         },
         "parameters": [
           {
@@ -12612,13 +12612,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 168
+        "line": 175
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 171
+            "line": 178
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12661,7 +12661,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 157
+        "line": 161
       },
       "name": "SupportAccessAddonProviderProps",
       "properties": [
@@ -12673,7 +12673,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 161
+            "line": 165
           },
           "name": "artifactResolver",
           "type": {
@@ -12688,11 +12688,33 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 159
+            "line": 163
           },
           "name": "mode",
           "type": {
             "fqn": "@serverlessinbox/mailbox.SupportAccessMode"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Defaults to the ServerlessInbox production account.",
+            "summary": "Vendor AWS account IDs permitted to assume the support hop role."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/addons/support-access-addon.ts",
+            "line": 168
+          },
+          "name": "vendorAccountIds",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "array"
+            }
           }
         }
       ],
@@ -12728,5 +12750,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "ouqTx7WUUNcQy3PP+xWvNB1khUEXkA5c89n2f7qkaOM="
+  "fingerprint": "1ktOWl8E/sAFcgNTrRNJtZNX1E/MRhtuTzan5JB+gQI="
 }
