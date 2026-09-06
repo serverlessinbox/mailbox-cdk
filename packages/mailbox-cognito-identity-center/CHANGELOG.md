@@ -4,6 +4,10 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.79](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.78...v0.0.79) (Sun Sep 06 2026)
+
+
+
 ## [0.0.78](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.77...v0.0.78) (Sun Sep 06 2026)
 
 

@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.79](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.78...v0.0.79) (Sun Sep 06 2026)
+
+### feat
+
+* Reexport tag types ([9066b86](https://github.com/serverlessinbox/mailbox-cdk/commit/9066b86b9e851fa8644ba3239f8ebf667740f256))
+
 ## [0.0.78](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.77...v0.0.78) (Sun Sep 06 2026)
 
 ### fix
