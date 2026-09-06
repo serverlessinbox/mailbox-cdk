@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -46,12 +46,13 @@ export interface SupportAccessApiLambdaProps {
 export class SupportAccessApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SupportAccessApiLambdaProps) {
     // Build environment object with fixed order for CloudFormation template stability:
-    // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, then tier vars (from registry order)
+    // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, STACK_ID, then tier vars (from registry order)
     const tierEnv = buildSupportTierEnvironment(props.tierRoleArns);
     const environment: Record<string, string> = {
       SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
       CONFIG_TABLE_NAME: props.configTable.tableName,
       AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+      STACK_ID: Stack.of(scope).stackId,
       ...tierEnv,
     };
 

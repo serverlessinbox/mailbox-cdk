@@ -45,7 +45,6 @@ const SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS = [
   'events:DescribeRule',
   'events:ListRules',
   'events:ListTargetsByRule',
-  'cloudformation:DescribeStacks',
   'ssm:GetParameter',
   'ssm:GetParameters',
   'ses:GetAccount',
@@ -329,6 +328,28 @@ export class SupportAccessRolesInfra extends Construct {
           })
         );
       }
+
+      // CloudFormation stack reads, scoped to this stack and its nested stacks by ARN.
+      // A tag condition cannot work here: a stack does not carry its own tags, so
+      // aws:ResourceTag never matches the stack resource itself.
+      statements.push(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'cloudformation:DescribeStacks',
+            'cloudformation:ListStackResources',
+            'cloudformation:DescribeStackEvents',
+            // The console renders its resource tree from the CDK metadata inside the
+            // template body, so viewing it requires reading the template itself.
+            'cloudformation:GetTemplate',
+            'cloudformation:GetTemplateSummary',
+          ],
+          resources: [
+            Aws.STACK_ID,
+            `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-*/*`,
+          ],
+        })
+      );
 
       // Create inline policy for this tier
       const policyDoc = new iam.PolicyDocument({
