@@ -4,6 +4,68 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.78](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.77...v0.0.78) (Sun Sep 06 2026)
+
+### fix
+
+* Update test caes ([9078e7d](https://github.com/serverlessinbox/mailbox-cdk/commit/9078e7d8d94791273aaef754342a9c06d497a4f9))
+
+* Cleanup of unused variable ([fb1a24f](https://github.com/serverlessinbox/mailbox-cdk/commit/fb1a24f3e5df99e75d0de38ce9e9ce72f8e86cbb))
+
+* Log and logic fixes ([de65128](https://github.com/serverlessinbox/mailbox-cdk/commit/de65128ad8185a67ceabdf743ccaac7a06773881))
+
+* read custom env vars at the lambda entry point ([01a05ce](https://github.com/serverlessinbox/mailbox-cdk/commit/01a05cec7a5fb22558ef0dea14d90b535f5df7db))
+
+* auditEventsQueue is required, not optional ([da3741b](https://github.com/serverlessinbox/mailbox-cdk/commit/da3741b50d7b57d2e93e182f9f89e4808257850f))
+
+* Smoke test types ([1c83128](https://github.com/serverlessinbox/mailbox-cdk/commit/1c831285593786338fbbe0ece1532d73cdbc7de4))
+
+* Cleanup of pipeline logic inside lambdas ([29f80e0](https://github.com/serverlessinbox/mailbox-cdk/commit/29f80e06b7078ad01e3a4ec1d5a31f2a54143d8e))
+
+* Updated tags ([5387e42](https://github.com/serverlessinbox/mailbox-cdk/commit/5387e42fd1e64a92bbdfcdf01253fcd73ffee443))
+
+* Extra tag redirect ([d2f28ce](https://github.com/serverlessinbox/mailbox-cdk/commit/d2f28ce1ac726f9f693056f181c6aae45a309a9e))
+
+* Support access test case ([77e0bd2](https://github.com/serverlessinbox/mailbox-cdk/commit/77e0bd282e7af2ada7fa61949768dabdad1ae249))
+
+### feat
+
+* Support access addon ([c1c9138](https://github.com/serverlessinbox/mailbox-cdk/commit/c1c9138b88e4226d1c3e2346e25ecc7ad9e177fd))
+
+* Loggin improvements ([09ae896](https://github.com/serverlessinbox/mailbox-cdk/commit/09ae89639d36aadb6c44cf96e70d2fb96451f0c7))
+
+* Support access addon ([6d6661b](https://github.com/serverlessinbox/mailbox-cdk/commit/6d6661b094f75e6cebcd2360d5993ac387347f4e))
+
+* Support access tweaking ([424db72](https://github.com/serverlessinbox/mailbox-cdk/commit/424db72073e5f7aaad701a38d41dd8ff6d868624))
+
+* Log updates ([b17fcb4](https://github.com/serverlessinbox/mailbox-cdk/commit/b17fcb4c3ea698f75d94c3ea0458b013a8cb8e74))
+
+* Pipelines ([5c05ccf](https://github.com/serverlessinbox/mailbox-cdk/commit/5c05ccf6518304462c19990f13d38420629094fb))
+
+* every Lambda declares its pipeline ([3e99a99](https://github.com/serverlessinbox/mailbox-cdk/commit/3e99a99e5864074dfe8bcb55f9e3f03442d93432))
+
+* blob-authorizer logs into the shared jmap group ([48bebb5](https://github.com/serverlessinbox/mailbox-cdk/commit/48bebb55d8ff7fbaad021b793fc8c80ee0f5b019))
+
+* Lambda log pipelines ([a1bbea5](https://github.com/serverlessinbox/mailbox-cdk/commit/a1bbea57ad0eee10de5cd9fc1cfbfc48d0a55cf2))
+
+* Added permission boundaries on tags and resource names ([c7f09a8](https://github.com/serverlessinbox/mailbox-cdk/commit/c7f09a80a4d61eadec8b97d4f6b20018c6f53129))
+
+* Support access test vendor accounts ([7a59443](https://github.com/serverlessinbox/mailbox-cdk/commit/7a594430c73ad781029cb1d8c5be5faad6f79132))
+
+* Grant support tiers scoped CloudFormation read access ([3efefd7](https://github.com/serverlessinbox/mailbox-cdk/commit/3efefd713ab34c5386f1a7a4e0ee05124f216e6a))
+
+### refactor
+
+* Clean interfaces and construc boundaries ([736034c](https://github.com/serverlessinbox/mailbox-cdk/commit/736034cf9b5adc70539945e2d91421924b82932c))
+
+### docs
+
+* env.ts parity claim with Go is now accurate ([7c01d09](https://github.com/serverlessinbox/mailbox-cdk/commit/7c01d0973f0a07bebde96728fb2b480487dbc0b3))
+
+### chore
+
+* Build tweaking ([13bdc02](https://github.com/serverlessinbox/mailbox-cdk/commit/13bdc0265ba088570d44e80f8f3caf76feda5d23))
+
 ## [0.0.77](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.76...v0.0.77) (Tue Aug 25 2026)
 
 ### feat
