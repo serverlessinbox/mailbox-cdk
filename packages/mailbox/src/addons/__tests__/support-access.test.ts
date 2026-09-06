@@ -447,7 +447,9 @@ describe('SupportAccessAddon Unit Tests', () => {
 
           if (actions.has('logs:DescribeLogGroups') && !actions.has('lambda:GetFunctionConfiguration')) {
             foundDiagPolicy = true;
-            expect(actions.size).toBe(11);
+            // Counting actions guards against silently widening a support role: a failure here
+            // means the tier can do something new. Review that, do not just update the number.
+            expect(actions.size).toBe(16);
             expect(actions.has('cloudwatch:GetMetricData')).toBe(true);
             expect(actions.has('lambda:GetFunctionConfiguration')).toBe(false);
           }
@@ -474,7 +476,8 @@ describe('SupportAccessAddon Unit Tests', () => {
 
           if (actions.has('lambda:GetFunctionConfiguration')) {
             foundConfigPolicy = true;
-            expect(actions.size).toBe(38);
+            // Same guard as the diag count above; config-read is diag plus its delta.
+            expect(actions.size).toBe(42);
             expect(actions.has('logs:DescribeLogGroups')).toBe(true);
             expect(actions.has('cloudwatch:GetMetricData')).toBe(true);
             expect(actions.has('dynamodb:DescribeTable')).toBe(true);
