@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.81](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.80...v0.0.81) (Mon Sep 07 2026)
+
+### fix
+
+* Grant api invoke ([7fa8a95](https://github.com/serverlessinbox/mailbox-cdk/commit/7fa8a95fc2213d51b4402bc75200831ab58b724d))
+
 ## [0.0.80](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.79...v0.0.80) (Mon Sep 07 2026)
 
 ### feat
