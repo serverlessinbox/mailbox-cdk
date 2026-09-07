@@ -113,6 +113,7 @@ export class SupportAccessAddon extends Construct implements IAdminApiAddon {
         configTable: props.configTable,
         auditEventsQueue: props.auditEventsQueue,
         artifactResolver: artifactEngine,
+        vendorAccountIds: props.vendorAccountIds,
       });
 
       // Role Assumption Collector Lambda (Go-based, scheduled hourly)

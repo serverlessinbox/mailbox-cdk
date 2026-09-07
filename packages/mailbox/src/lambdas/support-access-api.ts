@@ -5,7 +5,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { getSupportTierTagKeys, buildSupportTierEnvironment } from '../addons/support-access-roles-infra';
+import { getSupportTierTagKeys, buildSupportTierEnvironment, resolveVendorAccountIds } from '../addons/support-access-roles-infra';
 
 export interface SupportAccessApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */
@@ -18,6 +18,8 @@ export interface SupportAccessApiLambdaProps {
   readonly auditEventsQueue: IQueue;
   /** Artifact resolver (engine) for Lambda code resolution. */
   readonly artifactResolver: ICdkArtifactEngine;
+  /** AWS account IDs hosting the vendor service API (optional). Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds?: string[];
 }
 
 /**
@@ -71,6 +73,8 @@ export class SupportAccessApiLambda extends GoLambda {
     // Grant send permission on the audit-events queue
     props.auditEventsQueue.grantSendMessages(this);
     this.grantCloudTrailLookup();
+
+    this.grantVendorApiInvoke(props);
   }
 
   private grantSupportHopRoleTagWrites(props: SupportAccessApiLambdaProps): void {
@@ -105,6 +109,19 @@ export class SupportAccessApiLambda extends GoLambda {
         'cloudtrail:LookupEvents',
       ],
       resources: ['*'],
+    }));
+  }
+
+  private grantVendorApiInvoke(props: SupportAccessApiLambdaProps): void {
+    // SigV4-signed cross-account call to the vendor service API.
+    // Route (POST /support-case-sync) and vendor accounts are known at synth time; region and API ID are not (vendor-chosen).
+    const vendorAccounts = resolveVendorAccountIds(props.vendorAccountIds);
+    const resources = vendorAccounts.map(accountId => `arn:aws:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
+
+    this.addToRolePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['execute-api:Invoke'],
+      resources,
     }));
   }
 }

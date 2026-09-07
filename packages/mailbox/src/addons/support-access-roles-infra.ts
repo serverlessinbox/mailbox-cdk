@@ -9,6 +9,31 @@ import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
  */
 export const VENDOR_ACCOUNT_ID = '791990038981';
 
+/**
+ * Resolve vendor account IDs: use provided ones or default to the production account.
+ * Validates that all account IDs are 12-digit strings.
+ *
+ * @param vendorAccountIds Vendor AWS account IDs (optional).
+ * @returns Array of validated vendor account IDs.
+ * @throws Error if any account ID is not a 12-digit string.
+ */
+export function resolveVendorAccountIds(vendorAccountIds?: string[]): string[] {
+  const resolved = vendorAccountIds && vendorAccountIds.length > 0
+    ? vendorAccountIds
+    : [VENDOR_ACCOUNT_ID];
+
+  // Validate that all account IDs are 12-digit strings
+  for (const accountId of resolved) {
+    if (!/^\d{12}$/.test(accountId)) {
+      throw new Error(
+        `Invalid AWS account ID: ${accountId}. Account IDs must be 12-digit strings.`
+      );
+    }
+  }
+
+  return resolved;
+}
+
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
   'logs:DescribeLogGroups',
@@ -201,18 +226,7 @@ export class SupportAccessRolesInfra extends Construct {
     }
 
     // Determine vendor account IDs: use provided ones or default to prod account
-    const vendorAccounts = props?.vendorAccountIds && props.vendorAccountIds.length > 0
-      ? props.vendorAccountIds
-      : [VENDOR_ACCOUNT_ID];
-
-    // Validate that all account IDs are 12-digit strings
-    for (const accountId of vendorAccounts) {
-      if (!/^\d{12}$/.test(accountId)) {
-        throw new Error(
-          `Invalid AWS account ID: ${accountId}. Account IDs must be 12-digit strings.`
-        );
-      }
-    }
+    const vendorAccounts = resolveVendorAccountIds(props?.vendorAccountIds);
 
     // support-hop role: Intermediate hop for vendor support account trust.
     // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.

@@ -9084,6 +9084,36 @@
       ],
       "symbolId": "src/api/addons:AdminApiAddonContext"
     },
+    "@serverlessinbox/mailbox.ApplyServerlessInboxEdgeTagsOptions": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.ApplyServerlessInboxEdgeTagsOptions",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+        "line": 69
+      },
+      "name": "ApplyServerlessInboxEdgeTagsOptions",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Tagged as `serverless-inbox:root-region`.",
+            "summary": "The root stack's region (where the main stack is deployed)."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+            "line": 71
+          },
+          "name": "rootRegion",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/serverless-inbox-tags:ApplyServerlessInboxEdgeTagsOptions"
+    },
     "@serverlessinbox/mailbox.ApplyServerlessInboxTagsOptions": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
@@ -9363,7 +9393,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 46
+          "line": 45
         },
         "parameters": [
           {
@@ -9403,7 +9433,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 248
+            "line": 242
           },
           "name": "addDeployEndDependency",
           "parameters": [
@@ -9421,7 +9451,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 239
+            "line": 233
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9452,11 +9482,11 @@
         },
         {
           "docs": {
-            "summary": "Register packages for the updater to track (skips unregistered packages in tag-scan loop)."
+            "summary": "Register packages for the updater to track."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 229
+            "line": 227
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9480,7 +9510,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 224
+            "line": 222
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -12243,6 +12273,82 @@
       ],
       "symbolId": "src/artifacts/i-artifact-resolver:ResolvedArtifact"
     },
+    "@serverlessinbox/mailbox.ServerlessInboxSubStackTagOptions": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "fqn": "@serverlessinbox/mailbox.ServerlessInboxSubStackTagOptions",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+        "line": 106
+      },
+      "name": "ServerlessInboxSubStackTagOptions",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Root (main) stack name shared across the deployment."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+            "line": 108
+          },
+          "name": "rootStack",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "This sub-stack's own CloudFormation stack name."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+            "line": 110
+          },
+          "name": "stack",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Defaults to 'mailbox'."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+            "line": 114
+          },
+          "name": "product",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "Product version (e.g. '1.2.3' or 'channel:dev')."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "../mailbox-cdk-shared/src/serverless-inbox-tags.ts",
+            "line": 112
+          },
+          "name": "version",
+          "optional": true,
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/serverless-inbox-tags:ServerlessInboxSubStackTagOptions"
+    },
     "@serverlessinbox/mailbox.StackHelpers": {
       "assembly": "@serverlessinbox/mailbox",
       "base": "constructs.Construct",
@@ -12595,7 +12701,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/support-access-addon.ts",
-          "line": 176
+          "line": 177
         },
         "parameters": [
           {
@@ -12612,13 +12718,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 175
+        "line": 176
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 178
+            "line": 179
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12661,7 +12767,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/support-access-addon.ts",
-        "line": 161
+        "line": 162
       },
       "name": "SupportAccessAddonProviderProps",
       "properties": [
@@ -12673,7 +12779,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 165
+            "line": 166
           },
           "name": "artifactResolver",
           "type": {
@@ -12688,7 +12794,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 163
+            "line": 164
           },
           "name": "mode",
           "type": {
@@ -12704,7 +12810,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/support-access-addon.ts",
-            "line": 168
+            "line": 169
           },
           "name": "vendorAccountIds",
           "optional": true,
@@ -12750,5 +12856,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "1ktOWl8E/sAFcgNTrRNJtZNX1E/MRhtuTzan5JB+gQI="
+  "fingerprint": "fJM5OVKTAaJmSDrXABq/D0p4VUeum2VNhK3MgDo2U0M="
 }

@@ -1431,4 +1431,193 @@ describe('SupportAccessAddon Unit Tests', () => {
     });
   });
 
+  describe('Lambda execute-api grant scoping', () => {
+    it('Default vendor account → single scoped execute-api resource', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-default-vendor', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITHOUT vendorAccountIds prop (uses default VENDOR_ACCOUNT_ID)
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allPolicies = testTemplate.findResources('AWS::IAM::Policy');
+
+      let foundExecuteApiGrant = false;
+      for (const [, policy] of Object.entries(allPolicies)) {
+        const policyDoc = (policy as any).Properties?.PolicyDocument || {};
+        const statements = policyDoc.Statement || [];
+
+        for (const statement of statements) {
+          const actions = statement.Action || [];
+          const actionArray = Array.isArray(actions) ? actions : [actions];
+
+          // Find execute-api:Invoke statement
+          if (actionArray.includes('execute-api:Invoke')) {
+            const resources = statement.Resource || [];
+            const resourceArray = Array.isArray(resources) ? resources : [resources];
+
+            // Should have exactly one resource with the default vendor account
+            expect(resourceArray.length).toBe(1);
+            expect(resourceArray[0]).toBe('arn:aws:execute-api:*:791990038981:*/*/POST/support-case-sync');
+            foundExecuteApiGrant = true;
+          }
+        }
+      }
+
+      expect(foundExecuteApiGrant).toBe(true);
+    });
+
+    it('Explicit two-account list → scoped execute-api resources for both accounts', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-multi-vendor-api', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITH explicit two-account list
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+        vendorAccountIds: ['111122223333', '444455556666'],
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allPolicies = testTemplate.findResources('AWS::IAM::Policy');
+
+      let foundExecuteApiGrant = false;
+      for (const [, policy] of Object.entries(allPolicies)) {
+        const policyDoc = (policy as any).Properties?.PolicyDocument || {};
+        const statements = policyDoc.Statement || [];
+
+        for (const statement of statements) {
+          const actions = statement.Action || [];
+          const actionArray = Array.isArray(actions) ? actions : [actions];
+
+          // Find execute-api:Invoke statement
+          if (actionArray.includes('execute-api:Invoke')) {
+            const resources = statement.Resource || [];
+            const resourceArray = Array.isArray(resources) ? resources : [resources];
+
+            // Should have exactly two resources, one for each account
+            expect(resourceArray.length).toBe(2);
+            const resourceSet = new Set(resourceArray);
+            expect(resourceSet.has('arn:aws:execute-api:*:111122223333:*/*/POST/support-case-sync')).toBe(true);
+            expect(resourceSet.has('arn:aws:execute-api:*:444455556666:*/*/POST/support-case-sync')).toBe(true);
+            foundExecuteApiGrant = true;
+          }
+        }
+      }
+
+      expect(foundExecuteApiGrant).toBe(true);
+    });
+
+    it('Empty array → falls back to default vendor account scoped execute-api resource', () => {
+      const app = new App({
+        context: {
+          artifacts: {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-go': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
+      const stack = new cdk.Stack(app, 'test-stack-empty-array-api', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const configTable = new Table(stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+
+      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const artifactResolver = createTestArtifactResolver(stack);
+
+      // Construct WITH empty array (should fall back to default)
+      new SupportAccessAddon(stack, 'test-addon', {
+        mode: SupportAccessMode.ENABLED,
+        artifactResolver,
+        configTable,
+        auditEventsQueue,
+        vendorAccountIds: [],
+      });
+
+      const testTemplate = Template.fromStack(stack);
+      const allPolicies = testTemplate.findResources('AWS::IAM::Policy');
+
+      let foundExecuteApiGrant = false;
+      for (const [, policy] of Object.entries(allPolicies)) {
+        const policyDoc = (policy as any).Properties?.PolicyDocument || {};
+        const statements = policyDoc.Statement || [];
+
+        for (const statement of statements) {
+          const actions = statement.Action || [];
+          const actionArray = Array.isArray(actions) ? actions : [actions];
+
+          // Find execute-api:Invoke statement
+          if (actionArray.includes('execute-api:Invoke')) {
+            const resources = statement.Resource || [];
+            const resourceArray = Array.isArray(resources) ? resources : [resources];
+
+            // Should have exactly one resource with the default vendor account (empty array falls back)
+            expect(resourceArray.length).toBe(1);
+            expect(resourceArray[0]).toBe('arn:aws:execute-api:*:791990038981:*/*/POST/support-case-sync');
+            foundExecuteApiGrant = true;
+          }
+        }
+      }
+
+      expect(foundExecuteApiGrant).toBe(true);
+    });
+  });
+
 });
