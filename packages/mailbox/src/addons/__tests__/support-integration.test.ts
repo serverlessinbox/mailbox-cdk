@@ -2,7 +2,7 @@
  * Support Access Full-Stack IAM Verification Tests — T1 Hard Gates
  *
  * These tests verify the hard security assertions required by T1's verification gate.
- * They construct the addon directly on a test stack to isolate support-access IAM
+ * They construct the addon directly on a test stack to isolate support IAM
  * requirements without creating circular dependencies.
  */
 
@@ -14,7 +14,7 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import { SupportAccessAddonProvider, SupportAccessMode } from '../support-access-addon';
+import { SupportAddonProvider, SupportMode } from '../support-addon';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -31,9 +31,9 @@ function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
   return engine;
 }
 
-describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
+describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
   describe('Feature gating (disabled vs enabled)', () => {
-    it('When disabled (literal DISABLED), synthesizes zero support-access resources', () => {
+    it('When disabled (literal DISABLED), synthesizes zero support resources', () => {
       const app = new App({
         context: {
           artifacts: {
@@ -64,8 +64,8 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
 
       const artifactResolver = createTestArtifactResolver(stack);
-      const provider = new SupportAccessAddonProvider({
-        mode: SupportAccessMode.DISABLED,
+      const provider = new SupportAddonProvider({
+        mode: SupportMode.DISABLED,
         artifactResolver,
       });
 
@@ -87,18 +87,18 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
       expect(Object.keys(roles).length).toBe(0);
 
-      // No support-access dedicated table
+      // No support dedicated table
       const supportAccessTables = template.findResources('AWS::DynamoDB::Table', {
         Properties: {
-          TableName: Match.stringLikeRegexp('.*support-access-cases.*'),
+          TableName: Match.stringLikeRegexp('.*support-cases.*'),
         },
       });
       expect(Object.keys(supportAccessTables).length).toBe(0);
 
-      // No support-access-api lambda
+      // No support-api lambda
       const functions = template.findResources('AWS::Lambda::Function', {
         Properties: {
-          FunctionName: Match.stringLikeRegexp('.*support-access-api.*'),
+          FunctionName: Match.stringLikeRegexp('.*support-api.*'),
         },
       });
       expect(Object.keys(functions).length).toBe(0);
@@ -145,8 +145,8 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       artifactResolver = createTestArtifactResolver(stack);
 
-      const provider = new SupportAccessAddonProvider({
-        mode: SupportAccessMode.ENABLED,
+      const provider = new SupportAddonProvider({
+        mode: SupportMode.ENABLED,
         artifactResolver,
       });
 
@@ -159,8 +159,8 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       template = Template.fromStack(stack);
     });
 
-    it('ASSERTION 1: support-access-api lambda execution-role policy names ONLY the hop role ARN', () => {
-      // Find the support-access-api lambda function
+    it('ASSERTION 1: support-api lambda execution-role policy names ONLY the hop role ARN', () => {
+      // Find the support-api lambda function
       const allLambdas = template.findResources('AWS::Lambda::Function');
       const apiLambdas: Record<string, any> = {};
 
@@ -275,8 +275,8 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       expect(foundTagWriteStatement).toBe(true);
     });
 
-    it('ASSERTION 2: support-access-api lambda execution-role has config-table access (D16)', () => {
-      // Find the support-access-api lambda function
+    it('ASSERTION 2: support-api lambda execution-role has config-table access (D16)', () => {
+      // Find the support-api lambda function
       const allLambdas = template.findResources('AWS::Lambda::Function');
       let apiLambdaRoleLogicalId: string | undefined;
 
@@ -354,8 +354,8 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       expect(foundConfigTableGrant).toBe(true);
     });
 
-    it('ASSERTION 3: CloudTrail grant is read-only on support-access-api role', () => {
-      // Find the support-access-api lambda function
+    it('ASSERTION 3: CloudTrail grant is read-only on support-api role', () => {
+      // Find the support-api lambda function
       const allLambdas = template.findResources('AWS::Lambda::Function');
       let apiLambdaRoleLogicalId: string | undefined;
 
@@ -419,7 +419,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
       const allRoles = template.findResources('AWS::IAM::Role');
 
       // Identify the support-diag and support-config-read roles
-      // Role names are generated dynamically, so we search for roles in the support-access-addon construct tree
+      // Role names are generated dynamically, so we search for roles in the support-addon construct tree
       let supportDiagRole: any;
       let supportConfigReadRole: any;
 
@@ -484,7 +484,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
   });
 
   describe('Feature gate completeness', () => {
-    it('CfnCondition gates all support-access resources when mode is token-based', () => {
+    it('CfnCondition gates all support resources when mode is token-based', () => {
       const app = new App({
         context: {
           artifacts: {
@@ -511,7 +511,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       // Construct with token-based mode (simulates CFN parameter injection)
       const mode = cdk.Lazy.string({
-        produce: () => SupportAccessMode.ENABLED,
+        produce: () => SupportMode.ENABLED,
       });
 
       const auditEventsQueue = new Queue(stack, 'audit-queue');
@@ -520,7 +520,7 @@ describe('SupportAccessAddon Full-Stack IAM Verification (T1 Gates)', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const provider = new SupportAccessAddonProvider({
+      const provider = new SupportAddonProvider({
         mode: mode as any,
         artifactResolver,
       });

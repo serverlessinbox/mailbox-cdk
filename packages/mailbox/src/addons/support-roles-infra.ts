@@ -138,27 +138,27 @@ const SUPPORT_TIERS: SupportTier[] = [
   {
     constructId: 'support-diag',
     roleNameSlug: 'diag',
-    tagKey: 'serverless-inbox:support-access:diag',
+    tagKey: 'serverless-inbox:support:diag',
     inlinePolicyName: 'support-diag-access',
     actions: SUPPORT_DIAG_ALLOWED_ACTIONS,
     envVarName: 'SUPPORT_DIAG_ROLE_ARN',
-    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support-access:diag tag.',
+    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support:diag tag.',
   },
   {
     constructId: 'support-config-read',
     roleNameSlug: 'config-read',
-    tagKey: 'serverless-inbox:support-access:config-read',
+    tagKey: 'serverless-inbox:support:config-read',
     inlinePolicyName: 'support-config-read-access',
     actions: SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
     envVarName: 'SUPPORT_CONFIG_READ_ROLE_ARN',
-    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support-access:config-read tag.',
+    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support:config-read tag.',
   },
 ];
 
 /**
- * Props for SupportAccessRolesInfra.
+ * Props for SupportRolesInfra.
  */
-export interface SupportAccessRolesInfraProps {
+export interface SupportRolesInfraProps {
   /** Vendor AWS account IDs permitted to assume the support hop role. */
   readonly vendorAccountIds?: string[];
 }
@@ -171,7 +171,7 @@ export interface SupportAccessRolesInfraProps {
  * 1. support-hop: Intermediate role with static trust to vendor support account.
  *    - Trust policy names vendor account (static, in template, customer-readable)
  *    - Single permission: sts:AssumeRole on the two support roles
- *    - Tagged at runtime by support-access-api for case/window toggles
+ *    - Tagged at runtime by support-api for case/window toggles
  *    - Cannot be modified by the lambda beyond tag writes
  *
  * 2. support-diag: Observability access (CloudWatch, Lambda, Step Functions, DynamoDB, SQS).
@@ -184,11 +184,11 @@ export interface SupportAccessRolesInfraProps {
  *    - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
  *    - Tier-specific inline policy permanently attached (static, immutable from lambda)
  */
-export class SupportAccessRolesInfra extends Construct {
+export class SupportRolesInfra extends Construct {
   readonly supportHopRoleArn: string;
   readonly tierArns: Record<string, string>;
 
-  constructor(scope: Construct, id: string, props?: SupportAccessRolesInfraProps) {
+  constructor(scope: Construct, id: string, props?: SupportRolesInfraProps) {
     super(scope, id);
 
     const stack = Stack.of(this);
@@ -230,7 +230,7 @@ export class SupportAccessRolesInfra extends Construct {
 
     // support-hop role: Intermediate hop for vendor support account trust.
     // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
-    // Tagged at runtime by support-access-api (serverless-inbox:support-access:diag, serverless-inbox:support-access:config-read keys).
+    // Tagged at runtime by support-api (serverless-inbox:support:diag, serverless-inbox:support:config-read keys).
     // Cannot be modified by the lambda beyond tag writes.
     const hopRole = new iam.Role(this, 'support-hop', {
       roleName: supportHopRoleName,
@@ -413,7 +413,7 @@ export function getSupportTierTagKeys(): string[] {
  * Maps tier environment variable names to their ARNs from the tierRoleArns map.
  * Order is fixed to match the registry order (diag, then config-read) for CloudFormation stability.
  *
- * @param tierRoleArns A map of tier constructId to role ARN, typically from SupportAccessRolesInfra.tierArns
+ * @param tierRoleArns A map of tier constructId to role ARN, typically from SupportRolesInfra.tierArns
  * @returns An object with SUPPORT_DIAG_ROLE_ARN and SUPPORT_CONFIG_READ_ROLE_ARN
  */
 export function buildSupportTierEnvironment(tierRoleArns: Record<string, string>): Record<string, string> {

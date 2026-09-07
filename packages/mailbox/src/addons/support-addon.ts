@@ -13,30 +13,30 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
-import { SupportAccessApiLambda } from '../lambdas/support-access-api';
+import { SupportApiLambda } from '../lambdas/support-api';
 import { SupportRoleAssumptionCollectorLambda } from '../lambdas/support-role-assumption-collector';
-import { SupportAccessRolesInfra } from './support-access-roles-infra';
+import { SupportRolesInfra } from './support-roles-infra';
 
 /**
- * Support Access feature mode.
+ * Support feature mode.
  */
-export enum SupportAccessMode {
-  /** Support access feature is enabled. */
+export enum SupportMode {
+  /** Support feature is enabled. */
   ENABLED = 'enabled',
-  /** Support access feature is disabled. */
+  /** Support feature is disabled. */
   DISABLED = 'disabled',
 }
 
 /**
- * Props for constructing a SupportAccessAddon directly (internal use).
- * Not exported; users should use SupportAccessAddonProvider instead.
+ * Props for constructing a SupportAddon directly (internal use).
+ * Not exported; users should use SupportAddonProvider instead.
  */
-export interface SupportAccessAddonProps {
-  /** Support Access feature mode. */
-  readonly mode: SupportAccessMode;
+export interface SupportAddonProps {
+  /** Support feature mode. */
+  readonly mode: SupportMode;
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
-  /** Config table for support access grant records (D16). */
+  /** Config table for support grant records (D16). */
   readonly configTable: ITable;
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IQueue;
@@ -45,14 +45,14 @@ export interface SupportAccessAddonProps {
 }
 
 /**
- * Admin API addon for support access case management and IAM trust policy binding.
+ * Admin API addon for support case management and IAM trust policy binding.
  *
- * Mounts the support-access-api Lambda on the Admin API with its own execution role
+ * Mounts the support-api Lambda on the Admin API with its own execution role
  * that has IAM UpdateAssumeRolePolicy + GetRole (trust binding per-case with ExternalId and expiry).
  * Lambda cannot widen permissions: tier action lists and permissions boundary are CDK-managed,
  * permanently attached, and immutable from the lambda. Trust is the only gate; attachment is static.
  *
- * Constructs the entire support-access feature:
+ * Constructs the entire support feature:
  * - Two support IAM roles (support-diag, support-config-read) with empty/deny default trust
  * - Two tier managed policies (permanently attached to their corresponding roles)
  * - One permissions boundary (immutable from lambda, blocks scope creep)
@@ -64,12 +64,12 @@ export interface SupportAccessAddonProps {
  *
  * Implements IAdminApiAddon.
  */
-export class SupportAccessAddon extends Construct implements IAdminApiAddon {
+export class SupportAddon extends Construct implements IAdminApiAddon {
   public uiConfig?: Record<string, unknown>;
 
   private readonly apiHandler?: IFunction;
 
-  constructor(scope: Construct, id: string, props: SupportAccessAddonProps) {
+  constructor(scope: Construct, id: string, props: SupportAddonProps) {
     super(scope, id);
 
     this.uiConfig = {
@@ -80,34 +80,34 @@ export class SupportAccessAddon extends Construct implements IAdminApiAddon {
 
     // A literal DISABLED is the only value that fully disables support access at synth time —
     // an unresolved CFN-parameter token falls through to the gated path.
-    const fullyDisabled = props.mode === SupportAccessMode.DISABLED && !cdk.Token.isUnresolved(props.mode);
+    const fullyDisabled = props.mode === SupportMode.DISABLED && !cdk.Token.isUnresolved(props.mode);
 
     if (!fullyDisabled) {
-      // Build condition: SupportAccess == ENABLED
+      // Build condition: Support == ENABLED
       // If mode is statically DISABLED (and not a token), this condition is never reached.
       // If mode is a CFN-parameter token or literal ENABLED, the condition gates the subtree.
       const condition = new cdk.CfnCondition(this, 'IsEnabled', {
-        expression: Fn.conditionEquals(props.mode, SupportAccessMode.ENABLED),
+        expression: Fn.conditionEquals(props.mode, SupportMode.ENABLED),
       });
 
-      // Create all support-access resources unconditionally in the template.
+      // Create all support resources unconditionally in the template.
       // The GateOnConditionAspect will apply the condition to every resource,
       // so they produce zero live resources when the condition evaluates to false at deploy.
 
       // Support roles: hop + two support roles with static trust scoped by hop role tags
-      const rolesInfra = new SupportAccessRolesInfra(this, 'roles-infra', {
+      const rolesInfra = new SupportRolesInfra(this, 'roles-infra', {
         vendorAccountIds: props.vendorAccountIds,
       });
 
       // Wrap the artifact resolver in a CDK artifact engine
       const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
 
-      // Support access API Lambda (Go-based, code-signed)
+      // Support API Lambda (Go-based, code-signed)
       // Handles case RPCs and tag-based access control via support-hop role.
       // Uses the existing config table for grant records (D16).
       // Tier inline policies are permanently attached in CDK (rolesInfra) and immutable from the lambda.
-      // Can only tag/untag the support-hop role (serverless-inbox:support-access:diag, serverless-inbox:support-access:config-read keys).
-      this.apiHandler = new SupportAccessApiLambda(this, 'lambda', {
+      // Can only tag/untag the support-hop role (serverless-inbox:support:diag, serverless-inbox:support:config-read keys).
+      this.apiHandler = new SupportApiLambda(this, 'lambda', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,
         configTable: props.configTable,
@@ -157,11 +157,11 @@ export class SupportAccessAddon extends Construct implements IAdminApiAddon {
 }
 
 /**
- * Props for constructing SupportAccessAddonProvider.
+ * Props for constructing SupportAddonProvider.
  */
-export interface SupportAccessAddonProviderProps {
-  /** Support Access feature mode. */
-  readonly mode: SupportAccessMode;
+export interface SupportAddonProviderProps {
+  /** Support feature mode. */
+  readonly mode: SupportMode;
   /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;
   /** Vendor AWS account IDs permitted to assume the support hop role.
@@ -170,15 +170,15 @@ export interface SupportAccessAddonProviderProps {
 }
 
 /**
- * Provider for the SupportAccess addon. Pass this to Mailbox's adminApiAddonProviders
- * to enable support access case management and cross-account trust mechanics in the Admin API.
+ * Provider for the Support addon. Pass this to Mailbox's adminApiAddonProviders
+ * to enable support case management and cross-account trust mechanics in the Admin API.
  */
-export class SupportAccessAddonProvider implements IAdminApiAddonProvider {
-  constructor(private readonly props: SupportAccessAddonProviderProps) {}
+export class SupportAddonProvider implements IAdminApiAddonProvider {
+  constructor(private readonly props: SupportAddonProviderProps) {}
 
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
-      new SupportAccessAddon(scope, 'support-access-addon', {
+      new SupportAddon(scope, 'support-addon', {
         mode: this.props.mode,
         artifactResolver: this.props.artifactResolver,
         configTable: ctx.configTable,

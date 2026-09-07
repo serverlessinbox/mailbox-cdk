@@ -80,5 +80,5 @@ export type { StackDeployerWorkerLambdaProps } from './stack-deployer-worker';
 export { StackUpdateApiLambda } from './stack-update-api';
 export type { StackUpdateApiLambdaProps } from './stack-update-api';
 
-export { SupportAccessApiLambda } from './support-access-api';
-export type { SupportAccessApiLambdaProps } from './support-access-api';
+export { SupportApiLambda } from './support-api';
+export type { SupportApiLambdaProps } from './support-api';

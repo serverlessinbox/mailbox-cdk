@@ -12691,23 +12691,23 @@
       ],
       "symbolId": "src/addons/stack-update-addon:StackUpdateAddonProviderProps"
     },
-    "@serverlessinbox/mailbox.SupportAccessAddonProvider": {
+    "@serverlessinbox/mailbox.SupportAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable support access case management and cross-account trust mechanics in the Admin API.",
-        "summary": "Provider for the SupportAccess addon."
+        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable support case management and cross-account trust mechanics in the Admin API.",
+        "summary": "Provider for the Support addon."
       },
-      "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProvider",
+      "fqn": "@serverlessinbox/mailbox.SupportAddonProvider",
       "initializer": {
         "locationInModule": {
-          "filename": "src/addons/support-access-addon.ts",
+          "filename": "src/addons/support-addon.ts",
           "line": 177
         },
         "parameters": [
           {
             "name": "props",
             "type": {
-              "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProviderProps"
+              "fqn": "@serverlessinbox/mailbox.SupportAddonProviderProps"
             }
           }
         ]
@@ -12717,13 +12717,13 @@
       ],
       "kind": "class",
       "locationInModule": {
-        "filename": "src/addons/support-access-addon.ts",
+        "filename": "src/addons/support-addon.ts",
         "line": 176
       },
       "methods": [
         {
           "locationInModule": {
-            "filename": "src/addons/support-access-addon.ts",
+            "filename": "src/addons/support-addon.ts",
             "line": 179
           },
           "name": "createAdminApiAddons",
@@ -12754,22 +12754,22 @@
           }
         }
       ],
-      "name": "SupportAccessAddonProvider",
-      "symbolId": "src/addons/support-access-addon:SupportAccessAddonProvider"
+      "name": "SupportAddonProvider",
+      "symbolId": "src/addons/support-addon:SupportAddonProvider"
     },
-    "@serverlessinbox/mailbox.SupportAccessAddonProviderProps": {
+    "@serverlessinbox/mailbox.SupportAddonProviderProps": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "summary": "Props for constructing SupportAccessAddonProvider."
+        "summary": "Props for constructing SupportAddonProvider."
       },
-      "fqn": "@serverlessinbox/mailbox.SupportAccessAddonProviderProps",
+      "fqn": "@serverlessinbox/mailbox.SupportAddonProviderProps",
       "kind": "interface",
       "locationInModule": {
-        "filename": "src/addons/support-access-addon.ts",
+        "filename": "src/addons/support-addon.ts",
         "line": 162
       },
-      "name": "SupportAccessAddonProviderProps",
+      "name": "SupportAddonProviderProps",
       "properties": [
         {
           "abstract": true,
@@ -12778,7 +12778,7 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/support-access-addon.ts",
+            "filename": "src/addons/support-addon.ts",
             "line": 166
           },
           "name": "artifactResolver",
@@ -12789,16 +12789,16 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Support Access feature mode."
+            "summary": "Support feature mode."
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/support-access-addon.ts",
+            "filename": "src/addons/support-addon.ts",
             "line": 164
           },
           "name": "mode",
           "type": {
-            "fqn": "@serverlessinbox/mailbox.SupportAccessMode"
+            "fqn": "@serverlessinbox/mailbox.SupportMode"
           }
         },
         {
@@ -12809,7 +12809,7 @@
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/support-access-addon.ts",
+            "filename": "src/addons/support-addon.ts",
             "line": 169
           },
           "name": "vendorAccountIds",
@@ -12824,37 +12824,37 @@
           }
         }
       ],
-      "symbolId": "src/addons/support-access-addon:SupportAccessAddonProviderProps"
+      "symbolId": "src/addons/support-addon:SupportAddonProviderProps"
     },
-    "@serverlessinbox/mailbox.SupportAccessMode": {
+    "@serverlessinbox/mailbox.SupportMode": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "summary": "Support Access feature mode."
+        "summary": "Support feature mode."
       },
-      "fqn": "@serverlessinbox/mailbox.SupportAccessMode",
+      "fqn": "@serverlessinbox/mailbox.SupportMode",
       "kind": "enum",
       "locationInModule": {
-        "filename": "src/addons/support-access-addon.ts",
+        "filename": "src/addons/support-addon.ts",
         "line": 23
       },
       "members": [
         {
           "docs": {
-            "summary": "Support access feature is enabled."
+            "summary": "Support feature is enabled."
           },
           "name": "ENABLED"
         },
         {
           "docs": {
-            "summary": "Support access feature is disabled."
+            "summary": "Support feature is disabled."
           },
           "name": "DISABLED"
         }
       ],
-      "name": "SupportAccessMode",
-      "symbolId": "src/addons/support-access-addon:SupportAccessMode"
+      "name": "SupportMode",
+      "symbolId": "src/addons/support-addon:SupportMode"
     }
   },
   "version": "0.0.0",
-  "fingerprint": "fJM5OVKTAaJmSDrXABq/D0p4VUeum2VNhK3MgDo2U0M="
+  "fingerprint": "9+dEhNKmBjJJcZTJAbF5H+hAk6MLGJWdFhZADLx7Qlg="
 }

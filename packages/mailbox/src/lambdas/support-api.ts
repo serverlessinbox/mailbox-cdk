@@ -5,9 +5,9 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { getSupportTierTagKeys, buildSupportTierEnvironment, resolveVendorAccountIds } from '../addons/support-access-roles-infra';
+import { getSupportTierTagKeys, buildSupportTierEnvironment, resolveVendorAccountIds } from '../addons/support-roles-infra';
 
-export interface SupportAccessApiLambdaProps {
+export interface SupportApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */
   readonly supportHopRoleArn: string;
   /** Support tier role ARNs (constructId -> arn), keyed by tier constructId for env var generation. */
@@ -23,30 +23,30 @@ export interface SupportAccessApiLambdaProps {
 }
 
 /**
- * Support Access API Lambda construct.
+ * Support API Lambda construct.
  *
  * Go lambda that handles:
- * - Case RPCs: OpenSupportAccessCase, CloseSupportAccessCase, ListSupportAccessCases
- * - Tag-based access control: TagRole/UntagRole on support-hop for serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read tags
+ * - Case RPCs: OpenSupportCase, CloseSupportCase, ListSupportCases
+ * - Tag-based access control: TagRole/UntagRole on support-hop for serverless-inbox:support:diag and serverless-inbox:support:config-read tags
  * - Session listing via live CloudTrail query: hybrid approach with the hourly collector
  *
  * Execution role permissions:
  * - iam:TagRole + iam:UntagRole: scoped to support-hop role only, constrained by aws:TagKeys to
- *   serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read only. Cannot modify any other role or tag any other keys.
+ *   serverless-inbox:support:diag and serverless-inbox:support:config-read only. Cannot modify any other role or tag any other keys.
  *   This is the ONLY IAM action the lambda holds. Tag visibility on support-diag/support-config-read
  *   trust policies gates access. Tier policies and permissions boundary are immutable from the lambda.
  * - iam:PutRolePermissionsBoundary / iam:DeleteRolePermissionsBoundary / iam:AttachRolePolicy /
  *   iam:DetachRolePolicy / iam:PutRolePolicy / iam:DeleteRolePolicy / iam:UpdateAssumeRolePolicy /
  *   iam:GetRole: NEVER granted. These are blocked by design.
- * - Config table read/write for support access grant records
+ * - Config table read/write for support grant records
  * - CloudTrail LookupEvents for querying recent assume-role events (live half of hybrid read)
  * - SQS send for audit events
  *
  * Scoped to exactly the support-hop role ARN for the tag-write actions.
  * Tier permissions on support roles are visible in the synthesized template; the lambda cannot modify them.
  */
-export class SupportAccessApiLambda extends GoLambda {
-  constructor(scope: Construct, id: string, props: SupportAccessApiLambdaProps) {
+export class SupportApiLambda extends GoLambda {
+  constructor(scope: Construct, id: string, props: SupportApiLambdaProps) {
     // Build environment object with fixed order for CloudFormation template stability:
     // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, STACK_ID, then tier vars (from registry order)
     const tierEnv = buildSupportTierEnvironment(props.tierRoleArns);
@@ -59,7 +59,7 @@ export class SupportAccessApiLambda extends GoLambda {
     };
 
     super(scope, id, {
-      lambdaId: 'support-access-api',
+      lambdaId: 'support-api',
       pipeline: 'admin',
       artifactResolver: props.artifactResolver,
       timeout: Duration.seconds(30),
@@ -68,7 +68,7 @@ export class SupportAccessApiLambda extends GoLambda {
     });
 
     this.grantSupportHopRoleTagWrites(props);
-    // Config table access for support access grant records.
+    // Config table access for support grant records.
     props.configTable.grantReadWriteData(this);
     // Grant send permission on the audit-events queue
     props.auditEventsQueue.grantSendMessages(this);
@@ -77,14 +77,14 @@ export class SupportAccessApiLambda extends GoLambda {
     this.grantVendorApiInvoke(props);
   }
 
-  private grantSupportHopRoleTagWrites(props: SupportAccessApiLambdaProps): void {
+  private grantSupportHopRoleTagWrites(props: SupportApiLambdaProps): void {
     // Scoped precisely to the support-hop role — nothing else, no wildcards, no other resources.
     // Tag writes only: TagRole and UntagRole, constrained by aws:TagKeys to tier-specific tag keys.
     // Cannot modify any other role or tag any other keys.
     // IMPORTANT: aws:TagKeys is a multivalued condition key and requires the ForAllValues set operator.
     // Using plain StringEquals would cause silent denials (the condition never matches). ForAllValues ensures
     // that every tag key in the request is in the allowed set, preventing the lambda from writing keys outside
-    // serverless-inbox:support-access:diag and serverless-inbox:support-access:config-read. Do not "simplify" this back to StringEquals — that change
+    // serverless-inbox:support:diag and serverless-inbox:support:config-read. Do not "simplify" this back to StringEquals — that change
     // would silently break all tag writes.
     this.addToRolePolicy(new PolicyStatement({
       actions: [
@@ -112,7 +112,7 @@ export class SupportAccessApiLambda extends GoLambda {
     }));
   }
 
-  private grantVendorApiInvoke(props: SupportAccessApiLambdaProps): void {
+  private grantVendorApiInvoke(props: SupportApiLambdaProps): void {
     // SigV4-signed cross-account call to the vendor service API.
     // Route (POST /support-case-sync) and vendor accounts are known at synth time; region and API ID are not (vendor-chosen).
     const vendorAccounts = resolveVendorAccountIds(props.vendorAccountIds);

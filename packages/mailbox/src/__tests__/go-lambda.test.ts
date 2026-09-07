@@ -70,7 +70,7 @@ describe('GoLambda Construct', () => {
 
     it('should preserve caller-supplied environment variables', () => {
       new GoLambda(stack, 'test-lambda-env', {
-        lambdaId: 'support-access-api',
+        lambdaId: 'support-api',
         pipeline: 'admin',
         artifactResolver,
         environment: {
@@ -83,7 +83,7 @@ describe('GoLambda Construct', () => {
       template.hasResourceProperties('AWS::Lambda::Function', {
         Environment: {
           Variables: {
-            SERVICE_NAME: 'support-access-api',
+            SERVICE_NAME: 'support-api',
             CUSTOM_VAR: 'custom-value',
             ANOTHER_VAR: 'another-value',
           },

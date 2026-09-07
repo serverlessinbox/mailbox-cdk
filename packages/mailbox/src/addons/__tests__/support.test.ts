@@ -18,7 +18,7 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import { SupportAccessAddon, SupportAccessMode } from '../support-access-addon';
+import { SupportAddon, SupportMode } from '../support-addon';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -34,7 +34,7 @@ function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
   return engine;
 }
 
-describe('SupportAccessAddon Unit Tests', () => {
+describe('SupportAddon Unit Tests', () => {
   describe('Disabled mode', () => {
     it('Creates zero resources when mode is literally DISABLED', () => {
       const app = new App({
@@ -65,8 +65,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Direct construct use (not through provider)
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.DISABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.DISABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -86,7 +86,7 @@ describe('SupportAccessAddon Unit Tests', () => {
       });
       expect(supportRoles.length).toBe(0);
 
-      // Verify zero support-access lambdas
+      // Verify zero support lambdas
       const functions = template.findResources('AWS::Lambda::Function');
       const supportAccessLambdas = Object.entries(functions).filter(([, func]) => {
         const props = (func as any).Properties;
@@ -124,8 +124,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct with explicitly DISABLED mode
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.DISABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.DISABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -187,8 +187,8 @@ describe('SupportAccessAddon Unit Tests', () => {
 
       artifactResolver = createTestArtifactResolver(stack);
 
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -310,24 +310,24 @@ describe('SupportAccessAddon Unit Tests', () => {
       }
     });
 
-    it('No dedicated support-access-cases table is created (D16 - uses config table instead)', () => {
+    it('No dedicated support-cases table is created (D16 - uses config table instead)', () => {
       const allTables = template.findResources('AWS::DynamoDB::Table');
 
-      // Verify no table with support-access-cases in its name
+      // Verify no table with support-cases in its name
       for (const [tableName, table] of Object.entries(allTables)) {
         const props = (table as any).Properties;
         const tableNameProp = props.TableName || tableName;
-        expect(JSON.stringify(tableNameProp)).not.toContain('support-access-cases');
+        expect(JSON.stringify(tableNameProp)).not.toContain('support-cases');
       }
 
       // The only table should be the config-table (created in the test setup)
       expect(Object.keys(allTables).length).toBe(1);
     });
 
-    it('Creates the support-access-api Lambda function with hop-role env var', () => {
+    it('Creates the support-api Lambda function with hop-role env var', () => {
       const allFunctions = template.findResources('AWS::Lambda::Function');
 
-      // Find the support-access-api lambda
+      // Find the support-api lambda
       let foundApiLambda = false;
       for (const [, lambda] of Object.entries(allFunctions)) {
         const props = (lambda as any).Properties;
@@ -350,7 +350,7 @@ describe('SupportAccessAddon Unit Tests', () => {
     });
 
     it('Support-access-api lambda execution role has tag write and access policies', () => {
-      // Find the support-access-api lambda
+      // Find the support-api lambda
       const allFunctions = template.findResources('AWS::Lambda::Function');
       let lambdaRoleId: string | undefined;
 
@@ -386,7 +386,7 @@ describe('SupportAccessAddon Unit Tests', () => {
     it('Support-access-api lambda has all required env vars and no old role ARN vars', () => {
       const allFunctions = template.findResources('AWS::Lambda::Function');
 
-      // Find the support-access-api lambda
+      // Find the support-api lambda
       let foundApiLambda = false;
       for (const [, lambda] of Object.entries(allFunctions)) {
         const props = (lambda as any).Properties;
@@ -487,7 +487,7 @@ describe('SupportAccessAddon Unit Tests', () => {
       expect(foundConfigPolicy).toBe(true);
     });
 
-    it('No AWS::IAM::ManagedPolicy resources exist for support-access tiers (inline only)', () => {
+    it('No AWS::IAM::ManagedPolicy resources exist for support tiers (inline only)', () => {
       const allPolicies = template.findResources('AWS::IAM::ManagedPolicy');
 
       // Verify there are NO managed policies at all for the support tiers
@@ -577,13 +577,13 @@ describe('SupportAccessAddon Unit Tests', () => {
     });
 
     it('Lambda role policy contains only TagRole and UntagRole (tag-based access control)', () => {
-      // Verify that the support-access-api lambda role has only tag write actions
+      // Verify that the support-api lambda role has only tag write actions
       // and no trust-policy, attach/detach, or put/delete policy actions
       const allRoles = template.findResources('AWS::IAM::Role');
       const allFunctions = template.findResources('AWS::Lambda::Function');
       let lambdaRoleId: string | undefined;
 
-      // Find the support-access-api lambda by looking for SUPPORT_HOP_ROLE_ARN env var
+      // Find the support-api lambda by looking for SUPPORT_HOP_ROLE_ARN env var
       for (const [, lambda] of Object.entries(allFunctions)) {
         const props = (lambda as any).Properties;
         if (props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN) {
@@ -721,8 +721,8 @@ describe('SupportAccessAddon Unit Tests', () => {
             if (Array.isArray(tagKeys)) {
               const tagKeySet = new Set(tagKeys);
               if (
-                tagKeySet.has('serverless-inbox:support-access:diag') &&
-                tagKeySet.has('serverless-inbox:support-access:config-read') &&
+                tagKeySet.has('serverless-inbox:support:diag') &&
+                tagKeySet.has('serverless-inbox:support:config-read') &&
                 tagKeySet.size === 2
               ) {
                 // Check which role(s) this policy is attached to
@@ -808,7 +808,7 @@ describe('SupportAccessAddon Unit Tests', () => {
     });
 
     it('Support-access-api lambda role has SQS send permission on audit-events queue', () => {
-      // Find the support-access-api lambda role
+      // Find the support-api lambda role
       const allFunctions = template.findResources('AWS::Lambda::Function');
       let lambdaRoleId: string | undefined;
 
@@ -965,10 +965,10 @@ describe('SupportAccessAddon Unit Tests', () => {
 
         // Check diag role conditions
         if (roleName.includes('support-diag-')) {
-          // Should have serverless-inbox:support-access:diag (not supportCase or serverless-inbox:support-access:config-read)
-          expect(policyJson).toContain('serverless-inbox:support-access:diag');
+          // Should have serverless-inbox:support:diag (not supportCase or serverless-inbox:support:config-read)
+          expect(policyJson).toContain('serverless-inbox:support:diag');
           expect(policyJson).not.toContain('supportCase');
-          expect(policyJson).not.toContain('serverless-inbox:support-access:config-read');
+          expect(policyJson).not.toContain('serverless-inbox:support:config-read');
           expect(policyJson).not.toContain('supportWindow');
 
           // Should have the literal pattern with ${sts:ExternalId}
@@ -978,10 +978,10 @@ describe('SupportAccessAddon Unit Tests', () => {
 
         // Check config role conditions
         if (roleName.includes('support-config-read-')) {
-          // Should have serverless-inbox:support-access:config-read (not supportCase or serverless-inbox:support-access:diag)
-          expect(policyJson).toContain('serverless-inbox:support-access:config-read');
+          // Should have serverless-inbox:support:config-read (not supportCase or serverless-inbox:support:diag)
+          expect(policyJson).toContain('serverless-inbox:support:config-read');
           expect(policyJson).not.toContain('supportCase');
-          expect(policyJson).not.toContain('serverless-inbox:support-access:diag');
+          expect(policyJson).not.toContain('serverless-inbox:support:diag');
           expect(policyJson).not.toContain('supportWindow');
 
           // Should have the literal pattern with ${sts:ExternalId}
@@ -1246,8 +1246,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITHOUT vendorAccountIds prop
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -1314,8 +1314,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITH explicit two-account list
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -1388,8 +1388,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITH empty array
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -1458,8 +1458,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITHOUT vendorAccountIds prop (uses default VENDOR_ACCOUNT_ID)
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -1519,8 +1519,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITH explicit two-account list
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
@@ -1583,8 +1583,8 @@ describe('SupportAccessAddon Unit Tests', () => {
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITH empty array (should fall back to default)
-      new SupportAccessAddon(stack, 'test-addon', {
-        mode: SupportAccessMode.ENABLED,
+      new SupportAddon(stack, 'test-addon', {
+        mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
