@@ -164,7 +164,7 @@ export interface SupportRolesInfraProps {
 }
 
 /**
- * Support Access IAM roles infrastructure.
+ * Support IAM roles infrastructure.
  *
  * Creates three roles:
  *
@@ -200,7 +200,7 @@ export class SupportRolesInfra extends Construct {
 
     // Deterministic hop role name with stack GUID segment for uniqueness.
     // Dropping parentGroupId keeps the name length fixed and independent of construct position.
-    const supportHopRoleName = Fn.join('', ['support-hop-', stackGuidSegment]);
+    const supportHopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
 
     // Pre-built hop role ARN using formatArn — required for trust-writer policy scoping.
     this.supportHopRoleArn = stack.formatArn({
@@ -215,7 +215,7 @@ export class SupportRolesInfra extends Construct {
     const tierRoleNames: Record<string, string> = {};
 
     for (const tier of SUPPORT_TIERS) {
-      const roleName = Fn.join('', [`support-${tier.roleNameSlug}-`, stackGuidSegment]);
+      const roleName = Fn.join('', ['support-', stackGuidSegment, `-${tier.roleNameSlug}`]);
       tierRoleNames[tier.constructId] = roleName;
       this.tierArns[tier.constructId] = stack.formatArn({
         service: 'iam',

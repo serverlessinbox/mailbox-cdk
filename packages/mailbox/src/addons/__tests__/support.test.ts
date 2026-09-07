@@ -1,5 +1,5 @@
 /**
- * Support Access Addon Unit Tests — Construct Behavior
+ * Support Addon Unit Tests — Construct Behavior
  *
  * These tests verify the core construct behavior after hop-role migration:
  * - Disabled mode creates zero resources
@@ -88,11 +88,11 @@ describe('SupportAddon Unit Tests', () => {
 
       // Verify zero support lambdas
       const functions = template.findResources('AWS::Lambda::Function');
-      const supportAccessLambdas = Object.entries(functions).filter(([, func]) => {
+      const supportLambdas = Object.entries(functions).filter(([, func]) => {
         const props = (func as any).Properties;
         return props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN;
       });
-      expect(supportAccessLambdas.length).toBe(0);
+      expect(supportLambdas.length).toBe(0);
     });
 
     it('Creates zero resources when mode is omitted (defaults to undefined/falsy)', () => {
@@ -142,13 +142,13 @@ describe('SupportAddon Unit Tests', () => {
         return props.RoleName?.includes?.('support-');
       });
 
-      const supportAccessLambdas = Object.entries(functions).filter(([, func]) => {
+      const supportLambdas = Object.entries(functions).filter(([, func]) => {
         const props = (func as any).Properties;
         return props.Environment?.Variables?.SUPPORT_HOP_ROLE_ARN;
       });
 
       expect(supportRoles.length).toBe(0);
-      expect(supportAccessLambdas.length).toBe(0);
+      expect(supportLambdas.length).toBe(0);
     });
   });
 
@@ -238,7 +238,7 @@ describe('SupportAddon Unit Tests', () => {
           roleName = parts.join('');
         }
 
-        if (roleName.includes('support-hop-')) {
+        if (roleName.endsWith('-hop')) {
           foundHopRole = true;
           // Verify hop role has the inline policy
           const inlinePolicies = props.Policies || [];
@@ -275,7 +275,7 @@ describe('SupportAddon Unit Tests', () => {
           const parts = props.RoleName['Fn::Join'][1] || [];
           roleName = parts.join('');
         }
-        return (roleName.includes('support-diag-') || roleName.includes('support-config-read-'));
+        return (roleName.endsWith('-diag') || roleName.endsWith('-config-read'));
       });
 
       expect(supportRoles.length).toBe(2);
@@ -349,7 +349,7 @@ describe('SupportAddon Unit Tests', () => {
       expect(foundApiLambda).toBe(true);
     });
 
-    it('Support-access-api lambda execution role has tag write and access policies', () => {
+    it('Support-api lambdaexecution role has tag write and access policies', () => {
       // Find the support-api lambda
       const allFunctions = template.findResources('AWS::Lambda::Function');
       let lambdaRoleId: string | undefined;
@@ -383,7 +383,7 @@ describe('SupportAddon Unit Tests', () => {
       expect(inlinePolicies.length + managedPolicies.length).toBeGreaterThan(0);
     });
 
-    it('Support-access-api lambda has all required env vars and no old role ARN vars', () => {
+    it('Support-api lambdahas all required env vars and no old role ARN vars', () => {
       const allFunctions = template.findResources('AWS::Lambda::Function');
 
       // Find the support-api lambda
@@ -423,7 +423,7 @@ describe('SupportAddon Unit Tests', () => {
           const parts = props.RoleName['Fn::Join'][1] || [];
           roleName = parts.join('');
         }
-        return (roleName.includes('support-diag-') || roleName.includes('support-config-read-'));
+        return (roleName.endsWith('-diag') || roleName.endsWith('-config-read'));
       });
 
       expect(supportRoles.length).toBe(2);
@@ -765,7 +765,7 @@ describe('SupportAddon Unit Tests', () => {
         }
 
         // support-diag role should have its inline policy
-        if (roleName.includes('support-diag-')) {
+        if (roleName.endsWith('-diag')) {
           // Should have at least 1 inline policy (support-diag-access)
           expect(inlinePolicies.length).toBeGreaterThanOrEqual(1);
           foundDiagRole = true;
@@ -784,7 +784,7 @@ describe('SupportAddon Unit Tests', () => {
         }
 
         // support-config-read role should have its inline policy
-        if (roleName.includes('support-config-read-')) {
+        if (roleName.endsWith('-config-read')) {
           // Should have at least 1 inline policy (support-config-read-access)
           expect(inlinePolicies.length).toBeGreaterThanOrEqual(1);
           foundConfigRole = true;
@@ -807,7 +807,7 @@ describe('SupportAddon Unit Tests', () => {
       expect(foundConfigRole).toBe(true);
     });
 
-    it('Support-access-api lambda role has SQS send permission on audit-events queue', () => {
+    it('Support-api lambdarole has SQS send permission on audit-events queue', () => {
       // Find the support-api lambda role
       const allFunctions = template.findResources('AWS::Lambda::Function');
       let lambdaRoleId: string | undefined;
@@ -903,7 +903,7 @@ describe('SupportAddon Unit Tests', () => {
           roleName = parts.join('');
         }
 
-        if (roleName.includes('support-hop-')) {
+        if (roleName.endsWith('-hop')) {
           foundHopRole = true;
           const trustPolicyDoc = props.AssumeRolePolicyDocument;
           const statements = trustPolicyDoc?.Statement || [];
@@ -939,7 +939,7 @@ describe('SupportAddon Unit Tests', () => {
           const parts = props.RoleName['Fn::Join'][1] || [];
           roleName = parts.join('');
         }
-        return (roleName.includes('support-diag-') || roleName.includes('support-config-read-'));
+        return (roleName.endsWith('-diag') || roleName.endsWith('-config-read'));
       });
 
       expect(supportRoles.length).toBe(2);
@@ -964,7 +964,7 @@ describe('SupportAddon Unit Tests', () => {
         expect(policyJson).not.toContain('Fn::Sub');
 
         // Check diag role conditions
-        if (roleName.includes('support-diag-')) {
+        if (roleName.endsWith('-diag')) {
           // Should have serverless-inbox:support:diag (not supportCase or serverless-inbox:support:config-read)
           expect(policyJson).toContain('serverless-inbox:support:diag');
           expect(policyJson).not.toContain('supportCase');
@@ -977,7 +977,7 @@ describe('SupportAddon Unit Tests', () => {
         }
 
         // Check config role conditions
-        if (roleName.includes('support-config-read-')) {
+        if (roleName.endsWith('-config-read')) {
           // Should have serverless-inbox:support:config-read (not supportCase or serverless-inbox:support:diag)
           expect(policyJson).toContain('serverless-inbox:support:config-read');
           expect(policyJson).not.toContain('supportCase');
@@ -998,29 +998,16 @@ describe('SupportAddon Unit Tests', () => {
       // IAM role names have a maximum length of 64 characters.
       // This test verifies that even with the maximum stack GUID segment length (8 hex chars),
       // all role names stay within the limit.
-      // Prefixes:
-      // - support-hop-: 12 chars
-      // - support-diag-: 13 chars
-      // - support-config-read-: 20 chars
-      // Stack GUID segment (first 8-char segment of UUID): 8 chars
-      // Expected max lengths:
-      // - support-hop-XXXXXXXX: 12 + 8 = 20 chars
-      // - support-diag-XXXXXXXX: 13 + 8 = 21 chars
-      // - support-config-read-XXXXXXXX: 20 + 8 = 28 chars
+      // Names are support-<guid>-<slug>; with the GUID segment substituted below the
+      // rendered name is the exact deployed length.
 
       const IAM_ROLE_NAME_LIMIT = 64;
-      const GUID_SEGMENT_MAX_LENGTH = 8; // First segment of UUID (8-4-4-4-12)
 
       const allRoles = template.findResources('AWS::IAM::Role');
 
-      // Extract all role names and their prefixes to compute max lengths
-      const rolePrefixes: Record<string, number> = {
-        'support-hop': 'support-hop'.length,
-        'support-diag': 'support-diag'.length,
-        'support-config-read': 'support-config-read'.length,
-      };
+      const roleSuffixes = ['-hop', '-diag', '-config-read'];
 
-      const foundRolePrefixes: Set<string> = new Set();
+      const foundRoleSuffixes: Set<string> = new Set();
 
       for (const [, role] of Object.entries(allRoles)) {
         const props = (role as any).Properties;
@@ -1047,20 +1034,18 @@ describe('SupportAddon Unit Tests', () => {
             .join('');
         }
 
-        // Check each role name against its prefix
-        for (const [prefix, prefixLen] of Object.entries(rolePrefixes)) {
-          if (roleName.startsWith(prefix)) {
-            foundRolePrefixes.add(prefix);
-            const maxLength = prefixLen + GUID_SEGMENT_MAX_LENGTH;
-            expect(maxLength).toBeLessThanOrEqual(IAM_ROLE_NAME_LIMIT);
+        for (const suffix of roleSuffixes) {
+          if (roleName.startsWith('support-') && roleName.endsWith(suffix)) {
+            foundRoleSuffixes.add(suffix);
+            expect(roleName.length).toBeLessThanOrEqual(IAM_ROLE_NAME_LIMIT);
           }
         }
       }
 
-      // Verify we found all three role prefixes (hop, diag, config-read)
-      expect(foundRolePrefixes.has('support-hop')).toBe(true);
-      expect(foundRolePrefixes.has('support-diag')).toBe(true);
-      expect(foundRolePrefixes.has('support-config-read')).toBe(true);
+      // Verify we found all three support roles (hop, diag, config-read)
+      expect(foundRoleSuffixes.has('-hop')).toBe(true);
+      expect(foundRoleSuffixes.has('-diag')).toBe(true);
+      expect(foundRoleSuffixes.has('-config-read')).toBe(true);
     });
 
     it('Role names use only the 8-char GUID segment (first segment of UUID), not the full 36-char UUID', () => {
@@ -1115,7 +1100,7 @@ describe('SupportAddon Unit Tests', () => {
           const parts = props.RoleName['Fn::Join'][1] || [];
           roleName = parts.join('');
         }
-        return (roleName.includes('support-diag-') || roleName.includes('support-config-read-'));
+        return (roleName.endsWith('-diag') || roleName.endsWith('-config-read'));
       });
 
       expect(supportRoles.length).toBe(2);
@@ -1162,11 +1147,11 @@ describe('SupportAddon Unit Tests', () => {
         const res = resource as any;
         if (res.Type === 'AWS::IAM::Role') {
           const roleName = res.Properties?.RoleName;
-          // The hop role name includes "support-hop-"
+          // The hop role name ends with "-hop"
           if (roleName?.['Fn::Join']) {
             const parts = roleName['Fn::Join'][1] || [];
             const nameStr = parts.join('');
-            if (nameStr.includes('support-hop-')) {
+            if (nameStr.endsWith('-hop')) {
               hopRoleLogicalId = logId;
               break;
             }
@@ -1196,7 +1181,7 @@ describe('SupportAddon Unit Tests', () => {
           }
 
           // Check diag role
-          if (nameStr.includes('support-diag-')) {
+          if (nameStr.endsWith('-diag')) {
             // DependsOn can be a string, array, or array of strings
             const depsArray = Array.isArray(dependsOn) ? dependsOn : [dependsOn];
             if (depsArray.some((dep: any) => dep === hopRoleLogicalId)) {
@@ -1205,7 +1190,7 @@ describe('SupportAddon Unit Tests', () => {
           }
 
           // Check config-read role
-          if (nameStr.includes('support-config-read-')) {
+          if (nameStr.endsWith('-config-read')) {
             const depsArray = Array.isArray(dependsOn) ? dependsOn : [dependsOn];
             if (depsArray.some((dep: any) => dep === hopRoleLogicalId)) {
               foundConfigWithDependency = true;
@@ -1268,7 +1253,7 @@ describe('SupportAddon Unit Tests', () => {
           roleName = parts.join('');
         }
 
-        if (roleName.includes('support-hop-')) {
+        if (roleName.endsWith('-hop')) {
           const trustPolicyDoc = props.AssumeRolePolicyDocument;
           const statements = trustPolicyDoc?.Statement || [];
 
@@ -1337,7 +1322,7 @@ describe('SupportAddon Unit Tests', () => {
           roleName = parts.join('');
         }
 
-        if (roleName.includes('support-hop-')) {
+        if (roleName.endsWith('-hop')) {
           const trustPolicyDoc = props.AssumeRolePolicyDocument;
           const statements = trustPolicyDoc?.Statement || [];
 
@@ -1411,7 +1396,7 @@ describe('SupportAddon Unit Tests', () => {
           roleName = parts.join('');
         }
 
-        if (roleName.includes('support-hop-')) {
+        if (roleName.endsWith('-hop')) {
           const trustPolicyDoc = props.AssumeRolePolicyDocument;
           const statements = trustPolicyDoc?.Statement || [];
 

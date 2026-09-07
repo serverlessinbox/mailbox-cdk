@@ -1,5 +1,5 @@
 /**
- * Support Access Full-Stack IAM Verification Tests — T1 Hard Gates
+ * Support Full-Stack IAM Verification Tests — T1 Hard Gates
  *
  * These tests verify the hard security assertions required by T1's verification gate.
  * They construct the addon directly on a test stack to isolate support IAM
@@ -88,12 +88,12 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       expect(Object.keys(roles).length).toBe(0);
 
       // No support dedicated table
-      const supportAccessTables = template.findResources('AWS::DynamoDB::Table', {
+      const supportTables = template.findResources('AWS::DynamoDB::Table', {
         Properties: {
           TableName: Match.stringLikeRegexp('.*support-cases.*'),
         },
       });
-      expect(Object.keys(supportAccessTables).length).toBe(0);
+      expect(Object.keys(supportTables).length).toBe(0);
 
       // No support-api lambda
       const functions = template.findResources('AWS::Lambda::Function', {
@@ -220,7 +220,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
               // Check for hop role ARN
               const hopRoleArns = resources.filter((r: any) => {
                 const resourceStr = typeof r === 'string' ? r : JSON.stringify(r);
-                return resourceStr.includes('role/support-hop-');
+                return resourceStr.includes('role/support-') && resourceStr.includes('-hop');
               });
 
               if (hopRoleArns.length > 0) {
@@ -229,7 +229,8 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
                 // Verify resource is the hop role
                 for (const resource of hopRoleArns) {
                   const resourceStr = typeof resource === 'string' ? resource : JSON.stringify(resource);
-                  expect(resourceStr).toMatch(/support-hop-/);
+                  expect(resourceStr).toMatch(/role\/support-/);
+                  expect(resourceStr).toMatch(/-hop/);
                 }
 
                 // Verify actions are ONLY tag-write (TagRole, UntagRole)
@@ -429,17 +430,17 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
         // Roles may have a Fn::Join for their name (dynamically constructed)
         if (typeof roleName === 'string') {
-          if (roleName.includes('support-diag-')) {
+          if (roleName.endsWith('-diag')) {
             supportDiagRole = role;
-          } else if (roleName.includes('support-config-read-')) {
+          } else if (roleName.endsWith('-config-read')) {
             supportConfigReadRole = role;
           }
         } else if (typeof roleName === 'object' && roleName['Fn::Join']) {
           // Check if this is a dynamically constructed role name
           const joinParts = JSON.stringify(roleName);
-          if (joinParts.includes('support-diag-') || joinParts.includes('support-diag')) {
+          if (joinParts.includes('"-diag"')) {
             supportDiagRole = role;
-          } else if (joinParts.includes('support-config-read-') || joinParts.includes('support-config-read')) {
+          } else if (joinParts.includes('"-config-read"')) {
             supportConfigReadRole = role;
           }
         }

@@ -73,7 +73,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
     super(scope, id);
 
     this.uiConfig = {
-      supportAccess: {
+      support: {
         available: true,
       },
     };
@@ -148,9 +148,9 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       return;
     }
     api.addRoutes({
-      path: '/support-access/{proxy+}',
+      path: '/support/{proxy+}',
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('support-access', this.apiHandler),
+      integration: new HttpLambdaIntegration('support', this.apiHandler),
       authorizer,
     });
   }
