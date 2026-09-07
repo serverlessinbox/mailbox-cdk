@@ -25,7 +25,6 @@ export async function runUpdateCycle(service?: string): Promise<void> {
       project: updaterEnv.project,
       artifactBucketBase: updaterEnv.artifactBucketBase,
     };
-    const registeredPackages = new Set(JSON.parse(updaterEnv.registeredPackages));
     const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
     const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
 
@@ -33,7 +32,6 @@ export async function runUpdateCycle(service?: string): Promise<void> {
       rootStackTag: updaterEnv.rootStackTagValue,
       regions: uniqueRegions,
       granularity: updaterEnv.granularity,
-      registeredPackages: [...registeredPackages],
     });
 
     // Scan Lambda functions and CloudFront distributions in both regions.
@@ -70,13 +68,7 @@ export async function runUpdateCycle(service?: string): Promise<void> {
             }
 
             if (!pkg || !artifactName || !deployedVersion) {
-              logger.debug('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
-              continue;
-            }
-
-            // Filter by registered packages: skip any package not explicitly registered
-            if (!registeredPackages.has(pkg)) {
-              logger.debug('skipping unregistered package', { arn, pkg });
+              logger.warn('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
               continue;
             }
 

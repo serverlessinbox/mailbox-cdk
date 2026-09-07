@@ -12,7 +12,6 @@ export interface UpdaterEnv {
   readonly granularity: string;
   readonly artifactBucketBase: string;
   readonly rootStackTagValue: string;
-  readonly registeredPackages: string;
 }
 
 /** Configuration for artifact staleness checking and resolution. Subset of UpdaterEnv. */
@@ -32,7 +31,6 @@ export function getUpdaterEnv(): UpdaterEnv {
     granularity: env.mustGet('GRANULARITY'),
     artifactBucketBase: env.mustGet('ARTIFACT_BUCKET_BASE'),
     rootStackTagValue: env.mustGet('ROOT_STACK_TAG_VALUE'),
-    registeredPackages: env.mustGet('REGISTERED_PACKAGES'),
   };
 }
 

@@ -40,7 +40,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   private readonly project: string = 'serverlessinbox';
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
-  private readonly registeredPackages = new Set<string>();
   private readonly deployEndTrigger: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
@@ -83,7 +82,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
       lockTable,
-      registeredPackagesSet: this.registeredPackages,
     });
     this.updater = updater;
 
@@ -225,14 +223,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     return this.pinned.resolve(packageName, objectPath, region);
   }
 
-  /** Register packages for the updater to track (skips unregistered packages in tag-scan loop). */
+  /** Register packages for the updater to track. */
   registerPackages(names: string[]): void {
     // Delegate to pinned resolver to ensure consistent validation on resolve()
     this.pinned.registerPackages(names);
-    // Also track locally for the REGISTERED_PACKAGES env var (Lazy.string will capture this Set)
-    for (const n of names) {
-      this.registeredPackages.add(n);
-    }
   }
 
   /** Provide the artifact updater addon for admin API registration. */

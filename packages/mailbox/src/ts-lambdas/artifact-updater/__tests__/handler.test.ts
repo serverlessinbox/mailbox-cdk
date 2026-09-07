@@ -195,7 +195,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     delete process.env.ARTIFACT_BUCKET_BASE;
     delete process.env.ROOT_STACK_TAG_VALUE;
     delete process.env.AWS_REGION;
-    delete process.env.REGISTERED_PACKAGES;
   });
 
   describe('handler (main entry point)', () => {
@@ -206,8 +205,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      // Include all packages used in tests (main production packages + test fixtures)
-      process.env.REGISTERED_PACKAGES = JSON.stringify(['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui', 'pkg1', 'pkg2', 'admin-api', 'ui-bundle']);
     });
 
     it('requires ROOT_STACK_TAG_VALUE environment variable', async () => {
@@ -642,6 +639,55 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       // Verify both Lambdas were attempted
       expect(mockReadReleasePointer).toHaveBeenCalledTimes(2);
     });
+
+    it('processes packages not previously in REGISTERED_PACKAGES env list (regression: content-deployer)', async () => {
+      // Regression test: when REGISTERED_PACKAGES env var was used, packages like
+      // 'mailbox-cdk-shared' (containing content-deployer) were silently filtered out.
+      // After removing the env var filter, all packages with valid tags should be processed.
+      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+      process.env.DIST_TAG = 'latest';
+      process.env.GRANULARITY = 'major';
+      process.env.PROJECT = 'serverlessinbox';
+      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
+
+      mockDeriveTrack.mockReturnValue('v1');
+      mockReadReleasePointer.mockResolvedValue({
+        version: '1.0.1',
+        s3Location: { bucket: 'test-bucket', key: 'test-key' },
+      });
+      mockBuildArtifactKey.mockReturnValue('release/1.0.1/lambdas/content-deployer.zip');
+
+      // Lambda with package 'mailbox-cdk-shared' (would have been filtered out before)
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          {
+            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:content-deployer',
+            Tags: [
+              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
+              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-shared' },
+              { Key: 'serverless-inbox:artifact-name', Value: 'content-deployer' },
+              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
+              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
+            ],
+          },
+        ],
+      });
+
+      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+      lambdaMock.on(TagResourceCommand).resolves({});
+
+      await handler({});
+
+      // Verify the previously-filtered package IS now processed
+      expect(mockReadReleasePointer).toHaveBeenCalled();
+      expect(mockReadReleasePointer).toHaveBeenCalledWith(
+        'mailbox-cdk-shared',
+        'latest',
+        'us-east-1',
+        expect.any(Object),
+      );
+      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    });
   });
 
   describe('Version comparison using real semver', () => {
@@ -651,8 +697,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       process.env.PROJECT = 'serverlessinbox';
       process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      // Include all packages used in tests
-      process.env.REGISTERED_PACKAGES = JSON.stringify(['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui']);
     });
 
     it('does not advance on downgrade (pointer version < deployed version)', async () => {
@@ -688,7 +732,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       };
 
       process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      process.env.REGISTERED_PACKAGES = JSON.stringify(['mailbox-go']);
       process.env.PROJECT = 'serverlessinbox';
       process.env.DIST_TAG = 'latest';
       process.env.GRANULARITY = 'major';

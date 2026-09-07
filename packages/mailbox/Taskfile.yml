@@ -69,6 +69,16 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out /tmp/artifact-updater.zip --external "@aws-sdk/*"
 
+  bundle:ui-deployer:
+    desc: Bundle ui-deployer lambda zip to /tmp (patches pre-2026-08-18 field deployments with no-op delete handler)
+    sources:
+      - ../mailbox-cdk-shared/src/ts-lambdas/content-deployer/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+    generates:
+      - /tmp/ui-deployer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/../mailbox-cdk-shared/src/ts-lambdas/content-deployer/index.ts --out /tmp/ui-deployer.zip
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
@@ -77,6 +87,7 @@ tasks:
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
+      - task: bundle:ui-deployer
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -127,4 +138,5 @@ tasks:
       - task: bundle:stack-helpers
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
+      - task: bundle:ui-deployer
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}
