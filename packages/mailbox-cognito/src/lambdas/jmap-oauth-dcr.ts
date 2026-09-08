@@ -37,7 +37,7 @@ export interface JmapOAuthDcrLambdaProps {
  * Cognito `CreateUserPoolClient`/`DeleteUserPoolClient` calls are self-granted on this
  * Lambda's own role, scoped to `userPoolArn` — mirrors `CognitoBootstrapUserLambda`'s
  * `addBootstrapUser` grant. `identity-provisioner` stays provider-agnostic and never
- * receives anything but an already-minted `clientId`.
+ * receives anything but an already-issued `clientId`.
  *
  * Expects an artifact at: `lambdas/jmap-oauth-dcr.zip` with handler: `index.handler`.
  */
