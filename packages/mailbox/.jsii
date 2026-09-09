@@ -12292,26 +12292,17 @@
     },
     "@serverlessinbox/mailbox.SendStackFailuresMode": {
       "assembly": "@serverlessinbox/mailbox",
-      "docs": {
-        "summary": "Consent mode for the stack-failure detector."
-      },
       "fqn": "@serverlessinbox/mailbox.SendStackFailuresMode",
       "kind": "enum",
       "locationInModule": {
         "filename": "src/features/stack-failure-detection/stack-failure-detection.ts",
-        "line": 14
+        "line": 11
       },
       "members": [
         {
-          "docs": {
-            "summary": "Detector infrastructure is provisioned."
-          },
           "name": "ENABLED"
         },
         {
-          "docs": {
-            "summary": "No detector infrastructure is provisioned at all."
-          },
           "name": "DISABLED"
         }
       ],
@@ -12901,5 +12892,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "RWFBe3WQZNsBh34yPkVvoYuOQwk3VFSK9L58utaxNMo="
+  "fingerprint": "6jT1ZVaflv+86jIk+L13a/lPoM3/GdSUnqxIU7+oV6k="
 }

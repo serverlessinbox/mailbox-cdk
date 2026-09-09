@@ -159,6 +159,35 @@ describe('StackFailureDetection', () => {
       expect(Object.keys(perms).length).toBeGreaterThanOrEqual(1);
     });
 
+    it('the detector Lambda\'s INFRA_LOG_GROUP_NAME env var points at the exact log group its IAM grant is scoped to', () => {
+      // Regression test for a real deploy failure: the detector's Go handler
+      // (`env.MustGet("INFRA_LOG_GROUP_NAME")`) panicked on cold start because the construct set no
+      // `environment` at all. This asserts not just presence but that the env var and the
+      // `logs:FilterLogEvents` grant resolve to the SAME underlying log-group resource — both must
+      // reference the same CloudFormation logical id, so they can never silently drift apart.
+      const fns = template.findResources('AWS::Lambda::Function');
+      const [, detectorFn] = Object.entries(fns)[0];
+      const envVars = (detectorFn as any).Properties.Environment.Variables;
+
+      expect(envVars.INFRA_LOG_GROUP_NAME).toBeDefined();
+      const envLogicalId = envVars.INFRA_LOG_GROUP_NAME.Ref;
+      expect(typeof envLogicalId).toBe('string');
+
+      const policies = template.findResources('AWS::IAM::Policy');
+      const detectorPolicy = Object.values(policies).find(
+        (p: any) => p.Properties.PolicyName === 'stack-failure-detector-policy'
+      ) as any;
+      expect(detectorPolicy).toBeDefined();
+
+      const filterStmt = detectorPolicy.Properties.PolicyDocument.Statement.find((s: any) => {
+        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        return actions.includes('logs:FilterLogEvents');
+      });
+      const grantLogicalId = filterStmt.Resource['Fn::GetAtt'][0];
+
+      expect(envLogicalId).toBe(grantLogicalId);
+    });
+
     it('the rule matches CloudFormation Stack Status Change with exactly the five terminal statuses', () => {
       const rules = template.findResources('AWS::Events::Rule');
       const [, rule] = Object.entries(rules)[0];
