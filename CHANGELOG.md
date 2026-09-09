@@ -4,6 +4,24 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.82](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.81...v0.0.82) (Wed Sep 09 2026)
+
+### refactor
+
+* Rename support access -> support ([804ce33](https://github.com/serverlessinbox/mailbox-cdk/commit/804ce339795a0a09d252bfafa76b57b4fe7b5964))
+
+* Renamed support access -> support ([0f5dbab](https://github.com/serverlessinbox/mailbox-cdk/commit/0f5dbab318d3ce4be8ede831c6ba5c661145221f))
+
+* Renamed support access -> support ([766f44e](https://github.com/serverlessinbox/mailbox-cdk/commit/766f44eb71b92a00f496b258ca158a0744642513))
+
+* rename minted to issued in DCR docstring ([9340433](https://github.com/serverlessinbox/mailbox-cdk/commit/9340433a451132ef03385a64f53b6be60e03fdf4))
+
+* **sweeper** one implementation per removal type ([709e418](https://github.com/serverlessinbox/mailbox-cdk/commit/709e4180cd49496a301a1870b9b3650272888a87))
+
+### feat
+
+* Stack failure detector ([df4dd5e](https://github.com/serverlessinbox/mailbox-cdk/commit/df4dd5e4e30adb4e26811012ca24b385ae56feff))
+
 ## [0.0.81](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.80...v0.0.81) (Mon Sep 07 2026)
 
 ### fix

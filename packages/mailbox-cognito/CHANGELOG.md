@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.0.82](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.81...v0.0.82) (Wed Sep 09 2026)
+
+### refactor
+
+* rename minted to issued in DCR docstring ([9340433](https://github.com/serverlessinbox/mailbox-cdk/commit/9340433a451132ef03385a64f53b6be60e03fdf4))
+
 ## [0.0.81](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.80...v0.0.81) (Mon Sep 07 2026)
 
 
