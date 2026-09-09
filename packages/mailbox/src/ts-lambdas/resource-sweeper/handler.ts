@@ -1,34 +1,32 @@
 import { wrapHandler } from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { LoggerBuffer } from '../shared/logger-buffer';
-import {
-  ACMClient,
-  DescribeCertificateCommand,
-  DeleteCertificateCommand,
-  ListTagsForCertificateCommand,
-} from '@aws-sdk/client-acm';
-import {
-  LambdaClient,
-  GetFunctionCommand,
-  DeleteFunctionCommand,
-} from '@aws-sdk/client-lambda';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
+import { sweepCert } from './targets/cert';
+import { sweepEdgeFn } from './targets/edge-fn';
+import { sweepStackFailureDetector } from './targets/stack-failure-detector';
+import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult } from './targets/types';
+
+export type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput } from './targets/types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
 
 /**
- * Worker handler input: targets to delete (optional; at least one should be present).
+ * Discriminated per-removal-type payload the worker Lambda dispatches on. Each removal's CDK
+ * implementation (`features/sweeper/*-removal.ts`) bakes its own `removalType` + target fields into
+ * the state machine definition at synth time — this worker never receives a mixed bag of optional
+ * fields, only exactly the fields the matching sub-handler needs.
  */
-export interface WorkerInput {
-  certArn?: string;
-  edgeFnArn?: string;
-  rootStackName: string;
-}
+export type WorkerInput =
+  | ({ removalType: 'cert' } & CertRemovalInput)
+  | ({ removalType: 'edge-fn' } & EdgeFunctionRemovalInput)
+  | ({ removalType: 'detector' } & StackFailureDetectorRemovalInput);
 
 /**
  * Worker handler output: status of the sweep operation.
- * - SUCCESS: every provided target is confirmed gone.
- * - RETRY: at least one provided target still not deletable.
+ * - SUCCESS: the target is confirmed gone.
+ * - RETRY: the target is not yet deletable.
  * - FAILED: hard error or ownership mismatch.
  */
 export interface WorkerOutput {
@@ -36,18 +34,112 @@ export interface WorkerOutput {
   reason?: string;
 }
 
+function toWorkerOutput(result: TargetResult): WorkerOutput {
+  if (result.status === 'done') return { status: 'SUCCESS' };
+  if (result.status === 'retry') return { status: 'RETRY', reason: result.reason };
+  return { status: 'FAILED', reason: result.reason };
+}
+
 /**
- * Worker handler: invoked by Step Functions to delete both ACM certs and Lambda@Edge functions.
- * Idempotent — each invocation re-checks and deletes whatever is still pending.
+ * The custom resource's `ResourceProperties`/`OldResourceProperties` shape: one opaque entry per
+ * registered removal, keyed by that removal's `IResourceRemoval.id` (see
+ * `features/sweeper/deferred-removal.ts`). This starter never interprets a removal's own fields — it
+ * only diffs each entry structurally and forwards whichever ones changed, opaque, as the sweep
+ * targets for that removal. `ServiceToken`/`ServiceTimeout` are CFN's own injected keys, never a
+ * removal id, and are stripped before diffing.
+ */
+export type RemovalPropertiesMap = Record<string, unknown>;
+
+const RESERVED_RESOURCE_PROPERTY_KEYS = new Set(['ServiceToken', 'ServiceTimeout']);
+
+function stripReservedKeys(props: RemovalPropertiesMap): RemovalPropertiesMap {
+  const result: RemovalPropertiesMap = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (!RESERVED_RESOURCE_PROPERTY_KEYS.has(key)) result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * BWCOMPAT(2026-09-08): before this rework, the custom resource carried a flat `CertArn`/`EdgeFnArn`
+ * shape instead of today's per-removal-type keyed map (see git history of
+ * `features/sweeper/deferred-removal.ts` prior to this change). A stack's first update after this
+ * ships hands the starter `OldResourceProperties` in that old flat shape — normalise it into the
+ * keyed form (under the `cert`/`edge-fn` removal ids) so the diff below can treat every update the
+ * same way, old or new. The stack-failure detector never had a deployed flat shape (it did not
+ * exist before this rework), so it needs no fallback here — only `cert`/`edge-fn` do.
+ * Remove when: every live stack has had a template update on/after 2026-09-08.
+ */
+function normalizeOldProperties(old: RemovalPropertiesMap | undefined): RemovalPropertiesMap {
+  if (!old) return {};
+  const normalized = stripReservedKeys(old);
+  if (typeof old['CertArn'] === 'string') {
+    normalized['cert'] = { certArn: old['CertArn'] };
+    delete normalized['CertArn'];
+  }
+  if (typeof old['EdgeFnArn'] === 'string') {
+    normalized['edge-fn'] = { edgeFnArn: old['EdgeFnArn'] };
+    delete normalized['EdgeFnArn'];
+  }
+  return normalized;
+}
+
+/** Structural equality over plain JSON-shaped values — used to detect whether a removal's own entry
+ * actually changed between old and new properties, without this starter knowing any of its fields. */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((value, i) => deepEqual(value, b[i]));
+  }
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+  const aKeys = Object.keys(aObj);
+  const bKeys = Object.keys(bObj);
+  return aKeys.length === bKeys.length && aKeys.every((key) => deepEqual(aObj[key], bObj[key]));
+}
+
+/**
+ * Decides what this invocation needs to sweep, per registered removal:
+ * - Delete: every removal present in `ResourceProperties` (the last-known targets).
+ * - Update: for each removal present in the (BWCOMPAT-normalised) old properties, sweep its OLD
+ *   value when that removal is now absent or its entry changed — e.g. a domain change replacing a
+ *   cert or edge function. An unchanged removal contributes nothing.
+ * - Create: nothing exists yet to sweep.
  *
- * INPUT: { certArn?: string, edgeFnArn?: string, rootStackName: string }
- * OUTPUT: { status: 'SUCCESS' | 'RETRY' | 'FAILED', reason?: string }
+ * Exported for direct unit testing — the diff itself is the behaviour that regressed when this
+ * custom resource stopped carrying properties at all, and is worth testing without going through a
+ * mocked SFN client.
+ */
+export function computeSweepTargets(event: CloudFormationCustomResourceEvent): RemovalPropertiesMap {
+  const currentProps = stripReservedKeys(event.ResourceProperties as RemovalPropertiesMap);
+
+  if (event.RequestType === 'Delete') {
+    return currentProps;
+  }
+
+  if (event.RequestType === 'Create') {
+    return {};
+  }
+
+  const oldProps = normalizeOldProperties(event.OldResourceProperties as RemovalPropertiesMap | undefined);
+  const toSweep: RemovalPropertiesMap = {};
+  for (const [removalId, oldValue] of Object.entries(oldProps)) {
+    const newValue = currentProps[removalId];
+    if (newValue === undefined || !deepEqual(oldValue, newValue)) {
+      toSweep[removalId] = oldValue;
+    }
+  }
+  return toSweep;
+}
+
+/**
+ * Worker handler: invoked by Step Functions once per removal, with that removal's own typed
+ * payload. Idempotent — each invocation re-checks and deletes whatever is still pending.
  *
- * - If certArn present: DescribeCertificate → check InUseBy. If empty, DeleteCertificate.
- *   ResourceNotFoundException → already done. Ownership mismatch → FAILED. InUseBy non-empty → RETRY.
- * - If edgeFnArn present: GetFunction in us-east-1 → verify tag. DeleteFunction.
- *   ResourceNotFoundException → already done. Ownership mismatch → FAILED. Other error → RETRY.
- * - Aggregate: FAILED if any hard error/mismatch; RETRY if any target not-done; SUCCESS if all done.
+ * Dispatches on `removalType` to the matching sub-handler in `./targets/*` — one sub-handler per
+ * removal type, each taking only its own input shape.
  */
 export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
   // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
@@ -55,184 +147,50 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
   const service = env.get('SERVICE_NAME', undefined);
   const logger = new LoggerBuffer(service);
 
-  logger.debug('Worker invoked', {
-    hasCertArn: !!input.certArn,
-    hasEdgeFnArn: !!input.edgeFnArn,
-    rootStackName: input.rootStackName,
-  });
+  logger.debug('Worker invoked', { removalType: input.removalType, rootStackName: input.rootStackName });
 
-  const results: { target: string; status: 'done' | 'retry' | 'failed'; reason?: string }[] = [];
-
-  // Process ACM cert if provided
-  if (input.certArn) {
-    try {
-      const acmClient = new ACMClient({ region: process.env.AWS_REGION });
-      const certArn = input.certArn;
-
-      // Verify ownership via tags
-      logger.debug('Verifying ACM cert ownership');
-      try {
-        const tagsResp = await acmClient.send(
-          new ListTagsForCertificateCommand({ CertificateArn: certArn })
-        );
-        const tags = tagsResp.Tags ?? [];
-        const ownerTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
-        if (ownerTag?.Value !== input.rootStackName) {
-          logger.warn('ACM cert ownership mismatch', {
-            expectedStack: input.rootStackName,
-            actualStack: ownerTag?.Value,
-          });
-          results.push({
-            target: 'cert',
-            status: 'failed',
-            reason: `Ownership mismatch (expected ${input.rootStackName}, got ${ownerTag?.Value})`,
-          });
-        } else {
-          // Ownership verified; check if cert is still in use
-          logger.debug('ACM cert ownership verified; checking InUseBy');
-          const descResp = await acmClient.send(
-            new DescribeCertificateCommand({ CertificateArn: certArn })
-          );
-          const inUseBy = descResp.Certificate?.InUseBy ?? [];
-          if (inUseBy.length > 0) {
-            logger.info('ACM cert still in use; will retry', { inUseByCount: inUseBy.length });
-            results.push({ target: 'cert', status: 'retry', reason: `InUseBy: ${inUseBy.join(', ')}` });
-          } else {
-            // Ready to delete
-            logger.info('ACM cert not in use; attempting delete');
-            await acmClient.send(new DeleteCertificateCommand({ CertificateArn: certArn }));
-            logger.info('ACM cert deleted successfully');
-            results.push({ target: 'cert', status: 'done' });
-          }
-        }
-      } catch (err: any) {
-        if (err.name === 'ResourceNotFoundException') {
-          logger.debug('ACM cert not found; treating as deleted');
-          results.push({ target: 'cert', status: 'done' });
-        } else {
-          throw err;
-        }
-      }
-    } catch (err: any) {
-      logger.error('ACM cert deletion error', {
-        errorName: err?.name,
-        errorMessage: err?.message,
-      });
-      results.push({
-        target: 'cert',
-        status: 'failed',
-        reason: `${err?.name}: ${err?.message}`,
-      });
-    }
+  let result: TargetResult;
+  switch (input.removalType) {
+    case 'cert':
+      result = await sweepCert(input, logger);
+      break;
+    case 'edge-fn':
+      result = await sweepEdgeFn(input, logger);
+      break;
+    case 'detector':
+      result = await sweepStackFailureDetector(input, logger);
+      break;
   }
 
-  // Process Lambda@Edge function if provided
-  if (input.edgeFnArn) {
-    try {
-      const lambdaClient = new LambdaClient({ region: 'us-east-1' });
-      const edgeFnArn = input.edgeFnArn;
-
-      // Extract function name from ARN (last segment)
-      // Format: arn:aws:lambda:us-east-1:ACCOUNT:function:FUNCTION-NAME
-      const functionName = edgeFnArn.split(':').pop()!;
-
-      try {
-        // Verify ownership via tags
-        logger.debug('Verifying Lambda function ownership');
-        const getResp = await lambdaClient.send(
-          new GetFunctionCommand({ FunctionName: functionName })
-        );
-        const tags = getResp.Tags ?? {};
-        const ownerStack = tags['serverless-inbox:root-stack'];
-        if (ownerStack !== input.rootStackName) {
-          logger.warn('Lambda function ownership mismatch', {
-            expectedStack: input.rootStackName,
-            actualStack: ownerStack,
-          });
-          results.push({
-            target: 'edge-fn',
-            status: 'failed',
-            reason: `Ownership mismatch (expected ${input.rootStackName}, got ${ownerStack})`,
-          });
-        } else {
-          // Ownership verified; proceed to delete
-          logger.info('Lambda function ownership verified; attempting delete');
-          await lambdaClient.send(new DeleteFunctionCommand({ FunctionName: functionName }));
-          logger.info('Lambda function deleted successfully');
-          results.push({ target: 'edge-fn', status: 'done' });
-        }
-      } catch (err: any) {
-        if (err.name === 'ResourceNotFoundException') {
-          logger.debug('Lambda function not found; treating as deleted');
-          results.push({ target: 'edge-fn', status: 'done' });
-        } else {
-          throw err;
-        }
-      }
-    } catch (err: any) {
-      // Replicas draining or other transient error → RETRY
-      logger.warn('Lambda function deletion error (will retry)', {
-        errorName: err?.name,
-        errorMessage: err?.message,
-      });
-      results.push({
-        target: 'edge-fn',
-        status: 'retry',
-        reason: `${err?.name}: ${err?.message}`,
-      });
-    }
-  }
-
-  // Aggregate results and check for failures/retries
-  logger.info('Worker results aggregation', { resultCount: results.length, failureCount: results.filter((r) => r.status === 'failed').length });
-
-  // Record successful deletions as updates
-  const successes = results.filter((r) => r.status === 'done');
-  for (let i = 0; i < successes.length; i++) {
+  if (result.status === 'done') {
     logger.recordUpdate();
+    logger.info('Worker completed successfully', { target: result.target });
+  } else if (result.status === 'retry') {
+    logger.info('Worker needs retry', { target: result.target, reason: result.reason });
+  } else {
+    logger.error('Worker failed', { target: result.target, reason: result.reason });
   }
 
-  // Check for failures
-  const failures = results.filter((r) => r.status === 'failed');
-  if (failures.length > 0) {
-    logger.error('Worker failed', {
-      failureCount: failures.length,
-      failures: failures.map((f) => `${f.target}: ${f.reason}`).join('; '),
-    });
-    logger.flush();
-    return {
-      status: 'FAILED',
-      reason: failures.map((f) => `${f.target}: ${f.reason}`).join('; '),
-    };
-  }
-
-  // Check for retries
-  const retries = results.filter((r) => r.status === 'retry');
-  if (retries.length > 0) {
-    logger.info('Worker needs retry', {
-      retryCount: retries.length,
-      reasons: retries.map((r) => `${r.target}: ${r.reason}`).join('; '),
-    });
-    logger.flush();
-    return {
-      status: 'RETRY',
-      reason: retries.map((r) => `${r.target}: ${r.reason}`).join('; '),
-    };
-  }
-
-  // All done
-  logger.info('Worker completed successfully');
   logger.flush();
-  return { status: 'SUCCESS' };
+  return toWorkerOutput(result);
 });
 
 /**
- * Starter handler: fires a Step Functions execution to sweep deferred resources.
- * Called by CloudFormation custom resource (DeferredRemoval) on Delete (or Update-with-change).
+ * Starter handler: fires a single Step Functions execution to sweep whatever `computeSweepTargets`
+ * decides needs sweeping for this request — every registered removal on Delete, or just the
+ * removals whose entry changed/disappeared on Update (e.g. a domain change replacing a cert or edge
+ * function). Called by CloudFormation custom resource (DeferredRemoval).
  *
- * Wrapped with wrapHandler to guarantee CloudFormation response always sent;
- * sweep runs asynchronously. StartExecution failures are logged but do not
- * prevent the custom resource from completing (best-effort).
+ * Each removal's own target data lives in the custom resource's `ResourceProperties`, one opaque
+ * entry per removal keyed by its `id` (see `features/sweeper/deferred-removal.ts`); this starter
+ * never interprets those fields, it only diffs entries structurally and forwards whichever ones
+ * changed as `{ toSweep: { ... } }` in the execution input. Each removal's own state-machine chain
+ * (see `features/sweeper/removal.ts`) reads its target back out of that input at
+ * `$.toSweep.<removalId>`, and skips itself entirely when nothing is present there.
+ *
+ * Wrapped with wrapHandler to guarantee CloudFormation response always sent; the sweep runs
+ * asynchronously. StartExecution failures are logged but do not prevent the custom resource from
+ * completing (best-effort).
  */
 export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
@@ -255,63 +213,29 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     logicalResourceId: event.LogicalResourceId,
   });
 
-  const certArn = event.ResourceProperties['CertArn'] as string | undefined;
-  const edgeFnArn = event.ResourceProperties['EdgeFnArn'] as string | undefined;
-  const rootStackName = process.env['MAILBOX_SWEEPER_ROOT_STACK_NAME']!;
   const smArn = process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN']!;
 
-  // Determine which ARNs to sweep
-  // wrapHandler's event type doesn't expose OldResourceProperties, but it's present in Update events
-  const cfnEvent = event as any;
+  // cast: wrapHandler's own event type (`TypeSafeCloudFormationResourceEvent`, from
+  // `aws-custom-resources`) is `Omit<CloudFormationCustomResourceEvent, 'ResponseURL'>` — but `Omit`
+  // over a union collapses it to ONE flat object keyed only by properties common to every request
+  // type, which drops `OldResourceProperties` entirely (it isn't a key on the Create/Delete
+  // variants), even though the real event, exactly as wrapHandler received and forwards it, always
+  // carries it on Update. Re-assert the real, still-discriminated union type here instead of
+  // reaching for `any` — `computeSweepTargets` still gets full narrowing on `RequestType`.
+  const cfnEvent = event as CloudFormationCustomResourceEvent;
+  const toSweep = computeSweepTargets(cfnEvent);
+  const sweepTargetIds = Object.keys(toSweep);
 
-  const oldCertArn = cfnEvent.OldResourceProperties?.['CertArn'] as string | undefined;
-  const oldEdgeFnArn = cfnEvent.OldResourceProperties?.['EdgeFnArn'] as string | undefined;
-
-  const isReplaced =
-    event.RequestType === 'Update' &&
-    (oldCertArn !== certArn || oldEdgeFnArn !== edgeFnArn);
-
-  const arnsToSweep: { certArn?: string; edgeFnArn?: string } = {};
-
-  // On Delete, sweep current ARNs
-  // On Update with change, sweep old ARNs
-  if (event.RequestType === 'Delete') {
-    if (certArn) arnsToSweep.certArn = certArn;
-    if (edgeFnArn) arnsToSweep.edgeFnArn = edgeFnArn;
-  } else if (isReplaced) {
-    if (oldCertArn) arnsToSweep.certArn = oldCertArn;
-    if (oldEdgeFnArn) arnsToSweep.edgeFnArn = oldEdgeFnArn;
-  }
-
-  logger.info('Determining sweep targets', {
-    requestType: event.RequestType,
-    hasCertArn: !!certArn,
-    hasEdgeFnArn: !!edgeFnArn,
-    isReplaced,
-    hasSweepTargets: !!(arnsToSweep.certArn || arnsToSweep.edgeFnArn),
-  });
-
-  // Physical resource ID: stable identifier
-  const physicalResourceId = [certArn, edgeFnArn].filter(Boolean).join('|') || event.RequestId;
-
-  // Fire the execution if there's something to sweep (at least one ARN).
-  // Failures are logged but do NOT throw; wrapHandler guarantees a response.
-  if (arnsToSweep.certArn || arnsToSweep.edgeFnArn) {
+  if (sweepTargetIds.length > 0) {
     try {
-      const executionInput = {
-        certArn: arnsToSweep.certArn,
-        edgeFnArn: arnsToSweep.edgeFnArn,
-        rootStackName,
-      };
-
-      logger.info('Starting SFN execution', { executionName: event.RequestId });
+      logger.info('Starting SFN execution', { executionName: event.RequestId, sweepTargetIds });
 
       await sfnClient.send(
         new StartExecutionCommand({
           stateMachineArn: smArn,
           name: event.RequestId,
-          input: JSON.stringify(executionInput),
-        })
+          input: JSON.stringify({ toSweep }),
+        }),
       );
 
       logger.recordUpdate();
@@ -331,7 +255,9 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
       }
     }
   } else {
-    logger.debug('No sweep targets; skipping execution start (Create or Update with unchanged ARNs)');
+    logger.debug('No sweep targets for this request; nothing to trigger', {
+      requestType: event.RequestType,
+    });
   }
 
   // Flush if there's anything to report
@@ -342,7 +268,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   // Return response object. wrapHandler will always send this to CloudFormation,
   // even if the function threw an uncaught error (which we don't have here).
   return {
-    PhysicalResourceId: physicalResourceId,
+    PhysicalResourceId: 'mailbox-deferred-removal',
     Data: {},
   };
 }));

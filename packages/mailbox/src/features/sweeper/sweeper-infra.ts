@@ -3,11 +3,17 @@ import { Construct } from 'constructs';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SweeperWorkflow } from './sweeper-workflow';
+import type { IResourceRemoval } from './removal';
 import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: ICdkArtifactEngine;
+  /**
+   * Removals to sweep. Each contributes the IAM grants its own resources need onto the shared
+   * worker role, and its own steps (including any waiting) to the state machine — see
+   * `IResourceRemoval`.
+   */
+  readonly removals: IResourceRemoval[];
 }
 
 /**
@@ -197,6 +203,7 @@ export class SweeperInfra extends Construct {
       timeout: Duration.hours(4),
       stateMachineName: smName,
       stateMachineArn: smArn,
+      removals: props.removals,
     });
     (this.workflow.stateMachine.node.defaultChild as any)
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
@@ -209,47 +216,18 @@ export class SweeperInfra extends Construct {
       rootStackName: Aws.STACK_NAME,
     });
 
-    // Worker role: single consolidated inline policy for ACM + Lambda deletion + CloudWatch Logs.
-    // Ownership is verified in code (Lambda handler checks tags) AND enforced by IAM: the
-    // destructive actions (DeleteCertificate/DeleteFunction) require the target to carry this
-    // stack's root-stack tag, so the worker can never delete resources of another deployment.
-    // Reads stay unconditioned — the handler needs them to fetch tags for its own ownership check.
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
+    // Worker role: single consolidated inline policy for every registered removal's grants, plus
+    // CloudWatch Logs. Ownership is verified in code (the worker's own ownership check) AND enforced
+    // by IAM: each removal's own destructive-action statements are conditioned on this stack's
+    // root-stack tag (see `IResourceRemoval.grantStatements()` on each removal implementation), so
+    // the worker can never delete resources of another deployment. This construct has no knowledge
+    // of what any individual removal actually grants — it just concatenates them.
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: 'sweeper-worker-policy',
       statements: [
-        // ACM operations (regional, same as SFN)
-        new iam.PolicyStatement({
-          actions: [
-            'acm:DescribeCertificate',
-            'acm:ListTagsForCertificate',
-          ],
-          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-        }),
-        new iam.PolicyStatement({
-          actions: ['acm:DeleteCertificate'],
-          resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-          conditions: {
-            StringEquals: {
-              [rootStackTagKey]: Aws.STACK_NAME,
-            },
-          },
-        }),
-        // Lambda@Edge operations (us-east-1)
-        new iam.PolicyStatement({
-          actions: ['lambda:GetFunction'],
-          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
-        }),
-        new iam.PolicyStatement({
-          actions: ['lambda:DeleteFunction'],
-          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
-          conditions: {
-            StringEquals: {
-              [rootStackTagKey]: Aws.STACK_NAME,
-            },
-          },
-        }),
-        // CloudWatch Logs operations (replicates AWSLambdaBasicExecutionRole)
+        ...props.removals.flatMap((removal) => removal.grantStatements()),
+        // CloudWatch Logs operations (replicates AWSLambdaBasicExecutionRole) — not tied to any
+        // removal's own resources, so granted here rather than by a removal implementation.
         new iam.PolicyStatement({
           actions: ['logs:CreateLogGroup'],
           resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],

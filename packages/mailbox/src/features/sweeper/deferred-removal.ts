@@ -1,53 +1,45 @@
 import * as cdk from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
+import type { IResourceRemoval } from './removal';
 
 export interface DeferredRemovalProps {
-  /** Optional ARN of the ACM certificate to defer removal for. */
-  readonly certArn?: string;
-  /** Optional ARN of the Lambda@Edge function to defer removal for. */
-  readonly edgeFnArn?: string;
   /** The sweeper starter Lambda function to use as the custom resource service token. */
   readonly sweeperStarter: IFunction;
-  /** Root stack name for ownership verification. */
-  readonly rootStackName: string;
+  /**
+   * Removals to register on the custom resource. Each contributes its own `ResourceProperties` entry
+   * (via `crProperties()`), placed under its own `id` key — this construct never looks inside any
+   * removal's entry, it only assembles the map.
+   */
+  readonly removals: IResourceRemoval[];
 }
 
 /**
- * DeferredRemoval wraps a CfnCustomResource that enqueues resource ARNs to the sweeper.
+ * DeferredRemoval wraps a CfnCustomResource that triggers the sweeper on stack Delete or Update.
  *
- * On Delete or Update (with ARN change), the custom resource fires the sweeper starter Lambda,
- * which starts a single SFN execution to asynchronously delete both resources (if present).
- * Both targets are processed in parallel by the worker Lambda.
+ * `ResourceProperties` is a per-removal-type keyed map (`{ [removal.id]: removal.crProperties() }`) —
+ * one opaque entry per registered removal. On Update, CloudFormation hands the starter both this
+ * (the new properties) and `OldResourceProperties`; the starter diffs them per key and starts an SFN
+ * execution to sweep whatever changed or disappeared. On Delete, it sweeps everything present. See
+ * `ts-lambdas/resource-sweeper/handler.ts` for the diffing logic.
  *
  * The custom resource returns SUCCESS immediately; actual cleanup happens in the background.
- * Physical resource ID is stable, combining both ARNs if present.
  */
 export class DeferredRemoval extends Construct {
   constructor(scope: Construct, id: string, props: DeferredRemovalProps) {
     super(scope, id);
 
-    // At least one ARN must be provided
-    if (!props.certArn && !props.edgeFnArn) {
-      throw new Error('DeferredRemoval requires at least one of certArn or edgeFnArn');
+    const properties: Record<string, Record<string, string>> = {};
+    for (const removal of props.removals) {
+      properties[removal.id] = removal.crProperties();
     }
 
     const cr = new cdk.CustomResource(this, 'resource', {
       serviceToken: props.sweeperStarter.functionArn,
       serviceTimeout: cdk.Duration.minutes(2), // 2× Lambda timeout ceiling (60s); starter responds in ~1-2s via wrapHandler, so 120s fails fast without cutting off legitimate invocations
       resourceType: 'Custom::DeferredRemoval',
-      properties: {
-        CertArn: props.certArn,
-        EdgeFnArn: props.edgeFnArn,
-      },
+      properties,
     });
-
-    // Physical resource ID: stable identifier combining both ARNs if present
-    // This ensures CFN issues an Update (not Delete+Create) when only metadata changes.
-    const physicalResourceId = [props.certArn, props.edgeFnArn]
-      .filter(Boolean)
-      .join('|') || 'mailbox-deferred-removal';
-    (cr as any).physicalResourceId = physicalResourceId;
 
     // Explicit dependency: ensure the custom resource is deleted BEFORE its provider Lambda.
     // Because the serviceToken is a plain string (formatArn, to avoid circular dependencies),

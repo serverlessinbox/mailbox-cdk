@@ -4,6 +4,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import type { IResourceRemoval } from './removal';
 
 export interface SweeperWorkflowProps {
   /** The SFN execution role (needs IAM permissions for all operations). */
@@ -24,7 +25,7 @@ export interface SweeperWorkflowProps {
   readonly workerRoleName: string;
   /** Static role name for the execution role (used in SFN DeleteRolePolicy operations). */
   readonly executionRoleName: string;
-  /** The worker Lambda function (invoked by SFN for both ACM and Lambda deletion). */
+  /** The worker Lambda function (invoked once per registered removal). */
   readonly worker: IFunction;
   /** ARN of the worker Lambda function (for self-cleanup deletion). */
   readonly workerLambdaArn: string;
@@ -40,20 +41,22 @@ export interface SweeperWorkflowProps {
   readonly stateMachineName: string;
   /** ARN of the state machine itself (for self-deletion via sfn SDK). */
   readonly stateMachineArn: string;
+  /**
+   * Removals to sweep, in order. Each contributes its own chain (via `IResourceRemoval.buildChain`)
+   * to the state machine; the last one's success continues into the self-cleanup tail below.
+   */
+  readonly removals: IResourceRemoval[];
 }
 
 /**
  * CDK Construct wrapper for the resource sweeper Step Functions workflow.
  *
- * Thin retry loop:
- * 1. InvokeWorker: call worker Lambda with both certArn and edgeFnArn
- * 2. Choice on $.status:
- *    - SUCCESS → self-cleanup chain → done
- *    - RETRY → wait 5 min → back to InvokeWorker
- *    - FAILED → fail
+ * The definition is composed, not shared: each registered removal contributes its own chain
+ * (waiting, invoke, retry loop) via `IResourceRemoval.buildChain` — the workflow just wires them in
+ * sequence and appends the self-cleanup tail after the last one succeeds.
  *
  * Self-cleanup tail: delete worker Lambda, delete worker role, delete state machine,
- * strip SFN execution-role policies. Runs once on SUCCESS.
+ * strip SFN execution-role policies. Runs once after every removal has succeeded.
  */
 export class SweeperWorkflow extends Construct {
   readonly stateMachine: sfn.StateMachine;
@@ -72,49 +75,21 @@ export class SweeperWorkflow extends Construct {
     retryInterval: Duration,
     timeout: Duration,
   ): sfn.StateMachine {
-    // Invoke worker task
-    const invokeWorker = new tasks.LambdaInvoke(this, 'InvokeWorker', {
-      lambdaFunction: props.worker,
-      payloadResponseOnly: true,
-      resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({
-        'certArn.$': '$.certArn',
-        'edgeFnArn.$': '$.edgeFnArn',
-        'rootStackName.$': '$.rootStackName',
-      }),
-      retryOnServiceExceptions: true,
-    });
+    if (props.removals.length === 0) {
+      throw new Error('SweeperWorkflow requires at least one registered removal');
+    }
 
-    // Wait before retry
-    const waitRetry = new sfn.Wait(this, 'WaitRetry', {
-      time: sfn.WaitTime.duration(retryInterval),
-    });
+    const selfCleanupEntry = this.createSelfCleanupChain(props);
 
-    // Self-cleanup chain (runs once on SUCCESS)
-    const selfCleanup = this.createSelfCleanupChain(props);
-
-    // Choice on worker status
-    const statusChoice = new sfn.Choice(this, 'StatusChoice')
-      .when(
-        sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'),
-        selfCleanup,
-      )
-      .when(
-        sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'),
-        waitRetry,
-      )
-      .otherwise(
-        new sfn.Fail(this, 'Failed', {
-          error: 'WorkerFailed',
-          cause: 'Worker returned FAILED status',
-        }),
-      );
-
-    invokeWorker.next(statusChoice);
-    waitRetry.next(invokeWorker);
+    // Compose each removal's chain in sequence, right to left, so removal[i]'s success continues
+    // into removal[i+1]'s entry (or the self-cleanup tail, for the last one).
+    let next: sfn.IChainable = selfCleanupEntry;
+    for (let i = props.removals.length - 1; i >= 0; i--) {
+      next = props.removals[i].buildChain(props.worker, retryInterval, next);
+    }
 
     return new sfn.StateMachine(this, 'StateMachine', {
-      definition: invokeWorker,
+      definition: next,
       role: props.executionRole,
       timeout,
       stateMachineName: props.stateMachineName,
