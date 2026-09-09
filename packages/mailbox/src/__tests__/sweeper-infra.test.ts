@@ -82,15 +82,15 @@ describe('SweeperInfra IAM Policies', () => {
       'arn:aws:lambda:us-east-1:123456789012:function:edge-fn',
     );
     const rule = new events.Rule(scope, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
-    const detectorFn = new awslambda.Function(scope, 'detector-fn', {
-      runtime: awslambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: awslambda.Code.fromInline('exports.handler = async () => {};'),
-    });
     const detectorRole = new iam.Role(scope, 'detector-role', {
       roleName: 'mailbox-diag-role-test',
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
+    const detectorFn = awslambda.Function.fromFunctionArn(
+      scope,
+      'detector-fn-ref',
+      'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
+    );
 
     return [
       new CertificateRemoval(scope, 'cert-removal', { certificate }),
@@ -98,9 +98,9 @@ describe('SweeperInfra IAM Policies', () => {
       new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
         rule,
         ruleTargetId: 'Target0',
-        function: detectorFn,
+        detector: detectorFn,
         role: detectorRole,
-        rolePolicyName: 'stack-failure-detector-policy',
+        detectorRolePolicyName: 'stack-failure-detector-policy',
       }),
     ];
   }

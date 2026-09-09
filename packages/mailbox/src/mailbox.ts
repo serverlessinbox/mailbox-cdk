@@ -20,12 +20,15 @@ import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applySe
 import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
-import { DeferredRemoval, SweeperInfra } from './features/sweeper';
+import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
+import type { IResourceRemoval } from './features/sweeper';
+import { StackFailureDetection, SendStackFailuresMode } from './features/stack-failure-detection';
 import { LicenseRefresh } from './features/license-refresh';
 import { Fn } from 'aws-cdk-lib';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as awslambda from 'aws-cdk-lib/aws-lambda';
 import { MailboxEdgeDeployer } from './edge';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
@@ -216,6 +219,12 @@ export interface MailboxProps {
    * (`PinnedResolver`); inject an `AutoUpdater` to track a dist-tag at deploy.
    */
   readonly artifactResolver?: IArtifactResolver;
+
+  /**
+   * Consent for the stack-failure detector. `disabled` provisions no detector
+   * infrastructure at all (no Lambda, rule, role, or self-clean chain). Defaults to `ENABLED`.
+   */
+  readonly sendStackFailures?: SendStackFailuresMode;
 }
 
 export interface MailboxOAuthClients {
@@ -709,9 +718,17 @@ export class Mailbox extends Construct {
     // bootstrap is declared but only used for its side-effects; suppress unused-locals check.
     void bootstrap;
 
-    // Resource sweeper infrastructure (SFN + worker Lambda)
-    // Handles async cleanup of retained resources (ACM cert, edge Lambda) after stack deletion.
-    const sweeperInfra = new SweeperInfra(groups.ops, 'sweeper-infra', {
+    // Stack-failure detector: watches the root stack's own terminal `CloudFormation Stack
+    // Status Change` events. A terminal stack status is emitted only after the whole operation
+    // concludes, so — unlike a resource-level trigger — this doesn't race resource creation and has
+    // no ordering requirement relative to its ops-group siblings. Consent defaults to ENABLED;
+    // `disabled` synthesizes zero detector resources (see StackFailureDetection for the CfnCondition
+    // gating). The detector has no knowledge of the sweeper; its retained rule/function/role are
+    // read below and registered as one removal on the shared sweeper — the same mechanism the
+    // cert/edge Lambda targets already use. Built BEFORE SweeperInfra so its real rule/function/role
+    // interfaces exist by the time the sweeper's worker IAM policy is assembled from the removals.
+    const stackFailureDetection = new StackFailureDetection(groups.ops, 'stack-failure-detection', {
+      mode: props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
       artifactResolver,
     });
 
@@ -730,15 +747,39 @@ export class Mailbox extends Construct {
       Fn.select(6, fnArnParts), // <function-name>
       // Fn.select(7, ...) is the version number — intentionally dropped
     ]);
+    // Imported by ARN, not a real cross-stack construct reference: the blob authorizer lives in the
+    // separate edge sub-stack, so this is the standard CDK "import" pattern for handing the sweeper
+    // a real IFunction instead of a loose ARN string.
+    const edgeFunction = awslambda.Function.fromFunctionArn(groups.ops, 'edge-fn-removal-target', edgeFunctionArn);
 
-    // Enqueue both ACM cert and edge Lambda for deferred removal (as a single execution).
-    // The sweeper deletes both in parallel after they drain (API Gateway detachment for cert,
-    // CloudFront replica draining for Lambda@Edge).
+    // Register every retained/orphan-prone resource as its own removal on the sweeper. Each
+    // implementation owns its own target data, IAM grants and state-machine steps — see
+    // `features/sweeper/*-removal.ts`.
+    const removals: IResourceRemoval[] = [];
+    if (regionalSanCertificate) {
+      removals.push(new CertificateRemoval(groups.ops, 'cert-removal', { certificate: regionalSanCertificate }));
+    }
+    removals.push(new EdgeFunctionRemoval(groups.ops, 'edge-fn-removal', { function: edgeFunction }));
+    if (stackFailureDetection.sweepTargets) {
+      removals.push(new StackFailureDetectorRemoval(groups.ops, 'stack-failure-detector-removal', stackFailureDetection.sweepTargets));
+    }
+
+    // Resource sweeper infrastructure (SFN + worker Lambda). Handles async cleanup of retained
+    // resources (ACM cert, edge Lambda, and — when enabled — the stack-failure detector's own
+    // rule/function/role) after stack deletion. Each registered removal contributes its own IAM
+    // grants and state-machine steps (including any waiting) — see `features/sweeper/removal.ts`.
+    const sweeperInfra = new SweeperInfra(groups.ops, 'sweeper-infra', {
+      artifactResolver,
+      removals,
+    });
+
+    // Trigger + property carrier: fires the sweeper's starter Lambda on stack Delete or Update. Each
+    // removal above contributes its own keyed entry to the custom resource's properties (see
+    // `DeferredRemoval`), which the starter diffs against `OldResourceProperties` to sweep whatever
+    // changed on Update, or everything present on Delete.
     new DeferredRemoval(groups.ops, 'deferred-removal', {
-      certArn: regionalSanCertificate && cfnCert ? cfnCert.ref : undefined,
-      edgeFnArn: edgeFunctionArn,
       sweeperStarter: sweeperInfra.starter,
-      rootStackName: cdk.Stack.of(this).stackName,
+      removals,
     });
 
     // CloudFront CDN for blob downloads with Lambda@Edge

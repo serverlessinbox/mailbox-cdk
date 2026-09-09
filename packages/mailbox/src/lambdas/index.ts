@@ -82,3 +82,6 @@ export type { StackUpdateApiLambdaProps } from './stack-update-api';
 
 export { SupportApiLambda } from './support-api';
 export type { SupportApiLambdaProps } from './support-api';
+
+export { StackFailureDetectorLambda } from './stack-failure-detector';
+export type { StackFailureDetectorLambdaProps } from './stack-failure-detector';

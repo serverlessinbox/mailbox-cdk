@@ -10248,7 +10248,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 254
+          "line": 263
         },
         "parameters": [
           {
@@ -10274,7 +10274,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 229
+        "line": 238
       },
       "name": "Mailbox",
       "properties": [
@@ -10282,7 +10282,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 252
+            "line": 261
           },
           "name": "certificates",
           "type": {
@@ -10293,7 +10293,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 250
+            "line": 259
           },
           "name": "data",
           "type": {
@@ -10307,7 +10307,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 246
+            "line": 255
           },
           "name": "oauthClients",
           "type": {
@@ -10318,7 +10318,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 248
+            "line": 257
           },
           "name": "urls",
           "type": {
@@ -10332,7 +10332,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 236
+            "line": 245
           },
           "name": "adminUiBucket",
           "optional": true,
@@ -10344,7 +10344,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 237
+            "line": 246
           },
           "name": "adminUiDistribution",
           "optional": true,
@@ -10359,7 +10359,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 240
+            "line": 249
           },
           "name": "webmailUiBucket",
           "optional": true,
@@ -10371,7 +10371,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 241
+            "line": 250
           },
           "name": "webmailUiDistribution",
           "optional": true,
@@ -10481,7 +10481,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 53
+        "line": 56
       },
       "name": "MailboxCertificateOverrides",
       "properties": [
@@ -10493,7 +10493,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 63
+            "line": 66
           },
           "name": "adminUi",
           "optional": true,
@@ -10509,7 +10509,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 73
+            "line": 76
           },
           "name": "api",
           "optional": true,
@@ -10525,7 +10525,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 58
+            "line": 61
           },
           "name": "cloudFront",
           "optional": true,
@@ -10541,7 +10541,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 78
+            "line": 81
           },
           "name": "jmap",
           "optional": true,
@@ -10557,7 +10557,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 68
+            "line": 71
           },
           "name": "webmailUi",
           "optional": true,
@@ -10573,7 +10573,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 83
+            "line": 86
           },
           "name": "ws",
           "optional": true,
@@ -10591,7 +10591,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 125
+        "line": 128
       },
       "name": "MailboxCertificates",
       "properties": [
@@ -10604,7 +10604,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 128
+            "line": 131
           },
           "name": "edge",
           "optional": true,
@@ -10621,7 +10621,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 131
+            "line": 134
           },
           "name": "regional",
           "optional": true,
@@ -10639,7 +10639,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 110
+        "line": 113
       },
       "name": "MailboxDataRefs",
       "properties": [
@@ -10651,7 +10651,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 120
+            "line": 123
           },
           "name": "auditLogTable",
           "type": {
@@ -10666,7 +10666,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 112
+            "line": 115
           },
           "name": "blobStore",
           "type": {
@@ -10681,7 +10681,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 118
+            "line": 121
           },
           "name": "changelogTable",
           "type": {
@@ -10696,7 +10696,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 114
+            "line": 117
           },
           "name": "configTable",
           "type": {
@@ -10711,7 +10711,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 116
+            "line": 119
           },
           "name": "itemTable",
           "type": {
@@ -10726,7 +10726,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 122
+            "line": 125
           },
           "name": "mailFeedbackTable",
           "type": {
@@ -11147,7 +11147,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 221
+        "line": 230
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -11156,7 +11156,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 222
+            "line": 231
           },
           "name": "adminUi",
           "optional": true,
@@ -11169,7 +11169,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 223
+            "line": 232
           },
           "name": "jmapUi",
           "optional": true,
@@ -11187,7 +11187,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 134
+        "line": 137
       },
       "name": "MailboxOverrides",
       "properties": [
@@ -11200,7 +11200,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 151
+            "line": 154
           },
           "name": "certificates",
           "optional": true,
@@ -11217,7 +11217,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 139
+            "line": 142
           },
           "name": "dataStack",
           "optional": true,
@@ -11234,7 +11234,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 144
+            "line": 147
           },
           "name": "dataStackName",
           "optional": true,
@@ -11251,7 +11251,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 158
+            "line": 161
           },
           "name": "subdomains",
           "optional": true,
@@ -11269,7 +11269,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 161
+        "line": 164
       },
       "name": "MailboxProps",
       "properties": [
@@ -11281,7 +11281,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 169
+            "line": 172
           },
           "name": "authProvider",
           "type": {
@@ -11296,7 +11296,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 175
+            "line": 178
           },
           "name": "adminApiAddonProviders",
           "optional": true,
@@ -11318,7 +11318,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 218
+            "line": 221
           },
           "name": "artifactResolver",
           "optional": true,
@@ -11335,7 +11335,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 188
+            "line": 191
           },
           "name": "enableAdminUi",
           "optional": true,
@@ -11351,7 +11351,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 200
+            "line": 203
           },
           "name": "enableMcp",
           "optional": true,
@@ -11368,7 +11368,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 207
+            "line": 210
           },
           "name": "enableReceiving",
           "optional": true,
@@ -11385,7 +11385,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 194
+            "line": 197
           },
           "name": "enableWebmailUi",
           "optional": true,
@@ -11401,7 +11401,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 172
+            "line": 175
           },
           "name": "extraAllowedOrigins",
           "optional": true,
@@ -11423,7 +11423,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 163
+            "line": 166
           },
           "name": "hostedZoneId",
           "optional": true,
@@ -11439,7 +11439,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 166
+            "line": 169
           },
           "name": "kms",
           "optional": true,
@@ -11455,12 +11455,29 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 212
+            "line": 215
           },
           "name": "overrides",
           "optional": true,
           "type": {
             "fqn": "@serverlessinbox/mailbox.MailboxOverrides"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "`disabled` provisions no detector\ninfrastructure at all (no Lambda, rule, role, or self-clean chain). Defaults to `ENABLED`.",
+            "summary": "Consent for the stack-failure detector."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 227
+          },
+          "name": "sendStackFailures",
+          "optional": true,
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.SendStackFailuresMode"
           }
         },
         {
@@ -11472,7 +11489,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 183
+            "line": 186
           },
           "name": "subdomainNamespace",
           "optional": true,
@@ -11587,7 +11604,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 86
+        "line": 89
       },
       "name": "MailboxSubdomainOverrides",
       "properties": [
@@ -11599,7 +11616,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 88
+            "line": 91
           },
           "name": "admin",
           "optional": true,
@@ -11615,7 +11632,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 94
+            "line": 97
           },
           "name": "api",
           "optional": true,
@@ -11631,7 +11648,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 92
+            "line": 95
           },
           "name": "jmap",
           "optional": true,
@@ -11647,7 +11664,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 90
+            "line": 93
           },
           "name": "webmail",
           "optional": true,
@@ -11663,7 +11680,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 96
+            "line": 99
           },
           "name": "ws",
           "optional": true,
@@ -11681,7 +11698,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 99
+        "line": 102
       },
       "name": "MailboxUrls",
       "properties": [
@@ -11693,7 +11710,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 107
+            "line": 110
           },
           "name": "adminApi",
           "type": {
@@ -11708,7 +11725,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 101
+            "line": 104
           },
           "name": "adminUi",
           "type": {
@@ -11723,7 +11740,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 105
+            "line": 108
           },
           "name": "jmapApi",
           "type": {
@@ -11738,7 +11755,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 103
+            "line": 106
           },
           "name": "webmail",
           "type": {
@@ -12272,6 +12289,34 @@
         }
       ],
       "symbolId": "src/artifacts/i-artifact-resolver:ResolvedArtifact"
+    },
+    "@serverlessinbox/mailbox.SendStackFailuresMode": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "summary": "Consent mode for the stack-failure detector."
+      },
+      "fqn": "@serverlessinbox/mailbox.SendStackFailuresMode",
+      "kind": "enum",
+      "locationInModule": {
+        "filename": "src/features/stack-failure-detection/stack-failure-detection.ts",
+        "line": 14
+      },
+      "members": [
+        {
+          "docs": {
+            "summary": "Detector infrastructure is provisioned."
+          },
+          "name": "ENABLED"
+        },
+        {
+          "docs": {
+            "summary": "No detector infrastructure is provisioned at all."
+          },
+          "name": "DISABLED"
+        }
+      ],
+      "name": "SendStackFailuresMode",
+      "symbolId": "src/features/stack-failure-detection/stack-failure-detection:SendStackFailuresMode"
     },
     "@serverlessinbox/mailbox.ServerlessInboxSubStackTagOptions": {
       "assembly": "@serverlessinbox/mailbox",
@@ -12856,5 +12901,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "9+dEhNKmBjJJcZTJAbF5H+hAk6MLGJWdFhZADLx7Qlg="
+  "fingerprint": "RWFBe3WQZNsBh34yPkVvoYuOQwk3VFSK9L58utaxNMo="
 }

@@ -53,6 +53,8 @@
     "@aws-sdk/client-cloudformation": "^3.946.0",
     "@aws-sdk/client-cloudfront": "^3.946.0",
     "@aws-sdk/client-dynamodb": "^3.946.0",
+    "@aws-sdk/client-eventbridge": "3.1078.0",
+    "@aws-sdk/client-iam": "3.1078.0",
     "@aws-sdk/client-lambda": "^3.946.0",
     "@aws-sdk/client-resource-groups-tagging-api": "^3.946.0",
     "@aws-sdk/client-route-53": "^3.946.0",

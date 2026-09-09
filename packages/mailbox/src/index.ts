@@ -16,6 +16,9 @@ export type {
   SesReceivingMode,
 } from './mailbox';
 
+// Stack-failure-detection — consent enum (referenced by MailboxProps.sendStackFailures)
+export { SendStackFailuresMode } from './features/stack-failure-detection';
+
 // Auth — types
 export {
   DEFAULT_OIDC_PROVIDER_NAME,
