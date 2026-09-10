@@ -19,6 +19,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SupportAddon, SupportMode } from '../support-addon';
+import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -39,7 +40,7 @@ describe('SupportAddon Unit Tests', () => {
     it('Creates zero resources when mode is literally DISABLED', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -98,7 +99,7 @@ describe('SupportAddon Unit Tests', () => {
     it('Creates zero resources when mode is omitted (defaults to undefined/falsy)', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -162,7 +163,7 @@ describe('SupportAddon Unit Tests', () => {
     beforeEach(() => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -914,10 +915,10 @@ describe('SupportAddon Unit Tests', () => {
           const statement = statements[0];
           const principalArn = statement.Principal?.AWS;
 
-          // Verify the principal is account root (arn:aws:iam::791990038981:root - vendor account)
+          // Verify the principal is account root (the default vendor account, not a role ARN)
           expect(principalArn).toBeDefined();
           expect(principalArn).toContain(':root');
-          expect(principalArn).toContain('791990038981');
+          expect(principalArn).toContain(VENDOR_ACCOUNT_ID);
           expect(principalArn).not.toContain(':role/');
 
           break;
@@ -1208,7 +1209,7 @@ describe('SupportAddon Unit Tests', () => {
     it('Default (prop omitted) → hop role trust contains exactly the prod account', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -1261,7 +1262,7 @@ describe('SupportAddon Unit Tests', () => {
             const principalArn = statement.Principal?.AWS;
 
             // Should contain exactly the prod account ARN
-            if (principalArn === 'arn:aws:iam::791990038981:root') {
+            if (principalArn === `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root`) {
               foundHopRoleWithProdAccount = true;
               // Verify it's not an array (single account case)
               expect(Array.isArray(principalArn)).toBe(false);
@@ -1276,13 +1277,14 @@ describe('SupportAddon Unit Tests', () => {
     it('Explicit two-account list → trust contains both', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
               'mailbox-go': { kind: 'release', version: '1.0.0' },
             },
           },
+          'serverlessinbox:vendor_account_ids': ['111122223333', '444455556666'],
         },
       });
       const stack = new cdk.Stack(app, 'test-stack-multi-vendor', {
@@ -1298,13 +1300,12 @@ describe('SupportAddon Unit Tests', () => {
       const auditEventsQueue = new Queue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
-      // Construct WITH explicit two-account list
+      // Construct with the two-account list set via CDK context (see App above)
       new SupportAddon(stack, 'test-addon', {
         mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
-        vendorAccountIds: ['111122223333', '444455556666'],
       });
 
       const testTemplate = Template.fromStack(stack);
@@ -1350,13 +1351,14 @@ describe('SupportAddon Unit Tests', () => {
     it('Empty array → treat as default (use prod account)', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
               'mailbox-go': { kind: 'release', version: '1.0.0' },
             },
           },
+          'serverlessinbox:vendor_account_ids': [],
         },
       });
       const stack = new cdk.Stack(app, 'test-stack-empty-vendor', {
@@ -1372,13 +1374,12 @@ describe('SupportAddon Unit Tests', () => {
       const auditEventsQueue = new Queue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
-      // Construct WITH empty array
+      // Construct with an empty list set via CDK context (see App above)
       new SupportAddon(stack, 'test-addon', {
         mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
-        vendorAccountIds: [],
       });
 
       const testTemplate = Template.fromStack(stack);
@@ -1404,7 +1405,7 @@ describe('SupportAddon Unit Tests', () => {
             const principalArn = statement.Principal?.AWS;
 
             // Should fall back to prod account ARN
-            if (principalArn === 'arn:aws:iam::791990038981:root') {
+            if (principalArn === `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root`) {
               foundHopRoleWithProdAccount = true;
               expect(Array.isArray(principalArn)).toBe(false);
             }
@@ -1420,7 +1421,7 @@ describe('SupportAddon Unit Tests', () => {
     it('Default vendor account → single scoped execute-api resource', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -1469,7 +1470,7 @@ describe('SupportAddon Unit Tests', () => {
 
             // Should have exactly one resource with the default vendor account
             expect(resourceArray.length).toBe(1);
-            expect(resourceArray[0]).toBe('arn:aws:execute-api:*:791990038981:*/*/POST/support-case-sync');
+            expect(resourceArray[0]).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/support-case-sync`);
             foundExecuteApiGrant = true;
           }
         }
@@ -1481,13 +1482,14 @@ describe('SupportAddon Unit Tests', () => {
     it('Explicit two-account list → scoped execute-api resources for both accounts', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
               'mailbox-go': { kind: 'release', version: '1.0.0' },
             },
           },
+          'serverlessinbox:vendor_account_ids': ['111122223333', '444455556666'],
         },
       });
       const stack = new cdk.Stack(app, 'test-stack-multi-vendor-api', {
@@ -1503,13 +1505,12 @@ describe('SupportAddon Unit Tests', () => {
       const auditEventsQueue = new Queue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
-      // Construct WITH explicit two-account list
+      // Construct with the two-account list set via CDK context (see App above)
       new SupportAddon(stack, 'test-addon', {
         mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
-        vendorAccountIds: ['111122223333', '444455556666'],
       });
 
       const testTemplate = Template.fromStack(stack);
@@ -1545,13 +1546,14 @@ describe('SupportAddon Unit Tests', () => {
     it('Empty array → falls back to default vendor account scoped execute-api resource', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
               'mailbox-go': { kind: 'release', version: '1.0.0' },
             },
           },
+          'serverlessinbox:vendor_account_ids': [],
         },
       });
       const stack = new cdk.Stack(app, 'test-stack-empty-array-api', {
@@ -1567,13 +1569,12 @@ describe('SupportAddon Unit Tests', () => {
       const auditEventsQueue = new Queue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
-      // Construct WITH empty array (should fall back to default)
+      // Construct with an empty list set via CDK context (should fall back to default)
       new SupportAddon(stack, 'test-addon', {
         mode: SupportMode.ENABLED,
         artifactResolver,
         configTable,
         auditEventsQueue,
-        vendorAccountIds: [],
       });
 
       const testTemplate = Template.fromStack(stack);
@@ -1595,7 +1596,7 @@ describe('SupportAddon Unit Tests', () => {
 
             // Should have exactly one resource with the default vendor account (empty array falls back)
             expect(resourceArray.length).toBe(1);
-            expect(resourceArray[0]).toBe('arn:aws:execute-api:*:791990038981:*/*/POST/support-case-sync');
+            expect(resourceArray[0]).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/support-case-sync`);
             foundExecuteApiGrant = true;
           }
         }

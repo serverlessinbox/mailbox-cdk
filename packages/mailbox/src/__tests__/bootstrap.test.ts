@@ -12,7 +12,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver, CdkArtifactEngine, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { BootstrapLambda } from '../lambdas/bootstrap';
@@ -29,7 +29,7 @@ describe('BootstrapLambda SES rule set wiring', () => {
   beforeEach(() => {
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -75,6 +75,8 @@ describe('BootstrapLambda SES rule set wiring', () => {
       artifactResolver,
       domain: 'example.com',
       sesRuleSet: ruleSet,
+      vendorAccountIds: ['123456789012'],
+      stackIdentityTagKey: 'serverless-inbox:root-stack',
     });
 
     const template = Template.fromStack(stack);
@@ -95,6 +97,8 @@ describe('BootstrapLambda SES rule set wiring', () => {
       domain: 'example.com',
       sesRuleSet: ruleSet,
       sesReceivingMode: 'on',
+      vendorAccountIds: ['123456789012'],
+      stackIdentityTagKey: 'serverless-inbox:root-stack',
     });
 
     const template = Template.fromStack(stack);
@@ -104,5 +108,25 @@ describe('BootstrapLambda SES rule set wiring', () => {
     const vars = fn?.Properties?.Environment?.Variables ?? {};
     expect(vars['SES_RULE_SET_NAME']).toBeDefined();
     expect(vars['SES_RECEIVING_MODE']).toBe('on');
+  });
+
+  it('sets STACK_IDENTITY_TAG_KEY to ServerlessInboxTagKeys.rootStack', () => {
+    new BootstrapLambda(stack, 'bootstrap', {
+      configTable,
+      jwkCacheTable,
+      authKeyStoreTable,
+      artifactResolver,
+      domain: 'example.com',
+      sesRuleSet: ruleSet,
+      vendorAccountIds: ['123456789012'],
+      stackIdentityTagKey: 'serverless-inbox:root-stack',
+    });
+
+    const template = Template.fromStack(stack);
+    const resources = template.toJSON().Resources as Record<string, { Type: string; Properties?: { Environment?: { Variables?: Record<string, unknown> } } }>;
+    const fn = Object.values(resources).find((r) => r.Type === 'AWS::Lambda::Function');
+    expect(fn).toBeDefined();
+    const vars = fn?.Properties?.Environment?.Variables ?? {};
+    expect(vars['STACK_IDENTITY_TAG_KEY']).toBe(ServerlessInboxTagKeys.rootStack);
   });
 });

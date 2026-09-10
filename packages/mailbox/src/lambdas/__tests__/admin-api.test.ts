@@ -20,8 +20,9 @@ import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import { AdminApiLambda } from '../admin-api';
-import { VENDOR_ACCOUNT_ID } from '../../addons/support-roles-infra';
+import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
@@ -31,7 +32,7 @@ describe('AdminApiLambda IAM scoping', () => {
   beforeEach(() => {
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-go': { kind: 'release', version: '1.0.0' },
@@ -90,6 +91,8 @@ describe('AdminApiLambda IAM scoping', () => {
       sesRuleSetName: 'test-rule-set',
       sesConfigSetName: 'test-config-set',
       systemSenderAddress: 'noreply@example.com',
+      vendorAccountIds: [VENDOR_ACCOUNT_ID],
+      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     });
   });
 
@@ -170,6 +173,17 @@ describe('AdminApiLambda IAM scoping', () => {
       Environment: {
         Variables: Match.objectLike({
           STACK_IDENTITY_TAG_VALUE: stack.stackName,
+        }),
+      },
+    });
+  });
+
+  it('sets STACK_IDENTITY_TAG_KEY to ServerlessInboxTagKeys.rootStack', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          STACK_IDENTITY_TAG_KEY: ServerlessInboxTagKeys.rootStack,
         }),
       },
     });

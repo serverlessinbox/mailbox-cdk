@@ -130,7 +130,7 @@ describe('API Authorizer Wiring', () => {
   beforeEach(() => {
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -224,6 +224,8 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
+        vendorAccountIds: ['123456789012'],
+        stackIdentityTagKey: 'serverless-inbox:root-stack',
       });
 
       const template = Template.fromStack(stack);
@@ -269,6 +271,8 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
+        vendorAccountIds: ['123456789012'],
+        stackIdentityTagKey: 'serverless-inbox:root-stack',
       });
 
       const template = Template.fromStack(stack);
@@ -301,6 +305,8 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
+        vendorAccountIds: ['123456789012'],
+        stackIdentityTagKey: 'serverless-inbox:root-stack',
       });
 
       const template = Template.fromStack(stack);
@@ -331,6 +337,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        vendorAccountIds: ['123456789012'],
       });
 
       const template = Template.fromStack(stack);
@@ -371,6 +378,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        vendorAccountIds: ['123456789012'],
       });
 
       const template = Template.fromStack(stack);
@@ -414,6 +422,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        vendorAccountIds: ['123456789012'],
       });
 
       // Create McpApi with the JMAP authorizer
@@ -470,6 +479,7 @@ describe('API Authorizer Wiring', () => {
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
         sesConfigSetName: 'test-config-set',
+        vendorAccountIds: ['123456789012'],
       });
 
       new McpApi(apiGroup, 'mcp-api', {
