@@ -42,7 +42,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Template {
   const app = new App({
     context: {
-      artifacts: {
+      'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
         packages: {
           'mailbox-go': { kind: 'release', version: '1.0.0' },

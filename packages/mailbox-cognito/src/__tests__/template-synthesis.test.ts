@@ -343,7 +343,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     // Helper to set up CDK app context with artifact metadata
     function setUpArtifactContext(app: App): void {
       // Set up CDK context with artifact metadata so PinnedResolver can load it
-      app.node.setContext('artifacts', {
+      app.node.setContext('serverlessinbox:artifacts', {
         bucketBase: 'test-artifacts',
         packages: {
           'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
@@ -351,7 +351,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
           'mailbox': { kind: 'release', version: '0.0.1-test' },
         },
       });
-      app.node.setContext('artifactVersions', {});
+      app.node.setContext('serverlessinbox:artifact_versions', {});
     }
 
     // Helper to create a resolver for a stack
@@ -516,7 +516,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('should synth successfully with enableJmapOAuthDiscovery: true', () => {
       const app = new App();
       function setUpArtifactContext() {
-        app.node.setContext('artifacts', {
+        app.node.setContext('serverlessinbox:artifacts', {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
@@ -524,7 +524,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
             'mailbox': { kind: 'release', version: '0.0.1-test' },
           },
         });
-        app.node.setContext('artifactVersions', {});
+        app.node.setContext('serverlessinbox:artifact_versions', {});
       }
       setUpArtifactContext();
 

@@ -33,7 +33,7 @@ const API_BASE_URL = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
 
 function setUpArtifactContext(app: App): void {
-  app.node.setContext('artifacts', {
+  app.node.setContext('serverlessinbox:artifacts', {
     bucketBase: 'test-artifacts',
     packages: {
       'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
@@ -42,7 +42,7 @@ function setUpArtifactContext(app: App): void {
       'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
     },
   });
-  app.node.setContext('artifactVersions', {});
+  app.node.setContext('serverlessinbox:artifact_versions', {});
 }
 
 interface Harness {

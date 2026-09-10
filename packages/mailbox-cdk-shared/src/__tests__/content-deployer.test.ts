@@ -22,7 +22,7 @@ describe('StaticContentDeployer IAM scoping', () => {
   beforeEach(() => {
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },

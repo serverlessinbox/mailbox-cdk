@@ -101,7 +101,7 @@ describe('StackFailureDetectionInfra — physical name length', () => {
   beforeEach(() => {
     const app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },

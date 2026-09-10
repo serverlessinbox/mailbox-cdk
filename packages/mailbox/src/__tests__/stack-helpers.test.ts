@@ -26,7 +26,7 @@ describe('StackHelpers Construct', () => {
     // Set up app with artifact context
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },

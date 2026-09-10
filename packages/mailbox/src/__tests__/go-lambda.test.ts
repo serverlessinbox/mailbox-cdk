@@ -26,7 +26,7 @@ describe('GoLambda Construct', () => {
     // Set up app with artifact context
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-go': { kind: 'release', version: '1.0.0' },
@@ -169,7 +169,7 @@ describe('GoLambda Construct', () => {
         // Create a new app for each lambda to allow multiple synth calls
         const testApp = new App({
           context: {
-            artifacts: {
+            'serverlessinbox:artifacts': {
               bucketBase: 'test-artifacts',
               packages: {
                 'mailbox-go': { kind: 'release', version: '1.0.0' },

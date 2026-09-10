@@ -38,7 +38,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
   beforeEach(() => {
     app = new App();
     // Set up CDK context with artifact metadata so PinnedResolver can load it
-    app.node.setContext('artifacts', {
+    app.node.setContext('serverlessinbox:artifacts', {
       bucketBase: 'test-artifacts',
       packages: {
         'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
@@ -47,7 +47,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
         'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
       },
     });
-    app.node.setContext('artifactVersions', {});
+    app.node.setContext('serverlessinbox:artifact_versions', {});
 
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },

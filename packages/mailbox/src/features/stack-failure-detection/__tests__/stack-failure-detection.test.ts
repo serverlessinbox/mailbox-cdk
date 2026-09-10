@@ -28,7 +28,7 @@ function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
 function buildStack(id: string): cdk.Stack {
   const app = new App({
     context: {
-      artifacts: {
+      'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
         packages: {
           'mailbox-cdk': { kind: 'release', version: '1.0.0' },

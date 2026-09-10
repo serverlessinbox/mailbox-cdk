@@ -36,7 +36,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
     it('When disabled (literal DISABLED), synthesizes zero support resources', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -116,7 +116,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
     beforeEach(() => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },
@@ -488,7 +488,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
     it('CfnCondition gates all support resources when mode is token-based', () => {
       const app = new App({
         context: {
-          artifacts: {
+          'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
               'mailbox-cdk': { kind: 'release', version: '1.0.0' },

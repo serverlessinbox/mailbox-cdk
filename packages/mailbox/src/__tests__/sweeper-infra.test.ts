@@ -45,7 +45,7 @@ describe('SweeperInfra IAM Policies', () => {
   beforeEach(() => {
     app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cdk': { kind: 'release', version: '1.0.0' },

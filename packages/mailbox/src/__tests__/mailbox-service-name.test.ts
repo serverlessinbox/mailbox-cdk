@@ -58,7 +58,7 @@ describe('Mailbox stack SERVICE_NAME uniqueness', () => {
   it('no two Lambda functions share a SERVICE_NAME value', () => {
     const app = new App({
       context: {
-        artifacts: {
+        'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-go': { kind: 'release', version: '1.0.0' },
