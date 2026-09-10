@@ -2,7 +2,7 @@ import { BlockPublicAccess, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { Aws, Duration, RemovalPolicy, Stack, IResolvable } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { StackNamedBucket } from "@serverlessinbox/mailbox-cdk-shared";
-import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForRetainedResources } from "../utils/development-mode";
+import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForRetainedResources } from '@serverlessinbox/mailbox-cdk-shared';
 import type * as kms from 'aws-cdk-lib/aws-kms';
 import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 

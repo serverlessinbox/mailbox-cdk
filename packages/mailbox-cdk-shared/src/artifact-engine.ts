@@ -5,6 +5,7 @@ import type { IConstruct } from 'constructs';
 import { Construct } from 'constructs';
 import { ArtifactResolver, buildArtifactUrl, buildArtifactArn } from '@serverlessinbox/artifact-registry';
 import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-registry';
+import { ARTIFACTS_CONTEXT_KEY, ARTIFACT_VERSIONS_CONTEXT_KEY } from './context-keys';
 
 const DEFAULT_BUCKET_BASE = 'mailbox-artifacts';
 const EDGE_PACKAGES = new Set<string>(['mailbox-cdk-edge']);
@@ -103,11 +104,11 @@ export class PinnedResolver implements IArtifactResolver {
    * deferred concern; all current entrypoints inject context.
    */
   static loadFromArtifactMetadata(scope: IConstruct): PinnedResolver {
-    const ctx = scope.node.tryGetContext('artifacts') as
+    const ctx = scope.node.tryGetContext(ARTIFACTS_CONTEXT_KEY) as
       | { bucketBase?: unknown; packages?: unknown }
       | undefined;
     const s3VersionMap =
-      (scope.node.tryGetContext('artifactVersions') as Record<string, string> | undefined) ?? {};
+      (scope.node.tryGetContext(ARTIFACT_VERSIONS_CONTEXT_KEY) as Record<string, string> | undefined) ?? {};
     const bucketBase =
       ctx && typeof ctx === 'object' && typeof ctx.bucketBase === 'string'
         ? ctx.bucketBase
