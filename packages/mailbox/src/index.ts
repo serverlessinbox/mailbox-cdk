@@ -63,30 +63,15 @@ export type { StackUpdateAddonProviderProps } from './addons/stack-update-addon'
 export { SupportAddonProvider, SupportMode } from './addons/support-addon';
 export type { SupportAddonProviderProps } from './addons/support-addon';
 
-// Utils — development mode
-export {
-  DEVELOPMENT_CONTEXT_KEYS,
-  isDevelopmentMode,
-} from './utils/development-mode';
-
 // Utils — tagging & correlation (moved to shared package; re-exported from mailbox-cdk-shared)
-// Mirror the shared package's tagging surface in full. Re-exporting a function without the
-// types of its parameters leaves a consumer able to call it but unable to name what it takes:
-// dropping ServerlessInboxDeployer here while keeping applyServerlessInboxBaseTags broke
-// mailbox-standard-app, which needs the type to narrow an untyped CDK context value.
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
   applyServerlessInboxComponentTag,
-  applyServerlessInboxEdgeTags,
-  serverlessInboxSubStackTags,
 } from '@serverlessinbox/mailbox-cdk-shared';
 export type {
   ServerlessInboxComponent,
-  ServerlessInboxDeployer,
   ApplyServerlessInboxTagsOptions,
-  ApplyServerlessInboxEdgeTagsOptions,
-  ServerlessInboxSubStackTagOptions,
 } from '@serverlessinbox/mailbox-cdk-shared';
 
 // Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)
