@@ -3,37 +3,6 @@ import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
-/**
- * Vendor AWS account ID.
- * It appears in the hop role's static trust policy (as :root principal) and is customer-readable in the template.
- */
-export const VENDOR_ACCOUNT_ID = '791990038981';
-
-/**
- * Resolve vendor account IDs: use provided ones or default to the production account.
- * Validates that all account IDs are 12-digit strings.
- *
- * @param vendorAccountIds Vendor AWS account IDs (optional).
- * @returns Array of validated vendor account IDs.
- * @throws Error if any account ID is not a 12-digit string.
- */
-export function resolveVendorAccountIds(vendorAccountIds?: string[]): string[] {
-  const resolved = vendorAccountIds && vendorAccountIds.length > 0
-    ? vendorAccountIds
-    : [VENDOR_ACCOUNT_ID];
-
-  // Validate that all account IDs are 12-digit strings
-  for (const accountId of resolved) {
-    if (!/^\d{12}$/.test(accountId)) {
-      throw new Error(
-        `Invalid AWS account ID: ${accountId}. Account IDs must be 12-digit strings.`
-      );
-    }
-  }
-
-  return resolved;
-}
-
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
   'logs:DescribeLogGroups',
@@ -159,8 +128,8 @@ const SUPPORT_TIERS: SupportTier[] = [
  * Props for SupportRolesInfra.
  */
 export interface SupportRolesInfraProps {
-  /** Vendor AWS account IDs permitted to assume the support hop role. */
-  readonly vendorAccountIds?: string[];
+  /** Vendor AWS account IDs permitted to assume the support hop role, already resolved by the caller. */
+  readonly vendorAccountIds: string[];
 }
 
 /**
@@ -188,7 +157,7 @@ export class SupportRolesInfra extends Construct {
   readonly supportHopRoleArn: string;
   readonly tierArns: Record<string, string>;
 
-  constructor(scope: Construct, id: string, props?: SupportRolesInfraProps) {
+  constructor(scope: Construct, id: string, props: SupportRolesInfraProps) {
     super(scope, id);
 
     const stack = Stack.of(this);
@@ -225,8 +194,8 @@ export class SupportRolesInfra extends Construct {
       });
     }
 
-    // Determine vendor account IDs: use provided ones or default to prod account
-    const vendorAccounts = resolveVendorAccountIds(props?.vendorAccountIds);
+    // Vendor account IDs are resolved once at the composition root and passed in already-validated.
+    const vendorAccounts = props.vendorAccountIds;
 
     // support-hop role: Intermediate hop for vendor support account trust.
     // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
@@ -407,6 +376,20 @@ export class SupportRolesInfra extends Construct {
 export function getSupportTierTagKeys(): string[] {
   return SUPPORT_TIERS.map(tier => tier.tagKey);
 }
+
+function tagKeyForTier(constructId: string): string {
+  const tier = SUPPORT_TIERS.find(t => t.constructId === constructId);
+  if (!tier) {
+    throw new Error(`Unknown support tier constructId: ${constructId}`);
+  }
+  return tier.tagKey;
+}
+
+/** The support-diag tier's IAM tag key, sourced from the tier registry — never re-declare this string. */
+export const SUPPORT_DIAG_TAG_KEY = tagKeyForTier('support-diag');
+
+/** The support-config-read tier's IAM tag key, sourced from the tier registry — never re-declare this string. */
+export const SUPPORT_CONFIG_READ_TAG_KEY = tagKeyForTier('support-config-read');
 
 /**
  * Build environment variables for support role tiers.

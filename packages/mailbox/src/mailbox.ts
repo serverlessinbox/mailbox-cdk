@@ -16,8 +16,7 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
-import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
@@ -265,17 +264,14 @@ export class Mailbox extends Construct {
 
     const authProvider: IMailboxAuthProvider = props.authProvider;
 
-    const deployer: ServerlessInboxDeployer = (() => {
-      const v = this.node.tryGetContext('deployer');
-      if (v === 'cdk' || v === 'cfn' || v === 'marketplace') return v;
-      if (v !== undefined && v !== null) {
-        throw new Error(
-          `@serverlessinbox/mailbox: invalid CDK context value for "deployer": "${v}". ` +
-          'Must be one of: cdk, cfn, marketplace.',
-        );
-      }
-      return 'cfn';
-    })();
+    const deployerType = resolveDeployerType(this);
+
+    // Vendor account IDs are resolved once here — Mailbox is the composition root for the
+    // Lambda classes constructed directly under it (identity-provisioner, bootstrap, admin-api,
+    // jmap-api, license-refresher) — and threaded down as an already-resolved prop. The support
+    // addon (a separate composition root) resolves its own copy in its own top-level construct.
+    const vendorAccountIds = resolveVendorAccountIds(this);
+    const stackIdentityTagKey = ServerlessInboxTagKeys.rootStack;
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
@@ -296,7 +292,6 @@ export class Mailbox extends Construct {
       // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
       rootStack: Aws.STACK_NAME,
       version: stackVersion,
-      deployer,
       product: 'mailbox',
     });
 
@@ -367,6 +362,7 @@ export class Mailbox extends Construct {
       artifactResolver,
       dataStackName: props.overrides?.dataStackName,
       s3NameBase,
+      deployerType,
     });
 
     this._blobStore   = dataRef.blobStore;
@@ -416,7 +412,7 @@ export class Mailbox extends Construct {
       configTableArn: dataRef.configTable.tableArn,
       authKeyStoreTableArn: authKeyStore.table.tableArn,
       productVersion: stackVersion,
-      deployer,
+      deployerType,
       logGroupName: getOrCreatePipelineLogGroup(groups.edge, 'jmap').logGroupName,
     });
 
@@ -530,6 +526,7 @@ export class Mailbox extends Construct {
       artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
+      stackIdentityTagKey,
     });
 
     const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
@@ -543,6 +540,7 @@ export class Mailbox extends Construct {
       emailSubmissionQueue: emailSending.submissionQueue,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       systemSenderAddress: `noreply@${domainName}`,
+      vendorAccountIds,
     });
 
     const jmapApiAddonContext: JmapApiAddonContext = {
@@ -642,6 +640,7 @@ export class Mailbox extends Construct {
       configTable: dataRef.configTable,
       artifactResolver,
       coreDomain: domainName,
+      vendorAccountIds,
     });
 
     // Lambda function to process incoming emails
@@ -674,6 +673,8 @@ export class Mailbox extends Construct {
       sesReceivingMode: props.enableReceiving,
       sesSendEnabled: true,
       hostedZone: hasHostedZone ? hostedZone : undefined,
+      vendorAccountIds,
+      stackIdentityTagKey,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,
@@ -840,6 +841,7 @@ export class Mailbox extends Construct {
 
       jmapApiAddons,
       oauthIssuerUrl: jmapOAuthIssuerUrl,
+      vendorAccountIds,
 
       // WebSocket URL will be passed via environment variable, not here
     });
@@ -874,6 +876,8 @@ export class Mailbox extends Construct {
       artifactResolver,
       authProvider,
       identityProvisionerFunction: identityProvisioner,
+      vendorAccountIds,
+      stackIdentityTagKey,
 
       addons: adminApiAddons,
 

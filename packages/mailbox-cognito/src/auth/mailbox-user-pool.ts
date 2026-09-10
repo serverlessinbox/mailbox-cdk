@@ -20,7 +20,7 @@ import {
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver, CdkArtifactEngine, resolveDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 
@@ -433,7 +433,12 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
           .resolveCognitoDomainPrefix(this, 'domain-prefix-v2', props.domain.hostedZoneId)
       : Aws.STACK_NAME;
 
-    const deployer = new MailboxCognitoDataDeployer(this, 'cognito-deployer', {
+    // MailboxUserPool is its own composition root (instantiated as a sibling of Mailbox by the
+    // consuming stack, not built by Mailbox itself) — resolve deployerType once here, same as
+    // Mailbox does for its own deployer constructs.
+    const deployerType = resolveDeployerType(this);
+
+    const cognitoDeployer = new MailboxCognitoDataDeployer(this, 'cognito-deployer', {
       cognitoDomainPrefix,
       customDomain: props.domain.kind === 'custom'
         ? { domainName: props.domain.domainName, certificateArn: props.domain.certificateArn }
@@ -441,8 +446,9 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       mfaMode: props.mfaMode,
       passwordMinLength: props.passwordMinLength,
       artifactResolver: this.artifacts,
+      deployerType,
     });
-    const stackRef = deployer.dataStackRef;
+    const stackRef = cognitoDeployer.dataStackRef;
 
     this.userPool = stackRef.userPool;
     this._userPoolId = stackRef.userPoolId;

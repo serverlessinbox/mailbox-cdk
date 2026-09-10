@@ -15,7 +15,8 @@ import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '..
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
 import { SupportApiLambda } from '../lambdas/support-api';
 import { SupportRoleAssumptionCollectorLambda } from '../lambdas/support-role-assumption-collector';
-import { SupportRolesInfra } from './support-roles-infra';
+import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
+import { resolveVendorAccountIds } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Support feature mode.
@@ -40,8 +41,6 @@ export interface SupportAddonProps {
   readonly configTable: ITable;
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IQueue;
-  /** Vendor AWS account IDs permitted to assume the support hop role. Defaults to the ServerlessInbox production account. */
-  readonly vendorAccountIds?: string[];
 }
 
 /**
@@ -94,9 +93,15 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       // The GateOnConditionAspect will apply the condition to every resource,
       // so they produce zero live resources when the condition evaluates to false at deploy.
 
+      // Vendor account IDs are resolved once here (this addon's own top-level construct is the
+      // composition root for the support feature) and threaded down as already-resolved props —
+      // no Lambda class below this point resolves it itself.
+      const vendorAccountIds = resolveVendorAccountIds(this);
+      const supportTierTagKeys = getSupportTierTagKeys();
+
       // Support roles: hop + two support roles with static trust scoped by hop role tags
       const rolesInfra = new SupportRolesInfra(this, 'roles-infra', {
-        vendorAccountIds: props.vendorAccountIds,
+        vendorAccountIds,
       });
 
       // Wrap the artifact resolver in a CDK artifact engine
@@ -113,7 +118,10 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         configTable: props.configTable,
         auditEventsQueue: props.auditEventsQueue,
         artifactResolver: artifactEngine,
-        vendorAccountIds: props.vendorAccountIds,
+        vendorAccountIds,
+        supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+        supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
+        supportTierTagKeys,
       });
 
       // Role Assumption Collector Lambda (Go-based, scheduled hourly)
@@ -125,6 +133,9 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         tierRoleArns: rolesInfra.tierArns,
         configTable: props.configTable,
         artifactResolver: artifactEngine,
+        supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+        supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
+        supportTierTagKeys,
       });
 
       // EventBridge rule: hourly schedule for the collector (permanently enabled)
@@ -164,9 +175,6 @@ export interface SupportAddonProviderProps {
   readonly mode: SupportMode;
   /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;
-  /** Vendor AWS account IDs permitted to assume the support hop role.
-   *  Defaults to the ServerlessInbox production account. */
-  readonly vendorAccountIds?: string[];
 }
 
 /**
@@ -183,7 +191,6 @@ export class SupportAddonProvider implements IAdminApiAddonProvider {
         artifactResolver: this.props.artifactResolver,
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
-        vendorAccountIds: this.props.vendorAccountIds,
       }),
     ];
   }
