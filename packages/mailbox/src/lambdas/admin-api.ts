@@ -8,7 +8,6 @@ import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
-import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface AdminApiLambdaProps {
   configTable: ITable;
@@ -27,6 +26,10 @@ export interface AdminApiLambdaProps {
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
@@ -95,13 +98,13 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     }));
   }
 
-  private grantLicenseApiAccess() {
+  private grantLicenseApiAccess(vendorAccountIds: string[]) {
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ["execute-api:Invoke"],
-      resources: resolveVendorAccountIds().flatMap((accountId) => [
+      resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
@@ -136,6 +139,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
       },
     });
 
@@ -144,7 +148,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.grantSesAccess(props.sesConfigSetName);
     this.grantRoute53Access();
     this.grantServiceQuotasAccess();
-    this.grantLicenseApiAccess();
+    this.grantLicenseApiAccess(props.vendorAccountIds);
 
     this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
     this.grantSesReceivingAccess();

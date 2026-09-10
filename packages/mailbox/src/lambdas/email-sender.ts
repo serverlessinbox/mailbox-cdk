@@ -1,6 +1,6 @@
-import { Duration } from 'aws-cdk-lib';
+import { Aws, Duration } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { type ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -14,6 +14,8 @@ export interface EmailSenderLambdaProps {
   blobStore: IBucket;
   sesConfigSetName: string;
   artifactResolver: ICdkArtifactEngine;
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
@@ -39,12 +41,18 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     props.changelogTable.grantReadWriteData(this);
     props.blobStore.grantRead(this);
 
-    // Grant SES send permissions
+    // Grant SES send permissions, scoped to identities carrying this stack's root-stack tag
+    // (see provisioner.go / ses/service.go — CreateEmailIdentity now writes this tag).
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['ses:SendRawEmail'],
         resources: ['*'],
+        conditions: {
+          StringEquals: {
+            [`aws:ResourceTag/${props.stackIdentityTagKey}`]: Aws.STACK_NAME,
+          },
+        },
       })
     );
   }

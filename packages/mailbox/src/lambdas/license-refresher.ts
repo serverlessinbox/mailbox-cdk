@@ -4,12 +4,13 @@ import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface LicenseRefresherLambdaProps {
   configTable: ITable;
   artifactResolver: ICdkArtifactEngine;
   coreDomain: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
 }
 
 export class LicenseRefresherLambda extends GoLambda {
@@ -33,7 +34,7 @@ export class LicenseRefresherLambda extends GoLambda {
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: resolveVendorAccountIds().map(
+      resources: props.vendorAccountIds.map(
         (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/refresh-license`,
       ),
     }));

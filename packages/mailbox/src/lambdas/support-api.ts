@@ -5,7 +5,9 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { getSupportTierTagKeys, buildSupportTierEnvironment, resolveVendorAccountIds } from '../addons/support-roles-infra';
+import {
+  buildSupportTierEnvironment,
+} from '../addons/support-roles-infra';
 
 export interface SupportApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */
@@ -18,8 +20,14 @@ export interface SupportApiLambdaProps {
   readonly auditEventsQueue: IQueue;
   /** Artifact resolver (engine) for Lambda code resolution. */
   readonly artifactResolver: ICdkArtifactEngine;
-  /** AWS account IDs hosting the vendor service API (optional). Scopes the execute-api:Invoke permission. */
-  readonly vendorAccountIds?: string[];
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
+  /** IAM tag key for the support-diag tier, sourced from the support-roles tier registry. */
+  readonly supportDiagTagKey: string;
+  /** IAM tag key for the support-config-read tier, sourced from the support-roles tier registry. */
+  readonly supportConfigReadTagKey: string;
+  /** All support tier IAM tag keys, for the aws:TagKeys condition on tag-write grants. */
+  readonly supportTierTagKeys: string[];
 }
 
 /**
@@ -55,6 +63,8 @@ export class SupportApiLambda extends GoLambda {
       CONFIG_TABLE_NAME: props.configTable.tableName,
       AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
       STACK_ID: Stack.of(scope).stackId,
+      SUPPORT_DIAG_TAG_KEY: props.supportDiagTagKey,
+      SUPPORT_CONFIG_READ_TAG_KEY: props.supportConfigReadTagKey,
       ...tierEnv,
     };
 
@@ -94,7 +104,7 @@ export class SupportApiLambda extends GoLambda {
       resources: [props.supportHopRoleArn],
       conditions: {
         'ForAllValues:StringEquals': {
-          'aws:TagKeys': getSupportTierTagKeys(),
+          'aws:TagKeys': props.supportTierTagKeys,
         },
       },
     }));
@@ -115,8 +125,7 @@ export class SupportApiLambda extends GoLambda {
   private grantVendorApiInvoke(props: SupportApiLambdaProps): void {
     // SigV4-signed cross-account call to the vendor service API.
     // Route (POST /support-case-sync) and vendor accounts are known at synth time; region and API ID are not (vendor-chosen).
-    const vendorAccounts = resolveVendorAccountIds(props.vendorAccountIds);
-    const resources = vendorAccounts.map(accountId => `arn:aws:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
+    const resources = props.vendorAccountIds.map(accountId => `arn:aws:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
 
     this.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,

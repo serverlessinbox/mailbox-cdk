@@ -4,7 +4,9 @@ import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { getSupportTierTagKeys, buildSupportTierEnvironment } from '../addons/support-roles-infra';
+import {
+  buildSupportTierEnvironment,
+} from '../addons/support-roles-infra';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */
@@ -15,6 +17,12 @@ export interface SupportRoleAssumptionCollectorLambdaProps {
   readonly configTable: ITable;
   /** Artifact resolver (engine) for Lambda code resolution. */
   readonly artifactResolver: ICdkArtifactEngine;
+  /** IAM tag key for the support-diag tier, sourced from the support-roles tier registry. */
+  readonly supportDiagTagKey: string;
+  /** IAM tag key for the support-config-read tier, sourced from the support-roles tier registry. */
+  readonly supportConfigReadTagKey: string;
+  /** All support tier IAM tag keys, for the aws:TagKeys condition on tag-write grants. */
+  readonly supportTierTagKeys: string[];
 }
 
 /**
@@ -54,6 +62,8 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     const environment: Record<string, string> = {
       CONFIG_TABLE_NAME: props.configTable.tableName,
       SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
+      SUPPORT_DIAG_TAG_KEY: props.supportDiagTagKey,
+      SUPPORT_CONFIG_READ_TAG_KEY: props.supportConfigReadTagKey,
       ...tierEnv,
     };
 
@@ -71,7 +81,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     // Grant CloudTrail LookupEvents for querying assume-role events.
     this.grantCloudTrailLookup();
     // Grant UntagRole on support-hop for expiry enforcement.
-    this.grantExpiryEnforcement(props.supportHopRoleArn);
+    this.grantExpiryEnforcement(props.supportHopRoleArn, props.supportTierTagKeys);
   }
 
   private grantCloudTrailLookup(): void {
@@ -86,7 +96,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     }));
   }
 
-  private grantExpiryEnforcement(supportHopRoleArn: string): void {
+  private grantExpiryEnforcement(supportHopRoleArn: string, supportTierTagKeys: string[]): void {
     // Scoped precisely to the support-hop role — nothing else, no wildcards, no other resources.
     // TagRole and UntagRole: expiry is enforced by recomputing and writing the full tier-tag values
     // from DynamoDB, excluding expired cases. UntagRole retained for the removal path.
@@ -104,7 +114,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
       resources: [supportHopRoleArn],
       conditions: {
         'ForAllValues:StringEquals': {
-          'aws:TagKeys': getSupportTierTagKeys(),
+          'aws:TagKeys': supportTierTagKeys,
         },
       },
     }));

@@ -6,7 +6,6 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
-import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export type SesReceivingMode = 'off' | 'on' | 'forced';
 
@@ -21,6 +20,10 @@ export interface BootstrapLambdaProps {
   /** When true, sets SES_SEND_ENABLED=on so the bootstrap marks the default domain as send-capable. */
   sesSendEnabled?: boolean;
   hostedZone?: route53.IHostedZone;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 export class BootstrapLambda extends GoLambda {
@@ -35,6 +38,7 @@ export class BootstrapLambda extends GoLambda {
         JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
       },
     });
 
@@ -62,7 +66,7 @@ export class BootstrapLambda extends GoLambda {
     // reached indirectly via shareddomainsvc.NewService(...) — scoping to /bootstrap alone breaks it.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: resolveVendorAccountIds().flatMap((accountId) => [
+      resources: props.vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/bootstrap`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,

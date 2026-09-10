@@ -7,7 +7,6 @@ import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket';
-import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -35,6 +34,8 @@ export interface ApiHandlerLambdaProps {
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
 }
 
 export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
@@ -93,7 +94,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: resolveVendorAccountIds().flatMap((accountId) => [
+      resources: props.vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),

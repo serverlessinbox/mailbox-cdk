@@ -6,7 +6,6 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface IdentityProvisionerLambdaProps {
   configTable: ITable;
@@ -24,6 +23,8 @@ export interface IdentityProvisionerLambdaProps {
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
 }
 
 export class IdentityProvisionerLambda extends GoLambda {
@@ -66,7 +67,7 @@ export class IdentityProvisionerLambda extends GoLambda {
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: resolveVendorAccountIds().flatMap((accountId) => [
+      resources: props.vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
