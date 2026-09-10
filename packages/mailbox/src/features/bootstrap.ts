@@ -33,6 +33,10 @@ export interface BootstrapProps {
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
   readonly hostedZone?: route53.IHostedZone;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 /**
@@ -63,6 +67,8 @@ export class Bootstrap extends Construct {
       sesReceivingMode: props.sesReceivingMode,
       sesSendEnabled: props.sesSendEnabled,
       hostedZone: props.hostedZone,
+      vendorAccountIds: props.vendorAccountIds,
+      stackIdentityTagKey: props.stackIdentityTagKey,
     });
     this.handler = handler;
 

@@ -18,6 +18,8 @@ export interface EmailSendingProps {
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 /**
@@ -60,6 +62,7 @@ export class EmailSending extends Construct {
       blobStore: props.blobStore,
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
+      stackIdentityTagKey: props.stackIdentityTagKey,
     });
 
     emailSenderLambda.addEventSource(

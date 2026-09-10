@@ -12,6 +12,8 @@ export interface LicenseRefreshProps {
   readonly configTable: ITable;
   readonly artifactResolver: ICdkArtifactEngine;
   readonly coreDomain: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
 }
 
 export class LicenseRefresh extends Construct {
@@ -25,6 +27,7 @@ export class LicenseRefresh extends Construct {
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
       coreDomain: props.coreDomain,
+      vendorAccountIds: props.vendorAccountIds,
     });
 
     this.licenseFunction = handler;

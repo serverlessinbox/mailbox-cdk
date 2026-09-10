@@ -64,6 +64,9 @@ export interface JMapApiProps {
    *  if OAuth DCR/discovery is enabled — undefined otherwise. jmap-api uses this
    *  to build its own RFC 9728 protected-resource metadata document. */
   readonly oauthIssuerUrl?: string;
+
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
 }
 
 export class JMapApi extends Construct {
@@ -156,6 +159,7 @@ export class JMapApi extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
       identityProvisionerFunction: identityProvisionerLambda,
+      vendorAccountIds: props.vendorAccountIds,
       oauthHandlerConfig: {
         issuer: props.authProvider.issuer,
         tokenEndpoint: props.authProvider.tokenEndpoint,

@@ -53,6 +53,10 @@ export interface AdminApiProps {
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
+  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  readonly vendorAccountIds: string[];
+  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  readonly stackIdentityTagKey: string;
 }
 
 export class AdminApi extends Construct {
@@ -124,6 +128,8 @@ export class AdminApi extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       identityProvisionerFunction: props.identityProvisionerFunction,
       systemSenderAddress: props.systemSenderAddress,
+      vendorAccountIds: props.vendorAccountIds,
+      stackIdentityTagKey: props.stackIdentityTagKey,
     });
     this.apiHandlerLambda = apiHandlerLambda;
 
