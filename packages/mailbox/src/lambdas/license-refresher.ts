@@ -4,6 +4,7 @@ import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface LicenseRefresherLambdaProps {
   configTable: ITable;
@@ -27,10 +28,14 @@ export class LicenseRefresherLambda extends GoLambda {
 
     props.configTable.grantReadWriteData(this);
 
-    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
+    // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
+    // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: ['*'],
+      resources: resolveVendorAccountIds().map(
+        (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/refresh-license`,
+      ),
     }));
   }
 }

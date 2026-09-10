@@ -12437,7 +12437,7 @@
           },
           "locationInModule": {
             "filename": "src/utils/stack-helpers.ts",
-            "line": 86
+            "line": 88
           },
           "name": "resolveCognitoDomainPrefix",
           "parameters": [
@@ -12473,7 +12473,7 @@
           },
           "locationInModule": {
             "filename": "src/utils/stack-helpers.ts",
-            "line": 67
+            "line": 69
           },
           "name": "resolveMailboxData",
           "parameters": [
@@ -12892,5 +12892,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "6jT1ZVaflv+86jIk+L13a/lPoM3/GdSUnqxIU7+oV6k="
+  "fingerprint": "JTBTp4+2jyQtaE9UO0bM5zsUp3GRC9iYuatGM3hy+Ow="
 }

@@ -6,6 +6,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface IdentityProvisionerLambdaProps {
   configTable: ITable;
@@ -60,16 +61,15 @@ export class IdentityProvisionerLambda extends GoLambda {
     // Submission service: enqueue email submissions
     props.emailSubmissionQueue.grantSendMessages(this);
 
-    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
+    // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
+    // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: ['*'],
-    }));
-
-    // Direct SES v2 send for welcome email
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['ses:SendRawEmail'],
-      resources: ['*'],
+      resources: resolveVendorAccountIds().flatMap((accountId) => [
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+      ]),
     }));
   }
 }

@@ -7,7 +7,7 @@
  * Security requirements:
  * - s3:ListBucket MUST be scoped to the specific UI bucket ARN
  * - s3:GetObject, s3:GetObjectVersion MUST be scoped to the specific artifact ARN
- * - cloudfront:CreateInvalidation on "*" is accepted (no resource-level scoping available)
+ * - cloudfront:CreateInvalidation MUST be scoped to the specific distribution ARN
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -235,7 +235,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
   });
 
   describe('CloudFront CreateInvalidation Permission', () => {
-    it('should grant cloudfront:CreateInvalidation on "*" (accepted exception)', () => {
+    it('should scope cloudfront:CreateInvalidation to the target distribution ARN', () => {
       new MailboxUi(stack, 'admin-ui', {
         domainName: 'admin.example.com',
         label: 'admin',
@@ -259,6 +259,14 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) throw new Error('No resources in template');
 
+      let distributionLogicalId: string | undefined;
+      for (const [logicalId, resource] of Object.entries(resources)) {
+        if (isResourceOfType(resource, 'AWS::CloudFront::Distribution')) {
+          distributionLogicalId = logicalId;
+        }
+      }
+      if (!distributionLogicalId) throw new Error('No CloudFront distribution in template');
+
       let cfCreateInvalidationFound = false;
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
@@ -270,10 +278,23 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
         });
 
         if (stmt) {
-          const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
-          // CloudFront invalidation does not support resource-level scoping
-          // so wildcard is accepted here (this is a known limitation of CloudFront API)
-          expect(resources).toContain('*');
+          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          expect(stmtResources).not.toContain('*');
+          expect(stmtResources).toEqual([
+            {
+              'Fn::Join': [
+                '',
+                [
+                  'arn:',
+                  { Ref: 'AWS::Partition' },
+                  ':cloudfront::',
+                  { Ref: 'AWS::AccountId' },
+                  ':distribution/',
+                  { Ref: distributionLogicalId },
+                ],
+              ],
+            },
+          ]);
           cfCreateInvalidationFound = true;
         }
       }

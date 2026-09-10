@@ -7,6 +7,7 @@ import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket';
+import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -87,10 +88,15 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     // Grant the User provisioning function to be invoked
     props.identityProvisionerFunction.grantInvoke(this);
 
-    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
+    // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
+    // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: ['*'],
+      resources: resolveVendorAccountIds().flatMap((accountId) => [
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+      ]),
     }));
   }
 

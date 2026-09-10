@@ -4,10 +4,11 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
+import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export interface AdminApiLambdaProps {
   configTable: ITable;
@@ -39,23 +40,40 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     }));
   }
 
-  private grantSesAccess() {
+  private grantSesAccess(sesConfigSetName: string) {
+    // Identity-bound actions scoped to the identity ARN pattern.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: [
+        "ses:CreateEmailIdentity",
+        "ses:GetEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:PutEmailIdentityDkimSigningAttributes",
+      ],
+      resources: [`arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/*`],
+    }));
+    // SendEmail authorizes against the configuration-set resource as well as the identity
+    // resource (it does not bind only to `identity`), so both ARNs must be granted.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["ses:SendEmail"],
+      resources: [
+        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/*`,
+        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:configuration-set/${sesConfigSetName}`,
+      ],
+    }));
+    // Account-level actions — no resource binding, stay '*'.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
         "ses:GetAccount",
-        "ses:CreateEmailIdentity",
-        "ses:GetEmailIdentity",
         "ses:GetSendStatistics",
         "ses:ListEmailIdentities",
-        "ses:DeleteEmailIdentity",
-        "ses:PutEmailIdentityDkimSigningAttributes",
-        "ses:SendEmail",
       ],
       resources: ["*"],
     }));
   }
 
   private grantRoute53Access() {
+    // Route53 exposes no condition keys on any resource type, and hosted zones are
+    // customer-arbitrary at runtime — no ARN/tag scoping is possible here.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
         "route53:ChangeResourceRecordSets",
@@ -67,6 +85,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   }
 
   private grantServiceQuotasAccess() {
+    // Account-level actions — no resource binding, stay '*'.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
         "servicequotas:ListServiceQuotas",
@@ -77,13 +96,20 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   }
 
   private grantLicenseApiAccess() {
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
+    // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
+    // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ["execute-api:Invoke"],
-      resources: ["*"],
+      resources: resolveVendorAccountIds().flatMap((accountId) => [
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+      ]),
     }));
   }
 
   private grantSesReceivingAccess() {
+    // Account-level action — no resource binding, stays '*'.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ["ses:DescribeActiveReceiptRuleSet"],
       resources: ["*"],
@@ -109,12 +135,13 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
+        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
       },
     });
 
     // Grant permissions BEFORE the Lambda is used by API Gateway
     this.grantStatusAccess();
-    this.grantSesAccess();
+    this.grantSesAccess(props.sesConfigSetName);
     this.grantRoute53Access();
     this.grantServiceQuotasAccess();
     this.grantLicenseApiAccess();

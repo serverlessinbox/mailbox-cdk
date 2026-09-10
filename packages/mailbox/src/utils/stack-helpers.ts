@@ -54,6 +54,8 @@ export class StackHelpers extends Construct {
       memorySize: 256,
     });
 
+    // Route53 exposes no condition keys on any resource type, and hosted zones are
+    // customer-arbitrary at runtime — no ARN/tag scoping is possible here.
     this.fn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['route53:GetHostedZone', 'route53:ListHostedZones'],
       resources: ['*'],

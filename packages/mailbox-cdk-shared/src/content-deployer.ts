@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { Duration, CustomResource, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
 import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { ICdkArtifactEngine } from './artifact-engine';
@@ -178,11 +178,11 @@ export class StaticContentDeployer extends TypeScriptLambda {
    *  dependencies on all prior `deploy()` calls from the same calling scope, so invalidation
    *  always follows the deployments it targets. */
   invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
-    // Grant CloudFront invalidation permission
+    // Grant CloudFront invalidation permission, scoped to the target distribution
     this.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cloudfront:CreateInvalidation'],
-        resources: ['*'],
+        resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${props.distributionId}`],
       }),
     );
 

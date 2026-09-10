@@ -9109,7 +9109,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/cognito/mailbox-cognito-data-deployer-grants.ts",
-        "line": 5
+        "line": 6
       },
       "name": "CognitoDataDeployerGrantProps",
       "properties": [
@@ -9121,7 +9121,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/cognito/mailbox-cognito-data-deployer-grants.ts",
-            "line": 7
+            "line": 8
           },
           "name": "templateObjectArn",
           "type": {
@@ -10268,5 +10268,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "REiIIGtUSqCclOZ6rtfZa4JBPpm5OziTD9J6amCSkcY="
+  "fingerprint": "XSqQHTo5Cf4ZXfB8esT+GuxHmh/cLZ4DS5i5Lnh7gV4="
 }

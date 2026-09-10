@@ -6,6 +6,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import { resolveVendorAccountIds } from '../addons/support-roles-infra';
 
 export type SesReceivingMode = 'off' | 'on' | 'forced';
 
@@ -33,6 +34,7 @@ export class BootstrapLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
+        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
       },
     });
 
@@ -54,10 +56,17 @@ export class BootstrapLambda extends GoLambda {
     props.jwkCacheTable.grantReadWriteData(this);
     props.authKeyStoreTable.grantReadWriteData(this);
 
-    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth)
+    // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
+    // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
+    // vendor deploy detail this repo does not own. /grant-resource and /revoke-resource are
+    // reached indirectly via shareddomainsvc.NewService(...) — scoping to /bootstrap alone breaks it.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: ['*'],
+      resources: resolveVendorAccountIds().flatMap((accountId) => [
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/bootstrap`,
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+      ]),
     }));
 
     this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSet.receiptRuleSetName);
