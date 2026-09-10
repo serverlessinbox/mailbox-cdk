@@ -8,9 +8,9 @@ import { AuditLogTable } from '../resources/auditlog-table';
 import { MailFeedbackTable } from '../resources/mailfeedback-table';
 import { MailboxKmsConfig } from '../utils/kms';
 import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
-import { isDevelopmentMode } from '../utils/development-mode';
-import { applyServerlessInboxBaseTags, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
+import { isDevelopmentMode } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxBaseTagsWithDeployerType, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
@@ -60,23 +60,22 @@ export class MailboxDataStack extends cdk.Stack {
     });
     productVersionParam.overrideLogicalId('productVersion');
 
-    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
+    const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
       type: 'String',
       description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
       default: 'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
-    deployerParam.overrideLogicalId('deployer');
+    deployerTypeParam.overrideLogicalId('deployerType');
 
     // Apply product/correlation tags to everything in this data stack.
     // root-stack is the main stack name (via rootStack param); the base helper tags this
     // stack's own name as `stack` (AWS::StackName).
-    applyServerlessInboxBaseTags(this, {
+    applyServerlessInboxBaseTagsWithDeployerType(this, {
       product: 'mailbox',
       rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
-      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
-    });
+    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType);
     applyServerlessInboxComponentTag(this, 'data');
 
     // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack

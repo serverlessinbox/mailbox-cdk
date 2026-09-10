@@ -1,9 +1,28 @@
+// CDK context keys (centralized — see context-keys.ts for the shipped-key rename hazard)
+export {
+  ARTIFACTS_CONTEXT_KEY,
+  ARTIFACT_VERSIONS_CONTEXT_KEY,
+  DEPLOYER_TYPE_CONTEXT_KEY as DEPLOYER_CONTEXT_KEY,
+  DEVELOPMENT_CONTEXT_KEY,
+  VENDOR_ACCOUNT_IDS_CONTEXT_KEY,
+} from './context-keys';
+
 // Artifact engine (D3 — replaces old ICdkArtifactResolver/CdkArtifactResolver)
 export { PinnedResolver, CdkArtifactEngine } from './artifact-engine';
 export type { IArtifactResolver, ICdkArtifactEngine, ResolvedArtifact, VersionMap, VersionMapEntry } from './artifact-engine';
 
 // CDK aspects & patterns
 export { GateOnConditionAspect } from './gate-on-condition-aspect';
+
+// Vendor account resolution (cross-cutting; consumed by mailbox's composition roots)
+export { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from './vendor-account';
+
+// Deployer type resolution (cross-cutting; consumed by mailbox's composition roots)
+export { resolveDeployerType } from './deployer-type';
+export type { ServerlessInboxDeployerType } from './deployer-type';
+
+// Development mode (cross-cutting; consumed by mailbox and mailbox-cognito)
+export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjectsInDevelopment } from './development-mode';
 
 // Lambda constructs & artifact tagging (used by mailbox, mailbox-cognito, and other sub-stack packages)
 export { TypeScriptLambda } from './ts-lambda';
@@ -15,13 +34,13 @@ export type { AutoUpdateType } from './apply-artifact-tags';
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
+  applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
   serverlessInboxSubStackTags,
 } from './serverless-inbox-tags';
 export type {
   ServerlessInboxComponent,
-  ServerlessInboxDeployer,
   ApplyServerlessInboxTagsOptions,
   ApplyServerlessInboxEdgeTagsOptions,
   ServerlessInboxSubStackTagOptions,

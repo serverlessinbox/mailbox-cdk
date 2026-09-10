@@ -105,7 +105,7 @@ describe('grantCognitoDataDeployerPermissions', () => {
           'serverless-inbox:stack',
           'serverless-inbox:component',
           'serverless-inbox:version',
-          'serverless-inbox:deployer',
+          'serverless-inbox:deployer_type',
         ]),
       );
       expect(tagKeys.length).toBe(6);

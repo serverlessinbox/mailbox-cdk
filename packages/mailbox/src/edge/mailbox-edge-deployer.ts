@@ -2,7 +2,7 @@ import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
@@ -43,8 +43,8 @@ export interface MailboxEdgeDeployerProps {
   /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
   readonly logGroupName: string;
 
-  /** Optional deployer label used for tagging (default: 'cfn'). */
-  readonly deployer?: 'cdk' | 'cfn' | 'marketplace';
+  /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
+  readonly deployerType: ServerlessInboxDeployerType;
 }
 
 /**
@@ -102,8 +102,6 @@ export class MailboxEdgeDeployer extends Construct {
     // Build CloudFormation parameters from the edge construct props
     const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1');
 
-    const deployer = props.deployer ?? 'cfn';
-
     const cfnParameters: Record<string, string> = {
       domainName: props.domainName,
       artifactBucket: blobAuthorizerResolved.bucket,
@@ -118,7 +116,7 @@ export class MailboxEdgeDeployer extends Construct {
       rootStack: Aws.STACK_NAME,
       rootRegion: Stack.of(this).region,
       productVersion: props.productVersion,
-      deployer: deployer,
+      deployerType: props.deployerType,
       blobAuthorizerS3VersionId: blobAuthorizerResolved.versionId ?? '',
     };
 

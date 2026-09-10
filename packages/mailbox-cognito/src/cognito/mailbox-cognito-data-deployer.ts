@@ -4,7 +4,7 @@ import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
 import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
@@ -24,6 +24,8 @@ export interface MailboxCognitoDataDeployerProps {
   readonly passwordMinLength?: number;
   /** Engine for artifact resolution (threaded from parent MailboxUserPool). */
   readonly artifactResolver: ICdkArtifactEngine;
+  /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
+  readonly deployerType: ServerlessInboxDeployerType;
 }
 
 /**
@@ -72,6 +74,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       rootStack: Aws.STACK_NAME,
       // Real product version so tags aren't 'unknown'.
       productVersion,
+      deployerType: props.deployerType,
     };
     if (props.customDomain !== undefined) {
       parameters.customDomainName = props.customDomain.domainName;

@@ -76,7 +76,7 @@ export function grantCognitoDataDeployerPermissions(
     ServerlessInboxTagKeys.stack,
     ServerlessInboxTagKeys.component,
     ServerlessInboxTagKeys.version,
-    ServerlessInboxTagKeys.deployer,
+    ServerlessInboxTagKeys.deployerType,
   ];
 
   // CreateUserPool binds to no resource type (confirmed against the IAM Service Reference:

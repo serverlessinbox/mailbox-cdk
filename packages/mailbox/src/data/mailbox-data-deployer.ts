@@ -2,7 +2,7 @@ import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
@@ -14,6 +14,8 @@ export interface MailboxDataDeployerProps {
   readonly dataStackName?: string;
   /** S3-safe base for bucket names */
   readonly s3NameBase: string;
+  /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
+  readonly deployerType: ServerlessInboxDeployerType;
 }
 
 /**
@@ -82,6 +84,7 @@ export class MailboxDataDeployer extends Construct {
           rootStack: Aws.STACK_NAME,
           // Real product version so tags aren't 'unknown'.
           productVersion,
+          deployerType: props.deployerType,
         },
         // Object-level correlation tags on the data AWS::CloudFormation::Stack itself.
         tags: serverlessInboxSubStackTags({

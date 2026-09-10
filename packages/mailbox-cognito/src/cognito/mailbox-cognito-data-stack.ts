@@ -3,15 +3,15 @@ import { Aws, Fn, RemovalPolicy } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 import {
-  isDevelopmentMode,
   JMAP_SCOPE_DESCRIPTIONS,
   MailboxResourceDescriptions,
 } from '@serverlessinbox/mailbox';
 import {
-  applyServerlessInboxBaseTags,
+  applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
+  isDevelopmentMode,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
 
 /**
@@ -82,23 +82,22 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     });
     productVersionParam.overrideLogicalId('productVersion');
 
-    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
+    const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
       type: 'String',
       description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
       default: 'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
-    deployerParam.overrideLogicalId('deployer');
+    deployerTypeParam.overrideLogicalId('deployerType');
 
     // Apply product/correlation tags to everything in this cognito data stack.
     // root-stack is the main stack name (via rootStack param); the base helper tags this
     // stack's own name as `stack` (AWS::StackName). Cognito is the identity/auth tier.
-    applyServerlessInboxBaseTags(this, {
+    applyServerlessInboxBaseTagsWithDeployerType(this, {
       product: 'mailbox',
       rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
-      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
-    });
+    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType);
     applyServerlessInboxComponentTag(this, 'auth');
 
     // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack

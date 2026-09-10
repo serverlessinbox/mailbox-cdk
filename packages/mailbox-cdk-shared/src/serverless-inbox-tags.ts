@@ -1,5 +1,7 @@
 import { Aws, Tags } from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
+import { resolveDeployerType } from './deployer-type';
+import type { ServerlessInboxDeployerType } from './deployer-type';
 
 export type ServerlessInboxComponent =
   | 'auth'
@@ -12,8 +14,6 @@ export type ServerlessInboxComponent =
   | 'storage'
   | 'search'
   | 'messaging';
-
-export type ServerlessInboxDeployer = 'cdk' | 'cfn' | 'marketplace';
 
 const TAG_PREFIX = 'serverless-inbox:' as const;
 
@@ -33,7 +33,7 @@ export const ServerlessInboxTagKeys = {
    * compares against; distinct from `version` (the construct version).
    */
   templateVersion: `${TAG_PREFIX}template-version`,
-  deployer: `${TAG_PREFIX}deployer`,
+  deployerType: `${TAG_PREFIX}deployer_type`,
 
   edge: `${TAG_PREFIX}edge`,
   rootRegion: `${TAG_PREFIX}root-region`,
@@ -59,9 +59,6 @@ export interface ApplyServerlessInboxTagsOptions {
   /** Optional version string (e.g. '1.2.3' or 'channel:dev'). */
   readonly version?: string;
 
-  /** Optional deployer kind ('cfn' by default if provided). */
-  readonly deployer?: ServerlessInboxDeployer;
-
   /** Optional extra tags supplied by the caller. */
   readonly extraTags?: Record<string, string>;
 }
@@ -71,9 +68,10 @@ export interface ApplyServerlessInboxEdgeTagsOptions {
   readonly rootRegion: string;
 }
 
-export function applyServerlessInboxBaseTags(
+function applyServerlessInboxTags(
   scope: IConstruct,
   options: ApplyServerlessInboxTagsOptions,
+  deployerType: ServerlessInboxDeployerType,
 ): void {
   const product = (options.product ?? 'mailbox').trim() || 'mailbox';
 
@@ -86,9 +84,7 @@ export function applyServerlessInboxBaseTags(
     Tags.of(scope).add(ServerlessInboxTagKeys.version, options.version);
   }
 
-  if (options.deployer) {
-    Tags.of(scope).add(ServerlessInboxTagKeys.deployer, options.deployer);
-  }
+  Tags.of(scope).add(ServerlessInboxTagKeys.deployerType, deployerType);
 
   const extra = options.extraTags ?? {};
   for (const [key, value] of Object.entries(extra)) {
@@ -97,6 +93,27 @@ export function applyServerlessInboxBaseTags(
     if (!v) continue;
     Tags.of(scope).add(key, v);
   }
+}
+
+export function applyServerlessInboxBaseTags(
+  scope: IConstruct,
+  options: ApplyServerlessInboxTagsOptions,
+): void {
+  applyServerlessInboxTags(scope, options, resolveDeployerType(scope));
+}
+
+/**
+ * Internal-only variant for sub-stack templates synthesized standalone (their own `new App()`,
+ * no CDK context) — `resolveDeployerType` would silently resolve to the 'cdk' fallback there, so
+ * the caller passes the value it already has from its own CfnParameter instead. Not re-exported
+ * from packages/mailbox/src/index.ts — never reaches the published surface.
+ */
+export function applyServerlessInboxBaseTagsWithDeployerType(
+  scope: IConstruct,
+  options: ApplyServerlessInboxTagsOptions,
+  deployerType: ServerlessInboxDeployerType,
+): void {
+  applyServerlessInboxTags(scope, options, deployerType);
 }
 
 export function applyServerlessInboxComponentTag(scope: IConstruct, component: ServerlessInboxComponent): void {

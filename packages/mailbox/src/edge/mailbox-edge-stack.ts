@@ -3,11 +3,11 @@ import { Construct } from 'constructs';
 import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
 import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
 import {
-  applyServerlessInboxBaseTags,
+  applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployer } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
 import { addServerlessInboxResourceGroup } from '../utils/resource-group';
 
@@ -49,23 +49,22 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     productVersionParam.overrideLogicalId('productVersion');
 
-    const deployerParam = new cdk.CfnParameter(this, 'deployer', {
+    const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
       type: 'String',
       description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
       default: 'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
-    deployerParam.overrideLogicalId('deployer');
+    deployerTypeParam.overrideLogicalId('deployerType');
 
     // Apply product/correlation tags to everything in this edge stack, and add root back-references.
-    applyServerlessInboxBaseTags(this, {
+    applyServerlessInboxBaseTagsWithDeployerType(this, {
       product: 'mailbox',
       // root-stack is the main stack name (flows in via the rootStack param);
       // the base helper tags this edge stack's own name as `stack` (AWS::StackName).
       rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
-      deployer: deployerParam.valueAsString as unknown as ServerlessInboxDeployer,
-    });
+    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType);
     applyServerlessInboxComponentTag(this, 'edge');
     applyServerlessInboxEdgeTags(this, {
       rootRegion: rootRegionParam.valueAsString,
