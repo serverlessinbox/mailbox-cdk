@@ -204,4 +204,126 @@ describe('withSmokeTest', () => {
       expect(handlerMock).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('optional checks', () => {
+    it('zero checks: probe succeeds without invoking handler', async () => {
+      const handlerMock = jest.fn(async () => ({}));
+
+      // No checks registered
+      const wrapped = withSmokeTest(handlerMock);
+
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
+
+      expect(handlerMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    });
+
+    it('all checks pass: probe succeeds', async () => {
+      const handlerMock = jest.fn(async () => ({}));
+
+      const check1 = jest.fn(async () => {
+        // Check passes
+      });
+      const check2 = jest.fn(async () => {
+        // Check passes
+      });
+
+      const wrapped = withSmokeTest(handlerMock, check1, check2);
+
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
+
+      expect(check1).toHaveBeenCalled();
+      expect(check2).toHaveBeenCalled();
+      expect(handlerMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    });
+
+    it('first check fails: probe fails without running remaining checks', async () => {
+      const handlerMock = jest.fn(async () => ({}));
+
+      const failingCheck = jest.fn(async () => {
+        throw new Error('Config validation failed');
+      });
+      const unreachedCheck = jest.fn(async () => {
+        // Should not be called
+      });
+
+      const wrapped = withSmokeTest(handlerMock, failingCheck, unreachedCheck);
+
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
+
+      expect(failingCheck).toHaveBeenCalled();
+      expect(unreachedCheck).not.toHaveBeenCalled();
+      expect(handlerMock).not.toHaveBeenCalled();
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: false });
+    });
+
+    it('checks are not run on real traffic', async () => {
+      const handlerMock = jest.fn(async () => ({
+        statusCode: 200,
+      }));
+
+      const check = jest.fn(async () => {
+        throw new Error('Should not be called');
+      });
+
+      const wrapped = withSmokeTest(handlerMock, check);
+
+      const realEvent = { method: 'GET', path: '/' };
+      const result = await wrapped(realEvent, {});
+
+      expect(check).not.toHaveBeenCalled();
+      expect(handlerMock).toHaveBeenCalledWith(realEvent, {});
+      expect(result).toEqual({ statusCode: 200 });
+    });
+
+    it('supports synchronous checks', async () => {
+      const handlerMock = jest.fn(async () => ({}));
+
+      let checkCalled = false;
+      const syncCheck = () => {
+        checkCalled = true;
+      };
+
+      const wrapped = withSmokeTest(handlerMock, syncCheck);
+
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
+
+      expect(checkCalled).toBe(true);
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    });
+
+    it('supports asynchronous checks', async () => {
+      const handlerMock = jest.fn(async () => ({}));
+
+      const asyncCheck = jest.fn(async () => {
+        // Simulate async work
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      });
+
+      const wrapped = withSmokeTest(handlerMock, asyncCheck);
+
+      const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
+
+      expect(asyncCheck).toHaveBeenCalled();
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    });
+
+    it('backward compatible: existing zero-check call sites work identically', async () => {
+      const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
+
+      // Old-style call with no checks
+      const wrapped = withSmokeTest(handlerMock);
+
+      // Probe should still work
+      const probeResult = await wrapped({ serverlessInboxSmokeTest: true }, {});
+      expect(probeResult).toEqual({ serverlessInboxSmokeTestOk: true });
+
+      // Real traffic should still pass through
+      const realEvent = { method: 'GET' };
+      const realResult = await wrapped(realEvent, {});
+      expect(handlerMock).toHaveBeenCalledWith(realEvent, {});
+      expect(realResult).toEqual({ statusCode: 200 });
+    });
+  });
 });

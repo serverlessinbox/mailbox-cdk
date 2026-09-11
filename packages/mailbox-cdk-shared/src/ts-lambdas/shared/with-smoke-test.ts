@@ -14,7 +14,19 @@
  * For regular event handlers, withSmokeTest simply wraps the handler:
  *
  *   export const handler = withSmokeTest(async (event) => { ... });
+ *
+ * Optional checks can be registered to validate initialization state (e.g., config);
+ * they are run against every probe and must all pass for the probe to succeed:
+ *
+ *   const configCheck = () => { validateConfig(); };
+ *   export const handler = withSmokeTest(asyncHandler, configCheck);
  */
+
+/**
+ * A smoke-test check function: returns void or a promise that resolves to void.
+ * Throw to indicate failure; returning means check passed.
+ */
+export type Check = () => Promise<void> | void;
 
 /**
  * Smoke test probe payload (always single-property JSON).
@@ -56,16 +68,20 @@ function isSmokeTestProbe(event: unknown): event is SmokeTestProbe {
  * Wraps a Lambda handler to intercept smoke test probes.
  *
  * @param handler The underlying Lambda handler (any shape: async function, CloudFormationCustomResourceHandler, etc.)
+ * @param checks Optional variadic check functions to run against probes.
+ *               Each check is called during probe interception; if any throws, the probe fails.
+ *               Checks are not called for real traffic.
  * @returns A wrapped handler that intercepts probes and delegates real traffic to the original handler.
  *          The returned handler accepts the original handler's event type OR a SmokeTestProbe,
  *          and returns either the handler's result OR a SmokeTestResponse.
  *
  * For event-based handlers:
- *   - Probe: returns `{ serverlessInboxSmokeTestOk: true }` without invoking handler
+ *   - Probe: runs all checks; returns `{ serverlessInboxSmokeTestOk: true }` if all pass,
+ *     or `{ serverlessInboxSmokeTestOk: false }` if any check throws
  *   - Real event: delegates to handler unchanged
  *
  * For custom-resource handlers:
- *   - Probe (no RequestType/ResponseURL): returns `{ serverlessInboxSmokeTestOk: true }` without invoking handler
+ *   - Probe (no RequestType/ResponseURL): runs all checks; returns success/failure response
  *   - CFN event (has RequestType/ResponseURL): delegates to handler unchanged
  *
  * The handler's own error handling is unchanged — no special behavior on errors.
@@ -74,6 +90,7 @@ function isSmokeTestProbe(event: unknown): event is SmokeTestProbe {
  */
 export function withSmokeTest<TEvent, TContext, TResult>(
   handler: (event: TEvent, context: TContext, ...rest: never[]) => Promise<TResult> | void,
+  ...checks: Check[]
 ): (
   event: TEvent | SmokeTestProbe | string,
   context?: TContext,
@@ -83,8 +100,19 @@ export function withSmokeTest<TEvent, TContext, TResult>(
   // must declare exactly two (event, context).
   return async (event, context) => {
     if (isSmokeTestProbe(event)) {
+      // Run all checks in order; if any throw, the probe fails.
+      let ok = true;
+      for (const check of checks) {
+        try {
+          await check();
+        } catch {
+          ok = false;
+          break;
+        }
+      }
+
       const response: SmokeTestResponse = {
-        serverlessInboxSmokeTestOk: true,
+        serverlessInboxSmokeTestOk: ok,
       };
       return response;
     }
