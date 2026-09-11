@@ -9,7 +9,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import { PinnedResolver, CdkArtifactEngine, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
@@ -128,5 +128,49 @@ describe('BootstrapLambda SES rule set wiring', () => {
     expect(fn).toBeDefined();
     const vars = fn?.Properties?.Environment?.Variables ?? {};
     expect(vars['STACK_IDENTITY_TAG_KEY']).toBe(ServerlessInboxTagKeys.rootStack);
+  });
+
+  it('scopes ses:TagResource to its own statement gated by RequestTag and TagKeys', () => {
+    new BootstrapLambda(stack, 'bootstrap', {
+      configTable,
+      jwkCacheTable,
+      authKeyStoreTable,
+      artifactResolver,
+      domain: 'example.com',
+      sesRuleSet: ruleSet,
+      vendorAccountIds: ['123456789012'],
+      stackIdentityTagKey: 'serverless-inbox:root-stack',
+    });
+
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'ses:TagResource',
+            Resource: {
+              'Fn::Join': [
+                '',
+                [
+                  'arn:aws:ses:',
+                  { Ref: 'AWS::Region' },
+                  ':',
+                  { Ref: 'AWS::AccountId' },
+                  ':identity/example.com',
+                ],
+              ],
+            },
+            Condition: {
+              StringEquals: {
+                'aws:RequestTag/serverless-inbox:root-stack': 'TestStack',
+              },
+              'ForAllValues:StringEquals': {
+                'aws:TagKeys': ['serverless-inbox:root-stack'],
+              },
+            },
+          }),
+        ]),
+      },
+    });
   });
 });

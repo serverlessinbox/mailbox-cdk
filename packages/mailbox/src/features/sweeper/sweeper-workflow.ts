@@ -1,4 +1,4 @@
-import { Duration } from 'aws-cdk-lib';
+import { Aws, Duration, Lazy } from 'aws-cdk-lib';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -176,6 +176,38 @@ export class SweeperWorkflow extends Construct {
       resultPath: sfn.JsonPath.DISCARD,
     });
 
-    return deleteWorker;
+    const describeSelf = new tasks.CallAwsService(this, 'SelfCleanupDescribeOwnResource', {
+      service: 'cloudformation',
+      action: 'describeStackResource',
+      parameters: {
+        StackName: Aws.STACK_NAME,
+        LogicalResourceId: Lazy.string({
+          produce: () => (this.stateMachine.node.defaultChild as sfn.CfnStateMachine).logicalId,
+        }),
+      },
+      resultPath: '$.selfCheck',
+      iamResources: [Aws.STACK_ID],
+    });
+
+    // CFN signals a removed logical id by throwing ValidationError rather than returning an empty
+    // result — capture that as data so the Choice below can read it, mirroring
+    // withTargetPresenceGuard's isPresent check rather than branching on task success/failure.
+    const captureNotFound = new sfn.Pass(this, 'SelfCleanupCaptureNotFound', {
+      resultPath: '$.selfCheck',
+      parameters: { notFound: true },
+    });
+    describeSelf.addCatch(captureNotFound, {
+      errors: ['cloudformation.ValidationError'],
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    const selfCleanupGuard = new sfn.Choice(this, 'SelfCleanupGuard')
+      .when(sfn.Condition.isPresent('$.selfCheck.notFound'), deleteWorker)
+      .otherwise(succeed);
+
+    captureNotFound.next(selfCleanupGuard);
+    describeSelf.next(selfCleanupGuard);
+
+    return describeSelf;
   }
 }

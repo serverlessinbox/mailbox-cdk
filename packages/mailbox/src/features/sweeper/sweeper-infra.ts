@@ -146,6 +146,12 @@ export class SweeperInfra extends Construct {
           actions: ['iam:DeleteRolePolicy'],
           resources: [execRoleArn],
         }),
+        // Self-cleanup guard: re-check the state machine's own presence in the template before
+        // acting. Aws.STACK_ID is an exact stack ARN pseudo-parameter — no GetAtt, no cycle risk.
+        new iam.PolicyStatement({
+          actions: ['cloudformation:DescribeStackResource'],
+          resources: [Aws.STACK_ID],
+        }),
       ],
     });
     executionPolicy.attachToRole(this.executionRole);
@@ -179,6 +185,11 @@ export class SweeperInfra extends Construct {
         new iam.PolicyStatement({
           actions: ['iam:DeleteRolePolicy'],
           resources: [execRoleArn],
+        }),
+        // Boundary is a ceiling — mirrors the execution-policy grant above, or the guard denies.
+        new iam.PolicyStatement({
+          actions: ['cloudformation:DescribeStackResource'],
+          resources: [Aws.STACK_ID],
         }),
       ],
     });
@@ -252,6 +263,11 @@ export class SweeperInfra extends Construct {
     // Starter can invoke the state machine — smArn is a formatArn string (no GetAtt edge)
     this.starter.addToRolePolicy(new iam.PolicyStatement({
       actions: ['states:StartExecution'],
+      resources: [smArn],
+    }));
+    // Reap-on-start: the starter stops any stale RUNNING execution before starting a new one.
+    this.starter.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['states:ListExecutions', 'states:StopExecution'],
       resources: [smArn],
     }));
   }

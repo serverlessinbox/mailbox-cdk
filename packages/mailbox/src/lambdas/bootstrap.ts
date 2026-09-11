@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
@@ -108,8 +108,29 @@ export class BootstrapLambda extends GoLambda {
         'ses:PutEmailIdentityDkimSigningAttributes',
       ],
       resources: [
-        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/${props.domain}`,
+        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${props.domain}`,
       ],
+    }));
+
+    // CreateEmailIdentity is called with a Tags parameter (the Go provisioner stamps the
+    // stack-identity tag on create), which AWS co-authorizes against ses:TagResource. The
+    // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
+    // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
+    // aws:TagKeys so this role can't ride along to write an unrelated tag key.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['ses:TagResource'],
+      resources: [
+        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${props.domain}`,
+      ],
+      conditions: {
+        StringEquals: {
+          [`aws:RequestTag/${props.stackIdentityTagKey}`]: Stack.of(this).stackName,
+        },
+        'ForAllValues:StringEquals': {
+          'aws:TagKeys': [props.stackIdentityTagKey],
+        },
+      },
     }));
   }
 }

@@ -108,7 +108,39 @@ describe('AdminApiLambda IAM scoping', () => {
               'ses:DeleteEmailIdentity',
               'ses:PutEmailIdentityDkimSigningAttributes',
             ],
-            Resource: 'arn:aws:ses:us-west-2:123456789012:identity/*',
+            Resource: {
+              'Fn::Join': [
+                '',
+                ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
+              ],
+            },
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('scopes ses:TagResource to its own statement gated by RequestTag and TagKeys', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'ses:TagResource',
+            Resource: {
+              'Fn::Join': [
+                '',
+                ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
+              ],
+            },
+            Condition: {
+              StringEquals: {
+                [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack',
+              },
+              'ForAllValues:StringEquals': {
+                'aws:TagKeys': [ServerlessInboxTagKeys.rootStack],
+              },
+            },
           }),
         ]),
       },
@@ -123,8 +155,24 @@ describe('AdminApiLambda IAM scoping', () => {
           Match.objectLike({
             Action: 'ses:SendEmail',
             Resource: [
-              'arn:aws:ses:us-west-2:123456789012:identity/*',
-              'arn:aws:ses:us-west-2:123456789012:configuration-set/test-config-set',
+              {
+                'Fn::Join': [
+                  '',
+                  ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
+                ],
+              },
+              {
+                'Fn::Join': [
+                  '',
+                  [
+                    'arn:aws:ses:',
+                    { Ref: 'AWS::Region' },
+                    ':',
+                    { Ref: 'AWS::AccountId' },
+                    ':configuration-set/test-config-set',
+                  ],
+                ],
+              },
             ],
           }),
         ]),

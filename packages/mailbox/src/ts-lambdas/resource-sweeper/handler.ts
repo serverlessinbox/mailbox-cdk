@@ -2,7 +2,7 @@ import { wrapHandler } from 'aws-custom-resources';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { LoggerBuffer } from '../shared/logger-buffer';
-import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
 import { sweepCert } from './targets/cert';
 import { sweepEdgeFn } from './targets/edge-fn';
 import { sweepStackFailureDetector } from './targets/stack-failure-detector';
@@ -228,6 +228,22 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
 
   if (sweepTargetIds.length > 0) {
     try {
+      // Reap any execution left RUNNING by a prior trigger before starting a fresh one — caps how
+      // long a stale execution (e.g. one left by a deploy that predates the self-cleanup guard) can
+      // outlive the deploy that started it.
+      const running = await sfnClient.send(
+        new ListExecutionsCommand({ stateMachineArn: smArn, statusFilter: 'RUNNING' }),
+      );
+      for (const execution of running.executions ?? []) {
+        if (!execution.executionArn) continue;
+        await sfnClient.send(new StopExecutionCommand({ executionArn: execution.executionArn }));
+      }
+      if (running.executions?.length) {
+        logger.info('Stopped stale RUNNING execution(s) before starting', {
+          count: running.executions.length,
+        });
+      }
+
       logger.info('Starting SFN execution', { executionName: event.RequestId, sweepTargetIds });
 
       await sfnClient.send(
@@ -248,7 +264,10 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
       } else {
         // Any other error: log but do NOT throw. Delete must always succeed so
         // CloudFormation never hangs waiting for a response.
-        logger.warn('Failed to start SFN execution (best-effort, will not propagate)', {
+        // error() (not warn()) so LoggerBuffer.errorCount forces a flush — a warn-level report of a
+        // real StartExecution failure (e.g. StateMachineDeleting) was silently discarded before.
+        // Still non-throwing: best-effort side work must never block the CFN response.
+        logger.error('Failed to start SFN execution (best-effort, will not propagate)', {
           errorName: err?.name,
           errorMessage: err?.message,
         });

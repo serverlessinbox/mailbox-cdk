@@ -4,7 +4,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
@@ -43,7 +43,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     }));
   }
 
-  private grantSesAccess(sesConfigSetName: string) {
+  private grantSesAccess(sesConfigSetName: string, stackIdentityTagKey: string) {
     // Identity-bound actions scoped to the identity ARN pattern.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
@@ -52,15 +52,32 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         "ses:DeleteEmailIdentity",
         "ses:PutEmailIdentityDkimSigningAttributes",
       ],
-      resources: [`arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/*`],
+      resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+    }));
+    // CreateEmailIdentity is called with a Tags parameter (the Go provisioner stamps the
+    // stack-identity tag on create), which AWS co-authorizes against ses:TagResource. The
+    // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
+    // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
+    // aws:TagKeys so this role can't ride along to write an unrelated tag key.
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["ses:TagResource"],
+      resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+      conditions: {
+        StringEquals: {
+          [`aws:RequestTag/${stackIdentityTagKey}`]: Stack.of(this).stackName,
+        },
+        'ForAllValues:StringEquals': {
+          'aws:TagKeys': [stackIdentityTagKey],
+        },
+      },
     }));
     // SendEmail authorizes against the configuration-set resource as well as the identity
     // resource (it does not bind only to `identity`), so both ARNs must be granted.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ["ses:SendEmail"],
       resources: [
-        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/*`,
-        `arn:aws:ses:${Stack.of(this).region}:${Stack.of(this).account}:configuration-set/${sesConfigSetName}`,
+        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
+        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
       ],
     }));
     // Account-level actions — no resource binding, stay '*'.
@@ -145,7 +162,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
     // Grant permissions BEFORE the Lambda is used by API Gateway
     this.grantStatusAccess();
-    this.grantSesAccess(props.sesConfigSetName);
+    this.grantSesAccess(props.sesConfigSetName, props.stackIdentityTagKey);
     this.grantRoute53Access();
     this.grantServiceQuotasAccess();
     this.grantLicenseApiAccess(props.vendorAccountIds);
