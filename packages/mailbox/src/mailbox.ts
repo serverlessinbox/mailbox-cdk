@@ -526,7 +526,6 @@ export class Mailbox extends Construct {
       artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
-      stackIdentityTagKey,
     });
 
     const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {

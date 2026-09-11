@@ -14,8 +14,6 @@ export interface EmailSenderLambdaProps {
   blobStore: IBucket;
   sesConfigSetName: string;
   artifactResolver: ICdkArtifactEngine;
-  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
-  readonly stackIdentityTagKey: string;
 }
 
 export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
@@ -41,18 +39,16 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     props.changelogTable.grantReadWriteData(this);
     props.blobStore.grantRead(this);
 
-    // Grant SES send permissions, scoped to identities carrying this stack's root-stack tag
-    // (see provisioner.go / ses/service.go — CreateEmailIdentity now writes this tag).
+    // Grant SES send permissions for email identities and the configuration set.
+    // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['ses:SendRawEmail'],
-        resources: ['*'],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${props.stackIdentityTagKey}`]: Aws.STACK_NAME,
-          },
-        },
+        resources: [
+          `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
+          `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${props.sesConfigSetName}`,
+        ],
       })
     );
   }
