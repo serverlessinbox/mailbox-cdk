@@ -1,68 +1,58 @@
-/// <reference types="jest" />
+import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { load } from '../config';
 
-/**
- * `config.ts` reads and validates every env var this Lambda needs exactly once, at module load.
- * These tests never statically import `../config` or `../handler` at the top of the file — a
- * static import here would evaluate before any test body runs (before we've set env), so every
- * case uses `jest.resetModules()` + a dynamic `import()` to control exactly what env is present
- * when the module is first evaluated.
- */
-describe('config (cold-start env validation)', () => {
-  const ORIGINAL_ENV = { ...process.env };
-
+describe('jmap-oauth-dcr config', () => {
   beforeEach(() => {
-    jest.resetModules();
+    delete process.env.LOG_LEVEL;
+    delete process.env.SERVICE_NAME;
+    delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
+    delete process.env.USER_POOL_ID;
   });
 
   afterEach(() => {
-    process.env = { ...ORIGINAL_ENV };
+    delete process.env.LOG_LEVEL;
+    delete process.env.SERVICE_NAME;
+    delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
+    delete process.env.USER_POOL_ID;
   });
 
-  it('exposes both env vars once both are set', () => {
-    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-name';
-    process.env.USER_POOL_ID = 'pool-id';
+  it('loads all vars when set', () => {
+    process.env.LOG_LEVEL = 'info';
+    process.env.SERVICE_NAME = 'oauth-dcr-service';
+    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
+    process.env.USER_POOL_ID = 'pool-123';
 
-    let config: any;
-    jest.isolateModules(() => {
-      config = require('../config').config;
+    const result = env.tryLoad(load);
+    expect(result).toEqual({
+      config: {
+        logLevel: 'info',
+        serviceName: 'oauth-dcr-service',
+        identityProvisionerFunctionName: 'fn-provisioner',
+        userPoolId: 'pool-123',
+      },
+      error: undefined,
     });
-
-    expect(config).toEqual({ identityProvisionerFunctionName: 'fn-name', userPoolId: 'pool-id' });
   });
 
-  it.each([
-    ['missing', undefined],
-    ['empty string', ''],
-  ] as const)('throws at module load when IDENTITY_PROVISIONER_FUNCTION_NAME is %s', (_label: string, value: string | undefined) => {
-    if (value === undefined) {
-      delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
-    } else {
-      process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = value;
-    }
-    process.env.USER_POOL_ID = 'pool-id';
-
-    expect(() => {
-      jest.isolateModules(() => {
-        require('../config');
-      });
-    }).toThrow(/required environment variable IDENTITY_PROVISIONER_FUNCTION_NAME is not set/);
+  it('reports error when mandatory vars missing', () => {
+    const result = env.tryLoad(load);
+    expect(result.error).toContain('IDENTITY_PROVISIONER_FUNCTION_NAME');
+    expect(result.error).toContain('USER_POOL_ID');
   });
 
-  it.each([
-    ['missing', undefined],
-    ['empty string', ''],
-  ] as const)('throws at module load when USER_POOL_ID is %s', (_label: string, value: string | undefined) => {
-    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-name';
-    if (value === undefined) {
-      delete process.env.USER_POOL_ID;
-    } else {
-      process.env.USER_POOL_ID = value;
-    }
+  it('uses defaults when all optionals absent', () => {
+    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
+    process.env.USER_POOL_ID = 'pool-123';
 
-    expect(() => {
-      jest.isolateModules(() => {
-        require('../config');
-      });
-    }).toThrow(/required environment variable USER_POOL_ID is not set/);
+    const result = env.tryLoad(load);
+    expect(result).toEqual({
+      config: {
+        logLevel: 'error',
+        serviceName: '',
+        identityProvisionerFunctionName: 'fn-provisioner',
+        userPoolId: 'pool-123',
+      },
+      error: undefined,
+    });
   });
 });

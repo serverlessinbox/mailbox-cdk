@@ -15,14 +15,20 @@
  * before any request — including its cap-counter side effect — is ever processed.
  */
 
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, parseLogLevelStrict, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 export interface JmapOAuthDcrConfig {
+  readonly logLevel: LogLevel;
+  readonly serviceName: string;
   readonly identityProvisionerFunctionName: string;
   readonly userPoolId: string;
 }
 
-export const config: JmapOAuthDcrConfig = {
-  identityProvisionerFunctionName: env.mustGet('IDENTITY_PROVISIONER_FUNCTION_NAME'),
-  userPoolId: env.mustGet('USER_POOL_ID'),
-};
+export function load(l: env.Loader): JmapOAuthDcrConfig {
+  return {
+    logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
+    serviceName: l.optional('SERVICE_NAME', ''),
+    identityProvisionerFunctionName: l.mandatory('IDENTITY_PROVISIONER_FUNCTION_NAME'),
+    userPoolId: l.mandatory('USER_POOL_ID'),
+  };
+}

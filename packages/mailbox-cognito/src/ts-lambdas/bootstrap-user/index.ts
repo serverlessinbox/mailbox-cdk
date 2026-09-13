@@ -1,7 +1,8 @@
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserAttributesCommand, AdminAddUserToGroupCommand, UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import https from 'node:https';
 import { URL } from 'node:url';
-import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { load } from './config';
 
 type CloudFormationCustomResourceEvent = {
   RequestType: 'Create' | 'Update' | 'Delete';
@@ -57,6 +58,7 @@ function sendResponse(event: CloudFormationCustomResourceEvent, response: CloudF
 }
 
 const cognito = new CognitoIdentityProviderClient({});
+const { config: configOrError, error: configError } = env.tryLoad(load);
 
 /**
  * Default one-time bootstrap password used when neither `temporaryPassword` nor `email` is configured.
@@ -136,16 +138,32 @@ async function ensureUser(props: BootstrapUserProperties): Promise<void> {
   }
 }
 
-export const handler = withSmokeTest(async (event: CloudFormationCustomResourceEvent): Promise<void> => {
-  // Read SERVICE_NAME at entry point; thread to sub-functions
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
+export const handler = withSmokeTest(
+  async (event: CloudFormationCustomResourceEvent): Promise<void> => {
+  if (configError) {
+    const physicalResourceId = `BootstrapUser:error`;
+    try {
+      await sendResponse(event, {
+        Status: event.RequestType === 'Delete' ? 'SUCCESS' : 'FAILED',
+        Reason: configError,
+        PhysicalResourceId: event.PhysicalResourceId ?? physicalResourceId,
+        StackId: event.StackId,
+        RequestId: event.RequestId,
+        LogicalResourceId: event.LogicalResourceId,
+      });
+    } catch {
+      // If even the response fails, rethrow to surface in logs.
+    }
+    return;
+  }
+
+  const config = configOrError;
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
   // Emit finalization details for manual recovery of hung custom resources.
   // Intentionally omit physicalResourceId (which would be BootstrapUser:${userPoolId}:${username})
   // to avoid writing the admin username into CloudWatch logs.
-  emitManualFinalize(event, { service });
+  emitManualFinalize(event, { service: config.serviceName });
 
   const props = event.ResourceProperties as BootstrapUserProperties;
 
@@ -157,15 +175,22 @@ export const handler = withSmokeTest(async (event: CloudFormationCustomResourceE
     sendInvite: props.sendInvite === true || (props.sendInvite as any) === 'true',
   };
 
+  logger.info('bootstrap_user_request', { requestType: event.RequestType });
+
   try {
     if (!props?.userPoolId) {
       throw new Error('Missing required property: userPoolId');
     }
 
+    logger.debug('bootstrap_user_validating', { userPoolIdLength: String(props.userPoolId).length });
+
     if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+      logger.debug('bootstrap_user_ensuring_user');
       await ensureUser(normalizedProps);
+      logger.info('bootstrap_user_ensured');
     }
 
+    logger.debug('bootstrap_user_sending_success_response');
     await sendResponse(event, {
       Status: 'SUCCESS',
       PhysicalResourceId: event.PhysicalResourceId ?? physicalResourceId,
@@ -175,6 +200,8 @@ export const handler = withSmokeTest(async (event: CloudFormationCustomResourceE
     });
   } catch (e: any) {
     const message = (e as Error)?.message ?? String(e);
+    logger.error('bootstrap_user_handler_failed', { message });
+    logger.flush();
 
     try {
       await sendResponse(event, {
@@ -191,4 +218,6 @@ export const handler = withSmokeTest(async (event: CloudFormationCustomResourceE
 
     throw e;
   }
-});
+  },
+  env.check(load),
+);

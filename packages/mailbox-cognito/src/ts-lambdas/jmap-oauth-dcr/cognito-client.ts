@@ -19,7 +19,7 @@ export interface CreatedUserPoolClient {
 }
 
 export class CognitoUserPoolClientManager {
-  constructor(private readonly cognito: CognitoIdentityProviderClient = new CognitoIdentityProviderClient({})) {}
+  constructor(private readonly cognito: CognitoIdentityProviderClient) {}
 
   async createClient(userPoolId: string, clientName: string, redirectUris: string[], scopes: string[]): Promise<CreatedUserPoolClient> {
     const result = await this.cognito.send(

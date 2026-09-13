@@ -10,9 +10,12 @@ import {
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
-import { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SmokeTestProbe, withSmokeTest, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { load } from '../config';
 
-import { handler } from '../handler';
+import { createHandler } from '../handler';
+import { CognitoUserPoolClientManager } from '../cognito-client';
+import { IdentityProvisionerClient } from '../identity-provisioner-client';
 
 /** See `identity-provisioner-client.test.ts` for why this shape (not a plain `Uint8Array`). */
 function encode(value: unknown): Uint8Array & { transformToString(encoding?: string): string } {
@@ -35,8 +38,8 @@ function requestEvent(body: unknown): APIGatewayProxyEventV2 {
   } as APIGatewayProxyEventV2;
 }
 
-/** `APIGatewayProxyResultV2` allows a bare-string shorthand; this handler never returns that. */
-function asObjectResult(result: Awaited<ReturnType<typeof handler>>): { statusCode: number; body: string } {
+/** Unwrap APIGatewayProxyResultV2 (which allows bare-string shorthand) to object form. */
+function asObjectResult(result: unknown): { statusCode: number; body: string } {
   if (typeof result === 'string') {
     throw new Error('expected an object result, got a bare string');
   }
@@ -75,11 +78,28 @@ describe('jmap-oauth-dcr handler', () => {
   const lambdaMock = mockClient(LambdaClient);
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
+  let handler: (event: APIGatewayProxyEventV2) => Promise<unknown>;
+
+
   beforeEach(() => {
     lambdaMock.reset();
     cognitoMock.reset();
     cognitoMock.on(CreateUserPoolClientCommand).resolves({ UserPoolClient: { ClientId: 'new-client-id' } });
     cognitoMock.on(DeleteUserPoolClientCommand).resolves({});
+
+    // Create handler with mocked clients for this test
+    const lambdaClient = new LambdaClient({});
+    const cognitoClient = new CognitoIdentityProviderClient({});
+    const identityProvisioner = new IdentityProvisionerClient('identity-provisioner-fn', lambdaClient);
+    const cognitoManager = new CognitoUserPoolClientManager(cognitoClient);
+
+    handler = createHandler({
+      identityProvisioner,
+      cognito: cognitoManager,
+      userPoolId: 'pool-1',
+      serviceName: 'jmap-oauth-dcr',
+      logLevel: 'error',
+    });
   });
 
   it('proceed path: registers a new Cognito client and returns an RFC 7591 §3.2.1 shaped response', async () => {
@@ -290,9 +310,28 @@ describe('jmap-oauth-dcr handler — smoke test wrapper', () => {
   const lambdaMock = mockClient(LambdaClient);
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
+  let handler: (event: APIGatewayProxyEventV2 | SmokeTestProbe) => Promise<unknown>;
+
   beforeEach(() => {
     lambdaMock.reset();
     cognitoMock.reset();
+
+    // Create handler with mocked clients, wrapped with smoke test
+    const lambdaClient = new LambdaClient({});
+    const cognitoClient = new CognitoIdentityProviderClient({});
+    const identityProvisioner = new IdentityProvisionerClient('identity-provisioner-fn', lambdaClient);
+    const cognitoManager = new CognitoUserPoolClientManager(cognitoClient);
+
+    const rawHandler = createHandler({
+      identityProvisioner,
+      cognito: cognitoManager,
+      userPoolId: 'pool-1',
+      serviceName: 'jmap-oauth-dcr',
+      logLevel: 'error',
+    });
+
+    // Wrap with smoke test wrapper and config check
+    handler = withSmokeTest(rawHandler, env.check(load));
   });
 
   it('responds to smoke test probe without invoking the real handler', async () => {
@@ -307,5 +346,26 @@ describe('jmap-oauth-dcr handler — smoke test wrapper', () => {
     // Verify no Cognito operations were invoked
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
     expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)).toHaveLength(0);
+  });
+
+  it('invalid LOG_LEVEL fails the cold start: importing index throws naming LOG_LEVEL', async () => {
+    // index.ts calls env.mustLoad(load) at module scope, which throws at import time
+    // if LOG_LEVEL is not one of the valid log levels ('debug', 'info', 'warn', 'error').
+    const savedEnv = { ...process.env };
+
+    try {
+      jest.isolateModules(() => {
+        process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'test-fn';
+        process.env.USER_POOL_ID = 'pool-1';
+        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+
+        // Require-based import for ESM/CJS compatibility
+        expect(() => {
+          require('../index');
+        }).toThrow(/LOG_LEVEL/);
+      });
+    } finally {
+      process.env = savedEnv;
+    }
   });
 });

@@ -1,3 +1,5 @@
+import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import { SQSClient } from '@aws-sdk/client-sqs';
 import {
 	createAdminApiHandler,
 	extractAdminAuthContext,
@@ -10,44 +12,37 @@ import { env, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-r
 import { SqsAuditEmitter } from './audit';
 import { CognitoIdpUsersService } from './idp-users.service';
 import { createCognitoIdpUsersServiceSpec } from './service';
+import { load } from './config';
 
-function parseJsonStringArrayEnv(name: string): string[] | undefined {
-	const raw = process.env[name];
-	if (!raw) return undefined;
-	try {
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? (parsed.filter((x) => typeof x === 'string') as string[]) : undefined;
-	} catch {
-		return undefined;
-	}
-}
+const config = env.mustLoad(load);
 
-const userPoolId = env.mustGet('USER_POOL_ID');
-const auditQueueUrl = env.mustGet('AUDIT_EVENTS_QUEUE_URL');
-const adminGroups = parseJsonStringArrayEnv('ADMIN_GROUPS');
-const userGroups = parseJsonStringArrayEnv('USER_GROUPS');
+const cognitoClient = new CognitoIdentityProviderClient({});
+const sqsClient = new SQSClient({});
 
 const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
-registry.register(createCognitoIdpUsersServiceSpec({ service: new CognitoIdpUsersService(undefined, userPoolId) }));
+registry.register(createCognitoIdpUsersServiceSpec({ service: new CognitoIdpUsersService(cognitoClient, config.userPoolId) }));
 
-const emitAuditEvent = new SqsAuditEmitter(auditQueueUrl).emit;
+const emitAuditEvent = new SqsAuditEmitter(config.auditEventsQueueUrl, { sqs: sqsClient }).emit;
 
-export const handler = withSmokeTest(createAdminApiHandler({
-	registry,
-	extractAuth: (event) => extractAdminAuthContext(event, { adminGroups, userGroups }),
-	emitAuditEvent,
-	// If your authorizer includes tenantId, you can re-enable tenant-aware auditing here.
-	// getTenantId: (auth) => (auth as any).raw?.tenantId as string | undefined,
-	getActor: (auth) => {
-		const a = auth as any;
-		return {
-			actorType: a.authType === 'anonymous' ? 'system' : 'user',
-			actorId: a.sub ?? 'unknown',
-			username: a.username ?? a.email ?? a.sub ?? 'unknown',
-			iss: a.iss,
-			email: a.email,
-			groups: a.groups,
-			scopes: a.scopes,
-		};
-	},
-}));
+export const handler = withSmokeTest(
+	createAdminApiHandler({
+		registry,
+		extractAuth: (event) => extractAdminAuthContext(event, { adminGroups: config.adminGroups, userGroups: config.userGroups }),
+		emitAuditEvent,
+		// If your authorizer includes tenantId, you can re-enable tenant-aware auditing here.
+		// getTenantId: (auth) => (auth as any).raw?.tenantId as string | undefined,
+		getActor: (auth) => {
+			const a = auth as any;
+			return {
+				actorType: a.authType === 'anonymous' ? 'system' : 'user',
+				actorId: a.sub ?? 'unknown',
+				username: a.username ?? a.email ?? a.sub ?? 'unknown',
+				iss: a.iss,
+				email: a.email,
+				groups: a.groups,
+				scopes: a.scopes,
+			};
+		},
+	}),
+	env.check(load),
+);

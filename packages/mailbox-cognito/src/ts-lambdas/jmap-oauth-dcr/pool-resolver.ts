@@ -1,5 +1,3 @@
-import { config } from './config';
-
 /**
  * Resolves the Cognito user pool a dynamically-registered client is created against.
  *
@@ -9,6 +7,6 @@ import { config } from './config';
  * construct (`JmapOAuthDcrLambda`) as `USER_POOL_ID` (validated once at cold start by
  * `config.ts`) — `tenantId` is accepted but not yet used.
  */
-export function resolvePoolId(_tenantId: string): string {
-  return config.userPoolId;
+export function resolvePoolId(_tenantId: string, userPoolId: string): string {
+  return userPoolId;
 }

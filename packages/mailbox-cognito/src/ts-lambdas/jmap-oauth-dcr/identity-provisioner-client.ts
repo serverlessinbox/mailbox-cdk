@@ -43,7 +43,7 @@ export interface DcrPersistParams {
 export class IdentityProvisionerClient {
   constructor(
     private readonly functionName: string,
-    private readonly lambda: LambdaClient = new LambdaClient({}),
+    private readonly lambda: LambdaClient,
   ) {}
 
   /**
