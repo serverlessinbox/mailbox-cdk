@@ -34,7 +34,7 @@ tasks:
     generates:
       - /tmp/cognito-idp-users-api.zip
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip --target node22
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip
 
   bundle:bootstrap-user:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
@@ -44,7 +44,7 @@ tasks:
     generates:
       - /tmp/cognito-bootstrap-user.zip
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip --target node22
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip
 
   bundle:jmap-oauth-dcr:
     desc: Bundle RFC 7591 dynamic client registration lambda zip to /tmp
@@ -54,7 +54,7 @@ tasks:
     generates:
       - /tmp/jmap-oauth-dcr.zip
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out /tmp/jmap-oauth-dcr.zip --target node22
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out /tmp/jmap-oauth-dcr.zip
 
   bundle:
     desc: Bundle all cognito lambdas to /tmp/*.zip

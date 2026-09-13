@@ -14,9 +14,9 @@ export class BundleLambdaZipCommand extends Command {
 
   entry = Option.String('--entry', { required: true });
   out = Option.String('--out', { required: true });
-  target = Option.String('--target', 'node18');
+  target = Option.String('--target', 'node24');
   minify = Option.Boolean('--minify', true);
-  external = Option.String('--external', 'aws-sdk');
+  external = Option.String('--external', '@aws-sdk/*');
 
   async execute(): Promise<void> {
     const entryPath = path.resolve(this.entry);
