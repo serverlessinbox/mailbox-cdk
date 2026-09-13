@@ -6,7 +6,7 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
 } from '@aws-sdk/client-cloudformation';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { OperationInput } from './types';
 
 function makeCfClient(region: string): CloudFormationClient {

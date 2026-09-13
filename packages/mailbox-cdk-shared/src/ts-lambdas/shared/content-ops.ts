@@ -1,13 +1,13 @@
 /// <reference types="node" />
 
+import type { S3Client } from '@aws-sdk/client-s3';
+import type { ListObjectsV2CommandOutput } from '@aws-sdk/client-s3';
 import {
-  S3Client,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-  type ListObjectsV2CommandOutput,
 } from '@aws-sdk/client-s3';
 import unzipper from 'unzipper';
 
@@ -16,9 +16,7 @@ import { normalizeRelativeKey, normalizePrefix } from './ui-paths';
 
 export { normalizePrefix };
 
-const s3 = new S3Client();
-
-export async function deletePrefix(bucket: string, prefix: string): Promise<number> {
+export async function deletePrefix(s3: S3Client, bucket: string, prefix: string): Promise<number> {
   let deleted = 0;
   let token: string | undefined = undefined;
 
@@ -58,7 +56,7 @@ export async function deletePrefix(bucket: string, prefix: string): Promise<numb
   return deleted;
 }
 
-export async function deleteObject(bucket: string, key: string): Promise<void> {
+export async function deleteObject(s3: S3Client, bucket: string, key: string): Promise<void> {
   await s3.send(
     new DeleteObjectCommand({
       Bucket: bucket,
@@ -67,7 +65,7 @@ export async function deleteObject(bucket: string, key: string): Promise<void> {
   );
 }
 
-export async function deployZipToPrefix(params: {
+export async function deployZipToPrefix(s3: S3Client, params: {
   sourceBucket: string;
   sourceKey: string;
   sourceVersionId?: string;
@@ -126,7 +124,7 @@ export async function deployZipToPrefix(params: {
   return { uploaded };
 }
 
-export async function writeObject(params: {
+export async function writeObject(s3: S3Client, params: {
   targetBucket: string;
   key: string;
   body: string;

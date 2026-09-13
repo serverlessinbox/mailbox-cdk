@@ -1,7 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { dispatchSelfInvoke } from './self-invoke';
 
 /**

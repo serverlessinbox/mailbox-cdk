@@ -8,7 +8,7 @@
 import { mockClient } from 'aws-sdk-client-mock';
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
 import { sweepEdgeFn } from '../targets/edge-fn';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { EdgeFunctionRemovalInput } from '../targets/types';
 
 const lambdaMock = mockClient(LambdaClient);

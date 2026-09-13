@@ -12,7 +12,7 @@ import {
   CloudFrontClient,
   TagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceUiBucketIfStale } from '../update-ui';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -27,9 +27,10 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
 // specifier from the package's root export), so the mock must target that same subpath
 // or Jest loads the real content-ops.ts module — including its module-scope S3Client —
 // and issues real AWS calls.
+// Use jest.requireActual to spread the real module and override only the volatile boundaries.
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
+  ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   deployZipToPrefix: jest.fn(),
-  normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
   invalidateCloudFront: jest.fn(),
   env: {
     get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,
@@ -150,20 +151,26 @@ describe('advanceUiBucketIfStale', () => {
     );
 
     expect(updated).toBe(true);
-    // Verify deployZipToPrefix was called
-    expect(deployZipToPrefix).toHaveBeenCalledWith({
-      sourceBucket: 'mailbox-artifacts-us-east-1',
-      sourceKey: 'ui-bundle/release/1.2.4/ui-bundle.zip',
-      targetBucket: 'ui-content-bucket',
-      targetPrefix: 'content/',
-    });
+    // Verify deployZipToPrefix was called with an S3Client and params
+    expect(deployZipToPrefix).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        sourceBucket: 'mailbox-artifacts-us-east-1',
+        sourceKey: 'ui-bundle/release/1.2.4/ui-bundle.zip',
+        targetBucket: 'ui-content-bucket',
+        targetPrefix: 'content/',
+      },
+    );
 
-    // Verify invalidateCloudFront was called
-    expect(invalidateCloudFront).toHaveBeenCalledWith({
-      distributionId: 'ABCD1234',
-      paths: ['/*'],
-      callerReference: expect.stringContaining('ui-update:ui-content-bucket:1.2.4'),
-    });
+    // Verify invalidateCloudFront was called with a client and params
+    expect(invalidateCloudFront).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        distributionId: 'ABCD1234',
+        paths: ['/*'],
+        callerReference: expect.stringContaining('ui-update:ui-content-bucket:1.2.4'),
+      },
+    );
 
     // Verify CloudFront TagResource was called to update distribution tags
     const tagCalls = cloudFrontMock.commandCalls(TagResourceCommand);
@@ -232,6 +239,7 @@ describe('advanceUiBucketIfStale', () => {
     expect(updated).toBe(true);
     // Verify custom bucket base was used
     expect(deployZipToPrefix).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         sourceBucket: 'custom-artifacts-us-east-1',
       }),

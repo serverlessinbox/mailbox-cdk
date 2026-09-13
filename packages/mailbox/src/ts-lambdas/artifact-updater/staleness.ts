@@ -5,7 +5,7 @@
 
 import { deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { UpdaterTargetConfig } from './common';
 
 /** Result of checking staleness: pointer + parsed semver, or null if no update. */

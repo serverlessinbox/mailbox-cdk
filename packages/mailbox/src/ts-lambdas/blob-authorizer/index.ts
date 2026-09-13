@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { extractConfig } from './config';
 import { verifyJWTSignatureOnly, extractToken } from './jwt';
 import { verifyHmacTokenWithRotation } from './hmac';

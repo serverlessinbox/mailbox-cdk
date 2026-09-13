@@ -1,13 +1,15 @@
-import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
+import type { CloudFrontClient } from '@aws-sdk/client-cloudfront';
+import { CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
 import { createHash } from 'node:crypto';
 
-const cloudFront = new CloudFrontClient();
-
-export async function invalidateCloudFront(params: {
-  distributionId?: string;
-  paths?: string[];
-  callerReference: string;
-}): Promise<{ invalidated: boolean }> {
+export async function invalidateCloudFront(
+  cloudFront: CloudFrontClient,
+  params: {
+    distributionId?: string;
+    paths?: string[];
+    callerReference: string;
+  },
+): Promise<{ invalidated: boolean }> {
   const { distributionId, paths, callerReference } = params;
   const dist = (distributionId ?? '').trim();
   if (!dist) return { invalidated: false };

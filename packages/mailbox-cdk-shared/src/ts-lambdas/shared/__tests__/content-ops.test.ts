@@ -92,7 +92,8 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
     s3Mock.on(PutObjectCommand).resolves({});
 
-    const result = await deployZipToPrefix({
+    const s3Client = new S3Client({});
+    const result = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       targetBucket: 'target-bucket',
@@ -169,7 +170,8 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
     s3Mock.on(PutObjectCommand).resolves({});
 
-    const result = await deployZipToPrefix({
+    const s3Client = new S3Client({});
+    const result = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       targetBucket: 'target-bucket',
@@ -201,7 +203,8 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
     s3Mock.on(PutObjectCommand).resolves({});
 
-    await deployZipToPrefix({
+    const s3Client = new S3Client({});
+    await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       sourceVersionId: 'v123',
@@ -216,8 +219,9 @@ describe('deployZipToPrefix', () => {
   it('throws cleanly when S3 returns empty body', async () => {
     s3Mock.on(GetObjectCommand).resolves({ Body: undefined });
 
+    const s3Client = new S3Client({});
     await expect(
-      deployZipToPrefix({
+      deployZipToPrefix(s3Client, {
         sourceBucket: 'source-bucket',
         sourceKey: 'ui.zip',
         targetBucket: 'target-bucket',
@@ -244,7 +248,8 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
     s3Mock.on(PutObjectCommand).resolves({});
 
-    await deployZipToPrefix({
+    const s3Client = new S3Client({});
+    await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       targetBucket: 'target-bucket',
@@ -260,5 +265,57 @@ describe('deployZipToPrefix', () => {
     if (Buffer.isBuffer(putInput.Body)) {
       expect(putInput.ContentLength).toBe(putInput.Body.length);
     }
+  });
+
+  it('accepts injected S3Client and uses it for all calls', async () => {
+    const mockDirectory = {
+      files: [
+        {
+          path: 'test.txt',
+          type: 'File',
+          buffer: jest.fn().mockResolvedValue(Buffer.from('test')),
+        },
+      ],
+    };
+
+    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
+    const mockBody = {
+      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
+    };
+    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    // Create a fake S3 client with a jest mock send method
+    const fakeS3 = {
+      send: jest.fn(),
+    };
+
+    // Mock the send method to handle commands
+    (fakeS3.send as jest.Mock).mockImplementation(async (command) => {
+      if (command instanceof GetObjectCommand) {
+        return { Body: mockBody };
+      } else if (command instanceof PutObjectCommand) {
+        return {};
+      }
+      throw new Error(`Unexpected command: ${command.constructor.name}`);
+    });
+
+    await deployZipToPrefix(fakeS3 as any, {
+      sourceBucket: 'source-bucket',
+      sourceKey: 'ui.zip',
+      targetBucket: 'target-bucket',
+      targetPrefix: 'v1/',
+    });
+
+    // Verify the injected client's send method was called
+    expect(fakeS3.send).toHaveBeenCalled();
+    const calls = (fakeS3.send as jest.Mock).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+
+    // Verify we had at least one GetObjectCommand and at least one PutObjectCommand
+    const getCommands = calls.filter((call) => call[0] instanceof GetObjectCommand);
+    const putCommands = calls.filter((call) => call[0] instanceof PutObjectCommand);
+    expect(getCommands.length).toBeGreaterThan(0);
+    expect(putCommands.length).toBeGreaterThan(0);
   });
 });

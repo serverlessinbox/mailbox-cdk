@@ -24,7 +24,7 @@ import {
   DeleteRoleCommand,
 } from '@aws-sdk/client-iam';
 import { sweepStackFailureDetector } from '../targets/stack-failure-detector';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { StackFailureDetectorRemovalInput } from '../targets/types';
 
 const eventsMock = mockClient(EventBridgeClient);

@@ -52,10 +52,11 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
 // package's root export), so the mock must target that same subpath or Jest loads the
 // real content-ops.ts module — including its module-scope S3Client — and issues real
 // AWS calls.
+// Use jest.requireActual to spread the real module and override only the volatile boundaries.
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => {
   return {
+    ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
     deployZipToPrefix: jest.fn(),
-    normalizePrefix: jest.fn((prefix) => prefix.endsWith('/') ? prefix : `${prefix}/`),
     invalidateCloudFront: jest.fn(),
     env: {
       get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,

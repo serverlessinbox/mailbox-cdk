@@ -6,7 +6,7 @@ import {
 } from '@aws-sdk/client-eventbridge';
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
 import { IAMClient, ListRoleTagsCommand, DeleteRolePolicyCommand, DeleteRoleCommand } from '@aws-sdk/client-iam';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { StackFailureDetectorRemovalInput, TargetResult } from './types';
 
 interface StepResult {

@@ -16,7 +16,7 @@ import {
   DistributionConfig,
 } from '@aws-sdk/client-cloudfront';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import type { UpdaterTargetConfig } from './common';
 import { artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';

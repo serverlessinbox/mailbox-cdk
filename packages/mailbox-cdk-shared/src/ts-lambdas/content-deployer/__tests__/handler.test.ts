@@ -24,4 +24,5 @@ describe('ContentDeployer handler — smoke test wrapper', () => {
     // Verify no CloudFront operations were invoked
     expect(cloudfrontMock.commandCalls(CreateInvalidationCommand)).toHaveLength(0);
   });
+
 });

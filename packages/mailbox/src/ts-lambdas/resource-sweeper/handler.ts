@@ -1,7 +1,6 @@
 import { wrapHandler } from 'aws-custom-resources';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
 import { sweepCert } from './targets/cert';
 import { sweepEdgeFn } from './targets/edge-fn';

@@ -13,7 +13,7 @@ import {
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
 import { sweepCert } from '../targets/cert';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CertRemovalInput } from '../targets/types';
 
 const acmMock = mockClient(ACMClient);

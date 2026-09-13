@@ -1,3 +1,5 @@
+import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
+import { S3Client } from '@aws-sdk/client-s3';
 import { wrapHandler } from 'aws-custom-resources';
 import { withSmokeTest } from '../shared/with-smoke-test';
 import { emitManualFinalize } from '../shared/manual-finalize';
@@ -5,6 +7,9 @@ import * as env from '../shared/env';
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
 import { isContentDeployerResourceProperties } from './types';
+
+const cloudFront = new CloudFrontClient();
+const s3 = new S3Client();
 
 export const handler = withSmokeTest(wrapHandler(async (event: any, context: any) => {
   // Read SERVICE_NAME at entry point; thread to sub-functions
@@ -58,8 +63,8 @@ export const handler = withSmokeTest(wrapHandler(async (event: any, context: any
   for (const source of sources) {
     if (source.kind === 'zip') {
       // Delete existing prefix (full overwrite)
-      await deletePrefix(targetBucket, source.targetPrefix);
-      const res = await deployZipToPrefix({
+      await deletePrefix(s3, targetBucket, source.targetPrefix);
+      const res = await deployZipToPrefix(s3, {
         sourceBucket: source.sourceBucket,
         sourceKey: source.sourceKey,
         sourceVersionId: source.sourceVersionId,
@@ -69,7 +74,7 @@ export const handler = withSmokeTest(wrapHandler(async (event: any, context: any
       objectsWritten += res.uploaded;
     } else if (source.kind === 'data') {
       // Write exact key with metadata
-      await writeObject({
+      await writeObject(s3, {
         targetBucket,
         key: source.key,
         body: source.body,
@@ -80,7 +85,7 @@ export const handler = withSmokeTest(wrapHandler(async (event: any, context: any
     }
   }
 
-  const invalidationRes = await invalidateCloudFront({
+  const invalidationRes = await invalidateCloudFront(cloudFront, {
     distributionId,
     paths: invalidationPaths,
     callerReference: JSON.stringify({

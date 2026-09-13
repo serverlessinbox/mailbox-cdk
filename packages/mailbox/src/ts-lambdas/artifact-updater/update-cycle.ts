@@ -2,7 +2,7 @@ import {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { LoggerBuffer } from '../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceLambdaIfStale } from './update-code';
 import { advanceUiBucketIfStale } from './update-ui';
 import { advanceEdgeLambdaIfStale } from './update-edge';

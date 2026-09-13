@@ -7,9 +7,9 @@ import {
   CloudFrontClient,
   TagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
+import { S3Client } from '@aws-sdk/client-s3';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
-import { LoggerBuffer } from '../shared/logger-buffer';
-import { deployZipToPrefix, normalizePrefix, invalidateCloudFront } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, deployZipToPrefix, normalizePrefix, invalidateCloudFront } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import type { UpdaterTargetConfig } from './common';
 import { artifactBucketName } from './common';
@@ -62,22 +62,23 @@ export async function advanceUiBucketIfStale(
 
     // Extract and upload to bucket in deployment region
     const contentPrefix = normalizePrefix('content/', 'content/');
-    const res = await deployZipToPrefix({
+    const s3 = new S3Client({ region: deploymentRegion });
+    const res = await deployZipToPrefix(s3, {
       sourceBucket: bucket,
       sourceKey: artifactKey,
       targetBucket: bucketName,
       targetPrefix: contentPrefix,
     });
 
+    // Update the distribution's artifact-version tag via CloudFront TagResource
+    const cloudFront = new CloudFrontClient({ region: deploymentRegion });
+
     // Invalidate CloudFront
-    const invalidationRes = await invalidateCloudFront({
+    const invalidationRes = await invalidateCloudFront(cloudFront, {
       distributionId,
       paths: ['/*'],
       callerReference: `ui-update:${bucketName}:${pointer.version}:${Date.now()}`,
     });
-
-    // Update the distribution's artifact-version tag via CloudFront TagResource
-    const cloudFront = new CloudFrontClient({ region: deploymentRegion });
 
     await cloudFront.send(
       new TagResourceCommand({

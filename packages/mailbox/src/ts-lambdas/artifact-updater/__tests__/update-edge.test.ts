@@ -21,7 +21,7 @@ import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceEdgeLambdaIfStale } from '../update-edge';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.

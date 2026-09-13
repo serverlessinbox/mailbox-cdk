@@ -15,7 +15,7 @@ import {
   GetFunctionConfigurationCommand,
   InvokeCommand,
 } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceLambdaIfStale } from '../update-code';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
