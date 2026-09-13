@@ -15,6 +15,10 @@
  * `BootstraplessSynthesizer` — with a distinctive fake account standing in for "a real account
  * leaked", and scans the ENTIRE serialized template (not selected properties) for any 12-digit
  * account-number-shaped literal that isn't the known, separately-tracked placeholder.
+ *
+ * MailboxDataStack: Exempted findings from utils/named-table.ts and mailbox-cdk-shared/named-bucket.ts
+ * embedding the concrete account in construct ids are filtered by `isPostponedNamedResource` until the
+ * owner lands the named-resource change.
  */
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
@@ -29,6 +33,12 @@ const FAKE_ACCOUNT = '111122223333';
 // is being fixed elsewhere (logical-id rework). Delete this constant and its use below once that
 // work lands — at that point the scan should tolerate zero account-shaped literals.
 const KNOWN_PLACEHOLDER_ACCOUNT = '000000000000';
+
+// TEMPORARY exemption, owner-postponed: StackNamedTable (utils/named-table.ts) and named-bucket
+// (mailbox-cdk-shared) embed the concrete account in construct ids, which leaks into logical ids,
+// Ref/GetAtt targets and the name tag. Fixing it replaces deployed data resources, so it lands with
+// the named-resource change — delete this exemption in that change.
+const POSTPONED_NAMED_RESOURCES = ['blob-store', 'config-table', 'item-table', 'changelog-table', 'auditlog-table', 'mailfeedback-table'];
 
 interface AccountLiteralViolation {
   path: string;
@@ -94,6 +104,34 @@ function assertNoAccountLiterals(violations: AccountLiteralViolation[], stackLab
   throw new Error(`Account-literal leak found in ${stackLabel} template (${violations.length} occurrence(s)):\n${report}`);
 }
 
+/**
+ * Checks whether a value matches one of the postponed named-resource findings.
+ * Matches either:
+ * - tag value pattern: `${FAKE_ACCOUNT}-mailboxdata-${name}` (e.g. `111122223333-mailboxdata-blob-store`)
+ * - logical ID pattern: `${FAKE_ACCOUNT}mailboxdata${nameWithoutHyphens}(Policy)?[0-9A-F]{8}`
+ *   (e.g. `111122223333mailboxdatablobstorePolicy1a2b3c4d`)
+ */
+function isPostponedNamedResource(value: string): boolean {
+  for (const name of POSTPONED_NAMED_RESOURCES) {
+    const nameWithoutHyphens = name.replace(/-/g, '');
+
+    // Match tag value pattern: ${FAKE_ACCOUNT}-mailboxdata-${name}
+    if (value === `${FAKE_ACCOUNT}-mailboxdata-${name}`) {
+      return true;
+    }
+
+    // Match logical ID pattern: ^${FAKE_ACCOUNT}mailboxdata${nameWithoutHyphens}(Policy)?[0-9A-F]{8}$
+    const logicalIdPattern = new RegExp(
+      `^${FAKE_ACCOUNT}mailboxdata${nameWithoutHyphens}(Policy)?[0-9A-F]{8}$`,
+      'i'
+    );
+    if (logicalIdPattern.test(value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 describe('Standalone sub-stack account-literal leak (regression gate)', () => {
   it('MailboxDataStack, synthesized like tools/build-data-stack.ts, leaks no real account literal', () => {
     const app = new App();
@@ -109,7 +147,8 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
     const artifact = assembly.getStackArtifact(stack.artifactId);
     const template = artifact.template;
 
-    const violations = findAccountLiterals(template, new Set([KNOWN_PLACEHOLDER_ACCOUNT]));
+    const violations = findAccountLiterals(template, new Set([KNOWN_PLACEHOLDER_ACCOUNT]))
+      .filter(v => !isPostponedNamedResource(v.value));
 
     assertNoAccountLiterals(violations, 'MailboxDataStack');
   });
