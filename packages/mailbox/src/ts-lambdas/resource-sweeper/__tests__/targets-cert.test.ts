@@ -40,7 +40,8 @@ describe('sweepCert', () => {
     acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
     acmMock.on(DeleteCertificateCommand).resolves({});
 
-    const result = await sweepCert(input(), logger());
+    const acmClient = new ACMClient({ region: 'us-west-2' });
+    const result = await sweepCert(input(), logger(), acmClient);
 
     expect(result).toEqual({ target: 'cert', status: 'done' });
     expect(acmMock.commandCalls(DeleteCertificateCommand)[0].args[0].input).toEqual({
@@ -56,7 +57,8 @@ describe('sweepCert', () => {
       Certificate: { InUseBy: ['arn:aws:cloudfront::123456789012:distribution/ABC'] },
     });
 
-    const result = await sweepCert(input(), logger());
+    const acmClient = new ACMClient({ region: 'us-west-2' });
+    const result = await sweepCert(input(), logger(), acmClient);
 
     expect(result.status).toBe('retry');
     expect(acmMock.commandCalls(DeleteCertificateCommand)).toHaveLength(0);
@@ -67,7 +69,8 @@ describe('sweepCert', () => {
       Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }),
     );
 
-    const result = await sweepCert(input(), logger());
+    const acmClient = new ACMClient({ region: 'us-west-2' });
+    const result = await sweepCert(input(), logger(), acmClient);
 
     expect(result).toEqual({ target: 'cert', status: 'done' });
   });
@@ -77,7 +80,8 @@ describe('sweepCert', () => {
       Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'someone-elses-stack' }],
     });
 
-    const result = await sweepCert(input(), logger());
+    const acmClient = new ACMClient({ region: 'us-west-2' });
+    const result = await sweepCert(input(), logger(), acmClient);
 
     expect(result.status).toBe('failed');
     expect(result.reason).toContain('Ownership mismatch');
@@ -89,7 +93,8 @@ describe('sweepCert', () => {
       Object.assign(new Error('boom'), { name: 'InternalException' }),
     );
 
-    const result = await sweepCert(input(), logger());
+    const acmClient = new ACMClient({ region: 'us-west-2' });
+    const result = await sweepCert(input(), logger(), acmClient);
 
     expect(result.status).toBe('failed');
   });

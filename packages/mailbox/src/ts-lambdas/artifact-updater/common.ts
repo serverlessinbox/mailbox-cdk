@@ -1,38 +1,15 @@
 /**
- * Shared helpers for artifact updater (env parsing, artifact bucket naming, tagging).
+ * Shared helpers for artifact updater (artifact bucket naming, tagging).
  */
 
 import { LambdaClient, TagResourceCommand, GetFunctionConfigurationCommand } from '@aws-sdk/client-lambda';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { Config } from './config';
 
-/** Environment variables required for artifact updater operations. */
-export interface UpdaterEnv {
-  readonly project: string;
-  readonly distTag: string;
-  readonly granularity: string;
-  readonly artifactBucketBase: string;
-  readonly rootStackTagValue: string;
-}
-
-/** Configuration for artifact staleness checking and resolution. Subset of UpdaterEnv. */
+/** Configuration for artifact staleness checking and resolution. Subset of Config. */
 export type UpdaterTargetConfig = Pick<
-  UpdaterEnv,
+  Config,
   'project' | 'distTag' | 'granularity' | 'artifactBucketBase'
 >;
-
-/**
- * Parse and validate all required environment variables into a typed interface.
- * Call once at the top level; pass the result to functions that need it.
- */
-export function getUpdaterEnv(): UpdaterEnv {
-  return {
-    project: env.mustGet('PROJECT'),
-    distTag: env.mustGet('DIST_TAG'),
-    granularity: env.mustGet('GRANULARITY'),
-    artifactBucketBase: env.mustGet('ARTIFACT_BUCKET_BASE'),
-    rootStackTagValue: env.mustGet('ROOT_STACK_TAG_VALUE'),
-  };
-}
 
 /**
  * Convert ResourceGroupsTaggingAPI Tags array to a record for easier access.

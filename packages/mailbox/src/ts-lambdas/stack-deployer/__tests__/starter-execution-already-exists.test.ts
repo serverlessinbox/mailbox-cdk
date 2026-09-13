@@ -13,6 +13,10 @@ import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws
 import { mockClient } from 'aws-sdk-client-mock';
 import type { CfnCustomResourceEvent } from '../types';
 
+// Set env vars before any handler imports
+process.env.AWS_REGION = 'us-east-1';
+process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123';
+
 const sfnMock = mockClient(SFNClient);
 
 jest.mock('../cfn-response', () => ({
@@ -20,16 +24,14 @@ jest.mock('../cfn-response', () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { putCfnResponse } = require('../cfn-response');
+let { putCfnResponse } = require('../cfn-response');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const handler = require('../handler');
+let handler = require('../handler');
 
 describe('stack-deployer handler - ExecutionAlreadyExists handling', () => {
   beforeEach(() => {
     sfnMock.reset();
     jest.clearAllMocks();
-    process.env.AWS_REGION = 'us-east-1';
-    process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123';
     jest.spyOn(console, 'log').mockImplementation(() => {
       // Silent
     });

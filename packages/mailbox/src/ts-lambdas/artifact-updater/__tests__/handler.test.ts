@@ -35,7 +35,8 @@ import {
   TagResourceCommand as CloudFrontTagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { handler } from '../handler';
+import { createHandler } from '../handler';
+import type { Config } from '../config';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
 // Note: artifact-registry is not yet published (pending), so this mock allows
@@ -54,18 +55,11 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
 // AWS calls.
 // Use jest.requireActual to spread the real module and override only the volatile boundaries.
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => {
+  const actual = jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime');
   return {
-    ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
+    ...actual,
     deployZipToPrefix: jest.fn(),
     invalidateCloudFront: jest.fn(),
-    env: {
-      get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,
-      mustGet: (name: string) => {
-        const value = process.env[name];
-        if (!value) throw new Error(`required environment variable ${name} is not set`);
-        return value;
-      },
-    },
     withSmokeTest: (handler: any) => handler,
     emitManualFinalize: jest.fn(),
   };
@@ -174,6 +168,18 @@ function createDistributionConfig(lambdaArn: string, lambdaVersion: string, addi
   return config;
 }
 
+const testConfig: Config = {
+  logLevel: 'error',
+  serviceName: '',
+  project: 'serverlessinbox',
+  distTag: 'latest',
+  granularity: 'major',
+  artifactBucketBase: 'mailbox-artifacts',
+  rootStackTagValue: 'my-stack',
+  lockTableName: 'artifact-updater-lock',
+};
+const handler = createHandler({ config: testConfig, error: undefined });
+
 describe('Scheduled Updater Handler — Integration Tests', () => {
   const lambdaMock = mockClient(LambdaClient);
   const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
@@ -190,32 +196,11 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     taggingMock.reset();
     cloudFrontMock.reset();
     // Reset environment variables
-    delete process.env.DIST_TAG;
-    delete process.env.GRANULARITY;
-    delete process.env.PROJECT;
-    delete process.env.ARTIFACT_BUCKET_BASE;
-    delete process.env.ROOT_STACK_TAG_VALUE;
     delete process.env.AWS_REGION;
   });
 
   describe('handler (main entry point)', () => {
-    beforeEach(() => {
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-    });
-
-    it('requires ROOT_STACK_TAG_VALUE environment variable', async () => {
-      delete process.env.ROOT_STACK_TAG_VALUE;
-
-      await expect(handler({})).rejects.toThrow('required environment variable');
-    });
-
     it('scans both AWS_REGION and us-east-1 for Lambdas', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       process.env.AWS_REGION = 'us-west-2';
 
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
@@ -228,12 +213,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('updates lambda with auto-update-type=code (default)', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
         version: '1.2.4',
@@ -267,7 +246,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -292,11 +270,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
 
     it('routes ui auto-update-type on CloudFront distribution to advanceUiBucketIfStale', async () => {
       const cloudFrontMockLocal = mockClient(CloudFrontClient as any);
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
       process.env.AWS_REGION = 'us-east-1';
       process.env.AWS_ACCOUNT_ID = '123456789012';
 
@@ -340,12 +313,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('routes edge auto-update-type to advanceEdgeLambdaIfStale in us-east-1', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       process.env.AWS_REGION = 'us-east-1';
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
@@ -409,7 +377,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips edge update when not in us-east-1 region', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
       process.env.AWS_REGION = 'us-west-2';
 
       // First call (us-west-2): return edge lambda
@@ -439,7 +406,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -463,7 +429,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips Lambdas missing required artifact tags', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -485,7 +450,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips resource with auto-update-type=none and NO artifact tags (branch-order fix)', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       // Blob CDN distribution or infrastructure lambda: marked as auto-update-type=none with no artifact tags
       taggingMock.on(GetResourcesCommand).resolves({
@@ -508,7 +472,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips untagged resource (defaults to auto-update-type=none)', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -529,7 +492,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('logs missing artifact tags for auto-update-type=code resource missing artifact-version', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -553,7 +515,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('handles pagination correctly in region scan', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       // Queue responses: first page with continuation token, then second page without token
       taggingMock
@@ -598,7 +559,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('continues processing even if one Lambda update fails', async () => {
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
 
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [
@@ -645,11 +605,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       // Regression test: when REGISTERED_PACKAGES env var was used, packages like
       // 'mailbox-cdk-shared' (containing content-deployer) were silently filtered out.
       // After removing the env var filter, all packages with valid tags should be processed.
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
@@ -693,11 +648,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
 
   describe('Version comparison using real semver', () => {
     beforeEach(() => {
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
     });
 
     it('does not advance on downgrade (pointer version < deployed version)', async () => {
@@ -718,11 +668,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
   });
 
   describe('CFN custom resource trigger', () => {
-    beforeEach(() => {
-      process.env.AWS_LAMBDA_FUNCTION_NAME = 'artifact-updater';
-      process.env.AWS_REGION = 'us-east-1';
-    });
-
     it('detects CFN CR events by presence of ResponseURL, RequestType, StackId, and PhysicalResourceId', async () => {
       const notACfnEvent = {
         // Missing ResponseURL and StackId
@@ -732,11 +677,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
         PhysicalResourceId: 'my-resource-id',
       };
 
-      process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-      process.env.PROJECT = 'serverlessinbox';
-      process.env.DIST_TAG = 'latest';
-      process.env.GRANULARITY = 'major';
-      process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
 
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
@@ -832,11 +772,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
   });
 
   describe('HTTP API trigger', () => {
-    beforeEach(() => {
-      process.env.AWS_LAMBDA_FUNCTION_NAME = 'artifact-updater';
-      process.env.LOCK_TABLE_NAME = 'lock-table';
-    });
-
     it('routes HTTP POST /trigger to self-invoke with 202 response', async () => {
       const httpEvent: APIGatewayProxyEventV2 = {
         version: '2.0',
@@ -997,6 +932,20 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
 
       expect(result.statusCode).toBe(202);
       expect(JSON.parse(result.body)).toEqual({ status: 'triggered' });
+    });
+  });
+
+  describe('config error', () => {
+    const brokenHandler = createHandler({ config: testConfig, error: 'LOG_LEVEL: invalid log level "bogus"' });
+
+    it('HTTP API event with bad config returns 500 naming the problem', async () => {
+      const result = await brokenHandler({ requestContext: { http: { method: 'GET', path: '/artifact-updates/status' } } });
+      expect(result.statusCode).toBe(500);
+      expect(result.body).toContain('LOG_LEVEL');
+    });
+
+    it('EventBridge event with bad config rejects naming the problem', async () => {
+      await expect(brokenHandler({})).rejects.toThrow('LOG_LEVEL');
     });
   });
 });

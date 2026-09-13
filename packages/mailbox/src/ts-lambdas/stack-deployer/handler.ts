@@ -1,10 +1,24 @@
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
+import { load } from './config';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
+
+// Per-region CloudFormation client cache
+const cfClientCache = new Map<string, CloudFormationClient>();
+
+function getCfClient(region: string): CloudFormationClient {
+  if (!cfClientCache.has(region)) {
+    cfClientCache.set(region, new CloudFormationClient({ region }));
+  }
+  return cfClientCache.get(region)!;
+}
+
+const { config, error: configError } = env.tryLoad(load);
 
 // Poll attempt cap: ensures the worker responds within the CR serviceTimeout (60 min),
 // with comfortable headroom before CFN gives up. 135 attempts × 20s interval ≈ 45 min.
@@ -79,10 +93,25 @@ async function startExecutionWithSuffixRetry(
 }
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
-  const logger = new LoggerBuffer(service);
+  if (configError) {
+    // Config error: respond via CFN callback without logger (cannot use config values).
+    // Use Success for Delete to avoid blocking parent stack deletion.
+    const status = event.op.requestType === 'Delete' ? 'SUCCESS' : 'FAILED';
+    const reason = limitReason(`Configuration error: ${configError}`);
+    const physicalResourceId = event.op.stackName;
+    if (event.cfn) {
+      await putCfnResponse({
+        cfn: event.cfn,
+        status,
+        physicalResourceId,
+        reason,
+        logStreamName: context?.logStreamName,
+      });
+    }
+    return { done: true };
+  }
+
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
   const createRetryCount = typeof (event as any)?.createRetryCount === 'number' ? (event as any).createRetryCount : 0;
@@ -97,7 +126,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     parameterKeys: Object.keys(op.parameters ?? {}),
   });
 
-  const cfClient = makeCfClientFromOp(op);
+  const cfClient = makeCfClientFromOp(op, getCfClient);
 
   const fail = async (err: any, fallbackMessage: string): Promise<{ done: boolean }> => {
     logger.error('Stack deployer failed', {
@@ -142,7 +171,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
         }
         await deleteStackIfExists(op.stackName, cfClient);
       } else {
-        await startOrUpdateStack(op, logger);
+        await startOrUpdateStack(op, logger, getCfClient);
       }
       return { done: false };
     } catch (err: any) {
@@ -346,17 +375,9 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
 }
 
 async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<void> {
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
-  const logger = new LoggerBuffer(service);
-
   if (!event?.ResponseURL || !event?.RequestId || !event?.ResourceProperties) {
     throw new Error('Invalid event: expected CloudFormation custom resource event');
   }
-
-  const stateMachineArnRaw = env.get('MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN');
-  const physicalResourceId = event.ResourceProperties.stackName ?? 'MailboxStack';
 
   const cfn = {
     ResponseURL: event.ResponseURL,
@@ -365,6 +386,26 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     LogicalResourceId: event.LogicalResourceId,
     ResourceType: event.ResourceType,
   };
+
+  const physicalResourceId = event.ResourceProperties.stackName ?? 'MailboxStack';
+
+  // Config error: respond via CFN callback without logger (cannot use config values).
+  // Use Success for Delete to avoid blocking parent stack deletion.
+  if (configError) {
+    const status = event.RequestType === 'Delete' ? 'SUCCESS' : 'FAILED';
+    const reason = limitReason(`Configuration error: ${configError}`);
+    await putCfnResponse({
+      cfn,
+      status,
+      physicalResourceId,
+      reason,
+      logStreamName: context?.logStreamName,
+    });
+    return;
+  }
+
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+  const stateMachineArnRaw = config.stateMachineArn;
 
   // Emit break-glass finalization details for manual stack-resource recovery.
   // This is visibility into the CloudFormation response that can be manually sent
@@ -580,7 +621,7 @@ export const starterHandler = withSmokeTest(async (event: any, context: any): Pr
     logicalResourceId: (event as CfnCustomResourceEvent)?.LogicalResourceId,
   });
   await handleCfn(event as CfnCustomResourceEvent, context);
-});
+}, env.check(load));
 
 export const workerHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
   // Emit a single always-emit diagnostic marker for this trigger mode
@@ -589,4 +630,4 @@ export const workerHandler = withSmokeTest(async (event: any, context: any): Pro
     attempt: (event as SfnInvokeEvent)?.attempt,
   });
   return handleSfn(event as SfnInvokeEvent, context);
-});
+}, env.check(load));

@@ -1,8 +1,10 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { Route53Client, GetHostedZoneCommand } from '@aws-sdk/client-route-53';
+import { load } from './config';
 
 const r53 = new Route53Client({});
+const { config, error: configError } = env.tryLoad(load);
 
 export function sanitizeStackName(name: string): string {
   return name
@@ -46,14 +48,13 @@ export function deriveCognitoDomainPrefix(domainName: string, fallback: string):
   return result;
 }
 
-export const handler = wrapHandler(async (event) => {
-  // Read SERVICE_NAME at entry point; thread to sub-functions
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
+export const handler = withSmokeTest(wrapHandler(async (event) => {
+  // Custom resource handlers must use tryLoad at module scope; throw inside the handler
+  // so wrapHandler converts it to a CloudFormation FAILED response.
+  if (configError) throw new Error(configError);
 
   // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event, { service });
+  emitManualFinalize(event, { service: config.serviceName });
 
   if (event.RequestType === 'Delete') return {};
 
@@ -70,4 +71,4 @@ export const handler = wrapHandler(async (event) => {
   const cognitoDomainPrefix = deriveCognitoDomainPrefix(domainName, fallback || s3SafeDataStackName);
 
   return { Data: { domainName, s3SafeDataStackName, cognitoDomainPrefix } };
-});
+}), env.check(load));

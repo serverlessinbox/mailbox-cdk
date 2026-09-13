@@ -52,6 +52,18 @@ function logger(): LoggerBuffer {
   return new LoggerBuffer(undefined);
 }
 
+function eventsClient(): EventBridgeClient {
+  return new EventBridgeClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+}
+
+function lambdaClientFn(): LambdaClient {
+  return new LambdaClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+}
+
+function iamClientFn(): IAMClient {
+  return new IAMClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+}
+
 function mockAllSteps(): void {
   eventsMock.on(ListTagsForResourceCommand).resolves({
     Tags: [{ Key: 'serverless-inbox:root-stack', Value: ROOT_STACK_NAME }],
@@ -77,7 +89,7 @@ describe('sweepStackFailureDetector', () => {
   it('removes the rule targets, deletes the rule, function and role in sequence, and reports done', async () => {
     mockAllSteps();
 
-    const result = await sweepStackFailureDetector(input(), logger());
+    const result = await sweepStackFailureDetector(input(), logger(), eventsClient(), lambdaClientFn(), iamClientFn());
 
     expect(result).toEqual({ target: 'detector', status: 'done' });
     expect(eventsMock.commandCalls(RemoveTargetsCommand)[0].args[0].input).toEqual({
@@ -110,7 +122,7 @@ describe('sweepStackFailureDetector', () => {
       Object.assign(new Error('no such entity'), { name: 'NoSuchEntityException' }),
     );
 
-    const result = await sweepStackFailureDetector(input(), logger());
+    const result = await sweepStackFailureDetector(input(), logger(), eventsClient(), lambdaClientFn(), iamClientFn());
 
     expect(result).toEqual({ target: 'detector', status: 'done' });
   });
@@ -120,7 +132,7 @@ describe('sweepStackFailureDetector', () => {
       Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'someone-elses-stack' }],
     });
 
-    const result = await sweepStackFailureDetector(input(), logger());
+    const result = await sweepStackFailureDetector(input(), logger(), eventsClient(), lambdaClientFn(), iamClientFn());
 
     expect(result.status).toBe('failed');
     expect(result.reason).toContain('Ownership mismatch');
@@ -136,7 +148,7 @@ describe('sweepStackFailureDetector', () => {
     eventsMock.on(DeleteRuleCommand).resolves({});
     lambdaMock.on(GetFunctionCommand).resolves({ Tags: { 'serverless-inbox:root-stack': 'someone-elses-stack' } });
 
-    const result = await sweepStackFailureDetector(input(), logger());
+    const result = await sweepStackFailureDetector(input(), logger(), eventsClient(), lambdaClientFn(), iamClientFn());
 
     expect(result.status).toBe('failed');
     expect(iamMock.commandCalls(ListRoleTagsCommand)).toHaveLength(0);
@@ -148,7 +160,7 @@ describe('sweepStackFailureDetector', () => {
       Object.assign(new Error('conflict'), { name: 'DeleteConflictException' }),
     );
 
-    const result = await sweepStackFailureDetector(input(), logger());
+    const result = await sweepStackFailureDetector(input(), logger(), eventsClient(), lambdaClientFn(), iamClientFn());
 
     expect(result).toEqual({ target: 'detector', status: 'retry', reason: 'DeleteConflictException' });
   });

@@ -12,6 +12,7 @@
 
 import * as https from 'https';
 import type { Context, CloudFormationCustomResourceEvent } from 'aws-lambda';
+import type { Config } from '../config';
 import { createCfnTriggerHandler } from '../cfn-trigger';
 import { runUpdateCycle } from '../update-cycle';
 
@@ -42,6 +43,17 @@ function fakeContext(): Context {
   };
 }
 
+const testConfig: Config = {
+  logLevel: 'error',
+  serviceName: 'artifact-updater-service',
+  project: 'serverlessinbox',
+  distTag: 'latest',
+  granularity: 'major',
+  artifactBucketBase: 'mailbox-artifacts',
+  rootStackTagValue: 'my-stack',
+  lockTableName: 'artifact-updater-lock',
+};
+
 const baseFields = {
   ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
   ResponseURL: 'https://cloudformation-custom-resource-response-url.example.com/',
@@ -58,7 +70,7 @@ describe('cfnTriggerHandler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     writtenBodies = [];
-    cfnTriggerHandler = createCfnTriggerHandler();
+    cfnTriggerHandler = createCfnTriggerHandler(testConfig, undefined);
     mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
       // Simulate CloudFormation accepting the PUT immediately.
       process.nextTick(() => callback({ statusCode: 200, headers: {} }));
@@ -123,5 +135,33 @@ describe('cfnTriggerHandler', () => {
     // The error is caught and swallowed (documented, deliberate behavior) so CFN still sees SUCCESS.
     const response = JSON.parse(writtenBodies[0]);
     expect(response.Status).toBe('SUCCESS');
+  });
+
+  it('fails Create on config error and does not run the update cycle', async () => {
+    writtenBodies = [];
+    const cfnTriggerHandlerWithError = createCfnTriggerHandler(testConfig, 'LOG_LEVEL: invalid');
+    mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
+      process.nextTick(() => callback({ statusCode: 200, headers: {} }));
+      return {
+        on: jest.fn(),
+        write: jest.fn((body: string) => {
+          writtenBodies.push(body);
+        }),
+        end: jest.fn(),
+      };
+    });
+
+    const event: CloudFormationCustomResourceEvent = {
+      ...baseFields,
+      RequestType: 'Create',
+      ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
+    };
+
+    await cfnTriggerHandlerWithError(event, fakeContext(), () => {});
+
+    expect(mockRunUpdateCycle).not.toHaveBeenCalled();
+    expect(writtenBodies).toHaveLength(1);
+    const response = JSON.parse(writtenBodies[0]);
+    expect(response.Status).toBe('FAILED');
   });
 });

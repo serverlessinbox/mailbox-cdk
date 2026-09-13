@@ -8,7 +8,8 @@
 import * as t from 'typanion';
 import { Context, APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { load, type Config } from './config';
 import { createCfnTriggerHandler } from './cfn-trigger';
 import { handleHttpTrigger } from './http-trigger';
 import { runUpdateCycle } from './update-cycle';
@@ -77,37 +78,44 @@ function isHttpApiEvent(event: unknown): event is APIGatewayProxyEventV2 {
  * so the Lambda runtime waits for the full chain (including wrapHandler's HTTPS response PUT)
  * before considering the invocation complete.
  */
-export const handler = async (
-  event: unknown,
-  context?: Context,
-): Promise<any> => {
-  // Read SERVICE_NAME at entry point; thread to sub-functions
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
+export function createHandler(loaded: { config: Config; error: string | undefined }) {
+  const { config, error: configError } = loaded;
+  return async (
+    event: unknown,
+    context?: Context,
+  ): Promise<any> => {
+    // Compute dispatch mode once, log it via a single direct call — this line always emits
+    // regardless of outcome, so it never participates in LoggerBuffer's suppressed trace
+    // (see buffered-logging-pattern skill's narrow exception for always-on diagnostic markers).
+    const cfnCr = isCfnCrEvent(event);
+    const httpApi = !cfnCr && isHttpApiEvent(event);
+    console.info('artifact-updater dispatch', {
+      mode: cfnCr ? 'cfn-custom-resource' : httpApi ? 'http-api' : 'eventbridge-or-self-invoke',
+    });
 
-  // Compute dispatch mode once, log it via a single direct call — this line always emits
-  // regardless of outcome, so it never participates in LoggerBuffer's suppressed trace
-  // (see buffered-logging-pattern skill's narrow exception for always-on diagnostic markers).
-  const cfnCr = isCfnCrEvent(event);
-  const httpApi = !cfnCr && isHttpApiEvent(event);
-  console.info('artifact-updater dispatch', {
-    mode: cfnCr ? 'cfn-custom-resource' : httpApi ? 'http-api' : 'eventbridge-or-self-invoke',
-  });
+    if (cfnCr) {
+      // CFN CR event: invoke the wrapped handler that guarantees response sent.
+      // wrapHandler returns a CloudFormationCustomResourceHandler which has signature:
+      // (event, context, callback?) => void | Promise<void>
+      // Since wrapHandler handles responses internally, the callback is unused; pass no-op.
+      const cfnTriggerHandler = createCfnTriggerHandler(config, configError);
+      return cfnTriggerHandler(event, context!, () => {});
+    }
 
-  if (cfnCr) {
-    // CFN CR event: invoke the wrapped handler that guarantees response sent.
-    // wrapHandler returns a CloudFormationCustomResourceHandler which has signature:
-    // (event, context, callback?) => void | Promise<void>
-    // Since wrapHandler handles responses internally, the callback is unused; pass no-op.
-    const cfnTriggerHandler = createCfnTriggerHandler(service);
-    return cfnTriggerHandler(event, context!, () => {});
-  }
+    if (httpApi) {
+      if (configError) {
+        const logger = new LoggerBuffer();
+        logger.error('Configuration error', { error: configError });
+        logger.flush();
+        return { statusCode: 500, body: JSON.stringify({ error: `Configuration error: ${configError}` }) };
+      }
+      return handleHttpTrigger(event, config);
+    }
 
-  if (httpApi) {
-    return handleHttpTrigger(event, service);
-  }
+    // EventBridge or self-invoked: run the update cycle
+    if (configError) throw new Error(configError);
+    return runUpdateCycle(config);
+  };
+}
 
-  // EventBridge or self-invoked: run the update cycle
-  return runUpdateCycle(service);
-};
+export const handler = createHandler(env.tryLoad(load));

@@ -23,6 +23,10 @@ function logger(): LoggerBuffer {
   return new LoggerBuffer(undefined);
 }
 
+function lambdaClient(): LambdaClient {
+  return new LambdaClient({ region: 'us-east-1' });
+}
+
 beforeEach(() => {
   lambdaMock.reset();
 });
@@ -34,7 +38,7 @@ describe('sweepEdgeFn', () => {
     });
     lambdaMock.on(DeleteFunctionCommand).resolves({});
 
-    const result = await sweepEdgeFn(input(), logger());
+    const result = await sweepEdgeFn(input(), logger(), lambdaClient());
 
     expect(result).toEqual({ target: 'edge-fn', status: 'done' });
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)[0].args[0].input).toEqual({
@@ -47,7 +51,7 @@ describe('sweepEdgeFn', () => {
       Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }),
     );
 
-    const result = await sweepEdgeFn(input(), logger());
+    const result = await sweepEdgeFn(input(), logger(), lambdaClient());
 
     expect(result).toEqual({ target: 'edge-fn', status: 'done' });
   });
@@ -57,7 +61,7 @@ describe('sweepEdgeFn', () => {
       Tags: { 'serverless-inbox:root-stack': 'someone-elses-stack' },
     });
 
-    const result = await sweepEdgeFn(input(), logger());
+    const result = await sweepEdgeFn(input(), logger(), lambdaClient());
 
     expect(result.status).toBe('failed');
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)).toHaveLength(0);
@@ -71,7 +75,7 @@ describe('sweepEdgeFn', () => {
       Object.assign(new Error('still replicated'), { name: 'InvalidParameterValueException' }),
     );
 
-    const result = await sweepEdgeFn(input(), logger());
+    const result = await sweepEdgeFn(input(), logger(), lambdaClient());
 
     expect(result.status).toBe('retry');
   });

@@ -1,3 +1,6 @@
+// Set env vars before importing the handler (which loads config at module scope)
+process.env['MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+
 import * as handler from '../handler';
 import * as cfnStack from '../cfn-stack';
 import * as cfnResponse from '../cfn-response';
@@ -584,6 +587,11 @@ describe('stack deployer handler - KMS transient-error retry (Create operations)
 describe('stack deployer handlers — smoke test wrapper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+  });
+
+  afterEach(() => {
+    delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
   });
 
   describe('starterHandler', () => {
@@ -606,4 +614,228 @@ describe('stack deployer handlers — smoke test wrapper', () => {
       expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
     });
   });
+});
+
+describe('stack deployer handlers — config error handling', () => {
+  const baseCfnEvent = {
+    RequestType: 'Create' as const,
+    ResponseURL: 'https://example.com/cfn-response',
+    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123',
+    RequestId: 'test-request-id-123',
+    LogicalResourceId: 'StackDeployer',
+    ResourceType: 'AWS::CloudFormation::CustomResource',
+    ResourceProperties: {
+      stackName: 'test-edge-stack',
+      templateUrl: 'https://example.com/template.json',
+    },
+  };
+
+  const baseSfnEvent: SfnInvokeEvent = {
+    mode: 'start',
+    cfn: {
+      ResponseURL: 'https://example.com/cfn-response',
+      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/abc',
+      RequestId: 'test-request-id',
+      LogicalResourceId: 'TestResource',
+    },
+    op: {
+      requestType: 'Create',
+      stackName: 'test-sfn-stack',
+      templateUrl: 'https://example.com/template.json',
+    },
+  };
+
+  describe('starterHandler with bad config', () => {
+    it('Create event with bad LOG_LEVEL should send FAILED response', async () => {
+      jest.isolateModules(() => {
+        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        // Re-require the handler to reload with bad config
+        const handlerModule = require('../handler');
+
+        return handlerModule.starterHandler(baseCfnEvent, {}).then(() => {
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'FAILED',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Delete event with bad LOG_LEVEL should send SUCCESS response', async () => {
+      jest.isolateModules(() => {
+        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.starterHandler(
+          { ...baseCfnEvent, RequestType: 'Delete' },
+          {}
+        ).then(() => {
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'SUCCESS',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Create event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send FAILED response', async () => {
+      jest.isolateModules(() => {
+        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.starterHandler(baseCfnEvent, {}).then(() => {
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'FAILED',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Delete event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send SUCCESS response', async () => {
+      jest.isolateModules(() => {
+        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.starterHandler(
+          { ...baseCfnEvent, RequestType: 'Delete' },
+          {}
+        ).then(() => {
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'SUCCESS',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+  });
+
+  describe('workerHandler with bad config', () => {
+    it('Create event with bad LOG_LEVEL should send FAILED response and return done: true', async () => {
+      jest.isolateModules(() => {
+        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.workerHandler(baseSfnEvent, {}).then((result: any) => {
+          expect(result).toEqual({ done: true });
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'FAILED',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Delete event with bad LOG_LEVEL should send SUCCESS response and return done: true', async () => {
+      jest.isolateModules(() => {
+        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.workerHandler(
+          { ...baseSfnEvent, op: { ...baseSfnEvent.op, requestType: 'Delete' } },
+          {}
+        ).then((result: any) => {
+          expect(result).toEqual({ done: true });
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'SUCCESS',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Create event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send FAILED response', async () => {
+      jest.isolateModules(() => {
+        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.workerHandler(baseSfnEvent, {}).then((result: any) => {
+          expect(result).toEqual({ done: true });
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'FAILED',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+
+    it('Delete event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send SUCCESS response', async () => {
+      jest.isolateModules(() => {
+        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+
+        jest.clearAllMocks();
+        const cfnResponse = require('../cfn-response');
+        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+
+        const handlerModule = require('../handler');
+
+        return handlerModule.workerHandler(
+          { ...baseSfnEvent, op: { ...baseSfnEvent.op, requestType: 'Delete' } },
+          {}
+        ).then((result: any) => {
+          expect(result).toEqual({ done: true });
+          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+              status: 'SUCCESS',
+              reason: expect.stringContaining('Configuration error'),
+            })
+          );
+        });
+      });
+    });
+  });
+
 });

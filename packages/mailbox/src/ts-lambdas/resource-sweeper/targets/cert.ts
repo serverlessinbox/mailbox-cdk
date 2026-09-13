@@ -12,11 +12,10 @@ import type { CertRemovalInput, TargetResult } from './types';
  * DescribeCertificate → check InUseBy. If empty, DeleteCertificate.
  * ResourceNotFoundException → already done. Ownership mismatch → failed. InUseBy non-empty → retry.
  */
-export async function sweepCert(input: CertRemovalInput, logger: LoggerBuffer): Promise<TargetResult> {
+export async function sweepCert(input: CertRemovalInput, logger: LoggerBuffer, acmClient: ACMClient): Promise<TargetResult> {
   const { certArn } = input;
 
   try {
-    const acmClient = new ACMClient({ region: process.env.AWS_REGION });
 
     logger.debug('Verifying ACM cert ownership');
     try {

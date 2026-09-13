@@ -9,10 +9,6 @@ import {
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { OperationInput } from './types';
 
-function makeCfClient(region: string): CloudFormationClient {
-  return new CloudFormationClient({ region });
-}
-
 export function toCfnParameters(parameters?: Record<string, string | undefined>): Array<{ ParameterKey: string; ParameterValue: string }> {
   if (!parameters) {
     return [];
@@ -110,8 +106,8 @@ export function requiresRecreate(status?: string): boolean {
   return status === 'ROLLBACK_FAILED' || status === 'ROLLBACK_COMPLETE';
 }
 
-export async function startOrUpdateStack(op: OperationInput, logger: LoggerBuffer): Promise<void> {
-  const cfClient = makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
+export async function startOrUpdateStack(op: OperationInput, logger: LoggerBuffer, getCfClient: (region: string) => CloudFormationClient): Promise<void> {
+  const cfClient = getCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
   const parameters = toCfnParameters(op.parameters);
   const tags = toCfnTags(op.tags);
   // Log parameter keys only (not values, which may contain sensitive data like adminUsername)
@@ -235,8 +231,8 @@ export function matchesKmsTransientSignature(failureText: string): boolean {
   return lower.includes('notfoundexception') && lower.includes('kms');
 }
 
-export function makeCfClientFromOp(op: OperationInput): CloudFormationClient {
-  return makeCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
+export function makeCfClientFromOp(op: OperationInput, getCfClient: (region: string) => CloudFormationClient): CloudFormationClient {
+  return getCfClient(op.region ?? process.env.AWS_REGION ?? 'us-east-1');
 }
 
 export function isTerminalSuccess(status?: string): boolean {

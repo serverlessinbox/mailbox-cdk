@@ -8,11 +8,10 @@ import type { EdgeFunctionRemovalInput, TargetResult } from './types';
  * ResourceNotFoundException → already done. Ownership mismatch → failed.
  * Other error (e.g. CloudFront replicas still draining) → retry.
  */
-export async function sweepEdgeFn(input: EdgeFunctionRemovalInput, logger: LoggerBuffer): Promise<TargetResult> {
+export async function sweepEdgeFn(input: EdgeFunctionRemovalInput, logger: LoggerBuffer, lambdaClient: LambdaClient): Promise<TargetResult> {
   const { edgeFnArn } = input;
 
   try {
-    const lambdaClient = new LambdaClient({ region: 'us-east-1' });
     // Format: arn:aws:lambda:us-east-1:ACCOUNT:function:FUNCTION-NAME
     const functionName = edgeFnArn.split(':').pop()!;
 

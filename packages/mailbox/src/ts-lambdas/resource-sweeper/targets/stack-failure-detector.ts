@@ -15,10 +15,9 @@ interface StepResult {
 }
 
 /** Removes the detector's EventBridge rule. ResourceNotFoundException → already done. */
-async function sweepRule(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer): Promise<StepResult> {
+async function sweepRule(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer, eventsClient: EventBridgeClient): Promise<StepResult> {
   const ruleName = input.ruleArn.split('/').pop()!;
   try {
-    const eventsClient = new EventBridgeClient({ region: process.env.AWS_REGION });
     try {
       logger.debug('Verifying EventBridge rule ownership');
       const tagsResp = await eventsClient.send(new ListTagsForResourceCommand({ ResourceARN: input.ruleArn }));
@@ -59,9 +58,8 @@ async function sweepRule(input: StackFailureDetectorRemovalInput, logger: Logger
  * Removes the detector Lambda function — same shape as `edge-fn.ts`, but in the STACK'S OWN
  * region (not us-east-1): the stack-failure detector is a regular regional Lambda.
  */
-async function sweepDetectorFn(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer): Promise<StepResult> {
+async function sweepDetectorFn(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer, lambdaClient: LambdaClient): Promise<StepResult> {
   try {
-    const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
     const functionName = input.detectorFnArn.split(':').pop()!;
 
     try {
@@ -105,11 +103,10 @@ async function sweepDetectorFn(input: StackFailureDetectorRemovalInput, logger: 
  * attached policy is still draining — that is the one genuinely retryable case here.
  * NoSuchEntityException → already done.
  */
-async function sweepDetectorRole(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer): Promise<StepResult> {
+async function sweepDetectorRole(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer, iamClient: IAMClient): Promise<StepResult> {
   const roleName = input.detectorRoleArn.split('/').pop()!;
 
   try {
-    const iamClient = new IAMClient({ region: process.env.AWS_REGION });
 
     try {
       logger.debug('Verifying detector IAM role ownership');
@@ -169,14 +166,20 @@ async function sweepDetectorRole(input: StackFailureDetectorRemovalInput, logger
  * re-invoking after a partial pass (e.g. a role DeleteConflictException) just re-verifies the
  * earlier steps are gone and resumes at whichever one didn't finish.
  */
-export async function sweepStackFailureDetector(input: StackFailureDetectorRemovalInput, logger: LoggerBuffer): Promise<TargetResult> {
-  const rule = await sweepRule(input, logger);
+export async function sweepStackFailureDetector(
+  input: StackFailureDetectorRemovalInput,
+  logger: LoggerBuffer,
+  eventsClient: EventBridgeClient,
+  lambdaClient: LambdaClient,
+  iamClient: IAMClient,
+): Promise<TargetResult> {
+  const rule = await sweepRule(input, logger, eventsClient);
   if (rule.status !== 'done') return { target: 'detector', status: rule.status, reason: rule.reason };
 
-  const fn = await sweepDetectorFn(input, logger);
+  const fn = await sweepDetectorFn(input, logger, lambdaClient);
   if (fn.status !== 'done') return { target: 'detector', status: fn.status, reason: fn.reason };
 
-  const role = await sweepDetectorRole(input, logger);
+  const role = await sweepDetectorRole(input, logger, iamClient);
   if (role.status !== 'done') return { target: 'detector', status: role.status, reason: role.reason };
 
   return { target: 'detector', status: 'done' };

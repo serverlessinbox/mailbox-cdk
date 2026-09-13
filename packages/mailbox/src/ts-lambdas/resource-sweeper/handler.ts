@@ -2,14 +2,26 @@ import { wrapHandler } from 'aws-custom-resources';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
+import { ACMClient } from '@aws-sdk/client-acm';
+import { LambdaClient } from '@aws-sdk/client-lambda';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
+import { IAMClient } from '@aws-sdk/client-iam';
 import { sweepCert } from './targets/cert';
 import { sweepEdgeFn } from './targets/edge-fn';
 import { sweepStackFailureDetector } from './targets/stack-failure-detector';
 import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult } from './targets/types';
+import { load } from './config';
 
 export type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput } from './targets/types';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
+const acmClient = new ACMClient({ region: process.env.AWS_REGION });
+const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
+const lambdaClientEdge = new LambdaClient({ region: 'us-east-1' });
+const eventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION });
+const iamClient = new IAMClient({ region: process.env.AWS_REGION });
+
+const { config, error: configError } = env.tryLoad(load);
 
 /**
  * Discriminated per-removal-type payload the worker Lambda dispatches on. Each removal's CDK
@@ -141,23 +153,22 @@ export function computeSweepTargets(event: CloudFormationCustomResourceEvent): R
  * removal type, each taking only its own input shape.
  */
 export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
-  const logger = new LoggerBuffer(service);
+  if (configError) throw new Error(configError);
+
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
   logger.debug('Worker invoked', { removalType: input.removalType, rootStackName: input.rootStackName });
 
   let result: TargetResult;
   switch (input.removalType) {
     case 'cert':
-      result = await sweepCert(input, logger);
+      result = await sweepCert(input, logger, acmClient);
       break;
     case 'edge-fn':
-      result = await sweepEdgeFn(input, logger);
+      result = await sweepEdgeFn(input, logger, lambdaClientEdge);
       break;
     case 'detector':
-      result = await sweepStackFailureDetector(input, logger);
+      result = await sweepStackFailureDetector(input, logger, eventBridgeClient, lambdaClient, iamClient);
       break;
   }
 
@@ -172,7 +183,7 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
 
   logger.flush();
   return toWorkerOutput(result);
-});
+}, env.check(load));
 
 /**
  * Starter handler: fires a single Step Functions execution to sweep whatever `computeSweepTargets`
@@ -192,13 +203,14 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
  * completing (best-effort).
  */
 export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
-  // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-  // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-  const service = env.get('SERVICE_NAME', undefined);
-  const logger = new LoggerBuffer(service);
+  // Custom resource handlers must use tryLoad at module scope; throw inside the handler
+  // so wrapHandler converts it to a CloudFormation FAILED response.
+  if (configError) throw new Error(configError);
+
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
   // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event, { service });
+  emitManualFinalize(event, { service: config.serviceName });
 
   // Emit single always-emit diagnostic marker for this trigger mode
   console.info('resource-sweeper-starter dispatch', {
@@ -212,7 +224,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     logicalResourceId: event.LogicalResourceId,
   });
 
-  const smArn = process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN']!;
+  const smArn = config.sweeperStateMachineArn;
 
   // cast: wrapHandler's own event type (`TypeSafeCloudFormationResourceEvent`, from
   // `aws-custom-resources`) is `Omit<CloudFormationCustomResourceEvent, 'ResponseURL'>` — but `Omit`
@@ -289,4 +301,4 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     PhysicalResourceId: 'mailbox-deferred-removal',
     Data: {},
   };
-}));
+}), env.check(load));

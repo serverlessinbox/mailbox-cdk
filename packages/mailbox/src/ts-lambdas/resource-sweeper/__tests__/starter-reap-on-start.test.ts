@@ -6,6 +6,9 @@
  * it, and is the migration path for a stack that already has one wedged in place.
  */
 
+// Set env vars before importing the handler (which loads config at module scope)
+process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
+
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   SFNClient,

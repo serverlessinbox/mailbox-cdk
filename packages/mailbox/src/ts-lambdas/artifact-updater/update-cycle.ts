@@ -3,35 +3,35 @@ import {
   GetResourcesCommand,
 } from '@aws-sdk/client-resource-groups-tagging-api';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { Config } from './config';
 import { advanceLambdaIfStale } from './update-code';
 import { advanceUiBucketIfStale } from './update-ui';
 import { advanceEdgeLambdaIfStale } from './update-edge';
-import { getUpdaterEnv, tagMapFrom } from './common';
+import { tagMapFrom } from './common';
 
 /**
  * Run the artifact update cycle: scan for stale resources and update them.
  * Implements buffered logging: only logs when updates occur or errors happen.
  * Scans both regions and filters by registered packages.
  */
-export async function runUpdateCycle(service?: string): Promise<void> {
-  const logger = new LoggerBuffer(service);
+export async function runUpdateCycle(config: Config): Promise<void> {
+  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
   try {
-    const updaterEnv = getUpdaterEnv();
     // Extract config needed for update functions
     const updateConfig = {
-      distTag: updaterEnv.distTag,
-      granularity: updaterEnv.granularity,
-      project: updaterEnv.project,
-      artifactBucketBase: updaterEnv.artifactBucketBase,
+      distTag: config.distTag,
+      granularity: config.granularity,
+      project: config.project,
+      artifactBucketBase: config.artifactBucketBase,
     };
     const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
     const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
 
     logger.info('artifact update cycle started', {
-      rootStackTag: updaterEnv.rootStackTagValue,
+      rootStackTag: config.rootStackTagValue,
       regions: uniqueRegions,
-      granularity: updaterEnv.granularity,
+      granularity: config.granularity,
     });
 
     // Scan Lambda functions and CloudFront distributions in both regions.
@@ -42,7 +42,7 @@ export async function runUpdateCycle(service?: string): Promise<void> {
       do {
         const response = await tagging.send(
           new GetResourcesCommand({
-            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [updaterEnv.rootStackTagValue] }],
+            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [config.rootStackTagValue] }],
             ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
             PaginationToken: nextToken,
           }),
