@@ -8,9 +8,6 @@ export interface ResourceSweeperStarterLambdaProps {
 
   /** ARN of the state machine to start */
   stateMachineArn: string;
-
-  /** Root stack name */
-  rootStackName: string;
 }
 
 /**
@@ -30,7 +27,6 @@ export class ResourceSweeperStarterLambda extends TypeScriptLambda {
       memorySize: 256,
       environment: {
         MAILBOX_SWEEPER_STATE_MACHINE_ARN: props.stateMachineArn,
-        MAILBOX_SWEEPER_ROOT_STACK_NAME: props.rootStackName,
       },
     });
   }

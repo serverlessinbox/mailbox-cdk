@@ -26,7 +26,6 @@ export interface ApiHandlerLambdaProps {
   auditEventsQueue: any;
   cdnHost: string;
   apiBaseUrl: string;
-  sesConfigSetName: string;
   artifactResolver: ICdkArtifactEngine;
   identityProvisionerFunction: IFunction;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
@@ -56,7 +55,6 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        SES_CONFIG_SET_NAME: props.sesConfigSetName,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
         OAUTH_HANDLER_CONFIG: JSON.stringify({
           issuer: props.oauthHandlerConfig.issuer,

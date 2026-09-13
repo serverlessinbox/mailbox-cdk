@@ -336,7 +336,6 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
-        sesConfigSetName: 'test-config-set',
         vendorAccountIds: ['123456789012'],
       });
 
@@ -377,7 +376,6 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
-        sesConfigSetName: 'test-config-set',
         vendorAccountIds: ['123456789012'],
       });
 
@@ -421,13 +419,11 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
-        sesConfigSetName: 'test-config-set',
         vendorAccountIds: ['123456789012'],
       });
 
       // Create McpApi with the JMAP authorizer
       new McpApi(apiGroup, 'mcp-api', {
-        configTable,
         jmapApiGateway: jmapApi.httpApi,
         authorizerLambda: jmapApi.authorizerLambda,
         certificate,
@@ -478,12 +474,10 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
         authProvider: mockAuthProvider,
         identityProvisionerFunction,
-        sesConfigSetName: 'test-config-set',
         vendorAccountIds: ['123456789012'],
       });
 
       new McpApi(apiGroup, 'mcp-api', {
-        configTable,
         jmapApiGateway: jmapApi.httpApi,
         authorizerLambda: jmapApi.authorizerLambda,
         certificate,

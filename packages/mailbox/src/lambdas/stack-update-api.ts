@@ -16,7 +16,6 @@ export interface StackUpdateApiLambdaProps {
   readonly pointerKey: string;
   readonly templateUrlTemplate: string;
   readonly auditEventsQueue: IQueue;
-  readonly distTag?: string;
 }
 
 /**
@@ -41,13 +40,11 @@ export class StackUpdateApiLambda extends GoLambda {
       environment: {
         ROOT_STACK_ARN: props.rootStackArn,
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
         TEMPLATE_VERSION_PARAM_NAME: props.templateVersionParamName,
         POINTER_BUCKET: props.pointerBucket,
         POINTER_KEY: props.pointerKey,
         TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        DIST_TAG: props.distTag ?? 'stable',
       },
     });
 

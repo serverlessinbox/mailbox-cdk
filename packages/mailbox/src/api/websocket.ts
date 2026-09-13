@@ -156,9 +156,7 @@ export class WebSocketPush extends Construct {
     // Lambda: $connect
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.connectionsTable,
-      authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
-      maxSubscriptions: maxSubscriptions,
       artifactResolver: props.artifactResolver,
     });
 

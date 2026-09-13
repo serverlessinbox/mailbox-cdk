@@ -829,7 +829,6 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       authProvider,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
       identityProvisionerFunction: identityProvisioner,
 
       oauthClientId: jmapOAuthClientId,
@@ -888,7 +887,6 @@ export class Mailbox extends Construct {
     });
 
     const mcpApi = props.enableMcp ? new McpApi(groups.apis, 'mcp-api', {
-      configTable: this._configTable,
       jmapApiGateway: this._jmapApi.httpApi,
       authorizerLambda: this._jmapApi.authorizerLambda,
       certificate: this.certificates.regional!,

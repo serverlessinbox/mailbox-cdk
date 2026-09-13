@@ -224,7 +224,6 @@ export class SweeperInfra extends Construct {
     this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
       artifactResolver: props.artifactResolver,
       stateMachineArn: smArn,
-      rootStackName: Aws.STACK_NAME,
     });
 
     // Worker role: single consolidated inline policy for every registered removal's grants, plus

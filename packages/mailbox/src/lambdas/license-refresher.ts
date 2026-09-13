@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Aws, Duration } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -22,7 +22,6 @@ export class LicenseRefresherLambda extends GoLambda {
       timeout: Duration.seconds(30),
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        INSTANCE_ID: Aws.STACK_NAME,
         CORE_DOMAIN: props.coreDomain,
       },
     });

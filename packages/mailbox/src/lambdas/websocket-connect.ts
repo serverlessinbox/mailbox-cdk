@@ -6,9 +6,7 @@ import { Construct } from 'constructs';
 
 export interface WebSocketConnectLambdaProps {
   connectionsTable: ITable;
-  authKeyStoreTable: ITable;
   configTable: ITable;
-  maxSubscriptions: number;
   artifactResolver: ICdkArtifactEngine;
 }
 
@@ -22,15 +20,12 @@ export class WebSocketConnectLambda extends GoLambda {
       memorySize: 256,
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        MAX_SUBSCRIPTIONS: props.maxSubscriptions.toString(),
       },
     });
 
     // Grant permissions
     props.connectionsTable.grantWriteData(this);
-    props.authKeyStoreTable.grantReadData(this);
     props.configTable.grantReadData(this);
   }
 }

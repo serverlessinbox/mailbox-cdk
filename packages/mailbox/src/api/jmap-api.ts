@@ -46,8 +46,6 @@ export interface JMapApiProps {
   readonly artifactResolver: ICdkArtifactEngine;
   readonly authProvider: IMailboxAuthProvider;
 
-  readonly sesConfigSetName: string;
-
   /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */
   readonly identityProvisionerFunction: IFunction;
 
@@ -156,7 +154,6 @@ export class JMapApi extends Construct {
       auditEventsQueue: props.auditEventsQueue,
       cdnHost: props.cdnHost,
       apiBaseUrl: this.url,
-      sesConfigSetName: props.sesConfigSetName,
       artifactResolver: props.artifactResolver,
       identityProvisionerFunction: identityProvisionerLambda,
       vendorAccountIds: props.vendorAccountIds,

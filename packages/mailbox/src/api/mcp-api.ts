@@ -10,7 +10,6 @@ import {
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws } from 'aws-cdk-lib';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -18,7 +17,6 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { GoLambda } from '../utils/go-lambda';
 
 export interface McpApiProps {
-  configTable: dynamodb.ITable;
   jmapApiGateway: apigwv2.IHttpApi;
   authorizerLambda: lambda.IFunction;
   certificate: acm.ICertificate;
@@ -66,14 +64,10 @@ export class McpApi extends Construct {
       memorySize: 256,
       timeout: Duration.seconds(29),
       environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
         JMAP_API_URL: props.jmapApiGateway.apiEndpoint,
         OAUTH_SCOPE_MAP: JSON.stringify(props.scopeMap),
       },
     });
-
-    // Grant read-only access to the config table.
-    props.configTable.grantReadData(handlerLambda);
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', props.authorizerLambda);
 

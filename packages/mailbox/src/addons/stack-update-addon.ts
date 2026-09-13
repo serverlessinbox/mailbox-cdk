@@ -99,7 +99,6 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       pointerKey,
       templateUrlTemplate,
       auditEventsQueue: props.auditEventsQueue,
-      distTag: props.distTag,
     });
 
     // Grant the Lambda read access to the template-version parameter.
