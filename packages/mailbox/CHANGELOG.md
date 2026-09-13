@@ -4,6 +4,56 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.82...v0.1.0) (Sun Sep 13 2026)
+
+### refactor
+
+* expose stack failure detection infra via interfaces ([4727cc9](https://github.com/serverlessinbox/mailbox-cdk/commit/4727cc9add2ae53c5e861812b5fa34234837f052))
+
+* **mailbox** drop env vars and IAM grants no Lambda reads ([082b106](https://github.com/serverlessinbox/mailbox-cdk/commit/082b106f0d7b40a3477ac625bf7419fa30051dc7))
+
+* **mailbox** TS Lambdas load config once via the shared loader ([e241877](https://github.com/serverlessinbox/mailbox-cdk/commit/e2418779c186526b6edf86f43d725648c8251c64))
+
+### feat
+
+* IAM Tightening ([a034cf7](https://github.com/serverlessinbox/mailbox-cdk/commit/a034cf713a7da72d73ada4f0aae6acd0f16e4513))
+
+* Context keys rename ([50b08b0](https://github.com/serverlessinbox/mailbox-cdk/commit/50b08b07e1511df15990a02694e2a529ea6883f7))
+
+* Deployer type changes ([f84580d](https://github.com/serverlessinbox/mailbox-cdk/commit/f84580dadc227612aefb5176bb827e2d9cbbe924))
+
+* Context standardization ([13fee58](https://github.com/serverlessinbox/mailbox-cdk/commit/13fee5816c6f9bff8d7e59f603a4fd87183acbef))
+
+* Removed unneeded exports from public api ([93b8005](https://github.com/serverlessinbox/mailbox-cdk/commit/93b800543a7625c95b8cb7f2ca2a26bcb6e68bd9))
+
+* Tag keys and iam tightening ([ef3c807](https://github.com/serverlessinbox/mailbox-cdk/commit/ef3c8072f6a2c76c8a53688ac9a8930a810708fe))
+
+* Vendor and tag chaining ([a6f1250](https://github.com/serverlessinbox/mailbox-cdk/commit/a6f1250bc970d06da61613c4fb525d0d095f1225))
+
+* Vendor account wiring ([b4715e6](https://github.com/serverlessinbox/mailbox-cdk/commit/b4715e6268ee6fc1653a42e5f83f4750e0b1b6d0))
+
+* Sweeper safeties ([7779e96](https://github.com/serverlessinbox/mailbox-cdk/commit/7779e9690a103e907ec447105e794eea4792ef78))
+
+* TS logger emit-level parity with Go, shared LoggerBuffer, injected AWS clients ([9044682](https://github.com/serverlessinbox/mailbox-cdk/commit/9044682e1b8ac7dbbd1ec27282e843817604c77d))
+
+### chore
+
+* Context, vendors account testing ([04569f7](https://github.com/serverlessinbox/mailbox-cdk/commit/04569f727475de82c33b02223f7dbbb99b774971))
+
+* Jsii generation ([c68aaf1](https://github.com/serverlessinbox/mailbox-cdk/commit/c68aaf1f36cc19b30c4ff1ad981f6d99a83997f5))
+
+* Clean up old cache table references ([ad5436b](https://github.com/serverlessinbox/mailbox-cdk/commit/ad5436bd70c76496710792773274133e80cea231))
+
+* Upgrade to node 24 ([3c1cac1](https://github.com/serverlessinbox/mailbox-cdk/commit/3c1cac14023292da0d97dec0d46507014baebd02))
+
+### fix
+
+* IAM Tightening for send mail ([106ee12](https://github.com/serverlessinbox/mailbox-cdk/commit/106ee12670009911b955809fa0daa7c3f61a0151))
+
+### test
+
+* Fix testing ([390bb85](https://github.com/serverlessinbox/mailbox-cdk/commit/390bb85d3c27f9601f8345f97efc9296003728a9))
+
 ## [0.0.82](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.81...v0.0.82) (Wed Sep 09 2026)
 
 ### refactor
