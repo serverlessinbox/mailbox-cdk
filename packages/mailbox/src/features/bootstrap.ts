@@ -14,7 +14,6 @@ import {
 
 export interface BootstrapProps {
   readonly configTable: ITable;
-  readonly jwkCacheTable: ITable;
   readonly authKeyStoreTable: ITable;
 
   readonly tenantName?: string;
@@ -59,7 +58,6 @@ export class Bootstrap extends Construct {
 
     const handler = new BootstrapLambda(this, 'handler', {
       configTable: props.configTable,
-      jwkCacheTable: props.jwkCacheTable,
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
       domain: props.domain,

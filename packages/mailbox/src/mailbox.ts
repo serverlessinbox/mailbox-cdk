@@ -665,7 +665,6 @@ export class Mailbox extends Construct {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable: dataRef.configTable,
-      jwkCacheTable: authKeyStore.table,
       authKeyStoreTable: authKeyStore.table,
       artifactResolver,
       sesRuleSet: sesRules.ruleSet,

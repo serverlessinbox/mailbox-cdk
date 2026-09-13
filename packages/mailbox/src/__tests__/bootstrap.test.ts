@@ -22,7 +22,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
   let configTable: dynamodb.ITable;
-  let jwkCacheTable: dynamodb.ITable;
   let authKeyStoreTable: dynamodb.ITable;
   let ruleSet: ses.IReceiptRuleSet;
 
@@ -55,10 +54,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
-    jwkCacheTable = new dynamodb.Table(stack, 'jwk-cache-table', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
     authKeyStoreTable = new dynamodb.Table(stack, 'auth-key-store-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -70,7 +65,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
   it('sets SES_RULE_SET_NAME and omits SES_RECEIVING_MODE when no receiving mode is configured', () => {
     new BootstrapLambda(stack, 'bootstrap', {
       configTable,
-      jwkCacheTable,
       authKeyStoreTable,
       artifactResolver,
       domain: 'example.com',
@@ -91,7 +85,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
   it('sets both SES_RULE_SET_NAME and SES_RECEIVING_MODE when a receiving mode is configured', () => {
     new BootstrapLambda(stack, 'bootstrap', {
       configTable,
-      jwkCacheTable,
       authKeyStoreTable,
       artifactResolver,
       domain: 'example.com',
@@ -113,7 +106,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
   it('sets STACK_IDENTITY_TAG_KEY to ServerlessInboxTagKeys.rootStack', () => {
     new BootstrapLambda(stack, 'bootstrap', {
       configTable,
-      jwkCacheTable,
       authKeyStoreTable,
       artifactResolver,
       domain: 'example.com',
@@ -133,7 +125,6 @@ describe('BootstrapLambda SES rule set wiring', () => {
   it('scopes ses:TagResource to its own statement gated by RequestTag and TagKeys', () => {
     new BootstrapLambda(stack, 'bootstrap', {
       configTable,
-      jwkCacheTable,
       authKeyStoreTable,
       artifactResolver,
       domain: 'example.com',

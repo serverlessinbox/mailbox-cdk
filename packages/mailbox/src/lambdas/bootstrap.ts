@@ -11,7 +11,6 @@ export type SesReceivingMode = 'off' | 'on' | 'forced';
 
 export interface BootstrapLambdaProps {
   configTable: ITable;
-  jwkCacheTable: ITable;
   authKeyStoreTable: ITable;
   artifactResolver: ICdkArtifactEngine;
   domain: string;
@@ -35,7 +34,6 @@ export class BootstrapLambda extends GoLambda {
       timeout: Duration.seconds(30),
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        JWK_CACHE_TABLE_NAME: props.jwkCacheTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
         STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
@@ -57,7 +55,6 @@ export class BootstrapLambda extends GoLambda {
     }));
 
     props.configTable.grantReadWriteData(this);
-    props.jwkCacheTable.grantReadWriteData(this);
     props.authKeyStoreTable.grantReadWriteData(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
