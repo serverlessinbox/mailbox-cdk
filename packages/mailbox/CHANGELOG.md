@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.1...v0.1.2) (Mon Sep 14 2026)
+
+### feat
+
+* Stack update through state machine ([90facff](https://github.com/serverlessinbox/mailbox-cdk/commit/90facff08095cd287d6135a2c90580e03944ff5a))
+
 ## [0.1.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.0...v0.1.1) (Mon Sep 14 2026)
 
 ### fix
