@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.0...v0.1.1) (Mon Sep 14 2026)
+
+### fix
+
+* Added missing permissions ([45c31dc](https://github.com/serverlessinbox/mailbox-cdk/commit/45c31dcc5350b9818e767425e47273d66cc5a5f1))
+
 ## [0.1.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.0.82...v0.1.0) (Sun Sep 13 2026)
 
 ### refactor
