@@ -12,6 +12,7 @@ import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifa
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
 import { StackUpdateApiLambda } from '../lambdas/stack-update-api';
+import { StackUpdateRecoveryInfra } from '../features/stack-update-resilience/stack-update-recovery-infra';
 
 /**
  * Props for constructing a StackUpdateAddon directly (internal use).
@@ -88,6 +89,15 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       tier: ssm.ParameterTier.STANDARD,
     });
 
+    // Deterministic name for the stack-update recovery state machine, shared by the Lambda (which
+    // derives the state machine's ARN from it) and the state machine itself — see
+    // `StackUpdateApiLambda`'s `stateMachineName` prop doc for why this must be a name, not a
+    // reference: it is what breaks the Lambda <-> state machine circular dependency. Guid-suffixed
+    // (not RETAIN'd, but still worth avoiding a stale-name collision on a construct-tree move) —
+    // same pattern as `stack-deployer-infra.ts`.
+    const stackGuid = cdk.Fn.select(2, cdk.Fn.split('/', cdk.Aws.STACK_ID));
+    const stateMachineName = cdk.Fn.join('', ['mailbox-stack-update-wf-', stackGuid]);
+
     // Create the stack-update-api Lambda with its own role and CFN permissions.
     this._lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
@@ -99,10 +109,18 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       pointerKey,
       templateUrlTemplate,
       auditEventsQueue: props.auditEventsQueue,
+      stateMachineName,
     });
 
     // Grant the Lambda read access to the template-version parameter.
     templateVersionParam.grantRead(this._lambdaConstruct);
+
+    // Rollback-recovery workflow + the EventBridge rule that starts it.
+    new StackUpdateRecoveryInfra(this, 'recovery', {
+      handler: this._lambdaConstruct,
+      rootStackArn,
+      stateMachineName,
+    });
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {

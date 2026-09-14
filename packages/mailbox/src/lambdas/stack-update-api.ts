@@ -1,4 +1,4 @@
-import { Duration } from 'aws-cdk-lib';
+import { Aws, ArnFormat, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '../utils/go-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -16,6 +16,18 @@ export interface StackUpdateApiLambdaProps {
   readonly pointerKey: string;
   readonly templateUrlTemplate: string;
   readonly auditEventsQueue: IQueue;
+  /**
+   * Explicit name of the stack-update recovery state machine (`StackUpdateRecoveryInfra`).
+   *
+   * Passed as a name, not a reference: this Lambda and the state machine need each other's ARN
+   * (this Lambda's `STACK_UPDATE_STATE_MACHINE_ARN` env var; the state machine's role needs
+   * `lambda:InvokeFunction` on this Lambda), and threading a real CDK object reference both ways
+   * would create a CloudFormation circular dependency. Instead both sides are given the SAME
+   * deterministic name by their common composition root (`StackUpdateAddon`) and independently
+   * derive the state machine's ARN from `Aws.*` tokens + this name — no `Ref`/`GetAtt` from this
+   * Lambda's resource to the state machine's resource, so there is no cycle.
+   */
+  readonly stateMachineName: string;
 }
 
 /**
@@ -31,6 +43,27 @@ export interface StackUpdateApiLambdaProps {
  */
 export class StackUpdateApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
+    // Built from Aws.* tokens + the shared deterministic name, never from the state machine
+    // construct itself — see the `stateMachineName` prop doc for why.
+    const stateMachineArn = Stack.of(scope).formatArn({
+      service: 'states',
+      resource: 'stateMachine',
+      resourceName: props.stateMachineName,
+      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      account: Aws.ACCOUNT_ID,
+      region: Aws.REGION,
+      partition: Aws.PARTITION,
+    });
+    const executionArnPattern = Stack.of(scope).formatArn({
+      service: 'states',
+      resource: 'execution',
+      resourceName: `${props.stateMachineName}:*`,
+      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      account: Aws.ACCOUNT_ID,
+      region: Aws.REGION,
+      partition: Aws.PARTITION,
+    });
+
     super(scope, id, {
       lambdaId: 'stack-update-api',
       pipeline: 'infra',
@@ -45,6 +78,7 @@ export class StackUpdateApiLambda extends GoLambda {
         POINTER_KEY: props.pointerKey,
         TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        STACK_UPDATE_STATE_MACHINE_ARN: stateMachineArn,
       },
     });
 
@@ -168,6 +202,41 @@ export class StackUpdateApiLambda extends GoLambda {
           'cloudformation:GetTemplate',
         ],
         resources: ['*'],
+      })
+    );
+
+    // Rollback-recovery reads/writes on the root stack, scoped to its ARN. DescribeStackEvents and
+    // iam:GetPolicy/iam:GetPolicyVersion are already granted above (SelfStackCfnMeta,
+    // IamForChildRolesAndPolicies respectively) — not repeated here.
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'RootStackRollbackRecovery',
+        effect: Effect.ALLOW,
+        actions: [
+          'cloudformation:ContinueUpdateRollback',
+          'cloudformation:DescribeStackResource',
+          'cloudformation:DescribeStackResources',
+        ],
+        resources: [props.rootStackArn],
+      })
+    );
+
+    // Drive the recovery workflow: start a new episode, and check on this Lambda's own prior
+    // executions (dedup in `event-start`, cap-checking in R5). Never a broader `states:*` grant.
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'StackUpdateWorkflowControl',
+        effect: Effect.ALLOW,
+        actions: ['states:StartExecution', 'states:ListExecutions'],
+        resources: [stateMachineArn],
+      })
+    );
+    this.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'StackUpdateWorkflowExecutionStatus',
+        effect: Effect.ALLOW,
+        actions: ['states:DescribeExecution'],
+        resources: [executionArnPattern],
       })
     );
   }

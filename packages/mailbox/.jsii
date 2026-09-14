@@ -12470,7 +12470,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update-addon.ts",
-          "line": 140
+          "line": 158
         },
         "parameters": [
           {
@@ -12487,13 +12487,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 139
+        "line": 157
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 142
+            "line": 160
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12536,7 +12536,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update-addon.ts",
-        "line": 121
+        "line": 139
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
@@ -12548,7 +12548,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 123
+            "line": 141
           },
           "name": "artifactResolver",
           "type": {
@@ -12563,7 +12563,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 126
+            "line": 144
           },
           "name": "templateName",
           "type": {
@@ -12578,7 +12578,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 129
+            "line": 147
           },
           "name": "templateVersion",
           "type": {
@@ -12594,7 +12594,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update-addon.ts",
-            "line": 132
+            "line": 150
           },
           "name": "distTag",
           "optional": true,
@@ -12748,5 +12748,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "S4KZZwhg8Qn3js9xLrG6RpoBTDDlHDsSkRRXTxpYVc8="
+  "fingerprint": "Jpx27/bUCfk9X3pdaJTLUMWtoLdOVJOm16JuRuD9rsA="
 }
