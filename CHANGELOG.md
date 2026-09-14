@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.2...v0.1.3) (Mon Sep 14 2026)
+
+### fix
+
+* Split handler config ([4cebfc9](https://github.com/serverlessinbox/mailbox-cdk/commit/4cebfc96693259bd58fca696a3beeebd7a2e917d))
+
 ## [0.1.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.1...v0.1.2) (Mon Sep 14 2026)
 
 ### feat
