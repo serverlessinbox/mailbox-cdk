@@ -116,7 +116,7 @@ export class MailboxUi extends Construct {
     });
 
     this.distribution = new Distribution(this, 'distribution', {
-      comment: `Mailbox ${props.label} UI`,
+      comment: `Mailbox ${props.label}`,
       defaultRootObject: 'index.html',
       domainNames: props.certificate ? [props.domainName] : undefined,
       certificate: props.certificate,

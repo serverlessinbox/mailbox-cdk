@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Construct } from 'constructs';
 import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
 import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
@@ -76,11 +77,27 @@ export interface StaticContentDeploymentProps {
 export interface StaticContentInvalidationProps {
   readonly distributionId: string;
   readonly paths: string[];
-  readonly deploymentNonce?: string;
 }
 
 export class StaticContentDeployer extends TypeScriptLambda {
-  private readonly deploymentsByScope = new Map<Construct, CustomResource[]>();
+  /** Each tracked deployment pairs its CustomResource (for dependency wiring) with an identity
+   *  string derived from its source content — see `sourceIdentity()`. */
+  private readonly deploymentsByScope = new Map<Construct, { resource: CustomResource; identity: string }[]>();
+
+  /** A deterministic identity for one deployed source: two deploys of the same content produce the
+   *  same identity, any change to the deployed content changes it. Used by `invalidate()` to build a
+   *  nonce so the invalidation CustomResource's properties change exactly when the content it follows
+   *  changes — CloudFormation only re-invokes a custom resource whose properties changed, so without
+   *  this the invalidation would never re-run on redeploy. A zip source's identity is its
+   *  bucket/key/version triple, already the only thing that changes between artifact versions; a data
+   *  source's identity hashes its body instead of embedding it, so a large config payload isn't
+   *  duplicated into the invalidation resource's own properties. */
+  private sourceIdentity(spec: StaticContentSourceSpec): string {
+    if (spec.kind === 'zip') {
+      return `zip:${spec.sourceBucket}:${spec.sourceKey}:${spec.sourceVersionId ?? ''}`;
+    }
+    return `data:${spec.key}:${createHash('sha256').update(spec.body).digest('hex')}`;
+  }
 
   /**
    * Get-or-create the one shared content-deployer Lambda for this Stack.
@@ -166,17 +183,20 @@ export class StaticContentDeployer extends TypeScriptLambda {
       },
     });
 
-    // Track this deployment by its calling scope for invalidate() to wire dependencies
+    // Track this deployment by its calling scope for invalidate() to wire dependencies and derive its nonce
     const tracked = this.deploymentsByScope.get(scope) ?? [];
-    tracked.push(resource);
+    tracked.push({ resource, identity: this.sourceIdentity(props.source.spec) });
     this.deploymentsByScope.set(scope, tracked);
 
     return resource;
   }
 
   /** Invalidate a CloudFront distribution after content deployments complete. Wires automatic
-   *  dependencies on all prior `deploy()` calls from the same calling scope, so invalidation
-   *  always follows the deployments it targets. */
+   *  dependencies on all prior `deploy()` calls from the same calling scope, so invalidation always
+   *  follows the deployments it targets, and derives `deploymentNonce` from those same deployments'
+   *  source identities (see `sourceIdentity()`) so the invalidation CustomResource's properties change
+   *  exactly when — and only when — the content it follows changes. No caller has to remember a
+   *  nonce, and there is no timestamp or random value that would fire on every synth. */
   invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
     // Grant CloudFront invalidation permission, scoped to the target distribution
     this.addToRolePolicy(
@@ -185,6 +205,9 @@ export class StaticContentDeployer extends TypeScriptLambda {
         resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${props.distributionId}`],
       }),
     );
+
+    const tracked = this.deploymentsByScope.get(scope) ?? [];
+    const deploymentNonce = tracked.length > 0 ? tracked.map((t) => t.identity).join('|') : undefined;
 
     // Create the invalidation CustomResource with empty sources (invalidation-only call)
     const resource = new CustomResource(scope, id, {
@@ -196,12 +219,12 @@ export class StaticContentDeployer extends TypeScriptLambda {
         sources: [],
         distributionId: props.distributionId,
         invalidationPaths: props.paths,
-        deploymentNonce: props.deploymentNonce,
+        deploymentNonce,
       },
     });
 
     // Wire dependencies: this invalidation must follow all prior deployments in the same scope
-    (this.deploymentsByScope.get(scope) ?? []).forEach((deployment) => {
+    tracked.forEach(({ resource: deployment }) => {
       resource.node.addDependency(deployment);
     });
 
