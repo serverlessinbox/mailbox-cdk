@@ -10,7 +10,7 @@ import { sweepCert } from './targets/cert';
 import { sweepEdgeFn } from './targets/edge-fn';
 import { sweepStackFailureDetector } from './targets/stack-failure-detector';
 import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult } from './targets/types';
-import { load } from './config';
+import { loadStarter, loadWorker } from './config';
 
 export type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput } from './targets/types';
 
@@ -21,7 +21,11 @@ const lambdaClientEdge = new LambdaClient({ region: 'us-east-1' });
 const eventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION });
 const iamClient = new IAMClient({ region: process.env.AWS_REGION });
 
-const { config, error: configError } = env.tryLoad(load);
+// The starter and worker Lambdas are two physical functions sharing this code bundle, but the CDK
+// gives each a different environment (see StarterConfig's comment in config.ts) — so each loads
+// only the config its own handler needs.
+const { config: starterConfig, error: starterConfigError } = env.tryLoad(loadStarter);
+const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorker);
 
 /**
  * Discriminated per-removal-type payload the worker Lambda dispatches on. Each removal's CDK
@@ -153,9 +157,9 @@ export function computeSweepTargets(event: CloudFormationCustomResourceEvent): R
  * removal type, each taking only its own input shape.
  */
 export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<WorkerOutput> => {
-  if (configError) throw new Error(configError);
+  if (workerConfigError) throw new Error(workerConfigError);
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+  const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
 
   logger.debug('Worker invoked', { removalType: input.removalType, rootStackName: input.rootStackName });
 
@@ -183,7 +187,7 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
 
   logger.flush();
   return toWorkerOutput(result);
-}, env.check(load));
+}, env.check(loadWorker));
 
 /**
  * Starter handler: fires a single Step Functions execution to sweep whatever `computeSweepTargets`
@@ -205,12 +209,12 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
 export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   // Custom resource handlers must use tryLoad at module scope; throw inside the handler
   // so wrapHandler converts it to a CloudFormation FAILED response.
-  if (configError) throw new Error(configError);
+  if (starterConfigError) throw new Error(starterConfigError);
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+  const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
 
   // Emit finalization details for manual recovery of hung custom resources
-  emitManualFinalize(event, { service: config.serviceName });
+  emitManualFinalize(event, { service: starterConfig.serviceName });
 
   // Emit single always-emit diagnostic marker for this trigger mode
   console.info('resource-sweeper-starter dispatch', {
@@ -224,7 +228,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     logicalResourceId: event.LogicalResourceId,
   });
 
-  const smArn = config.sweeperStateMachineArn;
+  const smArn = starterConfig.sweeperStateMachineArn;
 
   // cast: wrapHandler's own event type (`TypeSafeCloudFormationResourceEvent`, from
   // `aws-custom-resources`) is `Omit<CloudFormationCustomResourceEvent, 'ResponseURL'>` — but `Omit`
@@ -301,4 +305,4 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     PhysicalResourceId: 'mailbox-deferred-removal',
     Data: {},
   };
-}), env.check(load));
+}), env.check(loadStarter));

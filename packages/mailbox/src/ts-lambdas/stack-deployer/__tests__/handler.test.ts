@@ -790,51 +790,58 @@ describe('stack deployer handlers — config error handling', () => {
       });
     });
 
-    it('Create event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send FAILED response', async () => {
-      jest.isolateModules(() => {
-        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+    // Regression coverage for the 2026-09-13 incident: the worker's CDK wrapper
+    // (stack-deployer-worker.ts) never sets MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN — only the
+    // starter's wrapper does. The worker must load successfully without it. Before the fix (a
+    // single shared Config with stateMachineArn mandatory for both handlers), this environment
+    // made every worker invocation respond with "Configuration error" and never reach real work.
+    it('handles a check event normally with MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN absent (the worker Lambda\'s real environment)', async () => {
+      jest.resetModules();
+      delete process.env.LOG_LEVEL; // earlier tests in this describe leave 'verbose' set
+      delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // never set on the worker
+      process.env.SERVICE_NAME = 'stack-deployer-worker';
 
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.workerHandler(baseSfnEvent, {}).then((result: any) => {
-          expect(result).toEqual({ done: true });
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'FAILED',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
+      jest.clearAllMocks();
+      const cfnResponse = require('../cfn-response');
+      cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+      const cfnStack = require('../cfn-stack');
+      cfnStack.makeCfClientFromOp.mockReturnValue({} as any);
+      cfnStack.describeStack.mockResolvedValue({
+        StackStatus: 'CREATE_COMPLETE',
+        Outputs: [],
       });
+      cfnStack.describeRecentFailureEvents.mockResolvedValue([]);
+
+      const handlerModule = require('../handler');
+
+      const checkEvent = { ...baseSfnEvent, mode: 'check' as const };
+      const result = await handlerModule.workerHandler(checkEvent, {});
+
+      expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
+      expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'SUCCESS' }),
+      );
+      expect(cfnResponse.putCfnResponse).not.toHaveBeenCalledWith(
+        expect.objectContaining({ reason: expect.stringContaining('Configuration error') }),
+      );
+
+      delete process.env.SERVICE_NAME;
+      process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
     });
 
-    it('Delete event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send SUCCESS response', async () => {
-      jest.isolateModules(() => {
-        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
+    it('workerHandler smoke test probe succeeds with MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN absent', async () => {
+      jest.resetModules();
+      delete process.env.LOG_LEVEL; // earlier tests in this describe leave 'verbose' set
+      delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // never set on the worker
+      process.env.SERVICE_NAME = 'stack-deployer-worker';
 
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
+      const handlerModule = require('../handler');
 
-        const handlerModule = require('../handler');
+      const result = await handlerModule.workerHandler({ serverlessInboxSmokeTest: true }, {});
+      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
 
-        return handlerModule.workerHandler(
-          { ...baseSfnEvent, op: { ...baseSfnEvent.op, requestType: 'Delete' } },
-          {}
-        ).then((result: any) => {
-          expect(result).toEqual({ done: true });
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'SUCCESS',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
+      delete process.env.SERVICE_NAME;
+      process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
     });
   });
 

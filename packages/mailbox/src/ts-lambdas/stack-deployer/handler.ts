@@ -4,7 +4,7 @@ import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverles
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';
-import { load } from './config';
+import { loadStarter, loadWorker } from './config';
 
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
 
@@ -18,7 +18,11 @@ function getCfClient(region: string): CloudFormationClient {
   return cfClientCache.get(region)!;
 }
 
-const { config, error: configError } = env.tryLoad(load);
+// The starter and worker Lambdas are two physical functions sharing this code bundle, but the CDK
+// gives each a different environment (see StarterConfig's comment in config.ts) — so each loads
+// only the config its own handler needs.
+const { config: starterConfig, error: starterConfigError } = env.tryLoad(loadStarter);
+const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorker);
 
 // Poll attempt cap: ensures the worker responds within the CR serviceTimeout (60 min),
 // with comfortable headroom before CFN gives up. 135 attempts × 20s interval ≈ 45 min.
@@ -93,11 +97,11 @@ async function startExecutionWithSuffixRetry(
 }
 
 async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: boolean; deleteRetryCount?: number; createRetryCount?: number }> {
-  if (configError) {
+  if (workerConfigError) {
     // Config error: respond via CFN callback without logger (cannot use config values).
     // Use Success for Delete to avoid blocking parent stack deletion.
     const status = event.op.requestType === 'Delete' ? 'SUCCESS' : 'FAILED';
-    const reason = limitReason(`Configuration error: ${configError}`);
+    const reason = limitReason(`Configuration error: ${workerConfigError}`);
     const physicalResourceId = event.op.stackName;
     if (event.cfn) {
       await putCfnResponse({
@@ -111,7 +115,7 @@ async function handleSfn(event: SfnInvokeEvent, context: any): Promise<{ done: b
     return { done: true };
   }
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+  const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
   const { mode, cfn, op } = event;
   const deleteRetryCount = typeof (event as any)?.deleteRetryCount === 'number' ? (event as any).deleteRetryCount : 0;
   const createRetryCount = typeof (event as any)?.createRetryCount === 'number' ? (event as any).createRetryCount : 0;
@@ -391,9 +395,9 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
 
   // Config error: respond via CFN callback without logger (cannot use config values).
   // Use Success for Delete to avoid blocking parent stack deletion.
-  if (configError) {
+  if (starterConfigError) {
     const status = event.RequestType === 'Delete' ? 'SUCCESS' : 'FAILED';
-    const reason = limitReason(`Configuration error: ${configError}`);
+    const reason = limitReason(`Configuration error: ${starterConfigError}`);
     await putCfnResponse({
       cfn,
       status,
@@ -404,8 +408,8 @@ async function handleCfn(event: CfnCustomResourceEvent, context: any): Promise<v
     return;
   }
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
-  const stateMachineArnRaw = config.stateMachineArn;
+  const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
+  const stateMachineArnRaw = starterConfig.stateMachineArn;
 
   // Emit break-glass finalization details for manual stack-resource recovery.
   // This is visibility into the CloudFormation response that can be manually sent
@@ -621,7 +625,7 @@ export const starterHandler = withSmokeTest(async (event: any, context: any): Pr
     logicalResourceId: (event as CfnCustomResourceEvent)?.LogicalResourceId,
   });
   await handleCfn(event as CfnCustomResourceEvent, context);
-}, env.check(load));
+}, env.check(loadStarter));
 
 export const workerHandler = withSmokeTest(async (event: any, context: any): Promise<any> => {
   // Emit a single always-emit diagnostic marker for this trigger mode
@@ -630,4 +634,4 @@ export const workerHandler = withSmokeTest(async (event: any, context: any): Pro
     attempt: (event as SfnInvokeEvent)?.attempt,
   });
   return handleSfn(event as SfnInvokeEvent, context);
-}, env.check(load));
+}, env.check(loadWorker));
