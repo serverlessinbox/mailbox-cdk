@@ -430,22 +430,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-ssm@npm:^3.1132.0":
-  version: 3.1132.0
-  resolution: "@aws-sdk/client-ssm@npm:3.1132.0"
-  dependencies:
-    "@aws-sdk/core": "npm:^3.978.0"
-    "@aws-sdk/credential-provider-node": "npm:^3.972.83"
-    "@aws-sdk/types": "npm:^3.974.5"
-    "@smithy/core": "npm:^3.33.3"
-    "@smithy/fetch-http-handler": "npm:^5.7.2"
-    "@smithy/node-http-handler": "npm:^4.11.3"
-    "@smithy/types": "npm:^4.17.2"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/f305c8c33a7fcb3eff1bec15645aea1e090072e1677c2a56aa3fc38230a9a03b5fe8dd812cc444bb6fd366df6b1ba96ed187633e8c5df33f756d40a143df4d29
-  languageName: node
-  linkType: hard
-
 "@aws-sdk/core@npm:^3.978.0":
   version: 3.978.0
   resolution: "@aws-sdk/core@npm:3.978.0"
@@ -1999,7 +1983,6 @@ __metadata:
     "@aws-sdk/client-route-53": "npm:^3.1132.0"
     "@aws-sdk/client-s3": "npm:^3.1132.0"
     "@aws-sdk/client-sfn": "npm:^3.1132.0"
-    "@aws-sdk/client-ssm": "npm:^3.1132.0"
     "@serverlessinbox/artifact-registry": "npm:^0.0.37"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*"

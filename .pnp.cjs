@@ -189,10 +189,6 @@ const RAW_RUNTIME_STATE =
       "npm:3.1132.0"\
     ],\
     [\
-      "@aws-sdk/client-ssm",\
-      "npm:3.1132.0"\
-    ],\
-    [\
       "@aws-sdk/core",\
       "npm:3.978.0"\
     ],\
@@ -3609,23 +3605,6 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
-    ["@aws-sdk/client-ssm", [\
-      ["npm:3.1132.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@aws-sdk-client-ssm-npm-3.1132.0-c1f3b5ed77-10c0.zip/node_modules/@aws-sdk/client-ssm/",\
-        "packageDependencies": [\
-          ["@aws-sdk/client-ssm", "npm:3.1132.0"],\
-          ["@aws-sdk/core", "npm:3.978.0"],\
-          ["@aws-sdk/credential-provider-node", "npm:3.972.83"],\
-          ["@aws-sdk/types", "npm:3.974.5"],\
-          ["@smithy/core", "npm:3.34.1"],\
-          ["@smithy/fetch-http-handler", "npm:5.8.0"],\
-          ["@smithy/node-http-handler", "npm:4.12.1"],\
-          ["@smithy/types", "npm:4.18.0"],\
-          ["tslib", "npm:2.8.1"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
     ["@aws-sdk/core", [\
       ["npm:3.978.0", {\
         "packageLocation": "../../../../../.yarn/berry/cache/@aws-sdk-core-npm-3.978.0-c425898683-10c0.zip/node_modules/@aws-sdk/core/",\
@@ -5703,7 +5682,6 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
-          ["@aws-sdk/client-ssm", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.0.37"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
@@ -5758,7 +5736,6 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
-          ["@aws-sdk/client-ssm", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.0.37"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\

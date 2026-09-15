@@ -6,6 +6,7 @@ import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverles
 import { StackDeployerInfra } from '../features/stack-deployer';
 import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
+import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxDataDeployerProps {
@@ -13,7 +14,7 @@ export interface MailboxDataDeployerProps {
   /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
   readonly dataStackName?: string;
   /** S3-safe base for bucket names */
-  readonly s3NameBase: string;
+  readonly nameBase: string;
   /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
   readonly deployerType: ServerlessInboxDeployerType;
 }
@@ -66,6 +67,7 @@ export class MailboxDataDeployer extends Construct {
       dataStackArn,
       dataStackName: dataStackNameToken,
       templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
+      nameBase: props.nameBase,
     });
 
     const resource = new CustomResource(this, 'resource', {
@@ -77,7 +79,7 @@ export class MailboxDataDeployer extends Construct {
         templateUrl,
         preserveOnDelete: true,
         parameters: {
-          s3NameBase: props.s3NameBase,
+          nameBase: props.nameBase,
           // Correlation tagging: pass the root (main) stack name so the data sub-stack's resources
           // carry the same serverless-inbox:root-stack tag. Key MUST match the data stack's
           // CfnParameter overrideLogicalId (rootStack).
@@ -98,14 +100,26 @@ export class MailboxDataDeployer extends Construct {
     // Ensure the workflow remains until after the custom resource is deleted.
     resource.node.addDependency(infra.workflow.stateMachine);
 
-    // Read table and bucket ARNs from the deployed stack outputs
-    // (surfaced as custom resource Data attributes by the stack-deployer handler).
-    const ref = new MailboxDataStackRef(this, 'ref', {
+    // Resolve data table ARNs through the override resolver: an operator-supplied SSM override replaces a
+    // table's ARN, provided the override table exists and is ACTIVE.
+    const resolver = new MailboxDataOverrideResolver(this, 'override-resolver', {
       configTableArn:       resource.getAttString('configTableArn'),
       itemTableArn:         resource.getAttString('itemTableArn'),
       changelogTableArn:    resource.getAttString('changelogTableArn'),
       auditLogTableArn:     resource.getAttString('auditLogTableArn'),
       mailFeedbackTableArn: resource.getAttString('mailFeedbackTableArn'),
+      artifactResolver: props.artifactResolver,
+    });
+    resolver.node.addDependency(resource);
+
+    // Read table and bucket ARNs from the deployed stack outputs and the resolver override
+    // (surfaced as custom resource Data attributes by the stack-deployer handler and resolver).
+    const ref = new MailboxDataStackRef(this, 'ref', {
+      configTableArn:       resolver.getConfigTableArn(),
+      itemTableArn:         resolver.getItemTableArn(),
+      changelogTableArn:    resolver.getChangelogTableArn(),
+      auditLogTableArn:     resolver.getAuditLogTableArn(),
+      mailFeedbackTableArn: resolver.getMailFeedbackTableArn(),
       blobStoreArn:         resource.getAttString('blobStoreArn'),
     });
 

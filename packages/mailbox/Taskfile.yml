@@ -79,6 +79,16 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/../mailbox-cdk-shared/src/ts-lambdas/content-deployer/index.ts --out /tmp/ui-deployer.zip
 
+  bundle:data-override-resolver:
+    desc: Bundle data-override-resolver lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/data-override-resolver/**/*.ts
+      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+    generates:
+      - /tmp/data-override-resolver.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out /tmp/data-override-resolver.zip
+
   bundle:
     desc: Bundle all TypeScript lambdas to /tmp/*.zip
     cmds:
@@ -88,6 +98,7 @@ tasks:
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
       - task: bundle:ui-deployer
+      - task: bundle:data-override-resolver
 
   bundle:jsii:
     desc: Bundle jsii construct source (esbuild + tsc declarations)
@@ -121,10 +132,12 @@ tasks:
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
       - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out /tmp/artifact-updater.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out /tmp/data-override-resolver.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-deployer.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/stack-helpers.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/resource-sweeper.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/artifact-updater.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/data-override-resolver.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -139,4 +152,5 @@ tasks:
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
       - task: bundle:ui-deployer
+      - task: bundle:data-override-resolver
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}

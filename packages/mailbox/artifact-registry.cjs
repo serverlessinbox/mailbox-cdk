@@ -34,6 +34,10 @@ module.exports = {
       objectName: 'data-stack-template.json',
     },
     {
+      source: '/tmp/data-override-resolver.zip',
+      objectName: 'lambdas/data-override-resolver.zip',
+    },
+    {
       source: '/tmp/blob-authorizer.zip',
       objectName: 'lambdas/blob-authorizer.zip',
       bucketName: 'mailbox-artifacts-us-east-1',
