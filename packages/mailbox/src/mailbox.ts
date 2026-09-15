@@ -16,7 +16,7 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing';
-import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
@@ -42,7 +42,7 @@ import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { StackHelpers } from './utils/stack-helpers';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
-import { addServerlessInboxResourceGroup } from './utils/resource-group';
+import { addServerlessInboxResourceGroup } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -325,8 +325,16 @@ export class Mailbox extends Construct {
       groups.ops, 'stack-helpers-v2', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
 
+    // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)
+    const { derivedS3SafeDataStackName: mainStackNameBase } = stackHelpers.resolveMailboxData(
+      groups.ops, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
+    );
+
+    // Register the main stack's S3-safe name for use by constructs that need deterministic bucket/table naming
+    setStackNameBase(this, mainStackNameBase);
+
     const domainName: string = derivedDomainName;
-    const s3NameBase: string = derivedS3SafeDataStackName;
+    const nameBase: string = derivedS3SafeDataStackName;
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', {
       hostedZoneId: props.hostedZoneId ?? '',
@@ -361,7 +369,7 @@ export class Mailbox extends Construct {
     const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(groups.data, 'data-deployer', {
       artifactResolver,
       dataStackName: props.overrides?.dataStackName,
-      s3NameBase,
+      nameBase,
       deployerType,
     });
 

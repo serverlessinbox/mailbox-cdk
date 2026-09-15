@@ -5,7 +5,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { ICdkArtifactEngine } from './artifact-engine';
 import { BucketAutoEmpty } from './bucket-auto-empty';
 import { getOrCreateSharedGroup } from './shared-group';
-import { StackNamedBucket, stackNamedBucketConstructId } from './named-bucket';
+import { StackNamedBucket } from './named-bucket';
 
 /**
  * Singleton construct for a shared, public S3 bucket used to store small public static assets
@@ -18,6 +18,8 @@ import { StackNamedBucket, stackNamedBucketConstructId } from './named-bucket';
  * at stack root, and BucketAutoEmpty is attached once (centrally, here) to clean up on stack deletion.
  */
 export class PublicStaticAssetsBucket {
+  private static readonly BUCKET_ID = 'public-static-assets';
+
   /**
    * Get-or-create the one shared public static assets bucket for this Stack.
    * Returns it as IBucket (no construct instance type-check needed).
@@ -27,17 +29,14 @@ export class PublicStaticAssetsBucket {
     const stack = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
 
-    // Try to find an existing bucket by its actual construct ID — StackNamedBucket derives its own ID
-    // from the (scope, bucketName) pair rather than using the literal 'public-static-assets' name, so
-    // the lookup must use the same derivation the constructor uses, via the shared helper.
-    const constructId = stackNamedBucketConstructId(sharedGroup, 'public-static-assets');
-    const existing = sharedGroup.node.tryFindChild(constructId);
+    // Try to find an existing bucket by its construct ID.
+    const existing = sharedGroup.node.tryFindChild(PublicStaticAssetsBucket.BUCKET_ID);
     if (existing instanceof StackNamedBucket) {
       return existing;
     }
 
     // Create the bucket with stack-derived name and public-by-design ACL settings
-    const bucket = new StackNamedBucket(sharedGroup, 'public-static-assets', {
+    const bucket = new StackNamedBucket(sharedGroup, PublicStaticAssetsBucket.BUCKET_ID, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
       removalPolicy: RemovalPolicy.DESTROY,
     });

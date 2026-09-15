@@ -1,4 +1,4 @@
-import { Aws, Stack } from 'aws-cdk-lib';
+import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
@@ -7,6 +7,7 @@ export interface DataDeployerGrantProps {
   dataStackArn: string;
   dataStackName: string;
   templateObjectArn: string;
+  nameBase: string | IResolvable;
 }
 
 export function grantDataDeployerWorkerPermissions(
@@ -47,6 +48,8 @@ export function grantDataDeployerWorkerPermissions(
   );
 
   // CloudFormation creates DynamoDB tables using the caller's role (no RoleArn passed)
+  // nameBase is already the data stack name (e.g., 'stackname-data'), so resource names
+  // are built as ${account}-${nameBase}-<resourceName>, with no additional '-data-' segment.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -63,11 +66,13 @@ export function grantDataDeployerWorkerPermissions(
         'dynamodb:UntagResource',
         'dynamodb:ListTagsOfResource',
       ],
-      resources: [`arn:aws:dynamodb:${props.stack.region}:${props.stack.account}:table/${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-data-*`],
+      resources: [`arn:aws:dynamodb:${props.stack.region}:${props.stack.account}:table/${Aws.ACCOUNT_ID}-${props.nameBase}-*`],
     })
   );
 
   // CloudFormation creates the S3 bucket using the caller's role
+  // nameBase is already the data stack name (e.g., 'stackname-data'), so resource names
+  // are built as ${account}-${nameBase}-<resourceName>, with no additional '-data-' segment.
   worker.addToRolePolicy(
     new PolicyStatement({
       actions: [
@@ -90,7 +95,7 @@ export function grantDataDeployerWorkerPermissions(
         's3:PutBucketOwnershipControls',
         's3:GetBucketOwnershipControls',
       ],
-      resources: [`arn:aws:s3:::${props.stack.account}-${Aws.STACK_NAME}-data-*`],
+      resources: [`arn:aws:s3:::${props.stack.account}-${props.nameBase}-*`],
     })
   );
 
