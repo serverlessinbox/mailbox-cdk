@@ -38,7 +38,7 @@ export class MailboxDataStack extends cdk.Stack {
 
     // S3 name base parameter (required).
     // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
-    const s3NameBaseParam = new cdk.CfnParameter(this, 's3NameBase', {
+    const nameBaseParam = new cdk.CfnParameter(this, 'nameBase', {
       type: 'String',
       description: 'S3-safe base for bucket names',
     });
@@ -91,12 +91,34 @@ export class MailboxDataStack extends cdk.Stack {
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
 
     // Create resources
-    const blobStore = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, s3NameBase: s3NameBaseParam.valueAsString });
-    const configTable = new ConfigTable(this, encryptionPlan.dynamoTables);
-    const itemTable = new ItemTable(this, encryptionPlan.dynamoTables);
-    const changelogTable = new ChangelogTable(this, encryptionPlan.dynamoTables);
-    const auditLogTable = new AuditLogTable(this, encryptionPlan.dynamoTables);
-    const mailFeedbackTable = new MailFeedbackTable(this, encryptionPlan.dynamoTables);
+    const dynamoEncryption = encryptionPlan.dynamoTables;
+    const dynamoTableProps = {
+      encryption: dynamoEncryption.encryption,
+      ...(dynamoEncryption.encryptionKey && { encryptionKey: dynamoEncryption.encryptionKey }),
+      nameBase: nameBaseParam.valueAsString,
+    };
+
+    const blobStore = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, nameBase: nameBaseParam.valueAsString });
+    const configTable = new ConfigTable(this, dynamoTableProps);
+    const itemTable = new ItemTable(this, dynamoTableProps);
+    const changelogTable = new ChangelogTable(this, dynamoTableProps);
+    const auditLogTable = new AuditLogTable(this, dynamoTableProps);
+    const mailFeedbackTable = new MailFeedbackTable(this, dynamoTableProps);
+
+    // Set explicit logical IDs for reproducible CloudFormation templates
+    (configTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('configTable');
+    (itemTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('itemTable');
+    (changelogTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('changelogTable');
+    (auditLogTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('auditLogTable');
+    (mailFeedbackTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('mailFeedbackTable');
+    (blobStore.node.defaultChild as cdk.CfnResource).overrideLogicalId('blobStore');
+    if (!blobStore.policy) {
+      throw new Error(
+        'BlobStore must have a resource policy (addToResourcePolicy called during construction). ' +
+        'If this error occurs, verify BlobStore initializes its policy correctly.',
+      );
+    }
+    (blobStore.policy.node.defaultChild as cdk.CfnResource).overrideLogicalId('blobStorePolicy');
 
     // CloudFormation outputs — read by MailboxDataDeployer via custom resource Data dict.
     new cdk.CfnOutput(this, 'configTableArn',       { value: configTable.tableArn });

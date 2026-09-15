@@ -1,4 +1,4 @@
-import { BlockPublicAccess, BucketEncryption } from "aws-cdk-lib/aws-s3";
+import { BlockPublicAccess, BucketEncryption, LifecycleRule } from "aws-cdk-lib/aws-s3";
 import { Aws, Duration, RemovalPolicy, Stack, IResolvable } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { StackNamedBucket } from "@serverlessinbox/mailbox-cdk-shared";
@@ -9,35 +9,85 @@ import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 export interface BlobStoreProps {
   /** Optional customer-managed CMK to use for SSE-KMS. */
   readonly encryptionKey?: kms.IKey;
-  /** Optional S3-safe base for bucket names (replaces Aws.STACK_NAME when provided) */
-  readonly s3NameBase?: string | IResolvable;
+  /** Optional stack name base used for resource naming (replaces Aws.STACK_NAME when provided) */
+  readonly nameBase?: string | IResolvable;
 }
 
+/**
+ * Durable mail storage, contacts, principals, and search indexes.
+ *
+ * Stores email objects, contact cards, principals, search indexes, and temporary uploads across tenants. Inbound mail is staged in a dedicated prefix for processing before permanent storage.
+ *
+ * **Object layout**
+ *
+ * | Prefix | Contents |
+ * |--------|----------|
+ * | `tenants/{tenant}/accounts/{account}/emails/{emailID}/` | Durable email storage: raw MIME (`original.eml`), `body.txt`, `body.html`, inline parts and attachments |
+ * | `tenants/{tenant}/accounts/{account}/contacts/` | Contact cards |
+ * | `tenants/{tenant}/principals/` | Principal objects |
+ * | `tenants/{tenant}/accounts/{account}/search-indexes/` | Search indexes |
+ * | `tenants/{tenant}/blobs/{account}/{blobID}` | Temporary client uploads |
+ * | `incoming-emails/` | Inbound mail staging |
+ *
+ * **Access**
+ * - Writes: JMAP API, admin API, email processor, SES event processor, identity provisioner
+ * - Reads only: email sender
+ * - Service principals: SES writes `incoming-emails/*` (per bucket policy); CloudFront reads all objects (via origin access control).
+ *
+ * **Lifecycle**
+ * - Object versioning enabled in production; disabled in development.
+ * - Incoming emails expire after 7 days.
+ * - Uploaded blobs expire after 1 day.
+ * - Noncurrent versions expire after 35 days in production.
+ * - Delete markers cleaned up in production.
+ *
+ * **Encryption**
+ * - S3-managed by default; customer-managed CMK supported via `encryptionKey` prop.
+ */
 export class BlobStore extends StackNamedBucket {
   constructor(scope: Construct, props: BlobStoreProps = {}) {
     const dev = isDevelopmentMode(scope);
 
+    const lifecycleRules: LifecycleRule[] = [
+      {
+        id: 'DeleteUnhandledIncomingEmails',
+        prefix: 'incoming-emails/',
+        enabled: true,
+        expiration: Duration.days(7), // Delete emails after 7 days
+      },
+      {
+        id: 'DeleteUploadedBlobs',
+        prefix: 'blobs/',
+        enabled: true,
+        expiration: Duration.days(1), // Delete uploaded blobs after 1 day
+      },
+    ];
+
+    // Add noncurrent version expiration (35 days) and delete marker cleanup.
+    // Versioning keeps old versions forever unless explicitly expired.
+    if (!dev) {
+      lifecycleRules.push(
+        {
+          id: 'DeleteNoncurrentVersions',
+          enabled: true,
+          noncurrentVersionExpiration: Duration.days(35),
+        },
+        {
+          id: 'DeleteExpiredObjectDeleteMarkers',
+          enabled: true,
+          expiredObjectDeleteMarker: true,
+        },
+      );
+    }
+
     super(scope, 'blob-store', {
-      versioned: false,
+      versioned: !dev,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
       encryptionKey: props.encryptionKey,
-      s3NameBase: props.s3NameBase,
+      nameBase: props.nameBase,
       autoDeleteObjects: autoDeleteObjectsInDevelopment(scope),
-      lifecycleRules: [
-        {
-          id: 'DeleteUnhandledIncomingEmails',
-          prefix: 'incoming-emails/',
-          enabled: true,
-          expiration: Duration.days(7), // Delete emails after 7 days
-        },
-        {
-          id: 'DeleteUploadedBlobs',
-          prefix: 'blobs/',
-          enabled: true,
-          expiration: Duration.days(1), // Delete uploaded blobs after 1 day
-        },
-      ],
+      lifecycleRules,
       removalPolicy: dev ? RemovalPolicy.DESTROY : removalPolicyForRetainedResources(scope),
     });
 

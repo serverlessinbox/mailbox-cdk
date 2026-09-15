@@ -1,15 +1,16 @@
 import { Construct } from 'constructs';
-import { TableEncryption, type TableProps } from 'aws-cdk-lib/aws-dynamodb';
+import { TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 
 import type { BlobStoreProps } from '../resources/blob-store';
 import type { BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { MailboxKmsConfig } from './kms';
+import type { DynamoTableEncryptionProps } from '../resources/data-table-props';
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 
 export interface MailboxEncryptionPlan {
   readonly blobStore: BlobStoreProps;
-  readonly dynamoTables: Partial<TableProps>;
+  readonly dynamoTables: DynamoTableEncryptionProps;
   /**
    * Default props for queues created via BaseQueue.
    * - `undefined` means "use BaseQueue defaults".

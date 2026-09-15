@@ -177,7 +177,7 @@ describe('MailboxDataStack Template Synthesis', () => {
 
       // Data stack should have root stack correlation parameters
       expect(parameters).toHaveProperty('rootStack');
-      expect(parameters).toHaveProperty('s3NameBase');
+      expect(parameters).toHaveProperty('nameBase');
       expect(parameters).toHaveProperty('productVersion');
     });
   });
@@ -323,4 +323,40 @@ describe('MailboxDataStack Template Synthesis', () => {
       expect(violations).toEqual([]);
     });
   });
+
+  /**
+   * PITR Configuration Tests
+   */
+  describe('PITR Configuration', () => {
+    it('data stack (non-dev): all five data tables have PITR enabled', () => {
+      const app = new App();
+      const stack = new MailboxDataStack(app, 'TestMailboxData', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources found in template');
+      }
+
+      const tableResources = Object.values(resources).filter((r) => isResourceOfType(r, 'AWS::DynamoDB::Table'));
+
+      // Verify we have at least 5 tables (the data tables)
+      expect(tableResources.length).toBeGreaterThanOrEqual(5);
+
+      // Check PITR for each table
+      for (const table of tableResources) {
+        const props = table.Properties as Record<string, unknown>;
+        const pitrSpec = props.PointInTimeRecoverySpecification as Record<string, unknown> | undefined;
+
+        // All tables in non-dev mode should have PITR enabled
+        // (In prod/non-dev, all five data tables have PITR enabled)
+        const pitrEnabled = pitrSpec?.PointInTimeRecoveryEnabled as boolean | undefined;
+        expect(pitrEnabled).toBe(true);
+      }
+    });
+  });
+
 });

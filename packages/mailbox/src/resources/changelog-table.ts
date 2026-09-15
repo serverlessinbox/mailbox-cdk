@@ -1,26 +1,35 @@
 import { Construct } from 'constructs';
-import { StackNamedTable } from '../utils/named-table';
+import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import type { TableProps } from 'aws-cdk-lib/aws-dynamodb';
+import { DataTableProps, dataTableProps } from './data-table-props';
 
 /**
- * DynamoDB table for changelog and state management
- * 
- * Optimized structure:
- * PK: {accountId}#{objectType}        e.g., "acc_xxx#Email"
- * SK: {state}                          e.g., 156 (number)
- * 
- * State counter (SK=0):
- * - v: current state value (number)
- * 
- * Changelog entries (SK>0):
- * - o: objectId (string)
- * - c: changeType (c/u/d)
- * - x: expiresAt (TTL)
+ * Change tracking and optimistic concurrency control for versioned items.
+ *
+ * Stores immutable changelog entries and state version counters for emails, threads, and other versioned objects. Entries expire automatically based on TTL, supporting both queryChanges requests and optimistic locking.
+ *
+ * **Access**
+ * - Writes: JMAP API, admin API, email processor, email sender, SES event processor, identity provisioner
+ * - Reads only: search indexer
+ *
+ * **Keys**
+ *
+ * | Index | Partition key | Sort key |
+ * |-------|---------------|----------|
+ * | table | `pk` (String) | `sk` (Number) |
+ *
+ * TTL attribute: `x`
+ *
+ * **Encryption**
+ * - AWS-managed key by default; customer-managed KMS key when `encryptionKey` is provided.
+ *
+ * **Retention**
+ * - Point-in-time recovery enabled outside development mode.
+ * - Removal policy `RetainExceptOnCreate`.
  */
 export class ChangelogTable extends StackNamedTable {
 
-  constructor(scope: Construct, props: Partial<TableProps> = {}) {
+  constructor(scope: Construct, props: DataTableProps) {
     super(scope, 'changelog-table', {
       partitionKey: {
         name: 'pk',
@@ -31,8 +40,7 @@ export class ChangelogTable extends StackNamedTable {
         type: AttributeType.NUMBER,
       },
       timeToLiveAttribute: 'x', // TTL on 'x' (expiresAt) field
-      pointInTimeRecovery: true,
-      ...props,
+      ...dataTableProps(scope, props),
     });
   }
 }

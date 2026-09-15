@@ -1,32 +1,40 @@
-import { Construct } from 'constructs';
-import { StackNamedTable } from '../utils/named-table';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { TableProps } from 'aws-cdk-lib/aws-dynamodb';
+import { Construct } from 'constructs';
+import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
+import { DataTableProps, dataTableProps } from './data-table-props';
 
 /**
- * DynamoDB table for audit log
- * 
- * Structure:
- * PK: AUDIT#{entityType}#{entityId}
- * SK: TIMESTAMP#{timestamp}
- * GSI1PK: ACTOR#{userId}
- * GSI1SK: TIMESTAMP#{timestamp}
- * 
+ * Audit event logging for compliance and forensics.
+ *
+ * Stores immutable audit log entries recording system actions, actors, and entity changes. Supports compliance queries, forensic investigation, and audit trail analysis across tenants and time ranges.
+ *
+ * **Access**
+ * - Writes: audit writer Lambda
+ * - Reads only: admin API
+ *
+ * **Keys**
+ *
+ * | Index | Partition key | Sort key |
+ * |-------|---------------|----------|
+ * | table | `pk` (String) | `sk` (String) |
+ * | `gsi1` | `gsi1pk` (String) | `gsi1sk` (String) |
+ * | `gsi2` | `gsi2pk` (String) | `gsi2sk` (String) |
+ * | `gsi3` | `gsi3pk` (String) | `gsi3sk` (String) |
+ *
+ * **Encryption**
+ * - AWS-managed key by default; customer-managed KMS key when `encryptionKey` is provided.
+ *
+ * **Retention**
+ * - Point-in-time recovery enabled outside development mode.
+ * - Removal policy `RetainExceptOnCreate`.
  */
 export class AuditLogTable extends StackNamedTable {
 
-  constructor(scope: Construct, props: Partial<TableProps> = {}) {
+  constructor(scope: Construct, props: DataTableProps) {
     super(scope, 'auditlog-table', {
-      partitionKey: {
-        name: 'pk',
-        type: AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'sk',
-        type: AttributeType.STRING,
-      },
-      ...props,
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+      ...dataTableProps(scope, props),
     });
 
     this.addGlobalSecondaryIndex({
@@ -39,24 +47,12 @@ export class AuditLogTable extends StackNamedTable {
       indexName: 'gsi2',
       partitionKey: { name: 'gsi2pk', type: AttributeType.STRING },
       sortKey: { name: 'gsi2sk', type: AttributeType.STRING },
-    });    
+    });
 
     this.addGlobalSecondaryIndex({
       indexName: 'gsi3',
       partitionKey: { name: 'gsi3pk', type: AttributeType.STRING },
       sortKey: { name: 'gsi3sk', type: AttributeType.STRING },
-    });    
-  }
-
-  public grantReadAccess(grantee: IGrantable) {
-    grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: [
-        "dynamodb:GetItem",
-        "dynamodb:Query",
-        // "dynamodb:Scan", // Scan is expensive, avoid using it
-        "dynamodb:PutItem",
-      ],
-      resources: [this.tableArn, `${this.tableArn}/index/*`],
-    }));
+    });
   }
 }
