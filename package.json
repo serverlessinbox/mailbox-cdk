@@ -17,7 +17,7 @@
     "test": "yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3",
+    "@aws-sdk/client-s3": "^3.1132.0",
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
     "@serverlessinbox/artifact-registry": "^0.0.37",
     "@types/node": "^24.10.1",

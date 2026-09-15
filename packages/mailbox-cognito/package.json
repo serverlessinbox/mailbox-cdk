@@ -44,9 +44,9 @@
     "constructs": "^10.5.0"
   },
   "devDependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.947.0",
-    "@aws-sdk/client-lambda": "^3.946.0",
-    "@aws-sdk/client-sqs": "^3.947.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1132.0",
+    "@aws-sdk/client-lambda": "^3.1132.0",
+    "@aws-sdk/client-sqs": "^3.1132.0",
     "@bufbuild/protobuf": "^2.2.3",
     "@serverlessinbox/artifact-registry": "^0.0.37",
     "@serverlessinbox/mailbox": "workspace:*",
@@ -57,7 +57,7 @@
     "@types/jest": "^29.0.0",
     "@types/node": "^24.10.1",
     "aws-cdk-lib": "^2.261.0",
-    "aws-sdk-client-mock": "^3.0.0",
+    "aws-sdk-client-mock": "^4.1.0",
     "constructs": "^10.5.0",
     "esbuild": "^0.27.1",
     "eslint": "^8.0.0",
