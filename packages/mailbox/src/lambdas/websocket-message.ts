@@ -1,5 +1,5 @@
 import { Duration, Stack } from 'aws-cdk-lib';
-import { GoLambda } from '../utils/go-lambda';
+import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';

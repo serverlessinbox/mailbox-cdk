@@ -7,7 +7,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TantivyIndexerLambda } from '../lambdas';
-import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface TantivySearchProps {
   /**

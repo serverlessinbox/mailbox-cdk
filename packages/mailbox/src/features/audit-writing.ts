@@ -3,7 +3,7 @@ import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseQueue, type BaseQueueProps } from '../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditWriterLambda } from '../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 

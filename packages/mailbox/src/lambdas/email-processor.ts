@@ -1,6 +1,6 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { GoLambda } from "../utils/go-lambda";
+import { GoLambda } from "@serverlessinbox/mailbox-cdk-shared";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';

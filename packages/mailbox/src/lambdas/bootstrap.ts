@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
-import { GoLambda } from '../utils/go-lambda';
+import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';

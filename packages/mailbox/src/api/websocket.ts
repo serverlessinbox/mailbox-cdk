@@ -20,7 +20,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { RemovalPolicy, Aws, CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { StackNamedTable } from '../utils/named-table';
+import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import type { IGrantable } from 'aws-cdk-lib/aws-iam';

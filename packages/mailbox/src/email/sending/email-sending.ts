@@ -4,7 +4,7 @@ import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket';
 

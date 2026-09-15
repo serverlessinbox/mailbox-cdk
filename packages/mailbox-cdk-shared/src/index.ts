@@ -27,6 +27,8 @@ export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjects
 // Lambda constructs & artifact tagging (used by mailbox, mailbox-cognito, and other sub-stack packages)
 export { TypeScriptLambda } from './ts-lambda';
 export type { TypeScriptLambdaProps } from './ts-lambda';
+export { GoLambda } from './go-lambda';
+export type { GoLambda2Props } from './go-lambda';
 export { applyArtifactTags } from './apply-artifact-tags';
 export type { AutoUpdateType } from './apply-artifact-tags';
 
@@ -66,6 +68,24 @@ export { sanitizeStackName } from './sanitize-name';
 // Shared group utility (for singleton constructs at stack root)
 export { getOrCreateSharedGroup } from './shared-group';
 
+// Stack name-base registry (for coordinating S3-safe names across constructs)
+export { setStackNameBase, getStackNameBase } from './stack-name-base-registry';
+
 // Pipeline taxonomy & shared per-pipeline log groups
 export type { Pipeline } from './pipelines';
 export { getOrCreatePipelineLogGroup } from './pipeline-log-groups';
+
+// Table & Queue constructs (used by mailbox and mailbox-cognito)
+export { BaseTable } from './base-table';
+export { BaseQueue } from './base-queue';
+export type { BaseQueueProps } from './base-queue';
+export { StackNamedTable } from './named-table';
+export type { INamedTable, StackNamedTableProps } from './named-table';
+
+// Resource naming utilities
+export { makePhysicalName, slugifyLabel } from './resource-names';
+export type { PhysicalNameOptions } from './resource-names';
+
+// Resource group
+export { addServerlessInboxResourceGroup } from './resource-group';
+export type { ServerlessInboxResourceGroupProps } from './resource-group';

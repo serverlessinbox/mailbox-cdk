@@ -14,7 +14,7 @@ import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { GoLambda } from '../utils/go-lambda';
+import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface McpApiProps {
   jmapApiGateway: apigwv2.IHttpApi;

@@ -6,7 +6,7 @@ import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
-import { BaseQueue, type BaseQueueProps } from '../../utils/base-queue';
+import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 

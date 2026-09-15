@@ -1,7 +1,7 @@
 import { Aws, Fn } from 'aws-cdk-lib';
 import { CfnGroup } from 'aws-cdk-lib/aws-resourcegroups';
 import { Construct } from 'constructs';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
 export interface ServerlessInboxResourceGroupProps {
   /**

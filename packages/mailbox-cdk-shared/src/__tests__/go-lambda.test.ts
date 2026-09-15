@@ -14,8 +14,8 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { GoLambda } from '../utils/go-lambda';
+import type { ICdkArtifactEngine } from '../artifact-engine';
+import { GoLambda } from '../go-lambda';
 
 describe('GoLambda Construct', () => {
   let app: App;

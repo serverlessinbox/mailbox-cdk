@@ -9,7 +9,7 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
-import { addServerlessInboxResourceGroup } from '../utils/resource-group';
+import { addServerlessInboxResourceGroup } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxEdgeStackProps extends cdk.StackProps {
   // No additional props - configuration comes from CloudFormation parameters

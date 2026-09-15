@@ -1,7 +1,7 @@
 import { BillingMode, Table, TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { removalPolicyForRetainedResources } from '@serverlessinbox/mailbox-cdk-shared';
+import { removalPolicyForRetainedResources } from './development-mode';
 
 export class BaseTable extends Table {
   constructor(scope: Construct, id: string, props: TableProps) {

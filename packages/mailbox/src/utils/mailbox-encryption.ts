@@ -3,7 +3,7 @@ import { TableEncryption, type TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 
 import type { BlobStoreProps } from '../resources/blob-store';
-import type { BaseQueueProps } from './base-queue';
+import type { BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { MailboxKmsConfig } from './kms';
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 

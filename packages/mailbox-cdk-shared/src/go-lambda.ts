@@ -6,8 +6,10 @@ import {
 } from 'aws-cdk-lib/aws-lambda';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { applyArtifactTags, getOrCreatePipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyArtifactTags } from './apply-artifact-tags';
+import { getOrCreatePipelineLogGroup } from './pipeline-log-groups';
+import type { ICdkArtifactEngine } from './artifact-engine';
+import type { Pipeline } from './pipelines';
 
 export interface GoLambda2Props extends FunctionOptions {
   /**

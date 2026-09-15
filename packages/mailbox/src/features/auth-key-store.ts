@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { INamedTable, StackNamedTable } from '../utils/named-table';
+import { INamedTable, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
 export interface AuthKeyStoreProps {

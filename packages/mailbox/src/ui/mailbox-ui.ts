@@ -20,7 +20,7 @@ import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws } from 'aws-cdk-lib';
-import { slugifyLabel } from '../utils/resource-names';
+import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 

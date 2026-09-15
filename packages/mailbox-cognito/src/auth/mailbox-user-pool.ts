@@ -27,7 +27,7 @@ import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 
-import { slugifyLabel } from '../utils/resource-names';
+import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
 import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
 import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
