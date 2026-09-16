@@ -359,4 +359,91 @@ describe('MailboxDataStack Template Synthesis', () => {
     });
   });
 
+  /**
+   * S3 Lifecycle Rule Configuration Tests
+   */
+  describe('S3 Lifecycle Rule Configuration', () => {
+    it('data stack: DeleteUploadedBlobs rule uses prefix filter for uploads/', () => {
+      const app = new App();
+      const stack = new MailboxDataStack(app, 'TestMailboxData', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources found in template');
+      }
+
+      // Find the S3 bucket and verify lifecycle rules
+      let foundBucket = false;
+      for (const [, resource] of Object.entries(resources)) {
+        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) continue;
+        foundBucket = true;
+
+        const props = resource.Properties as Record<string, unknown>;
+        const lifecycleConfig = props.LifecycleConfiguration as Record<string, unknown> | undefined;
+        const lifecycleRules = lifecycleConfig?.Rules as Array<Record<string, unknown>> | undefined;
+        expect(lifecycleRules).toBeDefined();
+        expect(Array.isArray(lifecycleRules)).toBe(true);
+
+        // Find DeleteUploadedBlobs rule
+        const uploadRule = lifecycleRules?.find((rule) => rule.Id === 'DeleteUploadedBlobs');
+        expect(uploadRule).toBeDefined();
+        expect(uploadRule?.Status).toEqual('Enabled');
+
+        // Verify prefix filter exists and is 'uploads/'
+        expect(uploadRule?.Prefix).toEqual('uploads/');
+
+        // Verify NO tag filters (should be undefined)
+        const tagFilters = uploadRule?.TagFilters as Array<Record<string, string>> | undefined;
+        expect(tagFilters).toBeUndefined();
+
+        // Verify expiration is 1 day
+        expect(uploadRule?.ExpirationInDays).toEqual(1);
+      }
+
+      expect(foundBucket).toBe(true);
+    });
+
+    it('data stack: incoming-emails rule still uses prefix filter', () => {
+      const app = new App();
+      const stack = new MailboxDataStack(app, 'TestMailboxData', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+      if (!resources) {
+        throw new Error('No resources found in template');
+      }
+
+      // Find the S3 bucket and verify incoming-emails rule
+      let foundRule = false;
+      for (const [, resource] of Object.entries(resources)) {
+        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) continue;
+
+        const props = resource.Properties as Record<string, unknown>;
+        const lifecycleConfig = props.LifecycleConfiguration as Record<string, unknown> | undefined;
+        const lifecycleRules = lifecycleConfig?.Rules as Array<Record<string, unknown>> | undefined;
+
+        const incomingRule = lifecycleRules?.find((rule) => rule.Id === 'DeleteUnhandledIncomingEmails');
+        if (!incomingRule) continue;
+
+        foundRule = true;
+        expect(incomingRule.Status).toEqual('Enabled');
+
+        // Verify prefix filter exists and is 'incoming-emails/'
+        expect(incomingRule.Prefix).toEqual('incoming-emails/');
+
+        // Verify expiration is 7 days
+        expect(incomingRule.ExpirationInDays).toEqual(7);
+      }
+
+      expect(foundRule).toBe(true);
+    });
+  });
+
 });

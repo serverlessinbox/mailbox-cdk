@@ -26,7 +26,7 @@ export interface BlobStoreProps {
  * | `tenants/{tenant}/accounts/{account}/contacts/` | Contact cards |
  * | `tenants/{tenant}/principals/` | Principal objects |
  * | `tenants/{tenant}/accounts/{account}/search-indexes/` | Search indexes |
- * | `tenants/{tenant}/blobs/{account}/{blobID}` | Temporary client uploads |
+ * | `uploads/{tenant}/{account}/{blobID}` | Temporary client uploads; expire after 1 day |
  * | `incoming-emails/` | Inbound mail staging |
  *
  * **Access**
@@ -57,9 +57,9 @@ export class BlobStore extends StackNamedBucket {
       },
       {
         id: 'DeleteUploadedBlobs',
-        prefix: 'blobs/',
+        prefix: 'uploads/',
         enabled: true,
-        expiration: Duration.days(1), // Delete uploaded blobs after 1 day
+        expiration: Duration.days(1), // Delete temporary client uploads after 1 day
       },
     ];
 
