@@ -16,11 +16,10 @@ import {
   Permission,
   ProvisionAdminUiClientParams,
   ProvisionJmapUiClientParams,
-  StackHelpers,
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
-import { PinnedResolver, CdkArtifactEngine, resolveDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver, CdkArtifactEngine, resolveDeployerType, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 

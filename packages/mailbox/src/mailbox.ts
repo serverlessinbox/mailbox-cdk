@@ -39,9 +39,8 @@ import { Aws } from 'aws-cdk-lib';
 import { MailboxDataDeployer } from './data';
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
-import { StackHelpers } from './utils/stack-helpers';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
-import { addServerlessInboxResourceGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Re exports public API types and constructs for the mailbox package.

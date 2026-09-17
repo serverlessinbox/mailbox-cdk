@@ -13,9 +13,9 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver } from '../artifact-engine';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import { StackHelpers } from '../utils/stack-helpers';
+import { StackHelpers } from '../stack-helpers';
 
 describe('StackHelpers Construct', () => {
   let app: App;

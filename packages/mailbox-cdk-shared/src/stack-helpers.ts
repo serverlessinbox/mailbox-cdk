@@ -1,9 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { TypeScriptLambda, CdkArtifactEngine, getOrCreateSharedGroup } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
-import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda } from './ts-lambda';
+import { CdkArtifactEngine, ResolvedArtifact } from './artifact-engine';
+import { getOrCreateSharedGroup } from './shared-group';
+import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
 
 export interface StackHelpersMailboxDataProps {
   readonly hostedZoneId: string;
@@ -13,6 +14,19 @@ export interface StackHelpersMailboxDataProps {
 export interface StackHelpersMailboxData {
   readonly derivedDomainName: string;
   readonly derivedS3SafeDataStackName: string;
+}
+
+/**
+ * The artifact-resolver contract this construct depends on: resolve() to locate the shared
+ * Lambda's code, plus registerPackages() so getOrCreate can declare 'mailbox-cdk' regardless of
+ * which caller's resolver instance wins the singleton race. Deliberately unexported and narrower
+ * than any one package's own resolver type — every real resolver (mailbox's IArtifactResolver,
+ * PinnedResolver, AutoUpdater) satisfies this shape structurally, so callers from any package can
+ * pass their own resolver straight through with no adapter or cast.
+ */
+interface StackHelpersArtifactResolver {
+  resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact;
+  registerPackages(names: string[]): void;
 }
 
 /**
@@ -27,7 +41,7 @@ export class StackHelpers extends Construct {
    * Get-or-create the one shared lookup/sanitization Lambda for this Stack.
    * The singleton is placed under a "shared" group construct at stack root.
    */
-  static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): StackHelpers {
+  static getOrCreate(scope: Construct, artifactResolver: StackHelpersArtifactResolver): StackHelpers {
     const stack = cdk.Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
     const existing = sharedGroup.node.tryFindChild('stack-helpers');
@@ -37,7 +51,7 @@ export class StackHelpers extends Construct {
     return new StackHelpers(sharedGroup, 'stack-helpers', artifactResolver);
   }
 
-  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
+  private constructor(scope: Construct, id: string, artifactResolver: StackHelpersArtifactResolver) {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'ops');
 

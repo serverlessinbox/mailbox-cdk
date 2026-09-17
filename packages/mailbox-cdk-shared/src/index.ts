@@ -68,6 +68,11 @@ export { sanitizeStackName } from './sanitize-name';
 // Shared group utility (for singleton constructs at stack root)
 export { getOrCreateSharedGroup } from './shared-group';
 
+// Stack helpers — domain name / S3-safe stack name derivation singleton (shared by mailbox and
+// mailbox-cognito, which each attach their own custom resource to the one Lambda)
+export { StackHelpers } from './stack-helpers';
+export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './stack-helpers';
+
 // Stack name-base registry (for coordinating S3-safe names across constructs)
 export { setStackNameBase, getStackNameBase } from './stack-name-base-registry';
 

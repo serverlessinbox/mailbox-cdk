@@ -88,12 +88,6 @@ export type {
   MailboxKmsConfig,
 } from './utils/kms';
 
-// Stack helpers — domain and stack-name derivation singleton. NOT removed in this dispatch:
-// mailbox-cognito/src/auth/mailbox-user-pool.ts imports StackHelpers from this package's public
-// surface (StackHelpers.getOrCreate(...)); removing the export breaks that package's build.
-export { StackHelpers } from './utils/stack-helpers';
-export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './utils/stack-helpers';
-
 // Artifact resolution (stack-self-update subplan #3, Phase A, D2/D3 — jsii-exported types)
 export type { IArtifactResolver, ResolvedArtifact } from './artifacts/i-artifact-resolver';
 export { AutoUpdater } from './artifacts/resolvers';
