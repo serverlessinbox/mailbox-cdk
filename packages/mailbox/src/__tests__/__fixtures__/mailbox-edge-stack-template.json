@@ -1,0 +1,737 @@
+{
+  "Description": "Serverless JMAP email server on AWS edge tier — CloudFront distribution with Lambda@Edge for authentication and request routing.",
+  "Parameters": {
+    "rootStack": {
+      "Type": "String",
+      "Description": "Root (main) CloudFormation stack name (regional stack that created this edge stack)"
+    },
+    "rootRegion": {
+      "Type": "String",
+      "Description": "Root (main) AWS region (regional stack region that created this edge stack)"
+    },
+    "productVersion": {
+      "Type": "String",
+      "Default": "unknown",
+      "Description": "Serverless Inbox Mailbox stack version (for tagging/support)"
+    },
+    "deployerType": {
+      "Type": "String",
+      "Default": "cfn",
+      "AllowedValues": [
+        "cdk",
+        "cfn",
+        "marketplace"
+      ],
+      "Description": "Deployment mechanism label (cdk|cfn|marketplace) used for tagging"
+    },
+    "domainName": {
+      "Type": "String",
+      "AllowedPattern": "^(\\*\\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$",
+      "ConstraintDescription": "Must be a valid DNS name like example.com (no trailing dot).",
+      "Description": "Base domain name (e.g. example.com)"
+    },
+    "prefix": {
+      "Type": "String",
+      "Default": ".",
+      "AllowedPattern": "^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$",
+      "ConstraintDescription": "Use \".\" for no namespace, or use a dot-wrapped DNS label like \".mailbox.\"",
+      "Description": "Prefix with dots: \".\" for no prefix, or \".{prefix}.\" for a prefix"
+    },
+    "hostedZoneId": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Route53 hosted zone ID for DNS validation (optional)"
+    },
+    "hostedZoneName": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Route53 hosted zone name (required if HostedZoneId is provided)"
+    },
+    "artifactBucket": {
+      "Type": "String",
+      "Description": "S3 bucket containing artifacts"
+    },
+    "blobAuthorizerKey": {
+      "Type": "String",
+      "Description": "S3 key for blob-authorizer Lambda code (full path including artifact prefix)"
+    },
+    "blobAuthorizerS3VersionId": {
+      "Type": "String",
+      "Default": "",
+      "Description": "S3 object version ID for blob-authorizer Lambda code (optional)"
+    },
+    "itemTableArn": {
+      "Type": "String",
+      "Description": "DynamoDB item table ARN (regional) used by blob-authorizer"
+    },
+    "configTableArn": {
+      "Type": "String",
+      "Description": "DynamoDB config table ARN (regional) used by blob-authorizer"
+    },
+    "authKeyStoreTableArn": {
+      "Type": "String",
+      "Description": "DynamoDB auth key store table ARN (regional) used by blob-authorizer"
+    },
+    "logGroupName": {
+      "Type": "String",
+      "Description": "Name of the shared \"jmap\" pipeline log group (home region) that blob-authorizer logs into"
+    }
+  },
+  "Resources": {
+    "resourcegroup": {
+      "Type": "AWS::ResourceGroups::Group",
+      "Properties": {
+        "Description": "ServerlessInbox - all resources for this deployment matched by the root-stack tag.",
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "-serverless-inbox"
+            ]
+          ]
+        },
+        "ResourceQuery": {
+          "Query": {
+            "ResourceTypeFilters": [
+              "AWS::AllSupported"
+            ],
+            "TagFilters": [
+              {
+                "Key": "serverless-inbox:root-stack",
+                "Values": [
+                  {
+                    "Ref": "rootStack"
+                  }
+                ]
+              }
+            ]
+          },
+          "Type": "TAG_FILTERS_1_0"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "resource-group"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "edge"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing. - resourcegroups group"
+          },
+          {
+            "Key": "serverless-inbox:edge",
+            "Value": "true"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-region",
+            "Value": {
+              "Ref": "rootRegion"
+            }
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      }
+    },
+    "edgeedgecertificateE1C67BC7": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Fn::Join": [
+            "",
+            [
+              "webmail",
+              {
+                "Ref": "prefix"
+              },
+              {
+                "Ref": "domainName"
+              }
+            ]
+          ]
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Fn::Join": [
+                "",
+                [
+                  "webmail",
+                  {
+                    "Ref": "prefix"
+                  },
+                  {
+                    "Ref": "domainName"
+                  }
+                ]
+              ]
+            },
+            "HostedZoneId": {
+              "Ref": "hostedZoneId"
+            }
+          },
+          {
+            "DomainName": {
+              "Fn::Join": [
+                "",
+                [
+                  "admin",
+                  {
+                    "Ref": "prefix"
+                  },
+                  {
+                    "Ref": "domainName"
+                  }
+                ]
+              ]
+            },
+            "HostedZoneId": {
+              "Ref": "hostedZoneId"
+            }
+          },
+          {
+            "DomainName": {
+              "Fn::Join": [
+                "",
+                [
+                  "auth",
+                  {
+                    "Ref": "prefix"
+                  },
+                  {
+                    "Ref": "domainName"
+                  }
+                ]
+              ]
+            },
+            "HostedZoneId": {
+              "Ref": "hostedZoneId"
+            }
+          },
+          {
+            "DomainName": {
+              "Fn::Join": [
+                "",
+                [
+                  "cdn",
+                  {
+                    "Ref": "prefix"
+                  },
+                  {
+                    "Ref": "domainName"
+                  }
+                ]
+              ]
+            },
+            "HostedZoneId": {
+              "Ref": "hostedZoneId"
+            }
+          }
+        ],
+        "SubjectAlternativeNames": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "admin",
+                {
+                  "Ref": "prefix"
+                },
+                {
+                  "Ref": "domainName"
+                }
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "auth",
+                {
+                  "Ref": "prefix"
+                },
+                {
+                  "Ref": "domainName"
+                }
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "cdn",
+                {
+                  "Ref": "prefix"
+                },
+                {
+                  "Ref": "domainName"
+                }
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "edge/edge-certificate"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "edge"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing. - ACM certificate"
+          },
+          {
+            "Key": "serverless-inbox:edge",
+            "Value": "true"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-region",
+            "Value": {
+              "Ref": "rootRegion"
+            }
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ],
+        "ValidationMethod": "DNS"
+      },
+      "Condition": "hasHostedZone"
+    },
+    "edgeblobauthorizerrole06E02F87": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            },
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "edgelambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (",
+              {
+                "Ref": "AWS::StackName"
+              },
+              ")"
+            ]
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "edge/blob-authorizer-role"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "edge"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing. - execution role"
+          },
+          {
+            "Key": "serverless-inbox:edge",
+            "Value": "true"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-region",
+            "Value": {
+              "Ref": "rootRegion"
+            }
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      }
+    },
+    "edgeblobauthorizerroleDefaultPolicy09B1DA55": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:Query"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Ref": "itemTableArn"
+                },
+                {
+                  "Ref": "configTableArn"
+                },
+                {
+                  "Ref": "authKeyStoreTableArn"
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Ref": "itemTableArn"
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Ref": "configTableArn"
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Ref": "authKeyStoreTableArn"
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "edgeblobauthorizerroleDefaultPolicy09B1DA55",
+        "Roles": [
+          {
+            "Ref": "edgeblobauthorizerrole06E02F87"
+          }
+        ]
+      }
+    },
+    "edgeblobauthorizer8FA110C6": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "artifactBucket"
+          },
+          "S3Key": {
+            "Ref": "blobAuthorizerKey"
+          },
+          "S3ObjectVersion": {
+            "Fn::If": [
+              "edgehasblobauthorizerversion193E6599",
+              {
+                "Ref": "blobAuthorizerS3VersionId"
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          }
+        },
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Serverless Inbox Mailbox: blob-authorizer Lambda@Edge (",
+              {
+                "Ref": "AWS::StackName"
+              },
+              ")"
+            ]
+          ]
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "logGroupName"
+          }
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "edgeblobauthorizerrole06E02F87",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs24.x",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "edge/blob-authorizer"
+          },
+          {
+            "Key": "serverless-inbox:artifact-name",
+            "Value": "blob-authorizer"
+          },
+          {
+            "Key": "serverless-inbox:artifact-package",
+            "Value": "mailbox-cdk-edge"
+          },
+          {
+            "Key": "serverless-inbox:artifact-version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          },
+          {
+            "Key": "serverless-inbox:auto-update-type",
+            "Value": "edge"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "edge"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox edge tier - CloudFront / Lambda@Edge auth and routing. - Lambda function"
+          },
+          {
+            "Key": "serverless-inbox:edge",
+            "Value": "true"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-region",
+            "Value": {
+              "Ref": "rootRegion"
+            }
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      },
+      "DependsOn": [
+        "edgeblobauthorizerroleDefaultPolicy09B1DA55",
+        "edgeblobauthorizerrole06E02F87"
+      ],
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "edgeblobauthorizerCurrentVersionAF1FC69984c4404dbdc13cf42591fdff9778c197": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "Description": {
+          "Ref": "blobAuthorizerS3VersionId"
+        },
+        "FunctionName": {
+          "Ref": "edgeblobauthorizer8FA110C6"
+        }
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate",
+      "Metadata": {
+        "aws:cdk:do-not-refactor": true
+      }
+    }
+  },
+  "Conditions": {
+    "hasHostedZone": {
+      "Fn::And": [
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "hostedZoneId"
+                },
+                ""
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "hostedZoneName"
+                },
+                ""
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "edgehasblobauthorizerversion193E6599": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "blobAuthorizerS3VersionId"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "edgeCertificateArn": {
+      "Description": "ARN of the ACM certificate for CloudFront/Lambda@Edge (empty when no hosted zone configured)",
+      "Value": {
+        "Fn::If": [
+          "hasHostedZone",
+          {
+            "Ref": "edgeedgecertificateE1C67BC7"
+          },
+          ""
+        ]
+      }
+    },
+    "blobAuthorizerVersionArn": {
+      "Description": "ARN of the published blob-authorizer Lambda@Edge version",
+      "Value": {
+        "Ref": "edgeblobauthorizerCurrentVersionAF1FC69984c4404dbdc13cf42591fdff9778c197"
+      }
+    }
+  }
+}

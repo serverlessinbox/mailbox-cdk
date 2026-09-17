@@ -1,0 +1,991 @@
+{
+  "Description": "Serverless JMAP email server on AWS data tier — DynamoDB tables for configuration and email storage, plus S3 blob store.",
+  "Parameters": {
+    "nameBase": {
+      "Type": "String",
+      "Description": "S3-safe base for bucket names"
+    },
+    "rootStack": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Root (main) CloudFormation stack name (regional stack that created this data stack)"
+    },
+    "productVersion": {
+      "Type": "String",
+      "Default": "unknown",
+      "Description": "Serverless Inbox Mailbox stack version (for tagging/support)"
+    },
+    "deployerType": {
+      "Type": "String",
+      "Default": "cfn",
+      "AllowedValues": [
+        "cdk",
+        "cfn",
+        "marketplace"
+      ],
+      "Description": "Deployment mechanism label (cdk|cfn|marketplace) used for tagging"
+    }
+  },
+  "Resources": {
+    "blobStore": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "BucketName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-blob-store"
+            ]
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "ExpirationInDays": 7,
+              "Id": "DeleteUnhandledIncomingEmails",
+              "Prefix": "incoming-emails/",
+              "Status": "Enabled"
+            },
+            {
+              "ExpirationInDays": 1,
+              "Id": "DeleteUploadedBlobs",
+              "Prefix": "uploads/",
+              "Status": "Enabled"
+            },
+            {
+              "Id": "DeleteNoncurrentVersions",
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 35
+              },
+              "Status": "Enabled"
+            },
+            {
+              "ExpiredObjectDeleteMarker": true,
+              "Id": "DeleteExpiredObjectDeleteMarkers",
+              "Status": "Enabled"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "blob-store"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - S3 bucket"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ],
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "blobStorePolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "blobStore"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutObject",
+              "Condition": {
+                "StringEquals": {
+                  "aws:Referer": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ses.amazonaws.com"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "blobStore",
+                        "Arn"
+                      ]
+                    },
+                    "/incoming-emails/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "s3:GetObject",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "blobStore",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "configTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3sk",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi1",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi1pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi1sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi2",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi2pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi2sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi3",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi3pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi3sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-config-table"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "config-table"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - DynamoDB table"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "itemTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3sk",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi1",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi1pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi1sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi2",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi2pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi2sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi3",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi3pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi3sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-item-table"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "item-table"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - DynamoDB table"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "changelogTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "N"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-changelog-table"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "changelog-table"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - DynamoDB table"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "x",
+          "Enabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "auditLogTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi3sk",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi1",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi1pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi1sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi2",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi2pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi2sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi3",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi3pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi3sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-auditlog-table"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "auditlog-table"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - DynamoDB table"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    },
+    "mailFeedbackTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi1sk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "gsi2sk",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi1",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi1pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi1sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "gsi2",
+            "KeySchema": [
+              {
+                "AttributeName": "gsi2pk",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "gsi2sk",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "-",
+              {
+                "Ref": "nameBase"
+              },
+              "-mailfeedback-table"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "mailfeedback-table"
+          },
+          {
+            "Key": "serverless-inbox:component",
+            "Value": "data"
+          },
+          {
+            "Key": "serverless-inbox:deployer_type",
+            "Value": {
+              "Ref": "deployerType"
+            }
+          },
+          {
+            "Key": "serverless-inbox:description",
+            "Value": "ServerlessInbox data tier - retained DynamoDB tables and S3 blob store. - DynamoDB table"
+          },
+          {
+            "Key": "serverless-inbox:product",
+            "Value": "mailbox"
+          },
+          {
+            "Key": "serverless-inbox:root-stack",
+            "Value": {
+              "Ref": "rootStack"
+            }
+          },
+          {
+            "Key": "serverless-inbox:stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          },
+          {
+            "Key": "serverless-inbox:version",
+            "Value": {
+              "Ref": "productVersion"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "RetainExceptOnCreate"
+    }
+  },
+  "Outputs": {
+    "configTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "configTable",
+          "Arn"
+        ]
+      }
+    },
+    "itemTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "itemTable",
+          "Arn"
+        ]
+      }
+    },
+    "changelogTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "changelogTable",
+          "Arn"
+        ]
+      }
+    },
+    "auditLogTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "auditLogTable",
+          "Arn"
+        ]
+      }
+    },
+    "mailFeedbackTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "mailFeedbackTable",
+          "Arn"
+        ]
+      }
+    },
+    "blobStoreArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "blobStore",
+          "Arn"
+        ]
+      }
+    }
+  }
+}
