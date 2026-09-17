@@ -10,20 +10,20 @@ import {
   DomainName,
   EndpointType,
   SecurityPolicy,
-  WebSocketApi,
   WebSocketStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { RemovalPolicy, Aws, CfnResource } from 'aws-cdk-lib';
+import { CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import type { IGrantable } from 'aws-cdk-lib/aws-iam';
+import { WebSocketTable, IWebSocketTable } from './websocket-table';
+import { WebSocketPushApi, IWebSocketPushApi } from './websocket-push-api';
 
 export interface IWebSocketBroadcastPublisher {
   readonly functionName: string;
@@ -74,6 +74,8 @@ export class WebSocketPush extends Construct {
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
   public readonly connectionsTable: Table;
+  public readonly webSocketTable: IWebSocketTable;
+  public readonly webSocketPushApi: IWebSocketPushApi;
   private readonly broadcastLambda: lambda.IFunction;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
@@ -84,30 +86,13 @@ export class WebSocketPush extends Construct {
 
     const maxSubscriptions = props.maxSubscriptions ?? 10;
 
-    // DynamoDB table for WebSocket connections + subscriptions (single-table design)
-    this.connectionsTable = new StackNamedTable(this, 'websocket', {
-      // IMPORTANT: Uses shared base repository key names so lambdas can use DynamoBaseRepository
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-      sortKey: { name: 'sk', type: AttributeType.STRING },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
-      timeToLiveAttribute: 'ttl',
-      pointInTimeRecovery: false,
-    });
+    const webSocketTable = new WebSocketTable(this, 'connections-table');
+    this.webSocketTable = webSocketTable;
+    this.connectionsTable = webSocketTable.table;
 
-    // GSI1 for broadcasting by account (subscription items only)
-    // Matches shared base repository naming: indexName=gsi1, keys gsi1pk/gsi1sk
-    this.connectionsTable.addGlobalSecondaryIndex({
-      indexName: 'gsi1',
-      partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
-    });
-
-    // WebSocket API
-    const webSocketApi = new WebSocketApi(this, 'websocket-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
-      description: 'WebSocket API for JMAP Push State notifications',
-    });
+    const webSocketPushApi = new WebSocketPushApi(this, 'push-api');
+    this.webSocketPushApi = webSocketPushApi;
+    const webSocketApi = webSocketPushApi.api;
 
     const stage = new WebSocketStage(this, 'websocket-stage', {
       webSocketApi,

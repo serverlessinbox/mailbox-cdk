@@ -1,13 +1,12 @@
-import { AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { INamedTable, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { INamedTable } from '@serverlessinbox/mailbox-cdk-shared';
+import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
 
 export interface AuthKeyStoreProps {
   readonly issuers: string[];
@@ -19,33 +18,20 @@ export interface AuthKeyStoreProps {
 
 export class AuthKeyStore extends Construct {
   table: INamedTable;
-  tableName: string;
-  updaterLambda: IFunction;
+  public readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   constructor(scope: Construct, id: string, props: AuthKeyStoreProps) {
     super(scope, id);
-    const table = new StackNamedTable(this, 'auth-key-store', {
-      removalPolicy: RemovalPolicy.DESTROY,
-      partitionKey: {
-        name: 'pk',
-        type: AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'sk',
-        type: AttributeType.STRING,
-      },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-    });
+    const authKeyStoreTable = new AuthKeyStoreTable(this, 'table');
 
     const handler = new AuthKeyStoreUpdaterLambda(this, 'handler', {
-      authKeyStoreTable: table,
+      authKeyStoreTable: authKeyStoreTable.table,
       issuers: props.issuers,
       artifactResolver: props.artifactResolver,
     });
 
-    this.table = table;
-    this.tableName = table.tableName;
-    this.updaterLambda = handler;
+    this.authKeyStoreTable = authKeyStoreTable;
+    this.table = authKeyStoreTable.table;
 
     // Keep the cache fresh for key rotation.
     new Rule(this, 'rule', {
