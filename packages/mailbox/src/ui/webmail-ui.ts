@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
@@ -28,7 +28,7 @@ export interface WebmailUiProps {
   readonly authProvider: IMailboxAuthProvider;
 
   /** Audit events queue for publishing audit logs from token exchange. */
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   readonly uiBundle?: UiBundleSource;

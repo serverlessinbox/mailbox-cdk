@@ -1,9 +1,9 @@
 import type { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface IAdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
@@ -13,9 +13,24 @@ export interface IAdminApiAddon {
   uiConfig?: Record<string, unknown>;
 }
 
+/**
+ * Data an admin-api addon may need to build its own Lambda: the audit-events queue to send audit
+ * records to, and the config/audit-log tables most addons read from. Passed to every
+ * {@link IAdminApiAddonProvider.createAdminApiAddons} call so a capability (support, stack-update, a
+ * Cognito user-management addon, and any consumer-supplied addon) does not have to reach into
+ * `Mailbox` internals to get them.
+ */
 export interface AdminApiAddonContext {
-  readonly auditEventsQueue: IQueue;
+  /**
+   * Send-only handle to the shared audit-events queue. Pass this straight through to your addon's
+   * Lambda props and call `grantSend(this)` inside that Lambda's own constructor — never grant on
+   * this queue from outside the Lambda that holds it.
+   */
+  readonly auditEventsQueue: IAuditEventsQueue;
+  /** Shared config table (accounts, aliases, settings) most addons read from. */
   readonly configTable: ITable;
+  /** Shared audit-log table, for addons that need to read past audit records (not for writing —
+   *  writes go through {@link auditEventsQueue} and the dedicated audit-writer consumer). */
   readonly auditLogTable: ITable;
 }
 

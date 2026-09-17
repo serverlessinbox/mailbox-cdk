@@ -3,11 +3,11 @@ import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   buildSupportTierEnvironment,
 } from '../addons/support/support-roles-infra';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface SupportApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */
@@ -17,7 +17,7 @@ export interface SupportApiLambdaProps {
   /** DynamoDB config table for support access grant records. */
   readonly configTable: ITable;
   /** SQS queue for audit events. */
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
   /** Artifact resolver (engine) for Lambda code resolution. */
   readonly artifactResolver: ICdkArtifactEngine;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
@@ -81,7 +81,7 @@ export class SupportApiLambda extends GoLambda {
     // Config table access for support grant records.
     props.configTable.grantReadWriteData(this);
     // Grant send permission on the audit-events queue
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
     this.grantCloudTrailLookup();
 
     this.grantVendorApiInvoke(props);

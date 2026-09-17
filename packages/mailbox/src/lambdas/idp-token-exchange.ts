@@ -2,14 +2,14 @@ import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: ITable;
-  auditEventsQueue: IQueue;
+  auditEventsQueue: IAuditEventsQueue;
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
   artifactResolver: ICdkArtifactEngine;
@@ -39,6 +39,6 @@ export class IdpTokenExchangeLambda extends GoLambda {
     });
 
     props.configTable.grantReadData(this);
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
   }
 }

@@ -7,6 +7,8 @@ import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket/websocket';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -22,8 +24,8 @@ export interface ApiHandlerLambdaProps {
   changelogTable: ITable;
   authKeyStoreTable: ITable;
   blobStore: any;
-  emailSubmissionQueue: any;
-  auditEventsQueue: any;
+  emailSubmissionQueue: IEmailSendingQueue;
+  auditEventsQueue: IAuditEventsQueue;
   cdnHost: string;
   apiBaseUrl: string;
   artifactResolver: ICdkArtifactEngine;
@@ -79,10 +81,10 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     props.blobStore.grantReadWrite(this);
 
     // Grant SQS permissions to send email submission messages
-    props.emailSubmissionQueue.grantSendMessages(this);
+    props.emailSubmissionQueue.grantSend(this);
 
     // Grant SQS permissions to send audit events
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
 
     // Grant the User provisioning function to be invoked
     props.identityProvisionerFunction.grantInvoke(this);

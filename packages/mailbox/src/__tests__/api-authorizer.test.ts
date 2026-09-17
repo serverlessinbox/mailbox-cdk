@@ -16,7 +16,6 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { AdminApi } from '../api/admin/admin-api';
@@ -27,6 +26,8 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { IMailboxAuthProvider } from '../auth/types';
 import { Permission } from '../auth/jmap-scopes';
+import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -121,8 +122,8 @@ describe('API Authorizer Wiring', () => {
   let mailFeedbackTable: dynamodb.ITable;
   let authKeyStoreTable: dynamodb.ITable;
   let blobStore: s3.IBucket;
-  let emailSubmissionQueue: sqs.IQueue;
-  let auditEventsQueue: sqs.IQueue;
+  let emailSubmissionQueue: IEmailSendingQueue;
+  let auditEventsQueue: IAuditEventsQueue;
   let identityProvisionerFunction: lambda.IFunction;
   let mockAuthProvider: IMailboxAuthProvider;
   let certificate: acm.ICertificate;
@@ -186,8 +187,8 @@ describe('API Authorizer Wiring', () => {
     });
 
     blobStore = new s3.Bucket(stack, 'blob-store');
-    emailSubmissionQueue = new sqs.Queue(stack, 'email-submission-queue');
-    auditEventsQueue = new sqs.Queue(stack, 'audit-events-queue');
+    emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
+    auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
     // Identity provisioner function - use a minimal Node.js function for testing
     identityProvisionerFunction = new lambda.Function(stack, 'identity-provisioner', {

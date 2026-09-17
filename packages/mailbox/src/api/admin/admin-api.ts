@@ -13,7 +13,6 @@ import {
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -22,6 +21,8 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { IAdminApiAddon } from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../websocket/websocket';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
 
 export interface AdminApiProps {
   readonly configTable: ITable;
@@ -31,8 +32,8 @@ export interface AdminApiProps {
   readonly mailFeedbackTable: ITable;
   readonly authKeyStoreTable: ITable;
   readonly blobStore: IBucket;
-  readonly emailSubmissionQueue: IQueue;
-  readonly auditEventsQueue: IQueue;
+  readonly emailSubmissionQueue: IEmailSendingQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
   readonly allowedOrigins?: string[];
   readonly artifactResolver: ICdkArtifactEngine;
   readonly authProvider: IMailboxAuthProvider;

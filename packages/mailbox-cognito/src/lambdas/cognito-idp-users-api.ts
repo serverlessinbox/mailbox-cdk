@@ -4,6 +4,8 @@ import { Construct } from 'constructs';
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuditEventsQueue } from '@serverlessinbox/mailbox';
+import type { ICognitoIdpUsersPoolConfig } from '../api/cognito-idp-users-addon';
 
 export interface CognitoIdpUsersApiLambdaProps {
   artifactResolver: ICdkArtifactEngine;
@@ -11,8 +13,11 @@ export interface CognitoIdpUsersApiLambdaProps {
   /** Cognito user pool ID to manage. */
   userPoolId: string;
 
-  /** Audit event queue URL (SQS). */
-  auditEventsQueueUrl: string;
+  /** Send-only handle to the shared audit-events queue; this Lambda grants itself send access. */
+  auditEventsQueue: IAuditEventsQueue;
+
+  /** Cognito pool integration this Lambda grants itself admin access on. */
+  pool: ICognitoIdpUsersPoolConfig;
 
   /** Optional admin group names (JSON-encoded array). */
   readonly adminGroups?: string;
@@ -26,12 +31,15 @@ export interface CognitoIdpUsersApiLambdaProps {
  *
  * Expects an artifact at: `lambdas/cognito-idp-users-api.zip`
  * with handler: `index.handler`.
+ *
+ * Grants itself audit-queue send access and Cognito pool admin access in its own constructor —
+ * no other construct grants permissions onto this Lambda.
  */
 export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoIdpUsersApiLambdaProps) {
     const environment: Record<string, string> = {
       USER_POOL_ID: props.userPoolId,
-      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueueUrl,
+      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
     };
 
     // Only set authorization groups if provided
@@ -51,5 +59,8 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
       memorySize: 256,
       environment,
     });
+
+    props.pool.grantAdminAccess(this);
+    props.auditEventsQueue.grantSend(this);
   }
 }

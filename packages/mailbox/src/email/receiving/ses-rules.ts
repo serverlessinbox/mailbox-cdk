@@ -1,6 +1,4 @@
 import { CfnOutput } from 'aws-cdk-lib';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
@@ -8,11 +6,10 @@ import { Construct } from 'constructs';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { EmailProcessingQueue, type IEmailProcessingQueue } from './email-processing-queue';
+import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
 
 export interface EmailDelivery {
   readonly blobStore: IBucket;
-  readonly emailProcessor: IFunction;
   readonly bucketPrefix: string;
   readonly artifactResolver: ICdkArtifactEngine;
   /** Encryption props forwarded from the mailbox encryption plan. */
@@ -28,8 +25,8 @@ export class SesRules extends Construct {
   readonly ruleSetName: string;
   /** The SES receipt rule set object (typed CDK interface for passing to other constructs). */
   readonly ruleSet: IReceiptRuleSet;
-  /** Narrow grant access to the email-processing queue this construct creates. */
-  readonly emailProcessingQueueAccess: IEmailProcessingQueue;
+  /** Send/consume handle to the email-processing queue this construct creates. */
+  readonly emailProcessingQueue: IEmailProcessingQueueConsumer;
 
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
@@ -39,15 +36,14 @@ export class SesRules extends Construct {
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
       queueProps: props.delivery.queueProps,
     });
-    this.emailProcessingQueueAccess = emailProcessingQueue;
-    const queue = emailProcessingQueue.queue;
+    this.emailProcessingQueue = emailProcessingQueue;
 
     // Forwarder Lambda: receives the SES receipt notification and enqueues it on SQS.
     // This replaces the SNS action which has a hard 150 KB inbound email size limit.
     // SES invokes this asynchronously (InvocationType.EVENT) so a transient failure
     // does NOT bounce the email — the MIME is already safely stored in S3.
     const forwarder = new SesReceiptForwarderLambda(this, 'ses-receipt-forwarder', {
-      emailProcessorQueue: queue,
+      emailProcessorQueue: emailProcessingQueue,
       artifactResolver: props.delivery.artifactResolver,
     });
 
@@ -73,13 +69,6 @@ export class SesRules extends Construct {
       scanEnabled: true,
       tlsPolicy: TlsPolicy.REQUIRE,
     });
-
-    // Trigger email-processor Lambda from the queue; partial batch failure reporting
-    // ensures only failed messages are retried, not the entire batch
-    props.delivery.emailProcessor.addEventSource(new SqsEventSource(queue, {
-      batchSize: 10,
-      reportBatchItemFailures: true,
-    }));
 
     // Note: the SES bucket policy (allowing ses.amazonaws.com to s3:PutObject on incoming-emails/*)
     // is applied directly on BlobStore in resources/blob-store.ts. The blob store is owned by

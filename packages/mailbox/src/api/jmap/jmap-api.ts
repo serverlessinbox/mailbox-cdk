@@ -17,13 +17,14 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { IMailboxAuthProvider } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../websocket/websocket';
 import type { IJmapApiAddon } from '../addons';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
 
 export interface JMapApiProps {
   readonly configTable: ITable;
@@ -31,8 +32,8 @@ export interface JMapApiProps {
   readonly changelogTable: ITable;
   readonly authKeyStoreTable: ITable;
   readonly blobStore: IBucket;
-  readonly emailSubmissionQueue: IQueue;
-  readonly auditEventsQueue: IQueue;
+  readonly emailSubmissionQueue: IEmailSendingQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** OAuth clientId to advertise in the JMAP session response (must be JMAP_UI). */
   readonly oauthClientId: string;

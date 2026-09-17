@@ -13,12 +13,33 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import * as fs from 'fs';
 import * as path from 'path';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
 import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
 import { capturePermissionSnapshot, compareSnapshots, PermissionSnapshot } from './permission-snapshot-helpers';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver, CdkArtifactEngine, grantQueueActions, SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuditEventsQueue } from '@serverlessinbox/mailbox';
+
+/**
+ * Minimal stand-in for `mailbox`'s (internal, unexported) `AuditEventsQueue` construct: this test
+ * only needs something that satisfies `IAuditEventsQueue` and grants the identical
+ * `sqs:SendMessage`-only statement the real construct grants, via the same shared helper.
+ */
+class TestAuditEventsQueue implements IAuditEventsQueue {
+  readonly queueUrl: string;
+  readonly queueArn: string;
+
+  constructor(private readonly queue: sqs.Queue) {
+    this.queueUrl = queue.queueUrl;
+    this.queueArn = queue.queueArn;
+  }
+
+  grantSend(grantee: IGrantable): void {
+    grantQueueActions(grantee, this.queue, SqsActions.send);
+  }
+}
 
 const FIXTURE_DIR = path.join(__dirname, '__fixtures__');
 const MAILBOX_COGNITO_FIXTURE = path.join(FIXTURE_DIR, 'mailbox-user-pool-permissions.json');
@@ -61,7 +82,7 @@ function createTestMailboxUserPoolStack(): cdk.Stack {
     enableJmapOAuthDiscovery: true,
   });
 
-  const auditEventsQueue = new sqs.Queue(stack, 'TestAuditEventsQueue');
+  const auditEventsQueue = new TestAuditEventsQueue(new sqs.Queue(stack, 'TestAuditEventsQueue'));
   new CognitoIdpUsersAdminApiAddon(stack, 'IdpUsersAddon', {
     artifactResolver: new CdkArtifactEngine(stack, resolver, 'idp-users-artifacts'),
     auditEventsQueue,

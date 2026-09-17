@@ -3,9 +3,10 @@ import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { ISesEventQueue } from '../email/ses-events/ses-event-queue';
 
 export interface SESEventProcessorLambdaProps {
   itemTable: ITable;
@@ -13,10 +14,15 @@ export interface SESEventProcessorLambdaProps {
   mailFeedbackTable: ITable;
   configTable: ITable;
   blobStore: IBucket;
-  auditEventsQueue: IQueue;
+  auditEventsQueue: IAuditEventsQueue;
+  sesEventQueue: ISesEventQueue;
   artifactResolver: ICdkArtifactEngine;
 }
 
+/**
+ * Consumes the SES-notifications queue via its own SQS event source mapping. Owns both the mapping
+ * and the consume grant; no other construct wires this Lambda to a queue.
+ */
 export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: SESEventProcessorLambdaProps) {
     super(scope, id, {
@@ -41,7 +47,16 @@ export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushT
     props.mailFeedbackTable.grantReadWriteData(this);
     props.configTable.grantReadWriteData(this);
     props.blobStore.grantReadWrite(this);
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
+
+    this.addEventSourceMapping('ses-notifications-queue', {
+      eventSourceArn: props.sesEventQueue.queueArn,
+      batchSize: 100,
+      maxConcurrency: 5,
+      reportBatchItemFailures: true,
+      maxBatchingWindow: Duration.seconds(30),
+    });
+    props.sesEventQueue.grantConsume(this);
   }
 
   public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {

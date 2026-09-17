@@ -1,24 +1,25 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 
 export interface IdentityProvisionerLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  auditEventsQueue: IQueue;
+  auditEventsQueue: IAuditEventsQueue;
   artifactResolver: ICdkArtifactEngine;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
   readonly adminUIURL: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */
   readonly blobStore: IBucket;
   /** SQS queue for email submissions (used by the submission service). */
-  readonly emailSubmissionQueue: IQueue;
+  readonly emailSubmissionQueue: IEmailSendingQueue;
   /** SES configuration set name for sending emails. */
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
@@ -54,13 +55,13 @@ export class IdentityProvisionerLambda extends GoLambda {
     props.changelogTable.grantReadWriteData(this);
 
     // Audit events emitted during provisioning
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
 
     // Email service: blob store for email bodies/attachments
     props.blobStore.grantReadWrite(this);
 
     // Submission service: enqueue email submissions
-    props.emailSubmissionQueue.grantSendMessages(this);
+    props.emailSubmissionQueue.grantSend(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a

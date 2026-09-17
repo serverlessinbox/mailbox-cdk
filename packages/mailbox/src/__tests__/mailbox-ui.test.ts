@@ -19,19 +19,19 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { OAUTH_CLIENT_ADMIN_UI, AUTH_POLICY_ADMIN_API } from '../auth/types';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import {
   CloudFormationResource,
   getPolicyStatements,
   isResourceOfType,
 } from './iam-test-helpers';
+import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 describe('MailboxUi.addUiDeployment IAM Policies', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
   let configTable: dynamodb.ITable;
-  let auditEventsQueue: sqs.IQueue;
+  let auditEventsQueue: IAuditEventsQueue;
 
   beforeEach(() => {
     app = new App({
@@ -70,7 +70,7 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    auditEventsQueue = new sqs.Queue(stack, 'audit-events-queue');
+    auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
   });
 
   describe('S3 ListBucket Permission', () => {

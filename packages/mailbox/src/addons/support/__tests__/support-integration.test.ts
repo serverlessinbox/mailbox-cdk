@@ -10,11 +10,11 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SupportAddonProvider, SupportMode } from '../support-addon';
+import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -57,7 +57,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
 
       // Create a mock audit queue for the test
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const auditLogTable = new Table(stack, 'audit-log-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
@@ -110,7 +110,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
     let template: Template;
     let artifactResolver: ICdkArtifactEngine;
     let configTable: Table;
-    let auditEventsQueue: Queue;
+    let auditEventsQueue: AuditEventsQueue;
     let auditLogTable: Table;
 
     beforeEach(() => {
@@ -137,7 +137,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
 
       // Create a mock audit queue for the test
-      auditEventsQueue = new Queue(stack, 'audit-queue');
+      auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       auditLogTable = new Table(stack, 'audit-log-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
@@ -515,7 +515,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         produce: () => SupportMode.ENABLED,
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const auditLogTable = new Table(stack, 'audit-log-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },

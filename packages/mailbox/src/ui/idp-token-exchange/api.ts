@@ -4,7 +4,7 @@ import { IdpTokenExchangeLambda } from "../../lambdas";
 import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import {
   AuthPolicyName,
   OAuthClientName,
@@ -16,7 +16,7 @@ import { Aws } from 'aws-cdk-lib';
 export interface IdpTokenExchangeApiProps {
   artifactResolver: ICdkArtifactEngine;
   configTable: ITable;
-  auditEventsQueue: IQueue;
+  auditEventsQueue: IAuditEventsQueue;
 
   /**
    * Name of AUTH_POLICY record to use (e.g. ADMIN_API).

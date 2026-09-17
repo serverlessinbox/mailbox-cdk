@@ -5,15 +5,21 @@ import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher } from "../api/websocket/websocket";
+import type { IEmailProcessingQueueConsumer } from "../email/receiving/email-processing-queue";
 
 export interface EmailProcessorLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
   blobStore: IBucket;
+  emailProcessingQueue: IEmailProcessingQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
 }
 
+/**
+ * Consumes the email-processing queue via its own SQS event source mapping. Owns both the mapping
+ * and the consume grant; no other construct wires this Lambda to a queue.
+ */
 export class EmailProcessorLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: EmailProcessorLambdaProps) {
     super(scope, id, {
@@ -37,6 +43,13 @@ export class EmailProcessorLambda extends GoLambda {
 
     // Grant the Lambda function permissions to read from the S3 bucket
     props.blobStore.grantReadWrite(this);
+
+    this.addEventSourceMapping('email-processing-queue', {
+      eventSourceArn: props.emailProcessingQueue.queueArn,
+      batchSize: 10,
+      reportBatchItemFailures: true,
+    });
+    props.emailProcessingQueue.grantConsume(this);
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {

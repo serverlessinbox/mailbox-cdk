@@ -58,6 +58,7 @@ export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
+export type { IAuditEventsQueue } from './features/audit-writing/audit-events-queue';
 export { StackUpdateAddonProvider } from './addons/stack-update/stack-update-addon';
 export type { StackUpdateAddonProviderProps } from './addons/stack-update/stack-update-addon';
 export { SupportAddonProvider, SupportMode } from './addons/support/support-addon';

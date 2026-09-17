@@ -1,16 +1,13 @@
-import { Duration } from 'aws-cdk-lib';
-import { Topic } from 'aws-cdk-lib/aws-sns';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { SESEventProcessorLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
-import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SesEventTopic, type ISesEventTopic } from './ses-event-topic';
 import { SesEventQueue, type ISesEventQueue } from './ses-event-queue';
 
@@ -20,7 +17,7 @@ export interface SESEventProcessingProps {
   readonly mailFeedbackTable: ITable;
   readonly configTable: ITable;
   readonly blobStore: IBucket;
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
   readonly artifactResolver: ICdkArtifactEngine;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
@@ -37,10 +34,10 @@ export interface SESEventProcessingProps {
  * - SES Configuration Set for event routing
  */
 export class SESEventProcessing extends Construct {
-  public readonly sesNotificationsTopic: Topic;
-  public readonly sesNotificationsQueue: BaseQueue;
-  public readonly sesEventTopicAccess: ISesEventTopic;
-  public readonly sesEventQueueAccess: ISesEventQueue;
+  /** Read-only identity of the SES-notifications SNS topic; no grant surface (see `ISesEventTopic`). */
+  public readonly sesEventTopic: ISesEventTopic;
+  /** Consume handle to the SES-notifications queue; grant methods only, no raw SQS object. */
+  public readonly sesEventQueue: ISesEventQueue;
   private readonly sesEventProcessorLambda: IWebSocketPushTarget;
   public readonly sesConfigSetName: string;
 
@@ -49,8 +46,7 @@ export class SESEventProcessing extends Construct {
 
     // SNS topic for SES notifications (bounce, complaint, delivery, send, reject)
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
-    this.sesEventTopicAccess = sesEventTopic;
-    this.sesNotificationsTopic = sesEventTopic;
+    this.sesEventTopic = sesEventTopic;
 
     // SQS queue to consume SNS notifications. SNS -> SQS does NOT work with SQS queues encrypted
     // using the AWS-managed KMS key (alias/aws/sqs), because SNS can't be granted permission to use
@@ -59,8 +55,7 @@ export class SESEventProcessing extends Construct {
       topic: sesEventTopic,
       queueProps: props.queueProps,
     });
-    this.sesEventQueueAccess = sesEventQueue;
-    this.sesNotificationsQueue = sesEventQueue.queue;
+    this.sesEventQueue = sesEventQueue;
 
     // SES Configuration Set for bounce/complaint/delivery notifications
     const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {
@@ -73,7 +68,7 @@ export class SESEventProcessing extends Construct {
       configurationSetName: this.sesConfigSetName,
       eventDestination: {
         snsDestination: {
-          topicArn: this.sesNotificationsTopic.topicArn,
+          topicArn: this.sesEventTopic.topicArn,
         },
         enabled: true,
         matchingEventTypes: [
@@ -98,18 +93,9 @@ export class SESEventProcessing extends Construct {
       configTable: props.configTable,
       blobStore: props.blobStore,
       auditEventsQueue: props.auditEventsQueue,
+      sesEventQueue,
       artifactResolver: props.artifactResolver,
     });
-
-    // Add SQS event source for SES notifications
-    sesEventProcessorLambda.addEventSource(
-      new SqsEventSource(this.sesNotificationsQueue, {
-        batchSize: 100,
-        maxConcurrency: 5,
-        reportBatchItemFailures: true,
-        maxBatchingWindow: Duration.seconds(30),
-      })
-    );
 
     this.sesEventProcessorLambda = sesEventProcessorLambda;
   }

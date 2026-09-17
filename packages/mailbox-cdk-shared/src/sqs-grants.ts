@@ -36,8 +36,12 @@ export function grantQueueActions(grantee: IGrantable, queue: IQueue, actions: r
 
   const key = queue.encryptionMasterKey;
   if (key) {
+    // SQS performs the envelope encryption itself: a producer never calls kms:Encrypt or
+    // kms:ReEncrypt* directly. It needs kms:GenerateDataKey* to have SQS mint a fresh data key,
+    // and kms:Decrypt because SQS caches the encrypted data key and decrypts it on subsequent
+    // sends within the cache window.
     if (actions.includes('sqs:SendMessage')) {
-      key.grant(grantee, 'kms:Decrypt', 'kms:Encrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*');
+      key.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt');
     } else if (actions.includes('sqs:ReceiveMessage')) {
       key.grant(grantee, 'kms:Decrypt');
     }

@@ -91,7 +91,7 @@ describe('grantQueueActions', () => {
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
           Match.objectEquals({
-            Action: ['kms:Decrypt', 'kms:Encrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*'],
+            Action: ['kms:GenerateDataKey*', 'kms:Decrypt'],
             Effect: 'Allow',
             Resource: { 'Fn::GetAtt': [keyId, 'Arn'] },
           }),

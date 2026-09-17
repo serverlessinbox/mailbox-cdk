@@ -335,6 +335,14 @@
       "permissionsBoundary": null,
       "statements": [
         {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "fallback:TestAuditEventsQueue",
+            "attr": "Arn"
+          }
+        },
+        {
           "Action": [
             "cognito-idp:AdminAddUserToGroup",
             "cognito-idp:AdminCreateUser",
@@ -355,18 +363,6 @@
           "Resource": {
             "ref": "fallback:MailboxUserPool/cognito-deployer/resource",
             "attr": "userPoolArn"
-          }
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "fallback:TestAuditEventsQueue",
-            "attr": "Arn"
           }
         }
       ]

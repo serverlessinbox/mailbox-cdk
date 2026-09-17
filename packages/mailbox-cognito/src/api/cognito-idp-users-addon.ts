@@ -1,11 +1,10 @@
 import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { IAdminApiAddon } from '@serverlessinbox/mailbox';
+import { IAdminApiAddon, type IAuditEventsQueue } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -26,7 +25,7 @@ export interface CognitoIdpUsersAdminApiAddonProps {
   readonly artifactResolver: ICdkArtifactEngine;
 
   /** Audit events queue used by the existing audit-writer lambda. */
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Cognito pool integration (used for pool id + granting permissions). */
   readonly pool: ICognitoIdpUsersPoolConfig;
@@ -77,14 +76,12 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
     this._lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
-      auditEventsQueueUrl: props.auditEventsQueue.queueUrl,
+      auditEventsQueue: props.auditEventsQueue,
+      pool: props.pool,
       adminGroups: authz ? JSON.stringify(authz.adminGroups ?? []) : undefined,
       userGroups: authz ? JSON.stringify(authz.userGroups ?? []) : undefined,
     });
     this.lambdaFunction = this._lambdaConstruct;
-
-    props.pool.grantAdminAccess(this._lambdaConstruct);
-    props.auditEventsQueue.grantSendMessages(this._lambdaConstruct);
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {

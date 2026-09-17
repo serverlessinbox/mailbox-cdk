@@ -10,13 +10,27 @@ export interface EmailProcessingQueueProps {
 }
 
 /**
- * Read or read-write access to the email-processing queue without exposing the underlying SQS
- * queue. A holder can request a scoped grant (`grantSend`, `grantConsume`); it cannot reach the raw
- * CDK queue construct through this interface.
+ * Send-only access to the email-processing queue, without exposing the underlying SQS queue
+ * construct. `ses-receipt-forwarder` depends on this interface to enqueue an inbound-email
+ * notification and to build its own `EMAIL_PROCESSOR_QUEUE_URL` environment variable — it never
+ * needs to consume from this queue.
  */
 export interface IEmailProcessingQueue {
-  grantSend(grantee: IGrantable): void;
+  /** The queue's URL, for a sender's `EMAIL_PROCESSOR_QUEUE_URL` environment variable. */
+  readonly queueUrl: string;
 
+  /** The queue's ARN, needed to wire a consumer's own SQS event source mapping. */
+  readonly queueArn: string;
+
+  grantSend(grantee: IGrantable): void;
+}
+
+/**
+ * Internal (non-exported) extension of {@link IEmailProcessingQueue} adding consume access.
+ * Reserved for the single `email-processor` Lambda that drains this queue; every other holder only
+ * ever sends to it and should depend on {@link IEmailProcessingQueue} instead.
+ */
+export interface IEmailProcessingQueueConsumer extends IEmailProcessingQueue {
   grantConsume(grantee: IGrantable): void;
 }
 
@@ -29,9 +43,11 @@ export interface IEmailProcessingQueue {
  *
  * Not responsible for wiring the consumer's event source mapping — `SesRules` owns that.
  */
-export class EmailProcessingQueue extends Construct implements IEmailProcessingQueue {
+export class EmailProcessingQueue extends Construct implements IEmailProcessingQueueConsumer {
   public readonly queue: BaseQueue;
   public readonly dlq: BaseQueue;
+  public readonly queueUrl: string;
+  public readonly queueArn: string;
 
   constructor(scope: Construct, id: string, props: EmailProcessingQueueProps = {}) {
     super(scope, id);
@@ -57,6 +73,8 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
         maxReceiveCount: 3,
       },
     });
+    this.queueUrl = this.queue.queueUrl;
+    this.queueArn = this.queue.queueArn;
   }
 
   public grantSend(grantee: IGrantable): void {

@@ -2,9 +2,9 @@ import { Aws, ArnFormat, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;
@@ -15,7 +15,7 @@ export interface StackUpdateApiLambdaProps {
   readonly pointerBucket: string;
   readonly pointerKey: string;
   readonly templateUrlTemplate: string;
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
   /**
    * Explicit name of the stack-update recovery state machine (`StackUpdateRecoveryInfra`).
    *
@@ -116,7 +116,7 @@ export class StackUpdateApiLambda extends GoLambda {
     props.configTable.grantReadData(this);
 
     // Grant send permission on the audit-events queue (shared HTTP registry audit path)
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
 
     // Stack management permissions: Lambda now executes ChangeSet operations without a separate
     // execution role. CloudFormation runs under the Lambda's identity when no RoleARN is provided.

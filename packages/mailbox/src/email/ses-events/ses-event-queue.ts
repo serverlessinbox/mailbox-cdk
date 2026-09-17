@@ -19,6 +19,9 @@ export interface SesEventQueueProps {
  * exposing the underlying SQS queue construct.
  */
 export interface ISesEventQueue {
+  /** The queue's ARN, needed to wire a consumer's own SQS event source mapping. */
+  readonly queueArn: string;
+
   grantConsume(grantee: IGrantable): void;
 }
 
@@ -36,6 +39,7 @@ export interface ISesEventQueue {
  */
 export class SesEventQueue extends Construct implements ISesEventQueue {
   public readonly queue: BaseQueue;
+  public readonly queueArn: string;
 
   constructor(scope: Construct, id: string, props: SesEventQueueProps) {
     super(scope, id);
@@ -49,6 +53,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
       ...queueProps,
       encryption,
     });
+    this.queueArn = this.queue.queueArn;
 
     props.topic.addSubscription(
       new SqsSubscription(this.queue, {

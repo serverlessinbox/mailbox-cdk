@@ -14,12 +14,12 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SupportAddon, SupportMode } from '../support-addon';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -61,7 +61,7 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock audit queue for the test
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
 
       const artifactResolver = createTestArtifactResolver(stack);
 
@@ -120,7 +120,7 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock audit queue for the test
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
 
       const artifactResolver = createTestArtifactResolver(stack);
 
@@ -158,7 +158,7 @@ describe('SupportAddon Unit Tests', () => {
     let template: Template;
     let artifactResolver: ICdkArtifactEngine;
     let configTable: Table;
-    let auditEventsQueue: Queue;
+    let auditEventsQueue: AuditEventsQueue;
 
     beforeEach(() => {
       const app = new App({
@@ -184,7 +184,7 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock audit events queue for the test
-      auditEventsQueue = new Queue(stack, 'audit-queue');
+      auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
 
       artifactResolver = createTestArtifactResolver(stack);
 
@@ -1228,7 +1228,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITHOUT vendorAccountIds prop
@@ -1297,7 +1297,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct with the two-account list set via CDK context (see App above)
@@ -1371,7 +1371,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct with an empty list set via CDK context (see App above)
@@ -1440,7 +1440,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct WITHOUT vendorAccountIds prop (uses default VENDOR_ACCOUNT_ID)
@@ -1502,7 +1502,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct with the two-account list set via CDK context (see App above)
@@ -1566,7 +1566,7 @@ describe('SupportAddon Unit Tests', () => {
         sortKey: { name: 'sk', type: AttributeType.STRING },
       });
 
-      const auditEventsQueue = new Queue(stack, 'audit-queue');
+      const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
 
       // Construct with an empty list set via CDK context (should fall back to default)

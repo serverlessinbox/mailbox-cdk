@@ -14,11 +14,11 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
 import { getPolicyStatements } from './iam-test-helpers';
+import { AuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 const TEST_ACCOUNT = '123456789012';
 const TEST_REGION = 'us-west-2';
@@ -60,11 +60,7 @@ function buildTemplate(): Template {
     'config-table',
     `arn:aws:dynamodb:${TEST_REGION}:${TEST_ACCOUNT}:table/config`,
   );
-  const auditEventsQueue = sqs.Queue.fromQueueArn(
-    stack,
-    'audit-queue',
-    `arn:aws:sqs:${TEST_REGION}:${TEST_ACCOUNT}:audit-events`,
-  );
+  const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
 
   new StackUpdateAddon(stack, 'stack-update-addon', {
     configTable,

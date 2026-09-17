@@ -9,13 +9,27 @@ export interface EmailSendingQueueProps {
 }
 
 /**
- * Read or read-write access to the email-submissions queue without exposing the underlying SQS
- * queue. A holder can request a scoped grant (`grantSend`, `grantConsume`); it cannot reach the raw
- * CDK queue construct through this interface.
+ * Send-only access to the email-submissions queue, without exposing the underlying SQS queue
+ * construct. The admin/JMAP APIs and the identity provisioner depend on this interface to enqueue a
+ * submission and to build their own `EMAIL_SUBMISSION_QUEUE_URL` environment variable — they never
+ * need to consume from this queue.
  */
 export interface IEmailSendingQueue {
-  grantSend(grantee: IGrantable): void;
+  /** The queue's URL, for a sender's `EMAIL_SUBMISSION_QUEUE_URL` environment variable. */
+  readonly queueUrl: string;
 
+  /** The queue's ARN, needed to wire a consumer's own SQS event source mapping. */
+  readonly queueArn: string;
+
+  grantSend(grantee: IGrantable): void;
+}
+
+/**
+ * Internal (non-exported) extension of {@link IEmailSendingQueue} adding consume access. Reserved
+ * for the single `email-sender` Lambda that drains this queue; every other holder only ever sends
+ * to it and should depend on {@link IEmailSendingQueue} instead.
+ */
+export interface IEmailSendingQueueConsumer extends IEmailSendingQueue {
   grantConsume(grantee: IGrantable): void;
 }
 
@@ -28,9 +42,11 @@ export interface IEmailSendingQueue {
  *
  * Not responsible for wiring the consumer's event source mapping — `EmailSending` owns that.
  */
-export class EmailSendingQueue extends Construct implements IEmailSendingQueue {
+export class EmailSendingQueue extends Construct implements IEmailSendingQueueConsumer {
   public readonly queue: BaseQueue;
   public readonly dlq: BaseQueue;
+  public readonly queueUrl: string;
+  public readonly queueArn: string;
 
   constructor(scope: Construct, id: string, props: EmailSendingQueueProps = {}) {
     super(scope, id);
@@ -49,6 +65,8 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueue {
         maxReceiveCount: 5,
       },
     });
+    this.queueUrl = this.queue.queueUrl;
+    this.queueArn = this.queue.queueArn;
   }
 
   public grantSend(grantee: IGrantable): void {

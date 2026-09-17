@@ -15,7 +15,6 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
@@ -23,6 +22,8 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import { AdminApiLambda } from '../admin-api';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
@@ -69,8 +70,8 @@ describe('AdminApiLambda IAM scoping', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     });
     const blobStore = new Bucket(stack, 'blob-store');
-    const emailSubmissionQueue = new Queue(stack, 'email-submission-queue');
-    const auditEventsQueue = new Queue(stack, 'audit-events-queue');
+    const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
+    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(
       stack,
       'identity-provisioner-ref',

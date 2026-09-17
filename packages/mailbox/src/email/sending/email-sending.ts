@@ -2,8 +2,7 @@ import { Construct } from 'constructs';
 import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import { EmailSendingQueue, type IEmailSendingQueue } from './email-sending-queue';
@@ -27,9 +26,8 @@ export interface EmailSendingProps {
  * SES event processing is handled by the separate SESEventProcessing module.
  */
 export class EmailSending extends Construct {
-  public readonly submissionQueue: BaseQueue;
-  public readonly submissionDlq: BaseQueue;
-  public readonly submissionQueueAccess: IEmailSendingQueue;
+  /** Send/consume handle to the email-submissions queue; grant methods only, no raw SQS object. */
+  public readonly submissionQueue: IEmailSendingQueue;
   private readonly emailSenderLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
@@ -40,9 +38,7 @@ export class EmailSending extends Construct {
     const submissionQueue = new EmailSendingQueue(this, 'email-submissions-queue', {
       queueProps: props.queueProps,
     });
-    this.submissionQueueAccess = submissionQueue;
-    this.submissionDlq = submissionQueue.dlq;
-    this.submissionQueue = submissionQueue.queue;
+    this.submissionQueue = submissionQueue;
 
     // Email Sender Lambda - processes submissions from SQS and sends via SES
     const emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
@@ -51,12 +47,9 @@ export class EmailSending extends Construct {
       changelogTable: props.changelogTable,
       blobStore: props.blobStore,
       sesConfigSetName: props.sesConfigSetName,
+      submissionQueue,
       artifactResolver: props.artifactResolver,
     });
-
-    emailSenderLambda.addEventSource(
-      new SqsEventSource(this.submissionQueue, { batchSize: 1 })
-    );
 
     this.emailSenderLambda = emailSenderLambda;
   }

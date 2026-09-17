@@ -2,12 +2,13 @@ import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 
 export interface AdminApiLambdaProps {
   configTable: ITable;
@@ -16,8 +17,8 @@ export interface AdminApiLambdaProps {
   changelogTable: ITable;
   mailFeedbackTable: ITable;
   blobStore: IBucket;
-  emailSubmissionQueue: IQueue;
-  auditEventsQueue: IQueue;
+  emailSubmissionQueue: IEmailSendingQueue;
+  auditEventsQueue: IAuditEventsQueue;
   artifactResolver: ICdkArtifactEngine;
   identityProvisionerFunction: IFunction;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
@@ -177,11 +178,11 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.itemTable.grantReadWriteData(this);
     props.changelogTable.grantReadWriteData(this);
 
-    props.auditEventsQueue.grantSendMessages(this);
+    props.auditEventsQueue.grantSend(this);
 
     // Needed for standard JMAP email storage + submission enqueue
     props.blobStore.grantReadWrite(this);
-    props.emailSubmissionQueue.grantSendMessages(this);
+    props.emailSubmissionQueue.grantSend(this);
 
     // Grant the User provisioning function to be invoked
     props.identityProvisionerFunction.grantInvoke(this);

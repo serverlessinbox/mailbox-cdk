@@ -650,23 +650,25 @@ export class Mailbox extends Construct {
       vendorAccountIds,
     });
 
+    // SES receipt rules and the email-processing queue they feed. Built before the email-processor
+    // Lambda so its own event source mapping can reference the queue at construction time.
+    const sesRules = new SesRules(groups.email, 'ses-rules', {
+      delivery: {
+        blobStore: this._blobStore,
+        bucketPrefix: 'incoming-emails/',
+        artifactResolver,
+        queueProps: this.emailQueueProps,
+      },
+    });
+
     // Lambda function to process incoming emails
     this._emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
       blobStore: this._blobStore,
+      emailProcessingQueue: sesRules.emailProcessingQueue,
       artifactResolver,
-    });
-
-    const sesRules = new SesRules(groups.email, 'ses-rules', {
-      delivery: {
-        blobStore: this._blobStore,
-        emailProcessor: this._emailProcessorLambda,
-        bucketPrefix: 'incoming-emails/',
-        artifactResolver,
-        queueProps: this.emailQueueProps,
-      },
     });
 
     const bootstrap = new Bootstrap(groups.auth, 'bootstrap-v2', {

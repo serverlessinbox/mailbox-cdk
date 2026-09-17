@@ -122,6 +122,14 @@
       ],
       "roleKey": "role:fn:email-sender:email-sender"
     },
+    "fn:ses-receipt-forwarder:ses-receipt-forwarder": {
+      "envVarNames": [
+        "EMAIL_PROCESSOR_QUEUE_URL",
+        "SERVICE_NAME"
+      ],
+      "eventSources": [],
+      "roleKey": "role:fn:ses-receipt-forwarder:ses-receipt-forwarder"
+    },
     "fn:email-processor:email-processor": {
       "envVarNames": [
         "BLOB_STORE_NAME",
@@ -139,14 +147,6 @@
         }
       ],
       "roleKey": "role:fn:email-processor:email-processor"
-    },
-    "fn:ses-receipt-forwarder:ses-receipt-forwarder": {
-      "envVarNames": [
-        "EMAIL_PROCESSOR_QUEUE_URL",
-        "SERVICE_NAME"
-      ],
-      "eventSources": [],
-      "roleKey": "role:fn:ses-receipt-forwarder:ses-receipt-forwarder"
     },
     "fn:authorizer:authorizer-jmap-api": {
       "envVarNames": [
@@ -1605,6 +1605,14 @@
       "permissionsBoundary": null,
       "statements": [
         {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
+        },
+        {
           "Action": [
             "dynamodb:BatchGetItem",
             "dynamodb:ConditionCheckItem",
@@ -1657,18 +1665,6 @@
               ]
             }
           ]
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
-            "attr": "Arn"
-          }
         }
       ]
     },
@@ -1699,6 +1695,14 @@
       "permissionsBoundary": null,
       "statements": [
         {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
+        },
+        {
           "Action": [
             "dynamodb:BatchGetItem",
             "dynamodb:ConditionCheckItem",
@@ -1751,18 +1755,6 @@
               ]
             }
           ]
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
-            "attr": "Arn"
-          }
         }
       ]
     },
@@ -1813,6 +1805,14 @@
               ]
             }
           ]
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
         },
         {
           "Action": [
@@ -2081,27 +2081,13 @@
         },
         {
           "Action": [
-            "sqs:ChangeMessageVisibility",
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
             "sqs:ReceiveMessage"
           ],
           "Effect": "Allow",
           "Resource": {
             "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
-            "attr": "Arn"
-          }
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         }
@@ -2402,15 +2388,49 @@
         },
         {
           "Action": [
-            "sqs:ChangeMessageVisibility",
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
             "sqs:ReceiveMessage"
           ],
           "Effect": "Allow",
           "Resource": {
             "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "attr": "Arn"
+          }
+        }
+      ]
+    },
+    "role:fn:ses-receipt-forwarder:ses-receipt-forwarder": {
+      "trustPolicy": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ],
+      "managedPolicyArns": [
+        {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "ref": "AWS::Partition"
+              },
+              ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ]
+          ]
+        }
+      ],
+      "permissionsBoundary": null,
+      "statements": [
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
             "attr": "Arn"
           }
         }
@@ -2673,51 +2693,9 @@
         },
         {
           "Action": [
-            "sqs:ChangeMessageVisibility",
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
             "sqs:ReceiveMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
-            "attr": "Arn"
-          }
-        }
-      ]
-    },
-    "role:fn:ses-receipt-forwarder:ses-receipt-forwarder": {
-      "trustPolicy": [
-        {
-          "Action": "sts:AssumeRole",
-          "Effect": "Allow",
-          "Principal": {
-            "Service": "lambda.amazonaws.com"
-          }
-        }
-      ],
-      "managedPolicyArns": [
-        {
-          "Fn::Join": [
-            "",
-            [
-              "arn:",
-              {
-                "ref": "AWS::Partition"
-              },
-              ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-            ]
-          ]
-        }
-      ],
-      "permissionsBoundary": null,
-      "statements": [
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
           ],
           "Effect": "Allow",
           "Resource": {
@@ -2944,6 +2922,22 @@
               ]
             }
           ]
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "attr": "Arn"
+          }
         },
         {
           "Action": [
@@ -3205,30 +3199,6 @@
               ]
             }
           ]
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
-            "attr": "Arn"
-          }
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
-            "attr": "Arn"
-          }
         }
       ]
     },
@@ -4115,6 +4085,22 @@
           }
         },
         {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "attr": "Arn"
+          }
+        },
+        {
           "Action": [
             "dynamodb:BatchGetItem",
             "dynamodb:BatchWriteItem",
@@ -4487,30 +4473,6 @@
           ],
           "Effect": "Allow",
           "Resource": "*"
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
-            "attr": "Arn"
-          }
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
-            "attr": "Arn"
-          }
         }
       ]
     },
@@ -4990,10 +4952,8 @@
         },
         {
           "Action": [
-            "sqs:ChangeMessageVisibility",
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
             "sqs:ReceiveMessage"
           ],
           "Effect": "Allow",
@@ -5037,6 +4997,22 @@
             "arn:aws:execute-api:*:791990038981:*/*/POST/grant-resource",
             "arn:aws:execute-api:*:791990038981:*/*/POST/revoke-resource"
           ]
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "attr": "Arn"
+          }
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "attr": "Arn"
+          }
         },
         {
           "Action": [
@@ -5244,30 +5220,6 @@
               ]
             }
           ]
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
-            "attr": "Arn"
-          }
-        },
-        {
-          "Action": [
-            "sqs:GetQueueAttributes",
-            "sqs:GetQueueUrl",
-            "sqs:SendMessage"
-          ],
-          "Effect": "Allow",
-          "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
-            "attr": "Arn"
-          }
         }
       ]
     },

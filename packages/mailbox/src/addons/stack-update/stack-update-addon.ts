@@ -4,8 +4,8 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
@@ -23,7 +23,7 @@ export interface StackUpdateAddonProps {
   readonly configTable: ITable;
 
   /** SQS queue for audit events (shared HTTP registry audit path). */
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;

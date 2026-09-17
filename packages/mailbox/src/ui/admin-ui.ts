@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxUi } from './mailbox-ui';
@@ -22,7 +22,7 @@ export interface AdminUiProps {
   readonly configTable: ITable;
 
   /** Audit events queue for admin login audit records. */
-  readonly auditEventsQueue: IQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Auth provider used to provision the OAuth client for this UI. */
   readonly authProvider: IMailboxAuthProvider;

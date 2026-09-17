@@ -6,6 +6,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
+import type { IEmailSendingQueueConsumer } from '../email/sending/email-sending-queue';
 
 export interface EmailSenderLambdaProps {
   configTable: ITable;
@@ -13,9 +14,14 @@ export interface EmailSenderLambdaProps {
   changelogTable: ITable;
   blobStore: IBucket;
   sesConfigSetName: string;
+  submissionQueue: IEmailSendingQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
 }
 
+/**
+ * Consumes the email-submissions queue via its own SQS event source mapping. Owns both the mapping
+ * and the consume grant; no other construct wires this Lambda to a queue.
+ */
 export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: EmailSenderLambdaProps) {
     super(scope, id, {
@@ -51,6 +57,12 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
         ],
       })
     );
+
+    this.addEventSourceMapping('email-submissions-queue', {
+      eventSourceArn: props.submissionQueue.queueArn,
+      batchSize: 1,
+    });
+    props.submissionQueue.grantConsume(this);
   }
 
   public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {

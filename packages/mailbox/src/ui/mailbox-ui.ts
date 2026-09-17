@@ -15,8 +15,8 @@ import {
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
+import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws } from 'aws-cdk-lib';
@@ -46,7 +46,7 @@ export interface MailboxUiProps {
   oauthClientName: OAuthClientName;
 
   /** Audit events queue for publishing audit logs from token exchange. */
-  auditEventsQueue: IQueue;
+  auditEventsQueue: IAuditEventsQueue;
 
   /** Human-friendly label used for CloudFront comments. */
   label: string;
@@ -224,7 +224,7 @@ export class MailboxUi extends Construct {
     distribution: Distribution,
     artifactResolver: ICdkArtifactEngine,
     configTable: ITable,
-    auditEventsQueue: IQueue,
+    auditEventsQueue: IAuditEventsQueue,
     authPolicyName: AuthPolicyName,
     oauthClientName: OAuthClientName,
     tokenExchangeServiceName: string,

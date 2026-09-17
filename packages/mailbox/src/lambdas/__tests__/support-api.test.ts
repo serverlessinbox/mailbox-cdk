@@ -11,11 +11,11 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SupportApiLambda } from '../support-api';
+import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 
@@ -51,7 +51,7 @@ describe('SupportApiLambda tag-key env vars', () => {
     const configTable = new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     });
-    const auditEventsQueue = new Queue(stack, 'audit-events-queue');
+    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
     new SupportApiLambda(stack, 'support-api', {
       supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
