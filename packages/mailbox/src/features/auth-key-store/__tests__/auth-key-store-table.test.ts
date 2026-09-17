@@ -16,11 +16,11 @@ function createStack(): cdk.Stack {
 }
 
 describe('AuthKeyStoreTable', () => {
-  it('tableName references the pinned logical ID', () => {
+  it('tableName references the table resource\'s logical ID', () => {
     const stack = createStack();
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'Mailboxauthkeystore8FA0AB27' });
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'authkeystoretableauthkeystorev2C3162605' });
   });
 
   it('tableArn resolves to the table resource\'s Arn attribute', () => {
@@ -28,7 +28,7 @@ describe('AuthKeyStoreTable', () => {
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
     expect(stack.resolve(sut.tableArn)).toEqual({
-      'Fn::GetAtt': ['Mailboxauthkeystore8FA0AB27', 'Arn'],
+      'Fn::GetAtt': ['authkeystoretableauthkeystorev2C3162605', 'Arn'],
     });
   });
 
@@ -42,7 +42,7 @@ describe('AuthKeyStoreTable', () => {
     sut.grantRead(role);
 
     const template = Template.fromStack(stack);
-    const tableId = 'Mailboxauthkeystore8FA0AB27';
+    const tableId = 'authkeystoretableauthkeystorev2C3162605';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -71,7 +71,7 @@ describe('AuthKeyStoreTable', () => {
     sut.grantReadWrite(role);
 
     const template = Template.fromStack(stack);
-    const tableId = 'Mailboxauthkeystore8FA0AB27';
+    const tableId = 'authkeystoretableauthkeystorev2C3162605';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

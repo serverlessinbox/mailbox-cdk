@@ -12,7 +12,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { CfnTable } from 'aws-cdk-lib/aws-dynamodb';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
 import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { WebSocketTable } from '../api/websocket/websocket-table';
@@ -84,9 +83,7 @@ describe('Mailbox Resource Naming', () => {
       new AuthKeyStoreTable(stack, 'auth-key-store');
 
       const template = Template.fromStack(stack);
-      // AuthKeyStoreTable pins its own logical ID (see cdk-construct-pattern's "Explicit
-      // physical names + RETAIN") so every instance resolves to this fixed value.
-      const logicalId = 'Mailboxauthkeystore8FA0AB27';
+      const logicalId = 'authkeystoreauthkeystorev2C4FB2D4C';
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
@@ -94,7 +91,7 @@ describe('Mailbox Resource Naming', () => {
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-auth-key-store',
+          '-auth-key-store-v2',
         ]],
       });
     });
@@ -108,10 +105,13 @@ describe('Mailbox Resource Naming', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const construct = new WebSocketTable(stack, 'websocket');
+      new WebSocketTable(stack, 'websocket');
 
       const template = Template.fromStack(stack);
-      const logicalId = stack.getLogicalId(construct.table.node.defaultChild as CfnTable);
+      // WebSocketTable's child table id is 'websocket-v2' (see cdk-construct-pattern's "Moving
+      // an explicitly named non-persistent resource"), so the CDK-generated logical ID is
+      // derived from the construct path rather than a pinned override.
+      const logicalId = 'websocketwebsocketv28ED451DF';
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
@@ -119,7 +119,7 @@ describe('Mailbox Resource Naming', () => {
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-websocket',
+          '-websocket-v2',
         ]],
       });
     });

@@ -1,3 +1,4 @@
+import { Aws, CfnResource, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {
   WebSocketConnectLambda,
@@ -10,21 +11,18 @@ import {
   DomainName,
   EndpointType,
   SecurityPolicy,
+  WebSocketApi,
   WebSocketStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
+import { Effect, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { WebSocketTable, IWebSocketTable } from './websocket-table';
-import { WebSocketPushApi, IWebSocketPushApi } from './websocket-push-api';
-import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface IWebSocketBroadcastPublisher {
   readonly functionName: string;
@@ -41,6 +39,16 @@ export interface IWebSocketPushTargetWithUrl extends IFunction {
   enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void;
 }
 
+/**
+ * Lets a holder grant a caller permission to push messages to connected WebSocket clients
+ * (`grantManageConnections`) and read the ApiGatewayManagementApi endpoint
+ * (`managementEndpoint`) — without exposing the underlying API Gateway WebSocket API construct.
+ */
+export interface IWebSocketPushApi {
+  grantManageConnections(grantee: IGrantable): void;
+
+  readonly managementEndpoint: string;
+}
 
 class WebSocketBroadcastPublisherImpl implements IWebSocketBroadcastPublisher {
   constructor(private readonly fn: lambda.IFunction) { }
@@ -58,7 +66,6 @@ export interface WebSocketPushProps {
   readonly configTable: ITable;
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
-  readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
   readonly artifactResolver: ICdkArtifactEngine;
   readonly maxSubscriptions?: number;
@@ -70,13 +77,24 @@ export interface WebSocketPushProps {
   readonly certificate?: acm.ICertificate;
 }
 
-export class WebSocketPush extends Construct {
+/**
+ * The WebSocket API used for JMAP Push State notifications: the `WebSocketApi` itself, its
+ * single `prod` stage, the `$connect`/`$disconnect`/`$default` routes and Lambda authorizer, the
+ * connections table, the route-handler/broadcast Lambdas, and the optional custom-domain mapping.
+ * The underlying `WebSocketApi`/`WebSocketStage` never leave this construct — callers that need
+ * to push messages or read the management endpoint go through `IWebSocketPushApi`.
+ */
+export class WebSocketPush extends Construct implements IWebSocketPushApi {
+  /** The single WebSocket stage this API is ever deployed to. */
+  public static readonly STAGE_NAME = 'prod';
+
+  private readonly api: WebSocketApi;
+  private readonly stage: WebSocketStage;
+  public readonly managementEndpoint: string;
   public readonly webSocketUrl: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  public readonly connectionsTable: Table;
   public readonly webSocketTable: IWebSocketTable;
-  public readonly webSocketPushApi: IWebSocketPushApi;
   private readonly broadcastLambda: lambda.IFunction;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
@@ -89,17 +107,20 @@ export class WebSocketPush extends Construct {
 
     const webSocketTable = new WebSocketTable(this, 'connections-table');
     this.webSocketTable = webSocketTable;
-    this.connectionsTable = webSocketTable.table;
 
-    const webSocketPushApi = new WebSocketPushApi(this, 'push-api');
-    this.webSocketPushApi = webSocketPushApi;
-    const webSocketApi = webSocketPushApi.api;
+    this.api = new WebSocketApi(this, 'websocket-api', {
+      apiName: `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
+      description: 'WebSocket API for JMAP Push State notifications',
+    });
 
-    const stage = new WebSocketStage(this, 'websocket-stage', {
-      webSocketApi,
-      stageName: 'prod',
+    this.stage = new WebSocketStage(this, 'websocket-stage', {
+      webSocketApi: this.api,
+      stageName: WebSocketPush.STAGE_NAME,
       autoDeploy: true,
     });
+
+    const stack = Stack.of(this);
+    this.managementEndpoint = `https://${this.api.apiId}.execute-api.${stack.region}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
 
     // Optional custom domain mapping.
     if (props.domainName) {
@@ -121,71 +142,67 @@ export class WebSocketPush extends Construct {
 
       // Preserve the existing stage-in-path URL shape.
       new ApiMapping(this, 'mapping', {
-        api: webSocketApi,
+        api: this.api,
         domainName: domain,
-        stage,
+        stage: this.stage,
       });
 
       this.domainTarget = domain.regionalDomainName;
       this.webSocketUrl = `wss://${props.domainName}`;
     } else {
-      this.webSocketUrl = stage.url;
+      this.webSocketUrl = this.stage.url;
     }
-
-    // WebSocket Lambda Authorizer (reuses existing HTTP API authorizer)
-    const webSocketAuthorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authorizerLambda, {
-      identitySource: [
-        'route.request.header.Sec-WebSocket-Protocol',
-      ],
-    });
 
     // Lambda: $connect
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
-      connectionsTable: this.connectionsTable,
+      connectionsTable: this.webSocketTable,
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: $disconnect
     const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
-      connectionsTable: this.connectionsTable,
+      connectionsTable: this.webSocketTable,
       configTable: props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: $default
     const messageLambda = new WebSocketMessageLambda(this, 'message-handler', {
-      connectionsTable: this.connectionsTable,
+      connectionsTable: this.webSocketTable,
       configTable: props.configTable,
       itemTable: props.itemTable,
       maxSubscriptions: maxSubscriptions,
-      websocketApiId: webSocketApi.apiId,
-      websocketStageName: stage.stageName,
+      webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: broadcast
     this.broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
-      connectionsTable: this.connectionsTable,
+      connectionsTable: this.webSocketTable,
       configTable: props.configTable,
-      websocketApiId: webSocketApi.apiId,
-      websocketStageName: stage.stageName,
+      webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });
 
     this.broadcaster = new WebSocketBroadcastPublisherImpl(this.broadcastLambda);
 
-    // Routes
-    webSocketApi.addRoute('$connect', {
-      integration: new WebSocketLambdaIntegration('connect-integration', connectLambda),
-      authorizer: webSocketAuthorizer,
+    const authorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authorizerLambda, {
+      identitySource: [
+        'route.request.header.Sec-WebSocket-Protocol',
+      ],
     });
 
-    webSocketApi.addRoute('$disconnect', {
+    this.api.addRoute('$connect', {
+      integration: new WebSocketLambdaIntegration('connect-integration', connectLambda),
+      authorizer,
+    });
+
+    this.api.addRoute('$disconnect', {
       integration: new WebSocketLambdaIntegration('disconnect-integration', disconnectLambda),
     });
 
-    webSocketApi.addRoute('$default', {
+    this.api.addRoute('$default', {
       integration: new WebSocketLambdaIntegration('message-integration', messageLambda),
     });
   }
@@ -193,5 +210,17 @@ export class WebSocketPush extends Construct {
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
   public get domainCfnResource(): CfnResource | undefined {
     return this._domainCfnResource;
+  }
+
+  // Not CDK's WebSocketApi.grantManageConnections: it synthesizes a different resource ARN.
+  // This deliberately reproduces the ARN (`<apiId>/*`) the WebSocket Lambdas are granted today,
+  // so the grant stays permission-identical.
+  public grantManageConnections(grantee: IGrantable): void {
+    const stack = Stack.of(this);
+    grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['execute-api:ManageConnections'],
+      resources: [`arn:aws:execute-api:${stack.region}:${stack.account}:${this.api.apiId}/*`],
+    }));
   }
 }

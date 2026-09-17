@@ -1,5 +1,5 @@
 import { AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
-import { CfnResource, RemovalPolicy } from 'aws-cdk-lib';
+import { RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbActions, grantTableActions, INamedTable, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
@@ -42,7 +42,7 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    this.table = new StackNamedTable(this, 'auth-key-store', {
+    this.table = new StackNamedTable(this, 'auth-key-store-v2', {
       removalPolicy: RemovalPolicy.DESTROY,
       partitionKey: {
         name: 'pk',
@@ -56,11 +56,6 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
     });
     this.tableName = this.table.tableName;
     this.tableArn = this.table.tableArn;
-
-    // Pinned so a construct-tree move never replaces this persistent table (see
-    // cdk-construct-pattern's "Explicit physical names + RETAIN"); this table is only ever
-    // instantiated once, from AuthKeyStore, so an unconditional pin is safe.
-    (this.table.node.defaultChild as CfnResource).overrideLogicalId('Mailboxauthkeystore8FA0AB27');
   }
 
   public grantRead(grantee: IGrantable): void {

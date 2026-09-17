@@ -35,14 +35,14 @@ export interface IWebSocketTable {
  * those and wires them to this table.
  */
 export class WebSocketTable extends Construct implements IWebSocketTable {
-  public readonly table: Table;
+  private readonly table: Table;
   public readonly tableName: string;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
     // Single-table design: uses shared base repository key names so lambdas can use DynamoBaseRepository.
-    this.table = new StackNamedTable(this, 'websocket', {
+    this.table = new StackNamedTable(this, 'websocket-v2', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,

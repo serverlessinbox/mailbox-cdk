@@ -724,7 +724,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
               "attr": "Arn"
             },
             {
@@ -732,7 +732,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -867,7 +867,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
               "attr": "Arn"
             },
             {
@@ -875,7 +875,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -2703,7 +2703,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
               "attr": "Arn"
             },
             {
@@ -2711,7 +2711,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -2945,7 +2945,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
               "attr": "Arn"
             },
             {
@@ -2953,7 +2953,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3129,16 +3129,14 @@
         },
         {
           "Action": [
-            "dynamodb:BatchWriteItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:PutItem",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
               "attr": "Arn"
             },
             {
@@ -3146,7 +3144,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3173,34 +3171,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:PartiQLDelete",
-            "dynamodb:PartiQLInsert",
-            "dynamodb:PartiQLSelect",
-            "dynamodb:PartiQLUpdate",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Deny",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
                   },
                   "/index/*"
                 ]
@@ -3239,29 +3209,25 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
             "dynamodb:ConditionCheckItem",
-            "dynamodb:DeleteItem",
             "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
-            "dynamodb:UpdateItem"
+            "dynamodb:Scan"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
+              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+              "attr": "configTableArn"
             },
             {
               "Fn::Join": [
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
+                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+                    "attr": "configTableArn"
                   },
                   "/index/*"
                 ]
@@ -3272,41 +3238,16 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
+            "dynamodb:DeleteItem",
             "dynamodb:GetItem",
+            "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
               "attr": "Arn"
             },
             {
@@ -3314,7 +3255,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3341,34 +3282,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:PartiQLDelete",
-            "dynamodb:PartiQLInsert",
-            "dynamodb:PartiQLSelect",
-            "dynamodb:PartiQLUpdate",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Deny",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
                   },
                   "/index/*"
                 ]
@@ -3423,20 +3336,74 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
             "dynamodb:ConditionCheckItem",
-            "dynamodb:DeleteItem",
             "dynamodb:DescribeTable",
+            "dynamodb:GetItem",
+            "dynamodb:Query",
+            "dynamodb:Scan"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+            {
+              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+              "attr": "configTableArn"
+            },
+            {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+                    "attr": "configTableArn"
+                  },
+                  "/index/*"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "Action": [
+            "dynamodb:BatchGetItem",
+            "dynamodb:ConditionCheckItem",
+            "dynamodb:DescribeTable",
+            "dynamodb:GetItem",
+            "dynamodb:Query",
+            "dynamodb:Scan"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+            {
+              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+              "attr": "itemTableArn"
+            },
+            {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+                    "attr": "itemTableArn"
+                  },
+                  "/index/*"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "Action": [
+            "dynamodb:BatchGetItem",
+            "dynamodb:DeleteItem",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
               "attr": "Arn"
             },
             {
@@ -3444,90 +3411,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3579,34 +3463,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:PartiQLDelete",
-            "dynamodb:PartiQLInsert",
-            "dynamodb:PartiQLSelect",
-            "dynamodb:PartiQLUpdate",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Deny",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
                   },
                   "/index/*"
                 ]
@@ -3661,29 +3517,25 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
             "dynamodb:ConditionCheckItem",
-            "dynamodb:DeleteItem",
             "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
-            "dynamodb:UpdateItem"
+            "dynamodb:Scan"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
+              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+              "attr": "configTableArn"
             },
             {
               "Fn::Join": [
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
+                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
+                    "attr": "configTableArn"
                   },
                   "/index/*"
                 ]
@@ -3694,41 +3546,16 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
+            "dynamodb:DeleteItem",
             "dynamodb:GetItem",
+            "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
               "attr": "Arn"
             },
             {
@@ -3736,7 +3563,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3763,34 +3590,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:PartiQLDelete",
-            "dynamodb:PartiQLInsert",
-            "dynamodb:PartiQLSelect",
-            "dynamodb:PartiQLUpdate",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Deny",
-          "Resource": [
-            {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
-                    "attr": "Arn"
                   },
                   "/index/*"
                 ]
@@ -4410,7 +4209,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
               "attr": "Arn"
             },
             {
@@ -4418,7 +4217,7 @@
                 "",
                 [
                   {
-                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store-v2",
                     "attr": "Arn"
                   },
                   "/index/*"

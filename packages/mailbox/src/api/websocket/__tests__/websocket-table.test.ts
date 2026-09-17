@@ -16,11 +16,11 @@ function createStack(): cdk.Stack {
 }
 
 describe('WebSocketTable', () => {
-  it('tableName resolves to the inner table name', () => {
+  it('tableName resolves to the table resource', () => {
     const stack = createStack();
     const sut = new WebSocketTable(stack, 'websocket-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual(stack.resolve(sut.table.tableName));
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'websockettablewebsocketv23A17BE62' });
   });
 
   it('grantWrite grants exactly one Allow statement with the write actions', () => {
@@ -33,7 +33,7 @@ describe('WebSocketTable', () => {
     sut.grantWrite(role);
 
     const template = Template.fromStack(stack);
-    const tableId = stack.getLogicalId(sut.table.node.defaultChild as cdk.CfnResource);
+    const tableId = 'websockettablewebsocketv23A17BE62';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -62,7 +62,7 @@ describe('WebSocketTable', () => {
     sut.grantReadWrite(role);
 
     const template = Template.fromStack(stack);
-    const tableId = stack.getLogicalId(sut.table.node.defaultChild as cdk.CfnResource);
+    const tableId = 'websockettablewebsocketv23A17BE62';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

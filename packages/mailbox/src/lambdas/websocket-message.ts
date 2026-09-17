@@ -1,24 +1,22 @@
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { IWebSocketTable } from '../api/websocket/websocket-table';
+import { IWebSocketPushApi } from '../api/websocket/websocket';
 
 export interface WebSocketMessageLambdaProps {
-  connectionsTable: ITable;
+  connectionsTable: IWebSocketTable;
   configTable: ITable;
   itemTable: ITable;
   maxSubscriptions: number;
-  websocketApiId: string;
-  websocketStageName: string;
+  webSocketPushApi: IWebSocketPushApi;
   artifactResolver: ICdkArtifactEngine;
 }
 
 export class WebSocketMessageLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketMessageLambdaProps) {
-    const stack = Stack.of(scope);
-
     super(scope, id, {
       lambdaId: 'websocket-message',
       pipeline: 'jmap',
@@ -30,20 +28,16 @@ export class WebSocketMessageLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         ITEM_TABLE_NAME: props.itemTable.tableName,
         MAX_SUBSCRIPTIONS: props.maxSubscriptions.toString(),
-        WEBSOCKET_API_ENDPOINT: `https://${props.websocketApiId}.execute-api.${stack.region}.amazonaws.com/${props.websocketStageName}`,
+        WEBSOCKET_API_ENDPOINT: props.webSocketPushApi.managementEndpoint,
       },
     });
 
     // Grant permissions
-    props.connectionsTable.grantReadWriteData(this);
+    props.connectionsTable.grantReadWrite(this);
     props.configTable.grantReadData(this);
     props.itemTable.grantReadData(this);
 
     // Grant API Gateway Management API permissions
-    this.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['execute-api:ManageConnections'],
-      resources: [`arn:aws:execute-api:${stack.region}:${stack.account}:${props.websocketApiId}/*`],
-    }));
+    props.webSocketPushApi.grantManageConnections(this);
   }
 }

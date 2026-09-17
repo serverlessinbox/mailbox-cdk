@@ -859,7 +859,6 @@ export class Mailbox extends Construct {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver,
       maxSubscriptions: 10,
@@ -914,16 +913,17 @@ export class Mailbox extends Construct {
     emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
     sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
 
-    // --- Pin 5 logical IDs to survive reparenting ---
+    // --- Pin logical IDs to survive reparenting ---
+    // API Gateway custom domain names are globally unique per account/region; a reparented
+    // construct cannot create the replacement alongside the still-existing original, so
+    // create-before-delete would fail on a name collision. Pinning the logical ID keeps
+    // CloudFormation updating the same domain name in place instead of replacing it.
     // admin-api custom domain
     adminApi.domainCfnResource?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
     // jmap-api custom domain
     jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
     // websocket-push custom domain
     webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
-    // auth-key-store DynamoDB table: pinned inside AuthKeyStoreTable's own constructor, which owns the table.
-    // websocket-push connections DynamoDB table
-    (webSocketPush.connectionsTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('Mailboxwebsocketpushwebsocket85CC01CF');
 
     if (hasHostedZone) {
       const dns = new MailboxDns(groups.edge, 'dns', {
