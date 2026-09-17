@@ -1,14 +1,14 @@
-import { CfnOutput, Duration } from 'aws-cdk-lib';
+import { CfnOutput } from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
-import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
-import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { EmailProcessingQueue, type IEmailProcessingQueue } from './email-processing-queue';
 
 export interface EmailDelivery {
   readonly blobStore: IBucket;
@@ -28,33 +28,19 @@ export class SesRules extends Construct {
   readonly ruleSetName: string;
   /** The SES receipt rule set object (typed CDK interface for passing to other constructs). */
   readonly ruleSet: IReceiptRuleSet;
+  /** Narrow grant access to the email-processing queue this construct creates. */
+  readonly emailProcessingQueueAccess: IEmailProcessingQueue;
 
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
 
-    const queueEncryptionProps: Partial<BaseQueueProps> = (() => {
-      const masterKey = props.delivery.queueProps?.encryptionMasterKey;
-      if (masterKey) {
-        return { encryption: QueueEncryption.KMS, encryptionMasterKey: masterKey };
-      }
-      return { encryption: QueueEncryption.SQS_MANAGED };
-    })();
-
-    // DLQ for emails that fail processing after all retries
-    const dlq = new BaseQueue(this, 'email-processing-dlq', {
-      ...queueEncryptionProps,
-      retentionPeriod: Duration.days(14),
+    // SQS queue for email processing (with its DLQ); visibility timeout must exceed the
+    // email-processor Lambda's timeout (1 min).
+    const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
+      queueProps: props.delivery.queueProps,
     });
-
-    // SQS queue for email processing; visibility timeout must exceed Lambda timeout (1 min)
-    const queue = new BaseQueue(this, 'email-processing-queue', {
-      ...queueEncryptionProps,
-      visibilityTimeout: Duration.minutes(6),
-      deadLetterQueue: {
-        queue: dlq,
-        maxReceiveCount: 3,
-      },
-    });
+    this.emailProcessingQueueAccess = emailProcessingQueue;
+    const queue = emailProcessingQueue.queue;
 
     // Forwarder Lambda: receives the SES receipt notification and enqueues it on SQS.
     // This replaces the SNS action which has a hard 150 KB inbound email size limit.

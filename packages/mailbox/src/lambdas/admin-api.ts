@@ -7,7 +7,7 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
 
 export interface AdminApiLambdaProps {
   configTable: ITable;

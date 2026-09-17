@@ -5,7 +5,7 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
-import { LicenseRefresherLambda } from '../lambdas';
+import { LicenseRefresherLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface LicenseRefreshProps {

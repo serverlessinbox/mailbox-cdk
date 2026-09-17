@@ -6,7 +6,7 @@ import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket/websocket';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;

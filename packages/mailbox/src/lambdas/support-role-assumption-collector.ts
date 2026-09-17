@@ -6,7 +6,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   buildSupportTierEnvironment,
-} from '../addons/support-roles-infra';
+} from '../addons/support/support-roles-infra';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */

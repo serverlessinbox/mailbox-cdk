@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
-import { AuthorizerLambda, ApiHandlerLambda } from '../lambdas';
+import { AuthorizerLambda, ApiHandlerLambda } from '../../lambdas';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import type { JmapOAuthHandlerConfig } from '../lambdas/jmap-api';
+import type { JmapOAuthHandlerConfig } from '../../lambdas/jmap-api';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -20,10 +20,10 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
-import { IMailboxAuthProvider } from '../auth/types';
+import { IMailboxAuthProvider } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
-import type { IJmapApiAddon } from './addons';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../websocket/websocket';
+import type { IJmapApiAddon } from '../addons';
 
 export interface JMapApiProps {
   readonly configTable: ITable;

@@ -1,12 +1,12 @@
 import { Construct } from 'constructs';
-import { AuthKeyStore } from './features/auth-key-store';
-import { Cdn } from './features/cdn-construct';
+import { AuthKeyStore } from './features/auth-key-store/auth-key-store';
+import { Cdn } from './features/cdn/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
-import { AdminApi } from './api/admin-api';
-import { JMapApi } from './api/jmap-api';
-import { WebSocketPush } from './api/websocket';
-import { McpApi } from './api/mcp-api';
+import { AdminApi } from './api/admin/admin-api';
+import { JMapApi } from './api/jmap/jmap-api';
+import { WebSocketPush } from './api/websocket/websocket';
+import { McpApi } from './api/mcp/mcp-api';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
 import {
@@ -15,14 +15,14 @@ import {
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
-import { AuditWriting } from './features/audit-writing';
+import { AuditWriting } from './features/audit-writing/audit-writing';
 import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
-import { Bootstrap } from './features/bootstrap';
+import { Bootstrap } from './features/bootstrap/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
 import type { IResourceRemoval } from './features/sweeper';
 import { StackFailureDetection, SendStackFailuresMode } from './features/stack-failure-detection';
-import { LicenseRefresh } from './features/license-refresh';
+import { LicenseRefresh } from './features/license-refresh/license-refresh';
 import { Fn } from 'aws-cdk-lib';
 import { MailboxDns, MailboxDomains } from './domains';
 import * as cdk from 'aws-cdk-lib';

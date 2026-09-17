@@ -5,14 +5,14 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
-import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
-import { StackUpdateApiLambda } from '../lambdas/stack-update-api';
-import { StackUpdateRecoveryInfra } from '../features/stack-update-resilience/stack-update-recovery-infra';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+import type { IArtifactResolver } from '../../artifacts/i-artifact-resolver';
+import { StackUpdateApiLambda } from '../../lambdas/stack-update-api';
+import { StackUpdateRecoveryInfra } from '../../features/stack-update-resilience/stack-update-recovery-infra';
+import { TemplateVersionParam, type ITemplateVersionParam } from './template-version-param';
 
 /**
  * Props for constructing a StackUpdateAddon directly (internal use).
@@ -52,6 +52,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   public uiConfig?: Record<string, unknown>;
 
   private readonly _lambdaConstruct: StackUpdateApiLambda;
+  public readonly templateVersionParamAccess: ITemplateVersionParam;
 
   constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
     super(scope, id);
@@ -84,10 +85,11 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
     // Create SSM StringParameter for template version.
     // This resource is rendered into the CloudFormation template and survives quick-create deploys.
-    const templateVersionParam = new ssm.StringParameter(this, 'template-version', {
-      stringValue: props.templateVersion,
-      tier: ssm.ParameterTier.STANDARD,
+    const templateVersionParamConstruct = new TemplateVersionParam(this, 'template-version', {
+      templateVersion: props.templateVersion,
     });
+    this.templateVersionParamAccess = templateVersionParamConstruct;
+    const templateVersionParam = templateVersionParamConstruct.parameter;
 
     // Deterministic name for the stack-update recovery state machine, shared by the Lambda (which
     // derives the state machine's ARN from it) and the state machine itself — see

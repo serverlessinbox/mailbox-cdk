@@ -11,10 +11,10 @@ import { CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailb
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../api/addons';
-import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
-import { SupportApiLambda } from '../lambdas/support-api';
-import { SupportRoleAssumptionCollectorLambda } from '../lambdas/support-role-assumption-collector';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+import type { IArtifactResolver } from '../../artifacts/i-artifact-resolver';
+import { SupportApiLambda } from '../../lambdas/support-api';
+import { SupportRoleAssumptionCollectorLambda } from '../../lambdas/support-role-assumption-collector';
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
 import { resolveVendorAccountIds } from '@serverlessinbox/mailbox-cdk-shared';
 

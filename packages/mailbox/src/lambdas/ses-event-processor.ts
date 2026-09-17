@@ -5,7 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
 
 export interface SESEventProcessorLambdaProps {
   itemTable: ITable;

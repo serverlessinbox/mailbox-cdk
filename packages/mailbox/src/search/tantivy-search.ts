@@ -7,7 +7,8 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TantivyIndexerLambda } from '../lambdas';
-import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { TantivyIndexingScheduleDlq } from './tantivy-indexing-schedule-dlq';
 
 export interface TantivySearchProps {
   /**
@@ -51,8 +52,6 @@ export class TantivySearch extends Construct {
   constructor(scope: Construct, id: string, props: TantivySearchProps) {
     super(scope, id);
 
-    const queueProps = props.queueProps ?? {};
-
     // Create Tantivy Indexer Lambda
     // Queries DynamoDB for all emails in an account, builds Tantivy index, uploads to S3
     // Triggered by EventBridge every hour
@@ -75,12 +74,12 @@ export class TantivySearch extends Construct {
     });
 
     // Add target to EventBridge rule: invoke the indexer Lambda
+    const indexingScheduleDlq = new TantivyIndexingScheduleDlq(this, 'tantivy-indexing-schedule-dlq', {
+      queueProps: props.queueProps,
+    });
     indexingSchedule.addTarget(
       new targets.LambdaFunction(this.indexer, {
-        deadLetterQueue: new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
-          ...queueProps,
-          retentionPeriod: cdk.Duration.days(14),
-        }),
+        deadLetterQueue: indexingScheduleDlq.queue,
       }),
     );
   }

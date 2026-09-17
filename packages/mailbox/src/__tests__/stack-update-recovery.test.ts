@@ -17,7 +17,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import { StackUpdateAddon } from '../addons/stack-update-addon';
+import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
 import { getPolicyStatements } from './iam-test-helpers';
 
 const TEST_ACCOUNT = '123456789012';

@@ -1,19 +1,18 @@
 import { Duration } from 'aws-cdk-lib';
 import { Topic } from 'aws-cdk-lib/aws-sns';
-import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
-import { SESEventProcessorLambda } from '../lambdas';
+import { SESEventProcessorLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { IQueue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
+import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { Stack } from 'aws-cdk-lib';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import { SesEventTopic, type ISesEventTopic } from './ses-event-topic';
+import { SesEventQueue, type ISesEventQueue } from './ses-event-queue';
 
 export interface SESEventProcessingProps {
   readonly itemTable: ITable;
@@ -40,64 +39,28 @@ export interface SESEventProcessingProps {
 export class SESEventProcessing extends Construct {
   public readonly sesNotificationsTopic: Topic;
   public readonly sesNotificationsQueue: BaseQueue;
+  public readonly sesEventTopicAccess: ISesEventTopic;
+  public readonly sesEventQueueAccess: ISesEventQueue;
   private readonly sesEventProcessorLambda: IWebSocketPushTarget;
   public readonly sesConfigSetName: string;
 
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
     super(scope, id);
 
-    const queueProps = props.queueProps ?? {};
-
     // SNS topic for SES notifications (bounce, complaint, delivery, send, reject)
-    this.sesNotificationsTopic = new Topic(this, 'ses-notifications-topic', {
-      displayName: 'Mailbox SES Notifications',
+    const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
+    this.sesEventTopicAccess = sesEventTopic;
+    this.sesNotificationsTopic = sesEventTopic;
+
+    // SQS queue to consume SNS notifications. SNS -> SQS does NOT work with SQS queues encrypted
+    // using the AWS-managed KMS key (alias/aws/sqs), because SNS can't be granted permission to use
+    // that key — `SesEventQueue` defaults to unencrypted unless a customer-managed CMK is supplied.
+    const sesEventQueue = new SesEventQueue(this, 'ses-event-queue', {
+      topic: sesEventTopic,
+      queueProps: props.queueProps,
     });
-
-    // SQS queue to consume SNS notifications
-    // NOTE: SNS -> SQS does NOT work with SQS queues encrypted using the AWS-managed KMS key (alias/aws/sqs),
-    // because we can't grant SNS permission to use that key.
-    // Default to UNENCRYPTED for this specific queue unless the user supplies a customer-managed CMK.
-    const sesNotificationsQueueEncryption = queueProps.encryption
-      ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
-
-    this.sesNotificationsQueue = new BaseQueue(this, 'ses-notifications-queue', {
-      ...queueProps,
-      encryption: sesNotificationsQueueEncryption,
-    });
-
-    // Subscribe the queue to the SNS topic
-    this.sesNotificationsTopic.addSubscription(
-      new SqsSubscription(this.sesNotificationsQueue, {
-        rawMessageDelivery: true, // Deliver the SES notification JSON directly
-      })
-    );
-
-    // If the queue is encrypted with a customer-managed CMK, allow SNS to use the key.
-    // (Imported keys may not support policy edits; in that case the user must configure the key policy themselves.)
-    const keyAny = queueProps.encryptionMasterKey as unknown as { addToResourcePolicy?: (s: PolicyStatement) => unknown };
-    if (sesNotificationsQueueEncryption === QueueEncryption.KMS && queueProps.encryptionMasterKey && typeof keyAny?.addToResourcePolicy === 'function') {
-      keyAny.addToResourcePolicy(
-        new PolicyStatement({
-          actions: [
-            'kms:Decrypt',
-            'kms:Encrypt',
-            'kms:ReEncrypt*',
-            'kms:GenerateDataKey*',
-            'kms:DescribeKey',
-          ],
-          principals: [new ServicePrincipal('sns.amazonaws.com')],
-          resources: ['*'],
-          conditions: {
-            StringEquals: {
-              'aws:SourceAccount': Stack.of(this).account,
-            },
-            ArnEquals: {
-              'aws:SourceArn': this.sesNotificationsTopic.topicArn,
-            },
-          },
-        })
-      );
-    }
+    this.sesEventQueueAccess = sesEventQueue;
+    this.sesNotificationsQueue = sesEventQueue.queue;
 
     // SES Configuration Set for bounce/complaint/delivery notifications
     const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {

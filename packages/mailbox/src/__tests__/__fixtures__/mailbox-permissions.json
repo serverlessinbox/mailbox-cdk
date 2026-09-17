@@ -95,7 +95,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-ses-notifications-queue",
+          "sourceKey": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
           "batchSize": 100,
           "batchWindow": 30,
           "reportBatchItemFailures": true
@@ -115,7 +115,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-email-submissions",
+          "sourceKey": "queue:123456789012-testmailboxstack-email-submissions-v2",
           "batchSize": 1,
           "reportBatchItemFailures": false
         }
@@ -133,7 +133,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-email-processing-queue",
+          "sourceKey": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
           "batchSize": 10,
           "reportBatchItemFailures": true
         }
@@ -280,7 +280,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-audit-events",
+          "sourceKey": "queue:123456789012-testmailboxstack-audit-events-v2",
           "batchSize": 100,
           "batchWindow": 30,
           "reportBatchItemFailures": true
@@ -1666,7 +1666,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         }
@@ -1760,7 +1760,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         }
@@ -2089,7 +2089,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue",
+            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
             "attr": "Arn"
           }
         },
@@ -2101,7 +2101,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         }
@@ -2410,7 +2410,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
             "attr": "Arn"
           }
         }
@@ -2681,7 +2681,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-processing-queue",
+            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
             "attr": "Arn"
           }
         }
@@ -2721,7 +2721,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-processing-queue",
+            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
             "attr": "Arn"
           }
         }
@@ -3214,7 +3214,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         },
@@ -3226,7 +3226,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
             "attr": "Arn"
           }
         }
@@ -4496,7 +4496,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         },
@@ -4508,7 +4508,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
             "attr": "Arn"
           }
         }
@@ -4998,7 +4998,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         }
@@ -5253,7 +5253,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
             "attr": "Arn"
           }
         },
@@ -5265,7 +5265,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
             "attr": "Arn"
           }
         }
@@ -6498,7 +6498,7 @@
         }
       ]
     },
-    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-ses-notifications-queue": {
+    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-ses-notifications-queue-v2": {
       "type": "AWS::SQS::QueuePolicy",
       "statements": [
         {
@@ -6515,13 +6515,13 @@
             "Service": "sns.amazonaws.com"
           },
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue",
+            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
             "attr": "Arn"
           }
         }
       ]
     },
-    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-tantivy-indexing-schedule-dlq": {
+    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-tantivy-indexing-schedule-dlq-v2": {
       "type": "AWS::SQS::QueuePolicy",
       "statements": [
         {
@@ -6539,7 +6539,7 @@
             "Service": "events.amazonaws.com"
           },
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-tantivy-indexing-schedule-dlq",
+            "ref": "queue:123456789012-testmailboxstack-tantivy-indexing-schedule-dlq-v2",
             "attr": "Arn"
           },
           "Sid": "AllowEventRuleTestMailboxStackMailboxsearchtantivysearchtantivyindexingscheduleC69C637B"

@@ -92,3 +92,9 @@ export type { ServerlessInboxResourceGroupProps } from './resource-group';
 
 // DynamoDB least-privilege action sets & table grant helper
 export { DynamoDbActions, grantTableActions } from './dynamodb-grants';
+
+// SQS least-privilege action sets & queue grant helper
+export { SqsActions, grantQueueActions } from './sqs-grants';
+
+// SSM Parameter Store least-privilege action set & parameter grant helper
+export { SsmActions, grantParameterActions } from './ssm-grants';

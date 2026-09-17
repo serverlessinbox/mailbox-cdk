@@ -4,7 +4,7 @@ import {
   WebSocketDisconnectLambda,
   WebSocketMessageLambda,
   WebSocketBroadcastLambda,
-} from '../lambdas';
+} from '../../lambdas';
 import {
   ApiMapping,
   DomainName,

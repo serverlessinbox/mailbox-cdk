@@ -7,7 +7,7 @@ import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   buildSupportTierEnvironment,
-} from '../addons/support-roles-infra';
+} from '../addons/support/support-roles-infra';
 
 export interface SupportApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */

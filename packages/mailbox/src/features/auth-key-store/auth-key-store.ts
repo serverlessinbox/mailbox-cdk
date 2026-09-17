@@ -3,7 +3,7 @@ import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-import { AuthKeyStoreUpdaterLambda } from '../lambdas';
+import { AuthKeyStoreUpdaterLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { INamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';

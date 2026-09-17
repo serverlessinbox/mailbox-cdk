@@ -5,7 +5,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
 
 export interface EmailSenderLambdaProps {
   configTable: ITable;

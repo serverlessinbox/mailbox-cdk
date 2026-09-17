@@ -8,4 +8,4 @@ export {
   MailboxDnsProps,
   MailboxEndpoint,
   MAILBOX_ENDPOINTS,
-} from '../domains';
+} from '../../domains';

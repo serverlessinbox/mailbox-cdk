@@ -17,7 +17,7 @@ import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SupportRoleAssumptionCollectorLambda } from '../support-role-assumption-collector';
-import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support-roles-infra';
+import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
 
 describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
   let app: App;

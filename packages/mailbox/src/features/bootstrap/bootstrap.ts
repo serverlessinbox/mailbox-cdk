@@ -3,14 +3,14 @@ import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { BootstrapLambda, SesReceivingMode } from '../lambdas';
+import { BootstrapLambda, SesReceivingMode } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
-} from '../auth/types';
+} from '../../auth/types';
 
 export interface BootstrapProps {
   readonly configTable: ITable;
@@ -102,4 +102,4 @@ export type {
   OidcProviderConfig,
   AuthPoliciesConfig,
   OAuthClientsConfig,
-} from '../auth/types';
+} from '../../auth/types';

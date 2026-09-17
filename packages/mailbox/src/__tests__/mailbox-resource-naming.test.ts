@@ -12,7 +12,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { CfnTable } from 'aws-cdk-lib/aws-dynamodb';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
+import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import { WebSocketTable } from '../api/websocket/websocket-table';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -68,44 +71,55 @@ describe('Mailbox Resource Naming', () => {
   });
 
   describe('Main Stack: Auth and WebSocket TableNames', () => {
-    it('should synthesize auth-key-store and websocket table names with AWS::StackName', () => {
-      // These tables do NOT use the registry; they should continue to reference AWS::StackName.
-      // This test verifies that the registry mechanism does not interfere with tables that
-      // explicitly need the main stack name (not the data stack name).
-
+    it('should synthesize the auth-key-store table name referencing AWS::StackName', () => {
+      // AuthKeyStoreTable does NOT use the nameBase registry; StackNamedTable falls back to
+      // Aws.STACK_NAME, so the synthesized TableName must reference AWS::StackName (not the
+      // data-stack nameBase parameter).
       const app = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      try {
-        const { AuthKeyStoreTable } = require('../features/auth-key-store');
+      const construct = new AuthKeyStoreTable(stack, 'auth-key-store');
 
-        // Auth key store uses AWS::StackName directly (not registry-based naming)
-        new AuthKeyStoreTable(stack, 'auth-key-store');
+      const template = Template.fromStack(stack);
+      const logicalId = stack.getLogicalId(construct.table.node.defaultChild as CfnTable);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
-        const template = Template.fromStack(stack);
-        const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-        if (!resources) {
-          throw new Error('No resources found in template');
-        }
+      expect(resources[logicalId].Properties?.TableName).toEqual({
+        'Fn::Join': ['', [
+          { Ref: 'AWS::AccountId' },
+          '-',
+          { Ref: 'AWS::StackName' },
+          '-auth-key-store',
+        ]],
+      });
+    });
 
-        // Verify auth table uses AWS::StackName
-        for (const [, resource] of Object.entries(resources)) {
-          if (!isResourceOfType(resource, 'AWS::DynamoDB::Table')) continue;
+    it('should synthesize the websocket table name referencing AWS::StackName', () => {
+      // Same guarantee as above for the WebSocket connections table, which also relies on the
+      // StackNamedTable fallback rather than the nameBase registry.
+      const app = new App();
+      const stack = new cdk.Stack(app, 'TestMainStack', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
 
-          const tableName = resource.Properties?.TableName;
-          if (!tableName) continue;
+      const construct = new WebSocketTable(stack, 'websocket');
 
-          // Should include Ref to AWS::StackName
-          const tableNameStr = JSON.stringify(tableName);
-          expect(tableNameStr).toContain('"Ref":"AWS::StackName"');
-        }
-      } catch (e) {
-        // AuthKeyStoreTable may have different dependencies; the important part is
-        // that tables NOT using the registry still work correctly
-      }
+      const template = Template.fromStack(stack);
+      const logicalId = stack.getLogicalId(construct.table.node.defaultChild as CfnTable);
+      const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
+
+      expect(resources[logicalId].Properties?.TableName).toEqual({
+        'Fn::Join': ['', [
+          { Ref: 'AWS::AccountId' },
+          '-',
+          { Ref: 'AWS::StackName' },
+          '-websocket',
+        ]],
+      });
     });
   });
 

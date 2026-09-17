@@ -10,7 +10,7 @@ import { PinnedResolver, CdkArtifactEngine, GateOnConditionAspect } from '@serve
 import type { IArtifactResolver, ResolvedArtifact } from '../i-artifact-resolver';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
 import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
-import { ArtifactUpdaterAddon } from '../../addons/artifact-updater-addon';
+import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 /** Update-drift granularity for the Phase B scheduled updater (like npm ^/~). Unused at deploy. */

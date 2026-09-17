@@ -3,7 +3,7 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 
-import { IAdminApiAddon } from '../api/addons';
+import { IAdminApiAddon } from '../../api/addons';
 
 export interface ArtifactUpdaterAddonProps {
   readonly updaterFunction: IFunction;

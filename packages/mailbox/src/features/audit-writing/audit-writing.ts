@@ -4,8 +4,9 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { AuditWriterLambda } from '../lambdas';
+import { AuditWriterLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { AuditEventsQueue, type IAuditEventsQueue } from './audit-events-queue';
 
 export interface AuditWritingProps {
   readonly auditLogTable: ITable;
@@ -23,25 +24,18 @@ export interface AuditWritingProps {
 export class AuditWriting extends Construct {
   public readonly auditEventsQueue: BaseQueue;
   public readonly auditEventsDlq: BaseQueue;
+  public readonly auditEventsQueueAccess: IAuditEventsQueue;
   public readonly auditWriterLambda: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props: AuditWritingProps) {
     super(scope, id);
 
-    const queueProps = props.queueProps ?? {};
-
-    this.auditEventsDlq = new BaseQueue(this, 'audit-events-dlq', {
-      ...queueProps,
-      retentionPeriod: Duration.days(14),
+    const auditEventsQueue = new AuditEventsQueue(this, 'audit-events-queue', {
+      queueProps: props.queueProps,
     });
-
-    this.auditEventsQueue = new BaseQueue(this, 'audit-events', {
-      ...queueProps,
-      deadLetterQueue: {
-        queue: this.auditEventsDlq,
-        maxReceiveCount: 5,
-      },
-    });
+    this.auditEventsQueueAccess = auditEventsQueue;
+    this.auditEventsDlq = auditEventsQueue.dlq;
+    this.auditEventsQueue = auditEventsQueue.queue;
 
     this.auditWriterLambda = new AuditWriterLambda(this, 'audit-writer', {
       auditLogTable: props.auditLogTable,

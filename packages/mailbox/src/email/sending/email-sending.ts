@@ -1,4 +1,3 @@
-import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { EmailSenderLambda } from '../../lambdas';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -6,7 +5,8 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import { EmailSendingQueue, type IEmailSendingQueue } from './email-sending-queue';
 
 export interface EmailSendingProps {
   readonly configTable: ITable;
@@ -29,28 +29,20 @@ export interface EmailSendingProps {
 export class EmailSending extends Construct {
   public readonly submissionQueue: BaseQueue;
   public readonly submissionDlq: BaseQueue;
+  public readonly submissionQueueAccess: IEmailSendingQueue;
   private readonly emailSenderLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
 
-    const queueProps = props.queueProps ?? {};
-
-    // Dead Letter Queue for failed email submissions
-    this.submissionDlq = new BaseQueue(this, 'email-submissions-dlq', {
-      ...queueProps,
-      // Override retention period for DLQ
-      retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
+    // Queue for email submissions, with its dead-letter queue (retries up to 5 times before
+    // sending to the DLQ, which retains failed messages for 14 days).
+    const submissionQueue = new EmailSendingQueue(this, 'email-submissions-queue', {
+      queueProps: props.queueProps,
     });
-
-    // Main queue for email submissions
-    this.submissionQueue = new BaseQueue(this, 'email-submissions', {
-      ...queueProps,
-      deadLetterQueue: {
-        queue: this.submissionDlq,
-        maxReceiveCount: 5, // Retry up to 5 times before sending to DLQ
-      },
-    });
+    this.submissionQueueAccess = submissionQueue;
+    this.submissionDlq = submissionQueue.dlq;
+    this.submissionQueue = submissionQueue.queue;
 
     // Email Sender Lambda - processes submissions from SQS and sends via SES
     const emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
