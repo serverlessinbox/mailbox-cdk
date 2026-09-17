@@ -49,6 +49,21 @@ function userPoolResource(logicalId: string, userPoolName: string) {
   };
 }
 
+/**
+ * A user pool named the way real constructs actually do it: an `Fn::Join` over
+ * pseudo-parameters and a literal suffix, not a plain string — `userPoolResource` above never
+ * exercises the deterministic-expression evaluator.
+ */
+function joinNamedUserPoolResource(path: string, suffix: string) {
+  return {
+    Type: 'AWS::Cognito::UserPool',
+    Properties: {
+      UserPoolName: { 'Fn::Join': ['', [{ Ref: 'AWS::AccountId' }, '-', { Ref: 'AWS::StackName' }, `-${suffix}`]] },
+    },
+    Metadata: { 'aws:cdk:path': path },
+  };
+}
+
 function baseTemplate(): { Resources: Record<string, any> } {
   return {
     Resources: {
@@ -169,5 +184,41 @@ describe('permission-snapshot-helpers self-tests', () => {
     };
 
     expect(() => capturePermissionSnapshotFromTemplateJson(template)).toThrow(/Unresolvable/);
+  });
+
+  it('keeps an identical snapshot when a deterministically-named user pool moves one construct level deeper', () => {
+    const template = (path: string) => ({
+      Resources: {
+        UserPool: joinNamedUserPoolResource(path, 'user-pool'),
+        Role: roleResource('Role', [
+          { Effect: 'Allow', Action: 'cognito-idp:AdminGetUser', Resource: { 'Fn::GetAtt': ['UserPool', 'Arn'] } },
+        ]),
+        Handler: lambdaResource('Handler', { artifactName: 'my-handler', serviceName: 'my-handler', roleLogicalId: 'Role' }),
+      },
+    });
+
+    const beforeSnapshot = capturePermissionSnapshotFromTemplateJson(template('TestStack/UserPool/Resource'));
+    // Same logical ID ("UserPool"), same name — only the construct path gained a level, as a
+    // wrapper-construct refactor would do. A name-derived key must not notice this.
+    const afterSnapshot = capturePermissionSnapshotFromTemplateJson(template('TestStack/UserPool/wrapper/UserPool/Resource'));
+
+    expect(compareSnapshots(afterSnapshot, beforeSnapshot).matches).toBe(true);
+  });
+
+  it('derives different keys for two user pools with different physical names', () => {
+    const template = (suffix: string) => ({
+      Resources: {
+        UserPool: joinNamedUserPoolResource('TestStack/UserPool/Resource', suffix),
+        Role: roleResource('Role', [
+          { Effect: 'Allow', Action: 'cognito-idp:AdminGetUser', Resource: { 'Fn::GetAtt': ['UserPool', 'Arn'] } },
+        ]),
+        Handler: lambdaResource('Handler', { artifactName: 'my-handler', serviceName: 'my-handler', roleLogicalId: 'Role' }),
+      },
+    });
+
+    const beforeSnapshot = capturePermissionSnapshotFromTemplateJson(template('user-pool-a'));
+    const afterSnapshot = capturePermissionSnapshotFromTemplateJson(template('user-pool-b'));
+
+    expect(compareSnapshots(afterSnapshot, beforeSnapshot).matches).toBe(false);
   });
 });

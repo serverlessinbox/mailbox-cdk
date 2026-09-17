@@ -49,6 +49,21 @@ function tableResource(logicalId: string, tableName: string) {
   };
 }
 
+/**
+ * A table named the way real constructs actually do it: an `Fn::Join` over pseudo-parameters
+ * and a literal suffix (`${AWS::AccountId}-${AWS::StackName}-<suffix>`), not a plain string —
+ * `tableResource` above never exercises the deterministic-expression evaluator.
+ */
+function joinNamedTableResource(path: string, suffix: string) {
+  return {
+    Type: 'AWS::DynamoDB::Table',
+    Properties: {
+      TableName: { 'Fn::Join': ['', [{ Ref: 'AWS::AccountId' }, '-', { Ref: 'AWS::StackName' }, `-${suffix}`]] },
+    },
+    Metadata: { 'aws:cdk:path': path },
+  };
+}
+
 function baseTemplate(): { Resources: Record<string, any> } {
   return {
     Resources: {
@@ -169,5 +184,41 @@ describe('permission-snapshot-helpers self-tests', () => {
     };
 
     expect(() => capturePermissionSnapshotFromTemplateJson(template)).toThrow(/Unresolvable/);
+  });
+
+  it('keeps an identical snapshot when a deterministically-named table moves one construct level deeper', () => {
+    const template = (path: string) => ({
+      Resources: {
+        Table: joinNamedTableResource(path, 'auth-key-store'),
+        Role: roleResource('Role', [
+          { Effect: 'Allow', Action: 'dynamodb:GetItem', Resource: { 'Fn::GetAtt': ['Table', 'Arn'] } },
+        ]),
+        Handler: lambdaResource('Handler', { artifactName: 'my-handler', serviceName: 'my-handler', roleLogicalId: 'Role' }),
+      },
+    });
+
+    const beforeSnapshot = capturePermissionSnapshotFromTemplateJson(template('TestStack/Table/Resource'));
+    // Same logical ID ("Table"), same name — only the construct path gained a level, as the
+    // Phase 1 wrapper-construct refactor does. A name-derived key must not notice this.
+    const afterSnapshot = capturePermissionSnapshotFromTemplateJson(template('TestStack/Table/wrapper/Table/Resource'));
+
+    expect(compareSnapshots(afterSnapshot, beforeSnapshot).matches).toBe(true);
+  });
+
+  it('derives different keys for two tables with different physical names', () => {
+    const template = (suffix: string) => ({
+      Resources: {
+        Table: joinNamedTableResource('TestStack/Table/Resource', suffix),
+        Role: roleResource('Role', [
+          { Effect: 'Allow', Action: 'dynamodb:GetItem', Resource: { 'Fn::GetAtt': ['Table', 'Arn'] } },
+        ]),
+        Handler: lambdaResource('Handler', { artifactName: 'my-handler', serviceName: 'my-handler', roleLogicalId: 'Role' }),
+      },
+    });
+
+    const beforeSnapshot = capturePermissionSnapshotFromTemplateJson(template('auth-key-store'));
+    const afterSnapshot = capturePermissionSnapshotFromTemplateJson(template('websocket'));
+
+    expect(compareSnapshots(afterSnapshot, beforeSnapshot).matches).toBe(false);
   });
 });

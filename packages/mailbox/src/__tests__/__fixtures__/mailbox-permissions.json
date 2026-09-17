@@ -728,7 +728,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -741,7 +741,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -757,7 +757,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             },
             {
@@ -765,7 +765,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -871,7 +871,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -917,7 +917,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -958,7 +958,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             },
             {
@@ -966,7 +966,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -2765,7 +2765,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -2807,7 +2807,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -2848,7 +2848,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             },
             {
@@ -2856,7 +2856,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3023,7 +3023,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -3065,7 +3065,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -3156,7 +3156,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             },
             {
@@ -3164,7 +3164,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3298,7 +3298,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3306,7 +3306,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3351,7 +3351,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3359,7 +3359,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3412,7 +3412,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3420,7 +3420,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3466,7 +3466,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3474,7 +3474,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3519,7 +3519,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3527,7 +3527,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3573,7 +3573,7 @@
               [
                 "arn:aws:execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/*"
               ]
@@ -3596,7 +3596,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3604,7 +3604,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3679,7 +3679,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3687,7 +3687,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3757,7 +3757,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3765,7 +3765,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3811,7 +3811,7 @@
               [
                 "arn:aws:execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/*"
               ]
@@ -3834,7 +3834,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3842,7 +3842,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3888,7 +3888,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3896,7 +3896,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -3941,7 +3941,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
               "attr": "Arn"
             },
             {
@@ -3949,7 +3949,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/apis/websocket-push/websocket",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -4552,7 +4552,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -4594,7 +4594,7 @@
           "Effect": "Allow",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             }
           ]
@@ -4635,7 +4635,7 @@
           "Effect": "Deny",
           "Resource": [
             {
-              "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+              "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
               "attr": "Arn"
             },
             {
@@ -4643,7 +4643,7 @@
                 "",
                 [
                   {
-                    "ref": "fallback:Mailbox/auth/auth-key-store/auth-key-store",
+                    "ref": "table:${AWS::AccountId}-${AWS::StackName}-auth-key-store",
                     "attr": "Arn"
                   },
                   "/index/*"
@@ -6651,7 +6651,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api"
+                  "ref": "api:Mailbox ${AWS::StackName} JMAP API"
                 },
                 "/*/*/.well-known/jmap"
               ]
@@ -6672,7 +6672,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api"
+                  "ref": "api:Mailbox ${AWS::StackName} JMAP API"
                 },
                 "/*/*/"
               ]
@@ -6693,7 +6693,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api"
+                  "ref": "api:Mailbox ${AWS::StackName} JMAP API"
                 },
                 "/*/*/upload/{accountId}"
               ]
@@ -6719,11 +6719,11 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api"
+                  "ref": "api:Mailbox ${AWS::StackName} JMAP API"
                 },
                 "/authorizers/",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api/authorizer-anonymous"
+                  "ref": "authorizer:api:Mailbox ${AWS::StackName} JMAP API:authorizer-anonymous"
                 }
               ]
             ]
@@ -6743,11 +6743,11 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api"
+                  "ref": "api:Mailbox ${AWS::StackName} JMAP API"
                 },
                 "/authorizers/",
                 {
-                  "ref": "fallback:Mailbox/apis/jmap-api/jmap-api/authorizer"
+                  "ref": "authorizer:api:Mailbox ${AWS::StackName} JMAP API:authorizer"
                 }
               ]
             ]
@@ -6767,11 +6767,11 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api"
+                  "ref": "api:Mailbox ${AWS::StackName} MCP API"
                 },
                 "/authorizers/",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api/authorizer"
+                  "ref": "authorizer:api:Mailbox ${AWS::StackName} MCP API:authorizer"
                 }
               ]
             ]
@@ -6791,11 +6791,11 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/authorizers/",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api/WebSocketAuthorizer"
+                  "ref": "authorizer:api:Mailbox ${AWS::StackName} WebSocket Push:WebSocketAuthorizer"
                 }
               ]
             ]
@@ -6820,7 +6820,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/*$connect"
               ]
@@ -6846,7 +6846,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/*$disconnect"
               ]
@@ -6872,7 +6872,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/websocket-push/websocket-api"
+                  "ref": "api:Mailbox ${AWS::StackName} WebSocket Push"
                 },
                 "/*$default"
               ]
@@ -6898,7 +6898,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/admin-api/admin-api"
+                  "ref": "api:Mailbox ${AWS::StackName} Admin API"
                 },
                 "/*/*/{proxy+}"
               ]
@@ -6924,11 +6924,11 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/admin-api/admin-api"
+                  "ref": "api:Mailbox ${AWS::StackName} Admin API"
                 },
                 "/authorizers/",
                 {
-                  "ref": "fallback:Mailbox/apis/admin-api/admin-api/authorizer"
+                  "ref": "authorizer:api:Mailbox ${AWS::StackName} Admin API:authorizer"
                 }
               ]
             ]
@@ -6953,7 +6953,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api"
+                  "ref": "api:Mailbox ${AWS::StackName} MCP API"
                 },
                 "/*/*/{proxy+}"
               ]
@@ -6974,7 +6974,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api"
+                  "ref": "api:Mailbox ${AWS::StackName} MCP API"
                 },
                 "/*/*/{proxy+}"
               ]
@@ -6995,7 +6995,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api"
+                  "ref": "api:Mailbox ${AWS::StackName} MCP API"
                 },
                 "/*/*/{proxy+}"
               ]
@@ -7016,7 +7016,7 @@
                 },
                 ":execute-api:us-west-2:123456789012:",
                 {
-                  "ref": "fallback:Mailbox/apis/mcp-api/mcp-api"
+                  "ref": "api:Mailbox ${AWS::StackName} MCP API"
                 },
                 "/*/*/{proxy+}"
               ]

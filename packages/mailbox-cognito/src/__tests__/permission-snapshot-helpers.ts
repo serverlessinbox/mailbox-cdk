@@ -158,13 +158,86 @@ function functionKey(logicalId: string, resource: CfnResource): string {
   return cdkPathKey(logicalId, resource);
 }
 
-function otherResourceKey(logicalId: string, resource: CfnResource): string {
-  const nameProp = NAME_PROP_BY_TYPE[resource.Type];
-  if (nameProp) {
-    const value = resource.Properties?.[nameProp];
-    if (typeof value === 'string') {
-      return `${TYPE_PREFIX_BY_TYPE[resource.Type]}:${value}`;
+/**
+ * Evaluates a CloudFormation intrinsic to a deterministic string key component, or
+ * `undefined` if it depends on something not knowable at synth time (a resource attribute,
+ * `Fn::Sub`, a non-literal-delimiter `Fn::Join`, etc.). Supports exactly the shapes actually
+ * produced for physical names in this codebase: string/number/boolean literals, a `Ref` to a
+ * pseudo-parameter or a `CfnParameter` (already registered in `keyMap` as `param:<name>` by
+ * the time this runs), and `Fn::Join` over a mix of those. Never a `Ref`/`Fn::GetAtt` to
+ * another resource — that is handled explicitly per-caller (see `authorizerKey`) so its
+ * result reflects that resource's own *final*, dedup-resolved key rather than a candidate
+ * that might still collide.
+ */
+function evalDeterministicExpr(value: any, keyMap: KeyMap): string | undefined {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value && typeof value === 'object') {
+    if (typeof value.Ref === 'string') {
+      const ref = value.Ref;
+      if (PSEUDO_PARAMS.has(ref)) return `\${${ref}}`;
+      const key = keyMap.byLogicalId.get(ref);
+      return key !== undefined && key.startsWith('param:') ? `\${${key}}` : undefined;
     }
+    if (Array.isArray(value['Fn::Join']) && value['Fn::Join'].length === 2) {
+      const [delimiter, parts] = value['Fn::Join'];
+      if (typeof delimiter !== 'string' || !Array.isArray(parts)) return undefined;
+      const evaluated: string[] = [];
+      for (const part of parts) {
+        const e = evalDeterministicExpr(part, keyMap);
+        if (e === undefined) return undefined;
+        evaluated.push(e);
+      }
+      return evaluated.join(delimiter);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Candidate name-derived keys for every non-Lambda/non-Role/non-Authorizer resource whose
+ * type has a physical-name property (`NAME_PROP_BY_TYPE`) and whose value evaluates
+ * deterministically. A name is only usable as a key when it is unique among candidates: two
+ * resources can legitimately share a CloudFormation `Name` (e.g. two API Gateway APIs with
+ * the same human-readable `Name` tag — legal in AWS, since `Name` is not the physical
+ * identifier there) without colliding as real resources, so an ambiguous candidate is
+ * dropped here and its resource falls back to `cdkPathKey` instead of a spurious collision.
+ */
+function computeNameCandidates(resources: Record<string, CfnResource>, keyMap: KeyMap): Map<string, string> {
+  const raw = new Map<string, string>();
+  for (const [logicalId, resource] of Object.entries(resources)) {
+    if (resource.Type === 'AWS::IAM::Role' || resource.Type === 'AWS::Lambda::Function') continue;
+    if (resource.Type === 'AWS::ApiGatewayV2::Authorizer') continue;
+    const nameProp = NAME_PROP_BY_TYPE[resource.Type];
+    if (!nameProp) continue;
+    const evaluated = evalDeterministicExpr(resource.Properties?.[nameProp], keyMap);
+    if (evaluated === undefined) continue;
+    raw.set(logicalId, `${TYPE_PREFIX_BY_TYPE[resource.Type]}:${evaluated}`);
+  }
+
+  const counts = new Map<string, number>();
+  for (const candidate of raw.values()) counts.set(candidate, (counts.get(candidate) ?? 0) + 1);
+
+  const unique = new Map<string, string>();
+  for (const [logicalId, candidate] of raw.entries()) {
+    if (counts.get(candidate) === 1) unique.set(logicalId, candidate);
+  }
+  return unique;
+}
+
+/**
+ * An authorizer's own `Name` is not unique across APIs (every JMAP/Admin/MCP API's default
+ * authorizer is literally named `"authorizer"`), so the key composes it with the owning
+ * API's own already-finalized key (name-derived or fallback) rather than the authorizer's
+ * bare `Name`.
+ */
+function authorizerKey(logicalId: string, resource: CfnResource, byLogicalId: Map<string, string>): string {
+  const props = resource.Properties ?? {};
+  const name = props.Name;
+  const apiLogicalId = refTarget(props.ApiId);
+  if (typeof name === 'string' && apiLogicalId !== undefined) {
+    const apiKey = byLogicalId.get(apiLogicalId);
+    if (apiKey !== undefined) return `authorizer:${apiKey}:${name}`;
   }
   return cdkPathKey(logicalId, resource);
 }
@@ -234,12 +307,20 @@ function buildKeyMap(template: CfnTemplate): KeyMap {
     byLogicalId.set(paramName, `param:${paramName}`);
   }
 
+  const nameCandidates = computeNameCandidates(resources, { byLogicalId });
+
   for (const [logicalId, resource] of Object.entries(resources)) {
-    if (resource.Type === 'AWS::IAM::Role') continue;
-    byLogicalId.set(
-      logicalId,
-      resource.Type === 'AWS::Lambda::Function' ? functionKey(logicalId, resource) : otherResourceKey(logicalId, resource),
-    );
+    if (resource.Type === 'AWS::IAM::Role' || resource.Type === 'AWS::ApiGatewayV2::Authorizer') continue;
+    if (resource.Type === 'AWS::Lambda::Function') {
+      byLogicalId.set(logicalId, functionKey(logicalId, resource));
+      continue;
+    }
+    byLogicalId.set(logicalId, nameCandidates.get(logicalId) ?? cdkPathKey(logicalId, resource));
+  }
+
+  for (const [logicalId, resource] of Object.entries(resources)) {
+    if (resource.Type !== 'AWS::ApiGatewayV2::Authorizer') continue;
+    byLogicalId.set(logicalId, authorizerKey(logicalId, resource, byLogicalId));
   }
 
   for (const [logicalId, resource] of Object.entries(resources)) {
