@@ -16,11 +16,20 @@ function createStack(): cdk.Stack {
 }
 
 describe('AuthKeyStoreTable', () => {
-  it('tableName resolves to the inner table name', () => {
+  it('tableName references the pinned logical ID', () => {
     const stack = createStack();
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual(stack.resolve(sut.table.tableName));
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'Mailboxauthkeystore8FA0AB27' });
+  });
+
+  it('tableArn resolves to the table resource\'s Arn attribute', () => {
+    const stack = createStack();
+    const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
+
+    expect(stack.resolve(sut.tableArn)).toEqual({
+      'Fn::GetAtt': ['Mailboxauthkeystore8FA0AB27', 'Arn'],
+    });
   });
 
   it('grantRead grants exactly one Allow statement with the read actions', () => {
@@ -33,7 +42,7 @@ describe('AuthKeyStoreTable', () => {
     sut.grantRead(role);
 
     const template = Template.fromStack(stack);
-    const tableId = stack.getLogicalId(sut.table.node.defaultChild as cdk.CfnResource);
+    const tableId = 'Mailboxauthkeystore8FA0AB27';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -62,7 +71,7 @@ describe('AuthKeyStoreTable', () => {
     sut.grantReadWrite(role);
 
     const template = Template.fromStack(stack);
-    const tableId = stack.getLogicalId(sut.table.node.defaultChild as cdk.CfnResource);
+    const tableId = 'Mailboxauthkeystore8FA0AB27';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

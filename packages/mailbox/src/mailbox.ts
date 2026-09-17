@@ -418,7 +418,7 @@ export class Mailbox extends Construct {
       hostedZoneName: domainName,
       itemTableArn: dataRef.itemTable.tableArn,
       configTableArn: dataRef.configTable.tableArn,
-      authKeyStoreTableArn: authKeyStore.table.tableArn,
+      authKeyStoreTableArn: authKeyStore.authKeyStoreTable.tableArn,
       productVersion: stackVersion,
       deployerType,
       logGroupName: getOrCreatePipelineLogGroup(groups.edge, 'jmap').logGroupName,
@@ -675,7 +675,7 @@ export class Mailbox extends Construct {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable: dataRef.configTable,
-      authKeyStoreTable: authKeyStore.table,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       artifactResolver,
       sesRuleSet: sesRules.ruleSet,
       sesReceivingMode: props.enableReceiving,
@@ -795,7 +795,7 @@ export class Mailbox extends Construct {
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this._blobStore,
       configTable: dataRef.configTable,
-      authKeyStoreTable: authKeyStore.table,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
@@ -831,7 +831,7 @@ export class Mailbox extends Construct {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
-      authKeyStoreTable: authKeyStore.table,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
       blobStore: this._blobStore,
@@ -859,7 +859,7 @@ export class Mailbox extends Construct {
       configTable: dataRef.configTable,
       itemTable: dataRef.itemTable,
       changelogTable: dataRef.changelogTable,
-      authKeyStoreTable: authKeyStore.table,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver,
       maxSubscriptions: 10,
@@ -875,7 +875,7 @@ export class Mailbox extends Construct {
       auditLogTable: dataRef.auditLogTable,
       changelogTable: dataRef.changelogTable,
       mailFeedbackTable: dataRef.mailFeedbackTable,
-      authKeyStoreTable: authKeyStore.table,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
@@ -921,8 +921,7 @@ export class Mailbox extends Construct {
     jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
     // websocket-push custom domain
     webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
-    // auth-key-store DynamoDB table
-    (authKeyStore.table.node.defaultChild as cdk.CfnResource).overrideLogicalId('Mailboxauthkeystore8FA0AB27');
+    // auth-key-store DynamoDB table: pinned inside AuthKeyStoreTable's own constructor, which owns the table.
     // websocket-push connections DynamoDB table
     (webSocketPush.connectionsTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('Mailboxwebsocketpushwebsocket85CC01CF');
 

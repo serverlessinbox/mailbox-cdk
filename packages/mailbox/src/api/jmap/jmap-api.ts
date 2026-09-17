@@ -25,12 +25,13 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '
 import type { IJmapApiAddon } from '../addons';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
+import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface JMapApiProps {
   readonly configTable: ITable;
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
-  readonly authKeyStoreTable: ITable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;

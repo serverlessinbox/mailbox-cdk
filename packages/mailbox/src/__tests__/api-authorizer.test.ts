@@ -28,6 +28,7 @@ import type { IMailboxAuthProvider } from '../auth/types';
 import { Permission } from '../auth/jmap-scopes';
 import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
+import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -120,7 +121,7 @@ describe('API Authorizer Wiring', () => {
   let changelogTable: dynamodb.ITable;
   let auditLogTable: dynamodb.ITable;
   let mailFeedbackTable: dynamodb.ITable;
-  let authKeyStoreTable: dynamodb.ITable;
+  let authKeyStoreTable: IAuthKeyStoreTable;
   let blobStore: s3.IBucket;
   let emailSubmissionQueue: IEmailSendingQueue;
   let auditEventsQueue: IAuditEventsQueue;
@@ -181,10 +182,7 @@ describe('API Authorizer Wiring', () => {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    authKeyStoreTable = new dynamodb.Table(stack, 'auth-key-store-table', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
     blobStore = new s3.Bucket(stack, 'blob-store');
     emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');

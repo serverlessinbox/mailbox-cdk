@@ -9,6 +9,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket/websocket';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
+import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -22,7 +23,7 @@ export interface ApiHandlerLambdaProps {
   configTable: ITable;
   itemTable: ITable;
   changelogTable: ITable;
-  authKeyStoreTable: ITable;
+  authKeyStoreTable: IAuthKeyStoreTable;
   blobStore: any;
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
@@ -72,7 +73,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
 
     // Grant the Lambda function read permissions to the config table
     props.configTable.grantReadData(this);
-    props.authKeyStoreTable.grantReadData(this);
+    props.authKeyStoreTable.grantRead(this);
 
     // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWriteData(this);

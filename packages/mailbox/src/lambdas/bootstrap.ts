@@ -6,12 +6,13 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 
 export type SesReceivingMode = 'off' | 'on' | 'forced';
 
 export interface BootstrapLambdaProps {
   configTable: ITable;
-  authKeyStoreTable: ITable;
+  authKeyStoreTable: IAuthKeyStoreTable;
   artifactResolver: ICdkArtifactEngine;
   domain: string;
   sesRuleSet: IReceiptRuleSet;
@@ -55,7 +56,7 @@ export class BootstrapLambda extends GoLambda {
     }));
 
     props.configTable.grantReadWriteData(this);
-    props.authKeyStoreTable.grantReadWriteData(this);
+    props.authKeyStoreTable.grantReadWrite(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a

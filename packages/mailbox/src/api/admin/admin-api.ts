@@ -23,6 +23,7 @@ import type { IAdminApiAddon } from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../websocket/websocket';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
+import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface AdminApiProps {
   readonly configTable: ITable;
@@ -30,7 +31,7 @@ export interface AdminApiProps {
   readonly auditLogTable: ITable;
   readonly changelogTable: ITable;
   readonly mailFeedbackTable: ITable;
-  readonly authKeyStoreTable: ITable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;

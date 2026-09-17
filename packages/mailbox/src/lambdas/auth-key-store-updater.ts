@@ -1,11 +1,11 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
+import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 
 export interface AuthKeyStoreUpdaterLambdaProps {
   issuers: string[];
-  authKeyStoreTable: ITable;
+  authKeyStoreTable: IAuthKeyStoreTable;
   artifactResolver: ICdkArtifactEngine;
 }
 
@@ -22,7 +22,7 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
-    props.authKeyStoreTable.grantReadWriteData(this);
+    // This Lambda writes the current (and rotating previous) HMAC key and JWKS entries.
+    props.authKeyStoreTable.grantReadWrite(this);
   }
 }

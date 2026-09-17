@@ -81,10 +81,12 @@ describe('Mailbox Resource Naming', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const construct = new AuthKeyStoreTable(stack, 'auth-key-store');
+      new AuthKeyStoreTable(stack, 'auth-key-store');
 
       const template = Template.fromStack(stack);
-      const logicalId = stack.getLogicalId(construct.table.node.defaultChild as CfnTable);
+      // AuthKeyStoreTable pins its own logical ID (see cdk-construct-pattern's "Explicit
+      // physical names + RETAIN") so every instance resolves to this fixed value.
+      const logicalId = 'Mailboxauthkeystore8FA0AB27';
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
       expect(resources[logicalId].Properties?.TableName).toEqual({

@@ -5,9 +5,10 @@ import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
 import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 
 export interface AuthorizerLambdaProps {
-  authKeyStoreTable: ITable;
+  authKeyStoreTable: IAuthKeyStoreTable;
   configTable: ITable;
   artifactResolver: ICdkArtifactEngine;
 
@@ -41,7 +42,7 @@ export class AuthorizerLambda extends GoLambda {
       },
     });
 
-    props.authKeyStoreTable.grantReadData(this);
+    props.authKeyStoreTable.grantRead(this);
     props.configTable.grantReadData(this);
   }
 }

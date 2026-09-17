@@ -5,6 +5,7 @@ import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { BootstrapLambda, SesReceivingMode } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 import {
   AuthPoliciesConfig,
   OAuthClientsConfig,
@@ -14,7 +15,7 @@ import {
 
 export interface BootstrapProps {
   readonly configTable: ITable;
-  readonly authKeyStoreTable: ITable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   readonly tenantName?: string;
   readonly defaultLocalPart?: string;

@@ -24,6 +24,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { WebSocketTable, IWebSocketTable } from './websocket-table';
 import { WebSocketPushApi, IWebSocketPushApi } from './websocket-push-api';
+import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface IWebSocketBroadcastPublisher {
   readonly functionName: string;
@@ -57,7 +58,7 @@ export interface WebSocketPushProps {
   readonly configTable: ITable;
   readonly itemTable: ITable;
   readonly changelogTable: ITable;
-  readonly authKeyStoreTable: ITable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
   readonly artifactResolver: ICdkArtifactEngine;
   readonly maxSubscriptions?: number;

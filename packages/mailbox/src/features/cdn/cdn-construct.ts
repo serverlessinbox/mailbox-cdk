@@ -7,11 +7,12 @@ import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 
 export interface CdnProps {
   readonly blobStore: IBucket;
   readonly configTable: ITable;
-  readonly authKeyStoreTable: ITable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly userPoolIssuer: string;
   readonly allowedOrigins?: string[];
   readonly jwtAlgorithms?: string[];

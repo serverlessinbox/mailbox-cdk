@@ -5,7 +5,6 @@ import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { INamedTable } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
 
 export interface AuthKeyStoreProps {
@@ -17,7 +16,6 @@ export interface AuthKeyStoreProps {
 }
 
 export class AuthKeyStore extends Construct {
-  table: INamedTable;
   public readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   constructor(scope: Construct, id: string, props: AuthKeyStoreProps) {
@@ -25,13 +23,12 @@ export class AuthKeyStore extends Construct {
     const authKeyStoreTable = new AuthKeyStoreTable(this, 'table');
 
     const handler = new AuthKeyStoreUpdaterLambda(this, 'handler', {
-      authKeyStoreTable: authKeyStoreTable.table,
+      authKeyStoreTable,
       issuers: props.issuers,
       artifactResolver: props.artifactResolver,
     });
 
     this.authKeyStoreTable = authKeyStoreTable;
-    this.table = authKeyStoreTable.table;
 
     // Keep the cache fresh for key rotation.
     new Rule(this, 'rule', {
