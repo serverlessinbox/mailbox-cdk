@@ -136,7 +136,6 @@ export class AdminApi extends Construct {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
-      userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       authPolicyName: AUTH_POLICY_ADMIN_API,
       serviceName: 'authorizer-admin-api',

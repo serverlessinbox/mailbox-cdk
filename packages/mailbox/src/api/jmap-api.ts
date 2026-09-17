@@ -87,7 +87,6 @@ export class JMapApi extends Construct {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable: props.configTable,
-      userPoolIssuer: props.authProvider.issuer,
       artifactResolver: props.artifactResolver,
       anonymousRoutes: ['GET /.well-known/jmap'],
       serviceName: 'authorizer-jmap-api',

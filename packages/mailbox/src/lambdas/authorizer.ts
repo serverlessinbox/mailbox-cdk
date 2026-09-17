@@ -9,7 +9,6 @@ import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: ITable;
   configTable: ITable;
-  userPoolIssuer: string;
   artifactResolver: ICdkArtifactEngine;
 
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
@@ -37,7 +36,6 @@ export class AuthorizerLambda extends GoLambda {
       environment: {
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        USER_POOL_ISSUER: props.userPoolIssuer,
         AUTH_POLICY_NAME: props.authPolicyName ?? AUTH_POLICY_JMAP_API,
         ALLOW_ANONYMOUS_ROUTES: (props.anonymousRoutes ?? []).join(','),
       },

@@ -32,14 +32,6 @@ jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   deployZipToPrefix: jest.fn(),
   invalidateCloudFront: jest.fn(),
-  env: {
-    get: (name: string, fallback: string | undefined) => process.env[name] ?? fallback,
-    mustGet: (name: string) => {
-      const value = process.env[name];
-      if (!value) throw new Error(`required environment variable ${name} is not set`);
-      return value;
-    },
-  },
   withSmokeTest: (handler: any) => handler,
   emitManualFinalize: jest.fn(),
 }));
