@@ -16,6 +16,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditWriterLambda } from '../audit-writer';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('AuditWriterLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -46,9 +47,9 @@ describe('AuditWriterLambda event-source wiring', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const auditLogTable = new Table(stack, 'audit-log-table', {
+    const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
     new AuditWriterLambda(stack, 'audit-writer', {

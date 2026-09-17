@@ -24,6 +24,7 @@ import { AdminApiLambda } from '../admin-api';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
@@ -54,21 +55,21 @@ describe('AdminApiLambda IAM scoping', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const itemTable = new Table(stack, 'item-table', {
+    }));
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const auditLogTable = new Table(stack, 'audit-log-table', {
+    }));
+    const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const changelogTable = new Table(stack, 'changelog-table', {
+    }));
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const mailFeedbackTable = new Table(stack, 'mail-feedback-table', {
+    }));
+    const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const blobStore = new Bucket(stack, 'blob-store');
     const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');

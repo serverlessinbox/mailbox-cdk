@@ -1,7 +1,7 @@
 import { Aws, Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import { type ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -9,9 +9,9 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/
 import type { IEmailSendingQueueConsumer } from '../email/sending/email-sending-queue';
 
 export interface EmailSenderLambdaProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
+  configTable: IDataTable;
+  itemTable: IDataTable;
+  changelogTable: IDataTable;
   blobStore: IBucket;
   sesConfigSetName: string;
   submissionQueue: IEmailSendingQueueConsumer;
@@ -40,9 +40,9 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     });
 
     // Grant permissions
-    props.configTable.grantReadData(this);
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.configTable.grantRead(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
     props.blobStore.grantRead(this);
 
     // Grant SES send permissions for email identities and the configuration set.

@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   buildSupportTierEnvironment,
@@ -15,7 +15,7 @@ export interface SupportApiLambdaProps {
   /** Support tier role ARNs (constructId -> arn), keyed by tier constructId for env var generation. */
   readonly tierRoleArns: Record<string, string>;
   /** DynamoDB config table for support access grant records. */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IAuditEventsQueue;
   /** Artifact resolver (engine) for Lambda code resolution. */
@@ -79,7 +79,7 @@ export class SupportApiLambda extends GoLambda {
 
     this.grantSupportHopRoleTagWrites(props);
     // Config table access for support grant records.
-    props.configTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
     // Grant send permission on the audit-events queue
     props.auditEventsQueue.grantSend(this);
     this.grantCloudTrailLookup();

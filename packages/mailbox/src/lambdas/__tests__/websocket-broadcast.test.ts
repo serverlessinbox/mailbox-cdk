@@ -20,6 +20,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { WebSocketBroadcastLambda } from '../websocket-broadcast';
 import { WebSocketTable } from '../../api/websocket/websocket-table';
 import type { IWebSocketPushApi } from '../../api/websocket/websocket';
+import { DataTable } from '../../data/data-tables';
 
 class FakeWebSocketPushApi implements IWebSocketPushApi {
   public readonly managementEndpoint = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
@@ -60,9 +61,9 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
     fakePushApi = new FakeWebSocketPushApi();
 

@@ -1,7 +1,7 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
@@ -9,10 +9,10 @@ import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-q
 import type { ISesEventQueue } from '../email/ses-events/ses-event-queue';
 
 export interface SESEventProcessorLambdaProps {
-  itemTable: ITable;
-  changelogTable: ITable;
-  mailFeedbackTable: ITable;
-  configTable: ITable;
+  itemTable: IDataTable;
+  changelogTable: IDataTable;
+  mailFeedbackTable: IDataTable;
+  configTable: IDataTable;
   blobStore: IBucket;
   auditEventsQueue: IAuditEventsQueue;
   sesEventQueue: ISesEventQueue;
@@ -42,10 +42,10 @@ export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushT
     });
 
     // Grant permissions
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
-    props.mailFeedbackTable.grantReadWriteData(this);
-    props.configTable.grantReadWriteData(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
+    props.mailFeedbackTable.grantReadWrite(this);
+    props.configTable.grantReadWrite(this);
     props.blobStore.grantReadWrite(this);
     props.auditEventsQueue.grantSend(this);
 

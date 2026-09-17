@@ -69,7 +69,7 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'audit-events-v2', {
+    this.queue = new BaseQueue(this, 'audit-events-v3', {
       ...queueProps,
       deadLetterQueue: {
         queue: this.dlq,

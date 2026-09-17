@@ -1,12 +1,12 @@
 import { Construct } from 'constructs';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface LicenseRefresherLambdaProps {
-  configTable: ITable;
+  configTable: IDataTable;
   artifactResolver: ICdkArtifactEngine;
   coreDomain: string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
@@ -26,7 +26,7 @@ export class LicenseRefresherLambda extends GoLambda {
       },
     });
 
-    props.configTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a

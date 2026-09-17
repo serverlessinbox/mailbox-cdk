@@ -25,12 +25,13 @@ import {
   isResourceOfType,
 } from './iam-test-helpers';
 import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import { DataTable, type IDataTable } from '../data/data-tables';
 
 describe('MailboxUi.addUiDeployment IAM Policies', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
-  let configTable: dynamodb.ITable;
+  let configTable: IDataTable;
   let auditEventsQueue: IAuditEventsQueue;
 
   beforeEach(() => {
@@ -65,10 +66,10 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
     artifactResolver = engine;
 
     // Create a minimal config table for the UI
-    configTable = new dynamodb.Table(stack, 'config-table', {
+    configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
     auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
   });

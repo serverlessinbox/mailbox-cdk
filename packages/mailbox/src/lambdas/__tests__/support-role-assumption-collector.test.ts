@@ -18,6 +18,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SupportRoleAssumptionCollectorLambda } from '../support-role-assumption-collector';
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
+import { DataTable } from '../../data/data-tables';
 
 describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
   let app: App;
@@ -48,9 +49,9 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
 
     new SupportRoleAssumptionCollectorLambda(stack, 'support-role-assumption-collector', {
       supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',

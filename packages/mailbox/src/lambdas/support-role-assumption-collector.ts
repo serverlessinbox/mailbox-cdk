@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   buildSupportTierEnvironment,
@@ -14,7 +14,7 @@ export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support tier role ARNs (constructId -> arn), keyed by tier constructId for env var generation. */
   readonly tierRoleArns: Record<string, string>;
   /** DynamoDB config table for storing collected role assumptions and tracking. */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   /** Artifact resolver (engine) for Lambda code resolution. */
   readonly artifactResolver: ICdkArtifactEngine;
   /** IAM tag key for the support-diag tier, sourced from the support-roles tier registry. */
@@ -77,7 +77,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     });
 
     // Config table read/write for collected role assumptions and collection tracking (lastCollectedAt).
-    props.configTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
     // Grant CloudTrail LookupEvents for querying assume-role events.
     this.grantCloudTrailLookup();
     // Grant UntagRole on support-hop for expiry enforcement.

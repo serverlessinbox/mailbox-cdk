@@ -4,9 +4,9 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
 import { Fn } from 'aws-cdk-lib';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import type { IDataTable } from '../../data/data-tables';
 import { CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -38,7 +38,7 @@ export interface SupportAddonProps {
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
   /** Config table for support grant records (D16). */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IAuditEventsQueue;
 }

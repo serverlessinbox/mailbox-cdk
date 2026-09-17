@@ -1,5 +1,4 @@
 import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
@@ -8,6 +7,7 @@ import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-gran
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IDataTable } from './data-tables';
 
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: ICdkArtifactEngine;
@@ -23,16 +23,17 @@ export interface MailboxDataDeployerProps {
  * Deploys the MailboxDataStack (DynamoDB tables + S3 bucket) via a CloudFormation
  * custom resource. The data stack is deployed in the same region as the mailbox stack.
  *
- * Exposes typed ITable and IBucket instances built from the ARNs returned in the custom
- * resource Data dict (i.e. the CloudFormation stack outputs), so that CDK can generate
- * correct IAM policy resource ARNs at deploy time.
+ * Exposes narrow per-table grant interfaces and an IBucket built from the ARNs returned in the
+ * custom resource Data dict (i.e. the CloudFormation stack outputs), so that CDK can generate
+ * correct IAM policy resource ARNs at deploy time. Internal only (not reachable from
+ * `src/index.ts`) — the raw CDK `ITable`s never leave `MailboxDataStackRef`.
  */
 export class MailboxDataDeployer extends Construct {
-  public readonly configTable: ITable;
-  public readonly itemTable: ITable;
-  public readonly changelogTable: ITable;
-  public readonly auditLogTable: ITable;
-  public readonly mailFeedbackTable: ITable;
+  public readonly configTable: IDataTable;
+  public readonly itemTable: IDataTable;
+  public readonly changelogTable: IDataTable;
+  public readonly auditLogTable: IDataTable;
+  public readonly mailFeedbackTable: IDataTable;
   public readonly blobStore: IBucket;
 
   constructor(scope: Construct, id: string, props: MailboxDataDeployerProps) {

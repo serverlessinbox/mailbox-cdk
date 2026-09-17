@@ -19,6 +19,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
 import { getPolicyStatements } from './iam-test-helpers';
 import { AuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import { DataTable } from '../data/data-tables';
 
 const TEST_ACCOUNT = '123456789012';
 const TEST_REGION = 'us-west-2';
@@ -55,11 +56,11 @@ function buildTemplate(): Template {
   const artifactResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
   artifactResolver.registerPackages(['mailbox-go']);
 
-  const configTable = dynamodb.Table.fromTableArn(
+  const configTable = new DataTable(dynamodb.Table.fromTableArn(
     stack,
     'config-table',
     `arn:aws:dynamodb:${TEST_REGION}:${TEST_ACCOUNT}:table/config`,
-  );
+  ));
   const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
 
   new StackUpdateAddon(stack, 'stack-update-addon', {

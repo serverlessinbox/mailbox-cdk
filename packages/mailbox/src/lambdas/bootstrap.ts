@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -11,7 +11,7 @@ import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-sto
 export type SesReceivingMode = 'off' | 'on' | 'forced';
 
 export interface BootstrapLambdaProps {
-  configTable: ITable;
+  configTable: IDataTable;
   authKeyStoreTable: IAuthKeyStoreTable;
   artifactResolver: ICdkArtifactEngine;
   domain: string;
@@ -55,7 +55,7 @@ export class BootstrapLambda extends GoLambda {
       },
     }));
 
-    props.configTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
     props.authKeyStoreTable.grantReadWrite(this);
 
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).

@@ -18,6 +18,7 @@ import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { WebSocketPush } from '../websocket';
+import { DataTable } from '../../../data/data-tables';
 
 function buildWebSocketPush(stack: cdk.Stack): WebSocketPush {
   const packages: Record<string, ArtifactVersionsEntry> = {
@@ -27,15 +28,15 @@ function buildWebSocketPush(stack: cdk.Stack): WebSocketPush {
   pinnedResolver.registerPackages(['mailbox-go']);
   const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-  const configTable = new Table(stack, 'config-table', {
+  const configTable = new DataTable(new Table(stack, 'config-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
-  });
-  const itemTable = new Table(stack, 'item-table', {
+  }));
+  const itemTable = new DataTable(new Table(stack, 'item-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
-  });
-  const changelogTable = new Table(stack, 'changelog-table', {
+  }));
+  const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
-  });
+  }));
   const authorizerLambda = new lambda.Function(stack, 'authorizer', {
     runtime: lambda.Runtime.NODEJS_18_X,
     handler: 'index.handler',

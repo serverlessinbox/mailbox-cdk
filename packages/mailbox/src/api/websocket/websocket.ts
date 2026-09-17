@@ -16,7 +16,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -63,9 +63,9 @@ class WebSocketBroadcastPublisherImpl implements IWebSocketBroadcastPublisher {
 }
 
 export interface WebSocketPushProps {
-  readonly configTable: ITable;
-  readonly itemTable: ITable;
-  readonly changelogTable: ITable;
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly changelogTable: IDataTable;
   readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
   readonly artifactResolver: ICdkArtifactEngine;
   readonly maxSubscriptions?: number;

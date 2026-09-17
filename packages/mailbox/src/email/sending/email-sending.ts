@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { EmailSenderLambda } from '../../lambdas';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -8,9 +8,9 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../a
 import { EmailSendingQueue, type IEmailSendingQueue } from './email-sending-queue';
 
 export interface EmailSendingProps {
-  readonly configTable: ITable;
-  readonly itemTable: ITable;
-  readonly changelogTable: ITable;
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly changelogTable: IDataTable;
   readonly blobStore: IBucket;
   readonly artifactResolver: ICdkArtifactEngine;
   readonly sesConfigSetName: string;

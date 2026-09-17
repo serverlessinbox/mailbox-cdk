@@ -1,6 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -9,6 +8,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TantivyIndexerLambda } from '../lambdas';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { TantivyIndexingScheduleDlq } from './tantivy-indexing-schedule-dlq';
+import type { IDataTable } from '../data/data-tables';
 
 export interface TantivySearchProps {
   /**
@@ -19,17 +19,17 @@ export interface TantivySearchProps {
   /**
    * DynamoDB ItemTable for querying emails
    */
-  readonly itemTable: dynamodb.ITable;
+  readonly itemTable: IDataTable;
 
   /**
    * DynamoDB ConfigTable for account and mailbox configuration
    */
-  readonly configTable: dynamodb.ITable;
+  readonly configTable: IDataTable;
 
   /**
    * DynamoDB ChangelogTable for tracking state changes
    */
-  readonly changelogTable: dynamodb.ITable;
+  readonly changelogTable: IDataTable;
 
   /**
    * Lambda code provider for building/downloading lambdas

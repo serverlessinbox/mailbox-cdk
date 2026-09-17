@@ -65,7 +65,7 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-processing-queue-v2', {
+    this.queue = new BaseQueue(this, 'email-processing-queue-v3', {
       ...queueEncryptionProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {

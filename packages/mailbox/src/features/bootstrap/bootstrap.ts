@@ -2,7 +2,7 @@ import { CustomResource, Duration } from 'aws-cdk-lib';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import { BootstrapLambda, SesReceivingMode } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
@@ -14,7 +14,7 @@ import {
 } from '../../auth/types';
 
 export interface BootstrapProps {
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   readonly tenantName?: string;
@@ -94,8 +94,6 @@ export class Bootstrap extends Construct {
         hostedZoneId: props.hostedZone?.hostedZoneId,
       },
     });
-
-    props.configTable.grantReadWriteData(handler);
   }
 }
 

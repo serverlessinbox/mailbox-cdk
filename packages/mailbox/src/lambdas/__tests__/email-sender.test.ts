@@ -20,6 +20,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { EmailSenderLambda } from '../email-sender';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('EmailSenderLambda IAM scoping', () => {
   let app: App;
@@ -51,15 +52,15 @@ describe('EmailSenderLambda IAM scoping', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const itemTable = new Table(stack, 'item-table', {
+    }));
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const changelogTable = new Table(stack, 'changelog-table', {
+    }));
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const blobStore = new Bucket(stack, 'blob-store');
     submissionQueue = new EmailSendingQueue(stack, 'email-submissions-queue');
 

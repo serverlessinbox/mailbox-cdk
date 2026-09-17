@@ -1,5 +1,5 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import type { IDataTable } from '../data/data-tables';
 import { GoLambda } from "@serverlessinbox/mailbox-cdk-shared";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
@@ -8,9 +8,9 @@ import type { IWebSocketBroadcastPublisher } from "../api/websocket/websocket";
 import type { IEmailProcessingQueueConsumer } from "../email/receiving/email-processing-queue";
 
 export interface EmailProcessorLambdaProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
+  configTable: IDataTable;
+  itemTable: IDataTable;
+  changelogTable: IDataTable;
   blobStore: IBucket;
   emailProcessingQueue: IEmailProcessingQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
@@ -37,9 +37,9 @@ export class EmailProcessorLambda extends GoLambda {
     });
 
     // Grant the Lambda function read/write permissions to the DynamoDB tables
-    props.configTable.grantReadWriteData(this);
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
 
     // Grant the Lambda function permissions to read from the S3 bucket
     props.blobStore.grantReadWrite(this);

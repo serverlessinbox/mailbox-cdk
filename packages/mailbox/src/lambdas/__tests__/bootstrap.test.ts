@@ -18,6 +18,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { BootstrapLambda } from '../bootstrap';
 import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
+import { DataTable } from '../../data/data-tables';
 
 describe('BootstrapLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -55,7 +56,7 @@ describe('BootstrapLambda auth-key-store grant', () => {
     const sesRuleSet = new ReceiptRuleSet(stack, 'ses-rule-set', {});
 
     new BootstrapLambda(stack, 'bootstrap', {
-      configTable,
+      configTable: new DataTable(configTable),
       authKeyStoreTable,
       artifactResolver,
       domain: 'example.com',

@@ -1,9 +1,9 @@
 import type { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { IDataTable } from '../data/data-tables';
 
 export interface IAdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
@@ -28,10 +28,10 @@ export interface AdminApiAddonContext {
    */
   readonly auditEventsQueue: IAuditEventsQueue;
   /** Shared config table (accounts, aliases, settings) most addons read from. */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   /** Shared audit-log table, for addons that need to read past audit records (not for writing —
    *  writes go through {@link auditEventsQueue} and the dedicated audit-writer consumer). */
-  readonly auditLogTable: ITable;
+  readonly auditLogTable: IDataTable;
 }
 
 export interface IJmapApiAddon {

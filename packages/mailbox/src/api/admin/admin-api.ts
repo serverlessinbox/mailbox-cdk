@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { AdminApiLambda, AuthorizerLambda } from '../../lambdas';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -26,11 +26,11 @@ import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue
 import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface AdminApiProps {
-  readonly configTable: ITable;
-  readonly itemTable: ITable;
-  readonly auditLogTable: ITable;
-  readonly changelogTable: ITable;
-  readonly mailFeedbackTable: ITable;
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly auditLogTable: IDataTable;
+  readonly changelogTable: IDataTable;
+  readonly mailFeedbackTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IEmailSendingQueue;

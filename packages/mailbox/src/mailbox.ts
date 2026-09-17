@@ -33,11 +33,10 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from './data/data-tables';
 import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
 import { MailboxDataDeployer } from './data';
-import { MailboxDataStackRef } from './data';
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { StackHelpers } from './utils/stack-helpers';
@@ -109,21 +108,6 @@ export interface MailboxUrls {
   readonly adminApi: string;
 }
 
-export interface MailboxDataRefs {
-  /** S3 bucket: raw email MIME files, blob uploads, Tantivy search index objects. */
-  readonly blobStore: IBucket;
-  /** DynamoDB table: account/domain configuration, SES config, auth routing. */
-  readonly configTable: ITable;
-  /** DynamoDB table: all JMAP mailbox items (emails, mailboxes, threads, contacts). */
-  readonly itemTable: ITable;
-  /** DynamoDB table: JMAP state changelog for client sync. */
-  readonly changelogTable: ITable;
-  /** DynamoDB table: audit log entries. */
-  readonly auditLogTable: ITable;
-  /** DynamoDB table: SES bounce and complaint feedback records. */
-  readonly mailFeedbackTable: ITable;
-}
-
 export interface MailboxCertificates {
   /** Auto-created us-east-1 ACM certificate for CloudFront (edge) alternate domain names.
    *  Present only when hostedZone is provided and no overrides.certificates.cloudFront is set. */
@@ -134,17 +118,6 @@ export interface MailboxCertificates {
 }
 
 export interface MailboxOverrides {
-  /**
-   * Externally-managed MailboxDataStack reference.
-   * When omitted, a MailboxDataDeployer custom resource is used.
-   */
-  readonly dataStack?: MailboxDataStackRef;
-
-  /**
-   * Custom data stack name. When omitted, defaults to "${AWS::StackName}-data".
-   */
-  readonly dataStackName?: string;
-
   /**
    * ACM certificate overrides. When omitted, certificates are auto-created
    * (requires hostedZone). Supply individual fields to bypass auto-creation
@@ -237,7 +210,7 @@ export interface MailboxOAuthClients {
 export class Mailbox extends Construct {
   private readonly _blobStore: IBucket;
   private readonly _emailProcessorLambda: EmailProcessorLambda;
-  private readonly _configTable: ITable;
+  private readonly _configTable: IDataTable;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `enableAdminUi !== false`). */
@@ -254,8 +227,6 @@ export class Mailbox extends Construct {
   public readonly oauthClients: MailboxOAuthClients = {};
 
   public readonly urls: MailboxUrls;
-
-  public readonly data: MailboxDataRefs;
 
   public readonly certificates: MailboxCertificates;
 
@@ -318,7 +289,7 @@ export class Mailbox extends Construct {
     applyServerlessInboxComponentTag(groups.ops,    'ops');
 
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
-    const effectiveDataStackName = props.overrides?.dataStackName ?? cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
+    const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
     const stackHelpers = StackHelpers.getOrCreate(this, resolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
@@ -365,28 +336,23 @@ export class Mailbox extends Construct {
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
     this.emailQueueProps = encryptionPlan.queues;
 
-    // Resolve retained data resources (from auto-deployed data stack or externally-managed ref)
-    const dataRef = props.overrides?.dataStack ?? new MailboxDataDeployer(groups.data, 'data-deployer', {
+    // Resolve retained data resources via the auto-deployed data stack. Every field on `dataRef` is
+    // already a narrow `IDataTable` grant interface (see `MailboxDataDeployer`/`MailboxDataStackRef`)
+    // — no raw `ITable` reaches this composition root, so every Lambda and feature construct below
+    // takes `dataRef.*` directly and grants itself.
+    const dataRef = new MailboxDataDeployer(groups.data, 'data-deployer', {
       artifactResolver,
-      dataStackName: props.overrides?.dataStackName,
       nameBase,
       deployerType,
     });
 
-    this._blobStore   = dataRef.blobStore;
-    this._configTable = dataRef.configTable;
+    this._blobStore = dataRef.blobStore;
 
-    this.data = {
-      blobStore:         dataRef.blobStore,
-      configTable:       dataRef.configTable,
-      itemTable:         dataRef.itemTable,
-      changelogTable:    dataRef.changelogTable,
-      auditLogTable:     dataRef.auditLogTable,
-      mailFeedbackTable: dataRef.mailFeedbackTable,
-    };
+    const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
+    this._configTable = configTable;
 
     const auditWriting = new AuditWriting(groups.ops, 'audit-writing', {
-      auditLogTable: dataRef.auditLogTable,
+      auditLogTable,
       artifactResolver,
       queueProps: encryptionPlan.queues,
     });
@@ -496,8 +462,8 @@ export class Mailbox extends Construct {
 
       const ctx: AdminApiAddonContext = {
         auditEventsQueue: auditWriting.auditEventsQueue,
-        configTable: dataRef.configTable,
-        auditLogTable: dataRef.auditLogTable,
+        configTable,
+        auditLogTable,
       };
 
       // Collect addons from auth provider
@@ -515,10 +481,10 @@ export class Mailbox extends Construct {
 
     // SES event processing infrastructure (SNS, SQS, Lambda)
     const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
-      itemTable: dataRef.itemTable,
-      mailFeedbackTable: dataRef.mailFeedbackTable,
-      changelogTable: dataRef.changelogTable,
-      configTable: dataRef.configTable,
+      itemTable,
+      mailFeedbackTable,
+      changelogTable,
+      configTable,
       blobStore: this._blobStore,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
@@ -527,9 +493,9 @@ export class Mailbox extends Construct {
 
     // Email sending infrastructure (SQS, Lambda) - must be before API
     const emailSending = new EmailSending(groups.email, 'email-sending', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
+      configTable,
+      itemTable,
+      changelogTable,
       blobStore: this._blobStore,
       artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
@@ -537,9 +503,9 @@ export class Mailbox extends Construct {
     });
 
     const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
+      configTable,
+      itemTable,
+      changelogTable,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       adminUIURL: this.urls.adminUi,
@@ -644,7 +610,7 @@ export class Mailbox extends Construct {
       ?? undefined;
 
     new LicenseRefresh(groups.ops, 'license-refresh', {
-      configTable: dataRef.configTable,
+      configTable,
       artifactResolver,
       coreDomain: domainName,
       vendorAccountIds,
@@ -663,9 +629,9 @@ export class Mailbox extends Construct {
 
     // Lambda function to process incoming emails
     this._emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
+      configTable,
+      itemTable,
+      changelogTable,
       blobStore: this._blobStore,
       emailProcessingQueue: sesRules.emailProcessingQueue,
       artifactResolver,
@@ -674,7 +640,7 @@ export class Mailbox extends Construct {
     const bootstrap = new Bootstrap(groups.auth, 'bootstrap-v2', {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
-      configTable: dataRef.configTable,
+      configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       artifactResolver,
       sesRuleSet: sesRules.ruleSet,
@@ -794,7 +760,7 @@ export class Mailbox extends Construct {
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this._blobStore,
-      configTable: dataRef.configTable,
+      configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
@@ -808,9 +774,9 @@ export class Mailbox extends Construct {
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
       indexBucket: this._blobStore,
-      itemTable: dataRef.itemTable,
-      configTable: dataRef.configTable,
-      changelogTable: dataRef.changelogTable,
+      itemTable,
+      configTable,
+      changelogTable,
       artifactResolver,
       queueProps: encryptionPlan.queues,
     });
@@ -828,9 +794,9 @@ export class Mailbox extends Construct {
     }
 
     this._jmapApi = new JMapApi(groups.apis, 'jmap-api', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
+      configTable,
+      itemTable,
+      changelogTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
@@ -856,9 +822,9 @@ export class Mailbox extends Construct {
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
     const webSocketPush = new WebSocketPush(groups.apis, 'websocket-push', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      changelogTable: dataRef.changelogTable,
+      configTable,
+      itemTable,
+      changelogTable,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver,
       maxSubscriptions: 10,
@@ -869,11 +835,11 @@ export class Mailbox extends Construct {
     // Keep a deeper messaging override — websocket-push overrides the apis group tag.
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
     const adminApi = new AdminApi(groups.apis, 'admin-api', {
-      configTable: dataRef.configTable,
-      itemTable: dataRef.itemTable,
-      auditLogTable: dataRef.auditLogTable,
-      changelogTable: dataRef.changelogTable,
-      mailFeedbackTable: dataRef.mailFeedbackTable,
+      configTable,
+      itemTable,
+      auditLogTable,
+      changelogTable,
+      mailFeedbackTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       blobStore: this._blobStore,
       emailSubmissionQueue: emailSending.submissionQueue,

@@ -1,6 +1,6 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
@@ -11,11 +11,11 @@ import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-q
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 
 export interface AdminApiLambdaProps {
-  configTable: ITable;
-  itemTable: ITable;
-  auditLogTable: ITable;
-  changelogTable: ITable;
-  mailFeedbackTable: ITable;
+  configTable: IDataTable;
+  itemTable: IDataTable;
+  auditLogTable: IDataTable;
+  changelogTable: IDataTable;
+  mailFeedbackTable: IDataTable;
   blobStore: IBucket;
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
@@ -171,12 +171,12 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
     this.grantSesReceivingAccess();
 
-    props.auditLogTable.grantReadData(this);
-    props.mailFeedbackTable.grantReadData(this);
+    props.auditLogTable.grantRead(this);
+    props.mailFeedbackTable.grantRead(this);
 
-    props.configTable.grantReadWriteData(this);
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
 
     props.auditEventsQueue.grantSend(this);
 

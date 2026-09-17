@@ -19,6 +19,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { SESEventProcessorLambda } from '../ses-event-processor';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SesEventQueue } from '../../email/ses-events/ses-event-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('SESEventProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -49,18 +50,18 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const itemTable = new Table(stack, 'item-table', {
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const changelogTable = new Table(stack, 'changelog-table', {
+    }));
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const mailFeedbackTable = new Table(stack, 'mail-feedback-table', {
+    }));
+    const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const configTable = new Table(stack, 'config-table', {
+    }));
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const blobStore = new Bucket(stack, 'blob-store');
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
     const topic = new Topic(stack, 'ses-notifications-topic');

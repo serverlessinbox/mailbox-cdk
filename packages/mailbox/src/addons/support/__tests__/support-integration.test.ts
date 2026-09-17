@@ -15,6 +15,7 @@ import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SupportAddonProvider, SupportMode } from '../support-addon';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
+import { DataTable } from '../../../data/data-tables';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -72,9 +73,9 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       // The provider creates addons when createAdminApiAddons is called
       // Pass in the config table context
       provider.createAdminApiAddons(stack, {
-        configTable,
+        configTable: new DataTable(configTable),
         auditEventsQueue,
-        auditLogTable,
+        auditLogTable: new DataTable(auditLogTable),
       });
 
       const template = Template.fromStack(stack);
@@ -151,9 +152,9 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
 
       provider.createAdminApiAddons(stack, {
-        configTable,
+        configTable: new DataTable(configTable),
         auditEventsQueue,
-        auditLogTable,
+        auditLogTable: new DataTable(auditLogTable),
       });
 
       template = Template.fromStack(stack);
@@ -527,9 +528,9 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       });
 
       provider.createAdminApiAddons(stack, {
-        configTable,
+        configTable: new DataTable(configTable),
         auditEventsQueue,
-        auditLogTable,
+        auditLogTable: new DataTable(auditLogTable),
       });
 
       const template = Template.fromStack(stack);

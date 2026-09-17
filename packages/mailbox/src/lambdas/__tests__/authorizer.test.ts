@@ -16,6 +16,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuthorizerLambda } from '../authorizer';
 import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
+import { DataTable } from '../../data/data-tables';
 
 describe('AuthorizerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -53,7 +54,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
 
     new AuthorizerLambda(stack, 'authorizer', {
       authKeyStoreTable,
-      configTable,
+      configTable: new DataTable(configTable),
       artifactResolver,
       serviceName: 'jmap',
       pipeline: 'jmap',

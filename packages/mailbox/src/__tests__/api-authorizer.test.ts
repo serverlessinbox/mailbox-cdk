@@ -29,6 +29,7 @@ import { Permission } from '../auth/jmap-scopes';
 import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import { DataTable, type IDataTable } from '../data/data-tables';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -116,11 +117,11 @@ describe('API Authorizer Wiring', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
-  let configTable: dynamodb.ITable;
-  let itemTable: dynamodb.ITable;
-  let changelogTable: dynamodb.ITable;
-  let auditLogTable: dynamodb.ITable;
-  let mailFeedbackTable: dynamodb.ITable;
+  let configTable: IDataTable;
+  let itemTable: IDataTable;
+  let changelogTable: IDataTable;
+  let auditLogTable: IDataTable;
+  let mailFeedbackTable: IDataTable;
   let authKeyStoreTable: IAuthKeyStoreTable;
   let blobStore: s3.IBucket;
   let emailSubmissionQueue: IEmailSendingQueue;
@@ -157,30 +158,30 @@ describe('API Authorizer Wiring', () => {
     artifactResolver = engine;
 
     // Create minimal required resources
-    configTable = new dynamodb.Table(stack, 'config-table', {
+    configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
-    itemTable = new dynamodb.Table(stack, 'item-table', {
+    itemTable = new DataTable(new dynamodb.Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
-    changelogTable = new dynamodb.Table(stack, 'changelog-table', {
+    changelogTable = new DataTable(new dynamodb.Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
-    auditLogTable = new dynamodb.Table(stack, 'audit-log-table', {
+    auditLogTable = new DataTable(new dynamodb.Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
-    mailFeedbackTable = new dynamodb.Table(stack, 'mail-feedback-table', {
+    mailFeedbackTable = new DataTable(new dynamodb.Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
 
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 

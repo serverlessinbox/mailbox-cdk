@@ -1,13 +1,13 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Construct } from 'constructs';
 import { IWebSocketTable } from '../api/websocket/websocket-table';
 
 export interface WebSocketConnectLambdaProps {
   connectionsTable: IWebSocketTable;
-  configTable: ITable;
+  configTable: IDataTable;
   artifactResolver: ICdkArtifactEngine;
 }
 
@@ -27,6 +27,6 @@ export class WebSocketConnectLambda extends GoLambda {
 
     // Grant permissions
     props.connectionsTable.grantWrite(this);
-    props.configTable.grantReadData(this);
+    props.configTable.grantRead(this);
   }
 }

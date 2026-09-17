@@ -13,7 +13,7 @@ import {
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration, HttpUrlIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -28,9 +28,9 @@ import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue
 import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 export interface JMapApiProps {
-  readonly configTable: ITable;
-  readonly itemTable: ITable;
-  readonly changelogTable: ITable;
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly changelogTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly blobStore: IBucket;
   readonly emailSubmissionQueue: IEmailSendingQueue;

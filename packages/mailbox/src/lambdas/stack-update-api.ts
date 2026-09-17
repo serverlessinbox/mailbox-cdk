@@ -1,14 +1,14 @@
 import { Aws, ArnFormat, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   readonly artifactBucketBase: string;
   readonly artifactResolver: ICdkArtifactEngine;
   readonly templateVersionParamName: string;
@@ -113,7 +113,7 @@ export class StackUpdateApiLambda extends GoLambda {
     );
 
     // Grant config table read-only access for authentication
-    props.configTable.grantReadData(this);
+    props.configTable.grantRead(this);
 
     // Grant send permission on the audit-events queue (shared HTTP registry audit path)
     props.auditEventsQueue.grantSend(this);

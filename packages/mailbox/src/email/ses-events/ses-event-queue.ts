@@ -49,7 +49,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
     const encryption = queueProps.encryption
       ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
 
-    this.queue = new BaseQueue(this, 'ses-notifications-queue-v2', {
+    this.queue = new BaseQueue(this, 'ses-notifications-queue-v3', {
       ...queueProps,
       encryption,
     });

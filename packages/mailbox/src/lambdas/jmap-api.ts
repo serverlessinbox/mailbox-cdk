@@ -1,6 +1,6 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -20,9 +20,9 @@ export type JmapOAuthHandlerConfig = {
 };
 
 export interface ApiHandlerLambdaProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
+  configTable: IDataTable;
+  itemTable: IDataTable;
+  changelogTable: IDataTable;
   authKeyStoreTable: IAuthKeyStoreTable;
   blobStore: any;
   emailSubmissionQueue: IEmailSendingQueue;
@@ -72,12 +72,12 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     });
 
     // Grant the Lambda function read permissions to the config table
-    props.configTable.grantReadData(this);
+    props.configTable.grantRead(this);
     props.authKeyStoreTable.grantRead(this);
 
     // Grant the Lambda function read/write permissions to the DynamoDB tables
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
     // Grant S3 write permissions for blob uploads
     props.blobStore.grantReadWrite(this);
 

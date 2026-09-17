@@ -20,6 +20,7 @@ import { ApiHandlerLambda } from '../jmap-api';
 import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('ApiHandlerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -50,15 +51,15 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const itemTable = new Table(stack, 'item-table', {
+    }));
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const changelogTable = new Table(stack, 'changelog-table', {
+    }));
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
     const blobStore = new Bucket(stack, 'blob-store');
     const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');

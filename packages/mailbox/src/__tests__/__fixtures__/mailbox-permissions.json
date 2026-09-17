@@ -95,7 +95,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
+          "sourceKey": "queue:123456789012-testmailboxstack-ses-notifications-queue-v3",
           "batchSize": 100,
           "batchWindow": 30,
           "reportBatchItemFailures": true
@@ -115,7 +115,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-email-submissions-v2",
+          "sourceKey": "queue:123456789012-testmailboxstack-email-submissions-v3",
           "batchSize": 1,
           "reportBatchItemFailures": false
         }
@@ -141,7 +141,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
+          "sourceKey": "queue:123456789012-testmailboxstack-email-processing-queue-v3",
           "batchSize": 10,
           "reportBatchItemFailures": true
         }
@@ -280,7 +280,7 @@
       ],
       "eventSources": [
         {
-          "sourceKey": "queue:123456789012-testmailboxstack-audit-events-v2",
+          "sourceKey": "queue:123456789012-testmailboxstack-audit-events-v3",
           "batchSize": 100,
           "batchWindow": 30,
           "reportBatchItemFailures": true
@@ -825,39 +825,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:PutItem",
-            "dynamodb:Query",
-            "dynamodb:Scan",
-            "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:DeleteItem",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
@@ -886,8 +853,12 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:DeleteItem",
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:Query",
+            "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -1542,43 +1513,15 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -1632,43 +1575,15 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -1744,21 +1659,17 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -1784,14 +1695,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -1817,14 +1724,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -1850,115 +1753,11 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "mailFeedbackTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "mailFeedbackTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -2021,7 +1820,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
+            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v3",
             "attr": "Arn"
           }
         }
@@ -2127,14 +1926,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2160,14 +1955,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2193,11 +1984,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -2212,81 +2000,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
                   },
                   "/index/*"
                 ]
@@ -2328,7 +2041,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v3",
             "attr": "Arn"
           }
         }
@@ -2364,7 +2077,7 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v3",
             "attr": "Arn"
           }
         }
@@ -2421,14 +2134,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2454,14 +2163,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2487,90 +2192,11 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -2633,7 +2259,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-processing-queue-v3",
             "attr": "Arn"
           }
         }
@@ -2668,35 +2294,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:GetItem",
             "dynamodb:Query"
           ],
@@ -2722,8 +2319,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -2829,7 +2427,7 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
@@ -2837,21 +2435,17 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2877,14 +2471,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -2900,35 +2490,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
                   },
                   "/index/*"
                 ]
@@ -2964,33 +2525,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3005,31 +2542,6 @@
                   {
                     "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
                     "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
                   },
                   "/index/*"
                 ]
@@ -3101,11 +2613,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3146,31 +2655,6 @@
                   {
                     "ref": "table:${AWS::AccountId}-${AWS::StackName}-websocket-v2",
                     "attr": "Arn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
                   },
                   "/index/*"
                 ]
@@ -3209,35 +2693,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:DeleteItem",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
@@ -3266,8 +2721,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3336,64 +2792,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:DeleteItem",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
@@ -3422,8 +2820,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3447,8 +2846,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3517,35 +2917,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:DeleteItem",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
@@ -3574,8 +2945,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3757,7 +3129,7 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
@@ -3765,21 +3137,17 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -3805,14 +3173,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -3838,14 +3202,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -3871,11 +3231,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -3900,136 +3257,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "mailFeedbackTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "mailFeedbackTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "auditLogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "auditLogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4174,35 +3403,6 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:BatchGetItem",
             "dynamodb:GetItem",
             "dynamodb:Query"
           ],
@@ -4228,8 +3428,9 @@
         },
         {
           "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4309,11 +3510,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4338,11 +3536,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4367,86 +3562,8 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:Scan"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
+            "dynamodb:Query"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4532,40 +3649,11 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "auditLogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "auditLogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4595,7 +3683,7 @@
           ],
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         }
@@ -4639,7 +3727,7 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-audit-events-v2",
+            "ref": "queue:123456789012-testmailboxstack-audit-events-v3",
             "attr": "Arn"
           }
         },
@@ -4647,21 +3735,17 @@
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-email-submissions-v2",
+            "ref": "queue:123456789012-testmailboxstack-email-submissions-v3",
             "attr": "Arn"
           }
         },
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -4687,14 +3771,10 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
           ],
           "Effect": "Allow",
@@ -4720,90 +3800,11 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "itemTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "itemTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "changelogTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "changelogTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -4894,40 +3895,11 @@
         {
           "Action": [
             "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
             "dynamodb:DeleteItem",
-            "dynamodb:DescribeTable",
             "dynamodb:GetItem",
             "dynamodb:PutItem",
             "dynamodb:Query",
-            "dynamodb:Scan",
             "dynamodb:UpdateItem"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-              "attr": "configTableArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/override-resolver/resource",
-                    "attr": "configTableArn"
-                  },
-                  "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator"
           ],
           "Effect": "Allow",
           "Resource": [
@@ -6087,7 +5059,7 @@
         }
       ]
     },
-    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-ses-notifications-queue-v2": {
+    "AWS::SQS::QueuePolicy:queue:123456789012-testmailboxstack-ses-notifications-queue-v3": {
       "type": "AWS::SQS::QueuePolicy",
       "statements": [
         {
@@ -6104,7 +5076,7 @@
             "Service": "sns.amazonaws.com"
           },
           "Resource": {
-            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v2",
+            "ref": "queue:123456789012-testmailboxstack-ses-notifications-queue-v3",
             "attr": "Arn"
           }
         }

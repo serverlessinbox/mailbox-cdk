@@ -18,6 +18,7 @@ import { SupportApiLambda } from '../support-api';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { DataTable } from '../../data/data-tables';
 
 describe('SupportApiLambda tag-key env vars', () => {
   let app: App;
@@ -48,9 +49,9 @@ describe('SupportApiLambda tag-key env vars', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
     new SupportApiLambda(stack, 'support-api', {

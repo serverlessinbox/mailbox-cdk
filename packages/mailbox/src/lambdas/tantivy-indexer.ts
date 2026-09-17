@@ -1,15 +1,15 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
 export interface TantivyIndexerLambdaProps {
   indexBucket: IBucket;
-  itemTable: ITable;
-  configTable: ITable;
-  changelogTable: ITable;
+  itemTable: IDataTable;
+  configTable: IDataTable;
+  changelogTable: IDataTable;
   artifactResolver: ICdkArtifactEngine;
 }
 
@@ -31,8 +31,8 @@ export class TantivyIndexerLambda extends GoLambda {
 
     // Grant permissions
     props.indexBucket.grantReadWrite(this);
-    props.itemTable.grantReadData(this);
-    props.configTable.grantReadData(this);
-    props.changelogTable.grantReadData(this);
+    props.itemTable.grantRead(this);
+    props.configTable.grantRead(this);
+    props.changelogTable.grantRead(this);
   }
 }

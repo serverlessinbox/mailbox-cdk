@@ -17,12 +17,13 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { BootstrapLambda } from '../lambdas/bootstrap';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import { DataTable, type IDataTable } from '../data/data-tables';
 
 describe('BootstrapLambda SES rule set wiring', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: ICdkArtifactEngine;
-  let configTable: dynamodb.ITable;
+  let configTable: IDataTable;
   let authKeyStoreTable: IAuthKeyStoreTable;
   let ruleSet: ses.IReceiptRuleSet;
 
@@ -51,10 +52,10 @@ describe('BootstrapLambda SES rule set wiring', () => {
     pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-    configTable = new dynamodb.Table(stack, 'config-table', {
+    configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    }));
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
     ruleSet = new ses.ReceiptRuleSet(stack, 'rule-set');

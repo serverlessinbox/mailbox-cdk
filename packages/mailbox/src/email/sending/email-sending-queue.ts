@@ -58,7 +58,7 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-submissions-v2', {
+    this.queue = new BaseQueue(this, 'email-submissions-v3', {
       ...queueProps,
       deadLetterQueue: {
         queue: this.dlq,

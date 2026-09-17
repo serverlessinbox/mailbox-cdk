@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { SESEventProcessorLambda } from '../../lambdas';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -12,10 +12,10 @@ import { SesEventTopic, type ISesEventTopic } from './ses-event-topic';
 import { SesEventQueue, type ISesEventQueue } from './ses-event-queue';
 
 export interface SESEventProcessingProps {
-  readonly itemTable: ITable;
-  readonly changelogTable: ITable;
-  readonly mailFeedbackTable: ITable;
-  readonly configTable: ITable;
+  readonly itemTable: IDataTable;
+  readonly changelogTable: IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly configTable: IDataTable;
   readonly blobStore: IBucket;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly artifactResolver: ICdkArtifactEngine;

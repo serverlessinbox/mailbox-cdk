@@ -17,6 +17,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { EmailProcessorLambda } from '../email-processor';
 import { EmailProcessingQueue } from '../../email/receiving/email-processing-queue';
+import { DataTable } from '../../data/data-tables';
 
 describe('EmailProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -47,15 +48,15 @@ describe('EmailProcessorLambda event-source wiring', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const itemTable = new Table(stack, 'item-table', {
+    }));
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    const changelogTable = new Table(stack, 'changelog-table', {
+    }));
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     const blobStore = new Bucket(stack, 'blob-store');
     emailProcessingQueue = new EmailProcessingQueue(stack, 'email-processing-queue');
 

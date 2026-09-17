@@ -11,7 +11,6 @@ export type {
   MailboxCertificateOverrides,
   MailboxSubdomainOverrides,
   MailboxUrls,
-  MailboxDataRefs,
   MailboxCertificates,
   SesReceivingMode,
 } from './mailbox';
@@ -59,6 +58,7 @@ export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
 export type { IAuditEventsQueue } from './features/audit-writing/audit-events-queue';
+export type { IDataTable } from './data/data-tables';
 export { StackUpdateAddonProvider } from './addons/stack-update/stack-update-addon';
 export type { StackUpdateAddonProviderProps } from './addons/stack-update/stack-update-addon';
 export { SupportAddonProvider, SupportMode } from './addons/support/support-addon';
@@ -88,15 +88,11 @@ export type {
   MailboxKmsConfig,
 } from './utils/kms';
 
-// Stack helpers — domain and stack-name derivation singleton
+// Stack helpers — domain and stack-name derivation singleton. NOT removed in this dispatch:
+// mailbox-cognito/src/auth/mailbox-user-pool.ts imports StackHelpers from this package's public
+// surface (StackHelpers.getOrCreate(...)); removing the export breaks that package's build.
 export { StackHelpers } from './utils/stack-helpers';
 export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './utils/stack-helpers';
-
-// Data stack
-export { MailboxDataStack } from './data';
-export type { MailboxDataStackProps } from './data';
-export { MailboxDataStackRef } from './data';
-export type { MailboxDataStackRefProps } from './data';
 
 // Artifact resolution (stack-self-update subplan #3, Phase A, D2/D3 — jsii-exported types)
 export type { IArtifactResolver, ResolvedArtifact } from './artifacts/i-artifact-resolver';

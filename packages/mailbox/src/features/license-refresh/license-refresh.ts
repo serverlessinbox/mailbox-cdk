@@ -2,14 +2,14 @@ import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 import { LicenseRefresherLambda } from '../../lambdas';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface LicenseRefreshProps {
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   readonly artifactResolver: ICdkArtifactEngine;
   readonly coreDomain: string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */

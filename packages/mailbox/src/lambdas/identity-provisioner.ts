@@ -1,6 +1,6 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -9,9 +9,9 @@ import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-q
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 
 export interface IdentityProvisionerLambdaProps {
-  configTable: ITable;
-  itemTable: ITable;
-  changelogTable: ITable;
+  configTable: IDataTable;
+  itemTable: IDataTable;
+  changelogTable: IDataTable;
   auditEventsQueue: IAuditEventsQueue;
   artifactResolver: ICdkArtifactEngine;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
@@ -50,9 +50,9 @@ export class IdentityProvisionerLambda extends GoLambda {
     });
 
     // Needs to create user/account/alias/idp-mapping in config table and mailboxes in item table
-    props.configTable.grantReadWriteData(this);
-    props.itemTable.grantReadWriteData(this);
-    props.changelogTable.grantReadWriteData(this);
+    props.configTable.grantReadWrite(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
 
     // Audit events emitted during provisioning
     props.auditEventsQueue.grantSend(this);

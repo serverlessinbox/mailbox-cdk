@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import type { IDataTable } from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -22,7 +22,7 @@ export interface WebmailUiProps {
   /**
    * Shared config table used by token exchange API.
    */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
 
   /** Auth provider used to provision the OAuth client for this UI. */
   readonly authProvider: IMailboxAuthProvider;

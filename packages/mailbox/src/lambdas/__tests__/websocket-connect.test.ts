@@ -16,6 +16,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { WebSocketConnectLambda } from '../websocket-connect';
 import { WebSocketTable } from '../../api/websocket/websocket-table';
+import { DataTable } from '../../data/data-tables';
 
 describe('WebSocketConnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
@@ -46,9 +47,9 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     pinnedResolver.registerPackages(['mailbox-go']);
     const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
-    const configTable = new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
+    }));
     connectionsTable = new WebSocketTable(stack, 'websocket-table');
 
     new WebSocketConnectLambda(stack, 'websocket-connect', {

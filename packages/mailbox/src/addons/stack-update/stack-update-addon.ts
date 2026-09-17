@@ -3,8 +3,8 @@ import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IDataTable } from '../../data/data-tables';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
@@ -20,7 +20,7 @@ import { TemplateVersionParam, type ITemplateVersionParam } from './template-ver
  */
 export interface StackUpdateAddonProps {
   /** DynamoDB table for configuration. */
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
 
   /** SQS queue for audit events (shared HTTP registry audit path). */
   readonly auditEventsQueue: IAuditEventsQueue;

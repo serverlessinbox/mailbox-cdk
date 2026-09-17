@@ -1,6 +1,6 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
@@ -9,7 +9,7 @@ import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-sto
 
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: IAuthKeyStoreTable;
-  configTable: ITable;
+  configTable: IDataTable;
   artifactResolver: ICdkArtifactEngine;
 
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
@@ -43,6 +43,6 @@ export class AuthorizerLambda extends GoLambda {
     });
 
     props.authKeyStoreTable.grantRead(this);
-    props.configTable.grantReadData(this);
+    props.configTable.grantRead(this);
   }
 }

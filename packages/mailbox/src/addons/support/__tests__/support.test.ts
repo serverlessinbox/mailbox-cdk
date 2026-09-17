@@ -20,6 +20,7 @@ import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { SupportAddon, SupportMode } from '../support-addon';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
+import { DataTable } from '../../../data/data-tables';
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -55,10 +56,10 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock config table for the test
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       // Create a mock audit queue for the test
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
@@ -114,10 +115,10 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock config table for the test
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       // Create a mock audit queue for the test
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
@@ -157,7 +158,7 @@ describe('SupportAddon Unit Tests', () => {
     let stack: cdk.Stack;
     let template: Template;
     let artifactResolver: ICdkArtifactEngine;
-    let configTable: Table;
+    let configTable: DataTable;
     let auditEventsQueue: AuditEventsQueue;
 
     beforeEach(() => {
@@ -178,10 +179,10 @@ describe('SupportAddon Unit Tests', () => {
       });
 
       // Create a mock config table for the test
-      configTable = new Table(stack, 'config-table', {
+      configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       // Create a mock audit events queue for the test
       auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
@@ -1223,10 +1224,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
@@ -1292,10 +1293,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
@@ -1366,10 +1367,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
@@ -1435,10 +1436,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
@@ -1497,10 +1498,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);
@@ -1561,10 +1562,10 @@ describe('SupportAddon Unit Tests', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const configTable = new Table(stack, 'config-table', {
+      const configTable = new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
         sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
+      }));
 
       const auditEventsQueue = new AuditEventsQueue(stack, 'audit-queue');
       const artifactResolver = createTestArtifactResolver(stack);

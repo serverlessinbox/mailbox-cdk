@@ -1,12 +1,12 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { Construct } from 'constructs';
 import type { IAuditEventsQueueConsumer } from '../features/audit-writing/audit-events-queue';
 
 export interface AuditWriterLambdaProps {
-  auditLogTable: ITable;
+  auditLogTable: IDataTable;
   auditEventsQueue: IAuditEventsQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
 }
@@ -29,7 +29,7 @@ export class AuditWriterLambda extends GoLambda {
     });
 
     // Grant permissions
-    props.auditLogTable.grantReadWriteData(this);
+    props.auditLogTable.grantReadWrite(this);
 
     this.addEventSourceMapping('audit-events-queue', {
       eventSourceArn: props.auditEventsQueue.queueArn,

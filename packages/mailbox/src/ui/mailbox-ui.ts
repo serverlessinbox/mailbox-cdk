@@ -14,7 +14,7 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../data/data-tables';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
@@ -37,7 +37,7 @@ export interface MailboxUiProps {
   certificate?: acm.ICertificate;
 
   /** Shared config table used by token exchange API. */
-  configTable: ITable;
+  configTable: IDataTable;
 
   /** Which auth policy record to use for token exchange. */
   authPolicyName: AuthPolicyName;
@@ -223,7 +223,7 @@ export class MailboxUi extends Construct {
   private addAuthBehavior(
     distribution: Distribution,
     artifactResolver: ICdkArtifactEngine,
-    configTable: ITable,
+    configTable: IDataTable,
     auditEventsQueue: IAuditEventsQueue,
     authPolicyName: AuthPolicyName,
     oauthClientName: OAuthClientName,

@@ -5,13 +5,13 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import type { IDataTable } from '../../data/data-tables';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 
 export interface CdnProps {
   readonly blobStore: IBucket;
-  readonly configTable: ITable;
+  readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly userPoolIssuer: string;
   readonly allowedOrigins?: string[];
