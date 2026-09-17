@@ -92,7 +92,9 @@
   "files": [
     "src",
     "lib",
-    "artifact-versions.json"
+    "artifact-versions.json",
+    "!src/**/__tests__",
+    "!lib/**/__tests__"
   ],
   "serverlessinbox": {
     "components": {
