@@ -34,6 +34,7 @@ import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { IDataTable } from './data/data-tables';
+import type { IDataBlobStore } from './data/data-blob-store';
 import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
 import { MailboxDataDeployer } from './data';
@@ -207,7 +208,14 @@ export interface MailboxOAuthClients {
  * Main Mailbox construct
  */
 export class Mailbox extends Construct {
-  private readonly _blobStore: IBucket;
+  /** Grant-scoped handle to `_blobStoreBucket`, for every consumer that only needs least-privilege object actions. */
+  private readonly _blobStoreHandle: IDataBlobStore;
+  /**
+   * The raw blob-store bucket. Two consumers still need it directly — the CDN's CloudFront S3
+   * origin and the SES receipt rule's S3 delivery action both require an actual `IBucket`, which
+   * `IDataBlobStore`'s grant-only surface cannot provide.
+   */
+  private readonly _blobStoreBucket: IBucket;
   private readonly _emailProcessorLambda: EmailProcessorLambda;
   private readonly _configTable: IDataTable;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
@@ -345,7 +353,8 @@ export class Mailbox extends Construct {
       deployerType,
     });
 
-    this._blobStore = dataRef.blobStore;
+    this._blobStoreBucket = dataRef.blobStoreBucket;
+    this._blobStoreHandle = dataRef.blobStore;
 
     const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
     this._configTable = configTable;
@@ -484,7 +493,7 @@ export class Mailbox extends Construct {
       mailFeedbackTable,
       changelogTable,
       configTable,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       queueProps: encryptionPlan.queues,
@@ -495,7 +504,7 @@ export class Mailbox extends Construct {
       configTable,
       itemTable,
       changelogTable,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
@@ -508,7 +517,7 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       adminUIURL: this.urls.adminUi,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       systemSenderAddress: `noreply@${domainName}`,
@@ -619,7 +628,7 @@ export class Mailbox extends Construct {
     // Lambda so its own event source mapping can reference the queue at construction time.
     const sesRules = new SesRules(groups.email, 'ses-rules', {
       delivery: {
-        blobStore: this._blobStore,
+        blobStore: this._blobStoreBucket,
         bucketPrefix: 'incoming-emails/',
         artifactResolver,
         queueProps: this.emailQueueProps,
@@ -631,7 +640,7 @@ export class Mailbox extends Construct {
       configTable,
       itemTable,
       changelogTable,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       emailProcessingQueue: sesRules.emailProcessingQueue,
       artifactResolver,
     });
@@ -758,7 +767,7 @@ export class Mailbox extends Construct {
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreBucket,
       configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       userPoolIssuer: authProvider.issuer,
@@ -772,7 +781,7 @@ export class Mailbox extends Construct {
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
-      indexBucket: this._blobStore,
+      indexBucket: this._blobStoreHandle,
       itemTable,
       configTable,
       changelogTable,
@@ -799,7 +808,7 @@ export class Mailbox extends Construct {
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
@@ -840,7 +849,7 @@ export class Mailbox extends Construct {
       changelogTable,
       mailFeedbackTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
-      blobStore: this._blobStore,
+      blobStore: this._blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,

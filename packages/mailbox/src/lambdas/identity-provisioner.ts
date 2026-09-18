@@ -1,7 +1,7 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -17,7 +17,7 @@ export interface IdentityProvisionerLambdaProps {
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
   readonly adminUIURL: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */
-  readonly blobStore: IBucket;
+  readonly blobStore: IDataBlobStore;
   /** SQS queue for email submissions (used by the submission service). */
   readonly emailSubmissionQueue: IEmailSendingQueue;
   /** SES configuration set name for sending emails. */
@@ -58,7 +58,7 @@ export class IdentityProvisionerLambda extends GoLambda {
     props.auditEventsQueue.grantSend(this);
 
     // Email service: blob store for email bodies/attachments
-    props.blobStore.grantReadWrite(this);
+    props.blobStore.grantEmailBlobWrite(this);
 
     // Submission service: enqueue email submissions
     props.emailSubmissionQueue.grantSend(this);

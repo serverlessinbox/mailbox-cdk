@@ -13,7 +13,7 @@ import {
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../../data/data-blob-store';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../../auth/types';
@@ -32,7 +32,7 @@ export interface AdminApiProps {
   readonly changelogTable: IDataTable;
   readonly mailFeedbackTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly blobStore: IBucket;
+  readonly blobStore: IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly allowedOrigins?: string[];

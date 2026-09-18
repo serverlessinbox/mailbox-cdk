@@ -16,7 +16,7 @@ import { HttpLambdaIntegration, HttpUrlIntegration } from 'aws-cdk-lib/aws-apiga
 import type { IDataTable } from '../../data/data-tables';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../../data/data-blob-store';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { IMailboxAuthProvider } from '../../auth/types';
@@ -32,7 +32,7 @@ export interface JMapApiProps {
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly blobStore: IBucket;
+  readonly blobStore: IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;
 

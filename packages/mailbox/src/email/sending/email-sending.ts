@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { EmailSenderLambda } from '../../lambdas';
 import type { IDataTable } from '../../data/data-tables';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../../data/data-blob-store';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
@@ -11,7 +11,7 @@ export interface EmailSendingProps {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
-  readonly blobStore: IBucket;
+  readonly blobStore: IDataBlobStore;
   readonly artifactResolver: ICdkArtifactEngine;
   readonly sesConfigSetName: string;
 

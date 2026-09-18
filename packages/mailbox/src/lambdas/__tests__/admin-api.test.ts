@@ -25,6 +25,7 @@ import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
+import { DataBlobStore } from '../../data/data-blob-store';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
@@ -70,7 +71,7 @@ describe('AdminApiLambda IAM scoping', () => {
     const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new Bucket(stack, 'blob-store');
+    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
     const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(

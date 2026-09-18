@@ -2,11 +2,11 @@ import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import { Construct } from 'constructs';
 
 export interface TantivyIndexerLambdaProps {
-  indexBucket: IBucket;
+  indexBucket: IDataBlobStore;
   itemTable: IDataTable;
   configTable: IDataTable;
   changelogTable: IDataTable;
@@ -30,7 +30,7 @@ export class TantivyIndexerLambda extends GoLambda {
     });
 
     // Grant permissions
-    props.indexBucket.grantReadWrite(this);
+    props.indexBucket.grantSearchIndexReadWrite(this);
     props.itemTable.grantRead(this);
     props.configTable.grantRead(this);
     props.changelogTable.grantRead(this);

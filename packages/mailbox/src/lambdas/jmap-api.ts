@@ -1,6 +1,7 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -24,7 +25,7 @@ export interface ApiHandlerLambdaProps {
   itemTable: IDataTable;
   changelogTable: IDataTable;
   authKeyStoreTable: IAuthKeyStoreTable;
-  blobStore: any;
+  blobStore: IDataBlobStore;
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
   cdnHost: string;
@@ -78,8 +79,13 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
-    // Grant S3 write permissions for blob uploads
-    props.blobStore.grantReadWrite(this);
+    // JMAP API reads/writes/deletes email, upload, contact, and principal blobs, and reads the
+    // built search index to serve query results.
+    props.blobStore.grantEmailBlobReadWriteDelete(this);
+    props.blobStore.grantUploadBlobReadWriteDelete(this);
+    props.blobStore.grantContactBlobReadWriteDelete(this);
+    props.blobStore.grantPrincipalBlobReadWriteDelete(this);
+    props.blobStore.grantSearchIndexRead(this);
 
     // Grant SQS permissions to send email submission messages
     props.emailSubmissionQueue.grantSend(this);

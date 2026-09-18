@@ -8,6 +8,7 @@ import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
 import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from './data-tables';
+import type { IDataBlobStore } from './data-blob-store';
 
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: ICdkArtifactEngine;
@@ -34,7 +35,16 @@ export class MailboxDataDeployer extends Construct {
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
   public readonly mailFeedbackTable: IDataTable;
-  public readonly blobStore: IBucket;
+
+  /** Grant-scoped handle to `blobStoreBucket`. Forwarded from `MailboxDataStackRef`. */
+  public readonly blobStore: IDataBlobStore;
+
+  /**
+   * The raw imported bucket, forwarded from `MailboxDataStackRef`. Only its two named consumers
+   * (`features/cdn/cdn-construct.ts`, `email/receiving/ses-rules.ts`) should use this — see that
+   * class's own comment for why. Every other consumer should take `blobStore`.
+   */
+  public readonly blobStoreBucket: IBucket;
 
   constructor(scope: Construct, id: string, props: MailboxDataDeployerProps) {
     super(scope, id);
@@ -130,5 +140,6 @@ export class MailboxDataDeployer extends Construct {
     this.auditLogTable     = ref.auditLogTable;
     this.mailFeedbackTable = ref.mailFeedbackTable;
     this.blobStore         = ref.blobStore;
+    this.blobStoreBucket   = ref.blobStoreBucket;
   }
 }

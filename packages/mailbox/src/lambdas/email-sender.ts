@@ -2,7 +2,7 @@ import { Aws, Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import { type ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
@@ -12,7 +12,7 @@ export interface EmailSenderLambdaProps {
   configTable: IDataTable;
   itemTable: IDataTable;
   changelogTable: IDataTable;
-  blobStore: IBucket;
+  blobStore: IDataBlobStore;
   sesConfigSetName: string;
   submissionQueue: IEmailSendingQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
@@ -43,7 +43,7 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     props.configTable.grantRead(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
-    props.blobStore.grantRead(this);
+    props.blobStore.grantEmailBlobRead(this);
 
     // Grant SES send permissions for email identities and the configuration set.
     // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.

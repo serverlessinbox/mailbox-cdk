@@ -18,6 +18,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { EmailProcessorLambda } from '../email-processor';
 import { EmailProcessingQueue } from '../../email/receiving/email-processing-queue';
 import { DataTable } from '../../data/data-tables';
+import { DataBlobStore } from '../../data/data-blob-store';
 
 describe('EmailProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -57,7 +58,7 @@ describe('EmailProcessorLambda event-source wiring', () => {
     const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new Bucket(stack, 'blob-store');
+    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
     emailProcessingQueue = new EmailProcessingQueue(stack, 'email-processing-queue');
 
     new EmailProcessorLambda(stack, 'email-processor', {

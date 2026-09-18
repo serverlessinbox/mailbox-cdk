@@ -1656,6 +1656,22 @@
           ]
         },
         {
+          "Action": "s3:PutObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
+        },
+        {
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
@@ -1781,39 +1797,6 @@
         },
         {
           "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
             "sqs:ReceiveMessage"
@@ -1873,6 +1856,22 @@
               ]
             }
           ]
+        },
+        {
+          "Action": "s3:GetObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
         },
         {
           "Action": "ses:SendRawEmail",
@@ -2009,32 +2008,6 @@
         },
         {
           "Action": [
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
             "sqs:DeleteMessage",
             "sqs:GetQueueAttributes",
             "sqs:ReceiveMessage"
@@ -2132,6 +2105,22 @@
           ]
         },
         {
+          "Action": "s3:PutObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
+        },
+        {
           "Action": [
             "dynamodb:BatchGetItem",
             "dynamodb:DeleteItem",
@@ -2220,36 +2209,22 @@
         },
         {
           "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
+            "s3:DeleteObject",
+            "s3:GetObject"
           ],
           "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/incoming-emails/*"
               ]
-            }
-          ]
+            ]
+          }
         },
         {
           "Action": [
@@ -2424,6 +2399,35 @@
           ]
         },
         {
+          "Action": "s3:GetObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/search-indexes/*"
+              ]
+            ]
+          }
+        },
+        {
+          "Action": "s3:ListBucket",
+          "Condition": {
+            "StringLike": {
+              "s3:prefix": "tenants/*/accounts/*/emails/*"
+            }
+          },
+          "Effect": "Allow",
+          "Resource": {
+            "ref": "fallback:Mailbox/data/data-deployer/resource",
+            "attr": "blobStoreArn"
+          }
+        },
+        {
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
@@ -2551,36 +2555,83 @@
         },
         {
           "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
+            "s3:DeleteObject",
+            "s3:GetObject",
+            "s3:PutObject"
           ],
           "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/contacts/*"
               ]
-            }
-          ]
+            ]
+          }
+        },
+        {
+          "Action": [
+            "s3:DeleteObject",
+            "s3:GetObject",
+            "s3:PutObject"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
+        },
+        {
+          "Action": [
+            "s3:DeleteObject",
+            "s3:GetObject",
+            "s3:PutObject"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/principals/*"
+              ]
+            ]
+          }
+        },
+        {
+          "Action": [
+            "s3:DeleteObject",
+            "s3:GetObject",
+            "s3:PutObject"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/uploads/*"
+              ]
+            ]
+          }
         }
       ]
     },
@@ -3050,6 +3101,22 @@
           ]
         },
         {
+          "Action": "s3:PutObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
+        },
+        {
           "Action": "ses:DescribeActiveReceiptRuleSet",
           "Effect": "Allow",
           "Resource": "*"
@@ -3296,39 +3363,6 @@
           ],
           "Effect": "Allow",
           "Resource": "*"
-        },
-        {
-          "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          ]
         },
         {
           "Action": [
@@ -3587,36 +3621,22 @@
         },
         {
           "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
+            "s3:GetObject",
+            "s3:PutObject"
           ],
           "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
-                ]
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/search-indexes/*"
               ]
-            }
-          ]
+            ]
+          }
         }
       ]
     },
@@ -3724,6 +3744,22 @@
           ]
         },
         {
+          "Action": "s3:PutObject",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "ref": "fallback:Mailbox/data/data-deployer/resource",
+                  "attr": "blobStoreArn"
+                },
+                "/tenants/*/accounts/*/emails/*"
+              ]
+            ]
+          }
+        },
+        {
           "Action": "sqs:SendMessage",
           "Effect": "Allow",
           "Resource": {
@@ -3821,39 +3857,6 @@
                     "attr": "itemTableArn"
                   },
                   "/index/*"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "Action": [
-            "s3:Abort*",
-            "s3:DeleteObject*",
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*",
-            "s3:PutObject",
-            "s3:PutObjectLegalHold",
-            "s3:PutObjectRetention",
-            "s3:PutObjectTagging",
-            "s3:PutObjectVersionTagging"
-          ],
-          "Effect": "Allow",
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/data/data-deployer/resource",
-              "attr": "blobStoreArn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/data/data-deployer/resource",
-                    "attr": "blobStoreArn"
-                  },
-                  "/*"
                 ]
               ]
             }

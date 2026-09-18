@@ -20,6 +20,7 @@ import { SESEventProcessorLambda } from '../ses-event-processor';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SesEventQueue } from '../../email/ses-events/ses-event-queue';
 import { DataTable } from '../../data/data-tables';
+import { DataBlobStore } from '../../data/data-blob-store';
 
 describe('SESEventProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -62,7 +63,7 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new Bucket(stack, 'blob-store');
+    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
     const topic = new Topic(stack, 'ses-notifications-topic');
     sesEventQueue = new SesEventQueue(stack, 'ses-event-queue', { topic });

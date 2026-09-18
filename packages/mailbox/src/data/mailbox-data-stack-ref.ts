@@ -2,6 +2,7 @@ import { Construct } from 'constructs';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket, Bucket } from 'aws-cdk-lib/aws-s3';
 import { DataTable, IDataTable } from './data-tables';
+import { DataBlobStore, IDataBlobStore } from './data-blob-store';
 
 /**
  * Keys identifying each of the data sub-stack's DynamoDB tables. Drives the mapped type below so
@@ -20,7 +21,10 @@ export type MailboxDataStackRefProps =
  * from their ARNs (via `MailboxDataOverrideResolver`, either the sub-stack's real outputs or an
  * operator-supplied override). Internal only (not reachable from `src/index.ts`) — every table is
  * imported once as a CDK `ITable` and wrapped in `IDataTable`; the raw `ITable` never leaves this
- * class. A consumer sees only `tableName`/`tableArn` and the `grantRead`/`grantReadWrite` methods.
+ * class, and a consumer sees only `tableName`/`tableArn` and the `grantRead`/`grantReadWrite`
+ * methods. The blob store's raw `IBucket` is the one deliberate exception: `blobStoreBucket` hands
+ * it out unwrapped, alongside the grant-only `blobStore` handle, because two consumers genuinely
+ * need the bucket object itself (see `blobStoreBucket`'s own comment).
  */
 export class MailboxDataStackRef extends Construct {
   public readonly configTable: IDataTable;
@@ -28,7 +32,18 @@ export class MailboxDataStackRef extends Construct {
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
   public readonly mailFeedbackTable: IDataTable;
-  public readonly blobStore: IBucket;
+
+  /** Grant-scoped handle to `blobStoreBucket`, for every consumer that only needs least-privilege object actions. */
+  public readonly blobStore: IDataBlobStore;
+
+  /**
+   * The raw imported bucket, exposed only because two consumers write a bucket *resource policy*
+   * rather than an identity grant and so cannot go through `IDataBlobStore`'s method-only surface:
+   * `features/cdn/cdn-construct.ts` (`S3BucketOrigin.withOriginAccessControl` needs the bucket
+   * object) and `email/receiving/ses-rules.ts` (`aws-ses-actions.S3`'s `bucket:` prop). Do not use
+   * this for a grant — use `blobStore` instead.
+   */
+  public readonly blobStoreBucket: IBucket;
 
   constructor(scope: Construct, id: string, props: MailboxDataStackRefProps) {
     super(scope, id);
@@ -37,7 +52,8 @@ export class MailboxDataStackRef extends Construct {
     this.changelogTable    = this.importTable('changelog-table',    props.changelogTableArn);
     this.auditLogTable     = this.importTable('audit-log-table',    props.auditLogTableArn);
     this.mailFeedbackTable = this.importTable('mailfeedback-table', props.mailFeedbackTableArn);
-    this.blobStore         = Bucket.fromBucketArn(this, 'blob-store', props.blobStoreArn);
+    this.blobStoreBucket   = Bucket.fromBucketArn(this, 'blob-store', props.blobStoreArn);
+    this.blobStore         = new DataBlobStore(this.blobStoreBucket);
   }
 
   /**

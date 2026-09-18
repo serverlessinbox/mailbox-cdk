@@ -21,6 +21,7 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { EmailSenderLambda } from '../email-sender';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
+import { DataBlobStore } from '../../data/data-blob-store';
 
 describe('EmailSenderLambda IAM scoping', () => {
   let app: App;
@@ -61,7 +62,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new Bucket(stack, 'blob-store');
+    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
     submissionQueue = new EmailSendingQueue(stack, 'email-submissions-queue');
 
     new EmailSenderLambda(stack, 'email-sender', {

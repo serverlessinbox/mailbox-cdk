@@ -1,0 +1,56 @@
+import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
+
+const READ = ['s3:GetObject'] as const;
+const WRITE = ['s3:PutObject'] as const;
+const DELETE = ['s3:DeleteObject'] as const;
+
+/**
+ * Explicit least-privilege S3 object action sets — `read`, `write`, `delete`, and the composed
+ * tiers callers actually need — for use with `grantObjectActions`. Kept separate from CDK's
+ * `Bucket.grantRead`/`grantWrite`/`grantReadWrite`/`grantPut`/`grantDelete`: those grant a broader
+ * action set (e.g. `grantRead` also allows `s3:GetBucket*` and `s3:List*`) than any caller here
+ * uses. There is no `s3:HeadObject` IAM action — `HeadObject` calls are authorized by
+ * `s3:GetObject`, so `read` covers both.
+ */
+export const S3Actions = {
+  read: READ,
+  write: WRITE,
+  delete: DELETE,
+  readWrite: [...READ, ...WRITE],
+  readWriteDelete: [...READ, ...WRITE, ...DELETE],
+  readDelete: [...READ, ...DELETE],
+} as const;
+
+/**
+ * Grants a caller exactly the given S3 actions on objects matching `keyPattern` (e.g. a per-tenant,
+ * per-account email-key prefix). Scoped to `bucket.arnForObjects(keyPattern)` — never the bucket
+ * ARN itself, so this can't be used to grant bucket-level actions like `s3:ListBucket`; use
+ * `grantListBucket` for that.
+ */
+export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions: readonly string[], keyPattern: string): Grant {
+  return Grant.addToPrincipal({
+    grantee,
+    actions: [...actions],
+    resourceArns: [bucket.arnForObjects(keyPattern)],
+  });
+}
+
+/**
+ * Grants a caller `s3:ListBucket` on `bucket` itself, restricted with a `StringLike` condition on
+ * `s3:prefix` so the grantee can only list keys matching `prefixPattern` — never the whole bucket.
+ * `s3:ListBucket` authorizes against the bucket ARN, not an object ARN, which is why this is a
+ * separate function from `grantObjectActions`.
+ */
+export function grantListBucket(grantee: IGrantable, bucket: IBucket, prefixPattern: string): Grant {
+  return Grant.addToPrincipal({
+    grantee,
+    actions: ['s3:ListBucket'],
+    resourceArns: [bucket.bucketArn],
+    conditions: {
+      StringLike: {
+        's3:prefix': prefixPattern,
+      },
+    },
+  });
+}

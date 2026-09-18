@@ -1,5 +1,5 @@
-import { IBucket } from "aws-cdk-lib/aws-s3";
 import type { IDataTable } from '../data/data-tables';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import { GoLambda } from "@serverlessinbox/mailbox-cdk-shared";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
@@ -11,7 +11,7 @@ export interface EmailProcessorLambdaProps {
   configTable: IDataTable;
   itemTable: IDataTable;
   changelogTable: IDataTable;
-  blobStore: IBucket;
+  blobStore: IDataBlobStore;
   emailProcessingQueue: IEmailProcessingQueueConsumer;
   artifactResolver: ICdkArtifactEngine;
 }
@@ -41,8 +41,9 @@ export class EmailProcessorLambda extends GoLambda {
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
 
-    // Grant the Lambda function permissions to read from the S3 bucket
-    props.blobStore.grantReadWrite(this);
+    // Consume the raw message SES delivered, then write it into standard email-blob storage
+    props.blobStore.grantIncomingEmailConsume(this);
+    props.blobStore.grantEmailBlobWrite(this);
 
     this.addEventSourceMapping('email-processing-queue', {
       eventSourceArn: props.emailProcessingQueue.queueArn,

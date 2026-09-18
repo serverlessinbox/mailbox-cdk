@@ -21,6 +21,7 @@ import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
+import { DataBlobStore } from '../../data/data-blob-store';
 
 describe('ApiHandlerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -61,7 +62,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
-    const blobStore = new Bucket(stack, 'blob-store');
+    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
     const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
     const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(

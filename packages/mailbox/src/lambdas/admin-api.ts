@@ -1,7 +1,7 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../data/data-blob-store';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -16,7 +16,7 @@ export interface AdminApiLambdaProps {
   auditLogTable: IDataTable;
   changelogTable: IDataTable;
   mailFeedbackTable: IDataTable;
-  blobStore: IBucket;
+  blobStore: IDataBlobStore;
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
   artifactResolver: ICdkArtifactEngine;
@@ -181,7 +181,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.auditEventsQueue.grantSend(this);
 
     // Needed for standard JMAP email storage + submission enqueue
-    props.blobStore.grantReadWrite(this);
+    props.blobStore.grantEmailBlobWrite(this);
     props.emailSubmissionQueue.grantSend(this);
 
     // Grant the User provisioning function to be invoked

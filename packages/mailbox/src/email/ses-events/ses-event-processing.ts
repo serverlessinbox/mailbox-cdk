@@ -3,7 +3,7 @@ import { SESEventProcessorLambda } from '../../lambdas';
 import type { IDataTable } from '../../data/data-tables';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IDataBlobStore } from '../../data/data-blob-store';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
@@ -16,7 +16,7 @@ export interface SESEventProcessingProps {
   readonly changelogTable: IDataTable;
   readonly mailFeedbackTable: IDataTable;
   readonly configTable: IDataTable;
-  readonly blobStore: IBucket;
+  readonly blobStore: IDataBlobStore;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly artifactResolver: ICdkArtifactEngine;
 

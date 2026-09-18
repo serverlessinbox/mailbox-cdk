@@ -30,6 +30,7 @@ import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writ
 import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { DataTable, type IDataTable } from '../data/data-tables';
+import { DataBlobStore, type IDataBlobStore } from '../data/data-blob-store';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -123,7 +124,7 @@ describe('API Authorizer Wiring', () => {
   let auditLogTable: IDataTable;
   let mailFeedbackTable: IDataTable;
   let authKeyStoreTable: IAuthKeyStoreTable;
-  let blobStore: s3.IBucket;
+  let blobStore: IDataBlobStore;
   let emailSubmissionQueue: IEmailSendingQueue;
   let auditEventsQueue: IAuditEventsQueue;
   let identityProvisionerFunction: lambda.IFunction;
@@ -185,7 +186,7 @@ describe('API Authorizer Wiring', () => {
 
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    blobStore = new s3.Bucket(stack, 'blob-store');
+    blobStore = new DataBlobStore(new s3.Bucket(stack, 'blob-store'));
     emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
     auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
