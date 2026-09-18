@@ -12,7 +12,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
+import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import {
   CloudFormationResource,
   KNOWN_WILDCARDS,
@@ -260,32 +263,42 @@ describe('MailboxDataStack Template Synthesis', () => {
   });
 
   /**
-   * Deployer Grant Functions
-   * Tests the data deployer worker permissions directly — grantDataDeployerWorkerPermissions
-   * instead of the full customer-facing stack (which lives in a different repo, mailbox-apps,
-   * and can't be synthesized from here due to separate Yarn PnP roots).
+   * Deployer Worker IAM
+   * Tests MailboxDataDeployerWorker's own IAM grants directly — instead of the full
+   * customer-facing stack (which lives in a different repo, mailbox-apps, and can't be
+   * synthesized from here due to separate Yarn PnP roots).
    */
-  describe('Deployer Grant Functions', () => {
-    it('data deployer grants: DynamoDB/S3 write actions are scoped to the deterministic resource-name pattern, never Resource "*"', () => {
-      const app = new App();
+  describe('Deployer Worker IAM', () => {
+    it('data deployer worker: DynamoDB/S3 write actions are scoped to the deterministic resource-name pattern, never Resource "*"', () => {
+      const app = new App({
+        context: {
+          'serverlessinbox:artifacts': {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
       const testStack = new cdk.Stack(app, 'TestDataDeployerStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const { grantDataDeployerWorkerPermissions } = require('../data/mailbox-data-deployer-grants');
+      const packages: Record<string, ArtifactVersionsEntry> = {
+        'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+      };
+      const pinnedResolver = new PinnedResolver(testStack, packages, 'test-artifacts', {});
+      pinnedResolver.registerPackages(['mailbox-cdk']);
+      const artifactResolver = new CdkArtifactEngine(testStack, pinnedResolver);
 
-      const testLambda = new cdk.aws_lambda.Function(testStack, 'test-lambda', {
-        runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
-        handler: 'index.handler',
-        code: cdk.aws_lambda.Code.fromInline('exports.handler = async () => {}'),
-      });
-
-      grantDataDeployerWorkerPermissions(testLambda, {
+      new MailboxDataDeployerWorker(testStack, 'worker', {
+        artifactResolver,
         stack: testStack,
         dataStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*',
         dataStackName: 'test-root-data',
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
+        nameBase: 'test-root-data',
       });
 
       const template = Template.fromStack(testStack);

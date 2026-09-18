@@ -1,26 +1,34 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { grantCognitoDataDeployerPermissions } from '../mailbox-cognito-data-deployer-grants';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
 
 const ROOT_STACK_TAG_KEY = 'aws:ResourceTag/serverless-inbox:root-stack';
 const REQUEST_STACK_TAG_KEY = 'aws:RequestTag/serverless-inbox:root-stack';
 
-function synthGrants(): Template {
+function synthWorker(): Template {
   const app = new App();
+  app.node.setContext('serverlessinbox:artifacts', {
+    bucketBase: 'test-artifacts',
+    packages: {
+      'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
+      'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+    },
+  });
+  app.node.setContext('serverlessinbox:artifact_versions', {});
+
   const stack = new cdk.Stack(app, 'test-stack', {
     env: { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const worker = new LambdaFunction(stack, 'worker', {
-    runtime: Runtime.NODEJS_20_X,
-    handler: 'index.handler',
-    code: Code.fromInline('exports.handler = async () => {};'),
-  });
+  const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack);
+  pinnedResolver.registerPackages(['mailbox-cognito', 'mailbox-cdk']);
+  const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-  grantCognitoDataDeployerPermissions(worker, {
+  new MailboxCognitoDataDeployerWorker(stack, 'worker', {
+    artifactResolver,
     templateObjectArn: 'arn:aws:s3:::test-bucket/template.yaml',
   });
 
@@ -47,11 +55,11 @@ function statementsForAction(template: Template, action: string): any[] {
   });
 }
 
-describe('grantCognitoDataDeployerPermissions', () => {
+describe('MailboxCognitoDataDeployerWorker IAM grants', () => {
   let template: Template;
 
   beforeAll(() => {
-    template = synthGrants();
+    template = synthWorker();
   });
 
   it('grants CreateUserPool unconditionally (no resource type to tag-gate on)', () => {
@@ -147,7 +155,7 @@ describe('grantCognitoDataDeployerPermissions', () => {
   it('does not grant any cognito-idp action unconditionally on "*" other than the two undbindable actions', () => {
     // Every cognito-idp action in this file binds to the "userpool" resource type except
     // CreateUserPool and DescribeUserPoolDomain (confirmed against the Service Reference — see
-    // the grants file's inline comments). Any other unconditioned cognito-idp statement here is
+    // the worker file's inline comments). Any other unconditioned cognito-idp statement here is
     // a scoping regression.
     const unconditionedCognitoActions = allStatements(template)
       .filter((stmt) => stmt.Condition === undefined)

@@ -3,9 +3,8 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { StackDeployerInfra } from '../features/stack-deployer';
-import { grantEdgeDeployerWorkerPermissions } from './mailbox-edge-deployer-grants';
-import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
 
 export interface MailboxEdgeDeployerProps {
   /**
@@ -79,25 +78,25 @@ export class MailboxEdgeDeployer extends Construct {
     });
 
     // Worker Lambda, Step Functions workflow, and Starter Lambda wiring.
-    const infra = new StackDeployerInfra(this, 'infra', {
+    const infra = new DeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
       parent: 'edge',
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorker(workerScope, workerId, {
+        artifactResolver: props.artifactResolver,
+        stack,
+        edgeStackName,
+        edgeStackArn,
+        rootStack: Aws.STACK_NAME,
+        templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1'),
+        artifactObjectArns: [
+          props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1'),
+        ],
+        hostedZoneId: props.hostedZoneId,
+      }),
     });
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1');
-
-    grantEdgeDeployerWorkerPermissions(infra.worker, {
-      stack,
-      edgeStackName,
-      edgeStackArn,
-      rootStack: Aws.STACK_NAME,
-      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json', 'us-east-1'),
-      artifactObjectArns: [
-        props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1'),
-      ],
-      hostedZoneId: props.hostedZoneId,
-    });
 
     // Build CloudFormation parameters from the edge construct props
     const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1');

@@ -2,11 +2,10 @@ import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { StackDeployerInfra } from '../features/stack-deployer';
-import { grantDataDeployerWorkerPermissions } from './mailbox-data-deployer-grants';
+import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxDataDeployerWorker } from './mailbox-data-deployer-worker';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
-import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from './data-tables';
 import type { IDataBlobStore } from './data-blob-store';
 
@@ -61,10 +60,18 @@ export class MailboxDataDeployer extends Construct {
       resourceName: `${dataStackNameToken}/*`,
     });
 
-    const infra = new StackDeployerInfra(this, 'infra', {
+    const infra = new DeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
       parent: 'data',
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorker(workerScope, workerId, {
+        artifactResolver: props.artifactResolver,
+        stack,
+        dataStackArn,
+        dataStackName: dataStackNameToken,
+        templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
+        nameBase: props.nameBase,
+      }),
     });
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');
@@ -72,14 +79,6 @@ export class MailboxDataDeployer extends Construct {
     // Real product version for tagging (same source as the main Mailbox construct), so the data
     // sub-stack's resources get serverless-inbox:version = the actual version, not 'unknown'.
     const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
-
-    grantDataDeployerWorkerPermissions(infra.worker, {
-      stack,
-      dataStackArn,
-      dataStackName: dataStackNameToken,
-      templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
-      nameBase: props.nameBase,
-    });
 
     const resource = new CustomResource(this, 'resource', {
       serviceToken: infra.starter.functionArn,

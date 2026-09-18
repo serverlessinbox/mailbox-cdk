@@ -106,3 +106,13 @@ export { S3Actions, grantObjectActions, grantListBucket } from './s3-grants';
 
 // SSM Parameter Store least-privilege action set & parameter grant helper
 export { SsmActions, grantParameterActions } from './ssm-grants';
+
+// Sub-stack deployer scaffolding (worker/starter Lambdas + polling Step Functions workflow),
+// shared by mailbox's data/edge deployers and mailbox-cognito's data deployer.
+export { DeployerInfra, DeployerWorkerLambda, DeployerStarterLambda, PollingCfnDeployerWorkflow } from './deployer-infra';
+export type {
+  DeployerInfraProps,
+  DeployerWorkerLambdaProps,
+  DeployerStarterLambdaProps,
+  PollingCfnDeployerWorkflowProps,
+} from './deployer-infra';

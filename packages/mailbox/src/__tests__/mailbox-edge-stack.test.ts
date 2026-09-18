@@ -13,7 +13,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
+import { MailboxEdgeDeployerWorker } from '../edge/mailbox-edge-deployer-worker';
 import {
   CloudFormationResource,
   KNOWN_WILDCARDS,
@@ -311,29 +314,38 @@ describe('MailboxEdgeStack Template Synthesis', () => {
   });
 
   /**
-   * Deployer Grant Functions
+   * Deployer Worker IAM
    * Tests the actual unit containing the 2026-07-09 critical finding (unscoped iam:CreateRole/
-   * PutRolePolicy/AttachRolePolicy on Resource "*") directly — grantEdgeDeployerWorkerPermissions
-   * instead of the full customer-facing stack (which lives in a different repo, mailbox-apps,
-   * and can't be synthesized from here due to separate Yarn PnP roots).
+   * PutRolePolicy/AttachRolePolicy on Resource "*") directly — MailboxEdgeDeployerWorker's own
+   * IAM grants — instead of the full customer-facing stack (which lives in a different repo,
+   * mailbox-apps, and can't be synthesized from here due to separate Yarn PnP roots).
    */
-  describe('Deployer Grant Functions', () => {
-    it('edge deployer grants: IAM role-lifecycle actions are scoped by role-path, never Resource "*"', () => {
-      const app = new App();
+  describe('Deployer Worker IAM', () => {
+    it('edge deployer worker: IAM role-lifecycle actions are scoped by role-path, never Resource "*"', () => {
+      const app = new App({
+        context: {
+          'serverlessinbox:artifacts': {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
       const testStack = new cdk.Stack(app, 'TestEdgeDeployerStack', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const { grantEdgeDeployerWorkerPermissions } = require('../edge/mailbox-edge-deployer-grants');
+      const packages: Record<string, ArtifactVersionsEntry> = {
+        'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+      };
+      const pinnedResolver = new PinnedResolver(testStack, packages, 'test-artifacts', {});
+      pinnedResolver.registerPackages(['mailbox-cdk']);
+      const artifactResolver = new CdkArtifactEngine(testStack, pinnedResolver);
 
-      const testLambda = new cdk.aws_lambda.Function(testStack, 'test-lambda', {
-        runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
-        handler: 'index.handler',
-        code: cdk.aws_lambda.Code.fromInline('exports.handler = async () => {}'),
-      });
-
-      grantEdgeDeployerWorkerPermissions(testLambda, {
+      new MailboxEdgeDeployerWorker(testStack, 'worker', {
+        artifactResolver,
         stack: testStack,
         edgeStackName: 'test-root-edge',
         edgeStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge/*',

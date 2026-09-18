@@ -1,9 +1,8 @@
-import { Aws, CustomResource } from 'aws-cdk-lib';
+import { Aws, CustomResource, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
-import { MailboxCognitoDeployerInfra } from './mailbox-cognito-deployer-infra';
-import { grantCognitoDataDeployerPermissions } from './mailbox-cognito-data-deployer-grants';
-import { serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
+import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
@@ -48,17 +47,22 @@ export class MailboxCognitoDataDeployer extends Construct {
 
     const artifacts = props.artifactResolver;
 
-    const deployerInfra = new MailboxCognitoDeployerInfra(this, 'infra', {
-      artifactResolver: artifacts,
-    });
-
+    // Name prefix carries a -v2- suffix: adopting the shared, nested `workflow/StateMachine`
+    // construct-tree shape changes this state machine's logical ID (the flat cognito tree used
+    // to parent it directly under `infra`), so CloudFormation replaces it. The explicit name
+    // must differ from the old one or create-before-delete collides on the live name.
     // Resolve the cognito data stack template to S3 location.
     const templateUrl = artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json');
     const templateArn = artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json');
 
-    // Grant the worker the IAM permissions it needs (CloudFormation + Cognito + S3 template read).
-    grantCognitoDataDeployerPermissions(deployerInfra.worker, {
-      templateObjectArn: templateArn,
+    const deployerInfra = new DeployerInfra(this, 'infra', {
+      artifactResolver: artifacts,
+      stateMachineNamePrefix: 'mailbox-cognito-data-deployer-v2-',
+      parent: 'cognito',
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorker(workerScope, workerId, {
+        artifactResolver: artifacts,
+        templateObjectArn: templateArn,
+      }),
     });
 
     const productVersion = artifacts.getVersion('mailbox-cognito');
@@ -84,6 +88,7 @@ export class MailboxCognitoDataDeployer extends Construct {
     const resource = new CustomResource(this, 'resource', {
       serviceToken: deployerInfra.starter.functionArn,
       resourceType: 'Custom::MailboxCognitoDataDeployer',
+      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
       properties: {
         region: Aws.REGION,
         preserveOnDelete: true,
@@ -100,7 +105,7 @@ export class MailboxCognitoDataDeployer extends Construct {
     });
 
     // Ensure the workflow remains until after the custom resource is deleted.
-    resource.node.addDependency(deployerInfra.stateMachine);
+    resource.node.addDependency(deployerInfra.workflow.stateMachine);
 
     this.dataStackRef = new MailboxCognitoDataStackRef(this, 'ref', {
       userPoolId:  resource.getAttString('userPoolId'),

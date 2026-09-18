@@ -9102,35 +9102,6 @@
       ],
       "symbolId": "src/auth/mailbox-user-pool:BootstrapUserConfig"
     },
-    "@serverlessinbox/mailbox-cognito.CognitoDataDeployerGrantProps": {
-      "assembly": "@serverlessinbox/mailbox-cognito",
-      "datatype": true,
-      "fqn": "@serverlessinbox/mailbox-cognito.CognitoDataDeployerGrantProps",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/cognito/mailbox-cognito-data-deployer-grants.ts",
-        "line": 6
-      },
-      "name": "CognitoDataDeployerGrantProps",
-      "properties": [
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "S3 object ARN for the cognito data stack CloudFormation template."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/cognito/mailbox-cognito-data-deployer-grants.ts",
-            "line": 8
-          },
-          "name": "templateObjectArn",
-          "type": {
-            "primitive": "string"
-          }
-        }
-      ],
-      "symbolId": "src/cognito/mailbox-cognito-data-deployer-grants:CognitoDataDeployerGrantProps"
-    },
     "@serverlessinbox/mailbox-cognito.CognitoIdpUsersAuthorizationConfig": {
       "assembly": "@serverlessinbox/mailbox-cognito",
       "datatype": true,
@@ -10268,5 +10239,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "ZCSnmz3vBugZFwHMn8D7T0KpoxAyzbkVvVwkVaq6F6Q="
+  "fingerprint": "he4aKXcHQK4ijPcL4N+G/9xvOrD9Tcsxugt4w4T6Ap8="
 }

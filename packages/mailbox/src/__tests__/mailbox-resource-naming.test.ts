@@ -12,7 +12,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
+import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { WebSocketTable } from '../api/websocket/websocket-table';
 import {
@@ -126,70 +129,88 @@ describe('Mailbox Resource Naming', () => {
   });
 
   describe('Data Deployer Worker IAM Policy', () => {
-    it('should grant DynamoDB table access with correct resource pattern (no double -data-)', () => {
-      // Unit test: verify grantDataDeployerWorkerPermissions generates correct patterns.
-      // The bug was: patterns included double -data- segment (once from nameBase, once hardcoded).
-      // Fix: remove the hardcoded -data- since nameBase is already the data stack name.
-
-      const { grantDataDeployerWorkerPermissions } = require('../data/mailbox-data-deployer-grants');
-
-      const app = new App();
+    // Regression: nameBase already contains the data stack name (e.g. 'test-data'), so a
+    // resource pattern that appends a hardcoded '-data-' segment on top produces a broken
+    // double '-data-data-' ARN. Assert against the real synthesized worker, not the source text.
+    function synthDataDeployerWorker(nameBase: string): Template {
+      const app = new App({
+        context: {
+          'serverlessinbox:artifacts': {
+            bucketBase: 'test-artifacts',
+            packages: {
+              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+            },
+          },
+        },
+      });
       const stack = new cdk.Stack(app, 'TestStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const mockWorker = {
-        addToRolePolicy: (statement: any) => {
-          // Verify DynamoDB resource pattern
-          const resources = statement.Statement?.[0]?.Resource || statement.Resource;
-          if (Array.isArray(resources)) {
-            for (const res of resources) {
-              if (typeof res === 'string' && res.includes('dynamodb')) {
-                // Should NOT have -data-data- or similar
-                expect(res).not.toMatch(/table\/.*-data-data-/);
-                // Should have correct pattern
-                if (res.includes('-*')) {
-                  expect(res).toMatch(/table\/\d+-[^-]+-[^-]*-\*/);
-                }
-              }
-            }
-          }
-        },
+      const packages: Record<string, ArtifactVersionsEntry> = {
+        'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
       };
+      const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+      pinnedResolver.registerPackages(['mailbox-cdk']);
+      const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
-      grantDataDeployerWorkerPermissions(mockWorker, {
+      new MailboxDataDeployerWorker(stack, 'worker', {
+        artifactResolver,
         stack,
         dataStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*',
         dataStackName: 'test-data',
         templateObjectArn: 'arn:aws:s3:::test/template.json',
-        nameBase: 'test-data', // Already contains 'data'
+        nameBase, // Already contains 'data'
       });
+
+      return Template.fromStack(stack);
+    }
+
+    // Resource entries may be plain strings (stack.account resolves to a literal when the test
+    // stack has an explicit env) or an Fn::Join carrying an unresolved Aws.ACCOUNT_ID Ref token
+    // (Aws.* is always a token — see cdk-construct-pattern's "Account/region in a template
+    // value"). Return the raw entries so each test can assert on the shape it actually gets.
+    function resourcesForAction(template: Template, action: string): unknown[] {
+      const policies = template.findResources('AWS::IAM::Policy');
+      const resources: unknown[] = [];
+      for (const [, policy] of Object.entries(policies)) {
+        const statements = (policy as any).Properties?.PolicyDocument?.Statement ?? [];
+        for (const stmt of statements) {
+          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+          if (!actions.includes(action)) continue;
+          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          resources.push(...stmtResources);
+        }
+      }
+      return resources;
+    }
+
+    it('grants DynamoDB table access with correct resource pattern (no double -data-)', () => {
+      const template = synthDataDeployerWorker('test-data');
+      const resources = resourcesForAction(template, 'dynamodb:CreateTable');
+
+      // nameBase ('test-data') is joined after the literal Aws.ACCOUNT_ID Ref token, so the
+      // resource is an Fn::Join, not a plain string. Assert its exact parts: the bug being
+      // guarded against would show up as a second '-data-' segment in the final literal part.
+      expect(resources).toEqual([
+        {
+          'Fn::Join': ['', [
+            'arn:aws:dynamodb:us-west-2:123456789012:table/',
+            { Ref: 'AWS::AccountId' },
+            '-test-data-*',
+          ]],
+        },
+      ]);
     });
 
-    it('should grant S3 bucket access with correct resource pattern (no double -data-)', () => {
-      // Direct code validation: check the grant patterns in the source file.
-      // The bug was: patterns hardcoded -data- after nameBase, which already contains -data-.
-      // This test validates the fix is present in the grants file.
+    it('grants S3 bucket access with correct resource pattern (no double -data-)', () => {
+      const template = synthDataDeployerWorker('test-data');
+      const resources = resourcesForAction(template, 's3:CreateBucket');
 
-      const fs = require('fs');
-      const path = require('path');
-
-      const grantsFile = path.join(__dirname, '../data/mailbox-data-deployer-grants.ts');
-      const content = fs.readFileSync(grantsFile, 'utf-8');
-
-      // The correct pattern should be: arn:aws:s3:::${props.stack.account}-${props.nameBase}-*
-      // NOT: arn:aws:s3:::${props.stack.account}-${props.nameBase}-data-*
-
-      // Verify the CORRECT pattern exists
-      expect(content).toContain('`arn:aws:s3:::${props.stack.account}-${props.nameBase}-*`');
-
-      // Verify the WRONG pattern does NOT exist (was the bug)
-      // Check for the specific bad pattern in the S3 section
-      const s3SectionMatch = content.match(/CloudFormation creates the S3 bucket[\s\S]*?resources: \[`[^`]+`\]/);
-      if (s3SectionMatch) {
-        expect(s3SectionMatch[0]).not.toContain('${props.nameBase}-data-*');
-      }
+      // stack.account resolves to a literal (explicit env on the test stack), so this resource
+      // is a plain string — assert it exactly, with no second '-data-' segment.
+      expect(resources).toEqual(['arn:aws:s3:::123456789012-test-data-*']);
     });
   });
 

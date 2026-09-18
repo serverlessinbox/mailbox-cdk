@@ -9,8 +9,9 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxCognitoDataStack } from '../cognito/mailbox-cognito-data-stack';
+import { MailboxCognitoDataDeployerWorker } from '../cognito/mailbox-cognito-data-deployer-worker';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 
 interface CloudFormationPolicyStatement {
   Effect?: 'Allow' | 'Deny';
@@ -255,26 +256,31 @@ describe('Cognito Data Stack Template Synthesis', () => {
   });
 
   /**
-   * Part 1: Cognito Deployer Grant Function Unit Test
-   * Tests grantCognitoDataDeployerPermissions directly.
+   * Part 1: Cognito Deployer Worker IAM Unit Test
+   * Tests MailboxCognitoDataDeployerWorker's own IAM grants directly, via synth.
    */
-  describe('Cognito Deployer Grant Functions', () => {
-    it('cognito deployer grants: CloudFormation management is scoped to the cognito stack ARN; no unscoped iam/logs writes', () => {
+  describe('Cognito Deployer Worker', () => {
+    it('cognito deployer worker: CloudFormation management is scoped to the cognito stack ARN; no unscoped iam/logs writes', () => {
       const app = new App();
+      app.node.setContext('serverlessinbox:artifacts', {
+        bucketBase: 'test-artifacts',
+        packages: {
+          'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
+          'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+        },
+      });
+      app.node.setContext('serverlessinbox:artifact_versions', {});
       const testStack = new cdk.Stack(app, 'TestCognitoDeployerStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const { grantCognitoDataDeployerPermissions } = require('../cognito/mailbox-cognito-data-deployer-grants');
+      const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(testStack);
+      pinnedResolver.registerPackages(['mailbox-cognito', 'mailbox-cdk']);
+      const artifactResolver = new CdkArtifactEngine(testStack, pinnedResolver);
 
-      const testLambda = new cdk.aws_lambda.Function(testStack, 'test-lambda', {
-        runtime: cdk.aws_lambda.Runtime.NODEJS_24_X,
-        handler: 'index.handler',
-        code: cdk.aws_lambda.Code.fromInline('exports.handler = async () => {}'),
-      });
-
-      grantCognitoDataDeployerPermissions(testLambda, {
+      new MailboxCognitoDataDeployerWorker(testStack, 'worker', {
+        artifactResolver,
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
       });
 

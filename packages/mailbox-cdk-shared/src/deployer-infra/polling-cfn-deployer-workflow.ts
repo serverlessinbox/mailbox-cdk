@@ -4,7 +4,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-export interface MailboxStackDeployerWorkflowProps {
+export interface PollingCfnDeployerWorkflowProps {
   readonly handler: IFunction;
   /** How long to wait between checks (default: 20s). */
   readonly checkInterval?: Duration;
@@ -15,23 +15,24 @@ export interface MailboxStackDeployerWorkflowProps {
 }
 
 /**
- * CDK Construct wrapper for the stack deployer Step Functions workflow.
+ * CDK Construct wrapper for a sub-stack deployer's Step Functions workflow, shared by every
+ * deployer (mailbox data, mailbox edge, cognito data).
  *
  * Exposes the created `stateMachine` so other constructs can wire permissions/env vars
  * without having to think in terms of "loose" factory functions.
  */
-export class MailboxStackDeployerWorkflow extends Construct {
+export class PollingCfnDeployerWorkflow extends Construct {
   public readonly stateMachine: sfn.StateMachine;
 
-  constructor(scope: Construct, id: string, props: MailboxStackDeployerWorkflowProps) {
+  constructor(scope: Construct, id: string, props: PollingCfnDeployerWorkflowProps) {
     super(scope, id);
 
-    this.stateMachine = createMailboxStackDeployerStateMachine(this, 'StateMachine', props);
+    this.stateMachine = createPollingCfnDeployerStateMachine(this, 'StateMachine', props);
   }
 }
 
 /**
- * Creates the Step Functions workflow that drives the long-running stack deployment.
+ * Creates the Step Functions workflow that drives a long-running sub-stack deployment.
  *
  * Input shape:
  * {
@@ -39,10 +40,10 @@ export class MailboxStackDeployerWorkflow extends Construct {
  *   op:  { requestType, stackName, templateUrl, parameters, terminationProtection }
  * }
  */
-export function createMailboxStackDeployerStateMachine(
+function createPollingCfnDeployerStateMachine(
   scope: Construct,
   id: string,
-  props: MailboxStackDeployerWorkflowProps
+  props: PollingCfnDeployerWorkflowProps
 ): sfn.StateMachine {
   const checkInterval = props.checkInterval ?? Duration.seconds(20);
   const timeout = props.timeout ?? Duration.minutes(90);
@@ -119,7 +120,7 @@ export function createMailboxStackDeployerStateMachine(
   return new sfn.StateMachine(scope, id, {
     definitionBody: sfn.DefinitionBody.fromChainable(definition),
     timeout,
-    comment: 'Serverless Inbox Mailbox: stack deployer workflow',
+    comment: 'Serverless Inbox: sub-stack deployer workflow',
     ...(props.stateMachineName ? { stateMachineName: props.stateMachineName } : {}),
   });
 }

@@ -236,7 +236,7 @@
         }
       ]
     },
-    "role:fallback:MailboxUserPool/cognito-deployer/infra/StateMachine": {
+    "role:fallback:MailboxUserPool/cognito-deployer/infra/workflow/StateMachine": {
       "trustPolicy": [
         {
           "Action": "sts:AssumeRole",
@@ -300,10 +300,55 @@
       "permissionsBoundary": null,
       "statements": [
         {
+          "Action": "states:DescribeExecution",
+          "Effect": "Allow",
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "ref": "AWS::Partition"
+                },
+                ":states:us-west-2:123456789012:execution:",
+                {
+                  "Fn::Join": [
+                    ":",
+                    [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "mailbox-cognito-data-deployer-v2-",
+                            {
+                              "Fn::Select": [
+                                2,
+                                {
+                                  "Fn::Split": [
+                                    "/",
+                                    {
+                                      "ref": "AWS::StackId"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        ]
+                      },
+                      "*"
+                    ]
+                  ]
+                }
+              ]
+            ]
+          }
+        },
+        {
           "Action": "states:StartExecution",
           "Effect": "Allow",
           "Resource": {
-            "ref": "fallback:MailboxUserPool/cognito-deployer/infra/StateMachine"
+            "ref": "fallback:MailboxUserPool/cognito-deployer/infra/workflow/StateMachine"
           }
         }
       ]
