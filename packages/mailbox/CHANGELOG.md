@@ -4,6 +4,56 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.7...v0.1.8) (Fri Sep 18 2026)
+
+### chore
+
+* Cleanup ([19bf8af](https://github.com/serverlessinbox/mailbox-cdk/commit/19bf8af5fb70eef75defe4ce8b7d4bcccb96ae08))
+
+* Fixate baseline for testing ([9a873d0](https://github.com/serverlessinbox/mailbox-cdk/commit/9a873d07309047824fd978dd318704970cffacfb))
+
+* exclude tests and fixtures from published packages. ([02f60a7](https://github.com/serverlessinbox/mailbox-cdk/commit/02f60a7cfd9594c8375b596e3bf83cc68de08008))
+
+* Cleanup underscores ([1e2f0f1](https://github.com/serverlessinbox/mailbox-cdk/commit/1e2f0f101d9d2f78ec2ea8a63ac46f4bf1604582))
+
+* Grant method wrappers ([cc4090c](https://github.com/serverlessinbox/mailbox-cdk/commit/cc4090cd73db7f6a6082d98d6625828948a1790f))
+
+### test
+
+* key named resources by name in the permission gate ([2a5644a](https://github.com/serverlessinbox/mailbox-cdk/commit/2a5644a9278b7aaaa91c108988937a54cf42a045))
+
+### feat
+
+* auth-key-store, websocket table and push-api constructs with explicit least-privilege grants. ([dad7adc](https://github.com/serverlessinbox/mailbox-cdk/commit/dad7adca53122296177c882de5db20f0c4a93c36))
+
+* auth-key-store callers use IAuthKeyStoreTable with least-privilege grants ([2c83725](https://github.com/serverlessinbox/mailbox-cdk/commit/2c83725b2447b42002e702b6a84f4346c618990d))
+
+* websocket table and push API own their grants; replace main-stack tables instead of pinning. ([ee76c9d](https://github.com/serverlessinbox/mailbox-cdk/commit/ee76c9dd54e1fd9dffdbe909ea1766e3f08af150))
+
+* data tables behind IDataTable with explicit least-privilege grants; remove data-stack public API ([95c687d](https://github.com/serverlessinbox/mailbox-cdk/commit/95c687d9dc28cf1a127a4b1dec4f6a0d71f0f0db))
+
+### refactor
+
+* Constructs placements and extraction ([0ef188a](https://github.com/serverlessinbox/mailbox-cdk/commit/0ef188af514fa647aed464c7a78aeea9a89eff4f))
+
+* Queue handling ([ab76278](https://github.com/serverlessinbox/mailbox-cdk/commit/ab76278ffde4d2f54d9df17d943cae917e56d3f5))
+
+* move StackHelpers to mailbox-cdk-shared ([01642c8](https://github.com/serverlessinbox/mailbox-cdk/commit/01642c8936109a17926c8dc4bd433e10bcfea686))
+
+* Data blob store ([47e33cb](https://github.com/serverlessinbox/mailbox-cdk/commit/47e33cb329c12c5670dda17c5a5324eb077e2a07))
+
+* Ui buckets ([a03dcff](https://github.com/serverlessinbox/mailbox-cdk/commit/a03dcffc74b3bcbbf523a1684d7baf40f30c84a8))
+
+* Non resource bound grants ([fc42a26](https://github.com/serverlessinbox/mailbox-cdk/commit/fc42a26caf84ec2a7d2c2e4ac302c63255dc4d35))
+
+* Data deployer in shared ([ad077fc](https://github.com/serverlessinbox/mailbox-cdk/commit/ad077fc6b8273ba90f416f7601266c9949ac5c54))
+
+* Sweeper grants ([5c0be09](https://github.com/serverlessinbox/mailbox-cdk/commit/5c0be09549ea481afd11a459833a4254b9d5d304))
+
+* Updater grants and lambda extracts ([dd0e184](https://github.com/serverlessinbox/mailbox-cdk/commit/dd0e1840b9a2d8d25332cc28dbb1cfc79c1d2c40))
+
+* Tag condition standardization ([418e5ef](https://github.com/serverlessinbox/mailbox-cdk/commit/418e5ef72a36957e521da71f7928061d61256353))
+
 ## [0.1.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.6...v0.1.7) (Wed Sep 16 2026)
 
 ### feat
