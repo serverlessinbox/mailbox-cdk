@@ -46,7 +46,7 @@ export class MailboxCognitoDeployerInfra extends Construct {
     const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
     const stateMachineName = Fn.join('', ['mailbox-cognito-data-deployer-', stackGuid]);
 
-    this.stateMachine = this._createStateMachine(this.worker, stateMachineName);
+    this.stateMachine = this.createStateMachine(this.worker, stateMachineName);
 
     // Starter Lambda: CFN custom resource entrypoint — only starts the Step Functions execution.
     // Uses TypeScriptLambda wrapper to auto-apply artifact tags for auto-update tracking.
@@ -72,7 +72,7 @@ export class MailboxCognitoDeployerInfra extends Construct {
    *   op:  { requestType, region, stackName, templateUrl, parameters, preserveOnDelete }
    * }
    */
-  private _createStateMachine(handler: IFunction, stateMachineName: sfn.StateMachine['stateMachineName']): sfn.StateMachine {
+  private createStateMachine(handler: IFunction, stateMachineName: sfn.StateMachine['stateMachineName']): sfn.StateMachine {
     const checkInterval = Duration.seconds(20);
     const timeout = Duration.minutes(90);
 

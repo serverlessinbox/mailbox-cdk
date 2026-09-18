@@ -119,7 +119,7 @@ export class MailboxDomains implements IMailboxDomainNames {
   public readonly mcp: string;
 
   /** Per-endpoint relative labels (subdomain label + optional namespace, without the zone). */
-  private readonly _relativeLabels: Record<MailboxEndpoint, string>;
+  private readonly relativeLabels: Record<MailboxEndpoint, string>;
 
   constructor(props: MailboxDomainNamesProps) {
     this.domainName = normalizeDomainName(props.domainName);
@@ -164,7 +164,7 @@ export class MailboxDomains implements IMailboxDomainNames {
 
     // Build relative record names (subdomain label + optional namespace, without the zone).
     // These are safe to pass as Route53 recordName — CDK will append the zone automatically.
-    this._relativeLabels = {
+    this.relativeLabels = {
       ws: `${subdomainOverrides?.ws ?? 'ws'}${this.relativeNamespaceSuffix}`,
       api: `${subdomainOverrides?.api ?? 'api'}${this.relativeNamespaceSuffix}`,
       jmap: `${subdomainOverrides?.jmap ?? 'jmap'}${this.relativeNamespaceSuffix}`,
@@ -181,7 +181,7 @@ export class MailboxDomains implements IMailboxDomainNames {
   }
 
   public relativeLabel(endpoint: MailboxEndpoint): string {
-    return this._relativeLabels[endpoint];
+    return this.relativeLabels[endpoint];
   }
 
   public all(): Record<MailboxEndpoint, string> {

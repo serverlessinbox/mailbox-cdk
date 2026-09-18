@@ -67,7 +67,7 @@ export class AdminApi extends Construct {
   public readonly domainTarget?: string;
   private readonly apiHandlerLambda: IWebSocketPushTarget;
   /** L1 CfnDomainName for logical-ID pinning. Present only when domainName is provided. */
-  private _domainCfnResource?: CfnResource;
+  public readonly domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -102,7 +102,7 @@ export class AdminApi extends Construct {
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
 
-      this._domainCfnResource = domain.node.defaultChild as CfnResource;
+      this.domainCfnResource = domain.node.defaultChild as CfnResource;
 
       new ApiMapping(this, 'mapping', {
         api,
@@ -162,10 +162,5 @@ export class AdminApi extends Construct {
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(broadcaster);
-  }
-
-  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  public get domainCfnResource(): CfnResource | undefined {
-    return this._domainCfnResource;
   }
 }

@@ -28,6 +28,21 @@
       }
     }
   },
+  "files": [
+    "src",
+    "lib",
+    ".task",
+    "artifact-registry.cjs",
+    "Taskfile.yml",
+    "build.log",
+    "jest.config.js",
+    "tsconfig.json",
+    "tsconfig.build.json",
+    "tsconfig.tsbuildinfo",
+    "tsconfig.build.tsbuildinfo",
+    "!src/**/__tests__",
+    "!lib/**/__tests__"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepack": "yarn prepare-manifest build && yarn bundle",

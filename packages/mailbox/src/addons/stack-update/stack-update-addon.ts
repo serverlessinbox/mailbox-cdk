@@ -51,7 +51,7 @@ export interface StackUpdateAddonProps {
 export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   public uiConfig?: Record<string, unknown>;
 
-  private readonly _lambdaConstruct: StackUpdateApiLambda;
+  private readonly lambdaConstruct: StackUpdateApiLambda;
   public readonly templateVersionParamAccess: ITemplateVersionParam;
 
   constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
@@ -101,7 +101,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     const stateMachineName = cdk.Fn.join('', ['mailbox-stack-update-wf-', stackGuid]);
 
     // Create the stack-update-api Lambda with its own role and CFN permissions.
-    this._lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
+    this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
       configTable: props.configTable,
       artifactBucketBase,
@@ -115,11 +115,11 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     });
 
     // Grant the Lambda read access to the template-version parameter.
-    templateVersionParam.grantRead(this._lambdaConstruct);
+    templateVersionParam.grantRead(this.lambdaConstruct);
 
     // Rollback-recovery workflow + the EventBridge rule that starts it.
     new StackUpdateRecoveryInfra(this, 'recovery', {
-      handler: this._lambdaConstruct,
+      handler: this.lambdaConstruct,
       rootStackArn,
       stateMachineName,
     });
@@ -129,7 +129,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     api.addRoutes({
       path: '/stack-update/{proxy+}',
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('stack-update', this._lambdaConstruct),
+      integration: new HttpLambdaIntegration('stack-update', this.lambdaConstruct),
       authorizer,
     });
   }

@@ -81,7 +81,7 @@ export class JMapApi extends Construct {
   /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
   public readonly httpApi: HttpApi;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  private _domainCfnResource?: CfnResource;
+  public readonly domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: JMapApiProps) {
     super(scope, id);
@@ -127,7 +127,7 @@ export class JMapApi extends Construct {
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
 
-      this._domainCfnResource = domain.node.defaultChild as CfnResource;
+      this.domainCfnResource = domain.node.defaultChild as CfnResource;
 
       new ApiMapping(this, 'mapping', {
         api,
@@ -261,10 +261,5 @@ export class JMapApi extends Construct {
 
   public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, broadcaster);
-  }
-
-  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  public get domainCfnResource(): CfnResource | undefined {
-    return this._domainCfnResource;
   }
 }

@@ -49,7 +49,7 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
   public uiConfig?: Record<string, unknown>;
 
   /** @internal */
-  private readonly _lambdaConstruct: CognitoIdpUsersApiLambda;
+  private readonly lambdaConstruct: CognitoIdpUsersApiLambda;
 
   /** The underlying Lambda function. */
   public readonly lambdaFunction: IFunction;
@@ -73,7 +73,7 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
       } as const);
 
     const authz = props.pool.fetchAuthorizationConfig?.();
-    this._lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
+    this.lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
       auditEventsQueue: props.auditEventsQueue,
@@ -81,14 +81,14 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
       adminGroups: authz ? JSON.stringify(authz.adminGroups ?? []) : undefined,
       userGroups: authz ? JSON.stringify(authz.userGroups ?? []) : undefined,
     });
-    this.lambdaFunction = this._lambdaConstruct;
+    this.lambdaFunction = this.lambdaConstruct;
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
       path: `${this.basePath}/{proxy+}`,
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('cognito-idp-users', this._lambdaConstruct),
+      integration: new HttpLambdaIntegration('cognito-idp-users', this.lambdaConstruct),
       authorizer,
     });
   }

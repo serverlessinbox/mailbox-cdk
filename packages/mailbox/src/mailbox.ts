@@ -208,16 +208,16 @@ export interface MailboxOAuthClients {
  * Main Mailbox construct
  */
 export class Mailbox extends Construct {
-  /** Grant-scoped handle to `_blobStoreBucket`, for every consumer that only needs least-privilege object actions. */
-  private readonly _blobStoreHandle: IDataBlobStore;
+  /** Grant-scoped handle to `blobStoreBucket`, for every consumer that only needs least-privilege object actions. */
+  private readonly blobStoreHandle: IDataBlobStore;
   /**
    * The raw blob-store bucket. Two consumers still need it directly — the CDN's CloudFront S3
    * origin and the SES receipt rule's S3 delivery action both require an actual `IBucket`, which
    * `IDataBlobStore`'s grant-only surface cannot provide.
    */
-  private readonly _blobStoreBucket: IBucket;
-  private readonly _emailProcessorLambda: EmailProcessorLambda;
-  private readonly _configTable: IDataTable;
+  private readonly blobStoreBucket: IBucket;
+  private readonly emailProcessorLambda: EmailProcessorLambda;
+  private readonly configTable: IDataTable;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   /** Admin UI resources (when `enableAdminUi !== false`). */
@@ -228,7 +228,7 @@ export class Mailbox extends Construct {
   public readonly webmailUiBucket?: IBucket;
   public readonly webmailUiDistribution?: IDistribution;
 
-  private readonly _jmapApi: JMapApi;
+  private readonly jmapApi: JMapApi;
 
   /** OAuth clients created by this construct (only when enabled). */
   public readonly oauthClients: MailboxOAuthClients = {};
@@ -353,11 +353,11 @@ export class Mailbox extends Construct {
       deployerType,
     });
 
-    this._blobStoreBucket = dataRef.blobStoreBucket;
-    this._blobStoreHandle = dataRef.blobStore;
+    this.blobStoreBucket = dataRef.blobStoreBucket;
+    this.blobStoreHandle = dataRef.blobStore;
 
     const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
-    this._configTable = configTable;
+    this.configTable = configTable;
 
     const auditWriting = new AuditWriting(groups.ops, 'audit-writing', {
       auditLogTable,
@@ -493,7 +493,7 @@ export class Mailbox extends Construct {
       mailFeedbackTable,
       changelogTable,
       configTable,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       queueProps: encryptionPlan.queues,
@@ -504,7 +504,7 @@ export class Mailbox extends Construct {
       configTable,
       itemTable,
       changelogTable,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       artifactResolver,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       queueProps: encryptionPlan.queues,
@@ -517,7 +517,7 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       adminUIURL: this.urls.adminUi,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       sesConfigSetName: sesEventProcessing.sesConfigSetName,
       systemSenderAddress: `noreply@${domainName}`,
@@ -565,7 +565,7 @@ export class Mailbox extends Construct {
       const adminUi = new AdminUi(groups.ui, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
-        configTable: this._configTable,
+        configTable: this.configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
@@ -590,7 +590,7 @@ export class Mailbox extends Construct {
       const webmailUi = new WebmailUi(groups.ui, 'webmail-ui', {
         domainName: mailboxDomains.webmail,
         certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
-        configTable: this._configTable,
+        configTable: this.configTable,
         auditEventsQueue: auditWriting.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
@@ -628,7 +628,7 @@ export class Mailbox extends Construct {
     // Lambda so its own event source mapping can reference the queue at construction time.
     const sesRules = new SesRules(groups.email, 'ses-rules', {
       delivery: {
-        blobStore: this._blobStoreBucket,
+        blobStore: this.blobStoreBucket,
         bucketPrefix: 'incoming-emails/',
         artifactResolver,
         queueProps: this.emailQueueProps,
@@ -636,11 +636,11 @@ export class Mailbox extends Construct {
     });
 
     // Lambda function to process incoming emails
-    this._emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
+    this.emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
       configTable,
       itemTable,
       changelogTable,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       emailProcessingQueue: sesRules.emailProcessingQueue,
       artifactResolver,
     });
@@ -767,7 +767,7 @@ export class Mailbox extends Construct {
 
     // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
-      blobStore: this._blobStoreBucket,
+      blobStore: this.blobStoreBucket,
       configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       userPoolIssuer: authProvider.issuer,
@@ -781,7 +781,7 @@ export class Mailbox extends Construct {
 
     // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
-      indexBucket: this._blobStoreHandle,
+      indexBucket: this.blobStoreHandle,
       itemTable,
       configTable,
       changelogTable,
@@ -801,14 +801,14 @@ export class Mailbox extends Construct {
       );
     }
 
-    this._jmapApi = new JMapApi(groups.apis, 'jmap-api', {
+    this.jmapApi = new JMapApi(groups.apis, 'jmap-api', {
       configTable,
       itemTable,
       changelogTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
@@ -826,7 +826,7 @@ export class Mailbox extends Construct {
 
       // WebSocket URL will be passed via environment variable, not here
     });
-    const jmapApi = this._jmapApi;
+    const jmapApi = this.jmapApi;
 
     // WebSocket Push infrastructure - must be after API to reuse authorizer
     const webSocketPush = new WebSocketPush(groups.apis, 'websocket-push', {
@@ -849,7 +849,7 @@ export class Mailbox extends Construct {
       changelogTable,
       mailFeedbackTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
-      blobStore: this._blobStoreHandle,
+      blobStore: this.blobStoreHandle,
       emailSubmissionQueue: emailSending.submissionQueue,
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
@@ -870,8 +870,8 @@ export class Mailbox extends Construct {
     });
 
     const mcpApi = props.enableMcp ? new McpApi(groups.apis, 'mcp-api', {
-      jmapApiGateway: this._jmapApi.httpApi,
-      authorizerLambda: this._jmapApi.authorizerLambda,
+      jmapApiGateway: this.jmapApi.httpApi,
+      authorizerLambda: this.jmapApi.authorizerLambda,
       certificate: this.certificates.regional!,
       domainName: domainName,
       scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
@@ -883,7 +883,7 @@ export class Mailbox extends Construct {
 
     // Enable WebSocket push emission from the ChangeTracker.
     // This must be wired into every Lambda that records changelog state.
-    this._emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
+    this.emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
     emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
     sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
 

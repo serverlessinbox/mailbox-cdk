@@ -98,7 +98,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
   private readonly broadcastLambda: lambda.IFunction;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  private _domainCfnResource?: CfnResource;
+  public readonly domainCfnResource?: CfnResource;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
@@ -138,7 +138,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       // Be explicit: the domain must be deleted before the certificate.
       domain.node.addDependency(props.certificate);
 
-      this._domainCfnResource = domain.node.defaultChild as CfnResource;
+      this.domainCfnResource = domain.node.defaultChild as CfnResource;
 
       // Preserve the existing stage-in-path URL shape.
       new ApiMapping(this, 'mapping', {
@@ -205,11 +205,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     this.api.addRoute('$default', {
       integration: new WebSocketLambdaIntegration('message-integration', messageLambda),
     });
-  }
-
-  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  public get domainCfnResource(): CfnResource | undefined {
-    return this._domainCfnResource;
   }
 
   // Not CDK's WebSocketApi.grantManageConnections: it synthesizes a different resource ARN.
