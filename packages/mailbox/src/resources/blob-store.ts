@@ -91,34 +91,39 @@ export class BlobStore extends StackNamedBucket {
       removalPolicy: dev ? RemovalPolicy.DESTROY : removalPolicyForRetainedResources(scope),
     });
 
-    // Best-effort: if a customer-managed key is provided and it supports resource policy edits,
-    // allow S3 to use the key for SSE-KMS on this bucket.
-    // (Imported keys may not support policy edits; in that case the user must configure the key policy themselves.)
-    const keyAny = props.encryptionKey as unknown as { addToResourcePolicy?: (s: PolicyStatement) => unknown };
-    if (props.encryptionKey && typeof keyAny?.addToResourcePolicy === 'function') {
-      keyAny.addToResourcePolicy(
-        new PolicyStatement({
-          actions: [
-            'kms:Encrypt',
-            'kms:Decrypt',
-            'kms:ReEncrypt*',
-            'kms:GenerateDataKey*',
-            'kms:DescribeKey',
-          ],
-          principals: [new ServicePrincipal('s3.amazonaws.com')],
-          resources: ['*'],
-          conditions: {
-            StringEquals: {
-              'aws:SourceAccount': Stack.of(this).account,
-            },
-            ArnLike: {
-              'aws:SourceArn': this.bucketArn,
-            },
-          },
-        })
-      );
-    }
+    this.grantS3UseOfEncryptionKey(props.encryptionKey);
+    this.grantSesInboundDelivery();
+    this.grantCloudFrontBlobRead();
+  }
 
+  private grantS3UseOfEncryptionKey(encryptionKey: kms.IKey | undefined): void {
+    // Best-effort: if a customer-managed key is provided, allow S3 to use it for SSE-KMS on
+    // this bucket. On an imported key, addToResourcePolicy is a silent no-op (allowNoOp
+    // defaults to true), so in that case the user must configure the key policy themselves.
+    encryptionKey?.addToResourcePolicy(
+      new PolicyStatement({
+        actions: [
+          'kms:Encrypt',
+          'kms:Decrypt',
+          'kms:ReEncrypt*',
+          'kms:GenerateDataKey*',
+          'kms:DescribeKey',
+        ],
+        principals: [new ServicePrincipal('s3.amazonaws.com')],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceAccount': Stack.of(this).account,
+          },
+          ArnLike: {
+            'aws:SourceArn': this.bucketArn,
+          },
+        },
+      })
+    );
+  }
+
+  private grantSesInboundDelivery(): void {
     // Allow SES to write inbound emails to this bucket.
     // This policy must live here (on the owned bucket) because the main mailbox stack
     // references the bucket via Bucket.fromBucketArn (an imported IBucket), and
@@ -136,7 +141,9 @@ export class BlobStore extends StackNamedBucket {
         },
       }),
     );
+  }
 
+  private grantCloudFrontBlobRead(): void {
     // Allow CloudFront (OAC) to read blobs from this bucket.
     // The CDN construct uses origins.S3BucketOrigin.withOriginAccessControl() and receives
     // this bucket as an imported IBucket — CDK's grantRead on an imported bucket is a no-op

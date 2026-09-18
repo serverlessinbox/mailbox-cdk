@@ -178,15 +178,19 @@ export class MailboxEdgeConstruct extends Construct {
       cdk.Fn.conditionIf(hasBlobAuthorizerVersion.logicalId, props.blobAuthorizerReference.versionId ?? '', cdk.Aws.NO_VALUE),
     );
 
+    this.grantAuthorizerTableRead(props.itemTableArn, props.configTableArn, props.authKeyStoreTableArn);
+  }
+
+  private grantAuthorizerTableRead(itemTableArn: string, configTableArn: string, authKeyStoreTableArn: string): void {
     // Lambda@Edge needs explicit IAM permissions; it can't assume it has access to regional DynamoDB tables.
     // Grant only read access to the required tables (+ index access for Query).
     const dynamoResourceArns = [
-      props.itemTableArn,
-      props.configTableArn,
-      props.authKeyStoreTableArn,
-      Fn.join('', [props.itemTableArn, '/index/*']),
-      Fn.join('', [props.configTableArn, '/index/*']),
-      Fn.join('', [props.authKeyStoreTableArn, '/index/*']),
+      itemTableArn,
+      configTableArn,
+      authKeyStoreTableArn,
+      Fn.join('', [itemTableArn, '/index/*']),
+      Fn.join('', [configTableArn, '/index/*']),
+      Fn.join('', [authKeyStoreTableArn, '/index/*']),
     ];
 
     this.blobAuthorizerFunction.addToRolePolicy(
