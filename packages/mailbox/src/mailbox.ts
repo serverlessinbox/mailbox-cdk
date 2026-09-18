@@ -35,8 +35,9 @@ import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { IDataTable } from './data/data-tables';
 import type { IDataBlobStore } from './data/data-blob-store';
-import { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import { Aws } from 'aws-cdk-lib';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
+import type { MailboxUi } from './ui/mailbox-ui';
 import { MailboxDataDeployer } from './data';
 import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
@@ -219,14 +220,6 @@ export class Mailbox extends Construct {
   private readonly emailProcessorLambda: EmailProcessorLambda;
   private readonly configTable: IDataTable;
   private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
-
-  /** Admin UI resources (when `enableAdminUi !== false`). */
-  public readonly adminUiBucket?: IBucket;
-  public readonly adminUiDistribution?: IDistribution;
-
-  /** Webmail UI resources (when `enableWebmailUi !== false`). */
-  public readonly webmailUiBucket?: IBucket;
-  public readonly webmailUiDistribution?: IDistribution;
 
   private readonly jmapApi: JMapApi;
 
@@ -576,14 +569,13 @@ export class Mailbox extends Construct {
         artifactResolver,
       });
 
-      this.adminUiBucket = adminUi.bucket;
-      this.adminUiDistribution = adminUi.distribution;
-
       (this.oauthClients as { adminUi?: AuthClientConfig }).adminUi = adminUi.oauthClient;
       adminUiRedirectUri = adminUi.oauthRedirectUri;
 
       adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
       adminUiCnameTarget = adminUi.distribution.distributionDomainName;
+
+      grantUiContentDeployIfGrantable(adminUi, resolver);
     }
 
     if (enableWebmailUi) {
@@ -598,14 +590,13 @@ export class Mailbox extends Construct {
         artifactResolver,
       });
 
-      this.webmailUiBucket = webmailUi.bucket;
-      this.webmailUiDistribution = webmailUi.distribution;
-
       (this.oauthClients as { jmapUi?: AuthClientConfig }).jmapUi = webmailUi.oauthClient;
       webmailUiRedirectUri = webmailUi.oauthRedirectUri;
 
       webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
       webmailUiCnameTarget = webmailUi.distribution.distributionDomainName;
+
+      grantUiContentDeployIfGrantable(webmailUi, resolver);
     }
 
     const extraOrigins = props.extraAllowedOrigins ?? [];
@@ -928,4 +919,21 @@ export class Mailbox extends Construct {
 
   }
 
+}
+
+/**
+ * Grants `resolver` write access to `ui`'s own content bucket, when `resolver` is capable of
+ * being granted at all. `resolver` is typed `IArtifactResolver`, which carries no IAM principal,
+ * so grantability is a runtime capability some resolvers have (e.g. `AutoUpdater`, which drives
+ * the scheduled UI content refresh) and others don't (`PinnedResolver` never touches a UI bucket
+ * at runtime, so it needs no grant and must be skipped rather than erroring).
+ */
+function grantUiContentDeployIfGrantable(ui: MailboxUi, resolver: IArtifactResolver): void {
+  if (isGrantable(resolver)) {
+    ui.grantContentDeploy(resolver);
+  }
+}
+
+function isGrantable(resolver: IArtifactResolver): resolver is IArtifactResolver & IGrantable {
+  return 'grantPrincipal' in resolver;
 }

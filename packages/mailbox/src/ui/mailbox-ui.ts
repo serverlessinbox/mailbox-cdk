@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Fn, RemovalPolicy, Stack, Tags } from 'aws-cdk-lib';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import {
@@ -18,7 +19,7 @@ import type { IDataTable } from '../data/data-tables';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
-import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket } from '@serverlessinbox/mailbox-cdk-shared';
+import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket, S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
@@ -81,9 +82,12 @@ export interface MailboxUiProps {
  * - /auth/* behavior routed to token exchange API
  */
 export class MailboxUi extends Construct {
-  readonly bucket: Bucket;
+  private readonly bucket: Bucket;
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
+
+  /** Name of the static-content bucket. Narrow handle for subclasses that must reference it (e.g. a CfnOutput) without reaching the bucket resource itself. */
+  protected readonly bucketName: string;
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
     super(scope, id);
@@ -95,6 +99,7 @@ export class MailboxUi extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       abacStatus: true,
     });
+    this.bucketName = this.bucket.bucketName;
 
     // Attach bucket auto-empty handler to clean up bucket on stack deletion
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
@@ -103,7 +108,16 @@ export class MailboxUi extends Construct {
       comment: `Mailbox ${Aws.STACK_NAME} ${props.label} OAI`,
     });
 
-    this.bucket.grantRead(originAccessIdentity);
+    // CloudFront OAI only ever fetches individual objects (defaultRootObject and both custom
+    // error-page paths resolve to specific keys, never a listing) — grant exactly s3:GetObject
+    // rather than CDK's grantRead(), which also hands out s3:GetBucket*/s3:List*.
+    this.bucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [this.bucket.arnForObjects('*')],
+        principals: [originAccessIdentity.grantPrincipal],
+      }),
+    );
 
     const contentOrigin = S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
       originAccessIdentity,
@@ -171,6 +185,24 @@ export class MailboxUi extends Construct {
     }
 
     this.distributionDomainName = props.certificate ? props.domainName : this.distribution.distributionDomainName;
+  }
+
+  /**
+   * Grants `grantee` exactly the S3 actions needed to deploy static content into this UI's own
+   * bucket: `s3:PutObject`/`s3:DeleteObject` on every object, and `s3:ListBucket` to enumerate
+   * what's already there. This construct owns the bucket, so it grants access to it directly
+   * instead of a deployer (e.g. the auto-updater) having to guess this bucket's name from a
+   * synth-time pattern — the bucket names its own writer.
+   *
+   * S3 object writes cannot be scoped by tag instead: `aws:ResourceTag` reads the (still-untagged)
+   * object being written, and `s3:BucketTag` — although listed as a supported condition key on the
+   * S3 `object` resource type — is not honored for `PutObject` (live-verified: denied against a
+   * bucket carrying the matching tag). Scoping to this bucket's own ARN is the only mechanism that
+   * actually works.
+   */
+  grantContentDeploy(grantee: iam.IGrantable): void {
+    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], '*');
+    grantListBucket(grantee, this.bucket, '*');
   }
 
   private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {

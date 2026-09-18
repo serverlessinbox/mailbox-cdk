@@ -32,8 +32,21 @@ export interface AutoUpdaterProps {
   readonly updateInterval?: Duration;
 }
 
-export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider {
+export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider, iam.IGrantable {
   private readonly updater: ArtifactUpdaterLambda;
+
+  /**
+   * The IAM principal of the updater's own Lambda role, so a resource this updater must write to
+   * (e.g. a `MailboxUi` UI bucket) can grant this updater direct access to itself instead of the
+   * updater guessing the resource's name from a synth-time pattern.
+   *
+   * S3 object writes are the motivating case: `aws:ResourceTag` reads a still-untagged object at
+   * write time, and `s3:BucketTag` — although listed as a supported condition key on the S3
+   * `object` resource type — is not honored for `PutObject` (live-verified: denied against a
+   * bucket carrying the matching tag). Tag-scoping the grant is therefore not an option; the
+   * target resource granting this principal directly, scoped to its own ARN, is.
+   */
+  public readonly grantPrincipal: iam.IPrincipal;
 
   private readonly distTag: string;
   private readonly bucketBase: string;
@@ -84,6 +97,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       lockTable,
     });
     this.updater = updater;
+    this.grantPrincipal = updater.grantPrincipal;
 
     // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
     // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
@@ -125,20 +139,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       }),
     );
 
-    // UI auto-update: extract bundle, upload to bucket, invalidate CloudFront
-    // S3 object writes cannot be tag-scoped: aws:ResourceTag reads the (untagged) object, and s3:BucketTag
-    // is not honored for PutObject (live-verified deny against a correctly-tagged bucket). Scope by the
-    // deterministic UI bucket name instead — ${ACCOUNT_ID}-${STACK_NAME}-ui-<label> (from StackNamedBucket):
-    // this stack's dedicated per-UI buckets, this account only.
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
-        resources: [
-          `arn:aws:s3:::${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-ui-*`,
-          `arn:aws:s3:::${Aws.ACCOUNT_ID}-${Aws.STACK_NAME}-ui-*/*`,
-        ],
-      }),
-    );
+    // UI auto-update: bucket-side grant. Each UI construct (MailboxUi.grantContentDeploy) grants
+    // this updater's own principal write access to its own bucket, so this class never guesses a
+    // UI bucket's name from a synth-time pattern — see MailboxUi.grantContentDeploy for the S3
+    // action set and the tag-scoping finding that rules out a tag-based alternative.
 
     // Edge auto-update: publish new versions + update CloudFront
     updater.addToRolePolicy(

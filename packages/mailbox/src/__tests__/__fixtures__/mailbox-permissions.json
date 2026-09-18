@@ -4968,38 +4968,6 @@
               ]
             ]
           }
-        },
-        {
-          "Action": [
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*"
-          ],
-          "Effect": "Allow",
-          "Principal": {
-            "CanonicalUser": {
-              "ref": "fallback:Mailbox/ui/admin-ui/origin-access-identity",
-              "attr": "S3CanonicalUserId"
-            }
-          },
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/ui/admin-ui/ui-admin-ui",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/ui/admin-ui/ui-admin-ui",
-                    "attr": "Arn"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          ]
         }
       ]
     },
@@ -5027,38 +4995,6 @@
               ]
             ]
           }
-        },
-        {
-          "Action": [
-            "s3:GetBucket*",
-            "s3:GetObject*",
-            "s3:List*"
-          ],
-          "Effect": "Allow",
-          "Principal": {
-            "CanonicalUser": {
-              "ref": "fallback:Mailbox/ui/webmail-ui/origin-access-identity",
-              "attr": "S3CanonicalUserId"
-            }
-          },
-          "Resource": [
-            {
-              "ref": "fallback:Mailbox/ui/webmail-ui/ui-webmail-ui",
-              "attr": "Arn"
-            },
-            {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "ref": "fallback:Mailbox/ui/webmail-ui/ui-webmail-ui",
-                    "attr": "Arn"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          ]
         }
       ]
     },
