@@ -2,7 +2,7 @@ import { Aws, Duration, Lazy } from 'aws-cdk-lib';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { IRole, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import type { IResourceRemoval } from './removal';
 
@@ -61,13 +61,38 @@ export interface SweeperWorkflowProps {
 export class SweeperWorkflow extends Construct {
   readonly stateMachine: sfn.StateMachine;
 
+  // Pre-built ARN string for this state machine (no GetAtt — see SweeperInfra's formatArn
+  // comment); grantStartExecution/grantExecutionReaping below scope statements to it directly
+  // instead of going through CDK's stateMachine.grantStartExecution, which resolves via Ref.
+  private readonly stateMachineArn: string;
+
   constructor(scope: Construct, id: string, props: SweeperWorkflowProps) {
     super(scope, id);
 
     const retryInterval = props.retryInterval ?? Duration.minutes(5);
     const timeout = props.timeout ?? Duration.hours(4);
 
+    this.stateMachineArn = props.stateMachineArn;
     this.stateMachine = this.createSweeperStateMachine(props, retryInterval, timeout);
+  }
+
+  /** Grants the given principal permission to start an execution of this state machine. */
+  public grantStartExecution(grantee: IGrantable): void {
+    grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['states:StartExecution'],
+      resources: [this.stateMachineArn],
+    }));
+  }
+
+  /**
+   * Grants the given principal permission to list and stop executions of this state machine —
+   * used by the starter to stop any stale RUNNING execution before starting a new one.
+   */
+  public grantExecutionReaping(grantee: IGrantable): void {
+    grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ['states:ListExecutions', 'states:StopExecution'],
+      resources: [this.stateMachineArn],
+    }));
   }
 
   private createSweeperStateMachine(

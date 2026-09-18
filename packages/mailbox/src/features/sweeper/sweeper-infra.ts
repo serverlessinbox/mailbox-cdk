@@ -259,15 +259,9 @@ export class SweeperInfra extends Construct {
     (workerPolicy.node.defaultChild as any)
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-    // Starter can invoke the state machine — smArn is a formatArn string (no GetAtt edge)
-    this.starter.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['states:StartExecution'],
-      resources: [smArn],
-    }));
-    // Reap-on-start: the starter stops any stale RUNNING execution before starting a new one.
-    this.starter.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['states:ListExecutions', 'states:StopExecution'],
-      resources: [smArn],
-    }));
+    // Starter can invoke the state machine, and reaps any stale RUNNING execution before starting
+    // a new one — the workflow owns both grants (smArn is its own formatArn string, no GetAtt edge).
+    this.workflow.grantStartExecution(this.starter);
+    this.workflow.grantExecutionReaping(this.starter);
   }
 }
