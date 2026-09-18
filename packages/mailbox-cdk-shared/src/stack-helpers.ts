@@ -1,10 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { TypeScriptLambda } from './ts-lambda';
 import { CdkArtifactEngine, ResolvedArtifact } from './artifact-engine';
 import { getOrCreateSharedGroup } from './shared-group';
 import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
+import { StackHelpersLambda } from './stack-helpers-lambda';
 
 export interface StackHelpersMailboxDataProps {
   readonly hostedZoneId: string;
@@ -35,7 +34,7 @@ interface StackHelpersArtifactResolver {
  * each attaching their own CfnCustomResource.
  */
 export class StackHelpers extends Construct {
-  private readonly fn: TypeScriptLambda;
+  private readonly fn: StackHelpersLambda;
 
   /**
    * Get-or-create the one shared lookup/sanitization Lambda for this Stack.
@@ -60,20 +59,9 @@ export class StackHelpers extends Construct {
     artifactResolver.registerPackages(['mailbox-cdk']);
     const cdkArtifactResolver = new CdkArtifactEngine(this, artifactResolver);
 
-    this.fn = new TypeScriptLambda(this, 'handler', {
-      lambdaId: 'stack-helpers',
-      pipeline: 'infra',
+    this.fn = new StackHelpersLambda(this, 'handler', {
       artifactResolver: cdkArtifactResolver,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
     });
-
-    // Route53 exposes no condition keys on any resource type, and hosted zones are
-    // customer-arbitrary at runtime — no ARN/tag scoping is possible here.
-    this.fn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['route53:GetHostedZone', 'route53:ListHostedZones'],
-      resources: ['*'],
-    }));
   }
 
   /**

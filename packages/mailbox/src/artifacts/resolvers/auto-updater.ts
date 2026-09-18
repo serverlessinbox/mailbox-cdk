@@ -50,7 +50,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
   private readonly distTag: string;
   private readonly bucketBase: string;
-  private readonly project: string = 'serverlessinbox';
   private readonly pinned: PinnedResolver;
   private readonly isTracking: cdk.CfnCondition;
   private readonly deployEndTrigger: cdk.CustomResource;
@@ -102,112 +101,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
     // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
     Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
-
-    // Updater IAM: comprehensive least-privilege (all always-on, apply to updater Lambda for all three trigger paths)
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['tag:GetResources'],
-        resources: ['*'],
-      }),
-    );
-
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
-        resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-        },
-      }),
-    );
-
-    // TagResource constrained to artifact-version tag only; prevents rewriting root-stack scope or injecting arbitrary tags
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['lambda:TagResource'],
-        resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
-          },
-        },
-      }),
-    );
-
-    // UI auto-update: bucket-side grant. Each UI construct (MailboxUi.grantContentDeploy) grants
-    // this updater's own principal write access to its own bucket, so this class never guesses a
-    // UI bucket's name from a synth-time pattern — see MailboxUi.grantContentDeploy for the S3
-    // action set and the tag-scoping finding that rules out a tag-based alternative.
-
-    // Edge auto-update: publish new versions + update CloudFront
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
-        resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-        },
-      }),
-    );
-
-    // CloudFront distribution management: scope to this account and root-stack tag.
-    // CloudFront distribution resource type supports aws:ResourceTag, so distributions are scoped by the root-stack tag.
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
-        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-        },
-      }),
-    );
-
-    // TagResource constrained to distributions matching root-stack tag and allowing only artifact-version mutations.
-    // Prevents rewriting root-stack scope or injecting arbitrary tags.
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudfront:TagResource'],
-        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
-        conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: Aws.STACK_NAME,
-          },
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
-          },
-        },
-      }),
-    );
-
-    // CloudFront distribution listing: read-only enumeration, unscopable by AWS
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudfront:ListDistributions'],
-        resources: ['*'],
-      }),
-    );
-
-    updater.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject'],
-        resources: [`arn:aws:s3:::${this.bucketBase}-*/${this.project}/packages/*/releases/*`],
-      }),
-    );
-
-    // Self-invoke permission
-    updater.addPermission('self-invoke', {
-      principal: updater.grantPrincipal,
-      action: 'lambda:InvokeFunction',
-    });
 
     // Gated subtree: deploy-end CR + EventBridge rule (both tied to IsTracking)
     const trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {

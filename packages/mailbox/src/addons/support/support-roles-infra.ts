@@ -207,13 +207,7 @@ export class SupportRolesInfra extends Construct {
       maxSessionDuration: Duration.seconds(3600),
       inlinePolicies: {
         'support-hop-assume': new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: ['sts:AssumeRole'],
-              resources: Object.values(this.tierArns),
-            }),
-          ],
+          statements: [this.buildHopRoleAssumeStatement()],
         }),
       },
       description: 'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
@@ -245,94 +239,31 @@ export class SupportRolesInfra extends Construct {
       const tagScopedActions = tier.actions.filter(a => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
       const enumerationActions = tier.actions.filter(a => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
 
-      const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
-      // Build the exact edge log group ARN for tier 1 — CloudFront service-creates this group
-      // in every replica region, untagged and inaccessible by tag conditions.
-      // Use the same intrinsics as pipeline-log-groups.ts to ensure exact name match.
-      const edgeLogGroupArn = tier.constructId === 'support-diag'
-        ? Fn.join('', [
-            'arn:aws:logs:*:',
-            stack.account,
-            ':log-group:/serverlessinbox/',
-            Aws.STACK_NAME,
-            '/jmap-',
-            Fn.select(0, Fn.split('-', Fn.select(2, Fn.split('/', Aws.STACK_ID)))),
-            ':*',
-          ])
-        : '';
-
       // Construct tag-scoped statement (resource-naming actions only)
       const statements: iam.PolicyStatement[] = [];
 
-      if (tagScopedActions.length > 0) {
-        statements.push(
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: tagScopedActions,
-            resources: ['*'],
-            conditions: {
-              StringEquals: {
-                [rootStackTagKey]: Aws.STACK_NAME,
-              },
-            },
-          })
-        );
+      const tagScopedStatement = this.buildTagScopedStatement(tagScopedActions);
+      if (tagScopedStatement) {
+        statements.push(tagScopedStatement);
       }
 
       // Enumeration/account-level statement stays on resources: ['*'] (cannot bind tag conditions)
-      if (enumerationActions.length > 0) {
-        statements.push(
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: enumerationActions,
-            resources: ['*'],
-          })
-        );
+      const enumerationStatement = this.buildEnumerationStatement(enumerationActions);
+      if (enumerationStatement) {
+        statements.push(enumerationStatement);
       }
 
       // Tier 1 specific: separate statement for edge log group log-read actions.
       // These groups are service-created by CloudFront in each replica region and are untagged,
       // so they cannot be reached by tag conditions. Grant log-read actions on the edge group ARN only.
-      if (tier.constructId === 'support-diag' && edgeLogGroupArn) {
-        const edgeLogGroupActions = [
-          'logs:DescribeLogStreams',
-          'logs:GetLogEvents',
-          'logs:FilterLogEvents',
-          'logs:GetLogGroupFields',
-          'logs:StartQuery',
-          'logs:GetQueryResults',
-        ];
-        statements.push(
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: edgeLogGroupActions,
-            resources: [edgeLogGroupArn],
-          })
-        );
+      if (tier.constructId === 'support-diag') {
+        statements.push(this.buildEdgeLogGroupStatement(stack));
       }
 
       // CloudFormation stack reads, scoped to this stack and its nested stacks by ARN.
       // A tag condition cannot work here: a stack does not carry its own tags, so
       // aws:ResourceTag never matches the stack resource itself.
-      statements.push(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'cloudformation:DescribeStacks',
-            'cloudformation:ListStackResources',
-            'cloudformation:DescribeStackEvents',
-            // The console renders its resource tree from the CDK metadata inside the
-            // template body, so viewing it requires reading the template itself.
-            'cloudformation:GetTemplate',
-            'cloudformation:GetTemplateSummary',
-          ],
-          resources: [
-            Aws.STACK_ID,
-            `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-*/*`,
-          ],
-        })
-      );
+      statements.push(this.buildCloudFormationReadStatement());
 
       // Create inline policy for this tier
       const policyDoc = new iam.PolicyDocument({
@@ -366,6 +297,89 @@ export class SupportRolesInfra extends Construct {
       // the dependency is strictly one-way: hop role first, then support roles.
       supportRole.node.addDependency(hopRole);
     }
+  }
+
+  private buildHopRoleAssumeStatement(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['sts:AssumeRole'],
+      resources: Object.values(this.tierArns),
+    });
+  }
+
+  private buildTagScopedStatement(actions: string[]): iam.PolicyStatement | undefined {
+    if (actions.length === 0) {
+      return undefined;
+    }
+    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
+    return new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions,
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          [rootStackTagKey]: Aws.STACK_NAME,
+        },
+      },
+    });
+  }
+
+  private buildEnumerationStatement(actions: string[]): iam.PolicyStatement | undefined {
+    if (actions.length === 0) {
+      return undefined;
+    }
+    return new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions,
+      resources: ['*'],
+    });
+  }
+
+  private buildEdgeLogGroupStatement(stack: Stack): iam.PolicyStatement {
+    // Build the exact edge log group ARN for tier 1 — CloudFront service-creates this group
+    // in every replica region, untagged and inaccessible by tag conditions.
+    // Use the same intrinsics as pipeline-log-groups.ts to ensure exact name match.
+    const edgeLogGroupArn = Fn.join('', [
+      'arn:aws:logs:*:',
+      stack.account,
+      ':log-group:/serverlessinbox/',
+      Aws.STACK_NAME,
+      '/jmap-',
+      Fn.select(0, Fn.split('-', Fn.select(2, Fn.split('/', Aws.STACK_ID)))),
+      ':*',
+    ]);
+
+    return new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'logs:DescribeLogStreams',
+        'logs:GetLogEvents',
+        'logs:FilterLogEvents',
+        'logs:GetLogGroupFields',
+        'logs:StartQuery',
+        'logs:GetQueryResults',
+      ],
+      resources: [edgeLogGroupArn],
+    });
+  }
+
+  private buildCloudFormationReadStatement(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'cloudformation:DescribeStacks',
+        'cloudformation:ListStackResources',
+        'cloudformation:DescribeStackEvents',
+        // The console renders its resource tree from the CDK metadata inside the
+        // template body, so viewing it requires reading the template itself.
+        'cloudformation:GetTemplate',
+        'cloudformation:GetTemplateSummary',
+      ],
+      resources: [
+        Aws.STACK_ID,
+        `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-*/*`,
+      ],
+    });
   }
 }
 

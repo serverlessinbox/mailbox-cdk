@@ -1,9 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { TypeScriptLambda, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
+import { DataOverrideResolverLambda } from '../lambdas/data-override-resolver';
 
 /** Incoming data table ARNs from the data stack deployer. */
 export interface MailboxDataOverrideResolverProps {
@@ -24,23 +24,17 @@ export interface MailboxDataOverrideResolverProps {
  * request), and returns the override only when it differs and the override table exists and is ACTIVE.
  */
 export class MailboxDataOverrideResolver extends Construct {
-  private readonly fn: TypeScriptLambda;
+  private readonly fn: DataOverrideResolverLambda;
   private readonly resource: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: MailboxDataOverrideResolverProps) {
     super(scope, id);
 
-    const stack = cdk.Stack.of(this);
-
     props.artifactResolver.registerPackages(['mailbox-cdk']);
     const cdkArtifactResolver = new CdkArtifactEngine(this, props.artifactResolver);
 
-    this.fn = new TypeScriptLambda(this, 'handler', {
-      lambdaId: 'data-override-resolver',
-      pipeline: 'infra',
+    this.fn = new DataOverrideResolverLambda(this, 'handler', {
       artifactResolver: cdkArtifactResolver,
-      timeout: cdk.Duration.seconds(60),
-      memorySize: 256,
     });
 
     // Stack-owned override parameters, one per table role, initialised with the stack's own table ARN.
@@ -79,20 +73,6 @@ export class MailboxDataOverrideResolver extends Construct {
         simpleName: false,
       }),
     };
-
-    // DescribeTable on any table: the override target is operator-chosen, so it cannot be name-scoped to this stack.
-    this.fn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['dynamodb:DescribeTable'],
-        resources: [
-          stack.formatArn({
-            service: 'dynamodb',
-            resource: 'table',
-            resourceName: '*',
-          }),
-        ],
-      })
-    );
 
     // Build the resolver properties with incoming ARNs and dynamic references to the override parameters.
     // The dynamic references allow the resolver to see the operator's current override choice (if any)

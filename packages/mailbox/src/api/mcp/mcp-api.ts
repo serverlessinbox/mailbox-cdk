@@ -9,12 +9,12 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Duration, Aws } from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { McpApiLambda } from '../../lambdas/mcp-api';
 
 export interface McpApiProps {
   jmapApiGateway: apigwv2.IHttpApi;
@@ -57,16 +57,10 @@ export class McpApi extends Construct {
       stage: api.defaultStage!,
     });
 
-    const handlerLambda = new GoLambda(this, 'handler', {
-      lambdaId: 'mcp-api',
-      pipeline: 'jmap',
+    const handlerLambda = new McpApiLambda(this, 'handler', {
+      jmapApiGateway: props.jmapApiGateway,
+      scopeMap: props.scopeMap,
       artifactResolver: props.artifactResolver,
-      memorySize: 256,
-      timeout: Duration.seconds(29),
-      environment: {
-        JMAP_API_URL: props.jmapApiGateway.apiEndpoint,
-        OAUTH_SCOPE_MAP: JSON.stringify(props.scopeMap),
-      },
     });
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', props.authorizerLambda);

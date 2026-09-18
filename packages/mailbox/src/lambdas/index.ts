@@ -79,3 +79,9 @@ export type { SupportApiLambdaProps } from './support-api';
 
 export { StackFailureDetectorLambda } from './stack-failure-detector';
 export type { StackFailureDetectorLambdaProps } from './stack-failure-detector';
+
+export { McpApiLambda } from './mcp-api';
+export type { McpApiLambdaProps } from './mcp-api';
+
+export { DataOverrideResolverLambda } from './data-override-resolver';
+export type { DataOverrideResolverLambdaProps } from './data-override-resolver';
