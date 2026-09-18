@@ -45,6 +45,16 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     props.changelogTable.grantReadWrite(this);
     props.blobStore.grantEmailBlobRead(this);
 
+    this.grantSesSendRawEmail(props.sesConfigSetName);
+
+    this.addEventSourceMapping('email-submissions-queue', {
+      eventSourceArn: props.submissionQueue.queueArn,
+      batchSize: 1,
+    });
+    props.submissionQueue.grantConsume(this);
+  }
+
+  private grantSesSendRawEmail(sesConfigSetName: string) {
     // Grant SES send permissions for email identities and the configuration set.
     // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.
     this.addToRolePolicy(
@@ -53,16 +63,10 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
         actions: ['ses:SendRawEmail'],
         resources: [
           `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
-          `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${props.sesConfigSetName}`,
+          `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
         ],
       })
     );
-
-    this.addEventSourceMapping('email-submissions-queue', {
-      eventSourceArn: props.submissionQueue.queueArn,
-      batchSize: 1,
-    });
-    props.submissionQueue.grantConsume(this);
   }
 
   public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {

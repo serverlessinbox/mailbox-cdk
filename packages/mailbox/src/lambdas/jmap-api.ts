@@ -96,12 +96,16 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     // Grant the User provisioning function to be invoked
     props.identityProvisionerFunction.grantInvoke(this);
 
+    this.grantLicenseApiAccess(props.vendorAccountIds);
+  }
+
+  private grantLicenseApiAccess(vendorAccountIds: string[]) {
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['execute-api:Invoke'],
-      resources: props.vendorAccountIds.flatMap((accountId) => [
+      resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),

@@ -82,6 +82,24 @@ export class StackUpdateApiLambda extends GoLambda {
       },
     });
 
+    this.grantChangeSetOperations(props.rootStackArn);
+    this.grantTemplateArtifactRead(props.artifactBucketBase);
+
+    // Grant config table read-only access for authentication
+    props.configTable.grantRead(this);
+
+    // Grant send permission on the audit-events queue (shared HTTP registry audit path)
+    props.auditEventsQueue.grantSend(this);
+
+    this.grantStackResourceManagement();
+    this.grantIamForChildRolesAndPolicies();
+    this.grantSelfStackCfnMeta();
+    this.grantRootStackRollbackRecovery(props.rootStackArn);
+    this.grantStackUpdateWorkflowControl(stateMachineArn);
+    this.grantStackUpdateWorkflowExecutionStatus(executionArnPattern);
+  }
+
+  private grantChangeSetOperations(rootStackArn: string) {
     // Grant CloudFormation permissions for ChangeSet operations
     // Note: ExecuteChangeSet and DescribeChangeSet authorize against the stack resource ARN
     this.addToRolePolicy(
@@ -96,10 +114,12 @@ export class StackUpdateApiLambda extends GoLambda {
           'cloudformation:DescribeStacks',
           'cloudformation:GetTemplate',
         ],
-        resources: [props.rootStackArn],
+        resources: [rootStackArn],
       })
     );
+  }
 
+  private grantTemplateArtifactRead(artifactBucketBase: string) {
     // Grant S3 read access for template artifacts
     // Schema: {bucketBase}-{region}/serverlessinbox/templates/*/releases/*
     this.addToRolePolicy(
@@ -107,17 +127,13 @@ export class StackUpdateApiLambda extends GoLambda {
         effect: Effect.ALLOW,
         actions: ['s3:GetObject'],
         resources: [
-          `arn:aws:s3:::${props.artifactBucketBase}-*/serverlessinbox/templates/*/releases/*`,
+          `arn:aws:s3:::${artifactBucketBase}-*/serverlessinbox/templates/*/releases/*`,
         ],
       })
     );
+  }
 
-    // Grant config table read-only access for authentication
-    props.configTable.grantRead(this);
-
-    // Grant send permission on the audit-events queue (shared HTTP registry audit path)
-    props.auditEventsQueue.grantSend(this);
-
+  private grantStackResourceManagement() {
     // Stack management permissions: Lambda now executes ChangeSet operations without a separate
     // execution role. CloudFormation runs under the Lambda's identity when no RoleARN is provided.
     this.addToRolePolicy(
@@ -151,7 +167,9 @@ export class StackUpdateApiLambda extends GoLambda {
         resources: ['*'],
       })
     );
+  }
 
+  private grantIamForChildRolesAndPolicies() {
     this.addToRolePolicy(
       new PolicyStatement({
         sid: 'IamForChildRolesAndPolicies',
@@ -191,7 +209,9 @@ export class StackUpdateApiLambda extends GoLambda {
         resources: ['*'],
       })
     );
+  }
 
+  private grantSelfStackCfnMeta() {
     this.addToRolePolicy(
       new PolicyStatement({
         sid: 'SelfStackCfnMeta',
@@ -204,7 +224,9 @@ export class StackUpdateApiLambda extends GoLambda {
         resources: ['*'],
       })
     );
+  }
 
+  private grantRootStackRollbackRecovery(rootStackArn: string) {
     // Rollback-recovery reads/writes on the root stack, scoped to its ARN. DescribeStackEvents and
     // iam:GetPolicy/iam:GetPolicyVersion are already granted above (SelfStackCfnMeta,
     // IamForChildRolesAndPolicies respectively) — not repeated here.
@@ -217,10 +239,12 @@ export class StackUpdateApiLambda extends GoLambda {
           'cloudformation:DescribeStackResource',
           'cloudformation:DescribeStackResources',
         ],
-        resources: [props.rootStackArn],
+        resources: [rootStackArn],
       })
     );
+  }
 
+  private grantStackUpdateWorkflowControl(stateMachineArn: string) {
     // Drive the recovery workflow: start a new episode, and check on this Lambda's own prior
     // executions (dedup in `event-start`, cap-checking in R5). Never a broader `states:*` grant.
     this.addToRolePolicy(
@@ -231,6 +255,9 @@ export class StackUpdateApiLambda extends GoLambda {
         resources: [stateMachineArn],
       })
     );
+  }
+
+  private grantStackUpdateWorkflowExecutionStatus(executionArnPattern: string) {
     this.addToRolePolicy(
       new PolicyStatement({
         sid: 'StackUpdateWorkflowExecutionStatus',

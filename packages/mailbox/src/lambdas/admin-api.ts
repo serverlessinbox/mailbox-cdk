@@ -34,6 +34,57 @@ export interface AdminApiLambdaProps {
 }
 
 export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
+  constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
+    super(scope, id, {
+      lambdaId: 'admin-api',
+      pipeline: 'admin',
+      artifactResolver: props.artifactResolver,
+      memorySize: 640,
+      timeout: Duration.seconds(30),
+      environment: {
+        CONFIG_TABLE_NAME: props.configTable.tableName,
+        ITEM_TABLE_NAME: props.itemTable.tableName,
+        AUDIT_LOG_TABLE_NAME: props.auditLogTable.tableName,
+        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
+        MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
+        BLOB_STORE_NAME: props.blobStore.bucketName,
+        EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
+        SES_CONFIG_SET_NAME: props.sesConfigSetName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
+        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
+        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+      },
+    });
+
+    // Grant permissions BEFORE the Lambda is used by API Gateway
+    this.grantStatusAccess();
+    this.grantSesAccess(props.sesConfigSetName, props.stackIdentityTagKey);
+    this.grantRoute53Access();
+    this.grantServiceQuotasAccess();
+    this.grantLicenseApiAccess(props.vendorAccountIds);
+
+    this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
+    this.grantSesReceivingAccess();
+
+    props.auditLogTable.grantRead(this);
+    props.mailFeedbackTable.grantRead(this);
+
+    props.configTable.grantReadWrite(this);
+    props.itemTable.grantReadWrite(this);
+    props.changelogTable.grantReadWrite(this);
+
+    props.auditEventsQueue.grantSend(this);
+
+    // Needed for standard JMAP email storage + submission enqueue
+    props.blobStore.grantEmailBlobWrite(this);
+    props.emailSubmissionQueue.grantSend(this);
+
+    // Grant the User provisioning function to be invoked
+    props.identityProvisionerFunction.grantInvoke(this);
+  }
+
   private grantStatusAccess() {
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: [
@@ -135,57 +186,6 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
       actions: ["ses:DescribeActiveReceiptRuleSet"],
       resources: ["*"],
     }));
-  }
-
-  constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
-    super(scope, id, {
-      lambdaId: 'admin-api',
-      pipeline: 'admin',
-      artifactResolver: props.artifactResolver,
-      memorySize: 640,
-      timeout: Duration.seconds(30),
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
-        AUDIT_LOG_TABLE_NAME: props.auditLogTable.tableName,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
-        BLOB_STORE_NAME: props.blobStore.bucketName,
-        EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
-        SES_CONFIG_SET_NAME: props.sesConfigSetName,
-        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
-        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
-        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
-        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
-      },
-    });
-
-    // Grant permissions BEFORE the Lambda is used by API Gateway
-    this.grantStatusAccess();
-    this.grantSesAccess(props.sesConfigSetName, props.stackIdentityTagKey);
-    this.grantRoute53Access();
-    this.grantServiceQuotasAccess();
-    this.grantLicenseApiAccess(props.vendorAccountIds);
-
-    this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
-    this.grantSesReceivingAccess();
-
-    props.auditLogTable.grantRead(this);
-    props.mailFeedbackTable.grantRead(this);
-
-    props.configTable.grantReadWrite(this);
-    props.itemTable.grantReadWrite(this);
-    props.changelogTable.grantReadWrite(this);
-
-    props.auditEventsQueue.grantSend(this);
-
-    // Needed for standard JMAP email storage + submission enqueue
-    props.blobStore.grantEmailBlobWrite(this);
-    props.emailSubmissionQueue.grantSend(this);
-
-    // Grant the User provisioning function to be invoked
-    props.identityProvisionerFunction.grantInvoke(this);
   }
 
   public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {

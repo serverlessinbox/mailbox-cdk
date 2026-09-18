@@ -9449,7 +9449,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/auth/mailbox-user-pool.ts",
-          "line": 382
+          "line": 168
         },
         "parameters": [
           {
@@ -9511,7 +9511,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 172
+            "line": 245
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9526,7 +9526,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 370
+            "line": 443
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9543,7 +9543,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 374
+            "line": 447
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9555,7 +9555,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 342
+            "line": 415
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9587,7 +9587,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 352
+            "line": 425
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9618,7 +9618,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 378
+            "line": 451
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9645,7 +9645,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 365
+            "line": 438
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -9661,7 +9661,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 298
+            "line": 371
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9682,7 +9682,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 265
+            "line": 338
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9705,7 +9705,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 320
+            "line": 393
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9742,7 +9742,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 185
+            "line": 258
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9814,7 +9814,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 181
+            "line": 254
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -10268,5 +10268,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "u4xAqtGmWxNqpnt6mJr+bo6F/e/hJgt7lB9YpA4DT+g="
+  "fingerprint": "ZCSnmz3vBugZFwHMn8D7T0KpoxAyzbkVvVwkVaq6F6Q="
 }
