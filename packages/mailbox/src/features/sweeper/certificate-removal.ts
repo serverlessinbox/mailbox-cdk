@@ -5,7 +5,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import { withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
@@ -30,7 +30,6 @@ export class CertificateRemoval extends Construct implements IResourceRemoval {
   }
 
   grantStatements(): iam.PolicyStatement[] {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
     return [
       new iam.PolicyStatement({
         actions: ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
@@ -40,7 +39,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval {
         actions: ['acm:DeleteCertificate'],
         resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
         conditions: {
-          StringEquals: { [rootStackTagKey]: Aws.STACK_NAME },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     ];

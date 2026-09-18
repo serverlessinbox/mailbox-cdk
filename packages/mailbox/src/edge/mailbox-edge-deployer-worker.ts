@@ -1,7 +1,11 @@
 import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { DeployerWorkerLambda, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  DeployerWorkerLambda,
+  rootStackRequestTagCondition,
+  rootStackResourceTagCondition,
+} from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxEdgeDeployerWorkerProps {
@@ -108,9 +112,6 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
    */
   private grantCertificateLifecycle(stack: Stack, rootStack: string): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-    const requestStackTagKey = `aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`;
-
     const certificateArnPrefix = stack.formatArn({
       service: 'acm',
       region: 'us-east-1',
@@ -143,9 +144,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: [certificateArnPrefix],
         conditions: {
-          StringEquals: {
-            [requestStackTagKey]: rootStack,
-          },
+          StringEquals: rootStackRequestTagCondition(rootStack),
         },
       })
     );
@@ -157,9 +156,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         actions: ['acm:AddTagsToCertificate'],
         resources: [certificateArnPrefix],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: rootStack,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStack),
         },
       })
     );
@@ -170,9 +167,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: [certificateArnPrefix],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: rootStack,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStack),
         },
       })
     );
@@ -181,17 +176,13 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         actions: ['acm:DeleteCertificate'],
         resources: [certificateArnPrefix],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: rootStack,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStack),
         },
       })
     );
   }
 
   private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, rootStack: string): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
     // Lambda function + version lifecycle. NOTE: Lambda function ARNs use a COLON separator
     // (`:function:name`), so ArnFormat.COLON_RESOURCE_NAME is required — the slash form silently
     // matches nothing.
@@ -255,9 +246,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: rootStack,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStack),
         },
       })
     );

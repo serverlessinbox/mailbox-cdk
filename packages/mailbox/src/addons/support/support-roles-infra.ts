@@ -1,7 +1,7 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
@@ -311,15 +311,12 @@ export class SupportRolesInfra extends Construct {
     if (actions.length === 0) {
       return undefined;
     }
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
     return new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions,
       resources: ['*'],
       conditions: {
-        StringEquals: {
-          [rootStackTagKey]: Aws.STACK_NAME,
-        },
+        StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
       },
     });
   }

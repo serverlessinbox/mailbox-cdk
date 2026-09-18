@@ -155,3 +155,26 @@ export function applyServerlessInboxEdgeTags(scope: IConstruct, options: ApplySe
   // root-stack is set by applyServerlessInboxBaseTags; only the root-region back-reference is added here.
   Tags.of(scope).add(ServerlessInboxTagKeys.rootRegion, options.rootRegion);
 }
+
+/**
+ * IAM condition-key/value pair gating on the root-stack RESOURCE tag (an already-tagged resource's
+ * own tags), keyed under `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`. Callers spread the
+ * result into a `StringEquals` (or similar) condition block alongside any other keys. `value` must be
+ * the exact value the caller uses today (e.g. `Aws.STACK_NAME` or a `rootStack`/`rootStackTagValue`
+ * parameter) — there is no default, since the two are not interchangeable when a stack has an
+ * explicit name.
+ */
+export function rootStackResourceTagCondition(value: string): Record<string, string> {
+  return { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: value };
+}
+
+/**
+ * IAM condition-key/value pair gating on the root-stack REQUEST tag (the tag value being written by
+ * the current request, e.g. on create or first tag-write), keyed under
+ * `aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`. Callers spread the result into a
+ * `StringEquals` (or similar) condition block alongside any other keys. `value` must be the exact
+ * value the caller uses today — there is no default.
+ */
+export function rootStackRequestTagCondition(value: string): Record<string, string> {
+  return { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: value };
+}

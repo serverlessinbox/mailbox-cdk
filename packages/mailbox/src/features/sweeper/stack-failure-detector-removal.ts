@@ -4,7 +4,7 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import type { StackFailureDetectorSweepTargets } from '../stack-failure-detection';
 import { withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
@@ -47,7 +47,6 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   }
 
   grantStatements(): iam.PolicyStatement[] {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
     return [
       // EventBridge rule operations. Rules support aws:ResourceTag on both read and delete actions
       // (verified against the IAM service reference's rule-on-default-event-bus resource type), so
@@ -59,7 +58,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       new iam.PolicyStatement({
         actions: ['events:RemoveTargets', 'events:DeleteRule'],
         resources: [`arn:aws:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`],
-        conditions: { StringEquals: { [rootStackTagKey]: Aws.STACK_NAME } },
+        conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
       }),
       // Detector Lambda function operations — the stack's OWN region (not us-east-1): the
       // stack-failure detector is a regular regional Lambda, not Lambda@Edge.
@@ -70,7 +69,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       new iam.PolicyStatement({
         actions: ['lambda:DeleteFunction'],
         resources: [`arn:aws:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: { StringEquals: { [rootStackTagKey]: Aws.STACK_NAME } },
+        conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
       }),
       // Detector IAM role operations. iam:DeleteRole/DeleteRolePolicy don't support
       // aws:ResourceTag at all (verified against the IAM service reference: their only

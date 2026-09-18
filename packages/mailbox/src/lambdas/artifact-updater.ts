@@ -1,4 +1,4 @@
-import { TypeScriptLambda, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -84,9 +84,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
         resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: rootStackTagValue,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
         },
       }),
     );
@@ -99,9 +97,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         actions: ['lambda:TagResource'],
         resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: rootStackTagValue,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
           'ForAllValues:StringEquals': {
             'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
           },
@@ -117,9 +113,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
         resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: rootStackTagValue,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
         },
       }),
     );
@@ -133,9 +127,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
         resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
         conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: rootStackTagValue,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
         },
       }),
     );
@@ -149,9 +141,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         actions: ['cloudfront:TagResource'],
         resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
         conditions: {
-          StringEquals: {
-            [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: rootStackTagValue,
-          },
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
           'ForAllValues:StringEquals': {
             'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
           },

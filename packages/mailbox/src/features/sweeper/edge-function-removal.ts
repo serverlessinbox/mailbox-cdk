@@ -4,7 +4,7 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import { withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
@@ -30,7 +30,6 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval {
   }
 
   grantStatements(): iam.PolicyStatement[] {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
     return [
       new iam.PolicyStatement({
         actions: ['lambda:GetFunction'],
@@ -40,7 +39,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval {
         actions: ['lambda:DeleteFunction'],
         resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
         conditions: {
-          StringEquals: { [rootStackTagKey]: Aws.STACK_NAME },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     ];

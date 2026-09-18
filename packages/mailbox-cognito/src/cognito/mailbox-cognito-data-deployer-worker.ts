@@ -1,7 +1,12 @@
 import { Aws } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { DeployerWorkerLambda, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  DeployerWorkerLambda,
+  ServerlessInboxTagKeys,
+  rootStackRequestTagCondition,
+  rootStackResourceTagCondition,
+} from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxCognitoDataDeployerWorkerProps {
@@ -104,8 +109,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantUserPoolLifecycle(): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
     // Cognito User Pool lifecycle — all bind to the "userpool" resource type, which the Service
     // Reference lists as supporting aws:ResourceTag/${TagKey}. These act on the ALREADY-CREATED,
     // already-tagged pool (creation is the statement above), so aws:ResourceTag is satisfiable here.
@@ -123,17 +126,13 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     );
   }
 
   private grantUserPoolTagging(): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-    const requestStackTagKey = `aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`;
     // Tag keys applyServerlessInboxBaseTags/applyServerlessInboxComponentTag actually write onto
     // this pool at the cognito-data stack root (mailbox-cognito-data-stack.ts) — the only keys this
     // role may legitimately tag-write. Keep in lockstep with those two call sites, not invented here.
@@ -157,9 +156,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         actions: ['cognito-idp:TagResource'],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [requestStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackRequestTagCondition(Aws.STACK_NAME),
           'ForAllValues:StringEquals': {
             'aws:TagKeys': legitimateTagKeys,
           },
@@ -175,9 +172,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         actions: ['cognito-idp:TagResource'],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
           'ForAllValues:StringEquals': {
             'aws:TagKeys': legitimateTagKeys,
           },
@@ -187,8 +182,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantUserPoolDomainLifecycle(): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
     // Cognito User Pool Domain — all but Describe bind to "userpool" (ResourceTag-satisfiable, same
     // reasoning as the lifecycle statement above).
     this.addToRolePolicy(
@@ -201,9 +194,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     );
@@ -223,8 +214,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantResourceServerLifecycle(): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
     // Cognito Resource Server (OAuth scopes) — all bind to "userpool" (ResourceTag-satisfiable).
     this.addToRolePolicy(
       new PolicyStatement({
@@ -237,17 +226,13 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     );
   }
 
   private grantGroupLifecycle(): void {
-    const rootStackTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-
     // Cognito Groups — all bind to "userpool" (ResourceTag-satisfiable).
     this.addToRolePolicy(
       new PolicyStatement({
@@ -260,9 +245,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         ],
         resources: ['*'],
         conditions: {
-          StringEquals: {
-            [rootStackTagKey]: Aws.STACK_NAME,
-          },
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
         },
       }),
     );
