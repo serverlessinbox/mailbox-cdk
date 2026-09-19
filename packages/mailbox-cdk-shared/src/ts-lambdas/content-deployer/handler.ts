@@ -7,6 +7,7 @@ import { tryLoad, check } from '../shared/env';
 import { LoggerBuffer } from '../shared/logger-buffer';
 import { invalidateCloudFront } from '../shared/ui-cloudfront';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
+import { isParentStackRollingBack } from '../shared/stack-rollback-detector';
 import { isContentDeployerResourceProperties } from './types';
 import { load } from './config';
 
@@ -132,6 +133,18 @@ export const handler = withSmokeTest(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error('Handler failed', { error: errorMessage });
+
+      // During parent-stack rollback on Update, return SUCCESS to allow rollback to complete
+      // instead of failing and leaving the stack in UPDATE_ROLLBACK_FAILED.
+      if (event.RequestType === 'Update') {
+        const rollingBack = await isParentStackRollingBack(event.StackId, undefined, logger);
+        if (rollingBack) {
+          logger.warn('Suppressing error during stack rollback', { error: errorMessage });
+          logger.flush();
+          return { PhysicalResourceId: event.PhysicalResourceId };
+        }
+      }
+
       logger.flush();
       throw err;
     }

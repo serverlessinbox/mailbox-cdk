@@ -1,7 +1,7 @@
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserAttributesCommand, AdminAddUserToGroupCommand, UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import https from 'node:https';
 import { URL } from 'node:url';
-import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest, emitManualFinalize, env, LoggerBuffer, isParentStackRollingBack } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { load } from './config';
 
 type CloudFormationCustomResourceEvent = {
@@ -202,6 +202,31 @@ export const handler = withSmokeTest(
     const message = (e as Error)?.message ?? String(e);
     logger.error('bootstrap_user_handler_failed', { message });
     logger.flush();
+
+    // During parent-stack rollback on Update, send SUCCESS to allow rollback to complete
+    // instead of failing and leaving the stack in UPDATE_ROLLBACK_FAILED.
+    if (event.RequestType === 'Update') {
+      const rollingBack = await isParentStackRollingBack(event.StackId, undefined, logger);
+      if (rollingBack) {
+        logger.warn('Suppressing error during stack rollback', { error: message });
+        try {
+          await sendResponse(event, {
+            Status: 'SUCCESS',
+            PhysicalResourceId: event.PhysicalResourceId ?? physicalResourceId,
+            StackId: event.StackId,
+            RequestId: event.RequestId,
+            LogicalResourceId: event.LogicalResourceId,
+          });
+        } catch (responseErr) {
+          // If the response send fails, log it but do not rethrow — the handler
+          // has already logged the original error and we do not want to fail the
+          // rollback because the response could not be sent.
+          const responseErrorMessage = responseErr instanceof Error ? responseErr.message : String(responseErr);
+          logger.error('bootstrap_user_response_failed_during_rollback', { error: responseErrorMessage });
+        }
+        return;
+      }
+    }
 
     try {
       await sendResponse(event, {

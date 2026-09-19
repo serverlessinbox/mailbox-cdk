@@ -1,5 +1,6 @@
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
@@ -25,5 +26,19 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
       timeout: Duration.minutes(2),
       memorySize: 256,
     });
+
+    // Grant permission to check parent stack rollback status during custom-resource Update failures.
+    // Scoped to this stack only — the Lambda checks the stack it's invoked for.
+    this.grantCloudFormationDescribeStacks();
+  }
+
+  private grantCloudFormationDescribeStacks(): void {
+    const stack = Stack.of(this);
+    this.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [stack.stackId],
+      }),
+    );
   }
 }

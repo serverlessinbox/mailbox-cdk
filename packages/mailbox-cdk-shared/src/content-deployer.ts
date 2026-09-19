@@ -128,6 +128,19 @@ export class StaticContentDeployer extends TypeScriptLambda {
       timeout: Duration.minutes(15),
       memorySize: 1024,
     });
+
+    // Grant permission to check parent stack rollback status during custom-resource Update failures.
+    this.grantParentStackStatusRead();
+  }
+
+  private grantParentStackStatusRead(): void {
+    const stack = Stack.of(this);
+    this.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [stack.stackId],
+      }),
+    );
   }
 
   /** Deploy a single source (data write or zip unpack) to the target bucket. Each source gets its own
