@@ -43,7 +43,7 @@ export interface TantivySearchProps {
 /**
  * Tantivy search infrastructure:
  * - S3 bucket structure: accounts/{accountId}/search-indexes/account-index.tar.gz
- * - Tantivy Indexer Lambda: triggered by EventBridge every hour per stack
+ * - Tantivy Indexer Lambda: triggered by EventBridge every 6 hours per stack
  * - Search is performed in-process by api-handler using tantivysearch Go package
  */
 export class TantivySearch extends Construct {
@@ -54,7 +54,7 @@ export class TantivySearch extends Construct {
 
     // Create Tantivy Indexer Lambda
     // Queries DynamoDB for all emails in an account, builds Tantivy index, uploads to S3
-    // Triggered by EventBridge every hour
+    // Triggered by EventBridge every 6 hours
     // Note: Uses Go with CGO bridge to Rust Tantivy library
     // Rust library is pre-built by build-lambdas.sh before deployment
     this.indexer = new TantivyIndexerLambda(this, 'tantivy-indexer', {
@@ -65,12 +65,12 @@ export class TantivySearch extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    // EventBridge rule to trigger indexer every hour
+    // EventBridge rule to trigger indexer every 6 hours
     // In production, this would be per-account with a DynamoDB table tracking accounts
     // For now, we trigger once per stack
     const indexingSchedule = new events.Rule(this, 'tantivy-indexing-schedule', {
-      schedule: events.Schedule.rate(cdk.Duration.hours(1)),
-      description: 'Trigger Tantivy indexing every hour',
+      schedule: events.Schedule.rate(cdk.Duration.hours(6)),
+      description: 'Trigger Tantivy indexing every 6 hours',
     });
 
     // Add target to EventBridge rule: invoke the indexer Lambda
