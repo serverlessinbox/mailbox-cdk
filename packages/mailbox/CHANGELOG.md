@@ -4,6 +4,16 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.10...v0.1.11) (Sun Sep 20 2026)
+
+### fix
+
+* generate bootstrap password with a CSPRNG ([995c4c7](https://github.com/serverlessinbox/mailbox-cdk/commit/995c4c71b7393e470b2addd50fdded99cc528b2a))
+
+### chore
+
+* Cleanup unwanted outputs ([6c28ea7](https://github.com/serverlessinbox/mailbox-cdk/commit/6c28ea7747698ec3ba78daf08706fb53b941c265))
+
 ## [0.1.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.9...v0.1.10) (Sun Sep 20 2026)
 
 ### fix
