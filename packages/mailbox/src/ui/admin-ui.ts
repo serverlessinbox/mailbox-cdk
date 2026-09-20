@@ -1,5 +1,4 @@
 import { Construct } from 'constructs';
-import { CfnOutput } from 'aws-cdk-lib';
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
 import type { IDataTable } from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
@@ -107,19 +106,5 @@ export class AdminUi extends MailboxUi {
     });
 
     this.oauthRedirectUri = '/'; // Land on '/' so PortalLanding can route to /welcome (onboarding) vs /home.
-
-    // remote-git/admin-ui/scripts/deploy.ts resolves these outputs BY EXACT NAME to find its S3
-    // sync target and CloudFront invalidation id. The logical IDs are pinned so they survive this
-    // construct being nested inside Mailbox/AdminUi rather than declared at the stack root — do
-    // not remove the pin as "gratuitous", the deploy script has no other way to find them.
-    const bucketOutput = new CfnOutput(this, 'admin-ui-bucket-output', {
-      value: this.bucketName,
-    });
-    bucketOutput.overrideLogicalId('AdminUiBucket');
-
-    const distributionOutput = new CfnOutput(this, 'admin-ui-distribution-output', {
-      value: this.distribution.distributionId,
-    });
-    distributionOutput.overrideLogicalId('AdminUiDistributionId');
   }
 }

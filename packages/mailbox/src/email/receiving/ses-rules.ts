@@ -1,4 +1,3 @@
-import { CfnOutput } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
@@ -74,10 +73,5 @@ export class SesRules extends Construct {
     // is applied directly on BlobStore in resources/blob-store.ts. The blob store is owned by
     // MailboxDataStack and referenced here as an imported IBucket; addToResourcePolicy on imported
     // buckets is a CDK no-op, so the policy must live on the owning construct instead.
-
-    new CfnOutput(this, 'SesReceiptRuleSetName', {
-      value: ruleSet.receiptRuleSetName,
-      exportName: 'SesReceiptRuleSetName',
-    });
   }
 }
