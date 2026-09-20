@@ -13,6 +13,7 @@ export type {
   MailboxUserPoolAuthorizationConfig,
   ProvisionHeadlessClientConfig,
   BootstrapUserConfig,
+  IBootstrapUserHandle,
 } from './auth/mailbox-user-pool';
 
 

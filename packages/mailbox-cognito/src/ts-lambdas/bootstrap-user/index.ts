@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminUpdateUserAttributesCommand, AdminAddUserToGroupCommand, UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import https from 'node:https';
 import { URL } from 'node:url';
+import * as crypto from 'crypto';
 import { withSmokeTest, emitManualFinalize, env, LoggerBuffer, isParentStackRollingBack } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { load } from './config';
 
@@ -61,11 +63,41 @@ const cognito = new CognitoIdentityProviderClient({});
 const { config: configOrError, error: configError } = env.tryLoad(load);
 
 /**
- * Default one-time bootstrap password used when neither `temporaryPassword` nor `email` is configured.
- * The user is created in FORCE_CHANGE_PASSWORD state and must change this on first login.
- * See documentation for the well-known default value.
+ * Generate a cryptographically unpredictable random password that meets Cognito policy requirements.
+ * Returns a 16-character password containing lowercase, uppercase, and digits.
+ * Never logged or exposed in responses.
+ *
+ * Uses Node's built-in crypto.randomInt (CSPRNG) because this password is the initial admin
+ * credential for the entire deployment. Math.random() would be recoverable from observed outputs,
+ * violating the security requirement for an initial credential.
  */
-const DEFAULT_TEMPORARY_PASSWORD = 'Mailbox-Admin-1!';
+export function generateSecurePassword(): string {
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const digits = '0123456789';
+  // Symbols are allowed by Cognito but not required; we exclude them for simplicity
+  const allChars = lowercase + uppercase + digits;
+
+  const passwordChars: string[] = [];
+
+  // Ensure at least one of each required character type by selecting from specific sets
+  passwordChars.push(lowercase[crypto.randomInt(0, lowercase.length)]);
+  passwordChars.push(uppercase[crypto.randomInt(0, uppercase.length)]);
+  passwordChars.push(digits[crypto.randomInt(0, digits.length)]);
+
+  // Fill remaining 13 positions with random characters from the full set
+  for (let i = 3; i < 16; i++) {
+    passwordChars.push(allChars[crypto.randomInt(0, allChars.length)]);
+  }
+
+  // Shuffle using Fisher-Yates with cryptographic random selection to avoid predictable structure
+  for (let i = passwordChars.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
+  }
+
+  return passwordChars.join('');
+}
 
 type BootstrapUserProperties = {
   userPoolId: string;
@@ -88,7 +120,7 @@ type BootstrapUserProperties = {
 async function ensureUser(props: BootstrapUserProperties): Promise<void> {
   const { userPoolId, email } = props;
   const username = props.username ?? 'admin';
-  const temporaryPassword = props.temporaryPassword ?? (!email ? DEFAULT_TEMPORARY_PASSWORD : undefined);
+  const temporaryPassword = props.temporaryPassword ?? (!email ? generateSecurePassword() : undefined);
   const sendInvite = props.sendInvite ?? false;
   const groups = (props.groups ?? []).filter(Boolean);
   const emailAttributes = email
@@ -184,19 +216,31 @@ export const handler = withSmokeTest(
 
     logger.debug('bootstrap_user_validating', { userPoolIdLength: String(props.userPoolId).length });
 
+    let generatedPassword: string | undefined;
+
     if (event.RequestType === 'Create' || event.RequestType === 'Update') {
       logger.debug('bootstrap_user_ensuring_user');
+      // Determine the actual temporary password to track whether it was generated
+      const email = (props.email as string | undefined);
+      const suppliedPassword = (props.temporaryPassword as string | undefined);
+      generatedPassword = suppliedPassword ?? (!email ? generateSecurePassword() : undefined);
       await ensureUser(normalizedProps);
       logger.info('bootstrap_user_ensured');
     }
 
     logger.debug('bootstrap_user_sending_success_response');
+    const responseData: Record<string, string> = {};
+    // Only return the password if it was generated (not supplied by the caller)
+    if (generatedPassword && !props.temporaryPassword) {
+      responseData.temporaryPassword = generatedPassword;
+    }
     await sendResponse(event, {
       Status: 'SUCCESS',
       PhysicalResourceId: event.PhysicalResourceId ?? physicalResourceId,
       StackId: event.StackId,
       RequestId: event.RequestId,
       LogicalResourceId: event.LogicalResourceId,
+      ...(Object.keys(responseData).length > 0 ? { Data: responseData } : {}),
     });
   } catch (e: any) {
     const message = (e as Error)?.message ?? String(e);

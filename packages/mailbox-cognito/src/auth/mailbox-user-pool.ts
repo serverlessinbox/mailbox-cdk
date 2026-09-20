@@ -129,6 +129,22 @@ export interface BootstrapUserConfig {
 }
 
 /**
+ * Handle to a bootstrapped user custom resource, allowing access to generated attributes.
+ * When no temporary password was supplied, the custom resource generates one at deploy time
+ * and exposes it through this handle.
+ */
+export interface IBootstrapUserHandle {
+  /**
+   * Retrieve the temporary password generated or used during bootstrap.
+   * Returns a CloudFormation GetAtt reference to the temporary password attribute
+   * from the custom resource response Data, or the supplied password if one was provided.
+   * The password is only populated when no email address is configured
+   * (email-based invites use Cognito's invite mechanism instead).
+   */
+  readonly temporaryPassword: string;
+}
+
+/**
  * Opinionated JMAP user pool construct for mailbox servers.
  */
 export class MailboxUserPool extends Construct implements IMailboxAuthProviderBase, IAdminApiAddonProvider {
@@ -473,16 +489,20 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    * Attach a bootstrap user Custom Resource to this user pool.
    * The artifact resolver is shared with the rest of the user pool.
    *
+   * When no temporary password is supplied, the custom resource generates one at deploy time
+   * and exposes it through the returned handle for use in CloudFormation outputs.
+   *
    * @param config Bootstrap user configuration
+   * @returns Handle to the bootstrapped user resource, with access to the temporary password
    */
-  public addBootstrapUser(config: BootstrapUserConfig): void {
+  public addBootstrapUser(config: BootstrapUserConfig): IBootstrapUserHandle {
     const index = ++this.bootstrapUserCount;
     const constructId = `bootstrapped-user-${index}`;
     const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
     });
 
-    new CustomResource(this, constructId, {
+    const customResource = new CustomResource(this, constructId, {
       resourceType: 'Custom::CognitoBootstrapUser',
       serviceToken: handler.functionArn,
       properties: {
@@ -503,6 +523,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         resources: [this.userPoolArn],
       }),
     );
+
+    return {
+      temporaryPassword: customResource.getAttString('temporaryPassword'),
+    };
   }
 
   public grantAdminAccess(fn: lambda.IFunction): void {

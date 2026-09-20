@@ -10394,7 +10394,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 233
+          "line": 239
         },
         "parameters": [
           {
@@ -10424,6 +10424,36 @@
       },
       "name": "Mailbox",
       "properties": [
+        {
+          "docs": {
+            "remarks": "Exposed for deployment tooling.",
+            "summary": "Admin UI S3 bucket name."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 234
+          },
+          "name": "adminUiBucketName",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "docs": {
+            "remarks": "Exposed for deployment tooling.",
+            "summary": "Admin UI CloudFront distribution ID."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/mailbox.ts",
+            "line": 237
+          },
+          "name": "adminUiDistributionId",
+          "type": {
+            "primitive": "string"
+          }
+        },
         {
           "immutable": true,
           "locationInModule": {
@@ -12275,5 +12305,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "Sd5JJq765Ms+MfxsnGHWK55ME1zqMGvXuUT/40Hew5Y="
+  "fingerprint": "mvp1QXkQ0RRDr7NyvWv28N9Fq29CBkJl6Aevycy98pc="
 }
