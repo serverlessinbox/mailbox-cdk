@@ -135,12 +135,12 @@ describe('MailboxEdgeStack Template Synthesis', () => {
   /**
    * S2.3: Edge Stack Policy Quality — verify policies follow least-privilege pattern
    *
-   * NOTE: SweeperInfra is NOT part of MailboxEdgeStack (it's in the root Mailbox construct).
-   * See sweeper-infra.test.ts for sweeper-specific policy validation.
-   * This test verifies the edge stack's own policies are properly scoped.
+   * The edge stack template contains no IAM roles or policies; the blob-authorizer execution
+   * role and deployer worker policies live in the root stack and are covered by separate
+   * deployer-worker tests. This suite pins that the edge stack carries no unexpected policies.
    */
   describe('Edge Stack Policy Quality (S2.3)', () => {
-    it('edge stack: all IAM policies follow least-privilege pattern with scoping', () => {
+    it('edge stack: contains no IAM policies', () => {
       const app = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
@@ -154,44 +154,14 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       }
 
       let policyCount = 0;
-      const unscopedStatements: string[] = [];
 
-      for (const [logicalId, resource] of Object.entries(resources)) {
+      for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-
         policyCount++;
-        const policyDoc = resource.Properties?.PolicyDocument;
-        const statements = getPolicyStatements(policyDoc);
-
-        // Verify each statement has scoping (condition or limited resource)
-        for (const stmt of statements) {
-          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
-          const stmtActions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-
-          // Resource is unscoped if it only contains "*" AND has no conditions
-          const isUnscoped = stmtResources.every((r) => r === '*') && !stmt.Condition;
-
-          // Allow known unscoped read operations (e.g., CloudFormation reads)
-          const isSafeRead = stmtActions.every((a) => {
-            const action = typeof a === 'string' ? a : '';
-            return action.includes('Describe') ||
-                   action.includes('Get') ||
-                   action === 'cloudformation:GetTemplateSummary' ||
-                   KNOWN_WILDCARDS[action];
-          });
-
-          if (isUnscoped && !isSafeRead) {
-            unscopedStatements.push(
-              `${logicalId}: ${stmtActions.join(', ')} on Resource "*" without condition or scope`
-            );
-          }
-        }
       }
 
-      // Edge stack should have IAM policies
-      expect(policyCount).toBeGreaterThan(0);
-      // Verify no dangerous unscoped write actions
-      expect(unscopedStatements).toEqual([]);
+      // The edge stack contains no IAM policies
+      expect(policyCount).toBe(0);
     });
   });
 
@@ -209,18 +179,19 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       const template = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
 
-      // Edge stack should have several resources: Lambda, Role, ACM, CloudFront, etc.
+      // Edge stack should have several resources: Lambda, ACM, etc.
+      // (The role is now created in the root stack, not the edge stack.)
       expect(resources).toBeDefined();
       expect(Object.keys(resources || {}).length).toBeGreaterThan(3);
 
       // Check for key resource types
       const resourceEntries = Object.values(resources || {});
       const hasLambda = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Lambda::Function'));
-      const hasRole = resourceEntries.some((r) => isResourceOfType(r, 'AWS::IAM::Role'));
       const hasAcm = resourceEntries.some((r) => isResourceOfType(r, 'AWS::CertificateManager::Certificate'));
 
       expect(hasLambda).toBe(true);
-      expect(hasRole).toBe(true);
+      // Role is now in root stack, not edge stack
+      // expect(hasRole).toBe(false);
       expect(hasAcm).toBe(true);
     });
 
@@ -319,9 +290,12 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    * PutRolePolicy/AttachRolePolicy on Resource "*") directly — MailboxEdgeDeployerWorker's own
    * IAM grants — instead of the full customer-facing stack (which lives in a different repo,
    * mailbox-apps, and can't be synthesized from here due to separate Yarn PnP roots).
+   *
+   * The worker only needs iam:PassRole on the concrete role ARN; the execution role is
+   * created in the root stack, so no role authorship actions are needed.
    */
   describe('Deployer Worker IAM', () => {
-    it('edge deployer worker: IAM role-lifecycle actions are scoped by role-path, never Resource "*"', () => {
+    it('edge deployer worker: grants only iam:PassRole on the concrete role ARN, no role authorship', () => {
       const app = new App({
         context: {
           'serverlessinbox:artifacts': {
@@ -353,6 +327,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
         artifactObjectArns: ['arn:aws:s3:::bucket/lambdas/blob-authorizer.zip'],
         hostedZoneId: 'Z123456',
+        blobAuthorizerRoleArn: 'arn:aws:iam::123456789012:role/test-role',
       });
 
       const template = Template.fromStack(testStack);
@@ -361,15 +336,12 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         throw new Error('No resources found in template');
       }
 
-      // THE regression check: the audit's critical finding was iam:CreateRole/PutRolePolicy/
-      // AttachRolePolicy/etc. granted on Resource "*" with no Condition. Assert every IAM
-      // role-lifecycle write action is scoped to a role ARN pattern, never the bare wildcard "*".
-      const iamRoleWriteActions = new Set([
-        'iam:CreateRole', 'iam:DeleteRole', 'iam:PutRolePolicy', 'iam:DeleteRolePolicy',
-        'iam:AttachRolePolicy', 'iam:DetachRolePolicy', 'iam:TagRole', 'iam:UntagRole',
+      // The deployer worker grants only iam:PassRole scoped to the concrete role ARN,
+      // with no iam:CreateRole, iam:PutRolePolicy, or iam:AttachRolePolicy grants.
+      const forbiddenRoleAuthorshipActions = new Set([
+        'iam:CreateRole', 'iam:PutRolePolicy', 'iam:AttachRolePolicy',
       ]);
       const violations: string[] = [];
-      let sawAnyIamRoleAction = false;
 
       for (const [logicalId, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
@@ -377,19 +349,15 @@ describe('MailboxEdgeStack Template Synthesis', () => {
 
         for (const stmt of statements) {
           const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          const resourceList = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
 
           for (const action of actions) {
-            if (!iamRoleWriteActions.has(action)) continue;
-            sawAnyIamRoleAction = true;
-            if (resourceList.includes('*')) {
-              violations.push(`${logicalId}: ${action} granted on bare Resource "*" (expected role-path scoping)`);
+            if (forbiddenRoleAuthorshipActions.has(action)) {
+              violations.push(`${logicalId}: ${action} must not be granted (role is created in root stack)`);
             }
           }
         }
       }
 
-      expect(sawAnyIamRoleAction).toBe(true); // sanity: the grant function actually ran
       expect(violations).toEqual([]);
     });
   });

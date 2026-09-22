@@ -166,4 +166,34 @@ describe('MailboxCognitoDataDeployerWorker IAM grants', () => {
       new Set(['cognito-idp:CreateUserPool', 'cognito-idp:DescribeUserPoolDomain']),
     );
   });
+
+  it('grants tag:GetResources unconditionally (read-only enumeration)', () => {
+    const stmts = statementsForAction(template, 'tag:GetResources');
+    expect(stmts.length).toBe(1);
+    expect(stmts[0].Condition).toBeUndefined();
+  });
+
+  it('constrains tag:TagResources and tag:UntagResources with ForAllValues:StringEquals on aws:TagKeys', () => {
+    const tagResourcesStmts = statementsForAction(template, 'tag:TagResources');
+    const untagResourcesStmts = statementsForAction(template, 'tag:UntagResources');
+
+    expect(tagResourcesStmts.length).toBe(1);
+    expect(untagResourcesStmts.length).toBe(1);
+
+    for (const stmt of [tagResourcesStmts[0], untagResourcesStmts[0]]) {
+      const tagKeys = stmt.Condition?.['ForAllValues:StringEquals']?.['aws:TagKeys'];
+      expect(Array.isArray(tagKeys)).toBe(true);
+      expect(tagKeys).toEqual(
+        expect.arrayContaining([
+          'serverless-inbox:product',
+          'serverless-inbox:root-stack',
+          'serverless-inbox:stack',
+          'serverless-inbox:component',
+          'serverless-inbox:version',
+          'serverless-inbox:deployer_type',
+        ]),
+      );
+      expect(tagKeys.length).toBe(6);
+    }
+  });
 });

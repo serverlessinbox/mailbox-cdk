@@ -1,7 +1,7 @@
 import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { DeployerWorkerLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerWorkerLambda, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface MailboxDataDeployerWorkerProps {
@@ -149,11 +149,35 @@ export class MailboxDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantTaggingApiAccess(): void {
-    // Tagging APIs (CloudFormation uses these broadly)
+    // Tagging APIs (CloudFormation uses these broadly).
+    // GetResources is read-only enumeration and must remain unscopable (on *).
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['tag:GetResources', 'tag:TagResources', 'tag:UntagResources'],
+        actions: ['tag:GetResources'],
         resources: ['*'],
+      })
+    );
+    // TagResources/UntagResources are constrained by aws:TagKeys to only the tag keys
+    // applyServerlessInboxBaseTagsWithDeployerType and applyServerlessInboxComponentTag
+    // actually apply: the product/correlation tags plus the component tag (mailbox-data-stack.ts).
+    // Prevents escalation via rewriting the root-stack scoping tag or injecting arbitrary tags.
+    const dataStackTagKeys = [
+      ServerlessInboxTagKeys.product,
+      ServerlessInboxTagKeys.rootStack,
+      ServerlessInboxTagKeys.stack,
+      ServerlessInboxTagKeys.component,
+      ServerlessInboxTagKeys.version,
+      ServerlessInboxTagKeys.deployerType,
+    ];
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['tag:TagResources', 'tag:UntagResources'],
+        resources: ['*'],
+        conditions: {
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': dataStackTagKeys,
+          },
+        },
       })
     );
   }

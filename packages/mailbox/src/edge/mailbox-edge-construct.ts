@@ -1,10 +1,9 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cdk from 'aws-cdk-lib';
-import { Aws, Fn } from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -48,6 +47,9 @@ export interface MailboxEdgeConstructProps {
 
   /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
   readonly logGroupName: string;
+
+  /** ARN of the blob-authorizer Lambda@Edge execution role (created in the root stack) */
+  readonly blobAuthorizerRoleArn: string;
 }
 
 /**
@@ -103,17 +105,10 @@ export class MailboxEdgeConstruct extends Construct {
       ? s3.Bucket.fromBucketName(this, 'artifact-bucket', props.artifactBucket)
       : props.artifactBucket;
 
-    // Lambda@Edge requires the execution role trust policy to allow BOTH principals.
-    // CloudFront validates this during association.
-    const blobAuthorizerRole = new iam.Role(this, 'blob-authorizer-role', {
-      assumedBy: new iam.CompositePrincipal(
-        new iam.ServicePrincipal('lambda.amazonaws.com'),
-        new iam.ServicePrincipal('edgelambda.amazonaws.com'),
-      ),
-      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-      ],
+    // Import the blob-authorizer execution role created in the root stack (immutable).
+    // The role trust and policies are configured there; this construct uses it as-is.
+    const blobAuthorizerRole = iam.Role.fromRoleArn(this, 'blob-authorizer-role', props.blobAuthorizerRoleArn, {
+      mutable: false,
     });
 
     // The key here is already the full path (artifact prefix included)
@@ -176,31 +171,6 @@ export class MailboxEdgeConstruct extends Construct {
     cfnFunction.addPropertyOverride(
       'Code.S3ObjectVersion',
       cdk.Fn.conditionIf(hasBlobAuthorizerVersion.logicalId, props.blobAuthorizerReference.versionId ?? '', cdk.Aws.NO_VALUE),
-    );
-
-    this.grantAuthorizerTableRead(props.itemTableArn, props.configTableArn, props.authKeyStoreTableArn);
-  }
-
-  private grantAuthorizerTableRead(itemTableArn: string, configTableArn: string, authKeyStoreTableArn: string): void {
-    // Lambda@Edge needs explicit IAM permissions; it can't assume it has access to regional DynamoDB tables.
-    // Grant only read access to the required tables (+ index access for Query).
-    const dynamoResourceArns = [
-      itemTableArn,
-      configTableArn,
-      authKeyStoreTableArn,
-      Fn.join('', [itemTableArn, '/index/*']),
-      Fn.join('', [configTableArn, '/index/*']),
-      Fn.join('', [authKeyStoreTableArn, '/index/*']),
-    ];
-
-    this.blobAuthorizerFunction.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'dynamodb:GetItem',
-          'dynamodb:Query',
-        ],
-        resources: dynamoResourceArns,
-      })
     );
   }
 }

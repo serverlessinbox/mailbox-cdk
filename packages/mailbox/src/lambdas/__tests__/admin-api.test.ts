@@ -254,4 +254,154 @@ describe('AdminApiLambda IAM scoping', () => {
       }
     }
   });
+
+  it('scopes underscore-prefixed Route53 records (DKIM, DMARC) with record-name conditions', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ChangeResourceRecordSets',
+            Resource: 'arn:aws:route53:::hostedzone/*',
+            Condition: Match.objectLike({
+              'ForAllValues:StringLike': Match.objectLike({
+                'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('restricts underscore-prefixed Route53 records to CNAME and TXT types', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ChangeResourceRecordSets',
+            Condition: Match.objectLike({
+              'ForAllValues:StringLike': Match.objectLike({
+                'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
+              }),
+              'ForAllValues:StringEquals': Match.objectLike({
+                'route53:ChangeResourceRecordSetsRecordTypes': ['CNAME', 'TXT'],
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('restricts Route53 ChangeResourceRecordSets to UPSERT and DELETE actions only', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ChangeResourceRecordSets',
+            Condition: Match.objectLike({
+              'ForAllValues:StringEquals': Match.objectLike({
+                'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('does not permit CREATE action on Route53 records', () => {
+    const template = Template.fromStack(stack);
+    const policies = template.findResources('AWS::IAM::Policy');
+    for (const policyRecord of Object.values(policies)) {
+      const policy = policyRecord as any;
+      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
+      for (const statement of statements) {
+        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
+        if (actions.includes('route53:ChangeResourceRecordSets') && statement.Effect !== 'Deny') {
+          const conditions = statement.Condition as Record<string, any> | undefined;
+          if (conditions) {
+            for (const condValues of Object.values(conditions)) {
+              if (typeof condValues === 'object' && condValues !== null) {
+                const allowedActions = (condValues as any)['route53:ChangeResourceRecordSetsActions'];
+                if (Array.isArray(allowedActions)) {
+                  expect(allowedActions).not.toContain('CREATE');
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('includes an explicit deny for ACME challenge records', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Effect: 'Deny',
+            Action: 'route53:ChangeResourceRecordSets',
+            Resource: '*',
+            Condition: Match.objectLike({
+              'ForAnyValue:StringLike': Match.objectLike({
+                'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['_acme-challenge.*'],
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('scopes apex Route53 records (MX, SPF) to type conditions without name prefix restrictions', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ChangeResourceRecordSets',
+            Resource: 'arn:aws:route53:::hostedzone/*',
+            Condition: Match.objectLike({
+              'ForAllValues:StringEquals': Match.objectLike({
+                'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('scopes ListResourceRecordSets to hosted zone resources', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ListResourceRecordSets',
+            Resource: 'arn:aws:route53:::hostedzone/*',
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('scopes ListHostedZonesByName to wildcard resource', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'route53:ListHostedZonesByName',
+            Resource: '*',
+          }),
+        ]),
+      },
+    });
+  });
 });

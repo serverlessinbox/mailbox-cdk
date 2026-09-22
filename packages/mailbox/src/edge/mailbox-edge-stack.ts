@@ -168,6 +168,12 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     logGroupNameParam.overrideLogicalId('logGroupName');
 
+    const blobAuthorizerRoleArnParam = new cdk.CfnParameter(this, 'blob-authorizer-role-arn', {
+      type: 'String',
+      description: 'ARN of the blob-authorizer Lambda@Edge execution role (created in root stack)',
+    });
+    blobAuthorizerRoleArnParam.overrideLogicalId('blobAuthorizerRoleArn');
+
     // Build artifact reference from parameters
     const blobAuthorizerReference: ResolvedArtifact = {
       key: blobAuthorizerKeyParam.valueAsString,
@@ -190,6 +196,7 @@ export class MailboxEdgeStack extends cdk.Stack {
       authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
       productVersion: productVersionParam.valueAsString,
       logGroupName: logGroupNameParam.valueAsString,
+      blobAuthorizerRoleArn: blobAuthorizerRoleArnParam.valueAsString,
     };
 
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);
