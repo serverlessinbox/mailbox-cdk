@@ -5,7 +5,7 @@ import type { IDataBlobStore } from '../data/data-blob-store';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
@@ -144,15 +144,71 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   }
 
   private grantRoute53Access() {
-    // Route53 exposes no condition keys on any resource type, and hosted zones are
-    // customer-arbitrary at runtime — no ARN/tag scoping is possible here.
+    // Scoping is enforced entirely by condition keys; the hostedzone/* resource ARN is
+    // semantically equivalent to * for this action.
+    //
+    // The apex statement constrains record type and action but deliberately not record name.
+    // Domains are added after bootstrap, so the set of zones and apex names is open; adding a
+    // name condition there would break multi-domain support.
+
+    // Underscore-prefixed records: DKIM and DMARC
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: [
-        "route53:ChangeResourceRecordSets",
-        "route53:ListHostedZonesByName",
-        "route53:ListResourceRecordSets",
-      ],
+      actions: ["route53:ChangeResourceRecordSets"],
+      resources: ["arn:aws:route53:::hostedzone/*"],
+      conditions: {
+        "ForAllValues:StringLike": {
+          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["*._domainkey.*", "_dmarc.*"],
+        },
+        "ForAllValues:StringEquals": {
+          "route53:ChangeResourceRecordSetsRecordTypes": ["CNAME", "TXT"],
+          "route53:ChangeResourceRecordSetsActions": ["UPSERT", "DELETE"],
+        },
+        "Null": {
+          "route53:ChangeResourceRecordSetsNormalizedRecordNames": false,
+          "route53:ChangeResourceRecordSetsRecordTypes": false,
+          "route53:ChangeResourceRecordSetsActions": false,
+        },
+      },
+    }));
+
+    // Apex records: MX and SPF (no name prefix condition, as the apex is the customer's domain)
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["route53:ChangeResourceRecordSets"],
+      resources: ["arn:aws:route53:::hostedzone/*"],
+      conditions: {
+        "ForAllValues:StringEquals": {
+          "route53:ChangeResourceRecordSetsRecordTypes": ["MX", "TXT"],
+          "route53:ChangeResourceRecordSetsActions": ["UPSERT", "DELETE"],
+        },
+        "Null": {
+          "route53:ChangeResourceRecordSetsRecordTypes": false,
+          "route53:ChangeResourceRecordSetsActions": false,
+        },
+      },
+    }));
+
+    // Read-only access: listing records
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["route53:ListResourceRecordSets"],
+      resources: ["arn:aws:route53:::hostedzone/*"],
+    }));
+
+    // Account-level read: listing hosted zones (no resource ARN binding available)
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      actions: ["route53:ListHostedZonesByName"],
       resources: ["*"],
+    }));
+
+    // Deny ACME challenge writes across all zones (prevents certificate issuance for arbitrary domains)
+    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.DENY,
+      actions: ["route53:ChangeResourceRecordSets"],
+      resources: ["*"],
+      conditions: {
+        "ForAnyValue:StringLike": {
+          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["_acme-challenge.*"],
+        },
+      },
     }));
   }
 

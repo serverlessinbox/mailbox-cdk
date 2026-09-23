@@ -10394,7 +10394,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 239
+          "line": 233
         },
         "parameters": [
           {
@@ -10424,36 +10424,6 @@
       },
       "name": "Mailbox",
       "properties": [
-        {
-          "docs": {
-            "remarks": "Exposed for deployment tooling.",
-            "summary": "Admin UI S3 bucket name."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 234
-          },
-          "name": "adminUiBucketName",
-          "type": {
-            "primitive": "string"
-          }
-        },
-        {
-          "docs": {
-            "remarks": "Exposed for deployment tooling.",
-            "summary": "Admin UI CloudFront distribution ID."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/mailbox.ts",
-            "line": 237
-          },
-          "name": "adminUiDistributionId",
-          "type": {
-            "primitive": "string"
-          }
-        },
         {
           "immutable": true,
           "locationInModule": {
@@ -12027,7 +11997,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update/stack-update-addon.ts",
-          "line": 160
+          "line": 142
         },
         "parameters": [
           {
@@ -12044,13 +12014,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 159
+        "line": 141
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 162
+            "line": 144
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12093,7 +12063,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 141
+        "line": 123
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
@@ -12105,7 +12075,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 143
+            "line": 125
           },
           "name": "artifactResolver",
           "type": {
@@ -12120,7 +12090,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 146
+            "line": 128
           },
           "name": "templateName",
           "type": {
@@ -12135,7 +12105,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 149
+            "line": 131
           },
           "name": "templateVersion",
           "type": {
@@ -12151,7 +12121,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 152
+            "line": 134
           },
           "name": "distTag",
           "optional": true,
@@ -12305,5 +12275,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "mvp1QXkQ0RRDr7NyvWv28N9Fq29CBkJl6Aevycy98pc="
+  "fingerprint": "zjdU+WCcsisVjrjY4hBtgKzpsNMc0I80CtVLjMCgefg="
 }

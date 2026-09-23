@@ -3,6 +3,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import {
   DeployerWorkerLambda,
+  ServerlessInboxTagKeys,
   rootStackRequestTagCondition,
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
@@ -20,6 +21,8 @@ export interface MailboxEdgeDeployerWorkerProps {
   readonly artifactObjectArns: string[];
   /** Route53 hosted zone used for the edge certificate's DNS validation (omit when no hosted zone is configured). */
   readonly hostedZoneId?: string;
+  /** ARN of the blob-authorizer Lambda@Edge execution role (created in root stack) */
+  readonly blobAuthorizerRoleArn: string;
 }
 
 /**
@@ -27,19 +30,16 @@ export interface MailboxEdgeDeployerWorkerProps {
  *
  * CloudFormation (called without a RoleArn) uses the CALLER's permissions to create/update/delete
  * every resource in the template, so this role needs create/delete rights for exactly the resource
- * types the edge template contains: an ACM certificate, one IAM role (+ inline policy + managed
- * policy attachment), one Lambda function + version, and a resource group. Keep this list in
- * lockstep with the edge template — a new resource type there needs a scoped grant here.
+ * types the edge template contains: an ACM certificate, one Lambda function + version, and a resource
+ * group. The IAM role is created in the root stack and passed via parameter; this worker only needs
+ * iam:PassRole scoped to that specific role ARN.
  *
- * Scoping strategy: CFN-generated physical NAMES are truncated to the service's length limit
- * (64 chars for IAM roles and Lambda functions), so name-prefix ARN patterns break for long stack
- * names. The IAM role is therefore scoped by its deterministic PATH (never truncated), and Lambda
- * mutations carry a tag-condition fallback keyed on the `serverless-inbox:root-stack` tag that the
- * edge template applies to the function.
+ * Scoping strategy: CFN-generated physical NAMES for Lambda functions are truncated to 64 chars for
+ * long stack names, so name-prefix ARN patterns break. Lambda mutations carry a tag-condition fallback
+ * keyed on the `serverless-inbox:root-stack` tag that the edge template applies to the function.
  *
  * The edge template contains no CloudWatch Log Groups, so this worker needs NO logs permissions
- * (its own logging comes from its execution role's basic policy). If a log group is ever added to
- * the edge template, grant logs actions here scoped to `log-group:<edge-stack-name>*`.
+ * (its own logging comes from its execution role's basic policy).
  */
 export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkerProps) {
@@ -52,7 +52,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     this.grantTemplateAndArtifactRead(props.templateObjectArn, props.artifactObjectArns);
     this.grantCertificateLifecycle(props.stack, props.rootStack);
     this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, props.rootStack);
-    this.grantExecutionRoleLifecycle(props.stack, props.edgeStackName);
+    this.grantExecutionRolePassage(props.blobAuthorizerRoleArn);
     this.grantTaggingApiAccess();
     this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
 
@@ -226,12 +226,11 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     // Tag-scoped fallback for post-create operations: the CFN-generated function name is truncated
     // to 64 chars for long stack names, breaking both name-prefix patterns above. The root-stack tag
     // applied by the edge template is immune to truncation and keeps updates/deletion working.
-    // TagResource/UntagResource are not further constrained by aws:TagKeys because the set of tags
-    // applied by the edge stack is broad (product, version, deployer, component, edge, root-region,
-    // artifact metadata — 12+ tags) and may grow; a hard-coded allowlist would become stale and break
-    // future deployments. This accepts a residual risk that the worker could modify any tag on the
-    // Lambda, but such modifications would be observable in CloudTrail/resource inventory and
-    // are scoped to resources already owned by this deployment (root-stack condition).
+    // Lambda-level lambda:TagResource/lambda:UntagResource are not further constrained by aws:TagKeys
+    // here because they act on individual Lambda functions already scoped by the root-stack tag condition.
+    // The Resource Groups Tagging API (tag:TagResources/tag:UntagResources) IS constrained by aws:TagKeys
+    // in grantTaggingApiAccess() to only the keys this deployer legitimately applies, preventing
+    // escalation via rewriting tags on other resources in the account.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
@@ -252,61 +251,17 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
-  private grantExecutionRoleLifecycle(stack: Stack, edgeStackName: string): void {
-    // The edge template's single IAM role (blob-authorizer execution role) is scoped by name-prefix
-    // `<edge-stack-name>-*` (see mailbox-edge-construct.ts). This pattern covers the CFN-generated
-    // role name and avoids path-based scoping that would break existing deployments already created
-    // with the default path. Known caveat: a very long root-stack name could truncate the role name
-    // past IAM's 64-char limit; a deliberate path-based migration is the future fix.
-    const edgeRoleArnPrefix = stack.formatArn({
-      service: 'iam',
-      region: '',
-      // IAM is global (no region), but ARNs are account-scoped.
-      account: stack.account,
-      resource: 'role',
-      resourceName: `${edgeStackName}-*`,
-    });
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'iam:CreateRole',
-          'iam:DeleteRole',
-          'iam:TagRole',
-          'iam:UntagRole',
-          'iam:PutRolePolicy',
-          'iam:GetRolePolicy',
-          'iam:DeleteRolePolicy',
-          'iam:DetachRolePolicy',
-          'iam:GetRole',
-          'iam:ListRolePolicies',
-          'iam:ListAttachedRolePolicies',
-        ],
-        resources: [edgeRoleArnPrefix],
-      })
-    );
-    // iam:PassRole is scoped to the same role path but additionally gated to only Lambda services
-    // to prevent passing the role to other services or to unauthorized principals.
+  private grantExecutionRolePassage(blobAuthorizerRoleArn: string): void {
+    // The blob-authorizer execution role is created in the root stack and passed via parameter
+    // as a concrete ARN. Grant only iam:PassRole scoped to that specific role, gated to Lambda
+    // services to prevent passing the role to other services or to unauthorized principals.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['iam:PassRole'],
-        resources: [edgeRoleArnPrefix],
+        resources: [blobAuthorizerRoleArn],
         conditions: {
           StringEquals: {
             'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'],
-          },
-        },
-      })
-    );
-    // iam:AttachRolePolicy is scoped to the role path but additionally gated to only the managed
-    // policy that CloudFormation applies to Lambda execution roles, preventing privilege escalation
-    // via unrestricted policy attachment.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['iam:AttachRolePolicy'],
-        resources: [edgeRoleArnPrefix],
-        conditions: {
-          StringEquals: {
-            'iam:PolicyARN': 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
           },
         },
       })
@@ -315,15 +270,41 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
 
   private grantTaggingApiAccess(): void {
     // Some CloudFormation resources use the Resource Groups Tagging API behind the scenes.
-    // Grant it broadly; the individual service actions above remain scoped.
+    // GetResources is read-only enumeration and must remain unscopable (on *).
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
           'tag:GetResources',
+        ],
+        resources: ['*'],
+      })
+    );
+    // TagResources/UntagResources are constrained by aws:TagKeys to only the tag keys
+    // this deployer legitimately applies to the edge stack: the product/correlation tags
+    // (product, root-stack, stack, deployer_type, version) plus the component and edge-tier tags.
+    // Prevents escalation via rewriting the root-stack scoping tag or injecting arbitrary tags.
+    const edgeStackTagKeys = [
+      ServerlessInboxTagKeys.product,
+      ServerlessInboxTagKeys.rootStack,
+      ServerlessInboxTagKeys.stack,
+      ServerlessInboxTagKeys.component,
+      ServerlessInboxTagKeys.version,
+      ServerlessInboxTagKeys.deployerType,
+      ServerlessInboxTagKeys.edge,
+      ServerlessInboxTagKeys.rootRegion,
+    ];
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: [
           'tag:TagResources',
           'tag:UntagResources',
         ],
         resources: ['*'],
+        conditions: {
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': edgeStackTagKeys,
+          },
+        },
       })
     );
   }

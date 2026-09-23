@@ -1,4 +1,4 @@
-import { Aws, ArnFormat, Duration, Stack } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
@@ -16,54 +16,21 @@ export interface StackUpdateApiLambdaProps {
   readonly pointerKey: string;
   readonly templateUrlTemplate: string;
   readonly auditEventsQueue: IAuditEventsQueue;
-  /**
-   * Explicit name of the stack-update recovery state machine (`StackUpdateRecoveryInfra`).
-   *
-   * Passed as a name, not a reference: this Lambda and the state machine need each other's ARN
-   * (this Lambda's `STACK_UPDATE_STATE_MACHINE_ARN` env var; the state machine's role needs
-   * `lambda:InvokeFunction` on this Lambda), and threading a real CDK object reference both ways
-   * would create a CloudFormation circular dependency. Instead both sides are given the SAME
-   * deterministic name by their common composition root (`StackUpdateAddon`) and independently
-   * derive the state machine's ARN from `Aws.*` tokens + this name — no `Ref`/`GetAtt` from this
-   * Lambda's resource to the state machine's resource, so there is no cycle.
-   */
-  readonly stateMachineName: string;
 }
 
 /**
  * StackUpdate Lambda for human-gated CloudFormation ChangeSet operations
  * against the root stack.
  *
- * Executes with a dedicated IAM role that grants CloudFormation ChangeSet operations
- * (CreateChangeSet, DescribeChangeSet, ExecuteChangeSet, DeleteChangeSet, ListChangeSets,
- * DescribeStacks, GetTemplate) and S3 read access to template artifacts.
+ * Prepares CloudFormation ChangeSets (CreateChangeSet, DescribeChangeSet, DeleteChangeSet,
+ * ListChangeSets, DescribeStacks, GetTemplate) and reads template artifacts from S3.
  *
- * Does NOT have cloudformation:SetStackPolicy — that is exclusively for the
- * Stack Policy custom resource.
+ * Does NOT execute ChangeSets or manage stack rollback — those are performed manually in the
+ * AWS console under the operator's own credentials. Does NOT have cloudformation:SetStackPolicy
+ * — that is exclusively for the Stack Policy custom resource.
  */
 export class StackUpdateApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
-    // Built from Aws.* tokens + the shared deterministic name, never from the state machine
-    // construct itself — see the `stateMachineName` prop doc for why.
-    const stateMachineArn = Stack.of(scope).formatArn({
-      service: 'states',
-      resource: 'stateMachine',
-      resourceName: props.stateMachineName,
-      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
-      account: Aws.ACCOUNT_ID,
-      region: Aws.REGION,
-      partition: Aws.PARTITION,
-    });
-    const executionArnPattern = Stack.of(scope).formatArn({
-      service: 'states',
-      resource: 'execution',
-      resourceName: `${props.stateMachineName}:*`,
-      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
-      account: Aws.ACCOUNT_ID,
-      region: Aws.REGION,
-      partition: Aws.PARTITION,
-    });
-
     super(scope, id, {
       lambdaId: 'stack-update-api',
       pipeline: 'infra',
@@ -78,7 +45,6 @@ export class StackUpdateApiLambda extends GoLambda {
         POINTER_KEY: props.pointerKey,
         TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        STACK_UPDATE_STATE_MACHINE_ARN: stateMachineArn,
       },
     });
 
@@ -91,24 +57,18 @@ export class StackUpdateApiLambda extends GoLambda {
     // Grant send permission on the audit-events queue (shared HTTP registry audit path)
     props.auditEventsQueue.grantSend(this);
 
-    this.grantStackResourceManagement();
-    this.grantIamForChildRolesAndPolicies();
-    this.grantSelfStackCfnMeta();
-    this.grantRootStackRollbackRecovery(props.rootStackArn);
-    this.grantStackUpdateWorkflowControl(stateMachineArn);
-    this.grantStackUpdateWorkflowExecutionStatus(executionArnPattern);
+    this.grantSelfStackCfnMeta(props.rootStackArn);
   }
 
   private grantChangeSetOperations(rootStackArn: string) {
-    // Grant CloudFormation permissions for ChangeSet operations
-    // Note: ExecuteChangeSet and DescribeChangeSet authorize against the stack resource ARN
+    // Grant CloudFormation permissions for ChangeSet preparation only (no execution)
+    // Human executes ChangeSets in AWS console under their own credentials
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: [
           'cloudformation:CreateChangeSet',
           'cloudformation:DescribeChangeSet',
-          'cloudformation:ExecuteChangeSet',
           'cloudformation:DeleteChangeSet',
           'cloudformation:ListChangeSets',
           'cloudformation:DescribeStacks',
@@ -133,85 +93,10 @@ export class StackUpdateApiLambda extends GoLambda {
     );
   }
 
-  private grantStackResourceManagement() {
-    // Stack management permissions: Lambda now executes ChangeSet operations without a separate
-    // execution role. CloudFormation runs under the Lambda's identity when no RoleARN is provided.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid: 'StackResourceServices',
-        effect: Effect.ALLOW,
-        actions: [
-          'lambda:*',
-          'dynamodb:*',
-          's3:*',
-          'sqs:*',
-          'ses:*',
-          'cognito-idp:*',
-          'cloudfront:*',
-          'apigateway:*',
-          'logs:*',
-          'events:*',
-          'acm:*',
-          'route53:*',
-          'states:*',
-          'resource-groups:*',
-          'sns:*',
-          'ssm:PutParameter',
-          'ssm:DeleteParameter',
-          'ssm:GetParameter',
-          'ssm:GetParameters',
-          'ssm:AddTagsToResource',
-          'ssm:RemoveTagsFromResource',
-          'ssm:ListTagsForResource',
-        ],
-        resources: ['*'],
-      })
-    );
-  }
 
-  private grantIamForChildRolesAndPolicies() {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid: 'IamForChildRolesAndPolicies',
-        effect: Effect.ALLOW,
-        actions: [
-          'iam:CreateRole',
-          'iam:DeleteRole',
-          'iam:UpdateRole',
-          'iam:UpdateAssumeRolePolicy',
-          'iam:PutRolePermissionsBoundary',
-          'iam:DeleteRolePermissionsBoundary',
-          'iam:UpdateRoleDescription',
-          'iam:TagRole',
-          'iam:UntagRole',
-          'iam:PutRolePolicy',
-          'iam:DeleteRolePolicy',
-          'iam:AttachRolePolicy',
-          'iam:DetachRolePolicy',
-          'iam:CreatePolicy',
-          'iam:DeletePolicy',
-          'iam:CreatePolicyVersion',
-          'iam:DeletePolicyVersion',
-          'iam:SetDefaultPolicyVersion',
-          'iam:TagPolicy',
-          'iam:UntagPolicy',
-          'iam:PassRole',
-          'iam:CreateServiceLinkedRole',
-          'iam:GetRole',
-          'iam:GetRolePolicy',
-          'iam:GetPolicy',
-          'iam:GetPolicyVersion',
-          'iam:ListPolicyVersions',
-          'iam:ListEntitiesForPolicy',
-          'iam:ListRolePolicies',
-          'iam:ListAttachedRolePolicies',
-        ],
-        resources: ['*'],
-      })
-    );
-  }
-
-  private grantSelfStackCfnMeta() {
+  private grantSelfStackCfnMeta(rootStackArn: string) {
+    // Read-only access to root stack metadata: status updates, events, and template.
+    // Scoped to the root stack ARN only (not account-wide read of all stacks).
     this.addToRolePolicy(
       new PolicyStatement({
         sid: 'SelfStackCfnMeta',
@@ -221,50 +106,9 @@ export class StackUpdateApiLambda extends GoLambda {
           'cloudformation:DescribeStackEvents',
           'cloudformation:GetTemplate',
         ],
-        resources: ['*'],
-      })
-    );
-  }
-
-  private grantRootStackRollbackRecovery(rootStackArn: string) {
-    // Rollback-recovery reads/writes on the root stack, scoped to its ARN. DescribeStackEvents and
-    // iam:GetPolicy/iam:GetPolicyVersion are already granted above (SelfStackCfnMeta,
-    // IamForChildRolesAndPolicies respectively) — not repeated here.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid: 'RootStackRollbackRecovery',
-        effect: Effect.ALLOW,
-        actions: [
-          'cloudformation:ContinueUpdateRollback',
-          'cloudformation:DescribeStackResource',
-          'cloudformation:DescribeStackResources',
-        ],
         resources: [rootStackArn],
       })
     );
   }
 
-  private grantStackUpdateWorkflowControl(stateMachineArn: string) {
-    // Drive the recovery workflow: start a new episode, and check on this Lambda's own prior
-    // executions (dedup in `event-start`, cap-checking in R5). Never a broader `states:*` grant.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid: 'StackUpdateWorkflowControl',
-        effect: Effect.ALLOW,
-        actions: ['states:StartExecution', 'states:ListExecutions'],
-        resources: [stateMachineArn],
-      })
-    );
-  }
-
-  private grantStackUpdateWorkflowExecutionStatus(executionArnPattern: string) {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid: 'StackUpdateWorkflowExecutionStatus',
-        effect: Effect.ALLOW,
-        actions: ['states:DescribeExecution'],
-        resources: [executionArnPattern],
-      })
-    );
-  }
 }

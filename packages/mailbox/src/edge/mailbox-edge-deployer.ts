@@ -1,9 +1,12 @@
 import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IDataTable } from '../data/data-tables';
 import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
 
 export interface MailboxEdgeDeployerProps {
@@ -18,23 +21,20 @@ export interface MailboxEdgeDeployerProps {
   /** Optional prefix between endpoint and base domain (e.g. "mailbox" -> admin.mailbox.example.com) */
   readonly prefix?: string;
 
-  /** Route53 hosted zone ID for DNS validation (optional) */
-  readonly hostedZoneId?: string;
-
-  /** Route53 hosted zone name (required if hostedZoneId is provided) */
-  readonly hostedZoneName?: string;
+  /** Route53 hosted zone for DNS validation and certificate creation (optional) */
+  readonly hostedZone?: route53.IHostedZone;
 
   /** Whether to enable termination protection on the edge stack (default: false) */
   readonly terminationProtection?: boolean;
 
-  /** DynamoDB item table ARN (regional) used by blob-authorizer */
-  readonly itemTableArn: string;
+  /** DynamoDB item table (regional) used by blob-authorizer */
+  readonly itemTable: IDataTable;
 
-  /** DynamoDB config table ARN (regional) used by blob-authorizer */
-  readonly configTableArn: string;
+  /** DynamoDB config table (regional) used by blob-authorizer */
+  readonly configTable: IDataTable;
 
-  /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
-  readonly authKeyStoreTableArn: string;
+  /** DynamoDB auth key store table (regional) used by blob-authorizer */
+  readonly authKeyStoreTable: IDataTable;
 
   /** Product/stack version used for tagging edge resources. */
   readonly productVersion: string;
@@ -59,6 +59,9 @@ export class MailboxEdgeDeployer extends Construct {
   /** us-east-1 ACM certificate for CloudFront (only when hosted zone info is provided). */
   public readonly edgeCertificate?: acm.ICertificate;
 
+  /** Blob-authorizer Lambda@Edge execution role. */
+  public readonly blobAuthorizerRole: iam.IRole;
+
   /** Exposes the raw output map (access via getOutput). */
   private readonly resource: CustomResource;
 
@@ -66,6 +69,26 @@ export class MailboxEdgeDeployer extends Construct {
     super(scope, id);
 
     const stack = Stack.of(this);
+
+    // Lambda@Edge execution role. Note: replicas continue running for ~4 hours after function deletion,
+    // but they operate with cached credentials and do not need the role to remain. The role is deleted
+    // with the stack. On replacement (stack update), CloudFormation creates the new role before deleting
+    // the old one, and the edge function is updated with the new ARN in the same operation.
+    this.blobAuthorizerRole = new iam.Role(this, 'blob-authorizer-role', {
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal('lambda.amazonaws.com'),
+        new iam.ServicePrincipal('edgelambda.amazonaws.com'),
+      ),
+      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+    });
+
+    // Grant DynamoDB read access (via the tables' own grant methods, not hand-built ARN strings).
+    props.itemTable.grantRead(this.blobAuthorizerRole);
+    props.configTable.grantRead(this.blobAuthorizerRole);
+    props.authKeyStoreTable.grantRead(this.blobAuthorizerRole);
 
     // IMPORTANT: use the *deployed* CloudFormation stack name, not the CDK logical stack id.
     // This ensures the synthesized template behaves correctly when deployed via pure CloudFormation.
@@ -92,7 +115,8 @@ export class MailboxEdgeDeployer extends Construct {
         artifactObjectArns: [
           props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip', 'us-east-1'),
         ],
-        hostedZoneId: props.hostedZoneId,
+        hostedZoneId: props.hostedZone?.hostedZoneId,
+        blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
       }),
     });
 
@@ -105,9 +129,10 @@ export class MailboxEdgeDeployer extends Construct {
       domainName: props.domainName,
       artifactBucket: blobAuthorizerResolved.bucket,
       blobAuthorizerKey: blobAuthorizerResolved.key,
-      itemTableArn: props.itemTableArn,
-      configTableArn: props.configTableArn,
-      authKeyStoreTableArn: props.authKeyStoreTableArn,
+      blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
+      itemTableArn: props.itemTable.tableArn,
+      configTableArn: props.configTable.tableArn,
+      authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
       logGroupName: props.logGroupName,
 
       // Tagging/back-reference parameters (consumed by the edge stack template).
@@ -135,9 +160,9 @@ export class MailboxEdgeDeployer extends Construct {
       cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
     }
 
-    if (props.hostedZoneId && props.hostedZoneName) {
-      cfnParameters.hostedZoneId = props.hostedZoneId;
-      cfnParameters.hostedZoneName = props.hostedZoneName;
+    if (props.hostedZone) {
+      cfnParameters.hostedZoneId = props.hostedZone.hostedZoneId;
+      cfnParameters.hostedZoneName = props.hostedZone.zoneName;
     }
 
     this.resource = new CustomResource(this, 'resource', {
@@ -171,7 +196,7 @@ export class MailboxEdgeDeployer extends Construct {
       this.getOutput('blobAuthorizerVersionArn'),
     );
 
-    const hasHostedZone = Boolean(props.hostedZoneId && props.hostedZoneName);
+    const hasHostedZone = Boolean(props.hostedZone);
     if (hasHostedZone) {
       const certificateArn = this.getOutput('edgeCertificateArn');
       this.edgeCertificate = acm.Certificate.fromCertificateArn(

@@ -85,11 +85,35 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantTaggingApiAccess(): void {
-    // AWS Tagging API — CloudFormation uses these broadly when managing tagged resources
+    // AWS Tagging API — CloudFormation uses these broadly when managing tagged resources.
+    // GetResources is read-only enumeration and must remain unscopable (on *).
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['tag:GetResources', 'tag:TagResources', 'tag:UntagResources'],
+        actions: ['tag:GetResources'],
         resources: ['*'],
+      }),
+    );
+    // TagResources/UntagResources are constrained by aws:TagKeys to only the tag keys
+    // applyServerlessInboxBaseTags and applyServerlessInboxComponentTag actually apply:
+    // the product/correlation tags plus the component tag. Prevents escalation via rewriting
+    // the root-stack scoping tag or injecting arbitrary tags (same scoping as grantUserPoolTagging).
+    const cognitoStackTagKeys = [
+      ServerlessInboxTagKeys.product,
+      ServerlessInboxTagKeys.rootStack,
+      ServerlessInboxTagKeys.stack,
+      ServerlessInboxTagKeys.component,
+      ServerlessInboxTagKeys.version,
+      ServerlessInboxTagKeys.deployerType,
+    ];
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['tag:TagResources', 'tag:UntagResources'],
+        resources: ['*'],
+        conditions: {
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': cognitoStackTagKeys,
+          },
+        },
       }),
     );
   }
