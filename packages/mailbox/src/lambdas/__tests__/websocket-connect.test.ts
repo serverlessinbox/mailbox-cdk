@@ -3,7 +3,7 @@
 /**
  * WebSocketConnectLambda connections-table grant tests (grant-concept unit B).
  *
- * Verifies WebSocketConnectLambda grants exactly DynamoDbActions.write on the connections table
+ * Verifies WebSocketConnectLambda grants exactly DynamoDbActions.readWrite on the connections table
  * (and nothing broader, e.g. no Scan/PartiQL/Deny), via the real WebSocketTable construct.
  */
 
@@ -77,7 +77,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     );
   }
 
-  it('grants exactly DynamoDbActions.write, Allow, on the connections table + index resources', () => {
+  it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
     const tableId = 'websockettablewebsocketv23A17BE62';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -88,7 +88,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.write]),
+            Action: Match.arrayEquals([...DynamoDbActions.readWrite]),
             Effect: 'Allow',
             Resource: expectedResource,
           }),

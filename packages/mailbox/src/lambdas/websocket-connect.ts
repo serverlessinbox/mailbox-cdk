@@ -26,7 +26,7 @@ export class WebSocketConnectLambda extends GoLambda {
     });
 
     // Grant permissions
-    props.connectionsTable.grantWrite(this);
+    props.connectionsTable.grantReadWrite(this);
     props.configTable.grantRead(this);
   }
 }
