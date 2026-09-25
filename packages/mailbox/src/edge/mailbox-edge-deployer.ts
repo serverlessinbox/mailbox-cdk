@@ -85,9 +85,9 @@ export class MailboxEdgeDeployer extends Construct {
       ],
     });
 
-    // Grant DynamoDB read access (via the tables' own grant methods, not hand-built ARN strings).
-    props.itemTable.grantRead(this.blobAuthorizerRole);
-    props.configTable.grantRead(this.blobAuthorizerRole);
+    // Grant DynamoDB read access (via the table's own grant method, not a hand-built ARN string).
+    // The blob-authorizer only reads a signing key from the auth key store; it never touches the
+    // item or config tables.
     props.authKeyStoreTable.grantRead(this.blobAuthorizerRole);
 
     // IMPORTANT: use the *deployed* CloudFormation stack name, not the CDK logical stack id.

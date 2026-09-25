@@ -2,7 +2,8 @@ import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
 
 /**
- * Parsed HMAC token payload
+ * HMAC session token payload: the set of accounts the bearer may access, plus the issuer
+ * and audience that must be agreed with the JWT.
  */
 export interface HmacTokenPayload {
   tenantId: string;
@@ -12,7 +13,8 @@ export interface HmacTokenPayload {
 }
 
 /**
- * HMAC signing keys fetched from the JWK cache table
+ * HMAC signing keys from the auth key store. `current` is the active key; `previous` is
+ * accepted during key rotation and omitted when no rotation is in flight.
  */
 interface HmacKeys {
   current: Buffer;
@@ -24,11 +26,6 @@ let hmacKeysCache: { value: HmacKeys; fetchedAt: number } | null = null;
 
 const HMAC_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-/**
- * Fetch HMAC keys from the JWK cache table.
- * Uses module-level cache with 30-minute TTL.
- * Returns null if the item is absent.
- */
 export async function getHmacKeys(
   dynamodb: DynamoDBClient,
   authKeyStoreTable: string,
@@ -65,7 +62,7 @@ export async function getHmacKeys(
 /**
  * Verify a single HMAC token against one key.
  *
- * Token format (matches Go signer in session/provider.go):
+ * Token format (matches Go session-token signer):
  *   base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload_bytes))
  *   payload_string = "{tenantId}|{issuer}|{audience}|{accountId1,accountId2,...}"
  *
@@ -83,7 +80,6 @@ export function verifyHmacToken(
   const payloadB64 = token.slice(0, dotIndex);
   const sigB64 = token.slice(dotIndex + 1);
 
-  // Ensure exactly two parts (no extra dots in either segment)
   if (payloadB64.includes('.') || sigB64.includes('.')) {
     return null;
   }
@@ -122,11 +118,6 @@ export function verifyHmacToken(
   };
 }
 
-/**
- * Verify an HMAC token with key rotation support.
- * Tries the current key first, then falls back to the previous key if present.
- * Returns the parsed payload on success, or null if verification fails.
- */
 export async function verifyHmacTokenWithRotation(
   token: string,
   dynamodb: DynamoDBClient,
@@ -150,4 +141,45 @@ export async function verifyHmacTokenWithRotation(
   }
 
   return null;
+}
+
+/**
+ * Verify a base64url-encoded HMAC-SHA256 MAC over payload against one key, using a
+ * constant-time comparison. The MAC construction matches the Go blob-signer:
+ * base64url(HMAC-SHA256(key, payload)), no padding.
+ */
+export function verifyBlobIdMac(payload: string, macB64Url: string, key: Buffer): boolean {
+  let macBytes: Buffer;
+  try {
+    macBytes = Buffer.from(macB64Url, 'base64url');
+  } catch {
+    return false;
+  }
+
+  const expected = crypto.createHmac('sha256', key).update(Buffer.from(payload, 'utf8')).digest();
+
+  return expected.length === macBytes.length && crypto.timingSafeEqual(expected, macBytes);
+}
+
+/**
+ * Verify a blob ID's MAC with key rotation support, using the same auth-key-store entry
+ * (`pk: "hmac", sk: "blob-url-signing"`) and module-level cache as the session HMAC token -
+ * no second key, no second DynamoDB read.
+ */
+export async function verifyBlobIdMacWithRotation(
+  payload: string,
+  macB64Url: string,
+  dynamodb: DynamoDBClient,
+  authKeyStoreTable: string,
+): Promise<boolean> {
+  const keys = await getHmacKeys(dynamodb, authKeyStoreTable);
+  if (keys === null) {
+    return false;
+  }
+
+  if (verifyBlobIdMac(payload, macB64Url, keys.current)) {
+    return true;
+  }
+
+  return keys.previous !== undefined && verifyBlobIdMac(payload, macB64Url, keys.previous);
 }

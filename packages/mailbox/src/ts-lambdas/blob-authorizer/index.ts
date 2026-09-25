@@ -2,14 +2,15 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { extractConfig } from './config';
 import { verifyJWTSignatureOnly, extractToken } from './jwt';
-import { verifyHmacTokenWithRotation } from './hmac';
+import { verifyHmacTokenWithRotation, verifyBlobIdMacWithRotation } from './hmac';
 import {
   createErrorResponse,
   extractDownloadParams,
   parseBlobId,
   constructS3Key,
   addDownloadHeaders,
-  decodeBase64UrlBlobId
+  decodeBase64UrlBlobId,
+  isSafeBlobPath
 } from './utils';
 
 // Module-level DynamoDB client (lazy init — region is fixed per CloudFront distribution)
@@ -31,16 +32,7 @@ function getDynamoDBClient(region: string): DynamoDBClient {
  * JMAP Download URL format (RFC 8620):
  * GET /download?accountId={accountId}&blobId={blobId}&type={type}&name={name}
  * Authorization: Bearer <JWT token>
- *
- * Flow:
- * 1. Extract JMAP download parameters (accountId, blobId, type, name)
- * 2. Parse blobId to get emailID and path
- * 3. Verify JWT token and extract user context (userId, accountIds)
- * 4. Verify requested accountId is in user's allowed accountIds
- * 5. Query DynamoDB to get email entity
- * 6. Verify email's accountId matches requested accountId
- * 7. Construct S3 key and add content headers
- * 8. Forward request to S3 origin
+ * query ?auth={auth-token}
  */
 export const handler = async (event: any) => {
   const logger = new LoggerBuffer();
@@ -146,7 +138,6 @@ export const handler = async (event: any) => {
 
     logger.debug('JWT verified; verifying HMAC token');
 
-    // Delegate to hmac.ts
     const hmacPayload = await verifyHmacTokenWithRotation(authToken, dynamodb, config.authKeyStoreTable);
     if (!hmacPayload) {
       logger.error('HMAC token verification failed');
@@ -172,6 +163,41 @@ export const handler = async (event: any) => {
       logger.flush();
       return createErrorResponse(403, 'Access denied: audience mismatch');
     }
+
+    // Verify per-blob MAC for email blobs
+    if (parsed.type === 'email') {
+      if (parsed.mac === null) {
+        logger.error('Access denied: email blob missing MAC');
+        logger.flush();
+        return createErrorResponse(403, 'Access denied: invalid blob');
+      }
+
+      const macPayload = `${hmacPayload.tenantId}|${params.accountId}|${parsed.entityId}`;
+      const mac = parsed.mac;
+      const macValid = await verifyBlobIdMacWithRotation(
+        macPayload,
+        mac,
+        dynamodb,
+        config.authKeyStoreTable,
+      );
+
+      if (!macValid) {
+        logger.error('Access denied: blob MAC verification failed');
+        logger.flush();
+        return createErrorResponse(403, 'Access denied: invalid blob');
+      }
+
+      logger.debug('Blob MAC verified');
+    }
+
+    // Verify blob path is safe for all types
+    if (!isSafeBlobPath(parsed.path)) {
+      logger.error('Access denied: unsafe blob path');
+      logger.flush();
+      return createErrorResponse(403, 'Access denied: invalid blob path');
+    }
+
+    logger.debug('Blob path safety verified');
 
     const s3Key = constructS3Key(hmacPayload.tenantId, params.accountId, parsed);
     logger.debug('Authorization successful; constructing S3 key', { s3KeyLen: s3Key.length });

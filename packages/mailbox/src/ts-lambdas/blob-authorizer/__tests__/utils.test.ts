@@ -1,3 +1,9 @@
+/**
+ * Tests for blob ID decoding, parsing, and validation utilities.
+ * These tests pin the parsing logic for all blob ID types (email, contact, principal),
+ * MAC extraction, path safety checks, and the decoding roundtrip.
+ */
+
 import {
   decodeBase64UrlBlobId,
   parseBlobId,
@@ -54,17 +60,40 @@ describe('decodeBase64UrlBlobId', () => {
 });
 
 describe('parseBlobId with decoded values', () => {
-  it('parses email blobId from decoded string', () => {
+  it('parses email blobId with MAC from decoded string', () => {
+    const decodedBlobId = 'eml:emailID12345:document.pdf:dGVzdG1hY2RhdGE';
+    const parsed = parseBlobId(decodedBlobId);
+    expect(parsed).toEqual({
+      type: 'email',
+      entityId: 'emailID12345',
+      path: 'document.pdf',
+      mac: 'dGVzdG1hY2RhdGE',
+    });
+  });
+
+  it('returns email blob with mac: null for unsigned email blobId (no MAC)', () => {
     const decodedBlobId = 'eml:emailID12345:document.pdf';
     const parsed = parseBlobId(decodedBlobId);
     expect(parsed).toEqual({
       type: 'email',
       entityId: 'emailID12345',
       path: 'document.pdf',
+      mac: null,
     });
   });
 
-  it('parses contact blobId from decoded string', () => {
+  it('parses email blobId with colons in filename correctly', () => {
+    const decodedBlobId = 'eml:emailID:file:with:colons.pdf:dGVzdG1hYzI';
+    const parsed = parseBlobId(decodedBlobId);
+    expect(parsed).toEqual({
+      type: 'email',
+      entityId: 'emailID',
+      path: 'file:with:colons.pdf',
+      mac: 'dGVzdG1hYzI',
+    });
+  });
+
+  it('parses contact blobId from decoded string (unchanged)', () => {
     const decodedBlobId = 'cnt:cardID789:photo.jpg';
     const parsed = parseBlobId(decodedBlobId);
     expect(parsed).toEqual({
@@ -74,7 +103,7 @@ describe('parseBlobId with decoded values', () => {
     });
   });
 
-  it('parses principal blobId from decoded string', () => {
+  it('parses principal blobId from decoded string (unchanged)', () => {
     const decodedBlobId = 'prn:principalID:avatar.png';
     const parsed = parseBlobId(decodedBlobId);
     expect(parsed).toEqual({
@@ -93,11 +122,22 @@ describe('parseBlobId with decoded values', () => {
     const parsed = parseBlobId('eml:onlyEntityId');
     expect(parsed).toBeNull();
   });
+
+  it('contact blobId with colon in path still works (no MAC in cnt)', () => {
+    const decodedBlobId = 'cnt:cardID:path:with:colons.jpg';
+    const parsed = parseBlobId(decodedBlobId);
+    expect(parsed).toEqual({
+      type: 'contact',
+      entityId: 'cardID',
+      path: 'path:with:colons.jpg',
+    });
+  });
 });
 
 describe('full base64url decode → parse flow', () => {
-  it('decodes and parses email blobId end-to-end', () => {
-    const originalBlobId = 'eml:qpG-DL09M671kUyuDfn0r:original.eml';
+  it('decodes and parses email blobId with MAC end-to-end', () => {
+    const mac = 'dGVzdG1hY2RhdGE';  // test MAC
+    const originalBlobId = `eml:qpG-DL09M671kUyuDfn0r:original.eml:${mac}`;
     const encoded = Buffer.from(originalBlobId, 'utf-8').toString('base64url');
 
     const decoded = decodeBase64UrlBlobId(encoded);
@@ -109,10 +149,27 @@ describe('full base64url decode → parse flow', () => {
       type: 'email',
       entityId: 'qpG-DL09M671kUyuDfn0r',
       path: 'original.eml',
+      mac: mac,
     });
   });
 
-  it('decodes and parses contact blobId end-to-end', () => {
+  it('returns email blob with mac: null when email blobId lacks MAC (unsigned blob)', () => {
+    const originalBlobId = 'eml:qpG-DL09M671kUyuDfn0r:original.eml';
+    const encoded = Buffer.from(originalBlobId, 'utf-8').toString('base64url');
+
+    const decoded = decodeBase64UrlBlobId(encoded);
+    expect(decoded).toBe(originalBlobId);
+
+    const parsed = parseBlobId(decoded!);
+    expect(parsed).toEqual({
+      type: 'email',
+      entityId: 'qpG-DL09M671kUyuDfn0r',
+      path: 'original.eml',
+      mac: null,
+    });
+  });
+
+  it('decodes and parses contact blobId end-to-end (unchanged)', () => {
     const originalBlobId = 'cnt:contactID-ABC_123:photo.jpg';
     const encoded = Buffer.from(originalBlobId, 'utf-8').toString('base64url');
 
