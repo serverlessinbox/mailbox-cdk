@@ -1,4 +1,24 @@
+import type { CloudFormationCustomResourceUpdateEvent, Context } from 'aws-lambda';
 import { isParentStackRollingBack } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+// wrapHandler uses https module, so mock it to capture responses
+const mockSentResponseBodies: string[] = [];
+jest.mock('https', () => ({
+  ...jest.requireActual<typeof import('https')>('https'),
+  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
+    const chunks: string[] = [];
+    return {
+      on: () => undefined,
+      write: (chunk: string) => {
+        chunks.push(chunk);
+      },
+      end: () => {
+        mockSentResponseBodies.push(chunks.join(''));
+        onResponse({ statusCode: 200, headers: {} });
+      },
+    };
+  },
+}));
 
 // mailbox-cognito has no dependency on @aws-sdk/client-cloudformation (the boundary
 // isParentStackRollingBack itself talks to), so — unlike the mailbox-cdk-shared
@@ -9,64 +29,73 @@ jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   isParentStackRollingBack: jest.fn(),
 }));
 
-// Mock the HTTPS module before importing the handler (matches index.test.ts).
-jest.mock('node:https');
-
-// Import the handler after mocking, so its module-level `sendResponse` uses the mock.
+// Import handler after mocking
 import { handler } from '../index';
 
 const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<
   typeof isParentStackRollingBack
 >;
 
+const FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:bootstrap-user';
+const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/guid';
+const RESPONSE_URL = 'https://cloudformation-custom-resource-response.example.com/response';
+
+const context: Context = {
+  callbackWaitsForEmptyEventLoop: false,
+  functionName: 'bootstrap-user',
+  functionVersion: '$LATEST',
+  invokedFunctionArn: FUNCTION_ARN,
+  memoryLimitInMB: '256',
+  awsRequestId: 'aws-request-id',
+  logGroupName: '/aws/lambda/bootstrap-user',
+  logStreamName: 'log-stream',
+  getRemainingTimeInMillis: () => 60000,
+  done: () => undefined,
+  fail: () => undefined,
+  succeed: () => undefined,
+};
+
+function baseEvent(overrides: Record<string, unknown> = {}): CloudFormationCustomResourceUpdateEvent {
+  return {
+    RequestType: 'Update',
+    ServiceToken: FUNCTION_ARN,
+    ResponseURL: RESPONSE_URL,
+    StackId: STACK_ID,
+    RequestId: 'unique-id',
+    ResourceType: 'Custom::BootstrapUser',
+    LogicalResourceId: 'BootstrapUserResource',
+    // Missing userPoolId forces the handler's own validation to throw, driving it
+    // into the rollback-suppression branch without any real Cognito call.
+    ResourceProperties: {
+      ServiceToken: FUNCTION_ARN,
+    },
+    PhysicalResourceId: 'physical-id',
+    OldResourceProperties: {
+      ServiceToken: FUNCTION_ARN,
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Invokes the real handler and returns the parsed CFN response body sent via
+ * the mocked https module — captures what wrapHandler sends.
+ */
+async function invokeAndCaptureResponse(event: CloudFormationCustomResourceUpdateEvent): Promise<any> {
+  mockSentResponseBodies.length = 0;
+
+  // The handler may throw after sending a FAILED response (wrapHandler catches it),
+  // or may return after sending SUCCESS (for rollback suppression).
+  await (handler as any)(event, context).catch(() => undefined);
+
+  expect(mockSentResponseBodies).toHaveLength(1);
+  return JSON.parse(mockSentResponseBodies[0]);
+}
+
 describe('bootstrap-user handler rollback behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
-
-  function baseEvent(overrides: Record<string, unknown> = {}) {
-    return {
-      RequestType: 'Update',
-      ResponseURL: 'https://example.com/response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-      RequestId: 'unique-id',
-      ResourceType: 'Custom::BootstrapUser',
-      LogicalResourceId: 'BootstrapUserResource',
-      // Missing userPoolId forces the handler's own validation to throw, driving it
-      // into the rollback-suppression branch without any real Cognito call.
-      ResourceProperties: {},
-      PhysicalResourceId: 'physical-id',
-      ...overrides,
-    };
-  }
-
-  /**
-   * Invokes the real handler and returns the parsed CFN response body sent via
-   * the mocked `node:https` request's `write` call — mirrors index.test.ts.
-   */
-  async function invokeAndCaptureResponse(event: ReturnType<typeof baseEvent>): Promise<any> {
-    const mockRequest = {
-      on: jest.fn().mockReturnThis(),
-      write: jest.fn().mockReturnThis(),
-      end: jest.fn().mockReturnThis(),
-    };
-
-    // eslint-disable-next-line global-require
-    const httpsModule = require('node:https');
-    httpsModule.request.mockImplementation((_opts: any, callback: any) => {
-      if (callback) {
-        callback({ statusCode: 200, resume: jest.fn() });
-      }
-      return mockRequest;
-    });
-
-    // The handler re-throws after sending a FAILED response (so the Lambda invocation
-    // itself is recorded as failed) — expected on every non-suppressed failure path.
-    await (handler as any)(event, {}).catch(() => undefined);
-
-    const writeCall = (mockRequest.write as jest.Mock).mock.calls[0];
-    return JSON.parse(writeCall[0]);
-  }
 
   describe('on Update with Cognito failure and parent rolling back', () => {
     it('sends SUCCESS response with the unchanged PhysicalResourceId', async () => {
@@ -78,6 +107,16 @@ describe('bootstrap-user handler rollback behavior', () => {
       expect(response.Status).toBe('SUCCESS');
       expect(response.PhysicalResourceId).toBe(event.PhysicalResourceId);
     });
+
+    it('includes password marker in Data on rollback suppression', async () => {
+      mockIsParentStackRollingBack.mockResolvedValue(true);
+
+      const event = baseEvent({ RequestType: 'Update' });
+      const response = await invokeAndCaptureResponse(event);
+
+      expect(response.Status).toBe('SUCCESS');
+      expect(response.Data?.temporaryPassword).toBe('(password set at install time)');
+    });
   });
 
   describe('on Update with Cognito failure and parent not rolling back', () => {
@@ -88,7 +127,7 @@ describe('bootstrap-user handler rollback behavior', () => {
       const response = await invokeAndCaptureResponse(event);
 
       expect(response.Status).toBe('FAILED');
-      expect(response.Reason).toContain('Missing required property: userPoolId');
+      expect(response.Reason).toContain('Invalid ResourceProperties');
       expect(response.PhysicalResourceId).toBe(event.PhysicalResourceId);
     });
   });
@@ -111,7 +150,7 @@ describe('bootstrap-user handler rollback behavior', () => {
     it('sends FAILED — rollback suppression only applies to Update', async () => {
       mockIsParentStackRollingBack.mockResolvedValue(true);
 
-      const event = baseEvent({ RequestType: 'Create', PhysicalResourceId: undefined });
+      const event: any = baseEvent({ RequestType: 'Create', PhysicalResourceId: undefined });
       const response = await invokeAndCaptureResponse(event);
 
       expect(response.Status).toBe('FAILED');

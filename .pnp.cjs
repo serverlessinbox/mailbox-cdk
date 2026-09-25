@@ -5864,6 +5864,7 @@ const RAW_RUNTIME_STATE =
           ["@types/node", "npm:24.10.1"],\
           ["@types/serverlessinbox__mailbox", null],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["aws-custom-resources", "npm:0.0.4"],\
           ["aws-sdk-client-mock", "npm:4.1.0"],\
           ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\
@@ -5903,6 +5904,7 @@ const RAW_RUNTIME_STATE =
           ["@types/jest", "npm:29.5.14"],\
           ["@types/node", "npm:24.10.1"],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["aws-custom-resources", "npm:0.0.4"],\
           ["aws-sdk-client-mock", "npm:4.1.0"],\
           ["constructs", "npm:10.6.0"],\
           ["esbuild", "npm:0.27.1"],\

@@ -1,4 +1,4 @@
-import { Aws, CustomResource, SecretValue } from 'aws-cdk-lib';
+import { Aws, CustomResource, Duration, SecretValue } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -510,7 +510,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         username: config.username,
         groups: config.groups,
         temporaryPassword: config.temporaryPassword,
+        // Force re-invocation when response contract changes (e.g., Data field added)
+        responseContractVersion: '1',
       },
+      serviceTimeout: Duration.minutes(4),
     });
 
     handler.addToRolePolicy(

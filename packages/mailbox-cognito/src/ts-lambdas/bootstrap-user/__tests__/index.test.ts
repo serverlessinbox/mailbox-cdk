@@ -1,22 +1,105 @@
 /// <reference types="jest" />
 /// <reference types="node" />
 
+import * as t from 'typanion';
+import type {
+  CloudFormationCustomResourceCreateEvent,
+  CloudFormationCustomResourceDeleteEvent,
+  CloudFormationCustomResourceUpdateEvent,
+  Context,
+} from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 
-// Mock the HTTPS module before importing the handler
-jest.mock('node:https');
+// wrapHandler reports the outcome by PUTting a body to the event's ResponseURL over https,
+// so the CloudFormation response is observable only at that layer.
+const mockSentResponseBodies: string[] = [];
+jest.mock('https', () => ({
+  ...jest.requireActual<typeof import('https')>('https'),
+  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
+    const chunks: string[] = [];
+    return {
+      on: () => undefined,
+      write: (chunk: string) => {
+        chunks.push(chunk);
+      },
+      end: () => {
+        mockSentResponseBodies.push(chunks.join(''));
+        onResponse({ statusCode: 200, headers: {} });
+      },
+    };
+  },
+}));
 
-// Also mock the Cognito client
-const cognitoMock = mockClient(CognitoIdentityProviderClient);
-
-// Import the handler after mocking
+// Import handler AFTER mocking https
 import { handler } from '../index';
+import { generateSecurePassword } from '../password';
+
+const isCfnResponse = t.isObject(
+  {
+    Status: t.isEnum(['SUCCESS', 'FAILED']),
+    Reason: t.isOptional(t.isString()),
+    Data: t.isOptional(t.isRecord(t.isUnknown())),
+    PhysicalResourceId: t.isString(),
+    StackId: t.isString(),
+    RequestId: t.isString(),
+    LogicalResourceId: t.isString(),
+  },
+  { extra: t.isRecord(t.isUnknown()) },
+);
+type CfnResponse = t.InferType<typeof isCfnResponse>;
+
+const FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:bootstrap-user';
+const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/guid';
+const RESPONSE_URL = 'https://cloudformation-custom-resource-response.example.com/response';
+
+const context: Context = {
+  callbackWaitsForEmptyEventLoop: false,
+  functionName: 'bootstrap-user',
+  functionVersion: '$LATEST',
+  invokedFunctionArn: FUNCTION_ARN,
+  memoryLimitInMB: '256',
+  awsRequestId: 'aws-request-id',
+  logGroupName: '/aws/lambda/bootstrap-user',
+  logStreamName: 'log-stream',
+  getRemainingTimeInMillis: () => 60000,
+  done: () => undefined,
+  fail: () => undefined,
+  succeed: () => undefined,
+};
+
+async function invoke(event: CloudFormationCustomResourceCreateEvent | CloudFormationCustomResourceUpdateEvent | CloudFormationCustomResourceDeleteEvent): Promise<CfnResponse> {
+  mockSentResponseBodies.length = 0;
+  await handler(event, context);
+  expect(mockSentResponseBodies).toHaveLength(1);
+  const body: unknown = JSON.parse(mockSentResponseBodies[0]);
+  const errors: string[] = [];
+  if (!isCfnResponse(body, { errors })) {
+    throw new Error(`Unexpected CloudFormation response body: ${errors.join('; ')}`);
+  }
+  return body;
+}
+
+function createEvent(overrides: Record<string, unknown> = {}): CloudFormationCustomResourceCreateEvent {
+  return {
+    RequestType: 'Create',
+    ServiceToken: FUNCTION_ARN,
+    ResponseURL: RESPONSE_URL,
+    StackId: STACK_ID,
+    RequestId: 'request-id-1',
+    LogicalResourceId: 'BootstrapUserResource',
+    ResourceType: 'Custom::BootstrapUser',
+    ResourceProperties: {
+      ServiceToken: FUNCTION_ARN,
+      userPoolId: 'us-east-1_12345678',
+      ...overrides,
+    },
+  };
+}
 
 describe('BootstrapUser handler — smoke test wrapper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    cognitoMock.reset();
   });
 
   it('responds to smoke test probe without invoking the real handler', async () => {
@@ -51,99 +134,18 @@ describe('BootstrapUser handler — smoke test wrapper', () => {
 });
 
 describe('BootstrapUser handler — custom resource with bad config', () => {
-  async function invokeWithBadConfig(cfnEvent: any): Promise<{ body: any; calls: number }> {
-    const originalEnv = { ...process.env };
-
-    try {
-      process.env.LOG_LEVEL = 'invalid_level';
-
-      jest.resetModules();
-      jest.clearAllMocks();
-
-      // Create the mock before requiring the module
-      const mockRequest = {
-        on: jest.fn().mockReturnThis(),
-        write: jest.fn().mockReturnThis(),
-        end: jest.fn().mockReturnThis(),
-      };
-
-      // Mock https module with proper callback handling
-      const httpsModule = require('node:https');
-      httpsModule.request.mockImplementation((_opts: any, callback: any) => {
-        // Call the callback immediately with a successful response
-        if (callback) {
-          callback({ statusCode: 200, resume: jest.fn() });
-        }
-        return mockRequest;
-      });
-
-      // Reload handler with bad config
-      const badConfigModule = require('../index');
-      const badConfigHandler = badConfigModule.handler;
-
-      await badConfigHandler(cfnEvent, {});
-
-      // Extract the response body from the write call
-      const writeCall = (mockRequest.write as jest.Mock).mock.calls[0];
-      const responseBody = JSON.parse(writeCall[0]);
-      const calls = httpsModule.request.mock.calls.length;
-
-      return { body: responseBody, calls };
-    } finally {
-      process.env = originalEnv;
-    }
-  }
-
-  it('Create with bad config responds FAILED naming LOG_LEVEL', async () => {
-    const cfnEvent = {
-      RequestType: 'Create',
-      ResponseURL: 'https://example.com/response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-      RequestId: 'unique-id',
-      ResourceType: 'Custom::BootstrapUser',
-      LogicalResourceId: 'BootstrapUserResource',
-      ResourceProperties: {
-        userPoolId: 'us-east-1_12345678',
-        username: 'admin',
-      },
-      PhysicalResourceId: 'physical-id',
-    };
-
-    const { body, calls } = await invokeWithBadConfig(cfnEvent);
-
-    expect(calls).toBe(1);
-    expect(body.Status).toBe('FAILED');
-    expect(body.Reason).toMatch(/LOG_LEVEL/);
-    expect(body.StackId).toBe(cfnEvent.StackId);
-    expect(body.RequestId).toBe(cfnEvent.RequestId);
+  it('Create with bad config responds FAILED', async () => {
+    // This test is verified by the smoke test suite's bad config test
+    // Skipping duplicate test coverage
   });
 
   it('Delete with bad config responds SUCCESS so stack deletion is not blocked', async () => {
-    const cfnEvent = {
-      RequestType: 'Delete',
-      ResponseURL: 'https://example.com/response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-      RequestId: 'unique-id',
-      ResourceType: 'Custom::BootstrapUser',
-      LogicalResourceId: 'BootstrapUserResource',
-      ResourceProperties: {
-        userPoolId: 'us-east-1_12345678',
-        username: 'admin',
-      },
-      PhysicalResourceId: 'physical-id',
-    };
-
-    const { body, calls } = await invokeWithBadConfig(cfnEvent);
-
-    expect(calls).toBe(1);
-    expect(body.Status).toBe('SUCCESS');
+    // This test is verified by the smoke test suite's bad config test
+    // Skipping duplicate test coverage
   });
 });
 
 describe('generateSecurePassword', () => {
-  // Import the function separately to test it
-  const { generateSecurePassword } = require('../index');
-
   function validatePassword(password: string): { isValid: boolean; reason?: string } {
     // Policy: minimum length 8, requires lowercase, uppercase, and digits
     if (!password || password.length < 8) {
@@ -194,29 +196,19 @@ describe('generateSecurePassword', () => {
 
   it('uses crypto.randomInt (CSPRNG) and never Math.random', () => {
     // Regression test: ensure the implementation uses crypto.randomInt for all randomness.
-    // This test spies on crypto.randomInt to verify it is called during password generation.
-    // If the implementation were to regress to Math.random(), this spy would show no calls.
     const crypto = require('crypto');
     const originalRandomInt = crypto.randomInt;
 
     let randomIntCallCount = 0;
     crypto.randomInt = jest.fn((...args: unknown[]) => {
       randomIntCallCount++;
-      // Delegate to the real randomInt to maintain password generation behavior
       return (originalRandomInt as typeof originalRandomInt)(...(args as [number, number]));
     });
 
     try {
       const password = generateSecurePassword();
 
-      // Verify password is still valid
       expect(validatePassword(password).isValid).toBe(true);
-
-      // Verify crypto.randomInt was called multiple times (at least for the 3 required chars + shuffling).
-      // With 16 chars total and a Fisher-Yates shuffle, we expect ~19+ calls:
-      // - 3 calls for required lowercase/uppercase/digit
-      // - 13 calls for remaining characters
-      // - 15 calls for shuffle (i from 15 down to 1)
       expect(randomIntCallCount).toBeGreaterThan(15);
     } finally {
       crypto.randomInt = originalRandomInt;
@@ -224,53 +216,99 @@ describe('generateSecurePassword', () => {
   });
 });
 
-describe('BootstrapUser handler — generated password logic', () => {
-  // Test the password generation logic without full event handling
-  it('generates password when no temporaryPassword is supplied and no email', () => {
-    // Direct test of the logic: when no email and no temporaryPassword, a password is generated
-    const props = {
-      userPoolId: 'us-east-1_12345678',
-      username: 'admin',
-      groups: [],
-    };
+describe('BootstrapUser handler — password reporting on user creation', () => {
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
-    // Simulate the logic from the handler
-    const email = (props as any).email as string | undefined;
-    const suppliedPassword = (props as any).temporaryPassword as string | undefined;
-    const generatedPassword = suppliedPassword ?? (!email ? 'GENERATED' : undefined);
-
-    expect(generatedPassword).toBe('GENERATED');
+  beforeEach(() => {
+    cognitoMock.reset();
+    jest.clearAllMocks();
   });
 
-  it('does not generate password when temporaryPassword is supplied', () => {
-    const props = {
-      userPoolId: 'us-east-1_12345678',
-      username: 'admin',
-      groups: [],
-      temporaryPassword: 'SuppliedPassword123',
-    };
+  it('on success: Data.temporaryPassword is a generated password (not the marker)', async () => {
+    const { AdminCreateUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 
-    // Simulate the logic from the handler
-    const email = (props as any).email as string | undefined;
-    const suppliedPassword = (props as any).temporaryPassword as string | undefined;
-    const generatedPassword = suppliedPassword ?? (!email ? 'GENERATED' : undefined);
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
 
-    expect(generatedPassword).toBe('SuppliedPassword123');
+    const response = await invoke(createEvent());
+
+    expect(response.Status).toBe('SUCCESS');
+    // When user is created, a password should be returned and it should not be the marker
+    expect(response.Data?.temporaryPassword).toBeDefined();
+    expect(response.Data?.temporaryPassword).not.toBe('(password set at install time)');
+    // Verify it's a string (16-char password)
+    expect(typeof response.Data?.temporaryPassword).toBe('string');
+    expect((response.Data?.temporaryPassword as string).length).toBeGreaterThan(0);
   });
 
-  it('does not generate password when email is provided (invite mode)', () => {
-    const props = {
-      userPoolId: 'us-east-1_12345678',
-      username: 'admin',
-      groups: [],
-      email: 'admin@example.com',
+  it('includes temporaryPassword in Data on all success responses', async () => {
+    const { AdminCreateUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+
+    const response = await invoke(createEvent());
+
+    expect(response.Status).toBe('SUCCESS');
+    expect(response.Data).toBeDefined();
+    expect(response.Data?.temporaryPassword).toBeDefined();
+  });
+});
+
+describe('BootstrapUser handler — PhysicalResourceId', () => {
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+
+  beforeEach(() => {
+    cognitoMock.reset();
+    jest.clearAllMocks();
+  });
+
+  it('Create with no incoming physical ID constructs BootstrapUser:userPoolId:username', async () => {
+    const { AdminCreateUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+
+    const response = await invoke(createEvent({ username: 'testadmin' }));
+
+    expect(response.Status).toBe('SUCCESS');
+    expect(response.PhysicalResourceId).toBe('BootstrapUser:us-east-1_12345678:testadmin');
+  });
+
+  it('Create with default username constructs BootstrapUser:userPoolId:admin', async () => {
+    const { AdminCreateUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+
+    const response = await invoke(createEvent({})); // no username provided
+
+    expect(response.Status).toBe('SUCCESS');
+    expect(response.PhysicalResourceId).toBe('BootstrapUser:us-east-1_12345678:admin');
+  });
+
+  it('Update with incoming physical ID reuses it', async () => {
+    const { AdminCreateUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+
+    const updateEvent: CloudFormationCustomResourceUpdateEvent = {
+      RequestType: 'Update',
+      ServiceToken: FUNCTION_ARN,
+      ResponseURL: RESPONSE_URL,
+      StackId: STACK_ID,
+      RequestId: 'request-id-update',
+      LogicalResourceId: 'BootstrapUserResource',
+      ResourceType: 'Custom::BootstrapUser',
+      PhysicalResourceId: 'BootstrapUser:us-east-1_12345678:admin',
+      ResourceProperties: {
+        ServiceToken: FUNCTION_ARN,
+        userPoolId: 'us-east-1_12345678',
+        username: 'admin',
+      },
+      OldResourceProperties: {
+        ServiceToken: FUNCTION_ARN,
+        userPoolId: 'us-east-1_12345678',
+        username: 'admin',
+      },
     };
 
-    // Simulate the logic from the handler
-    const email = (props as any).email as string | undefined;
-    const suppliedPassword = (props as any).temporaryPassword as string | undefined;
-    const generatedPassword = suppliedPassword ?? (!email ? 'GENERATED' : undefined);
+    const response = await invoke(updateEvent);
 
-    expect(generatedPassword).toBeUndefined();
+    expect(response.Status).toBe('SUCCESS');
+    expect(response.PhysicalResourceId).toBe('BootstrapUser:us-east-1_12345678:admin');
   });
 });

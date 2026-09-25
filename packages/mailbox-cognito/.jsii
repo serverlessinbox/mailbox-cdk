@@ -9173,6 +9173,39 @@
       "name": "DynamicClientRegistrationMode",
       "symbolId": "src/auth/mailbox-user-pool:DynamicClientRegistrationMode"
     },
+    "@serverlessinbox/mailbox-cognito.IBootstrapUserHandle": {
+      "assembly": "@serverlessinbox/mailbox-cognito",
+      "docs": {
+        "remarks": "When no temporary password was supplied, the custom resource generates one at deploy time\nand exposes it through this handle.",
+        "summary": "Handle to a bootstrapped user custom resource, allowing access to generated attributes."
+      },
+      "fqn": "@serverlessinbox/mailbox-cognito.IBootstrapUserHandle",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/auth/mailbox-user-pool.ts",
+        "line": 136
+      },
+      "name": "IBootstrapUserHandle",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Returns a CloudFormation GetAtt reference to the temporary password attribute\nfrom the custom resource response Data, or the supplied password if one was provided.\nThe password is only populated when no email address is configured\n(email-based invites use Cognito's invite mechanism instead).",
+            "summary": "Retrieve the temporary password generated or used during bootstrap."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/auth/mailbox-user-pool.ts",
+            "line": 144
+          },
+          "name": "temporaryPassword",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/auth/mailbox-user-pool:IBootstrapUserHandle"
+    },
     "@serverlessinbox/mailbox-cognito.ICognitoIdpUsersPoolConfig": {
       "assembly": "@serverlessinbox/mailbox-cognito",
       "fqn": "@serverlessinbox/mailbox-cognito.ICognitoIdpUsersPoolConfig",
@@ -9239,7 +9272,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/auth/mailbox-user-pool.ts",
-          "line": 168
+          "line": 184
         },
         "parameters": [
           {
@@ -9269,17 +9302,18 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 134
+        "line": 150
       },
       "methods": [
         {
           "docs": {
-            "remarks": "The artifact resolver is shared with the rest of the user pool.",
+            "remarks": "The artifact resolver is shared with the rest of the user pool.\n\nWhen no temporary password is supplied, the custom resource generates one at deploy time\nand exposes it through the returned handle for use in CloudFormation outputs.",
+            "returns": "Handle to the bootstrapped user resource, with access to the temporary password",
             "summary": "Attach a bootstrap user Custom Resource to this user pool."
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 478
+            "line": 498
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9292,7 +9326,12 @@
                 "fqn": "@serverlessinbox/mailbox-cognito.BootstrapUserConfig"
               }
             }
-          ]
+          ],
+          "returns": {
+            "type": {
+              "fqn": "@serverlessinbox/mailbox-cognito.IBootstrapUserHandle"
+            }
+          }
         },
         {
           "docs": {
@@ -9301,7 +9340,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 245
+            "line": 261
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9316,7 +9355,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 443
+            "line": 459
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9333,7 +9372,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 447
+            "line": 463
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9345,7 +9384,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 415
+            "line": 431
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9377,7 +9416,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 425
+            "line": 441
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9408,7 +9447,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 451
+            "line": 467
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9420,7 +9459,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 508
+            "line": 535
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9435,7 +9474,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 438
+            "line": 454
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -9451,7 +9490,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 371
+            "line": 387
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9472,7 +9511,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 338
+            "line": 354
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9495,7 +9534,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 393
+            "line": 409
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9520,7 +9559,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 150
+            "line": 166
           },
           "name": "authMethod",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9532,7 +9571,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 258
+            "line": 274
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9544,7 +9583,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 149
+            "line": 165
           },
           "name": "issuer",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9556,7 +9595,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 148
+            "line": 164
           },
           "name": "oauthDomain",
           "type": {
@@ -9570,7 +9609,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 153
+            "line": 169
           },
           "name": "policies",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9582,7 +9621,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 147
+            "line": 163
           },
           "name": "scopeMap",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9604,7 +9643,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 254
+            "line": 270
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9616,7 +9655,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 151
+            "line": 167
           },
           "name": "usePkce",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9628,7 +9667,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 135
+            "line": 151
           },
           "name": "userPool",
           "type": {
@@ -9639,7 +9678,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 164
+            "line": 180
           },
           "name": "userPoolId",
           "type": {
@@ -10058,5 +10097,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "HKwpTa6uTM+ApQc4OdWY/voVV2Uky9v/1Ws+6pUuqoI="
+  "fingerprint": "MvQjtqbIqwmKQgBt8yL3V0tI3I6oHYVDIZ9D+V/HCwI="
 }
