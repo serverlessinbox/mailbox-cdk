@@ -4,6 +4,16 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.13](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.12...v0.1.13) (Fri Sep 25 2026)
+
+### feat
+
+* Individual blob hmac ([3ed5f55](https://github.com/serverlessinbox/mailbox-cdk/commit/3ed5f559a4588b1235c91ca9866601b341ab1490))
+
+### fix
+
+* Websocket rights ([7b3d625](https://github.com/serverlessinbox/mailbox-cdk/commit/7b3d625f88112b8027356e55540d61984bad1947))
+
 ## [0.1.12](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.11...v0.1.12) (Tue Sep 22 2026)
 
 ### fix
