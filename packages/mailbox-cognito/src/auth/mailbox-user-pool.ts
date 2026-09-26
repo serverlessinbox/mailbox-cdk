@@ -429,11 +429,16 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   }
 
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
+    // Pass only the provider's top-level config fragment to the addon.
+    // The addon is the sole owner of its users config (including basePath and features).
+    const providerConfig = this.adminUiConfig();
+
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
         artifactResolver: this.artifacts,
         auditEventsQueue: ctx.auditEventsQueue,
         pool: this,
+        uiConfig: providerConfig,
       }),
     ];
   }

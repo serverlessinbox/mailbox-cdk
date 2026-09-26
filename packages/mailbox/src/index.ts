@@ -45,7 +45,6 @@ export type {
   ProvisionAdminUiClientParams,
   ProvisionJmapUiClientParams,
   IMailboxAuthProviderBase,
-  IAdminUiConfigProvider,
   MailboxRole,
   MailboxAuthorizationConfig,
   IMailboxAuthorizationConfigProvider,

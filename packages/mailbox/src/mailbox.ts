@@ -467,9 +467,7 @@ export class Mailbox extends Construct {
       };
 
       // Collect addons from auth provider
-      if (typeof authProvider.createAdminApiAddons === 'function') {
-        addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
-      }
+      addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
 
       // Collect addons from optional addon providers
       for (const provider of props.adminApiAddonProviders ?? []) {
@@ -529,12 +527,10 @@ export class Mailbox extends Construct {
     const jmapOAuthIssuerUrl = authProvider.jmapOAuthIssuerUrl?.();
 
     if (enableAdminUi) {
-      const providerAdminUiConfig = authProvider.adminUiConfig?.();
       const providerAuthz = authProvider.authorizationConfig?.();
 
-      // Build admin UI config eagerly by merging provider config, authz, and all addon configs.
+      // Build admin UI config eagerly by merging authz and all addon configs.
       const mergedAdminUiConfig: Record<string, unknown> = {
-        ...(providerAdminUiConfig ?? {}),
         ...(providerAuthz
           ? {
             authorization: {

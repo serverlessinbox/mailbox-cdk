@@ -51,6 +51,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
       requestScopeList: [],
       groups: [],
     }),
+    createAdminApiAddons: () => [],
   };
 }
 

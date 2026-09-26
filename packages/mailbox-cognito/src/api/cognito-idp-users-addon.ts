@@ -58,19 +58,34 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
     super(scope, id);
 
     this.basePath = props.basePath ?? '/idp-users';
-    this.uiConfig =
-      props.uiConfig ??
-      ({
-        idp: {
-          users: {
-            provider: 'cognito',
-            basePath: this.basePath,
-            features: {
-              setPassword: true,
-            },
+    // Build this addon's derived users config with the actual basePath it resolved
+    const derivedUsersConfig = {
+      idp: {
+        users: {
+          provider: 'cognito' as const,
+          basePath: this.basePath,
+          features: {
+            setPassword: true,
           },
         },
-      } as const);
+      },
+    };
+
+    // Deep-merge with the provided uiConfig (if any), giving this addon's users fragment priority
+    if (props.uiConfig) {
+      // Merge at the idp level: preserve any top-level keys from props.uiConfig,
+      // and merge its idp config with our derived users config
+      const providerIdpConfig = (props.uiConfig.idp as Record<string, unknown>) ?? {};
+      this.uiConfig = {
+        ...props.uiConfig,
+        idp: {
+          ...providerIdpConfig,
+          ...derivedUsersConfig.idp,
+        },
+      };
+    } else {
+      this.uiConfig = derivedUsersConfig;
+    }
 
     const authz = props.pool.fetchAuthorizationConfig?.();
     this.lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {

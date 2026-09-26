@@ -1,7 +1,7 @@
 import { SecretValue } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Permission } from './jmap-scopes';
-import type { AdminApiAddonContext, IAdminApiAddon, JmapApiAddonContext, IJmapApiAddon } from '../api/addons';
+import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '../api/addons';
 
 // ---- Names / keys used in the config table ----
 
@@ -152,12 +152,6 @@ export interface IMailboxAuthProviderBase {
 }
 
 
-/** Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`). */
-export interface IAdminUiConfigProvider {
-  adminUiConfig(): Record<string, unknown>;
-}
-
-
 /** Standard roles understood by mailbox components. */
 export type MailboxRole = 'admin' | 'user';
 
@@ -177,11 +171,9 @@ export interface IMailboxAuthorizationConfigProvider {
  * Auth provider contract expected by the top-level Mailbox construct.
  *
  * Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).
- * They can optionally supply Admin API addons (provider-specific admin endpoints).
+ * They must supply Admin API addons (provider-specific admin endpoints).
  */
-export interface IMailboxAuthProvider extends IMailboxAuthProviderBase {
-  /** Optional: register additional Admin API routes (provider-specific). */
-  createAdminApiAddons?(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[];
+export interface IMailboxAuthProvider extends IMailboxAuthProviderBase, IAdminApiAddonProvider {
   /** Optional: register additional JMAP API routes (provider-specific, e.g. OAuth DCR). */
   createJmapApiAddons?(scope: Construct, ctx: JmapApiAddonContext): IJmapApiAddon[];
   /** Optional: this provider's OAuth issuer URL, if OAuth DCR/discovery is enabled — undefined otherwise.
@@ -189,8 +181,6 @@ export interface IMailboxAuthProvider extends IMailboxAuthProviderBase {
    *  jmap-api itself as a resource server, not the authorization server) — deliberately narrower than handing
    *  the provider a whole document/URL to own, since the document's subject is jmap-api, not the provider. */
   jmapOAuthIssuerUrl?(): string | undefined;
-  /** Optional: supply Admin UI runtime config. */
-  adminUiConfig?(): Record<string, unknown>;
   /** Optional: publish an authorization mapping. */
   authorizationConfig?(): MailboxAuthorizationConfig;
 }

@@ -9708,40 +9708,6 @@
       "name": "IAdminApiAddonProvider",
       "symbolId": "src/api/addons:IAdminApiAddonProvider"
     },
-    "@serverlessinbox/mailbox.IAdminUiConfigProvider": {
-      "assembly": "@serverlessinbox/mailbox",
-      "docs": {
-        "summary": "Optional hook for providers to supply Admin UI runtime config (written to `/config/config.json`)."
-      },
-      "fqn": "@serverlessinbox/mailbox.IAdminUiConfigProvider",
-      "kind": "interface",
-      "locationInModule": {
-        "filename": "src/auth/types.ts",
-        "line": 156
-      },
-      "methods": [
-        {
-          "abstract": true,
-          "locationInModule": {
-            "filename": "src/auth/types.ts",
-            "line": 157
-          },
-          "name": "adminUiConfig",
-          "returns": {
-            "type": {
-              "collection": {
-                "elementtype": {
-                  "primitive": "any"
-                },
-                "kind": "map"
-              }
-            }
-          }
-        }
-      ],
-      "name": "IAdminUiConfigProvider",
-      "symbolId": "src/auth/types:IAdminUiConfigProvider"
-    },
     "@serverlessinbox/mailbox.IArtifactResolver": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
@@ -10008,40 +9974,20 @@
     "@serverlessinbox/mailbox.IMailboxAuthProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).\nThey can optionally supply Admin API addons (provider-specific admin endpoints).",
+        "remarks": "Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).\nThey must supply Admin API addons (provider-specific admin endpoints).",
         "summary": "Auth provider contract expected by the top-level Mailbox construct."
       },
       "fqn": "@serverlessinbox/mailbox.IMailboxAuthProvider",
       "interfaces": [
-        "@serverlessinbox/mailbox.IMailboxAuthProviderBase"
+        "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
+        "@serverlessinbox/mailbox.IAdminApiAddonProvider"
       ],
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/types.ts",
-        "line": 182
+        "line": 176
       },
       "methods": [
-        {
-          "abstract": true,
-          "docs": {
-            "summary": "Optional: supply Admin UI runtime config."
-          },
-          "locationInModule": {
-            "filename": "src/auth/types.ts",
-            "line": 193
-          },
-          "name": "adminUiConfig",
-          "returns": {
-            "type": {
-              "collection": {
-                "elementtype": {
-                  "primitive": "any"
-                },
-                "kind": "map"
-              }
-            }
-          }
-        },
         {
           "abstract": true,
           "docs": {
@@ -10049,7 +9995,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 195
+            "line": 185
           },
           "name": "authorizationConfig",
           "returns": {
@@ -10061,46 +10007,11 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional: register additional Admin API routes (provider-specific)."
-          },
-          "locationInModule": {
-            "filename": "src/auth/types.ts",
-            "line": 184
-          },
-          "name": "createAdminApiAddons",
-          "parameters": [
-            {
-              "name": "scope",
-              "type": {
-                "fqn": "constructs.Construct"
-              }
-            },
-            {
-              "name": "ctx",
-              "type": {
-                "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
-              }
-            }
-          ],
-          "returns": {
-            "type": {
-              "collection": {
-                "elementtype": {
-                  "fqn": "@serverlessinbox/mailbox.IAdminApiAddon"
-                },
-                "kind": "array"
-              }
-            }
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
             "summary": "Optional: register additional JMAP API routes (provider-specific, e.g. OAuth DCR)."
           },
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 186
+            "line": 178
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -10136,7 +10047,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 191
+            "line": 183
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -10323,14 +10234,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/types.ts",
-        "line": 171
+        "line": 165
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 172
+            "line": 166
           },
           "name": "authorizationConfig",
           "returns": {
@@ -10514,7 +10425,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/types.ts",
-        "line": 165
+        "line": 159
       },
       "name": "MailboxAuthorizationConfig",
       "properties": [
@@ -10523,7 +10434,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 166
+            "line": 160
           },
           "name": "adminGroups",
           "type": {
@@ -10540,7 +10451,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/types.ts",
-            "line": 167
+            "line": 161
           },
           "name": "userGroups",
           "type": {
@@ -12275,5 +12186,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "zjdU+WCcsisVjrjY4hBtgKzpsNMc0I80CtVLjMCgefg="
+  "fingerprint": "pB61ZAnwMa0cmOYG4Jg+WzIFxNBANYGdJ1euSkB7nKw="
 }

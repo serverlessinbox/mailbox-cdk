@@ -9313,7 +9313,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 498
+            "line": 503
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9355,7 +9355,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 459
+            "line": 464
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9372,7 +9372,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 463
+            "line": 468
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9416,7 +9416,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 441
+            "line": 446
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9447,7 +9447,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 467
+            "line": 472
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9459,7 +9459,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 535
+            "line": 540
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9474,7 +9474,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 454
+            "line": 459
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -10097,5 +10097,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "MvQjtqbIqwmKQgBt8yL3V0tI3I6oHYVDIZ9D+V/HCwI="
+  "fingerprint": "XsUWfFirzG6OMz+s3fj4Kw/m6EeJqdhF18/r01VpLGI="
 }
