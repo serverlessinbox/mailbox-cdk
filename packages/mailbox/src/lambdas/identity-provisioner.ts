@@ -3,10 +3,24 @@ import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
 import { Duration } from 'aws-cdk-lib';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
+
+/**
+ * Narrow, provider-agnostic handle to the `identity-provisioner` Lambda: just enough for an
+ * admin-api addon to invoke it and grant itself permission to do so. Never hand out the CDK
+ * `IFunction` itself — this interface is the only thing an addon should receive.
+ */
+export interface IIdentityProvisioner {
+  readonly functionArn: string;
+  readonly functionName: string;
+  /** Grants the given principal permission to invoke this function. Call from inside your own
+   *  Lambda's constructor — never grant from outside the grantee's own construct. */
+  grantInvoke(grantee: IGrantable): void;
+}
 
 export interface IdentityProvisionerLambdaProps {
   configTable: IDataTable;
@@ -28,7 +42,7 @@ export interface IdentityProvisionerLambdaProps {
   readonly vendorAccountIds: string[];
 }
 
-export class IdentityProvisionerLambda extends GoLambda {
+export class IdentityProvisionerLambda extends GoLambda implements IIdentityProvisioner {
   constructor(scope: Construct, id: string, props: IdentityProvisionerLambdaProps) {
     super(scope, id, {
       lambdaId: 'identity-provisioner',

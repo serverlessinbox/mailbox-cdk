@@ -455,28 +455,6 @@ export class Mailbox extends Construct {
     let adminUiCnameTarget: string | undefined;
     let webmailUiCnameTarget: string | undefined;
 
-    // Build admin API addons early from all providers (auth provider + optional additional providers).
-    // All addons are known at construction time, so uiConfig merge is eager.
-    const adminApiAddons: IAdminApiAddon[] = (() => {
-      const addons: IAdminApiAddon[] = [];
-
-      const ctx: AdminApiAddonContext = {
-        auditEventsQueue: auditWriting.auditEventsQueue,
-        configTable,
-        auditLogTable,
-      };
-
-      // Collect addons from auth provider
-      addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
-
-      // Collect addons from optional addon providers
-      for (const provider of props.adminApiAddonProviders ?? []) {
-        addons.push(...provider.createAdminApiAddons(groups.apis, ctx));
-      }
-
-      return addons;
-    })();
-
     // SES event processing infrastructure (SNS, SQS, Lambda)
     const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
       itemTable,
@@ -514,9 +492,32 @@ export class Mailbox extends Construct {
       vendorAccountIds,
     });
 
+    // Build admin API addons early from all providers (auth provider + optional additional providers).
+    // All addons are known at construction time, so uiConfig merge is eager.
+    const adminApiAddons: IAdminApiAddon[] = (() => {
+      const addons: IAdminApiAddon[] = [];
+
+      const ctx: AdminApiAddonContext = {
+        auditEventsQueue: auditWriting.auditEventsQueue,
+        configTable,
+        auditLogTable,
+        identityProvisioner,
+      };
+
+      // Collect addons from auth provider
+      addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
+
+      // Collect addons from optional addon providers
+      for (const provider of props.adminApiAddonProviders ?? []) {
+        addons.push(...provider.createAdminApiAddons(groups.apis, ctx));
+      }
+
+      return addons;
+    })();
+
     const jmapApiAddonContext: JmapApiAddonContext = {
       apiBaseUrl: this.urls.jmapApi,
-      identityProvisionerFunction: identityProvisioner,
+      identityProvisioner,
     };
 
     const jmapApiAddons: IJmapApiAddon[] = (() => {
@@ -799,7 +800,7 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       artifactResolver,
       authProvider,
-      identityProvisionerFunction: identityProvisioner,
+      identityProvisioner,
 
       oauthClientId: jmapOAuthClientId,
 
@@ -841,7 +842,7 @@ export class Mailbox extends Construct {
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver,
       authProvider,
-      identityProvisionerFunction: identityProvisioner,
+      identityProvisioner,
       vendorAccountIds,
       stackIdentityTagKey,
 

@@ -2,11 +2,10 @@ import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { IJmapApiAddon } from '@serverlessinbox/mailbox';
+import { IJmapApiAddon, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
 
@@ -21,7 +20,7 @@ export interface JmapOAuthAddonProps {
   /** Base URL of the JMAP API (where well-known docs are mounted). */
   readonly apiBaseUrl: string;
   /** The `identity-provisioner` Lambda, invoked by the DCR route to provision new clients. */
-  readonly identityProvisionerFunction: IFunction;
+  readonly identityProvisioner: IIdentityProvisioner;
   /**
    * Dynamic Client Registration mode. Defaults to DISABLED.
    *
@@ -87,7 +86,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       // to gate it. Its whole subtree (function, role, inline policy, log group) is gated below.
       this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
         artifactResolver: props.artifactResolver,
-        identityProvisionerFunction: props.identityProvisionerFunction,
+        identityProvisioner: props.identityProvisioner,
         userPoolId: props.pool.userPoolId,
         userPoolArn: props.pool.userPool.userPoolArn,
       });

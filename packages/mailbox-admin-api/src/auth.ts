@@ -13,6 +13,9 @@ export type AdminAuthContext = {
   isAdmin: boolean;
   roles: string[];
   scopes: string[];
+  /** Tenant ID from the authorizer's Lambda-authorizer context. Never resolved, defaulted, or
+   *  guessed here — absent if the authorizer did not supply one. */
+  tenantId?: string;
 
   /** Raw authorizer context payload for debugging/extensibility */
   raw: Record<string, unknown>;
@@ -156,6 +159,8 @@ export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: 
     ...toScopes(raw['scopes']),
   ].filter(Boolean);
 
+  const tenantId = pickString(raw, ['tenantId']);
+
   return {
     authType,
     sub,
@@ -166,6 +171,7 @@ export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: 
     isAdmin,
     roles,
     scopes,
+    tenantId,
     raw,
   };
 }

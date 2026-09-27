@@ -96,7 +96,7 @@ function buildHarness(
 
   const [addon] = pool.createJmapApiAddons(stack, {
     apiBaseUrl: API_BASE_URL,
-    identityProvisionerFunction: identityProvisionerFn,
+    identityProvisioner: identityProvisionerFn,
   });
 
   const api = new HttpApi(stack, 'test-api');

@@ -14,7 +14,6 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import type { IDataBlobStore } from '../../data/data-blob-store';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -24,6 +23,7 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../webs
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
 import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
+import type { IIdentityProvisioner } from '../../lambdas/identity-provisioner';
 
 export interface AdminApiProps {
   readonly configTable: IDataTable;
@@ -38,7 +38,7 @@ export interface AdminApiProps {
   readonly allowedOrigins?: string[];
   readonly artifactResolver: ICdkArtifactEngine;
   readonly authProvider: IMailboxAuthProvider;
-  readonly identityProvisionerFunction: IFunction;
+  readonly identityProvisioner: IIdentityProvisioner;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
@@ -128,7 +128,7 @@ export class AdminApi extends Construct {
       artifactResolver: props.artifactResolver,
       sesRuleSetName: props.sesRuleSetName,
       sesConfigSetName: props.sesConfigSetName,
-      identityProvisionerFunction: props.identityProvisionerFunction,
+      identityProvisioner: props.identityProvisioner,
       systemSenderAddress: props.systemSenderAddress,
       vendorAccountIds: props.vendorAccountIds,
       stackIdentityTagKey: props.stackIdentityTagKey,

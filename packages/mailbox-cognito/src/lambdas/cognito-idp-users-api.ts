@@ -4,7 +4,7 @@ import { Construct } from 'constructs';
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IAuditEventsQueue } from '@serverlessinbox/mailbox';
+import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import type { ICognitoIdpUsersPoolConfig } from '../api/cognito-idp-users-addon';
 
 export interface CognitoIdpUsersApiLambdaProps {
@@ -15,6 +15,9 @@ export interface CognitoIdpUsersApiLambdaProps {
 
   /** Send-only handle to the shared audit-events queue; this Lambda grants itself send access. */
   auditEventsQueue: IAuditEventsQueue;
+
+  /** Handle to the shared `identity-provisioner` Lambda; this Lambda grants itself invoke access. */
+  identityProvisioner: IIdentityProvisioner;
 
   /** Cognito pool integration this Lambda grants itself admin access on. */
   pool: ICognitoIdpUsersPoolConfig;
@@ -40,6 +43,7 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
     const environment: Record<string, string> = {
       USER_POOL_ID: props.userPoolId,
       AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+      IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
     };
 
     // Only set authorization groups if provided
@@ -62,5 +66,6 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
 
     props.pool.grantAdminAccess(this);
     props.auditEventsQueue.grantSend(this);
+    props.identityProvisioner.grantInvoke(this);
   }
 }

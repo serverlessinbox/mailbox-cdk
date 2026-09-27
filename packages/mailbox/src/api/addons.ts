@@ -1,9 +1,9 @@
 import type { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IDataTable } from '../data/data-tables';
+import type { IIdentityProvisioner } from '../lambdas/identity-provisioner';
 
 export interface IAdminApiAddon {
   /** Mount additional routes on the Admin API behind the same authorizer. */
@@ -32,6 +32,12 @@ export interface AdminApiAddonContext {
   /** Shared audit-log table, for addons that need to read past audit records (not for writing —
    *  writes go through {@link auditEventsQueue} and the dedicated audit-writer consumer). */
   readonly auditLogTable: IDataTable;
+  /**
+   * Handle to the shared `identity-provisioner` Lambda. Pass this straight through to your
+   * addon's Lambda props and call `grantInvoke(this)` inside that Lambda's own constructor —
+   * never grant from outside the Lambda that holds it.
+   */
+  readonly identityProvisioner: IIdentityProvisioner;
 }
 
 export interface IJmapApiAddon {
@@ -44,7 +50,7 @@ export interface IJmapApiAddon {
 export interface JmapApiAddonContext {
   readonly apiBaseUrl: string;
   /** The `identity-provisioner` Lambda, e.g. for `JmapOAuthAddon`'s DCR route. */
-  readonly identityProvisionerFunction: IFunction;
+  readonly identityProvisioner: IIdentityProvisioner;
 }
 
 /**

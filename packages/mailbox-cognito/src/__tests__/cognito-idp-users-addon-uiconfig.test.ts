@@ -9,7 +9,7 @@
 
 import { App, Stack, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
-import type { IAuditEventsQueue } from '@serverlessinbox/mailbox';
+import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
@@ -21,6 +21,13 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   const mockPoolConfig = {
     userPoolId: 'us-west-2_abcdefgh',
     grantAdminAccess: () => {},
+  };
+  // This suite tests uiConfig merging only — a minimal stub satisfies the required
+  // `identityProvisioner` prop without exercising any invoke/grant behaviour.
+  const mockIdentityProvisioner: IIdentityProvisioner = {
+    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionName: 'identity-provisioner',
+    grantInvoke: () => {},
   };
 
   beforeEach(() => {
@@ -66,6 +73,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-default', {
         artifactResolver,
         auditEventsQueue,
+        identityProvisioner: mockIdentityProvisioner,
         pool: mockPoolConfig,
       });
 
@@ -79,6 +87,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-custom', {
         artifactResolver,
         auditEventsQueue,
+        identityProvisioner: mockIdentityProvisioner,
         pool: mockPoolConfig,
         basePath: customPath,
       });
@@ -100,6 +109,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-merged', {
         artifactResolver,
         auditEventsQueue,
+        identityProvisioner: mockIdentityProvisioner,
         pool: mockPoolConfig,
         basePath: customPath,
         uiConfig: providerConfig,

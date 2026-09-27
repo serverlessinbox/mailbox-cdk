@@ -3,6 +3,7 @@ import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserComm
 
 import type { AdminAuthContext, AuditContext, HandlerContext } from '@serverlessinbox/mailbox-admin-api';
 import { ConflictError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
+import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { CreateIdpUserRequest, CreateIdpUserResponse, DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
 import type { IdpUser } from './generated/idp_users_pb';
@@ -13,16 +14,34 @@ import { create } from '@bufbuild/protobuf';
 import type { IdpUsersServiceHandlers } from './generated/idp_users_service';
 
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+import { IdentityProvisionerClient } from './identity-provisioner-client';
 
 type IdpUsersContext = HandlerContext<AdminAuthContext, AuditContext>;
+
+/** Dependencies {@link CognitoIdpUsersService} needs beyond the Cognito client + pool id, kept in
+ *  one named shape rather than growing the constructor's positional parameter list. */
+export interface CognitoIdpUsersServiceDeps {
+  /** Client for pre-provisioning a mailbox principal at user-creation time (Requirement 4). */
+  readonly identityProvisioner: IdentityProvisionerClient;
+  /** Configured admin-group names, used to derive `isAdmin` for the provisioning invoke —
+   *  matching `extractAdminAuthContext`'s case-insensitive comparison. */
+  readonly adminGroups?: string[];
+  readonly logger: LoggerBuffer;
+}
 
 export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuthContext, AuditContext> {
   private readonly cognito: CognitoIdentityProviderClient;
   private readonly userPoolId: string;
+  private readonly identityProvisioner: IdentityProvisionerClient;
+  private readonly adminGroups: string[];
+  private readonly logger: LoggerBuffer;
 
-  constructor(client: CognitoIdentityProviderClient | undefined, userPoolId: string) {
+  constructor(client: CognitoIdentityProviderClient | undefined, userPoolId: string, deps: CognitoIdpUsersServiceDeps) {
     this.cognito = client ?? new CognitoIdentityProviderClient({});
     this.userPoolId = userPoolId;
+    this.identityProvisioner = deps.identityProvisioner;
+    this.adminGroups = (deps.adminGroups ?? []).map((g) => g.toLowerCase());
+    this.logger = deps.logger;
   }
 
   async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {
@@ -151,9 +170,56 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       })
     );
 
+    await this.provisionMailboxPrincipal(ctx, out, req.username, req.email, groups);
+
     return create(CreateIdpUserResponseSchema, {
       user: create(IdpUserSchema, CognitoIdpUsersService.mapAdminGetUser(out, req.username, { enabledFallback: desiredEnabled })),
     } as any);
+  }
+
+  /**
+   * Pre-provisions the mailbox principal in `identity-provisioner` at user-creation time
+   * (Requirement 4). Fire-and-forget: any failure is logged and swallowed so `createIdpUser`
+   * still returns success — the person falls back to the existing first-sign-in provisioning
+   * path, which is not a degraded state.
+   *
+   * `subject` is Cognito's immutable `sub`, never `username` — a username can be deleted and
+   * recreated under a new `sub`, and a username-keyed mapping would misdirect a future person
+   * into a previous person's mailbox.
+   */
+  private async provisionMailboxPrincipal(
+    ctx: IdpUsersContext,
+    adminGetUserOutput: AdminGetUserCommandOutput,
+    username: string,
+    email: string | undefined,
+    groups: string[],
+  ): Promise<void> {
+    const subject = CognitoIdpUsersService.extractSub(adminGetUserOutput);
+    if (!subject) {
+      this.logger.error('idp_user_provision_missing_sub', { username });
+      this.logger.flush();
+      return;
+    }
+
+    const isAdmin = groups.some((g) => this.adminGroups.includes(g.toLowerCase()));
+
+    try {
+      await this.identityProvisioner.provisionUser({
+        tenantId: ctx.auth.tenantId,
+        subject,
+        username,
+        email,
+        groups,
+        isAdmin,
+      });
+    } catch (err) {
+      this.logger.error('idp_user_provision_invoke_failed', { username, error: String(err) });
+      this.logger.flush();
+    }
+  }
+
+  private static extractSub(output: AdminGetUserCommandOutput): string | undefined {
+    return output.UserAttributes?.find((a) => a.Name === 'sub')?.Value;
   }
 
   async setIdpUserEnabled(ctx: IdpUsersContext, req: SetIdpUserEnabledRequest): Promise<SetIdpUserEnabledResponse> {

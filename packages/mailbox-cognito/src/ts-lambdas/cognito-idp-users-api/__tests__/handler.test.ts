@@ -10,6 +10,7 @@
 // Set up environment variables before importing the handler
 process.env.USER_POOL_ID = 'pool-1';
 process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
+process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
 process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
 process.env.USER_GROUPS = JSON.stringify(['user']);
 
@@ -41,6 +42,7 @@ describe('CognitoIdpUsersApi handler — smoke test wrapper', () => {
       jest.isolateModules(() => {
         process.env.USER_POOL_ID = 'pool-1';
         process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
+        process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
         process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
         process.env.USER_GROUPS = JSON.stringify(['user']);
         process.env.LOG_LEVEL = 'verbose'; // Invalid log level

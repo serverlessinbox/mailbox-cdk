@@ -10,8 +10,10 @@
  */
 
 import { create } from '@bufbuild/protobuf';
-import { CognitoIdpUsersService } from '../idp-users.service';
-import { DeleteIdpUserRequestSchema } from '../generated/idp_users_pb';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CognitoIdpUsersService, type CognitoIdpUsersServiceDeps } from '../idp-users.service';
+import { CreateIdpUserRequestSchema, DeleteIdpUserRequestSchema } from '../generated/idp_users_pb';
+import type { IdentityProvisionerClient } from '../identity-provisioner-client';
 
 describe('CognitoIdpUsersService', () => {
   let service: CognitoIdpUsersService;
@@ -19,11 +21,13 @@ describe('CognitoIdpUsersService', () => {
 
   // Mock Cognito client
   let mockCognitoClient: any;
+  let mockIdentityProvisioner: jest.Mocked<Pick<IdentityProvisionerClient, 'provisionUser'>>;
 
   const createMockContext = (overrides?: any) => ({
     auth: {
       accountId: 'test-account',
       principalId: 'test-principal',
+      tenantId: 'tenant-123',
     },
     audit: {
       entityId: '',
@@ -34,14 +38,24 @@ describe('CognitoIdpUsersService', () => {
     ...overrides,
   });
 
+  const makeDeps = (overrides?: Partial<CognitoIdpUsersServiceDeps>): CognitoIdpUsersServiceDeps => ({
+    identityProvisioner: mockIdentityProvisioner as unknown as IdentityProvisionerClient,
+    adminGroups: ['admin'],
+    logger: new LoggerBuffer(undefined, 'error'),
+    ...overrides,
+  });
+
   beforeEach(() => {
     // Create a mock Cognito client with a send method
     mockCognitoClient = {
       send: jest.fn(),
     };
+    mockIdentityProvisioner = {
+      provisionUser: jest.fn().mockResolvedValue({ principalId: 'p1', primaryAccountId: 'a1', isNewUser: true }),
+    };
 
     // Create service with mock client
-    service = new CognitoIdpUsersService(mockCognitoClient, testUserPoolId);
+    service = new CognitoIdpUsersService(mockCognitoClient, testUserPoolId, makeDeps());
   });
 
   afterEach(() => {
@@ -118,7 +132,7 @@ describe('CognitoIdpUsersService', () => {
 
     it('handles different user pool IDs correctly', async () => {
       const customPoolId = 'custom-pool-xyz';
-      const customService = new CognitoIdpUsersService(mockCognitoClient, customPoolId);
+      const customService = new CognitoIdpUsersService(mockCognitoClient, customPoolId, makeDeps());
 
       const req = create(DeleteIdpUserRequestSchema, { username: 'testuser' });
       const ctx = createMockContext();
@@ -140,6 +154,93 @@ describe('CognitoIdpUsersService', () => {
 
       // Result should be a DeleteIdpUserResponse object
       expect(result).toHaveProperty('$typeName');
+    });
+  });
+
+  describe('createIdpUser', () => {
+    const buildRequest = (overrides?: { username?: string; email?: string; groups?: string[] }) =>
+      create(CreateIdpUserRequestSchema, {
+        username: 'newuser',
+        email: 'newuser@example.com',
+        password: 'Passw0rd!',
+        groups: ['user'],
+        ...overrides,
+      });
+
+    // Cognito returns `sub` as a UserAttribute on AdminGetUser — deliberately distinct from
+    // `username` so a test asserting `subject === sub` cannot pass by accident if the source
+    // used `username` instead.
+    function mockCognitoCreateFlow(sub: string) {
+      mockCognitoClient.send.mockImplementation(async (command: any) => {
+        if (command.constructor.name === 'AdminGetUserCommand') {
+          return {
+            Username: command.input.Username,
+            Enabled: true,
+            UserAttributes: [{ Name: 'sub', Value: sub }],
+          };
+        }
+        return {};
+      });
+    }
+
+    it('invokes identity-provisioner with subject = Cognito sub, never the username', async () => {
+      mockCognitoCreateFlow('cognito-sub-abc');
+      const req = buildRequest({ username: 'newuser', groups: ['user'] });
+      const ctx = createMockContext();
+
+      await service.createIdpUser(ctx, req);
+
+      expect(mockIdentityProvisioner.provisionUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: 'cognito-sub-abc',
+          username: 'newuser',
+          tenantId: 'tenant-123',
+          groups: ['user'],
+          isAdmin: false,
+        }),
+      );
+      const call = mockIdentityProvisioner.provisionUser.mock.calls[0][0];
+      expect(call.subject).not.toBe(call.username);
+    });
+
+    it('derives isAdmin from configured admin groups, case-insensitively', async () => {
+      mockCognitoCreateFlow('sub-1');
+      const req = buildRequest({ username: 'adminuser', groups: ['Admin'] });
+      const ctx = createMockContext();
+
+      await service.createIdpUser(ctx, req);
+
+      expect(mockIdentityProvisioner.provisionUser).toHaveBeenCalledWith(
+        expect.objectContaining({ isAdmin: true }),
+      );
+    });
+
+    it('does not fail the RPC when the identity-provisioner invoke fails', async () => {
+      mockCognitoCreateFlow('sub-2');
+      mockIdentityProvisioner.provisionUser.mockRejectedValueOnce(new Error('AccessDenied'));
+      const req = buildRequest({ username: 'newuser2' });
+      const ctx = createMockContext();
+
+      const result = await service.createIdpUser(ctx, req);
+
+      expect(result).toBeDefined();
+      expect(mockIdentityProvisioner.provisionUser).toHaveBeenCalled();
+    });
+
+    it('does not fail the RPC when Cognito never returns a sub', async () => {
+      mockCognitoClient.send.mockImplementation(async (command: any) => {
+        if (command.constructor.name === 'AdminGetUserCommand') {
+          return { Username: command.input.Username, Enabled: true, UserAttributes: [] };
+        }
+        return {};
+      });
+      const req = buildRequest({ username: 'newuser3' });
+      const ctx = createMockContext();
+
+      const result = await service.createIdpUser(ctx, req);
+
+      expect(result).toBeDefined();
+      expect(mockIdentityProvisioner.provisionUser).not.toHaveBeenCalled();
     });
   });
 });

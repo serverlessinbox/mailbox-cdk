@@ -222,7 +222,7 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
@@ -269,7 +269,7 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
@@ -303,7 +303,7 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
@@ -337,7 +337,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         vendorAccountIds: ['123456789012'],
       });
 
@@ -377,7 +377,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         vendorAccountIds: ['123456789012'],
       });
 
@@ -420,7 +420,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         vendorAccountIds: ['123456789012'],
       });
 
@@ -475,7 +475,7 @@ describe('API Authorizer Wiring', () => {
         cdnHost: 'cdn.example.com',
         artifactResolver,
         authProvider: mockAuthProvider,
-        identityProvisionerFunction,
+        identityProvisioner: identityProvisionerFunction,
         vendorAccountIds: ['123456789012'],
       });
 

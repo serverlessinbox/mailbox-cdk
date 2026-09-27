@@ -82,7 +82,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       cdnHost: 'cdn.example.com',
       apiBaseUrl: 'https://jmap.example.com',
       artifactResolver,
-      identityProvisionerFunction,
+      identityProvisioner: identityProvisionerFunction,
       oauthHandlerConfig: {
         issuer: 'https://issuer.example.com',
         tokenEndpoint: 'https://issuer.example.com/token',

@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { AuthorizerLambda, ApiHandlerLambda } from '../../lambdas';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { JmapOAuthHandlerConfig } from '../../lambdas/jmap-api';
+import type { IIdentityProvisioner } from '../../lambdas/identity-provisioner';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -49,7 +49,7 @@ export interface JMapApiProps {
   readonly authProvider: IMailboxAuthProvider;
 
   /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */
-  readonly identityProvisionerFunction: IFunction;
+  readonly identityProvisioner: IIdentityProvisioner;
 
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
   readonly domainName?: string;
@@ -143,8 +143,6 @@ export class JMapApi extends Construct {
 
     this.httpApi = api;
 
-    const identityProvisionerLambda = props.identityProvisionerFunction;
-
     const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
       configTable: props.configTable,
       itemTable: props.itemTable,
@@ -156,7 +154,7 @@ export class JMapApi extends Construct {
       cdnHost: props.cdnHost,
       apiBaseUrl: this.url,
       artifactResolver: props.artifactResolver,
-      identityProvisionerFunction: identityProvisionerLambda,
+      identityProvisioner: props.identityProvisioner,
       vendorAccountIds: props.vendorAccountIds,
       oauthHandlerConfig: {
         issuer: props.authProvider.issuer,

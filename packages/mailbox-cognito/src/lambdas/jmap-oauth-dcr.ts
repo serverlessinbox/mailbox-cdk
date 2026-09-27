@@ -1,11 +1,11 @@
 import { Duration } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
 
 export interface JmapOAuthDcrLambdaProps {
   readonly artifactResolver: ICdkArtifactEngine;
@@ -13,9 +13,9 @@ export interface JmapOAuthDcrLambdaProps {
   /**
    * The `identity-provisioner` Lambda this construct invokes for tenant resolution
    * (`RESOLVE_TENANT`), dedup/cap checking (`DCR_CHECK`), and persistence (`DCR_PERSIST`).
-   * Passed as an `IFunction` — never an ARN string — so `grantInvoke` can scope the grant.
+   * Passed as an `IIdentityProvisioner` — never an ARN string — so `grantInvoke` can scope the grant.
    */
-  readonly identityProvisionerFunction: IFunction;
+  readonly identityProvisioner: IIdentityProvisioner;
 
   /**
    * The Cognito user pool that dynamically-registered clients are created against.
@@ -52,11 +52,11 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
       memorySize: 256,
       environment: {
         USER_POOL_ID: props.userPoolId,
-        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
       },
     });
 
-    props.identityProvisionerFunction.grantInvoke(this);
+    props.identityProvisioner.grantInvoke(this);
 
     this.addToRolePolicy(
       new PolicyStatement({

@@ -2,13 +2,13 @@ import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
+import type { IIdentityProvisioner } from './identity-provisioner';
 
 export interface AdminApiLambdaProps {
   configTable: IDataTable;
@@ -20,7 +20,7 @@ export interface AdminApiLambdaProps {
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
   artifactResolver: ICdkArtifactEngine;
-  identityProvisionerFunction: IFunction;
+  identityProvisioner: IIdentityProvisioner;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
   sesRuleSetName: string;
   /** SES configuration set name for outbound email tracking. */
@@ -51,7 +51,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,
-        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
         STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
@@ -82,7 +82,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.emailSubmissionQueue.grantSend(this);
 
     // Grant the User provisioning function to be invoked
-    props.identityProvisionerFunction.grantInvoke(this);
+    props.identityProvisioner.grantInvoke(this);
   }
 
   private grantStatusAccess() {

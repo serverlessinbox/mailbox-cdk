@@ -13,9 +13,18 @@ import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import type { IIdentityProvisioner } from '../../../lambdas/identity-provisioner';
 import { SupportAddonProvider, SupportMode } from '../support-addon';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
 import { DataTable } from '../../../data/data-tables';
+
+/** This suite never exercises identity-provisioner invocation — a minimal stub satisfies the
+ *  now-required {@link AdminApiAddonContext.identityProvisioner} field. */
+const mockIdentityProvisioner: IIdentityProvisioner = {
+  functionArn: 'arn:aws:lambda:us-east-1:111122223333:function:identity-provisioner',
+  functionName: 'identity-provisioner',
+  grantInvoke: () => {},
+};
 
 /**
  * Helper to create an artifact resolver for testing.
@@ -76,6 +85,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         configTable: new DataTable(configTable),
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
+        identityProvisioner: mockIdentityProvisioner,
       });
 
       const template = Template.fromStack(stack);
@@ -155,6 +165,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         configTable: new DataTable(configTable),
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
+        identityProvisioner: mockIdentityProvisioner,
       });
 
       template = Template.fromStack(stack);
@@ -531,6 +542,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         configTable: new DataTable(configTable),
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
+        identityProvisioner: mockIdentityProvisioner,
       });
 
       const template = Template.fromStack(stack);

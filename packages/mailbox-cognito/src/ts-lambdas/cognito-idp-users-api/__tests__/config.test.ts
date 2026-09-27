@@ -6,6 +6,7 @@ describe('cognito-idp-users-api config', () => {
     delete process.env.LOG_LEVEL;
     delete process.env.USER_POOL_ID;
     delete process.env.AUDIT_EVENTS_QUEUE_URL;
+    delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
     delete process.env.ADMIN_GROUPS;
     delete process.env.USER_GROUPS;
   });
@@ -14,6 +15,7 @@ describe('cognito-idp-users-api config', () => {
     delete process.env.LOG_LEVEL;
     delete process.env.USER_POOL_ID;
     delete process.env.AUDIT_EVENTS_QUEUE_URL;
+    delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
     delete process.env.ADMIN_GROUPS;
     delete process.env.USER_GROUPS;
   });
@@ -22,6 +24,7 @@ describe('cognito-idp-users-api config', () => {
     process.env.LOG_LEVEL = 'info';
     process.env.USER_POOL_ID = 'pool-123';
     process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123/audit';
+    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
     process.env.ADMIN_GROUPS = '["admin","superuser"]';
     process.env.USER_GROUPS = '["user","viewer"]';
 
@@ -31,6 +34,7 @@ describe('cognito-idp-users-api config', () => {
         logLevel: 'info',
         userPoolId: 'pool-123',
         auditEventsQueueUrl: 'https://sqs.us-east-1.amazonaws.com/123/audit',
+        identityProvisionerFunctionName: 'identity-provisioner',
         adminGroups: ['admin', 'superuser'],
         userGroups: ['user', 'viewer'],
       },
@@ -42,11 +46,13 @@ describe('cognito-idp-users-api config', () => {
     const result = env.tryLoad(load);
     expect(result.error).toContain('USER_POOL_ID');
     expect(result.error).toContain('AUDIT_EVENTS_QUEUE_URL');
+    expect(result.error).toContain('IDENTITY_PROVISIONER_FUNCTION_NAME');
   });
 
   it('uses defaults when all optionals absent', () => {
     process.env.USER_POOL_ID = 'pool-123';
     process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123/audit';
+    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
 
     const result = env.tryLoad(load);
     expect(result).toEqual({
@@ -54,6 +60,7 @@ describe('cognito-idp-users-api config', () => {
         logLevel: 'error',
         userPoolId: 'pool-123',
         auditEventsQueueUrl: 'https://sqs.us-east-1.amazonaws.com/123/audit',
+        identityProvisionerFunctionName: 'identity-provisioner',
         adminGroups: undefined,
         userGroups: undefined,
       },
@@ -67,6 +74,7 @@ describe('cognito-idp-users-api config', () => {
   ])('rejects $var with array containing non-string', ({ var: varName, value }) => {
     process.env.USER_POOL_ID = 'pool-123';
     process.env.AUDIT_EVENTS_QUEUE_URL = 'queue-url';
+    process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
     process.env[varName] = value;
 
     const result = env.tryLoad(load);

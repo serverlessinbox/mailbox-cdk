@@ -2,7 +2,6 @@ import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import type { IMailboxAuthProviderBase } from '../auth/types';
@@ -11,6 +10,7 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import type { IIdentityProvisioner } from './identity-provisioner';
 
 export type JmapOAuthHandlerConfig = {
   issuer: string;
@@ -31,7 +31,7 @@ export interface ApiHandlerLambdaProps {
   cdnHost: string;
   apiBaseUrl: string;
   artifactResolver: ICdkArtifactEngine;
-  identityProvisionerFunction: IFunction;
+  identityProvisioner: IIdentityProvisioner;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
@@ -59,7 +59,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
         BLOB_STORE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisionerFunction.functionName,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         OAUTH_HANDLER_CONFIG: JSON.stringify({
           issuer: props.oauthHandlerConfig.issuer,
           tokenEndpoint: props.oauthHandlerConfig.tokenEndpoint,
@@ -94,7 +94,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     props.auditEventsQueue.grantSend(this);
 
     // Grant the User provisioning function to be invoked
-    props.identityProvisionerFunction.grantInvoke(this);
+    props.identityProvisioner.grantInvoke(this);
 
     this.grantLicenseApiAccess(props.vendorAccountIds);
   }

@@ -9094,6 +9094,22 @@
           "type": {
             "fqn": "@serverlessinbox/mailbox.IDataTable"
           }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Pass this straight through to your\naddon's Lambda props and call `grantInvoke(this)` inside that Lambda's own constructor —\nnever grant from outside the Lambda that holds it.",
+            "summary": "Handle to the shared `identity-provisioner` Lambda."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 40
+          },
+          "name": "identityProvisioner",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IIdentityProvisioner"
+          }
         }
       ],
       "symbolId": "src/api/addons:AdminApiAddonContext"
@@ -9669,14 +9685,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 56
+        "line": 62
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 57
+            "line": 63
           },
           "name": "createAdminApiAddons",
           "parameters": [
@@ -9938,13 +9954,76 @@
       ],
       "symbolId": "src/data/data-tables:IDataTable"
     },
+    "@serverlessinbox/mailbox.IIdentityProvisioner": {
+      "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Never hand out the CDK\n`IFunction` itself — this interface is the only thing an addon should receive.",
+        "summary": "Narrow, provider-agnostic handle to the `identity-provisioner` Lambda: just enough for an admin-api addon to invoke it and grant itself permission to do so."
+      },
+      "fqn": "@serverlessinbox/mailbox.IIdentityProvisioner",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/lambdas/identity-provisioner.ts",
+        "line": 17
+      },
+      "methods": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Call from inside your own\nLambda's constructor — never grant from outside the grantee's own construct.",
+            "summary": "Grants the given principal permission to invoke this function."
+          },
+          "locationInModule": {
+            "filename": "src/lambdas/identity-provisioner.ts",
+            "line": 22
+          },
+          "name": "grantInvoke",
+          "parameters": [
+            {
+              "name": "grantee",
+              "type": {
+                "fqn": "aws-cdk-lib.aws_iam.IGrantable"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "IIdentityProvisioner",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/lambdas/identity-provisioner.ts",
+            "line": 18
+          },
+          "name": "functionArn",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/lambdas/identity-provisioner.ts",
+            "line": 19
+          },
+          "name": "functionName",
+          "type": {
+            "primitive": "string"
+          }
+        }
+      ],
+      "symbolId": "src/lambdas/identity-provisioner:IIdentityProvisioner"
+    },
     "@serverlessinbox/mailbox.IJmapApiAddon": {
       "assembly": "@serverlessinbox/mailbox",
       "fqn": "@serverlessinbox/mailbox.IJmapApiAddon",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 37
+        "line": 43
       },
       "methods": [
         {
@@ -9955,7 +10034,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 41
+            "line": 47
           },
           "name": "addRoutes",
           "parameters": [
@@ -10261,7 +10340,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 44
+        "line": 50
       },
       "name": "JmapApiAddonContext",
       "properties": [
@@ -10270,7 +10349,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 45
+            "line": 51
           },
           "name": "apiBaseUrl",
           "type": {
@@ -10285,11 +10364,11 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 47
+            "line": 53
           },
-          "name": "identityProvisionerFunction",
+          "name": "identityProvisioner",
           "type": {
-            "fqn": "aws-cdk-lib.aws_lambda.IFunction"
+            "fqn": "@serverlessinbox/mailbox.IIdentityProvisioner"
           }
         }
       ],
@@ -12186,5 +12265,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "pB61ZAnwMa0cmOYG4Jg+WzIFxNBANYGdJ1euSkB7nKw="
+  "fingerprint": "cWhCvEXmUf3SU/OTFsm8vdQ/WNN2yNEbq2Gs67x62XM="
 }

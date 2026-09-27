@@ -7,6 +7,7 @@ export interface Config {
   readonly logLevel: LogLevel;
   readonly userPoolId: string;
   readonly auditEventsQueueUrl: string;
+  readonly identityProvisionerFunctionName: string;
   readonly adminGroups?: string[];
   readonly userGroups?: string[];
 }
@@ -16,6 +17,7 @@ export function load(l: env.Loader): Config {
     logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
     userPoolId: l.mandatory('USER_POOL_ID'),
     auditEventsQueueUrl: l.mandatory('AUDIT_EVENTS_QUEUE_URL'),
+    identityProvisionerFunctionName: l.mandatory('IDENTITY_PROVISIONER_FUNCTION_NAME'),
     adminGroups: env.optionalAs(l, 'ADMIN_GROUPS', undefined, env.json(isStringArray)),
     userGroups: env.optionalAs(l, 'USER_GROUPS', undefined, env.json(isStringArray)),
   };

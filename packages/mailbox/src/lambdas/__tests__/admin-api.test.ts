@@ -90,7 +90,7 @@ describe('AdminApiLambda IAM scoping', () => {
       emailSubmissionQueue,
       auditEventsQueue,
       artifactResolver,
-      identityProvisionerFunction,
+      identityProvisioner: identityProvisionerFunction,
       sesRuleSetName: 'test-rule-set',
       sesConfigSetName: 'test-config-set',
       systemSenderAddress: 'noreply@example.com',

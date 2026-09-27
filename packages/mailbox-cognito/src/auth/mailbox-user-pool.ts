@@ -437,6 +437,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
         artifactResolver: this.artifacts,
         auditEventsQueue: ctx.auditEventsQueue,
+        identityProvisioner: ctx.identityProvisioner,
         pool: this,
         uiConfig: providerConfig,
       }),
@@ -450,7 +451,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         pool: this,
         artifactResolver: this.artifacts,
         apiBaseUrl: ctx.apiBaseUrl,
-        identityProvisionerFunction: ctx.identityProvisionerFunction,
+        identityProvisioner: ctx.identityProvisioner,
         dynamicClientRegistration: this.dynamicClientRegistration,
       }),
     ];
