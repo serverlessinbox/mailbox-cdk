@@ -2,7 +2,7 @@ import type { AdminGetUserCommandOutput, UserType } from '@aws-sdk/client-cognit
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminGetUserCommand, AdminSetUserPasswordCommand, CognitoIdentityProviderClient, ListUsersCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 import type { AdminAuthContext, AuditContext, HandlerContext } from '@serverlessinbox/mailbox-admin-api';
-import { ConflictError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
+import { ConflictError, InvalidInputError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
 import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { CreateIdpUserRequest, CreateIdpUserResponse, DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
@@ -82,6 +82,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       if (name === 'UserNotFoundException') {
         throw new NotFoundError('User not found');
       }
+      if (name === 'InvalidParameterException') {
+        throw new InvalidInputError(e.message);
+      }
       throw e;
     }
   }
@@ -124,18 +127,29 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       if (name === 'UsernameExistsException') {
         throw new ConflictError('User already exists', 'already exists');
       }
+      if (name === 'InvalidPasswordException' || name === 'InvalidParameterException') {
+        throw new InvalidInputError(e.message);
+      }
       throw e;
     }
 
     // Set a permanent password so the admin can hand it to the user (no email dependency).
-    await this.cognito.send(
-      new AdminSetUserPasswordCommand({
-        UserPoolId: this.userPoolId,
-        Username: req.username,
-        Password: req.password,
-        Permanent: true,
-      })
-    );
+    try {
+      await this.cognito.send(
+        new AdminSetUserPasswordCommand({
+          UserPoolId: this.userPoolId,
+          Username: req.username,
+          Password: req.password,
+          Permanent: true,
+        })
+      );
+    } catch (e: any) {
+      const name = e?.name ?? '';
+      if (name === 'InvalidPasswordException' || name === 'InvalidParameterException') {
+        throw new InvalidInputError(e.message);
+      }
+      throw e;
+    }
 
     const desiredEnabled = req.enabled ?? true;
     if (!desiredEnabled) {
@@ -236,6 +250,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     } catch (e: any) {
       const name = e?.name ?? '';
       if (name === 'UserNotFoundException') throw new NotFoundError('User not found');
+      if (name === 'InvalidParameterException') throw new InvalidInputError(e.message);
       throw e;
     }
 
@@ -259,6 +274,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     } catch (e: any) {
       const name = e?.name ?? '';
       if (name === 'UserNotFoundException') throw new NotFoundError('User not found');
+      if (name === 'InvalidPasswordException' || name === 'InvalidParameterException') {
+        throw new InvalidInputError(e.message);
+      }
       throw e;
     }
 
@@ -282,6 +300,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       if (name === 'UserNotFoundException') {
         // Idempotent: already gone — treat as success.
         return create(DeleteIdpUserResponseSchema, {});
+      }
+      if (name === 'InvalidParameterException') {
+        throw new InvalidInputError(e.message);
       }
       throw e;
     }

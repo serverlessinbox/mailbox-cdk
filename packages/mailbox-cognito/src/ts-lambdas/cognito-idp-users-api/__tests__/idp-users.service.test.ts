@@ -10,9 +10,10 @@
  */
 
 import { create } from '@bufbuild/protobuf';
+import { InvalidInputError } from '@serverlessinbox/mailbox-admin-api';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { CognitoIdpUsersService, type CognitoIdpUsersServiceDeps } from '../idp-users.service';
-import { CreateIdpUserRequestSchema, DeleteIdpUserRequestSchema } from '../generated/idp_users_pb';
+import { CreateIdpUserRequestSchema, DeleteIdpUserRequestSchema, SetIdpUserPasswordRequestSchema } from '../generated/idp_users_pb';
 import type { IdentityProvisionerClient } from '../identity-provisioner-client';
 
 describe('CognitoIdpUsersService', () => {
@@ -241,6 +242,111 @@ describe('CognitoIdpUsersService', () => {
 
       expect(result).toBeDefined();
       expect(mockIdentityProvisioner.provisionUser).not.toHaveBeenCalled();
+    });
+
+    it('classifies a password-policy rejection on AdminCreateUserCommand as InvalidInputError, preserving the Cognito message', async () => {
+      const error = new Error('Password does not conform to policy: Password must have uppercase characters') as any;
+      error.name = 'InvalidPasswordException';
+      mockCognitoClient.send.mockRejectedValueOnce(error);
+      const req = buildRequest({ username: 'newuser4' });
+      const ctx = createMockContext();
+
+      const thrown = await service.createIdpUser(ctx, req).then(
+        () => { throw new Error('expected createIdpUser to reject'); },
+        (e) => e,
+      );
+
+      expect(thrown).toBeInstanceOf(InvalidInputError);
+      expect(thrown.message).toBe('Password does not conform to policy: Password must have uppercase characters');
+    });
+
+    it('classifies a malformed-attribute rejection on AdminCreateUserCommand as InvalidInputError, preserving the Cognito message', async () => {
+      const error = new Error('Invalid email address format.') as any;
+      error.name = 'InvalidParameterException';
+      mockCognitoClient.send.mockRejectedValueOnce(error);
+      const req = buildRequest({ username: 'newuser5' });
+      const ctx = createMockContext();
+
+      const thrown = await service.createIdpUser(ctx, req).then(
+        () => { throw new Error('expected createIdpUser to reject'); },
+        (e) => e,
+      );
+
+      expect(thrown).toBeInstanceOf(InvalidInputError);
+      expect(thrown.message).toBe('Invalid email address format.');
+    });
+
+    it('classifies a password-policy rejection on the AdminSetUserPasswordCommand step as InvalidInputError', async () => {
+      const error = new Error('Password does not conform to policy: Password not long enough') as any;
+      error.name = 'InvalidPasswordException';
+      mockCognitoClient.send.mockImplementation(async (command: any) => {
+        if (command.constructor.name === 'AdminSetUserPasswordCommand') {
+          throw error;
+        }
+        return {};
+      });
+      const req = buildRequest({ username: 'newuser6' });
+      const ctx = createMockContext();
+
+      const thrown = await service.createIdpUser(ctx, req).then(
+        () => { throw new Error('expected createIdpUser to reject'); },
+        (e) => e,
+      );
+
+      expect(thrown).toBeInstanceOf(InvalidInputError);
+      expect(thrown.message).toBe('Password does not conform to policy: Password not long enough');
+    });
+  });
+
+  describe('setIdpUserPassword', () => {
+    const buildRequest = (overrides?: { username?: string; password?: string }) =>
+      create(SetIdpUserPasswordRequestSchema, {
+        username: 'existinguser',
+        password: 'Passw0rd!',
+        permanent: true,
+        ...overrides,
+      });
+
+    it('classifies InvalidPasswordException as InvalidInputError, preserving the Cognito message', async () => {
+      const error = new Error('Password does not conform to policy: Password must have symbol characters') as any;
+      error.name = 'InvalidPasswordException';
+      mockCognitoClient.send.mockRejectedValueOnce(error);
+      const req = buildRequest();
+      const ctx = createMockContext();
+
+      const thrown = await service.setIdpUserPassword(ctx, req).then(
+        () => { throw new Error('expected setIdpUserPassword to reject'); },
+        (e) => e,
+      );
+
+      expect(thrown).toBeInstanceOf(InvalidInputError);
+      expect(thrown.message).toBe('Password does not conform to policy: Password must have symbol characters');
+    });
+
+    it('classifies InvalidParameterException as InvalidInputError, preserving the Cognito message', async () => {
+      const error = new Error('1 validation error detected: Value at Password failed to satisfy constraint') as any;
+      error.name = 'InvalidParameterException';
+      mockCognitoClient.send.mockRejectedValueOnce(error);
+      const req = buildRequest();
+      const ctx = createMockContext();
+
+      const thrown = await service.setIdpUserPassword(ctx, req).then(
+        () => { throw new Error('expected setIdpUserPassword to reject'); },
+        (e) => e,
+      );
+
+      expect(thrown).toBeInstanceOf(InvalidInputError);
+      expect(thrown.message).toBe('1 validation error detected: Value at Password failed to satisfy constraint');
+    });
+
+    it('still classifies UserNotFoundException as NotFoundError, not InvalidInputError', async () => {
+      const error = new Error('User not found') as any;
+      error.name = 'UserNotFoundException';
+      mockCognitoClient.send.mockRejectedValueOnce(error);
+      const req = buildRequest();
+      const ctx = createMockContext();
+
+      await expect(service.setIdpUserPassword(ctx, req)).rejects.not.toBeInstanceOf(InvalidInputError);
     });
   });
 });
