@@ -26,14 +26,43 @@ export const S3Actions = {
  * Grants a caller exactly the given S3 actions on objects matching `keyPattern` (e.g. a per-tenant,
  * per-account email-key prefix). Scoped to `bucket.arnForObjects(keyPattern)` — never the bucket
  * ARN itself, so this can't be used to grant bucket-level actions like `s3:ListBucket`; use
- * `grantListBucket` for that.
+ * `grantListBucket` for that. If the bucket uses a customer-managed KMS key (`encryptionKey`),
+ * also grants the matching key actions, so a caller granted S3 object actions never needs to reason
+ * about the bucket's encryption separately from its object actions.
  */
 export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions: readonly string[], keyPattern: string): Grant {
-  return Grant.addToPrincipal({
+  const grant = Grant.addToPrincipal({
     grantee,
     actions: [...actions],
     resourceArns: [bucket.arnForObjects(keyPattern)],
   });
+
+  // Grant KMS key access if the bucket uses a customer-managed key for SSE-KMS.
+  // S3 PutObject with CMK requires kms:GenerateDataKey* to mint a data key and kms:DescribeKey.
+  // S3 GetObject with CMK requires kms:Decrypt and kms:DescribeKey.
+  // DeleteObject does not require KMS permissions (deletion does not use the key).
+  const key = bucket.encryptionKey;
+  if (key) {
+    const kmsActions: string[] = [];
+
+    // If the caller performs any write operation (PutObject), grant GenerateDataKey*.
+    if (actions.includes('s3:PutObject')) {
+      kmsActions.push('kms:GenerateDataKey*');
+    }
+
+    // If the caller performs any read operation (GetObject), grant Decrypt.
+    if (actions.includes('s3:GetObject')) {
+      kmsActions.push('kms:Decrypt');
+    }
+
+    // DescribeKey is needed for any use of the key.
+    if (kmsActions.length > 0) {
+      kmsActions.push('kms:DescribeKey');
+      key.grant(grantee, ...kmsActions);
+    }
+  }
+
+  return grant;
 }
 
 /**

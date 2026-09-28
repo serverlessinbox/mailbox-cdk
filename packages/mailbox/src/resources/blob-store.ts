@@ -32,7 +32,7 @@ export interface BlobStoreProps {
  * **Access**
  * - Writes: JMAP API, admin API, email processor, SES event processor, identity provisioner
  * - Reads only: email sender
- * - Service principals: SES writes `incoming-emails/*` (per bucket policy); CloudFront reads all objects (via origin access control).
+ * - Service principals: SES writes `incoming-emails/*` (per bucket policy); CloudFront reads `tenants/*` only (via origin access control).
  *
  * **Lifecycle**
  * - Object versioning enabled in production; disabled in development.
@@ -150,12 +150,14 @@ export class BlobStore extends StackNamedBucket {
     // for the bucket resource policy, so we must add the grant here on the owned bucket.
     // We scope by account (not distribution ARN) because the distribution lives in the main
     // stack and its ARN is not known at data-stack deploy time.
+    // Scoped to tenants/* only, because constructS3Key() returns only tenants/ prefixes;
+    // uploads/* and incoming-emails/* are never legitimately CloudFront-servable.
     this.addToResourcePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
         actions: ['s3:GetObject'],
-        resources: [`${this.bucketArn}/*`],
+        resources: [`${this.bucketArn}/tenants/*`],
         conditions: {
           StringEquals: {
             'aws:SourceAccount': Aws.ACCOUNT_ID,
