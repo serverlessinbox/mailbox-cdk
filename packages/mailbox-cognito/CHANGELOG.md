@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.1.16](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.15...v0.1.16) (Sun Sep 27 2026)
+
+### fix
+
+* **cognito** return 400 for Cognito input rejections on IdP user operations ([87a3343](https://github.com/serverlessinbox/mailbox-cdk/commit/87a3343c48d80074b745a011cb334550b7130bd1))
+
 ## [0.1.15](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.14...v0.1.15) (Sun Sep 27 2026)
 
 ### refactor
