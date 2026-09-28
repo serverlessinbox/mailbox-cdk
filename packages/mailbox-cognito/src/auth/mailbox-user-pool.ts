@@ -227,7 +227,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       ? props.domain.cognitoDomainPrefix
       : props.domain.kind === 'cognito-auto'
       ? StackHelpers.getOrCreate(this, resolver)
-          .resolveCognitoDomainPrefix(this, 'domain-prefix-v2', props.domain.hostedZoneId)
+          .resolveCognitoDomainPrefix(this, 'domain-prefix', props.domain.hostedZoneId)
       : Aws.STACK_NAME;
 
     // MailboxUserPool is its own composition root (instantiated as a sibling of Mailbox by the

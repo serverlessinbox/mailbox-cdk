@@ -29,7 +29,7 @@ export class TantivyIndexingScheduleDlq extends Construct implements ITantivyInd
   constructor(scope: Construct, id: string, props: TantivyIndexingScheduleDlqProps = {}) {
     super(scope, id);
 
-    this.queue = new BaseQueue(this, 'tantivy-indexing-schedule-dlq-v2', {
+    this.queue = new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
       ...(props.queueProps ?? {}),
       retentionPeriod: Duration.days(14),
     });

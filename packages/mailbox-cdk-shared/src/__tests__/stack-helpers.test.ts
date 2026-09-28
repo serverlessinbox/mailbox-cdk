@@ -102,13 +102,13 @@ describe('StackHelpers Construct', () => {
       const callerScope = new Construct(stack, 'CallerScope');
 
       // First resolver call: resolveMailboxData
-      helpers.resolveMailboxData(callerScope, 'stack-helpers-v2', {
+      helpers.resolveMailboxData(callerScope, 'stack-helpers', {
         hostedZoneId: 'Z123',
         dataStackName: 'my-data-stack',
       });
 
       // Second resolver call: resolveCognitoDomainPrefix
-      helpers.resolveCognitoDomainPrefix(callerScope, 'domain-prefix-v2', 'Z456');
+      helpers.resolveCognitoDomainPrefix(callerScope, 'domain-prefix', 'Z456');
 
       const template = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, any> | undefined;

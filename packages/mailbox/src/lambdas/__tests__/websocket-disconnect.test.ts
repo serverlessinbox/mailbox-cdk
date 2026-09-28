@@ -66,7 +66,7 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
       (policy) => policy.Properties?.PolicyDocument?.Statement ?? [],
     );
 
-    const tableId = 'websockettablewebsocketv23A17BE62';
+    const tableId = 'websockettablewebsocketEF927F93';
     const expectedResourceJson = JSON.stringify([
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -77,7 +77,7 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
   }
 
   it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
-    const tableId = 'websockettablewebsocketv23A17BE62';
+    const tableId = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

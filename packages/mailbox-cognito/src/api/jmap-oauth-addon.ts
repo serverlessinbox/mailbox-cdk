@@ -136,7 +136,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     // Deploy openid-configuration document to the shared bucket using StaticContentDeployer
     const deployer = StaticContentDeployer.getOrCreate(this, props.artifactResolver);
 
-    deployer.deploy(this, 'openid-config-v2', {
+    deployer.deploy(this, 'openid-config', {
       targetBucket: bucket.bucketName,
       source: StaticContentSource.data(
         '.well-known/openid-configuration',

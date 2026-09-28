@@ -64,12 +64,12 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
 
     const queueProps = props.queueProps ?? {};
 
-    this.dlq = new BaseQueue(this, 'audit-events-dlq-v2', {
+    this.dlq = new BaseQueue(this, 'audit-events-dlq', {
       ...queueProps,
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'audit-events-v3', {
+    this.queue = new BaseQueue(this, 'audit-events', {
       ...queueProps,
       deadLetterQueue: {
         queue: this.dlq,

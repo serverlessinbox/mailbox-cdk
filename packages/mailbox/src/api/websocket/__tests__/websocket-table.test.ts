@@ -20,7 +20,7 @@ describe('WebSocketTable', () => {
     const stack = createStack();
     const sut = new WebSocketTable(stack, 'websocket-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'websockettablewebsocketv23A17BE62' });
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'websockettablewebsocketEF927F93' });
   });
 
   it('grantWrite grants exactly one Allow statement with the write actions', () => {
@@ -32,8 +32,8 @@ describe('WebSocketTable', () => {
 
     sut.grantWrite(role);
 
+    const tableId = 'websockettablewebsocketEF927F93';
     const template = Template.fromStack(stack);
-    const tableId = 'websockettablewebsocketv23A17BE62';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -61,8 +61,8 @@ describe('WebSocketTable', () => {
 
     sut.grantReadWrite(role);
 
+    const tableId = 'websockettablewebsocketEF927F93';
     const template = Template.fromStack(stack);
-    const tableId = 'websockettablewebsocketv23A17BE62';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

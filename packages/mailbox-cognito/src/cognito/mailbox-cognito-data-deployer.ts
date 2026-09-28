@@ -47,17 +47,13 @@ export class MailboxCognitoDataDeployer extends Construct {
 
     const artifacts = props.artifactResolver;
 
-    // Name prefix carries a -v2- suffix: adopting the shared, nested `workflow/StateMachine`
-    // construct-tree shape changes this state machine's logical ID (the flat cognito tree used
-    // to parent it directly under `infra`), so CloudFormation replaces it. The explicit name
-    // must differ from the old one or create-before-delete collides on the live name.
     // Resolve the cognito data stack template to S3 location.
     const templateUrl = artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json');
     const templateArn = artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json');
 
     const deployerInfra = new DeployerInfra(this, 'infra', {
       artifactResolver: artifacts,
-      stateMachineNamePrefix: 'mailbox-cognito-data-deployer-v2-',
+      stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
       parent: 'cognito',
       createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorker(workerScope, workerId, {
         artifactResolver: artifacts,

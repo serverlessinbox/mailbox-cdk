@@ -293,7 +293,7 @@ export class Mailbox extends Construct {
 
     const stackHelpers = StackHelpers.getOrCreate(this, resolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
-      groups.ops, 'stack-helpers-v2', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
+      groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
 
     // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)
@@ -632,7 +632,7 @@ export class Mailbox extends Construct {
       artifactResolver,
     });
 
-    const bootstrap = new Bootstrap(groups.auth, 'bootstrap-v2', {
+    const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable,

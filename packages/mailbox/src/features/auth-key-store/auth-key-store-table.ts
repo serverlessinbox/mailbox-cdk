@@ -42,7 +42,7 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    this.table = new StackNamedTable(this, 'auth-key-store-v2', {
+    this.table = new StackNamedTable(this, 'auth-key-store', {
       removalPolicy: RemovalPolicy.DESTROY,
       partitionKey: {
         name: 'pk',

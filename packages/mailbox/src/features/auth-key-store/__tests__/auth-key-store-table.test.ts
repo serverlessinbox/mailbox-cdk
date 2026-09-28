@@ -20,7 +20,7 @@ describe('AuthKeyStoreTable', () => {
     const stack = createStack();
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'authkeystoretableauthkeystorev2C3162605' });
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'authkeystoretableauthkeystore0093FE65' });
   });
 
   it('tableArn resolves to the table resource\'s Arn attribute', () => {
@@ -28,7 +28,7 @@ describe('AuthKeyStoreTable', () => {
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
     expect(stack.resolve(sut.tableArn)).toEqual({
-      'Fn::GetAtt': ['authkeystoretableauthkeystorev2C3162605', 'Arn'],
+      'Fn::GetAtt': ['authkeystoretableauthkeystore0093FE65', 'Arn'],
     });
   });
 
@@ -41,8 +41,8 @@ describe('AuthKeyStoreTable', () => {
 
     sut.grantRead(role);
 
+    const tableId = 'authkeystoretableauthkeystore0093FE65';
     const template = Template.fromStack(stack);
-    const tableId = 'authkeystoretableauthkeystorev2C3162605';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -70,8 +70,8 @@ describe('AuthKeyStoreTable', () => {
 
     sut.grantReadWrite(role);
 
+    const tableId = 'authkeystoretableauthkeystore0093FE65';
     const template = Template.fromStack(stack);
-    const tableId = 'authkeystoretableauthkeystorev2C3162605';
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

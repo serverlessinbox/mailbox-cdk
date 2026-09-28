@@ -60,12 +60,12 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
       return { encryption: QueueEncryption.SQS_MANAGED };
     })();
 
-    this.dlq = new BaseQueue(this, 'email-processing-dlq-v2', {
+    this.dlq = new BaseQueue(this, 'email-processing-dlq', {
       ...queueEncryptionProps,
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-processing-queue-v3', {
+    this.queue = new BaseQueue(this, 'email-processing-queue', {
       ...queueEncryptionProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {

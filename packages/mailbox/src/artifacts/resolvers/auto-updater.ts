@@ -157,7 +157,7 @@ class TrackedUpdateTriggers extends Construct {
 
     // Deploy-end CR: fires when the stack is deployed with ArtifactTracking != pinned
     // ServiceToken points to the updater Lambda; the handler detects CFN CR events and routes accordingly
-    const deployEndCr = new cdk.CustomResource(this, 'deploy-end-cr-v2', {
+    const deployEndCr = new cdk.CustomResource(this, 'deploy-end-cr', {
       serviceToken: props.updater.functionArn,
       serviceTimeout: cdk.Duration.seconds(600),
       resourceType: 'Custom::DeployEndTrigger',

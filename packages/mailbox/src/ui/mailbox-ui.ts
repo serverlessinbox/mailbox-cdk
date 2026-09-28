@@ -226,7 +226,7 @@ export class MailboxUi extends Construct {
 
     // Deploy UI bundle (if present)
     if (uiResolved) {
-      deployer.deploy(this, 'ui-content-v2', {
+      deployer.deploy(this, 'ui-content', {
         targetBucket: this.bucket.bucketName,
         source: StaticContentSource.zipFromBucket(uiResolved.bucket, uiResolved.key, 'content/', {
           sourceVersionId: uiResolved.versionId,
@@ -236,7 +236,7 @@ export class MailboxUi extends Construct {
 
     // Deploy UI config (if present)
     if (props.uiConfig) {
-      deployer.deploy(this, 'ui-config-v3', {
+      deployer.deploy(this, 'ui-config', {
         targetBucket: this.bucket.bucketName,
         source: StaticContentSource.data('config/config.json', JSON.stringify(props.uiConfig), {
           contentType: 'application/json; charset=utf-8',
@@ -246,7 +246,7 @@ export class MailboxUi extends Construct {
     }
 
     // Invalidate CloudFront distribution cache for all UI content
-    deployer.invalidate(this, 'ui-invalidate-v3', {
+    deployer.invalidate(this, 'ui-invalidate', {
       distributionId: this.distribution.distributionId,
       paths: ['/*'],
     });

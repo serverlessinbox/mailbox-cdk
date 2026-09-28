@@ -86,22 +86,24 @@ describe('Mailbox Resource Naming', () => {
       new AuthKeyStoreTable(stack, 'auth-key-store');
 
       const template = Template.fromStack(stack);
-      const logicalId = 'authkeystoreauthkeystorev2C4FB2D4C';
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
+
+      const logicalId = 'authkeystoreB751EF55';
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
         'Fn::Join': ['', [
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-auth-key-store-v2',
+          '-auth-key-store',
         ]],
       });
     });
 
     it('should synthesize the websocket table name referencing AWS::StackName', () => {
-      // Same guarantee as above for the WebSocket connections table, which also relies on the
-      // StackNamedTable fallback rather than the nameBase registry.
+      // WebSocketTable's child table id is 'websocket' (see cdk-construct-pattern's "Moving
+      // an explicitly named non-persistent resource"), so the CDK-generated logical ID is
+      // derived from the construct path rather than a pinned override.
       const app = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env: { account: '123456789012', region: 'us-west-2' },
@@ -111,18 +113,16 @@ describe('Mailbox Resource Naming', () => {
       new WebSocketTable(stack, 'websocket');
 
       const template = Template.fromStack(stack);
-      // WebSocketTable's child table id is 'websocket-v2' (see cdk-construct-pattern's "Moving
-      // an explicitly named non-persistent resource"), so the CDK-generated logical ID is
-      // derived from the construct path rather than a pinned override.
-      const logicalId = 'websocketwebsocketv28ED451DF';
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
+
+      const logicalId = 'websocketA7355EF4';
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
         'Fn::Join': ['', [
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-websocket-v2',
+          '-websocket',
         ]],
       });
     });

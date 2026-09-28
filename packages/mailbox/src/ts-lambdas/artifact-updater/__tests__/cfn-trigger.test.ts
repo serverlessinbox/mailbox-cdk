@@ -88,7 +88,7 @@ describe('cfnTriggerHandler', () => {
     const event: CloudFormationCustomResourceEvent = {
       ...baseFields,
       RequestType: 'Delete',
-      PhysicalResourceId: 'deploy-end-cr-v2-physical-id',
+      PhysicalResourceId: 'deploy-end-cr-physical-id',
       ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
     };
 
@@ -100,7 +100,7 @@ describe('cfnTriggerHandler', () => {
     expect(response.Status).toBe('SUCCESS');
     // No PhysicalResourceId is returned by the handler for Delete; wrapHandler falls back to
     // the incoming event's PhysicalResourceId, so CloudFormation sees no id change.
-    expect(response.PhysicalResourceId).toBe('deploy-end-cr-v2-physical-id');
+    expect(response.PhysicalResourceId).toBe('deploy-end-cr-physical-id');
   });
 
   it('runs the update cycle on Create', async () => {
@@ -124,7 +124,7 @@ describe('cfnTriggerHandler', () => {
     const event: CloudFormationCustomResourceEvent = {
       ...baseFields,
       RequestType: 'Update',
-      PhysicalResourceId: 'deploy-end-cr-v2-physical-id',
+      PhysicalResourceId: 'deploy-end-cr-physical-id',
       ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '456' },
       OldResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
     };

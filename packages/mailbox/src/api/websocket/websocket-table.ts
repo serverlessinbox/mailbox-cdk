@@ -42,7 +42,7 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
     super(scope, id);
 
     // Single-table design: uses shared base repository key names so lambdas can use DynamoBaseRepository.
-    this.table = new StackNamedTable(this, 'websocket-v2', {
+    this.table = new StackNamedTable(this, 'websocket', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,

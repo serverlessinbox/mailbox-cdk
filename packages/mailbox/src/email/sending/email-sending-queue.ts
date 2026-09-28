@@ -53,12 +53,12 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
 
     const queueProps = props.queueProps ?? {};
 
-    this.dlq = new BaseQueue(this, 'email-submissions-dlq-v2', {
+    this.dlq = new BaseQueue(this, 'email-submissions-dlq', {
       ...queueProps,
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-submissions-v3', {
+    this.queue = new BaseQueue(this, 'email-submissions', {
       ...queueProps,
       deadLetterQueue: {
         queue: this.dlq,
