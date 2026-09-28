@@ -1,4 +1,4 @@
-import { Aws, Duration, Lazy } from 'aws-cdk-lib';
+import { Aws, Duration, Lazy, RemovalPolicy } from 'aws-cdk-lib';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -59,7 +59,7 @@ export interface SweeperWorkflowProps {
  * strip SFN execution-role policies. Runs once after every removal has succeeded.
  */
 export class SweeperWorkflow extends Construct {
-  readonly stateMachine: sfn.StateMachine;
+  private readonly stateMachine: sfn.StateMachine;
 
   // Pre-built ARN string for this state machine (no GetAtt — see SweeperInfra's formatArn
   // comment); grantStartExecution/grantExecutionReaping below scope statements to it directly
@@ -93,6 +93,14 @@ export class SweeperWorkflow extends Construct {
       actions: ['states:ListExecutions', 'states:StopExecution'],
       resources: [this.stateMachineArn],
     }));
+  }
+
+  /**
+   * Marks this state machine for retention when the stack is deleted.
+   * Allows the sweeper to complete asynchronously after the stack is torn down.
+   */
+  public markForRetention(): void {
+    (this.stateMachine.node.defaultChild as sfn.CfnStateMachine | undefined)?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
   }
 
   private createSweeperStateMachine(

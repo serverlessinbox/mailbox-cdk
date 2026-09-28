@@ -216,8 +216,7 @@ export class SweeperInfra extends Construct {
       stateMachineArn: smArn,
       removals: props.removals,
     });
-    (this.workflow.stateMachine.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    this.workflow.markForRetention();
 
     // Starter Lambda (NOT retained — CFN deletes normally)
     // Now instantiated via the typed wrapper construct with minimal env vars
