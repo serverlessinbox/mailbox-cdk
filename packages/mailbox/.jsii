@@ -9727,21 +9727,21 @@
     "@serverlessinbox/mailbox.IArtifactResolver": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Implements two methods: resolve(pkg, objectPath, region) → ResolvedArtifact, and\nregisterPackages(names: string[]) → void (mandatory, new in subplan #10).\nStructurally identical to mailbox-cdk-shared's own IArtifactResolver — structural typing,\nno cast, no adapter needed.\nImplemented by: PinnedResolver (mailbox-cdk-shared), ChannelResolver (infrastructure),\nAutoUpdater (mailbox, jsii-exported).",
+        "remarks": "Supplies artifact S3 locations and manages package registration for dynamic resolution.",
         "summary": "Artifact resolution strategy interface (jsii-exported from mailbox, D2)."
       },
       "fqn": "@serverlessinbox/mailbox.IArtifactResolver",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/i-artifact-resolver.ts",
-        "line": 21
+        "line": 16
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/artifacts/i-artifact-resolver.ts",
-            "line": 23
+            "line": 18
           },
           "name": "registerPackages",
           "parameters": [
@@ -9762,7 +9762,7 @@
           "abstract": true,
           "locationInModule": {
             "filename": "src/artifacts/i-artifact-resolver.ts",
-            "line": 22
+            "line": 17
           },
           "name": "resolve",
           "parameters": [
@@ -12265,5 +12265,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "cWhCvEXmUf3SU/OTFsm8vdQ/WNN2yNEbq2Gs67x62XM="
+  "fingerprint": "3HqP8RBcny/HEsFvyuhK4iJPuGRxg32I5xx2HiT1Uug="
 }

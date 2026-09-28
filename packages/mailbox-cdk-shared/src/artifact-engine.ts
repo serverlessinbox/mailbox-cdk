@@ -27,6 +27,14 @@ export interface IArtifactResolver {
 }
 
 /**
+ * Extended resolver interface that optionally supports package registration.
+ * Used by wrappers to safely call registerPackages on resolvers that implement it.
+ */
+interface ResolverWithOptionalPackageRegistration extends IArtifactResolver {
+  registerPackages?(names: string[]): void;
+}
+
+/**
  * Consumer contract used by mailbox/cognito sub-constructs — they depend on THIS interface,
  * never the concrete CdkArtifactEngine class.
  */
@@ -211,8 +219,7 @@ export class CdkArtifactEngine implements ICdkArtifactEngine {
   registerPackages(names: string[]): void {
     // If the underlying resolver supports registerPackages, call it.
     // This allows constructs to self-register their packages before resolution.
-    if (typeof (this.resolver as any).registerPackages === 'function') {
-      (this.resolver as any).registerPackages(names);
-    }
+    const resolver = this.resolver as ResolverWithOptionalPackageRegistration;
+    resolver.registerPackages?.(names);
   }
 }
