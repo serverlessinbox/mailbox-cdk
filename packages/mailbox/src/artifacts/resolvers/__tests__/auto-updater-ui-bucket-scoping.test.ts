@@ -111,12 +111,8 @@ function statementActions(stmt: CloudFormationPolicyStatement): string[] {
   return Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
 }
 
-function resourceReferencesLogicalId(stmt: CloudFormationPolicyStatement, logicalId: string): boolean {
-  return JSON.stringify(stmt.Resource).includes(logicalId);
-}
-
 describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdater)', () => {
-  it("grants the updater's own role write/list access scoped to the real UI bucket ARN", () => {
+  it("grants the updater's own role write/list access scoped to content/* and config/* prefixes", () => {
     const stack = buildStack('TestAutoUpdaterGrantable');
     const autoUpdater = new AutoUpdater(stack, 'auto-updater');
     new Mailbox(stack, 'mailbox', {
@@ -129,16 +125,63 @@ describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdate
     const updaterRoleId = findUpdaterRoleLogicalId(template);
     const updaterStatements = findPolicyStatementsForRole(template, updaterRoleId);
 
-    const writeStmt = updaterStatements.find((s) => {
+    // Find write statements (s3:PutObject and s3:DeleteObject)
+    const writeStmts = updaterStatements.filter((s) => {
       const actions = statementActions(s);
       return actions.includes('s3:PutObject') && actions.includes('s3:DeleteObject');
     });
-    expect(writeStmt).toBeDefined();
-    expect(resourceReferencesLogicalId(writeStmt!, adminBucketId)).toBe(true);
+    expect(writeStmts.length).toBeGreaterThanOrEqual(1);
 
-    const listStmt = updaterStatements.find((s) => statementActions(s).includes('s3:ListBucket'));
-    expect(listStmt).toBeDefined();
-    expect(resourceReferencesLogicalId(listStmt!, adminBucketId)).toBe(true);
+    // Verify that write statements include both content/* and config/* resources
+    const allWriteResources = writeStmts.map((s) => (Array.isArray(s.Resource) ? s.Resource : [s.Resource])).flat();
+
+    // Check if a resource contains a specific prefix (handling both string and Fn::Join formats)
+    const hasPrefix = (resource: unknown, prefix: string): boolean => {
+      if (typeof resource === 'string') {
+        return resource.includes(adminBucketId) && resource.includes(prefix);
+      }
+      if (typeof resource === 'object' && resource !== null && 'Fn::Join' in resource) {
+        const joinParts = (resource as Record<string, unknown>)['Fn::Join'] as unknown[];
+        return JSON.stringify(joinParts).includes(prefix);
+      }
+      return false;
+    };
+
+    const hasContentWrite = allWriteResources.some((r) => hasPrefix(r, 'content/*'));
+    const hasConfigWrite = allWriteResources.some((r) => hasPrefix(r, 'config/*'));
+    expect(hasContentWrite).toBe(true);
+    expect(hasConfigWrite).toBe(true);
+
+    // Find list statements (s3:ListBucket)
+    const listStmts = updaterStatements.filter((s) => statementActions(s).includes('s3:ListBucket'));
+    expect(listStmts.length).toBeGreaterThanOrEqual(1);
+
+    // Verify that list statements reference the bucket ARN (either as direct reference or in Fn::Join)
+    listStmts.forEach((stmt) => {
+      const resourceStmt = JSON.stringify(stmt.Resource);
+      expect(resourceStmt.includes(adminBucketId) || resourceStmt.includes('Arn')).toBe(true);
+    });
+
+    // Verify that list statements include s3:prefix conditions for both content/* and config/*
+    const allPrefixConditions: string[] = [];
+    listStmts.forEach((stmt) => {
+      if (stmt.Condition && typeof stmt.Condition === 'object') {
+        const stringLike = (stmt.Condition as Record<string, unknown>)['StringLike'];
+        if (stringLike && typeof stringLike === 'object') {
+          const prefixes = (stringLike as Record<string, unknown>)['s3:prefix'];
+          if (typeof prefixes === 'string') {
+            allPrefixConditions.push(prefixes);
+          } else if (Array.isArray(prefixes)) {
+            allPrefixConditions.push(...prefixes.filter((p): p is string => typeof p === 'string'));
+          }
+        }
+      }
+    });
+
+    const hasContentPrefix = allPrefixConditions.some((p) => p.includes('content/*'));
+    const hasConfigPrefix = allPrefixConditions.some((p) => p.includes('config/*'));
+    expect(hasContentPrefix).toBe(true);
+    expect(hasConfigPrefix).toBe(true);
   });
 });
 

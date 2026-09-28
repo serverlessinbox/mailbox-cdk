@@ -214,7 +214,7 @@ export class JMapApi extends Construct {
       const deployer = StaticContentDeployer.getOrCreate(this, props.artifactResolver);
 
       deployer.deploy(this, 'oauth-protected-resource', {
-        targetBucket: bucket.bucketName,
+        targetBucket: bucket,
         source: StaticContentSource.data(
           JMapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
           JSON.stringify(protectedResourceDoc),

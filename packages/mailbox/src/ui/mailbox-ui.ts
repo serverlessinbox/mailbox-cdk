@@ -189,20 +189,25 @@ export class MailboxUi extends Construct {
 
   /**
    * Grants `grantee` exactly the S3 actions needed to deploy static content into this UI's own
-   * bucket: `s3:PutObject`/`s3:DeleteObject` on every object, and `s3:ListBucket` to enumerate
-   * what's already there. This construct owns the bucket, so it grants access to it directly
-   * instead of a deployer (e.g. the auto-updater) having to guess this bucket's name from a
-   * synth-time pattern — the bucket names its own writer.
+   * bucket: `s3:PutObject`/`s3:DeleteObject` on the `content/` and `config/` prefixes, and
+   * `s3:ListBucket` scoped to list only those prefixes. This construct owns the bucket, so it
+   * grants access to it directly instead of a deployer (e.g. the auto-updater) having to guess
+   * this bucket's name from a synth-time pattern — the bucket names its own writer.
    *
    * S3 object writes cannot be scoped by tag instead: `aws:ResourceTag` reads the (still-untagged)
    * object being written, and `s3:BucketTag` — although listed as a supported condition key on the
    * S3 `object` resource type — is not honored for `PutObject` (live-verified: denied against a
-   * bucket carrying the matching tag). Scoping to this bucket's own ARN is the only mechanism that
-   * actually works.
+   * bucket carrying the matching tag). Scoping to this bucket's own ARN with key patterns is the
+   * only mechanism that actually works.
    */
   grantContentDeploy(grantee: iam.IGrantable): void {
-    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], '*');
-    grantListBucket(grantee, this.bucket, '*');
+    // Content prefix: UI bundle deployment
+    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'content/*');
+    // Config prefix: config.json deployment
+    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'config/*');
+    // ListBucket scoped to content and config prefixes
+    grantListBucket(grantee, this.bucket, 'content/*');
+    grantListBucket(grantee, this.bucket, 'config/*');
   }
 
   private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
@@ -227,7 +232,7 @@ export class MailboxUi extends Construct {
     // Deploy UI bundle (if present)
     if (uiResolved) {
       deployer.deploy(this, 'ui-content', {
-        targetBucket: this.bucket.bucketName,
+        targetBucket: this.bucket,
         source: StaticContentSource.zipFromBucket(uiResolved.bucket, uiResolved.key, 'content/', {
           sourceVersionId: uiResolved.versionId,
         }),
@@ -237,7 +242,7 @@ export class MailboxUi extends Construct {
     // Deploy UI config (if present)
     if (props.uiConfig) {
       deployer.deploy(this, 'ui-config', {
-        targetBucket: this.bucket.bucketName,
+        targetBucket: this.bucket,
         source: StaticContentSource.data('config/config.json', JSON.stringify(props.uiConfig), {
           contentType: 'application/json; charset=utf-8',
           cacheControl: 'no-store',

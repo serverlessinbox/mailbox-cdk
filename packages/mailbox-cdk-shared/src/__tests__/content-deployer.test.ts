@@ -10,6 +10,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { PinnedResolver, CdkArtifactEngine, StaticContentDeployer, StaticContentSource } from '../index';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
 import type { ICdkArtifactEngine } from '../artifact-engine';
@@ -146,11 +147,13 @@ describe('StaticContentDeployer invalidate() auto-derived deploymentNonce', () =
   // redeploy and stale content stayed cached. These pin that the properties instead track the
   // content of the deployments they follow, deterministically.
 
-  const deployUiBundle = (deployer: StaticContentDeployer, scope: cdk.Stack, id: string, sourceKey: string, sourceVersionId: string) =>
+  const deployUiBundle = (deployer: StaticContentDeployer, scope: cdk.Stack, id: string, sourceKey: string, sourceVersionId: string) => {
+    const bucket = Bucket.fromBucketName(scope, 'target-bucket', 'ui-bucket');
     deployer.deploy(scope, id, {
-      targetBucket: 'ui-bucket',
+      targetBucket: bucket,
       source: StaticContentSource.zipFromBucket('artifacts-bucket', sourceKey, 'content/', { sourceVersionId }),
     });
+  };
 
   it('gives identical properties across two synths of identical inputs', () => {
     const build = () =>

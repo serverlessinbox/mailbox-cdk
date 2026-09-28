@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Construct } from 'constructs';
 import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
-import { Bucket, IBucket } from 'aws-cdk-lib/aws-s3';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { ICdkArtifactEngine } from './artifact-engine';
 import { TypeScriptLambda } from './ts-lambda';
@@ -68,7 +68,7 @@ export abstract class StaticContentSource {
 }
 
 export interface StaticContentDeploymentProps {
-  readonly targetBucket: string;
+  readonly targetBucket: IBucket;
   /** A single, closed discriminated source — data write or zip unpack. For multiple independent
    *  deployments (e.g. UI bundle + config file), call deploy() separately for each. */
   readonly source: IStaticContentSource;
@@ -150,10 +150,8 @@ export class StaticContentDeployer extends TypeScriptLambda {
    *  the single source down to its plain, CFN-serializable `.spec` value. Returns the CustomResource
    *  so it can be depended on by other resources (e.g., invalidation). */
   deploy(scope: Construct, id: string, props: StaticContentDeploymentProps): CustomResource {
-    const bucketRef = Bucket.fromBucketName(scope, `${id}-bucket-ref`, props.targetBucket);
-
     // Grant target-write access derived from the single source
-    const objectArns = props.source.objectArns(bucketRef);
+    const objectArns = props.source.objectArns(props.targetBucket);
     this.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:DeleteObject'],
@@ -166,7 +164,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       this.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['s3:ListBucket'],
-          resources: [bucketRef.bucketArn],
+          resources: [props.targetBucket.bucketArn],
         }),
       );
     }
@@ -187,7 +185,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       serviceTimeout: Duration.minutes(15),
       resourceType: 'Custom::ContentDeployment',
       properties: {
-        targetBucket: props.targetBucket,
+        targetBucket: props.targetBucket.bucketName,
         sources: [props.source.spec],
         // These fields are omitted from deploy() — only used by invalidate()
         distributionId: undefined,

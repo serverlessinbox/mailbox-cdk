@@ -111,7 +111,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // Create a minimal deployment to verify the deployer works
       const testBucket = new s3.Bucket(stack, 'test-bucket-for-deployer');
       deployer1.deploy(stack, 'test-deployment', {
-        targetBucket: testBucket.bucketName,
+        targetBucket: testBucket,
         source: StaticContentSource.data('test.txt', 'test content'),
       });
 
