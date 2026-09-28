@@ -44,9 +44,7 @@ function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
  * suite exists to catch:
  * - `Fn.select(2, Fn.split('/', AWS::StackId))` — the raw stack GUID, always the fixed 36-char UUID
  *   format (`8-4-4-4-12`). This is what the pre-fix code embedded directly (the bug).
- * - `Fn.select(0, Fn.split('-', <that 36-char GUID>))` — just the UUID's first 8-char segment, per the
- *   `getOrCreatePipelineLogGroup` precedent (`mailbox-cdk-shared/src/pipeline-log-groups.ts`). This is
- *   the fix.
+ * - `Fn.select(0, Fn.split('-', <that 36-char GUID>))` — just the UUID's first 8-char segment (the fix).
  * Both lengths are fixed by the UUID format, not by anything CloudFormation could vary at deploy time,
  * so each is a genuine worst case for its shape, not a guess.
  */

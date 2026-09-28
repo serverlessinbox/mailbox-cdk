@@ -16,7 +16,7 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing/audit-writing';
-import { CdkArtifactEngine, PinnedResolver, getOrCreatePipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
+import { CdkArtifactEngine, PinnedResolver, PipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
 import { Bootstrap } from './features/bootstrap/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
@@ -387,7 +387,7 @@ export class Mailbox extends Construct {
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       productVersion: stackVersion,
       deployerType,
-      logGroupName: getOrCreatePipelineLogGroup(groups.edge, 'jmap').logGroupName,
+      logGroupName: PipelineLogGroup.getOrCreate(groups.edge, 'jmap').logGroupName,
     });
 
     const edgeCertificate = edgeStack.edgeCertificate;

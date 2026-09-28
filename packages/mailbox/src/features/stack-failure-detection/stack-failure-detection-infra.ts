@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 import type { IConstruct } from 'constructs';
 import { Fn, Stack, Aws, RemovalPolicy, CfnResource } from 'aws-cdk-lib';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { getOrCreatePipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import { PipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectorLambda } from '../../lambdas';
 
 /**
@@ -74,9 +74,9 @@ export class StackFailureDetectionInfra extends Construct {
     });
     retainOnUpdateOrDelete(detectorRole, 'detector-role');
 
-    // Reused below for the `logs:FilterLogEvents` grant, so the env var and the grant ARN can never
+    // Reused below for the grant, so the env var and the grant ARN can never
     // come from two independent lookups.
-    const infraLogGroup = getOrCreatePipelineLogGroup(this, 'infra');
+    const infraLogGroup = PipelineLogGroup.getOrCreate(this, 'infra');
 
     const detector = new StackFailureDetectorLambda(this, 'detector', {
       artifactResolver: props.artifactResolver,
@@ -113,7 +113,6 @@ export class StackFailureDetectionInfra extends Construct {
 
     // CreateLogStream/PutLogEvents is needed here because the explicit `role:` passed to the Lambda
     // skips the AWSLambdaBasicExecutionRole managed-policy attachment `Function` would otherwise add.
-    const infraLogGroupArn = infraLogGroup.logGroupArn;
     const detectorPolicy = new iam.Policy(this, 'detector-policy', {
       policyName: DETECTOR_POLICY_NAME,
       statements: [
@@ -121,17 +120,15 @@ export class StackFailureDetectionInfra extends Construct {
           actions: ['cloudformation:DescribeStackEvents', 'cloudformation:DescribeStacks'],
           resources: [Aws.STACK_ID],
         }),
-        new iam.PolicyStatement({
-          actions: ['logs:FilterLogEvents'],
-          resources: [infraLogGroupArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          resources: [infraLogGroupArn],
-        }),
       ],
     });
     detectorPolicy.attachToRole(detectorRole);
+
+    // Grant log group write access (CreateLogStream/PutLogEvents) for Lambda exec role
+    infraLogGroup.grantWrite(detectorRole);
+
+    // Grant FilterLogEvents access for recovery/troubleshooting
+    infraLogGroup.grantFilterEvents(detectorRole);
     (detectorPolicy.node.defaultChild as any)?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     this.detector = detector;

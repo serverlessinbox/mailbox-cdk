@@ -173,19 +173,40 @@ describe('StackFailureDetection', () => {
       const envLogicalId = envVars.INFRA_LOG_GROUP_NAME.Ref;
       expect(typeof envLogicalId).toBe('string');
 
+      // Find all policies (grants may place statements on different policies than the detector's own)
       const policies = template.findResources('AWS::IAM::Policy');
-      const detectorPolicy = Object.values(policies).find(
-        (p: any) => p.Properties.PolicyName === 'stack-failure-detector-policy'
-      ) as any;
-      expect(detectorPolicy).toBeDefined();
+      let foundFilterEventsMatch = false;
+      let foundWriteMatch = false;
 
-      const filterStmt = detectorPolicy.Properties.PolicyDocument.Statement.find((s: any) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
-        return actions.includes('logs:FilterLogEvents');
-      });
-      const grantLogicalId = filterStmt.Resource['Fn::GetAtt'][0];
+      for (const policy of Object.values(policies)) {
+        const statements = (policy as any).Properties.PolicyDocument.Statement as any[];
+        for (const stmt of statements) {
+          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
 
-      expect(envLogicalId).toBe(grantLogicalId);
+          // Check FilterLogEvents statement references the same log group
+          if (actions.includes('logs:FilterLogEvents')) {
+            const resource = stmt.Resource;
+            const logGroupId = Array.isArray(resource) ? resource[0] : resource;
+            if (logGroupId['Fn::GetAtt']?.[0] === envLogicalId) {
+              foundFilterEventsMatch = true;
+            }
+          }
+
+          // Check write (CreateLogStream/PutLogEvents) statements reference the same log group
+          const hasCreateLogStream = actions.includes('logs:CreateLogStream');
+          const hasPutLogEvents = actions.includes('logs:PutLogEvents');
+          if (hasCreateLogStream && hasPutLogEvents) {
+            const resource = stmt.Resource;
+            const logGroupId = Array.isArray(resource) ? resource[0] : resource;
+            if (logGroupId['Fn::GetAtt']?.[0] === envLogicalId) {
+              foundWriteMatch = true;
+            }
+          }
+        }
+      }
+
+      expect(foundFilterEventsMatch).toBe(true);
+      expect(foundWriteMatch).toBe(true);
     });
 
     it('the rule matches CloudFormation Stack Status Change with exactly the five terminal statuses', () => {

@@ -7,7 +7,7 @@ import {
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { applyArtifactTags } from './apply-artifact-tags';
-import { getOrCreatePipelineLogGroup } from './pipeline-log-groups';
+import { PipelineLogGroup } from './pipeline-log-groups';
 import type { ICdkArtifactEngine } from './artifact-engine';
 import type { Pipeline } from './pipelines';
 
@@ -44,7 +44,7 @@ export class GoLambda extends LambdaFunction {
 
     const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
 
-    const logGroup = props.logGroup ?? getOrCreatePipelineLogGroup(scope, pipeline);
+    const logGroup = props.logGroup ?? PipelineLogGroup.getOrCreate(scope, pipeline);
 
     super(scope, id, {
       code,

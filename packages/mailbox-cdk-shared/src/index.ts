@@ -80,7 +80,8 @@ export { setStackNameBase, getStackNameBase } from './stack-name-base-registry';
 
 // Pipeline taxonomy & shared per-pipeline log groups
 export type { Pipeline } from './pipelines';
-export { getOrCreatePipelineLogGroup } from './pipeline-log-groups';
+export { PipelineLogGroup } from './pipeline-log-groups';
+export type { IPipelineLogGroup } from './pipeline-log-groups';
 
 // Table & Queue constructs (used by mailbox and mailbox-cognito)
 export { BaseTable } from './base-table';

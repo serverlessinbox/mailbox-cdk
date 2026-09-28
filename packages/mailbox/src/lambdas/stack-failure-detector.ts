@@ -10,7 +10,7 @@ export interface StackFailureDetectorLambdaProps {
   readonly role: IRole;
   /** Pinned, not auto-named (see stack-failure-detection-infra.ts for why). */
   readonly functionName: string;
-  /** Must come from the same `getOrCreatePipelineLogGroup` call as the `logs:FilterLogEvents` grant ARN, never re-resolved here. */
+  /** The log group name that this Lambda is granted to read. Must match exactly the log group referenced in the corresponding IAM grant, or read access will fail. */
   readonly infraLogGroupName: string;
 }
 
