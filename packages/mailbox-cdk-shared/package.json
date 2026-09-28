@@ -31,15 +31,11 @@
   "files": [
     "src",
     "lib",
-    ".task",
     "artifact-registry.cjs",
     "Taskfile.yml",
-    "build.log",
     "jest.config.js",
     "tsconfig.json",
     "tsconfig.build.json",
-    "tsconfig.tsbuildinfo",
-    "tsconfig.build.tsbuildinfo",
     "!src/**/__tests__",
     "!lib/**/__tests__"
   ],
@@ -50,7 +46,7 @@
     "bundle": "task bundle",
     "publish:dev": "task publish:dev",
     "test": "jest",
-    "clean": "rm -rf lib"
+    "clean": "rm -rf lib *.tsbuildinfo"
   },
   "dependencies": {
     "@serverlessinbox/artifact-registry": "^0.0.37",

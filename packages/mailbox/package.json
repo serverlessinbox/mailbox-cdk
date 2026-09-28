@@ -20,7 +20,7 @@
     "postpack": "yarn clean",
     "lint": "eslint .",
     "test": "jest",
-    "clean": "rm -rf dist lib",
+    "clean": "rm -rf dist lib *.tsbuildinfo",
     "dev": "task build:watch",
     "bundle": "task bundle",
     "bundle:jsii": "mailbox-bundler package .",
