@@ -20,7 +20,6 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { ServerlessInboxTagKeys, PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { ArtifactUpdaterLambda } from '../../../lambdas/artifact-updater';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
@@ -88,21 +87,12 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
     pinnedResolver.registerPackages(['mailbox-cdk']);
     const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver, 'test-resolver');
 
-    // Create lock table
-    const lockTable = new dynamodb.Table(stack, 'lock-table', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
       artifactResolver,
       distTag: 'stable',
       granularity: 'stack',
       rootStackTagValue: stack.stackName,
       artifactBucketBase: ARTIFACT_CONTEXT.bucketBase,
-      lockTable,
     });
 
     template = Template.fromStack(stack).toJSON() as Record<string, unknown>;

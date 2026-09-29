@@ -1,5 +1,4 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { Config } from './config';
 import { dispatchSelfInvoke } from './self-invoke';
@@ -9,7 +8,6 @@ import { dispatchSelfInvoke } from './self-invoke';
  *
  * Routes:
  * - POST /artifact-updates/trigger: fire-and-forget async self-invoke, respond 202
- * - GET  /artifact-updates/status:  sync GetItem on lock table, respond 200 with status
  * - else: respond 404
  */
 export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: Config): Promise<{
@@ -17,7 +15,6 @@ export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: C
   body: string;
 }> {
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
-  const tableName = config.lockTableName;
   const method = event.requestContext?.http?.method ?? '';
   const path = event.requestContext?.http?.path ?? event.rawPath ?? '';
   logger.debug('http trigger received', { method, path });
@@ -42,41 +39,6 @@ export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: C
       return {
         statusCode: 500,
         body: JSON.stringify({ error: `Failed to trigger update: ${err.message}` }),
-      };
-    }
-  }
-
-  // GET /artifact-updates/status: sync read from lock table
-  if (method === 'GET' && path.includes('/status')) {
-    const dynamoClient = new DynamoDBClient({});
-
-    try {
-      logger.debug('reading status from lock table', { tableName });
-      const response = await dynamoClient.send(
-        new GetItemCommand({
-          TableName: tableName,
-          Key: {
-            pk: { S: 'STACK-UPDATER' },
-            sk: { S: 'STATUS' },
-          },
-        }),
-      );
-
-      const item = response.Item ?? {};
-      logger.debug('status read succeeded', { hasItem: Object.keys(item).length > 0 });
-      return {
-        statusCode: 200,
-        body: JSON.stringify(item),
-      };
-    } catch (err: any) {
-      logger.error('Failed to read status', {
-        errorName: err?.name,
-        errorMessage: err?.message,
-      });
-      logger.flush();
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: `Failed to read status: ${err.message}` }),
       };
     }
   }

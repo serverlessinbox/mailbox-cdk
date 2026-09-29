@@ -51,7 +51,6 @@ const testConfig: Config = {
   granularity: 'major',
   artifactBucketBase: 'mailbox-artifacts',
   rootStackTagValue: 'my-stack',
-  lockTableName: 'artifact-updater-lock',
 };
 
 const baseFields = {

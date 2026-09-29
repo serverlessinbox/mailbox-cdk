@@ -3,7 +3,6 @@ import { Aws, Duration, Fn, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { PinnedResolver, CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
@@ -78,22 +77,12 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     // Use pinned resolver (same composed instance) to resolve the handler code from stable release
     const updaterEngine = new CdkArtifactEngine(this, this.pinned, 'updater-engine');
 
-    // Lock/status table for concurrency guard and status tracking (always-on)
-    const lockTable = new dynamodb.Table(this, 'update-lock-table', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // pure operational metadata, no user data
-      timeToLiveAttribute: 'ttl',
-    });
-
     const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: updaterEngine,
       artifactBucketBase: this.bucketBase,
       distTag: this.distTag,
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
-      lockTable,
     });
     this.updater = updater;
     this.grantPrincipal = updater.grantPrincipal;

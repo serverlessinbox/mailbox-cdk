@@ -64,4 +64,17 @@ describe('EmailProcessingQueue', () => {
       },
     });
   });
+
+  it('queue visibility timeout is 6 minutes to exceed function timeout (1m) plus batching window (15s)', () => {
+    const stack = createStack();
+    new EmailProcessingQueue(stack, 'email-processing-queue');
+
+    const template = Template.fromStack(stack);
+
+    // Visibility timeout must be 6 minutes (360 seconds) to safely exceed the email-processor Lambda's
+    // 1-minute timeout plus 15-second batching window, preventing message duplication.
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      VisibilityTimeout: 360,
+    });
+  });
 });

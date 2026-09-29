@@ -8,7 +8,6 @@ export interface Config {
   readonly granularity: string;
   readonly artifactBucketBase: string;
   readonly rootStackTagValue: string;
-  readonly lockTableName: string;
 }
 
 export function load(l: env.Loader): Config {
@@ -22,6 +21,5 @@ export function load(l: env.Loader): Config {
     granularity: l.mandatory('GRANULARITY'),
     artifactBucketBase: l.mandatory('ARTIFACT_BUCKET_BASE'),
     rootStackTagValue: l.mandatory('ROOT_STACK_TAG_VALUE'),
-    lockTableName: l.mandatory('LOCK_TABLE_NAME'),
   };
 }

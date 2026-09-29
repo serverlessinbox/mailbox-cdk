@@ -12,9 +12,8 @@ export interface ArtifactUpdaterAddonProps {
 /**
  * Admin API addon for on-demand artifact updates.
  *
- * Mounts the ArtifactUpdaterLambda on the Admin API, allowing:
+ * Mounts the ArtifactUpdaterLambda on the Admin API for:
  * - POST /artifact-updates/trigger: fire-and-forget async update dispatch
- * - GET  /artifact-updates/status:  read lock/status table for current state
  *
  * The integration targets the already-constructed updater Lambda directly,
  * reusing it as a single-purpose function for all three trigger types (deploy-end CFN CR,

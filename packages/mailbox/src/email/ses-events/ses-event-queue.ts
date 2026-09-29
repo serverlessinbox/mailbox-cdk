@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { IGrantable, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import { Stack } from 'aws-cdk-lib';
+import { Stack, Duration } from 'aws-cdk-lib';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
@@ -34,6 +34,9 @@ export interface ISesEventQueue {
  * `queueProps.encryptionMasterKey` — in which case this construct also grants SNS permission to use
  * that key (imported keys that reject policy edits are the caller's responsibility to configure).
  *
+ * Visibility timeout is set to 6 minutes, which exceeds the consumer's Lambda timeout (5 minutes)
+ * plus its SQS event source batching window (30 seconds) by a safe margin.
+ *
  * Not responsible for the topic itself or the SES configuration set — `SESEventProcessing` creates
  * the topic and passes it in.
  */
@@ -51,6 +54,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
 
     this.queue = new BaseQueue(this, 'ses-notifications-queue', {
       ...queueProps,
+      visibilityTimeout: Duration.minutes(6),
       encryption,
     });
     this.queueArn = this.queue.queueArn;

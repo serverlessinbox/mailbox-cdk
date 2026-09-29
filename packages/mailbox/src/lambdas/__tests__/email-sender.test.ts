@@ -142,6 +142,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn: stack.resolve(submissionQueue.queueArn),
       BatchSize: 1,
+      MaximumBatchingWindowInSeconds: 15,
     });
   });
 

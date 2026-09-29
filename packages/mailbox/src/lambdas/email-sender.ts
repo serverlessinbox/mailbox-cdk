@@ -50,6 +50,7 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     this.addEventSourceMapping('email-submissions-queue', {
       eventSourceArn: props.submissionQueue.queueArn,
       batchSize: 1,
+      maxBatchingWindow: Duration.seconds(15),
     });
     props.submissionQueue.grantConsume(this);
   }

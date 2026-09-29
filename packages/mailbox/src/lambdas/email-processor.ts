@@ -49,6 +49,7 @@ export class EmailProcessorLambda extends GoLambda {
       eventSourceArn: props.emailProcessingQueue.queueArn,
       batchSize: 10,
       reportBatchItemFailures: true,
+      maxBatchingWindow: Duration.seconds(15),
     });
     props.emailProcessingQueue.grantConsume(this);
   }

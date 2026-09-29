@@ -49,6 +49,9 @@ export interface IAuditEventsQueueConsumer extends IAuditEventsQueue {
  * record to the single `audit-writer` consumer, backed by a dead-letter queue for messages that
  * fail processing after 5 receives.
  *
+ * Visibility timeout is set to 5 minutes, which exceeds the consumer's Lambda timeout (2 minutes)
+ * plus its SQS event source batching window (30 seconds) by a safe margin.
+ *
  * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
  *
  * Not responsible for wiring the consumer's event source mapping — `AuditWriting` owns that.
@@ -71,6 +74,7 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
 
     this.queue = new BaseQueue(this, 'audit-events', {
       ...queueProps,
+      visibilityTimeout: Duration.minutes(5),
       deadLetterQueue: {
         queue: this.dlq,
         maxReceiveCount: 5,

@@ -38,6 +38,9 @@ export interface IEmailSendingQueueConsumer extends IEmailSendingQueue {
  * `email-sender` consumer, which sends them via SES. Backed by a dead-letter queue for submissions
  * that fail after 5 receives.
  *
+ * Visibility timeout is set to 6 minutes, which exceeds the consumer's Lambda timeout (5 minutes)
+ * plus its SQS event source batching window (15 seconds) by a safe margin.
+ *
  * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
  *
  * Not responsible for wiring the consumer's event source mapping — `EmailSending` owns that.
@@ -60,6 +63,7 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
 
     this.queue = new BaseQueue(this, 'email-submissions', {
       ...queueProps,
+      visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {
         queue: this.dlq,
         maxReceiveCount: 5,

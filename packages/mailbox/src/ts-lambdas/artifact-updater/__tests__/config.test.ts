@@ -10,7 +10,6 @@ describe('artifact-updater config', () => {
     delete process.env.GRANULARITY;
     delete process.env.ARTIFACT_BUCKET_BASE;
     delete process.env.ROOT_STACK_TAG_VALUE;
-    delete process.env.LOCK_TABLE_NAME;
   });
 
   afterEach(() => {
@@ -21,7 +20,6 @@ describe('artifact-updater config', () => {
     delete process.env.GRANULARITY;
     delete process.env.ARTIFACT_BUCKET_BASE;
     delete process.env.ROOT_STACK_TAG_VALUE;
-    delete process.env.LOCK_TABLE_NAME;
   });
 
   it('loads all vars when set', () => {
@@ -32,7 +30,6 @@ describe('artifact-updater config', () => {
     process.env.GRANULARITY = 'major';
     process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
     process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-    process.env.LOCK_TABLE_NAME = 'artifact-updater-lock';
 
     const result = env.tryLoad(load);
     expect(result).toEqual({
@@ -44,14 +41,13 @@ describe('artifact-updater config', () => {
         granularity: 'major',
         artifactBucketBase: 'mailbox-artifacts',
         rootStackTagValue: 'my-stack',
-        lockTableName: 'artifact-updater-lock',
       },
       error: undefined,
     });
   });
 
   it('reports error when mandatory vars missing', () => {
-    const mandatoryVars = ['PROJECT', 'DIST_TAG', 'GRANULARITY', 'ARTIFACT_BUCKET_BASE', 'ROOT_STACK_TAG_VALUE', 'LOCK_TABLE_NAME'];
+    const mandatoryVars = ['PROJECT', 'DIST_TAG', 'GRANULARITY', 'ARTIFACT_BUCKET_BASE', 'ROOT_STACK_TAG_VALUE'];
 
     for (const varName of mandatoryVars) {
       const result = env.tryLoad(load);
@@ -65,7 +61,6 @@ describe('artifact-updater config', () => {
     process.env.GRANULARITY = 'major';
     process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
     process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-    process.env.LOCK_TABLE_NAME = 'artifact-updater-lock';
 
     const result = env.tryLoad(load);
     expect(result).toEqual({
@@ -77,7 +72,6 @@ describe('artifact-updater config', () => {
         granularity: 'major',
         artifactBucketBase: 'mailbox-artifacts',
         rootStackTagValue: 'my-stack',
-        lockTableName: 'artifact-updater-lock',
       },
       error: undefined,
     });

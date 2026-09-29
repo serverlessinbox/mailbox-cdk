@@ -1,7 +1,6 @@
 import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws, Duration } from 'aws-cdk-lib';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
@@ -19,9 +18,6 @@ export interface ArtifactUpdaterLambdaProps {
 
   /** Base name for artifact S3 buckets (e.g., 'mailbox-artifacts'). */
   artifactBucketBase: string;
-
-  /** DynamoDB lock table for update concurrency control. */
-  readonly lockTable: ITable;
 }
 
 /**
@@ -46,12 +42,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         GRANULARITY: props.granularity,
         PROJECT: 'serverlessinbox',
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
-        LOCK_TABLE_NAME: props.lockTable.tableName,
       },
     });
-
-    // Grant permissions to read/write the lock table
-    props.lockTable.grantReadWriteData(this);
 
     // Updater IAM: comprehensive least-privilege (all always-on, apply to updater Lambda for all three trigger paths)
     this.grantTagDiscovery();

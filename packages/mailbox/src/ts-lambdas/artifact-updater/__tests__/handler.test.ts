@@ -34,7 +34,6 @@ import {
   UpdateDistributionCommand,
   TagResourceCommand as CloudFrontTagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { createHandler } from '../handler';
 import type { Config } from '../config';
 
@@ -176,7 +175,6 @@ const testConfig: Config = {
   granularity: 'major',
   artifactBucketBase: 'mailbox-artifacts',
   rootStackTagValue: 'my-stack',
-  lockTableName: 'artifact-updater-lock',
 };
 const handler = createHandler({ config: testConfig, error: undefined });
 
@@ -809,49 +807,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       expect(result.statusCode).toBe(202);
       expect(JSON.parse(result.body)).toEqual({ status: 'triggered' });
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(1);
-    });
-
-    it('routes HTTP GET /status to DynamoDB read with 200 response', async () => {
-      const httpEvent: APIGatewayProxyEventV2 = {
-        version: '2.0',
-        routeKey: 'GET /status',
-        rawPath: '/artifact-updates/status',
-        rawQueryString: '',
-        headers: {},
-        requestContext: {
-          http: {
-            method: 'GET',
-            path: '/artifact-updates/status',
-            protocol: 'HTTP/1.1',
-            sourceIp: '127.0.0.1',
-            userAgent: 'test',
-          },
-          routeKey: 'GET /status',
-          stage: '$default',
-          requestId: 'id',
-          timeEpoch: Date.now(),
-          accountId: '123456789012',
-          apiId: 'api-id',
-          domainName: 'example.com',
-          domainPrefix: 'example',
-          time: new Date().toISOString(),
-        },
-        isBase64Encoded: false,
-      };
-
-      const dynamoMock = mockClient(DynamoDBClient as any);
-      dynamoMock.on(GetItemCommand).resolves({
-        Item: {
-          pk: { S: 'STACK-UPDATER' },
-          sk: { S: 'STATUS' },
-          status: { S: 'idle' },
-        },
-      });
-
-      const result = await handler(httpEvent);
-
-      expect(result.statusCode).toBe(200);
-      expect(JSON.parse(result.body)).toHaveProperty('pk');
     });
 
     it('returns 404 for unknown HTTP routes', async () => {

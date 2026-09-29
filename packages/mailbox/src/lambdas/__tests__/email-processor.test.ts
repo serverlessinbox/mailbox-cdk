@@ -80,6 +80,7 @@ describe('EmailProcessorLambda event-source wiring', () => {
       EventSourceArn: stack.resolve(emailProcessingQueue.queueArn),
       BatchSize: 10,
       FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
+      MaximumBatchingWindowInSeconds: 15,
     });
   });
 

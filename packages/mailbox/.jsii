@@ -9377,7 +9377,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 57
+          "line": 56
         },
         "parameters": [
           {
@@ -9409,7 +9409,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 35
+        "line": 34
       },
       "methods": [
         {
@@ -9418,7 +9418,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 139
+            "line": 128
           },
           "name": "addDeployEndDependency",
           "parameters": [
@@ -9436,7 +9436,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 130
+            "line": 119
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9471,7 +9471,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 124
+            "line": 113
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9495,7 +9495,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 119
+            "line": 108
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9536,7 +9536,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 49
+            "line": 48
           },
           "name": "grantPrincipal",
           "overrides": "aws-cdk-lib.aws_iam.IGrantable",
@@ -9558,7 +9558,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 26
+        "line": 25
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -9571,7 +9571,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 28
+            "line": 27
           },
           "name": "distTag",
           "optional": true,
@@ -9588,7 +9588,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 30
+            "line": 29
           },
           "name": "granularity",
           "optional": true,
@@ -9604,7 +9604,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 32
+            "line": 31
           },
           "name": "updateInterval",
           "optional": true,
@@ -12265,5 +12265,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "3HqP8RBcny/HEsFvyuhK4iJPuGRxg32I5xx2HiT1Uug="
+  "fingerprint": "ICVs7RwBPzJoOglHLECqVXLIvCKeEKt/1t98Rjo/kKk="
 }
