@@ -1,3 +1,3 @@
 [submodule "remote-git/mailbox-idl"]
 	path = remote-git/mailbox-idl
-	url = git@github.com:serverlessinbox/mailbox-idl.git
+	url = ../mailbox-idl.git
