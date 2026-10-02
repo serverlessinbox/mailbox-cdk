@@ -22,6 +22,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - uses: arduino/setup-task@v2
       - run: yarn install
+      - run: yarn lint
       - run: yarn test
       - run: yarn gitversion bump
       - uses: aws-actions/configure-aws-credentials@v4

@@ -10,6 +10,8 @@
     "packages/*"
   ],
   "scripts": {
+    "lint": "eslint packages/mailbox-bundler/src",
+    "lint:all": "eslint packages --max-warnings=-1",
     "resolve-artifacts": "artifact-registry resolve-artifacts --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --component mailbox-go:package:mailbox-go --component mailbox-admin-ui:package:mailbox-admin-ui --component mailbox-webmail-ui:package:mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
     "embed-component-versions": "ts-node --project tsconfig.scripts.json scripts/embed-component-versions.ts",
     "publish-manifest": "artifact-registry publish manifest --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --type package --name mailbox-cdk --version-from-package packages/mailbox/package.json --versions-file artifact-versions.json --extra-component 'mailbox-cdk-edge:{version}'",
@@ -20,7 +22,9 @@
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
     "@serverlessinbox/artifact-registry": "^0.0.37",
     "@types/node": "^24.10.1",
+    "eslint": "^9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8"
   }
 }
