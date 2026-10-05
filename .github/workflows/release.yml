@@ -62,5 +62,3 @@ jobs:
         env:
           YARN_NPM_REGISTRY_SERVER: "http://127.0.0.1:12345"
           YARN_NPM_AUTH_TOKEN: "stub"
-      - name: Publish release manifest
-        run: yarn publish-manifest
