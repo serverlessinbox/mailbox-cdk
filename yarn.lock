@@ -1991,6 +1991,7 @@ __metadata:
     esbuild: "npm:^0.27.1"
     glob: "npm:^10.3.10"
     ts-node: "npm:^10.9.2"
+    typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"
   peerDependencies:
     esbuild: ^0.27.1

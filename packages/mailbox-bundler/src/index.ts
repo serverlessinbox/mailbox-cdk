@@ -1,6 +1,6 @@
 import { runExit } from 'clipanion';
 
-import { BundlePackageCommand } from './bundle-package';
-import { BundleLambdaZipCommand } from './bundle-lambda-zip';
+import { BundleLambdaZipCommand } from './commands/bundle-lambda-zip-command';
+import { BundlePackageCommand } from './commands/bundle-package-command';
 
 void runExit([BundlePackageCommand, BundleLambdaZipCommand]);

@@ -22,7 +22,8 @@
   "preferUnplugged": true,
   "dependencies": {
     "clipanion": "^4.0.0-rc.2",
-    "glob": "^10.3.10"
+    "glob": "^10.3.10",
+    "typanion": "^3.14.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
