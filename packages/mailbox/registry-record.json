@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "bucketBase": "mailbox-artifacts",
+  "project": "serverlessinbox",
+  "regions": [
+    "eu-west-1",
+    "us-east-1"
+  ],
+  "ownerAccountId": "444615070368"
+}

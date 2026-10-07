@@ -24,11 +24,23 @@ jobs:
       - run: yarn install
       - run: yarn lint
       - run: yarn test
-      - run: yarn gitversion bump
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
           aws-region: eu-west-1
+      - name: Refresh registry record
+        run: |
+          yarn fetch-registry-record
+          if git diff --quiet -- packages/mailbox/registry-record.json packages/mailbox-cognito/registry-record.json; then
+            echo "Registry record unchanged"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add packages/mailbox/registry-record.json packages/mailbox-cognito/registry-record.json
+            git commit -m "chore: refresh registry record"
+            git push origin "HEAD:${GITHUB_REF}"
+          fi
+      - run: yarn gitversion bump
       - name: Resolve component artifact versions
         run: yarn resolve-artifacts
       - name: Embed component versions in package.json

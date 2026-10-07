@@ -45,11 +45,11 @@
     "postpack": "yarn clean",
     "bundle": "task bundle",
     "publish:dev": "task publish:dev",
-    "test": "jest",
+    "test": "tsc -p tsconfig.test.json && jest",
     "clean": "rm -rf lib *.tsbuildinfo"
   },
   "dependencies": {
-    "@serverlessinbox/artifact-registry": "^0.0.37",
+    "@serverlessinbox/artifact-registry": "^0.1.3",
     "aws-cdk-lib": "^2.261.0",
     "constructs": "^10.5.0",
     "typanion": "^3.14.0"
