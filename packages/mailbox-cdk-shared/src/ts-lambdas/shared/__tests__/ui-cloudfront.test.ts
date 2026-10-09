@@ -1,9 +1,10 @@
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
-import { mockClient, AwsStubbed } from 'aws-sdk-client-mock';
+import { mockClient } from 'aws-sdk-client-mock';
+import type { AwsClientStub } from 'aws-sdk-client-mock';
 import { invalidateCloudFront } from '../ui-cloudfront';
 
 describe('invalidateCloudFront', () => {
-  let cloudFrontMock: AwsStubbed<CloudFrontClient>;
+  let cloudFrontMock: AwsClientStub<CloudFrontClient>;
   let mockClient_: CloudFrontClient;
 
   beforeEach(() => {

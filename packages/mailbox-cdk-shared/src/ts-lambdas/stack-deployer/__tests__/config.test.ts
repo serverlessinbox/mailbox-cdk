@@ -1,4 +1,4 @@
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as env from '../../shared/env';
 import { loadStarter, loadWorker } from '../config';
 
 describe('stack-deployer config', () => {

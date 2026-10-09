@@ -191,8 +191,6 @@ describe('env helpers', () => {
       });
 
       it('returns whenInvalid when variable is absent and records problem', () => {
-        const problems: string[] = [];
-
         const loader: Loader = {
           mandatory: () => '',
           optional: () => '',

@@ -54,7 +54,7 @@ describe('BucketAutoEmpty handler — config failure path', () => {
 
       // Capture the request body sent to CloudFormation
       let capturedBody = '';
-      https.request.mockImplementation((urlOrOptions: any, optionsOrCallback?: any, callback?: any) => {
+      https.request.mockImplementation((_urlOrOptions: any, optionsOrCallback?: any, callback?: any) => {
         // https.request can be called as request(url, options, callback) or request(options, callback)
         // aws-custom-resources uses the parsed options form
         const actualCallback = callback || optionsOrCallback;

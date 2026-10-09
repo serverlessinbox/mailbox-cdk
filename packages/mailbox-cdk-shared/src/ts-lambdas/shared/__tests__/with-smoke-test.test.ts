@@ -133,7 +133,7 @@ describe('withSmokeTest', () => {
       const handlerMock = jest.fn(async () => ({}));
       const wrapped = withSmokeTest(handlerMock);
 
-      const result = await wrapped(sqsEvent, {});
+      await wrapped(sqsEvent, {});
 
       expect(handlerMock).toHaveBeenCalledWith(sqsEvent, {});
     });

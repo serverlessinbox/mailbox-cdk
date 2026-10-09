@@ -1,5 +1,6 @@
 import { mockClient } from 'aws-sdk-client-mock';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import type { Stack, StackStatus } from '@aws-sdk/client-cloudformation';
 import { S3Client } from '@aws-sdk/client-s3';
 import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
 import { Writable } from 'stream';
@@ -8,6 +9,10 @@ import { fakeLambdaContext, fakeCfnEvent } from './test-helpers';
 jest.mock('https', () => ({
   request: jest.fn(),
 }));
+
+function parentStackInStatus(stackStatus: StackStatus): Stack {
+  return { StackName: 'parent-stack', CreationTime: new Date(), StackStatus: stackStatus };
+}
 
 describe('content-deployer handler — rollback behavior', () => {
   const cfnMock = mockClient(CloudFormationClient);
@@ -52,7 +57,7 @@ describe('content-deployer handler — rollback behavior', () => {
   describe('on Update with side-effect failure and parent rolling back', () => {
     it('returns SUCCESS with the unchanged PhysicalResourceId', async () => {
       cfnMock.on(DescribeStacksCommand).resolves({
-        Stacks: [{ StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
+        Stacks: [parentStackInStatus('UPDATE_ROLLBACK_IN_PROGRESS')],
       });
 
       const event = fakeCfnEvent({
@@ -73,7 +78,7 @@ describe('content-deployer handler — rollback behavior', () => {
   describe('on Update with side-effect failure and parent not rolling back', () => {
     it('returns FAILED when parent is UPDATE_IN_PROGRESS', async () => {
       cfnMock.on(DescribeStacksCommand).resolves({
-        Stacks: [{ StackStatus: 'UPDATE_IN_PROGRESS' }],
+        Stacks: [parentStackInStatus('UPDATE_IN_PROGRESS')],
       });
 
       const event = fakeCfnEvent({
@@ -107,7 +112,7 @@ describe('content-deployer handler — rollback behavior', () => {
   describe('on Create with side-effect failure and parent rolling back', () => {
     it('returns FAILED — rollback suppression only applies to Update', async () => {
       cfnMock.on(DescribeStacksCommand).resolves({
-        Stacks: [{ StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
+        Stacks: [parentStackInStatus('UPDATE_ROLLBACK_IN_PROGRESS')],
       });
 
       const event = fakeCfnEvent({

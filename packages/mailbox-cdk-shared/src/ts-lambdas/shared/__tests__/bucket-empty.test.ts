@@ -18,7 +18,7 @@ describe('emptyBucket', () => {
 
     const deleted = await emptyBucket('empty-bucket');
     expect(deleted).toBe(0);
-    expect(s3Mock.call(0).args[0].input.Bucket).toBe('empty-bucket');
+    expect(s3Mock.commandCalls(ListObjectVersionsCommand)[0].args[0].input.Bucket).toBe('empty-bucket');
   });
 
   it('should delete all versions in a single page', async () => {
