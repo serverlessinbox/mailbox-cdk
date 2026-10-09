@@ -19,6 +19,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { ServerlessInboxTagKeys, PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
 import { ArtifactUpdaterLambda } from '../../../lambdas/artifact-updater';
 import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
 
@@ -83,7 +84,8 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
     stack = buildStack('TestArtifactUpdater');
 
     // Set up artifact resolver using the same pattern as AutoUpdater
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack);
+    const registryRecord = loadMailboxRegistryRecord();
+    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
     pinnedResolver.registerPackages(['mailbox-cdk']);
     const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver, 'test-resolver');
 

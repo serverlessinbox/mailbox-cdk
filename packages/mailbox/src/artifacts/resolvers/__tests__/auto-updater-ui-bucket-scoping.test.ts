@@ -16,6 +16,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Mailbox } from '../../../mailbox';
 import { AutoUpdater } from '../auto-updater';
 import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
 import type { IMailboxAuthProvider } from '../../../auth/types';
 import { Permission } from '../../../auth/jmap-scopes';
 import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
@@ -188,7 +189,7 @@ describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdate
 describe('MailboxUi.grantContentDeploy with a non-grantable resolver (PinnedResolver, the default)', () => {
   it('synthesizes without error, and no Lambda role is granted the auto-updater UI content-deploy shape', () => {
     const stack = buildStack('TestAutoUpdaterPinned');
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack);
+    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxRegistryRecord());
 
     // The regression this guards: if the runtime `'grantPrincipal' in resolver` capability check in
     // Mailbox were dropped (or inverted) and `ui.grantContentDeploy(resolver)` were called

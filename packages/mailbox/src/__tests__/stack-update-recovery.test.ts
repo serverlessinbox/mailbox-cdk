@@ -48,7 +48,7 @@ function buildTemplate(): Template {
   const packages: Record<string, ArtifactVersionsEntry> = {
     'mailbox-go': { version: '1.0.0', zone: 'regional' },
   };
-  const artifactResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+  const artifactResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
   artifactResolver.registerPackages(['mailbox-go']);
 
   const configTable = new DataTable(dynamodb.Table.fromTableArn(

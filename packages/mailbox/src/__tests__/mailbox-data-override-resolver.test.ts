@@ -4,6 +4,7 @@ import { Template, Match } from 'aws-cdk-lib/assertions';
 import { MailboxDataDeployer } from '../data/mailbox-data-deployer';
 import { PinnedResolver, CdkArtifactEngine, applyServerlessInboxBaseTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxRegistryRecord } from '../mailbox-registry-record';
 
 const ROLES = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'] as const;
 
@@ -31,7 +32,8 @@ describe('MailboxDataOverrideResolver synthesis', () => {
       synthesizer: new BootstraplessSynthesizer(),
       env: { account: '123456789012', region: 'us-west-2' },
     });
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack);
+    const registryRecord = loadMailboxRegistryRecord();
+    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
     pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go', 'mailbox-cdk-shared']);
 

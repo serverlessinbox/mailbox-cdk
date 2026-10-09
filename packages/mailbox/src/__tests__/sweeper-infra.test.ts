@@ -63,7 +63,7 @@ describe('SweeperInfra IAM Policies', () => {
     const packages: Record<string, ArtifactVersionsEntry> = {
       'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
     pinnedResolver.registerPackages(['mailbox-cdk']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
     return stack;

@@ -10,9 +10,9 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import type { IArtifactResolver } from '../../../artifacts/i-artifact-resolver';
 import type { IIdentityProvisioner } from '../../../lambdas/identity-provisioner';
 import { SupportAddonProvider, SupportMode } from '../support-addon';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
@@ -30,15 +30,14 @@ const mockIdentityProvisioner: IIdentityProvisioner = {
  * Helper to create an artifact resolver for testing.
  * Provides both mailbox-cdk and mailbox-go packages.
  */
-function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
+function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
   const packages: Record<string, ArtifactVersionsEntry> = {
     'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
     'mailbox-go': { version: '1.0.0', zone: 'regional' },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
   pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-  const engine = new CdkArtifactEngine(stack, pinnedResolver);
-  return engine;
+  return pinnedResolver;
 }
 
 describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
@@ -76,7 +75,6 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
       const artifactResolver = createTestArtifactResolver(stack);
       const provider = new SupportAddonProvider({
         mode: SupportMode.DISABLED,
-        artifactResolver,
       });
 
       // The provider creates addons when createAdminApiAddons is called
@@ -86,6 +84,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
         identityProvisioner: mockIdentityProvisioner,
+        artifactResolver,
       });
 
       const template = Template.fromStack(stack);
@@ -119,7 +118,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
   describe('When enabled (literal ENABLED) - IAM scope verification', () => {
     let stack: cdk.Stack;
     let template: Template;
-    let artifactResolver: ICdkArtifactEngine;
+    let artifactResolver: IArtifactResolver;
     let configTable: Table;
     let auditEventsQueue: AuditEventsQueue;
     let auditLogTable: Table;
@@ -158,7 +157,6 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       const provider = new SupportAddonProvider({
         mode: SupportMode.ENABLED,
-        artifactResolver,
       });
 
       provider.createAdminApiAddons(stack, {
@@ -166,6 +164,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
         identityProvisioner: mockIdentityProvisioner,
+        artifactResolver,
       });
 
       template = Template.fromStack(stack);
@@ -535,7 +534,6 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       const provider = new SupportAddonProvider({
         mode: mode as any,
-        artifactResolver,
       });
 
       provider.createAdminApiAddons(stack, {
@@ -543,6 +541,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         auditEventsQueue,
         auditLogTable: new DataTable(auditLogTable),
         identityProvisioner: mockIdentityProvisioner,
+        artifactResolver,
       });
 
       const template = Template.fromStack(stack);
@@ -553,6 +552,41 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
       // If no lambdas, the addon didn't create the lambda - likely a construction issue with lazy value
       expect(Object.keys(allLambdas).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Artifact resolution through the Mailbox resolver', () => {
+    it('resolves the support-api code from the resolver carried by the addon context', () => {
+      const stack = new cdk.Stack(new App(), 'test-stack', {
+        env: { account: '111122223333', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+      const mailboxResolver = new PinnedResolver(
+        stack,
+        { 'mailbox-go': { version: '9.9.9', zone: 'regional' } },
+        { bucketBase: 'mailbox-resolver-artifacts', project: 'serverlessinbox' },
+        {},
+      );
+      mailboxResolver.registerPackages(['mailbox-go']);
+
+      new SupportAddonProvider({ mode: SupportMode.ENABLED }).createAdminApiAddons(stack, {
+        configTable: new DataTable(new Table(stack, 'config-table', {
+          partitionKey: { name: 'pk', type: AttributeType.STRING },
+          sortKey: { name: 'sk', type: AttributeType.STRING },
+        })),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
+        auditLogTable: new DataTable(new Table(stack, 'audit-log-table', {
+          partitionKey: { name: 'pk', type: AttributeType.STRING },
+          sortKey: { name: 'sk', type: AttributeType.STRING },
+        })),
+        identityProvisioner: mockIdentityProvisioner,
+        artifactResolver: mailboxResolver,
+      });
+
+      const functions = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
+        Properties: { Code: { S3Key: Match.stringLikeRegexp('9\\.9\\.9') } },
+      });
+      expect(Object.keys(functions).length).toBeGreaterThan(0);
     });
   });
 });

@@ -48,7 +48,7 @@ describe('BootstrapLambda SES rule set wiring', () => {
       'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
       'mailbox-go': { version: '1.0.0', zone: 'regional' },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
     pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 

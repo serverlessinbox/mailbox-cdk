@@ -138,7 +138,7 @@ describe('Mailbox Resource Naming', () => {
           'serverlessinbox:artifacts': {
             bucketBase: 'test-artifacts',
             packages: {
-              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+              'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
             },
           },
         },
@@ -149,10 +149,10 @@ describe('Mailbox Resource Naming', () => {
       });
 
       const packages: Record<string, ArtifactVersionsEntry> = {
-        'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+        'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
       };
-      const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
-      pinnedResolver.registerPackages(['mailbox-cdk']);
+      const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
+      pinnedResolver.registerPackages(['mailbox-cdk-shared']);
       const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
       new MailboxDataDeployerWorker(stack, 'worker', {

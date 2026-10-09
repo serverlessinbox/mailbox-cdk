@@ -24,7 +24,7 @@ function buildWebSocketPush(stack: cdk.Stack): WebSocketPush {
   const packages: Record<string, ArtifactVersionsEntry> = {
     'mailbox-go': { version: '1.0.0', zone: 'regional' },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
   pinnedResolver.registerPackages(['mailbox-go']);
   const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
