@@ -35,6 +35,7 @@ import {
   TagResourceCommand as CloudFrontTagResourceCommand,
 } from '@aws-sdk/client-cloudfront';
 import { createHandler } from '../handler';
+import { fakeUpdaterClients } from './fake-updater-clients';
 import type { Config } from '../config';
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
@@ -170,13 +171,20 @@ function createDistributionConfig(lambdaArn: string, lambdaVersion: string, addi
 const testConfig: Config = {
   logLevel: 'error',
   serviceName: '',
+  region: 'us-east-1',
   project: 'serverlessinbox',
   distTag: 'latest',
   granularity: 'major',
   artifactBucketBase: 'mailbox-artifacts',
   rootStackTagValue: 'my-stack',
 };
-const handler = createHandler({ config: testConfig, error: undefined });
+const clients = fakeUpdaterClients();
+const handler = createHandler({ config: testConfig, clients, error: undefined });
+const westHandler = createHandler({
+  config: { ...testConfig, region: 'us-west-2' },
+  clients: fakeUpdaterClients('us-west-2'),
+  error: undefined,
+});
 
 describe('Scheduled Updater Handler — Integration Tests', () => {
   const lambdaMock = mockClient(LambdaClient);
@@ -193,17 +201,13 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     lambdaMock.reset();
     taggingMock.reset();
     cloudFrontMock.reset();
-    // Reset environment variables
-    delete process.env.AWS_REGION;
   });
 
   describe('handler (main entry point)', () => {
-    it('scans both AWS_REGION and us-east-1 for Lambdas', async () => {
-      process.env.AWS_REGION = 'us-west-2';
-
+    it('scans both the deployment region and us-east-1 for Lambdas', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
-      await handler({});
+      await westHandler({});
 
       // Verify GetResourcesCommand was called for both regions (us-west-2 and us-east-1)
       const getCalls = taggingMock.commandCalls(GetResourcesCommand);
@@ -268,7 +272,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
 
     it('routes ui auto-update-type on CloudFront distribution to advanceUiBucketIfStale', async () => {
       const cloudFrontMockLocal = mockClient(CloudFrontClient as any);
-      process.env.AWS_REGION = 'us-east-1';
       process.env.AWS_ACCOUNT_ID = '123456789012';
 
       mockDeriveTrack.mockReturnValue('v1');
@@ -311,8 +314,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('routes edge auto-update-type to advanceEdgeLambdaIfStale in us-east-1', async () => {
-      process.env.AWS_REGION = 'us-east-1';
-
       mockDeriveTrack.mockReturnValue('v1');
       mockReadReleasePointer.mockResolvedValue({
         version: '2.0.0',
@@ -375,8 +376,6 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
     });
 
     it('skips edge update when not in us-east-1 region', async () => {
-      process.env.AWS_REGION = 'us-west-2';
-
       // First call (us-west-2): return edge lambda
       // Second call (us-east-1): return empty
       taggingMock
@@ -397,7 +396,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
         })
         .resolves({ ResourceTagMappingList: [] });
 
-      await handler({});
+      await westHandler({});
 
       // Verify readReleasePointer was NOT called (edge skipped in non-us-east-1 region)
       expect(mockReadReleasePointer).not.toHaveBeenCalled();
@@ -635,10 +634,12 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
       // Verify the previously-filtered package IS now processed
       expect(mockReadReleasePointer).toHaveBeenCalled();
       expect(mockReadReleasePointer).toHaveBeenCalledWith(
+        expect.any(Object),
+        { bucketBase: 'mailbox-artifacts', project: 'serverlessinbox' },
         'mailbox-cdk-shared',
         'latest',
         'us-east-1',
-        expect.any(Object),
+        'v1',
       );
       expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
     });
@@ -891,7 +892,7 @@ describe('Scheduled Updater Handler — Integration Tests', () => {
   });
 
   describe('config error', () => {
-    const brokenHandler = createHandler({ config: testConfig, error: 'LOG_LEVEL: invalid log level "bogus"' });
+    const brokenHandler = createHandler({ config: testConfig, clients: undefined, error: 'LOG_LEVEL: invalid log level "bogus"' });
 
     it('HTTP API event with bad config returns 500 naming the problem', async () => {
       const result = await brokenHandler({ requestContext: { http: { method: 'GET', path: '/artifact-updates/status' } } });

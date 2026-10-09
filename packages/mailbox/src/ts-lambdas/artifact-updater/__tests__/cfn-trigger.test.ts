@@ -14,7 +14,10 @@ import * as https from 'https';
 import type { Context, CloudFormationCustomResourceEvent } from 'aws-lambda';
 import type { Config } from '../config';
 import { createCfnTriggerHandler } from '../cfn-trigger';
+import { fakeUpdaterClients } from './fake-updater-clients';
 import { runUpdateCycle } from '../update-cycle';
+
+const clients = fakeUpdaterClients();
 
 jest.mock('../update-cycle', () => ({
   runUpdateCycle: jest.fn(),
@@ -46,6 +49,7 @@ function fakeContext(): Context {
 const testConfig: Config = {
   logLevel: 'error',
   serviceName: 'artifact-updater-service',
+  region: 'us-east-1',
   project: 'serverlessinbox',
   distTag: 'latest',
   granularity: 'major',
@@ -69,7 +73,7 @@ describe('cfnTriggerHandler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     writtenBodies = [];
-    cfnTriggerHandler = createCfnTriggerHandler(testConfig, undefined);
+    cfnTriggerHandler = createCfnTriggerHandler({ config: testConfig, clients, error: undefined });
     mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
       // Simulate CloudFormation accepting the PUT immediately.
       process.nextTick(() => callback({ statusCode: 200, headers: {} }));
@@ -138,7 +142,7 @@ describe('cfnTriggerHandler', () => {
 
   it('fails Create on config error and does not run the update cycle', async () => {
     writtenBodies = [];
-    const cfnTriggerHandlerWithError = createCfnTriggerHandler(testConfig, 'LOG_LEVEL: invalid');
+    const cfnTriggerHandlerWithError = createCfnTriggerHandler({ config: testConfig, clients: undefined, error: 'LOG_LEVEL: invalid' });
     mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
       process.nextTick(() => callback({ statusCode: 200, headers: {} }));
       return {

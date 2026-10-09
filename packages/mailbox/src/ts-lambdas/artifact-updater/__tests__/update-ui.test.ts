@@ -14,6 +14,9 @@ import {
 } from '@aws-sdk/client-cloudfront';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceUiBucketIfStale } from '../update-ui';
+import { fakeUpdaterClients } from './fake-updater-clients';
+
+const clients = fakeUpdaterClients();
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
 jest.mock('@serverlessinbox/artifact-registry', () => ({
@@ -55,7 +58,6 @@ describe('advanceUiBucketIfStale', () => {
     process.env.DIST_TAG = 'latest';
     process.env.GRANULARITY = 'major';
     process.env.PROJECT = 'serverlessinbox';
-    process.env.AWS_REGION = 'us-east-1';
     cloudFrontMock = mockClient(CloudFrontClient as any);
   });
 
@@ -76,7 +78,7 @@ describe('advanceUiBucketIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceUiBucketIfStale(
-      'us-east-1',
+      clients,
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
@@ -102,7 +104,7 @@ describe('advanceUiBucketIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceUiBucketIfStale(
-      'us-east-1',
+      clients,
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
@@ -132,7 +134,7 @@ describe('advanceUiBucketIfStale', () => {
 
     const distributionArn = 'arn:aws:cloudfront::818189473156:distribution/ABCD1234';
     const updated = await advanceUiBucketIfStale(
-      'us-east-1',
+      clients,
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
@@ -187,7 +189,7 @@ describe('advanceUiBucketIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceUiBucketIfStale(
-      'us-east-1',
+      clients,
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',
@@ -218,7 +220,7 @@ describe('advanceUiBucketIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceUiBucketIfStale(
-      'us-east-1',
+      clients,
       'ui-content-bucket',
       'ui-bundle',
       'ui-bundle.zip',

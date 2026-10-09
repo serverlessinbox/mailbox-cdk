@@ -17,6 +17,9 @@ import {
 } from '@aws-sdk/client-lambda';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceLambdaIfStale } from '../update-code';
+import { fakeUpdaterClients } from './fake-updater-clients';
+
+const clients = fakeUpdaterClients();
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
 // Note: artifact-registry is not yet published (pending), so this mock allows
@@ -46,7 +49,6 @@ describe('advanceLambdaIfStale', () => {
     delete process.env.GRANULARITY;
     delete process.env.PROJECT;
     delete process.env.ARTIFACT_BUCKET_BASE;
-    delete process.env.AWS_REGION;
   });
 
   beforeEach(() => {
@@ -68,7 +70,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -95,7 +98,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -133,7 +137,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -149,6 +154,36 @@ describe('advanceLambdaIfStale', () => {
     const tagCalls = lambdaMock.commandCalls(TagResourceCommand);
     expect(tagCalls).toHaveLength(1);
     expect(tagCalls[0].args[0].input.Tags).toEqual({ 'serverless-inbox:artifact-version': '1.2.4' });
+  });
+
+  it('updates through the Lambda client of the region it is given, building none of its own', async () => {
+    mockDeriveTrack.mockReturnValue('v1');
+    mockReadReleasePointer.mockResolvedValue({ version: '1.2.4' });
+    mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
+    const euClients = fakeUpdaterClients('eu-west-1');
+    lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
+    lambdaMock.on(GetFunctionConfigurationCommand).resolves({ LastUpdateStatus: 'Successful' });
+    lambdaMock.on(InvokeCommand).resolves({
+      StatusCode: 200,
+      Payload: JSON.stringify({ serverlessInboxSmokeTestOk: true }) as any,
+    });
+    lambdaMock.on(TagResourceCommand).resolves({});
+
+    await advanceLambdaIfStale(
+      euClients,
+      euClients.deployment,
+      'arn:aws:lambda:eu-west-1:123456789012:function:mailbox-go',
+      'mailbox-go',
+      'mailbox-go',
+      '1.2.3',
+      new LoggerBuffer(),
+      testConfig,
+    );
+
+    const callsOnInjectedClient = lambdaMock.calls().filter((call) => call.thisValue === euClients.deployment.lambda);
+    expect(callsOnInjectedClient).toHaveLength(lambdaMock.calls().length);
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    expect(callsOnInjectedClient.some((call) => call.args[0] instanceof UpdateFunctionCodeCommand)).toBe(true);
   });
 
   it('smoke test unprobeable → updates tag with warning and returns true', async () => {
@@ -172,7 +207,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -212,7 +248,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -253,7 +290,8 @@ describe('advanceLambdaIfStale', () => {
 
     await expect(
       advanceLambdaIfStale(
-        'us-east-1',
+        clients,
+        clients.deployment,
         'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
         'mailbox-go',
         'mailbox-go',
@@ -281,7 +319,8 @@ describe('advanceLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceLambdaIfStale(
-      'us-east-1',
+      clients,
+      clients.deployment,
       'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
       'mailbox-go',
       'mailbox-go',
@@ -318,11 +357,11 @@ describe('advanceLambdaIfStale', () => {
     lambdaMock.on(TagResourceCommand).resolves({});
     const logger = new LoggerBuffer();
 
-    const updated = await advanceLambdaIfStale('us-east-1', 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0', logger, customConfig);
+    const updated = await advanceLambdaIfStale(clients, clients.deployment, 'arn:aws:lambda:us-east-1:123456789012:function:test', 'test-pkg', 'test-artifact', '1.0.0', logger, customConfig);
 
     expect(updated).toBe(true);
     // Verify both the readReleasePointer and UpdateFunctionCodeCommand use custom bucket
-    expect(mockReadReleasePointer).toHaveBeenCalledWith('test-pkg', 'latest', 'us-east-1', expect.objectContaining({ bucketBase: 'custom-artifacts' }));
+    expect(mockReadReleasePointer).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ bucketBase: 'custom-artifacts' }), 'test-pkg', 'latest', 'us-east-1', 'v1');
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input.S3Bucket).toBe('custom-artifacts-us-east-1');
   });
 });

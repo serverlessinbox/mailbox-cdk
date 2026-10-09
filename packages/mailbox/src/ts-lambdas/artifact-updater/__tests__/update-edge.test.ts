@@ -23,6 +23,9 @@ import {
 } from '@aws-sdk/client-cloudfront';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { advanceEdgeLambdaIfStale } from '../update-edge';
+import { fakeUpdaterClients } from './fake-updater-clients';
+
+const clients = fakeUpdaterClients();
 
 // Mock @serverlessinbox/artifact-registry before importing any handler code.
 jest.mock('@serverlessinbox/artifact-registry', () => ({
@@ -133,7 +136,6 @@ describe('advanceEdgeLambdaIfStale', () => {
     delete process.env.GRANULARITY;
     delete process.env.PROJECT;
     delete process.env.ARTIFACT_BUCKET_BASE;
-    delete process.env.AWS_REGION;
   });
 
   beforeEach(() => {
@@ -155,6 +157,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
@@ -180,6 +183,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
@@ -202,6 +206,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda',
       'edge-pkg',
       'edge-lambda',
@@ -260,6 +265,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',
@@ -377,6 +383,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',
@@ -436,6 +443,7 @@ describe('advanceEdgeLambdaIfStale', () => {
 
     await expect(
       advanceEdgeLambdaIfStale(
+      clients,
         edgeLambdaArn,
         'edge-pkg',
         'edge-lambda',
@@ -488,6 +496,7 @@ describe('advanceEdgeLambdaIfStale', () => {
     const logger = new LoggerBuffer();
 
     const updated = await advanceEdgeLambdaIfStale(
+      clients,
       edgeLambdaArn,
       'edge-pkg',
       'edge-lambda',

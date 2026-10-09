@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
 import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
 
 function synthWorker(): Template {
@@ -10,7 +11,7 @@ function synthWorker(): Template {
     bucketBase: 'test-artifacts',
     packages: {
       mailbox: { kind: 'release', version: '0.0.1-test' },
-      'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+      'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
     },
   });
   app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -20,8 +21,9 @@ function synthWorker(): Template {
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack);
-  pinnedResolver.registerPackages(['mailbox', 'mailbox-cdk']);
+  const registryRecord = loadMailboxRegistryRecord();
+  const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
+  pinnedResolver.registerPackages(['mailbox', 'mailbox-cdk-shared']);
   const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
   new MailboxDataDeployerWorker(stack, 'worker', {
