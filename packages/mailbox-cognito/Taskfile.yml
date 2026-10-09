@@ -46,6 +46,9 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip
 
+  # The output must publish as objectName `lambdas/jmap-oauth-dcr.zip` in artifact-registry.json:
+  # JmapOAuthDcrLambda passes `lambdaId: 'jmap-oauth-dcr'` and TypeScriptLambda resolves
+  # `lambdas/${lambdaId}.zip`.
   bundle:jmap-oauth-dcr:
     desc: Bundle RFC 7591 dynamic client registration lambda zip to /tmp
     sources:

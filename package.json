@@ -12,7 +12,7 @@
   "scripts": {
     "lint": "eslint packages/mailbox-bundler/src",
     "lint:all": "eslint packages --max-warnings=-1",
-    "resolve-artifacts": "artifact-registry resolve-artifacts --bucket mailbox-artifacts-eu-west-1 --region eu-west-1 --component mailbox-go:package:mailbox-go --component mailbox-admin-ui:package:mailbox-admin-ui --component mailbox-webmail-ui:package:mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
+    "resolve-artifacts": "artifact-registry resolve-artifacts --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --component mailbox-go:package:mailbox-go --component mailbox-admin-ui:package:mailbox-admin-ui --component mailbox-webmail-ui:package:mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
     "fetch-registry-record": "artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox/registry-record.json && artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox-cognito/registry-record.json",
     "embed-component-versions": "ts-node --project tsconfig.scripts.json scripts/embed-component-versions.ts",
     "test": "yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
@@ -21,6 +21,7 @@
     "@aws-sdk/client-s3": "^3.1132.0",
     "@jwpkg/gitversion": "^1.4.0-pack-order.2",
     "@serverlessinbox/artifact-registry": "^0.1.3",
+    "@serverlessinbox/artifact-registry-gitversion": "^0.1.3",
     "@types/node": "^24.10.1",
     "eslint": "^9",
     "ts-node": "^10.9.2",

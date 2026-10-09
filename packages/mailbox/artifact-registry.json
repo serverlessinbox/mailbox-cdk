@@ -1,0 +1,18 @@
+{
+  "registry": {
+    "bucketBase": "mailbox-artifacts",
+    "project": "serverlessinbox",
+    "regions": ["eu-west-1"]
+  },
+  "type": "package",
+  "name": "mailbox-cdk",
+  "artifacts": [
+    { "source": "/tmp/resource-sweeper.zip", "objectName": "lambdas/resource-sweeper.zip" },
+    { "source": "/tmp/artifact-updater.zip", "objectName": "lambdas/artifact-updater.zip" },
+    { "source": "/tmp/ui-deployer.zip", "objectName": "lambdas/ui-deployer.zip" },
+    { "source": "dist/data-stack-template.json", "objectName": "data-stack-template.json" },
+    { "source": "/tmp/data-override-resolver.zip", "objectName": "lambdas/data-override-resolver.zip" },
+    { "source": "/tmp/blob-authorizer.zip", "objectName": "lambdas/blob-authorizer.zip", "name": "mailbox-cdk-edge", "zone": "edge" },
+    { "source": "dist/edge-stack-template.json", "objectName": "edge-stack-template.json", "name": "mailbox-cdk-edge", "zone": "edge" }
+  ]
+}

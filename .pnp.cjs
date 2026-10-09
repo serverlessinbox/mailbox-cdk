@@ -733,6 +733,10 @@ const RAW_RUNTIME_STATE =
       "npm:0.1.3"\
     ],\
     [\
+      "@serverlessinbox/artifact-registry-gitversion",\
+      "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3"\
+    ],\
+    [\
       "@serverlessinbox/mailbox",\
       "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"\
     ],\
@@ -3178,6 +3182,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-gitversion", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3"],\
           ["@types/node", "npm:24.10.1"],\
           ["eslint", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:9.39.5"],\
           ["mailbox-cdk", "workspace:."],\
@@ -5833,6 +5838,32 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@serverlessinbox/artifact-registry-gitversion", [\
+      ["npm:0.1.3", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-registry-gitversion-npm-0.1.3-3de31ba140-10c0.zip/node_modules/@serverlessinbox/artifact-registry-gitversion/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-registry-gitversion", "npm:0.1.3"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-registry-gitversion-virtual-8ba90721a7/6/.yarn/berry/cache/@serverlessinbox-artifact-registry-gitversion-npm-0.1.3-3de31ba140-10c0.zip/node_modules/@serverlessinbox/artifact-registry-gitversion/",\
+        "packageDependencies": [\
+          ["@aws-sdk/client-s3", "npm:3.1132.0"],\
+          ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-gitversion", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3"],\
+          ["@types/jwpkg__gitversion", null],\
+          ["semver", "npm:7.8.5"],\
+          ["typanion", "npm:3.14.0"]\
+        ],\
+        "packagePeers": [\
+          "@jwpkg/gitversion",\
+          "@types/jwpkg__gitversion"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@serverlessinbox/mailbox", [\
       ["virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox", {\
         "packageLocation": "./.yarn/__virtual__/@serverlessinbox-mailbox-virtual-903c37be11/1/packages/mailbox/",\
@@ -5988,7 +6019,9 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@aws-sdk/client-cloudformation", "npm:3.1132.0"],\
           ["@aws-sdk/client-cloudfront", "npm:3.1132.0"],\
+          ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
+          ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
@@ -12321,6 +12354,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.2"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-gitversion", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3"],\
           ["@types/node", "npm:24.10.1"],\
           ["eslint", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:9.39.5"],\
           ["mailbox-cdk", "workspace:."],\
