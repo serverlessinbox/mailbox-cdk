@@ -1,5 +1,5 @@
 {
   "bucketBase": "mailbox-artifacts",
   "mailbox-cognito": { "version": "0.0.0", "zone": "regional" },
-  "mailbox-cdk": { "version": "0.0.0", "zone": "regional" }
+  "mailbox-cdk-shared": { "version": "0.0.0", "zone": "regional" }
 }
