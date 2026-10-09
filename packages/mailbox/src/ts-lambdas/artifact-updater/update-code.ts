@@ -2,12 +2,13 @@
  * Standard Lambda code update path: UpdateFunctionCode + tag update.
  */
 
-import { LambdaClient, UpdateFunctionCodeCommand } from '@aws-sdk/client-lambda';
+import { UpdateFunctionCodeCommand } from '@aws-sdk/client-lambda';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { parse as semverParse } from 'semver';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import type { UpdaterTargetConfig } from './common';
+import type { RegionClients, UpdaterClients } from './updater-clients';
 import { artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
 import { invokeSmokeTest } from './smoke-test';
 
@@ -19,7 +20,8 @@ import { invokeSmokeTest } from './smoke-test';
  * Integration testable: accepts region, lambdaArn, and derives pointer from env/registry.
  */
 export async function advanceLambdaIfStale(
-  region: string,
+  clients: UpdaterClients,
+  scan: RegionClients,
   lambdaArn: string,
   packageName: string,
   artifactName: string,
@@ -28,9 +30,10 @@ export async function advanceLambdaIfStale(
   config: UpdaterTargetConfig,
 ): Promise<boolean> {
   const { project, artifactBucketBase } = config;
+  const { region, lambda: lambdaClient } = scan;
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger, config);
+  const stale = await resolveStaleTarget(clients.registryS3, region, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -46,7 +49,6 @@ export async function advanceLambdaIfStale(
   });
   const bucket = artifactBucketName(artifactBucketBase, region);
 
-  const lambdaClient = new LambdaClient({ region });
   try {
     logger.info('updating lambda code', { lambdaArn, artifactBucket: bucket, artifactKey, newVersion: pointer.version });
 

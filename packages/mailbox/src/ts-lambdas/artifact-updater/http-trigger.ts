@@ -1,3 +1,4 @@
+import type { LambdaClient } from '@aws-sdk/client-lambda';
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { Config } from './config';
@@ -10,7 +11,7 @@ import { dispatchSelfInvoke } from './self-invoke';
  * - POST /artifact-updates/trigger: fire-and-forget async self-invoke, respond 202
  * - else: respond 404
  */
-export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: Config): Promise<{
+export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: Config, lambdaClient: LambdaClient): Promise<{
   statusCode: number;
   body: string;
 }> {
@@ -23,7 +24,7 @@ export async function handleHttpTrigger(event: APIGatewayProxyEventV2, config: C
   if (method === 'POST' && path.includes('/trigger')) {
     try {
       logger.debug('dispatching self-invoke');
-      await dispatchSelfInvoke();
+      await dispatchSelfInvoke(lambdaClient);
       logger.debug('self-invoke dispatched');
 
       return {

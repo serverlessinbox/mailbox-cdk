@@ -3,15 +3,12 @@
  * and update distribution tags via CloudFront TagResource.
  */
 
-import {
-  CloudFrontClient,
-  TagResourceCommand,
-} from '@aws-sdk/client-cloudfront';
-import { S3Client } from '@aws-sdk/client-s3';
+import { TagResourceCommand } from '@aws-sdk/client-cloudfront';
 import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer, deployZipToPrefix, normalizePrefix, invalidateCloudFront } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import type { UpdaterTargetConfig } from './common';
+import type { UpdaterClients } from './updater-clients';
 import { artifactBucketName } from './common';
 
 /**
@@ -21,10 +18,10 @@ import { artifactBucketName } from './common';
  * Returns true if an update occurred, false if no-op (not stale).
  *
  * packageName and artifactName come from the distribution's tags.
- * Uses process.env.AWS_REGION (deployment region) for artifact resolution, not the scan region.
+ * Uses the deployment region for artifact resolution.
  */
 export async function advanceUiBucketIfStale(
-  _scanRegion: string,
+  clients: UpdaterClients,
   bucketName: string,
   packageName: string,
   artifactName: string,
@@ -34,10 +31,10 @@ export async function advanceUiBucketIfStale(
   config: UpdaterTargetConfig,
 ): Promise<boolean> {
   const { project, artifactBucketBase } = config;
-  const deploymentRegion = process.env.AWS_REGION || 'us-east-1';
+  const deploymentRegion = clients.deployment.region;
 
   // Check staleness using deployment region (where the bundle artifact lives)
-  const stale = await resolveStaleTarget(deploymentRegion, packageName, deployedVersion, logger, config);
+  const stale = await resolveStaleTarget(clients.registryS3, deploymentRegion, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -62,8 +59,7 @@ export async function advanceUiBucketIfStale(
 
     // Extract and upload to bucket in deployment region
     const contentPrefix = normalizePrefix('content/', 'content/');
-    const s3 = new S3Client({ region: deploymentRegion });
-    const res = await deployZipToPrefix(s3, {
+    const res = await deployZipToPrefix(clients.registryS3, {
       sourceBucket: bucket,
       sourceKey: artifactKey,
       targetBucket: bucketName,
@@ -71,7 +67,7 @@ export async function advanceUiBucketIfStale(
     });
 
     // Update the distribution's artifact-version tag via CloudFront TagResource
-    const cloudFront = new CloudFrontClient({ region: deploymentRegion });
+    const cloudFront = clients.cloudFront;
 
     // Invalidate CloudFront
     const invalidationRes = await invalidateCloudFront(cloudFront, {

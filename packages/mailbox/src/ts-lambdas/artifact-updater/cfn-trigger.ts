@@ -1,6 +1,6 @@
 import { wrapHandler } from 'aws-custom-resources';
 import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { Config } from './config';
+import type { UpdaterRuntime } from './updater-runtime';
 import { runUpdateCycle } from './update-cycle';
 
 /**
@@ -31,10 +31,10 @@ import { runUpdateCycle } from './update-cycle';
  * isn't reachable here even after narrowing on RequestType === 'Delete' -- relying on the
  * wrapper's own fallback avoids needing an unsound cast to reach it.)
  */
-export function createCfnTriggerHandler(config: Config, configError: string | undefined) {
+export function createCfnTriggerHandler(runtime: UpdaterRuntime) {
   return wrapHandler(async (event) => {
     // Emit finalization details for manual recovery of hung custom resources
-    emitManualFinalize(event, { service: config.serviceName });
+    emitManualFinalize(event, { service: runtime.config.serviceName });
 
     if (event.RequestType === 'Delete') {
       return {
@@ -42,13 +42,13 @@ export function createCfnTriggerHandler(config: Config, configError: string | un
       };
     }
 
-    if (configError) {
+    if (runtime.error !== undefined) {
       // Config error on Create/Update fails the custom resource (unlike an update-cycle failure, which is swallowed).
-      throw new Error(configError);
+      throw new Error(runtime.error);
     }
 
     try {
-      await runUpdateCycle(config);
+      await runUpdateCycle(runtime.config, runtime.clients);
     } catch (err: unknown) {
       // runUpdateCycle() already logged the error via LoggerBuffer and flushed it to CloudWatch
       // before rethrowing. We catch here to prevent CFN FAILED and allow deployment to continue.

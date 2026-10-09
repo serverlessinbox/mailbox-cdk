@@ -3,6 +3,7 @@ import { env, parseLogLevelStrict, type LogLevel } from '@serverlessinbox/mailbo
 export interface Config {
   readonly logLevel: LogLevel;
   readonly serviceName: string;
+  readonly region: string;
   readonly project: string;
   readonly distTag: string;
   readonly granularity: string;
@@ -16,6 +17,7 @@ export function load(l: env.Loader): Config {
     // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
     // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
     serviceName: l.optional('SERVICE_NAME', ''),
+    region: l.mandatory('AWS_REGION'),
     project: l.mandatory('PROJECT'),
     distTag: l.mandatory('DIST_TAG'),
     granularity: l.mandatory('GRANULARITY'),

@@ -3,13 +3,11 @@
  */
 
 import {
-  LambdaClient,
   UpdateFunctionCodeCommand,
   PublishVersionCommand,
   ResourceConflictException,
 } from '@aws-sdk/client-lambda';
 import {
-  CloudFrontClient,
   ListDistributionsCommand,
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -19,6 +17,7 @@ import { buildArtifactKey } from '@serverlessinbox/artifact-registry';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { resolveStaleTarget } from './staleness';
 import type { UpdaterTargetConfig } from './common';
+import type { UpdaterClients } from './updater-clients';
 import { artifactBucketName, bumpArtifactVersionTag, waitForFunctionCodeUpdateSettled } from './common';
 
 /**
@@ -69,6 +68,7 @@ function stripLambdaVersion(arn: string): string {
  * Returns true if an update occurred, false if no-op (not stale).
  */
 export async function advanceEdgeLambdaIfStale(
+  clients: UpdaterClients,
   edgeLambdaArn: string,
   packageName: string,
   artifactName: string,
@@ -77,10 +77,11 @@ export async function advanceEdgeLambdaIfStale(
   config: UpdaterTargetConfig,
 ): Promise<boolean> {
   const { project, artifactBucketBase } = config;
-  const region = 'us-east-1'; // Edge lambdas are always us-east-1
+  const { region, lambda: lambdaClient } = clients.edge;
+  const cfClient = clients.cloudFront;
 
   // Check staleness
-  const stale = await resolveStaleTarget(region, packageName, deployedVersion, logger, config);
+  const stale = await resolveStaleTarget(clients.registryS3, region, packageName, deployedVersion, logger, config);
   if (!stale) {
     return false;
   }
@@ -95,9 +96,6 @@ export async function advanceEdgeLambdaIfStale(
     project,
   });
   const bucket = artifactBucketName(artifactBucketBase, region);
-
-  const lambdaClient = new LambdaClient({ region });
-  const cfClient = new CloudFrontClient({ region });
 
   try {
     logger.info('updating edge lambda code', { edgeLambdaArn, artifactBucket: bucket, artifactKey, newVersion: pointer.version });

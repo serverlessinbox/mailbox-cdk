@@ -1,9 +1,7 @@
-import {
-  ResourceGroupsTaggingAPIClient,
-  GetResourcesCommand,
-} from '@aws-sdk/client-resource-groups-tagging-api';
+import { GetResourcesCommand } from '@aws-sdk/client-resource-groups-tagging-api';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { Config } from './config';
+import { EDGE_REGION, type UpdaterClients } from './updater-clients';
 import { advanceLambdaIfStale } from './update-code';
 import { advanceUiBucketIfStale } from './update-ui';
 import { advanceEdgeLambdaIfStale } from './update-edge';
@@ -14,7 +12,7 @@ import { tagMapFrom } from './common';
  * Implements buffered logging: only logs when updates occur or errors happen.
  * Scans both regions and filters by registered packages.
  */
-export async function runUpdateCycle(config: Config): Promise<void> {
+export async function runUpdateCycle(config: Config, clients: UpdaterClients): Promise<void> {
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
   try {
@@ -25,18 +23,18 @@ export async function runUpdateCycle(config: Config): Promise<void> {
       project: config.project,
       artifactBucketBase: config.artifactBucketBase,
     };
-    const regions = [process.env.AWS_REGION || 'us-east-1', 'us-east-1'];
-    const uniqueRegions = Array.from(new Set(regions)); // Avoid scanning the same region twice if AWS_REGION = us-east-1.
+    // Avoid scanning the same region twice when the deployment region is the edge region.
+    const scanTargets = clients.edge === clients.deployment ? [clients.deployment] : [clients.deployment, clients.edge];
 
     logger.info('artifact update cycle started', {
       rootStackTag: config.rootStackTagValue,
-      regions: uniqueRegions,
+      regions: scanTargets.map((target) => target.region),
       granularity: config.granularity,
     });
 
     // Scan Lambda functions and CloudFront distributions in both regions.
-    for (const region of uniqueRegions) {
-      const tagging = new ResourceGroupsTaggingAPIClient({ region });
+    for (const scan of scanTargets) {
+      const tagging = scan.tagging;
       let nextToken: string | undefined;
 
       do {
@@ -82,7 +80,7 @@ export async function runUpdateCycle(config: Config): Promise<void> {
                     logger.debug('UI distribution missing bucket-name tag', { arn });
                     continue;
                   }
-                  await advanceUiBucketIfStale(process.env.AWS_REGION || 'us-east-1', bucketName, pkg, artifactName, deployedVersion, arn, logger, updateConfig);
+                  await advanceUiBucketIfStale(clients, bucketName, pkg, artifactName, deployedVersion, arn, logger, updateConfig);
                 } else {
                   logger.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
                 }
@@ -90,13 +88,13 @@ export async function runUpdateCycle(config: Config): Promise<void> {
                 // Lambda function: code or edge types
                 switch (autoUpdateType) {
                   case 'code':
-                    await advanceLambdaIfStale(region, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
+                    await advanceLambdaIfStale(clients, scan, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
                     break;
                   case 'edge':
-                    if (region === 'us-east-1') {
-                      await advanceEdgeLambdaIfStale(arn, pkg, artifactName, deployedVersion, logger, updateConfig);
+                    if (scan.region === EDGE_REGION) {
+                      await advanceEdgeLambdaIfStale(clients, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
                     } else {
-                      logger.debug('skipping edge update in non-us-east-1 region', { arn, region });
+                      logger.debug('skipping edge update in non-us-east-1 region', { arn, region: scan.region });
                     }
                     break;
                   default:

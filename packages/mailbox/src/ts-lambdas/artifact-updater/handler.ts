@@ -5,14 +5,20 @@
  * CFN CR events are routed to cfnTriggerHandler (wrapped with wrapHandler).
  */
 
+import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
+import { LambdaClient } from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client } from '@aws-sdk/client-s3';
 import * as t from 'typanion';
 import { Context, APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import { env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { load, type Config } from './config';
+import { load } from './config';
+import type { UpdaterRuntime } from './updater-runtime';
 import { createCfnTriggerHandler } from './cfn-trigger';
 import { handleHttpTrigger } from './http-trigger';
 import { runUpdateCycle } from './update-cycle';
+import { EDGE_REGION, type RegionClients, type UpdaterClients } from './updater-clients';
 
 /**
  * Typanion schema for CloudFormation custom resource event discrimination.
@@ -78,8 +84,7 @@ function isHttpApiEvent(event: unknown): event is APIGatewayProxyEventV2 {
  * so the Lambda runtime waits for the full chain (including wrapHandler's HTTPS response PUT)
  * before considering the invocation complete.
  */
-export function createHandler(loaded: { config: Config; error: string | undefined }) {
-  const { config, error: configError } = loaded;
+export function createHandler(runtime: UpdaterRuntime) {
   return async (
     event: unknown,
     context?: Context,
@@ -98,24 +103,51 @@ export function createHandler(loaded: { config: Config; error: string | undefine
       // wrapHandler returns a CloudFormationCustomResourceHandler which has signature:
       // (event, context, callback?) => void | Promise<void>
       // Since wrapHandler handles responses internally, the callback is unused; pass no-op.
-      const cfnTriggerHandler = createCfnTriggerHandler(config, configError);
+      const cfnTriggerHandler = createCfnTriggerHandler(runtime);
       return cfnTriggerHandler(event, context!, () => {});
     }
 
     if (httpApi) {
-      if (configError) {
+      if (runtime.error !== undefined) {
         const logger = new LoggerBuffer();
-        logger.error('Configuration error', { error: configError });
+        logger.error('Configuration error', { error: runtime.error });
         logger.flush();
-        return { statusCode: 500, body: JSON.stringify({ error: `Configuration error: ${configError}` }) };
+        return { statusCode: 500, body: JSON.stringify({ error: `Configuration error: ${runtime.error}` }) };
       }
-      return handleHttpTrigger(event, config);
+      return handleHttpTrigger(event, runtime.config, runtime.clients.deployment.lambda);
     }
 
     // EventBridge or self-invoked: run the update cycle
-    if (configError) throw new Error(configError);
-    return runUpdateCycle(config);
+    if (runtime.error !== undefined) throw new Error(runtime.error);
+    return runUpdateCycle(runtime.config, runtime.clients);
   };
 }
 
-export const handler = createHandler(env.tryLoad(load));
+function buildRegionClients(region: string): RegionClients {
+  return {
+    region,
+    lambda: new LambdaClient({ region }),
+    tagging: new ResourceGroupsTaggingAPIClient({ region }),
+  };
+}
+
+function buildUpdaterClients(deploymentRegion: string): UpdaterClients {
+  const deployment = buildRegionClients(deploymentRegion);
+  return {
+    // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
+    registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
+    deployment,
+    edge: deploymentRegion === EDGE_REGION ? deployment : buildRegionClients(EDGE_REGION),
+    cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
+  };
+}
+
+function loadUpdaterRuntime(): UpdaterRuntime {
+  const { config, error } = env.tryLoad(load);
+  if (error !== undefined) {
+    return { config, clients: undefined, error };
+  }
+  return { config, clients: buildUpdaterClients(config.region), error: undefined };
+}
+
+export const handler = createHandler(loadUpdaterRuntime());
