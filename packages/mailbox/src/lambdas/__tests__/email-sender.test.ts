@@ -49,7 +49,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     const packages: Record<string, ArtifactVersionsEntry> = {
       'mailbox-go': { version: '1.0.0', zone: 'regional' },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
     pinnedResolver.registerPackages(['mailbox-go']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
 
