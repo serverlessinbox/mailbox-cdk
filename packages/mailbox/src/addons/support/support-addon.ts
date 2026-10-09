@@ -173,8 +173,6 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
 export interface SupportAddonProviderProps {
   /** Support feature mode. */
   readonly mode: SupportMode;
-  /** Artifact resolver for resolving mailbox-go package. */
-  readonly artifactResolver: IArtifactResolver;
 }
 
 /**
@@ -188,7 +186,7 @@ export class SupportAddonProvider implements IAdminApiAddonProvider {
     return [
       new SupportAddon(scope, 'support-addon', {
         mode: this.props.mode,
-        artifactResolver: this.props.artifactResolver,
+        artifactResolver: ctx.artifactResolver,
         configTable: ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
       }),

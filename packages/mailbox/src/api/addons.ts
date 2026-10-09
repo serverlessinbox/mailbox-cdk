@@ -3,6 +3,7 @@ import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import type { Construct } from 'constructs';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IDataTable } from '../data/data-tables';
+import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
 import type { IIdentityProvisioner } from '../lambdas/identity-provisioner';
 
 export interface IAdminApiAddon {
@@ -38,6 +39,13 @@ export interface AdminApiAddonContext {
    * never grant from outside the Lambda that holds it.
    */
   readonly identityProvisioner: IIdentityProvisioner;
+  /**
+   * The artifact resolver the Mailbox resolves its own artifacts with: the one injected through
+   * `MailboxProps.artifactResolver`, or the Mailbox's default pinned resolver when none was
+   * injected. Resolve your addon's Lambda code through this so it ships at the same artifact
+   * version as the rest of the Mailbox, instead of asking the consumer for a second resolver.
+   */
+  readonly artifactResolver: IArtifactResolver;
 }
 
 export interface IJmapApiAddon {

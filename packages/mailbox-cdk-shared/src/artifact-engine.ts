@@ -5,10 +5,33 @@ import type { IConstruct } from 'constructs';
 import { Construct } from 'constructs';
 import { ArtifactResolver, buildArtifactUrl, buildArtifactArn } from '@serverlessinbox/artifact-registry';
 import type { ArtifactVersionsEntry, ArtifactZone } from '@serverlessinbox/artifact-registry';
+import type { RegistryLocation, RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
+import * as t from 'typanion';
 import { ARTIFACTS_CONTEXT_KEY, ARTIFACT_VERSIONS_CONTEXT_KEY } from './context-keys';
 
-const DEFAULT_BUCKET_BASE = 'mailbox-artifacts';
 const EDGE_PACKAGES = new Set<string>(['mailbox-cdk-edge']);
+
+const isNonEmptyString = t.cascade(t.isString(), [t.hasMinLength(1)]);
+
+const isPackageTarget = t.isOneOf([
+  t.isObject({ kind: t.isLiteral('release'), version: t.isString() }),
+  t.isObject({ kind: t.isLiteral('channel'), channel: t.isString() }),
+]);
+
+const isArtifactsContext = t.isObject({
+  bucketBase: t.isOptional(isNonEmptyString),
+  project: t.isOptional(isNonEmptyString),
+  bucketOverrides: t.isOptional(t.isRecord(t.isString())),
+  packages: t.isOptional(t.isRecord(isPackageTarget)),
+});
+
+/**
+ * The `serverlessinbox:artifacts` CDK context value: each location field present replaces the
+ * embedded registry record's field, and `packages` names the version each package is pinned to.
+ */
+type ArtifactsContext = t.InferType<typeof isArtifactsContext>;
+
+const isArtifactVersionsContext = t.isRecord(t.isString());
 
 /** Resolved S3 location of an artifact object. */
 export interface ResolvedArtifact {
@@ -24,6 +47,8 @@ export interface ResolvedArtifact {
  */
 export interface IArtifactResolver {
   resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact;
+  getVersion(packageName: string): string;
+  readonly location: RegistryLocation;
 }
 
 /**
@@ -43,7 +68,7 @@ export interface ICdkArtifactEngine {
   getUrl(packageName: string, objectPath: string, region?: string): string;
   getArn(packageName: string, objectPath: string, region?: string): string;
   getVersion(packageName: string): string;
-  getBucketBase(): string;
+  readonly location: RegistryLocation;
   resolve(packageName: string, objectPath: string, region?: string): ResolvedArtifact;
   registerPackages(names: string[]): void;
 }
@@ -88,53 +113,56 @@ class PackageRegistry {
  * ArtifactResolver. ONE unified map (all packages; cognito is not special). Not jsii-exported.
  */
 export class PinnedResolver implements IArtifactResolver {
+  readonly location: RegistryLocation;
+
   private readonly inner: ArtifactResolver;
   private readonly packageRegistry = new PackageRegistry();
 
   constructor(
     scope: IConstruct,
     packages: Record<string, ArtifactVersionsEntry>,
-    bucketBase: string,
+    location: RegistryLocation,
     s3VersionMap: Record<string, string>,
   ) {
     this.inner = new ArtifactResolver({
-      versions: { bucketBase, packages },
+      versions: { packages },
+      location,
       deploymentRegion: Stack.of(scope).region,
       s3VersionMap,
     });
+    this.location = this.inner.getLocation();
   }
 
   /**
-   * Build the version map from CDK context (context.artifacts.packages + context.artifactVersions),
-   * populated by the app/infra entrypoint. Handles both release (kind:'release') and channel
-   * (kind:'channel') entries; zone comes from the canonical edge-package set. NOTE: does not read a
-   * package's baked artifact-versions.json — a published/from-source consumer with no context is a
-   * deferred concern; all current entrypoints inject context.
+   * Build the resolver from CDK context (`serverlessinbox:artifacts` packages and
+   * `serverlessinbox:artifact_versions`), populated by the app/infra entrypoint. Handles both
+   * release (kind:'release') and channel (kind:'channel') entries; zone comes from the canonical
+   * edge-package set. The registry location is the given registry record, with each field the
+   * artifacts context names replacing the record's. NOTE: does not read a package's baked
+   * artifact-versions.json — a published/from-source consumer with no context is a deferred
+   * concern; all current entrypoints inject context.
+   *
+   * @param scope the construct whose CDK context is read
+   * @param registryRecord the registry record of the package the calling construct ships in
+   * @throws an error naming the context key and value when a context value is present but invalid
    */
-  static loadFromArtifactMetadata(scope: IConstruct): PinnedResolver {
-    const ctx = scope.node.tryGetContext(ARTIFACTS_CONTEXT_KEY) as
-      | { bucketBase?: unknown; packages?: unknown }
-      | undefined;
-    const s3VersionMap =
-      (scope.node.tryGetContext(ARTIFACT_VERSIONS_CONTEXT_KEY) as Record<string, string> | undefined) ?? {};
-    const bucketBase =
-      ctx && typeof ctx === 'object' && typeof ctx.bucketBase === 'string'
-        ? ctx.bucketBase
-        : DEFAULT_BUCKET_BASE;
+  static loadFromArtifactMetadata(scope: IConstruct, registryRecord: RegistryRecord): PinnedResolver {
+    const artifactsContext = PinnedResolver.readArtifactsContext(scope);
+    const s3VersionMap = PinnedResolver.readArtifactVersionsContext(scope);
+    const location: RegistryLocation = {
+      bucketBase: artifactsContext?.bucketBase ?? registryRecord.bucketBase,
+      project: artifactsContext?.project ?? registryRecord.project,
+      bucketOverrides: artifactsContext?.bucketOverrides ?? registryRecord.bucketOverrides,
+    };
     const packages: Record<string, ArtifactVersionsEntry> = {};
-    if (ctx && typeof ctx === 'object' && ctx.packages && typeof ctx.packages === 'object') {
-      for (const [name, target] of Object.entries(
-        ctx.packages as Record<string, Record<string, unknown>>,
-      )) {
-        const zone: ArtifactZone = EDGE_PACKAGES.has(name) ? 'edge' : 'regional';
-        if (target?.kind === 'channel' && typeof target.channel === 'string') {
-          packages[name] = { version: target.channel, zone, channel: target.channel };
-        } else if (target?.kind === 'release' && typeof target.version === 'string') {
-          packages[name] = { version: target.version, zone };
-        }
-      }
+    for (const [name, target] of Object.entries(artifactsContext?.packages ?? {})) {
+      const zone: ArtifactZone = EDGE_PACKAGES.has(name) ? 'edge' : 'regional';
+      packages[name] =
+        target.kind === 'channel'
+          ? { version: target.channel, zone, channel: target.channel }
+          : { version: target.version, zone };
     }
-    return new PinnedResolver(scope, packages, bucketBase, s3VersionMap);
+    return new PinnedResolver(scope, packages, location, s3VersionMap);
   }
 
   resolve(packageName: string, objectPath: string, _region: string): ResolvedArtifact {
@@ -150,8 +178,32 @@ export class PinnedResolver implements IArtifactResolver {
     return this.inner.getVersion(packageName);
   }
 
-  getBucketBase(): string {
-    return this.inner.getBucketBase();
+  private static readArtifactsContext(scope: IConstruct): ArtifactsContext | undefined {
+    const value: unknown = scope.node.tryGetContext(ARTIFACTS_CONTEXT_KEY);
+    if (value === undefined) {
+      return undefined;
+    }
+    const errors: string[] = [];
+    if (!isArtifactsContext(value, { errors })) {
+      throw new Error(
+        `Invalid CDK context value for "${ARTIFACTS_CONTEXT_KEY}": ${JSON.stringify(value)}: ${errors.join('; ')}`,
+      );
+    }
+    return value;
+  }
+
+  private static readArtifactVersionsContext(scope: IConstruct): Record<string, string> {
+    const value: unknown = scope.node.tryGetContext(ARTIFACT_VERSIONS_CONTEXT_KEY);
+    if (value === undefined) {
+      return {};
+    }
+    const errors: string[] = [];
+    if (!isArtifactVersionsContext(value, { errors })) {
+      throw new Error(
+        `Invalid CDK context value for "${ARTIFACT_VERSIONS_CONTEXT_KEY}": ${JSON.stringify(value)}: ${errors.join('; ')}`,
+      );
+    }
+    return value;
   }
 }
 
@@ -163,8 +215,9 @@ export class PinnedResolver implements IArtifactResolver {
  * Region defaults to the deployment region; edge callers pass 'us-east-1'.
  */
 export class CdkArtifactEngine implements ICdkArtifactEngine {
+  readonly location: RegistryLocation;
+
   private readonly bucketCache = new Map<string, IBucket>();
-  private readonly versionSource: PinnedResolver;
   private readonly bucketScope: Construct;
 
   constructor(
@@ -172,10 +225,10 @@ export class CdkArtifactEngine implements ICdkArtifactEngine {
     private readonly resolver: IArtifactResolver,
     id: string = 'artifacts',
   ) {
-    this.versionSource = PinnedResolver.loadFromArtifactMetadata(scope);
     // Create a child scope to namespace bucket imports and avoid construct-id collisions
     // when multiple engines (e.g. main + pinned) coexist under the same parent scope.
     this.bucketScope = new Construct(scope, id);
+    this.location = resolver.location;
   }
 
   private regionOr(region?: string): string {
@@ -205,11 +258,7 @@ export class CdkArtifactEngine implements ICdkArtifactEngine {
   }
 
   getVersion(packageName: string): string {
-    return this.versionSource.getVersion(packageName);
-  }
-
-  getBucketBase(): string {
-    return this.versionSource.getBucketBase();
+    return this.resolver.getVersion(packageName);
   }
 
   resolve(packageName: string, objectPath: string, region?: string): ResolvedArtifact {

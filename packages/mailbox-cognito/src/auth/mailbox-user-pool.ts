@@ -21,6 +21,7 @@ import {
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
 import { PinnedResolver, CdkArtifactEngine, resolveDeployerType, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import type { IArtifactResolver } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
@@ -190,7 +191,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     // Artifact resolution (stack-self-update subplan #3, Phase A):
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
     // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
-    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this, loadMailboxCognitoRegistryRecord());
 
     // Register this package for artifact updates
     resolver.registerPackages(['mailbox-cognito']);

@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { CdkArtifactEngine, ResolvedArtifact } from './artifact-engine';
+import { CdkArtifactEngine } from './artifact-engine';
+import type { IArtifactResolver } from './artifact-engine';
 import { getOrCreateSharedGroup } from './shared-group';
 import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
 import { StackHelpersLambda } from './stack-helpers-lambda';
@@ -16,15 +17,13 @@ export interface StackHelpersMailboxData {
 }
 
 /**
- * The artifact-resolver contract this construct depends on: resolve() to locate the shared
- * Lambda's code, plus registerPackages() so getOrCreate can declare 'mailbox-cdk' regardless of
- * which caller's resolver instance wins the singleton race. Deliberately unexported and narrower
- * than any one package's own resolver type — every real resolver (mailbox's IArtifactResolver,
- * PinnedResolver, AutoUpdater) satisfies this shape structurally, so callers from any package can
- * pass their own resolver straight through with no adapter or cast.
+ * The artifact-resolver contract this construct depends on: the resolver contract itself, plus
+ * registerPackages() so getOrCreate can declare 'mailbox-cdk-shared' regardless of which caller's
+ * resolver instance wins the singleton race. Deliberately unexported — every real resolver
+ * (mailbox's IArtifactResolver, PinnedResolver, AutoUpdater) satisfies this shape structurally, so
+ * callers from any package can pass their own resolver straight through with no adapter or cast.
  */
-interface StackHelpersArtifactResolver {
-  resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact;
+interface StackHelpersArtifactResolver extends IArtifactResolver {
   registerPackages(names: string[]): void;
 }
 
@@ -54,9 +53,10 @@ export class StackHelpers extends Construct {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'ops');
 
-    // Whichever caller's resolver wins the race, it MUST know about 'mailbox-cdk' — this construct's
-    // own Lambda lives there regardless of who constructed the singleton first. Idempotent (Set-backed).
-    artifactResolver.registerPackages(['mailbox-cdk']);
+    // Whichever caller's resolver wins the race, it MUST know about 'mailbox-cdk-shared' — this
+    // construct's own Lambda lives there regardless of who constructed the singleton first.
+    // Idempotent (Set-backed).
+    artifactResolver.registerPackages(['mailbox-cdk-shared']);
     const cdkArtifactResolver = new CdkArtifactEngine(this, artifactResolver);
 
     this.fn = new StackHelpersLambda(this, 'handler', {

@@ -43,6 +43,7 @@ import type { MailboxKmsConfig } from './utils/kms';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
 import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxRegistryRecord } from './mailbox-registry-record';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -249,7 +250,7 @@ export class Mailbox extends Construct {
     // Artifact resolution (stack-self-update subplan #3, Phase A):
     // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
     // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
-    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this);
+    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this, loadMailboxRegistryRecord());
 
     // Register packages for artifact updates
     resolver.registerPackages([
@@ -502,6 +503,7 @@ export class Mailbox extends Construct {
         configTable,
         auditLogTable,
         identityProvisioner,
+        artifactResolver: resolver,
       };
 
       // Collect addons from auth provider

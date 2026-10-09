@@ -3,6 +3,7 @@
  * Shared preamble logic for all three update paths (code, ui, edge).
  */
 
+import { S3Client } from '@aws-sdk/client-s3';
 import { deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -37,11 +38,14 @@ export async function resolveStaleTarget(
   const myTrack = deriveTrack(deployedVersion, granularity as 'major' | 'minor');
 
   // Read the track-scoped pointer.
-  const pointer = await readReleasePointer(packageName, distTag, region, {
-    bucketBase: artifactBucketBase,
-    project,
-    track: myTrack,
-  });
+  const pointer = await readReleasePointer(
+    new S3Client({ region }),
+    { bucketBase: artifactBucketBase, project },
+    packageName,
+    distTag,
+    region,
+    myTrack,
+  );
 
   if (!pointer) {
     logger.debug('no pointer available', { packageName, distTag, track: myTrack });

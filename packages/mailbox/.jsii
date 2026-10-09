@@ -9045,10 +9045,25 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 23
+        "line": 24
       },
       "name": "AdminApiAddonContext",
       "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "The artifact resolver the Mailbox resolves its own artifacts with: the one injected through `MailboxProps.artifactResolver`, or the Mailbox's default pinned resolver when none was injected. Resolve your addon's Lambda code through this so it ships at the same artifact version as the rest of the Mailbox, instead of asking the consumer for a second resolver."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/api/addons.ts",
+            "line": 48
+          },
+          "name": "artifactResolver",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+          }
+        },
         {
           "abstract": true,
           "docs": {
@@ -9058,7 +9073,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 29
+            "line": 30
           },
           "name": "auditEventsQueue",
           "type": {
@@ -9073,7 +9088,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 34
+            "line": 35
           },
           "name": "auditLogTable",
           "type": {
@@ -9088,7 +9103,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 31
+            "line": 32
           },
           "name": "configTable",
           "type": {
@@ -9104,7 +9119,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 40
+            "line": 41
           },
           "name": "identityProvisioner",
           "type": {
@@ -9377,7 +9392,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 56
+          "line": 63
         },
         "parameters": [
           {
@@ -9409,7 +9424,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 34
+        "line": 35
       },
       "methods": [
         {
@@ -9418,7 +9433,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 128
+            "line": 141
           },
           "name": "addDeployEndDependency",
           "parameters": [
@@ -9436,7 +9451,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 119
+            "line": 132
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9467,11 +9482,35 @@
         },
         {
           "docs": {
+            "summary": "Delegate to the pinned resolver for the version a package resolves to."
+          },
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 121
+          },
+          "name": "getVersion",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "docs": {
             "summary": "Register packages for the updater to track."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 113
+            "line": 126
           },
           "name": "registerPackages",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9495,7 +9534,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 108
+            "line": 116
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
@@ -9536,12 +9575,27 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 48
+            "line": 49
           },
           "name": "grantPrincipal",
           "overrides": "aws-cdk-lib.aws_iam.IGrantable",
           "type": {
             "fqn": "aws-cdk-lib.aws_iam.IPrincipal"
+          }
+        },
+        {
+          "docs": {
+            "summary": "The registry location this updater resolves artifacts from, taken from the pinned resolver it delegates to."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/resolvers/auto-updater.ts",
+            "line": 55
+          },
+          "name": "location",
+          "overrides": "@serverlessinbox/mailbox.IArtifactResolver",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.RegistryLocation"
           }
         }
       ],
@@ -9558,7 +9612,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 25
+        "line": 26
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -9571,7 +9625,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 27
+            "line": 28
           },
           "name": "distTag",
           "optional": true,
@@ -9588,7 +9642,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 29
+            "line": 30
           },
           "name": "granularity",
           "optional": true,
@@ -9604,7 +9658,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 31
+            "line": 32
           },
           "name": "updateInterval",
           "optional": true,
@@ -9621,7 +9675,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 8
+        "line": 9
       },
       "methods": [
         {
@@ -9631,7 +9685,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 10
+            "line": 11
           },
           "name": "addRoutes",
           "parameters": [
@@ -9659,7 +9713,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 13
+            "line": 14
           },
           "name": "uiConfig",
           "optional": true,
@@ -9685,14 +9739,14 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 62
+        "line": 70
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 63
+            "line": 71
           },
           "name": "createAdminApiAddons",
           "parameters": [
@@ -9727,21 +9781,46 @@
     "@serverlessinbox/mailbox.IArtifactResolver": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Supplies artifact S3 locations and manages package registration for dynamic resolution.",
+        "remarks": "Supplies artifact S3 locations, the version each package resolves to and the registry\nlocation, and manages package registration for dynamic resolution.",
         "summary": "Artifact resolution strategy interface (jsii-exported from mailbox, D2)."
       },
       "fqn": "@serverlessinbox/mailbox.IArtifactResolver",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/i-artifact-resolver.ts",
-        "line": 16
+        "line": 52
       },
       "methods": [
         {
           "abstract": true,
+          "docs": {
+            "remarks": "Throws when the package is unknown to the resolver.",
+            "summary": "The version the given package resolves to."
+          },
           "locationInModule": {
             "filename": "src/artifacts/i-artifact-resolver.ts",
-            "line": 18
+            "line": 59
+          },
+          "name": "getVersion",
+          "parameters": [
+            {
+              "name": "packageName",
+              "type": {
+                "primitive": "string"
+              }
+            }
+          ],
+          "returns": {
+            "type": {
+              "primitive": "string"
+            }
+          }
+        },
+        {
+          "abstract": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 54
           },
           "name": "registerPackages",
           "parameters": [
@@ -9762,7 +9841,7 @@
           "abstract": true,
           "locationInModule": {
             "filename": "src/artifacts/i-artifact-resolver.ts",
-            "line": 17
+            "line": 53
           },
           "name": "resolve",
           "parameters": [
@@ -9793,6 +9872,23 @@
         }
       ],
       "name": "IArtifactResolver",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "summary": "The registry location this resolver resolves artifacts from."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 64
+          },
+          "name": "location",
+          "type": {
+            "fqn": "@serverlessinbox/mailbox.RegistryLocation"
+          }
+        }
+      ],
       "symbolId": "src/artifacts/i-artifact-resolver:IArtifactResolver"
     },
     "@serverlessinbox/mailbox.IAuditEventsQueue": {
@@ -10023,7 +10119,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 43
+        "line": 51
       },
       "methods": [
         {
@@ -10034,7 +10130,7 @@
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 47
+            "line": 55
           },
           "name": "addRoutes",
           "parameters": [
@@ -10340,7 +10436,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 50
+        "line": 58
       },
       "name": "JmapApiAddonContext",
       "properties": [
@@ -10349,7 +10445,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 51
+            "line": 59
           },
           "name": "apiBaseUrl",
           "type": {
@@ -10364,7 +10460,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 53
+            "line": 61
           },
           "name": "identityProvisioner",
           "type": {
@@ -10384,7 +10480,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 233
+          "line": 234
         },
         "parameters": [
           {
@@ -10410,7 +10506,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 211
+        "line": 212
       },
       "name": "Mailbox",
       "properties": [
@@ -10418,7 +10514,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 231
+            "line": 232
           },
           "name": "certificates",
           "type": {
@@ -10432,7 +10528,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 227
+            "line": 228
           },
           "name": "oauthClients",
           "type": {
@@ -10443,7 +10539,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 229
+            "line": 230
           },
           "name": "urls",
           "type": {
@@ -10552,7 +10648,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 55
+        "line": 56
       },
       "name": "MailboxCertificateOverrides",
       "properties": [
@@ -10564,7 +10660,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 65
+            "line": 66
           },
           "name": "adminUi",
           "optional": true,
@@ -10580,7 +10676,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 75
+            "line": 76
           },
           "name": "api",
           "optional": true,
@@ -10596,7 +10692,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 60
+            "line": 61
           },
           "name": "cloudFront",
           "optional": true,
@@ -10612,7 +10708,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 80
+            "line": 81
           },
           "name": "jmap",
           "optional": true,
@@ -10628,7 +10724,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 70
+            "line": 71
           },
           "name": "webmailUi",
           "optional": true,
@@ -10644,7 +10740,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 85
+            "line": 86
           },
           "name": "ws",
           "optional": true,
@@ -10662,7 +10758,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 112
+        "line": 113
       },
       "name": "MailboxCertificates",
       "properties": [
@@ -10675,7 +10771,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 115
+            "line": 116
           },
           "name": "edge",
           "optional": true,
@@ -10692,7 +10788,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 118
+            "line": 119
           },
           "name": "regional",
           "optional": true,
@@ -10849,7 +10945,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 203
+        "line": 204
       },
       "name": "MailboxOAuthClients",
       "properties": [
@@ -10858,7 +10954,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 204
+            "line": 205
           },
           "name": "adminUi",
           "optional": true,
@@ -10871,7 +10967,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 205
+            "line": 206
           },
           "name": "jmapUi",
           "optional": true,
@@ -10889,7 +10985,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 121
+        "line": 122
       },
       "name": "MailboxOverrides",
       "properties": [
@@ -10902,7 +10998,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 127
+            "line": 128
           },
           "name": "certificates",
           "optional": true,
@@ -10919,7 +11015,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 134
+            "line": 135
           },
           "name": "subdomains",
           "optional": true,
@@ -10937,7 +11033,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 137
+        "line": 138
       },
       "name": "MailboxProps",
       "properties": [
@@ -10949,7 +11045,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 145
+            "line": 146
           },
           "name": "authProvider",
           "type": {
@@ -10964,7 +11060,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 151
+            "line": 152
           },
           "name": "adminApiAddonProviders",
           "optional": true,
@@ -10986,7 +11082,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 194
+            "line": 195
           },
           "name": "artifactResolver",
           "optional": true,
@@ -11003,7 +11099,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 164
+            "line": 165
           },
           "name": "enableAdminUi",
           "optional": true,
@@ -11019,7 +11115,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 176
+            "line": 177
           },
           "name": "enableMcp",
           "optional": true,
@@ -11036,7 +11132,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 183
+            "line": 184
           },
           "name": "enableReceiving",
           "optional": true,
@@ -11053,7 +11149,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 170
+            "line": 171
           },
           "name": "enableWebmailUi",
           "optional": true,
@@ -11069,7 +11165,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 148
+            "line": 149
           },
           "name": "extraAllowedOrigins",
           "optional": true,
@@ -11091,7 +11187,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 139
+            "line": 140
           },
           "name": "hostedZoneId",
           "optional": true,
@@ -11107,7 +11203,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 142
+            "line": 143
           },
           "name": "kms",
           "optional": true,
@@ -11123,7 +11219,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 188
+            "line": 189
           },
           "name": "overrides",
           "optional": true,
@@ -11140,7 +11236,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 200
+            "line": 201
           },
           "name": "sendStackFailures",
           "optional": true,
@@ -11157,7 +11253,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 159
+            "line": 160
           },
           "name": "subdomainNamespace",
           "optional": true,
@@ -11272,7 +11368,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 88
+        "line": 89
       },
       "name": "MailboxSubdomainOverrides",
       "properties": [
@@ -11284,7 +11380,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 90
+            "line": 91
           },
           "name": "admin",
           "optional": true,
@@ -11300,7 +11396,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 96
+            "line": 97
           },
           "name": "api",
           "optional": true,
@@ -11316,7 +11412,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 94
+            "line": 95
           },
           "name": "jmap",
           "optional": true,
@@ -11332,7 +11428,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 92
+            "line": 93
           },
           "name": "webmail",
           "optional": true,
@@ -11348,7 +11444,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 98
+            "line": 99
           },
           "name": "ws",
           "optional": true,
@@ -11366,7 +11462,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 101
+        "line": 102
       },
       "name": "MailboxUrls",
       "properties": [
@@ -11378,7 +11474,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 109
+            "line": 110
           },
           "name": "adminApi",
           "type": {
@@ -11393,7 +11489,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 103
+            "line": 104
           },
           "name": "adminUi",
           "type": {
@@ -11408,7 +11504,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 107
+            "line": 108
           },
           "name": "jmapApi",
           "type": {
@@ -11423,7 +11519,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 105
+            "line": 106
           },
           "name": "webmail",
           "type": {
@@ -11903,6 +11999,79 @@
       ],
       "symbolId": "src/auth/types:ProvisionJmapUiClientParams"
     },
+    "@serverlessinbox/mailbox.RegistryLocation": {
+      "assembly": "@serverlessinbox/mailbox",
+      "datatype": true,
+      "docs": {
+        "remarks": "A resolver reports this so the constructs that\ndeploy from the registry (stack updaters, UI deployers, the artifact updater) read and\nwrite the same buckets the resolver resolves code from.\n\nIt does not list regions: which regions to use is decided by whoever holds the location.",
+        "summary": "Where the artifact registry publishes its artifacts: everything needed to name a registry bucket and the key prefix of its objects."
+      },
+      "fqn": "@serverlessinbox/mailbox.RegistryLocation",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "src/artifacts/i-artifact-resolver.ts",
+        "line": 20
+      },
+      "name": "RegistryLocation",
+      "properties": [
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "The bucket of a region is\n`{bucketBase}-{region}` unless `bucketOverrides` names one for that region.\n\nPass the value your registry was created with; a wrong value points deployments at\nbuckets that do not exist.",
+            "summary": "The prefix shared by every region's registry bucket."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 28
+          },
+          "name": "bucketBase",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "remarks": "Several projects can share\none set of buckets because each keeps its objects under its own project prefix.\n\nPass the project name the artifacts were published under.",
+            "summary": "The project name that leads every object key in the registry."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 36
+          },
+          "name": "project",
+          "type": {
+            "primitive": "string"
+          }
+        },
+        {
+          "abstract": true,
+          "docs": {
+            "default": "- every region uses its convention name `{bucketBase}-{region}`",
+            "remarks": "Use it when a registry bucket in some region does not follow the naming convention.",
+            "summary": "Bucket names that replace the `{bucketBase}-{region}` convention name, keyed by region."
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "src/artifacts/i-artifact-resolver.ts",
+            "line": 44
+          },
+          "name": "bucketOverrides",
+          "optional": true,
+          "type": {
+            "collection": {
+              "elementtype": {
+                "primitive": "string"
+              },
+              "kind": "map"
+            }
+          }
+        }
+      ],
+      "symbolId": "src/artifacts/i-artifact-resolver:RegistryLocation"
+    },
     "@serverlessinbox/mailbox.ResolvedArtifact": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
@@ -11987,7 +12156,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update/stack-update-addon.ts",
-          "line": 142
+          "line": 143
         },
         "parameters": [
           {
@@ -12004,13 +12173,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 141
+        "line": 142
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 144
+            "line": 145
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12053,7 +12222,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 123
+        "line": 124
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
@@ -12065,7 +12234,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 125
+            "line": 126
           },
           "name": "artifactResolver",
           "type": {
@@ -12080,7 +12249,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 128
+            "line": 129
           },
           "name": "templateName",
           "type": {
@@ -12095,7 +12264,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 131
+            "line": 132
           },
           "name": "templateVersion",
           "type": {
@@ -12111,7 +12280,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 134
+            "line": 135
           },
           "name": "distTag",
           "optional": true,
@@ -12132,7 +12301,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/support/support-addon.ts",
-          "line": 185
+          "line": 183
         },
         "parameters": [
           {
@@ -12149,13 +12318,13 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/support/support-addon.ts",
-        "line": 184
+        "line": 182
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "src/addons/support/support-addon.ts",
-            "line": 187
+            "line": 185
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -12205,21 +12374,6 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Artifact resolver for resolving mailbox-go package."
-          },
-          "immutable": true,
-          "locationInModule": {
-            "filename": "src/addons/support/support-addon.ts",
-            "line": 177
-          },
-          "name": "artifactResolver",
-          "type": {
-            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
-          }
-        },
-        {
-          "abstract": true,
-          "docs": {
             "summary": "Support feature mode."
           },
           "immutable": true,
@@ -12265,5 +12419,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "ICVs7RwBPzJoOglHLECqVXLIvCKeEKt/1t98Rjo/kKk="
+  "fingerprint": "7BNQXOgdKtmvkzwh9v+sLAw5IzuA/t3cQjgIHyn6+Rs="
 }

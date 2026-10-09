@@ -67,19 +67,20 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     const region = stack.region;
 
     const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
-    const artifactBucketBase = artifactEngine.getBucketBase();
+    const artifactLocation = artifactEngine.location;
 
     // Build release pointer key and URL template using artifact-registry functions
     const pointerKey = buildReleasePointerKey('template', props.templateName, {
       distTag: props.distTag ?? 'stable',
+      project: artifactLocation.project,
     });
-    const pointerBucket = buildArtifactBucketName(artifactBucketBase, region);
+    const pointerBucket = buildArtifactBucketName(artifactLocation, region);
 
     // Build template URL template with placeholders for version and objectName
     const templateUrlTemplate = buildArtifactUrl(
       pointerBucket,
       region,
-      buildArtifactKey('template', props.templateName, { type: 'release-template' }),
+      buildArtifactKey('template', props.templateName, { type: 'release-template', project: artifactLocation.project }),
     );
 
     // Create SSM StringParameter for template version.
@@ -94,7 +95,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
       configTable: props.configTable,
-      artifactBucketBase,
+      artifactBucketBase: artifactLocation.bucketBase,
       artifactResolver: artifactEngine,
       templateVersionParamName: templateVersionParam.parameterName,
       pointerBucket,

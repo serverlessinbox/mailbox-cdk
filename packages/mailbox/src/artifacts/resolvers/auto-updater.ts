@@ -6,7 +6,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { PinnedResolver, CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver, ResolvedArtifact } from '../i-artifact-resolver';
+import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
+import type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from '../i-artifact-resolver';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
 import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
 import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
@@ -47,6 +48,12 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
    */
   public readonly grantPrincipal: iam.IPrincipal;
 
+  /**
+   * The registry location this updater resolves artifacts from, taken from the pinned resolver
+   * it delegates to.
+   */
+  public readonly location: RegistryLocation;
+
   private readonly distTag: string;
   private readonly bucketBase: string;
   private readonly pinned: PinnedResolver;
@@ -56,9 +63,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
     this.distTag = props.distTag ?? 'stable';
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(this);
+    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(this, loadMailboxRegistryRecord());
     this.pinned = pinnedResolver;
-    this.bucketBase = pinnedResolver.getBucketBase();
+    this.location = pinnedResolver.location;
+    this.bucketBase = this.location.bucketBase;
 
     const granularity = props.granularity ?? 'minor';
 
@@ -107,6 +115,11 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   /** Delegate to the pinned resolver for artifact resolution. */
   resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact {
     return this.pinned.resolve(packageName, objectPath, region);
+  }
+
+  /** Delegate to the pinned resolver for the version a package resolves to. */
+  getVersion(packageName: string): string {
+    return this.pinned.getVersion(packageName);
   }
 
   /** Register packages for the updater to track. */

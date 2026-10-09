@@ -9049,7 +9049,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 124
+        "line": 125
       },
       "name": "BootstrapUserConfig",
       "properties": [
@@ -9058,7 +9058,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 127
+            "line": 128
           },
           "name": "groups",
           "type": {
@@ -9075,7 +9075,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 128
+            "line": 129
           },
           "name": "temporaryPassword",
           "optional": true,
@@ -9091,7 +9091,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 126
+            "line": 127
           },
           "name": "username",
           "optional": true,
@@ -9160,7 +9160,7 @@
       "kind": "enum",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 39
+        "line": 40
       },
       "members": [
         {
@@ -9183,7 +9183,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 136
+        "line": 137
       },
       "name": "IBootstrapUserHandle",
       "properties": [
@@ -9196,7 +9196,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 144
+            "line": 145
           },
           "name": "temporaryPassword",
           "type": {
@@ -9272,7 +9272,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/auth/mailbox-user-pool.ts",
-          "line": 184
+          "line": 185
         },
         "parameters": [
           {
@@ -9302,7 +9302,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 150
+        "line": 151
       },
       "methods": [
         {
@@ -9313,7 +9313,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 504
+            "line": 505
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9340,7 +9340,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 261
+            "line": 262
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9355,7 +9355,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 465
+            "line": 466
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9372,7 +9372,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 469
+            "line": 470
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9384,7 +9384,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 431
+            "line": 432
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9416,7 +9416,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 447
+            "line": 448
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9447,7 +9447,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 473
+            "line": 474
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9459,7 +9459,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 541
+            "line": 542
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9474,7 +9474,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 460
+            "line": 461
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -9490,7 +9490,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 387
+            "line": 388
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9511,7 +9511,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 354
+            "line": 355
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9534,7 +9534,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 409
+            "line": 410
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9559,7 +9559,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 166
+            "line": 167
           },
           "name": "authMethod",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9571,7 +9571,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 274
+            "line": 275
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9583,7 +9583,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 165
+            "line": 166
           },
           "name": "issuer",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9595,7 +9595,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 164
+            "line": 165
           },
           "name": "oauthDomain",
           "type": {
@@ -9609,7 +9609,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 169
+            "line": 170
           },
           "name": "policies",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9621,7 +9621,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 163
+            "line": 164
           },
           "name": "scopeMap",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9643,7 +9643,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 270
+            "line": 271
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9655,7 +9655,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 167
+            "line": 168
           },
           "name": "usePkce",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9667,7 +9667,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 151
+            "line": 152
           },
           "name": "userPool",
           "type": {
@@ -9678,7 +9678,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 180
+            "line": 181
           },
           "name": "userPoolId",
           "type": {
@@ -9695,7 +9695,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 44
+        "line": 45
       },
       "name": "MailboxUserPoolAuthorizationConfig",
       "properties": [
@@ -9704,7 +9704,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 45
+            "line": 46
           },
           "name": "adminGroups",
           "optional": true,
@@ -9722,7 +9722,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 46
+            "line": 47
           },
           "name": "userGroups",
           "optional": true,
@@ -9745,7 +9745,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 62
+        "line": 63
       },
       "name": "MailboxUserPoolCognitoAutoDomain",
       "properties": [
@@ -9758,7 +9758,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 66
+            "line": 67
           },
           "name": "hostedZoneId",
           "type": {
@@ -9770,7 +9770,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 63
+            "line": 64
           },
           "name": "kind",
           "type": {
@@ -9787,7 +9787,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 56
+        "line": 57
       },
       "name": "MailboxUserPoolCognitoDomain",
       "properties": [
@@ -9799,7 +9799,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 59
+            "line": 60
           },
           "name": "cognitoDomainPrefix",
           "type": {
@@ -9811,7 +9811,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 57
+            "line": 58
           },
           "name": "kind",
           "type": {
@@ -9828,7 +9828,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 69
+        "line": 70
       },
       "name": "MailboxUserPoolCustomDomain",
       "properties": [
@@ -9840,7 +9840,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 74
+            "line": 75
           },
           "name": "certificateArn",
           "type": {
@@ -9855,7 +9855,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 72
+            "line": 73
           },
           "name": "domainName",
           "type": {
@@ -9867,7 +9867,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 70
+            "line": 71
           },
           "name": "kind",
           "type": {
@@ -9884,7 +9884,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 79
+        "line": 80
       },
       "name": "MailboxUserPoolProps",
       "properties": [
@@ -9897,7 +9897,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 85
+            "line": 86
           },
           "name": "domain",
           "type": {
@@ -9925,7 +9925,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 103
+            "line": 104
           },
           "name": "artifactResolver",
           "optional": true,
@@ -9938,7 +9938,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 93
+            "line": 94
           },
           "name": "authFlows",
           "optional": true,
@@ -9955,7 +9955,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 91
+            "line": 92
           },
           "name": "authorization",
           "optional": true,
@@ -9973,7 +9973,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 121
+            "line": 122
           },
           "name": "dynamicClientRegistration",
           "optional": true,
@@ -9990,7 +9990,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 109
+            "line": 110
           },
           "name": "enableJmapOAuthDiscovery",
           "optional": true,
@@ -10007,7 +10007,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 95
+            "line": 96
           },
           "name": "mfaMode",
           "optional": true,
@@ -10024,7 +10024,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 97
+            "line": 98
           },
           "name": "passwordMinLength",
           "optional": true,
@@ -10042,7 +10042,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/auth/mailbox-user-pool.ts",
-        "line": 49
+        "line": 50
       },
       "name": "ProvisionHeadlessClientConfig",
       "properties": [
@@ -10051,7 +10051,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 51
+            "line": 52
           },
           "name": "audiences",
           "type": {
@@ -10068,7 +10068,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 50
+            "line": 51
           },
           "name": "name",
           "type": {
@@ -10080,7 +10080,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 52
+            "line": 53
           },
           "name": "permissions",
           "type": {
@@ -10097,5 +10097,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "JhfAquqYBkPBYwnugHMoa1BedEDZMHi5WBw6m4SC+yE="
+  "fingerprint": "e2/OJT/Z4iEdUwPzUIrqi4X/vFWQu0aAF4yd7JnCaNs="
 }
