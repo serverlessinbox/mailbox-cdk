@@ -26,6 +26,7 @@ import { Template, Match } from 'aws-cdk-lib/assertions';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 
@@ -74,7 +75,7 @@ function buildHarness(
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+  const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
   resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
 
   const mode = typeof dynamicClientRegistration === 'function'

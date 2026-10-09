@@ -23,6 +23,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { PinnedResolver, CdkArtifactEngine, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
@@ -61,7 +62,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // This internally creates a JmapOAuthAddon that:
       // 1. Calls StaticContentDeployer.getOrCreate(this, artifactResolver)
       // 2. Creates CustomResources for .well-known/openid-configuration and .well-known/oauth-protected-resource
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
       resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox', 'mailbox-cdk-shared']);
 
       const userPool = new MailboxUserPool(stack, 'user-pool-with-oauth', {
@@ -95,7 +96,8 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // the same singleton instance when called multiple times on the same stack.
       // This is what prevents the type-collision bug from manifesting.
 
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+      const registryRecord = loadMailboxCognitoRegistryRecord();
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
       resolver.registerPackages(['mailbox-cdk', 'mailbox-cdk-shared']);
       const testEngine = new CdkArtifactEngine(stack, resolver);
 

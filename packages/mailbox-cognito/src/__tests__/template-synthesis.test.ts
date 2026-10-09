@@ -12,6 +12,7 @@ import { MailboxCognitoDataStack } from '../cognito/mailbox-cognito-data-stack';
 import { MailboxCognitoDataDeployerWorker } from '../cognito/mailbox-cognito-data-deployer-worker';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
 import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 
 interface CloudFormationPolicyStatement {
   Effect?: 'Allow' | 'Deny';
@@ -266,7 +267,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         bucketBase: 'test-artifacts',
         packages: {
           'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
-          'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+          'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
         },
       });
       app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -275,8 +276,9 @@ describe('Cognito Data Stack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(testStack);
-      pinnedResolver.registerPackages(['mailbox-cognito', 'mailbox-cdk']);
+      const registryRecord = loadMailboxCognitoRegistryRecord();
+      const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(testStack, registryRecord);
+      pinnedResolver.registerPackages(['mailbox-cognito', 'mailbox-cdk-shared']);
       const artifactResolver = new CdkArtifactEngine(testStack, pinnedResolver);
 
       new MailboxCognitoDataDeployerWorker(testStack, 'worker', {
@@ -353,7 +355,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         bucketBase: 'test-artifacts',
         packages: {
           'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
-          'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+          'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
           'mailbox': { kind: 'release', version: '0.0.1-test' },
         },
       });
@@ -362,9 +364,9 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
     // Helper to create a resolver for a stack
     function createTestResolver(stack: cdk.Stack): PinnedResolver {
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
       // Register all packages that will be needed
-      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
+      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk-shared', 'mailbox']);
       return resolver;
     }
 
@@ -526,7 +528,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
           bucketBase: 'test-artifacts',
           packages: {
             'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
-            'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
+            'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
             'mailbox': { kind: 'release', version: '0.0.1-test' },
           },
         });
@@ -539,8 +541,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack);
-      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
+      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
+      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk-shared', 'mailbox']);
 
       // Construct MailboxUserPool with enableJmapOAuthDiscovery enabled
       const userPool = new MailboxUserPool(stack, 'user-pool-oauth', {
