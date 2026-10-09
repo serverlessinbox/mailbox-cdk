@@ -29,7 +29,7 @@ describe('StackHelpers Construct', () => {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
+            'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
           },
         },
       },
@@ -42,10 +42,9 @@ describe('StackHelpers Construct', () => {
 
     // Create a pinned resolver with required packages
     const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
     };
-    resolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
-    resolver.registerPackages(['mailbox-cdk']);
+    resolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
   });
 
   /**
@@ -135,7 +134,7 @@ describe('StackHelpers Construct', () => {
    */
   describe('Regression guard', () => {
     it('does not throw when creating StackHelpers with artifact resolver', () => {
-      // Should not throw - StackHelpers internally calls registerPackages(['mailbox-cdk'])
+      // Should not throw - StackHelpers internally calls registerPackages(['mailbox-cdk-shared'])
       expect(() => {
         StackHelpers.getOrCreate(stack, resolver);
         app.synth();

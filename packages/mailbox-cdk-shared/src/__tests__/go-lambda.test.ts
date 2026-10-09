@@ -44,7 +44,7 @@ describe('GoLambda Construct', () => {
     const packages: Record<string, ArtifactVersionsEntry> = {
       'mailbox-go': { version: '1.0.0', zone: 'regional' },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
     pinnedResolver.registerPackages(['mailbox-go']);
     const engine = new CdkArtifactEngine(stack, pinnedResolver);
     artifactResolver = engine;
@@ -186,7 +186,7 @@ describe('GoLambda Construct', () => {
         const packages: Record<string, ArtifactVersionsEntry> = {
           'mailbox-go': { version: '1.0.0', zone: 'regional' },
         };
-        const pinnedResolver = new PinnedResolver(testStack, packages, 'test-artifacts', {});
+        const pinnedResolver = new PinnedResolver(testStack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
         pinnedResolver.registerPackages(['mailbox-go']);
         const engine = new CdkArtifactEngine(testStack, pinnedResolver);
 

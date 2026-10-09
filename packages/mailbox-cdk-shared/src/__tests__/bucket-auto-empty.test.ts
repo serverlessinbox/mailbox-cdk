@@ -11,7 +11,7 @@ const fakeEngine: ICdkArtifactEngine = {
   getUrl: () => 'https://example.invalid/x.zip',
   getArn: () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
   getVersion: () => 'dev',
-  getBucketBase: () => 'artifacts',
+  location: { bucketBase: 'artifacts', project: 'serverlessinbox' },
   resolve: (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
   registerPackages: () => undefined,
 };

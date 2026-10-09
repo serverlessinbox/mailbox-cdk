@@ -39,7 +39,7 @@ function synthInvalidationProperties(
   const packages: Record<string, ArtifactVersionsEntry> = {
     'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
   pinnedResolver.registerPackages(['mailbox-cdk-shared']);
   const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
 
@@ -80,7 +80,7 @@ describe('StaticContentDeployer IAM scoping', () => {
     const packages: Record<string, ArtifactVersionsEntry> = {
       'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, 'test-artifacts', {});
+    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
     pinnedResolver.registerPackages(['mailbox-cdk-shared']);
     artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
   });

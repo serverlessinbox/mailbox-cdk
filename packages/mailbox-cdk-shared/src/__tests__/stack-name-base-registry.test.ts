@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
 import { setStackNameBase, getStackNameBase } from '../stack-name-base-registry';
 import { StackNamedBucket } from '../named-bucket';
 
@@ -86,7 +85,7 @@ describe('Stack Name Base Registry', () => {
       const nameBase = 'custom-base';
       setStackNameBase(stack, nameBase);
 
-      const bucket = new StackNamedBucket(stack, 'test-bucket', {});
+      new StackNamedBucket(stack, 'test-bucket', {});
 
       const template = Template.fromStack(stack);
       // The bucket should have a BucketName that includes the custom base
@@ -104,7 +103,7 @@ describe('Stack Name Base Registry', () => {
       });
 
       // Create bucket before registering name base
-      const bucket = new StackNamedBucket(stack, 'test-bucket', {});
+      new StackNamedBucket(stack, 'test-bucket', {});
 
       // Register name base after bucket creation
       const nameBase = 'custom-base';
@@ -125,7 +124,7 @@ describe('Stack Name Base Registry', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const bucket = new StackNamedBucket(stack, 'test-bucket', {});
+      new StackNamedBucket(stack, 'test-bucket', {});
 
       const template = Template.fromStack(stack);
       // The bucket should have a BucketName that includes AWS::StackName reference
@@ -148,7 +147,7 @@ describe('Stack Name Base Registry', () => {
       setStackNameBase(stack, registeredBase);
 
       const explicitBase = 'explicit-base';
-      const bucket = new StackNamedBucket(stack, 'test-bucket', {
+      new StackNamedBucket(stack, 'test-bucket', {
         nameBase: explicitBase,
       });
 
