@@ -16,6 +16,7 @@ export class StackHelpersLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackHelpersLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-helpers',
+      packageName: 'mailbox-cdk-shared',
       pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: cdk.Duration.seconds(30),

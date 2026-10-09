@@ -23,9 +23,10 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
   readonly artifactResolver: ICdkArtifactEngine;
 
   /**
-   * Package name where the lambda artifact is published (defaults to 'mailbox-cdk')
+   * Package name where the lambda artifact is published (e.g. "mailbox-cdk-shared").
+   * Must already be registered on the artifact resolver.
    */
-  readonly packageName?: string;
+  readonly packageName: string;
 
   /**
    * Lambda entry point handler (defaults to 'index.handler')
@@ -62,7 +63,7 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
  * new TypeScriptLambda(scope, 'MyLambda', {
  *   lambdaId: 'my-handler',
  *   artifactResolver,
- *   packageName: 'mailbox-cdk',
+ *   packageName: 'my-package',
  *   timeout: Duration.seconds(30),
  *   memorySize: 256,
  *   environment: {
@@ -76,7 +77,7 @@ export class TypeScriptLambda extends LambdaFunction {
     const {
       lambdaId,
       artifactResolver,
-      packageName = 'mailbox-cdk',
+      packageName,
       handler = 'index.handler',
       pipeline,
       serviceName,

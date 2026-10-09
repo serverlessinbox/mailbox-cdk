@@ -24,11 +24,33 @@ tasks:
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bucket-auto-empty/index.ts --out /tmp/bucket-auto-empty.zip
 
+  bundle:stack-deployer:
+    desc: Bundle stack-deployer lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/stack-deployer/**/*.ts
+      - src/ts-lambdas/shared/**/*.ts
+    generates:
+      - /tmp/stack-deployer.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-deployer/index.ts --out /tmp/stack-deployer.zip
+
+  bundle:stack-helpers:
+    desc: Bundle stack-helpers lambda zip to /tmp
+    sources:
+      - src/ts-lambdas/stack-helpers/**/*.ts
+      - src/ts-lambdas/shared/**/*.ts
+    generates:
+      - /tmp/stack-helpers.zip
+    cmds:
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out /tmp/stack-helpers.zip
+
   bundle:
     desc: Bundle all mailbox-cdk-shared lambdas to /tmp/*.zip
     cmds:
       - task: bundle:content-deployer
       - task: bundle:bucket-auto-empty
+      - task: bundle:stack-deployer
+      - task: bundle:stack-helpers
 
   publish:dev:
     desc: Publish mailbox-cdk-shared regional ts-lambdas to dev channel
@@ -37,5 +59,9 @@ tasks:
     cmds:
       - task: bundle:content-deployer
       - task: bundle:bucket-auto-empty
+      - task: bundle:stack-deployer
+      - task: bundle:stack-helpers
       - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/content-deployer.zip
       - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/bucket-auto-empty.zip
+      - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/stack-deployer.zip
+      - yarn artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/stack-helpers.zip

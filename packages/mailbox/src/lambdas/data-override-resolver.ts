@@ -16,6 +16,7 @@ export class DataOverrideResolverLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DataOverrideResolverLambdaProps) {
     super(scope, id, {
       lambdaId: 'data-override-resolver',
+      packageName: 'mailbox-cdk',
       pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: cdk.Duration.seconds(60),

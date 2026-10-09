@@ -1,5 +1,7 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { withSmokeTest, emitManualFinalize, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest } from '../shared/with-smoke-test';
+import { emitManualFinalize } from '../shared/manual-finalize';
+import * as env from '../shared/env';
 import { Route53Client, GetHostedZoneCommand } from '@aws-sdk/client-route-53';
 import { load } from './config';
 

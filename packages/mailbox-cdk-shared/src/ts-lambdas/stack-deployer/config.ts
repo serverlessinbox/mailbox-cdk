@@ -1,4 +1,5 @@
-import { env, parseLogLevelStrict, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as env from '../shared/env';
+import { parseLogLevelStrict, type LogLevel } from '../shared/logger-buffer';
 
 /**
  * Config shared by both the starter and worker Lambdas — the fields every stack-deployer

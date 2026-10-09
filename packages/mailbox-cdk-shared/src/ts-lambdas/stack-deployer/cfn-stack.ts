@@ -6,7 +6,7 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
 } from '@aws-sdk/client-cloudformation';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { OperationInput } from './types';
 
 export function toCfnParameters(parameters?: Record<string, string | undefined>): Array<{ ParameterKey: string; ParameterValue: string }> {

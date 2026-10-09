@@ -1,6 +1,9 @@
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
 import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest } from '../shared/with-smoke-test';
+import { emitManualFinalize } from '../shared/manual-finalize';
+import * as env from '../shared/env';
+import { LoggerBuffer } from '../shared/logger-buffer';
 import { putCfnResponse } from './cfn-response';
 import { deleteStackIfExists, describeRecentFailureEvents, describeStack, isTerminalFailure, isTerminalSuccess, makeCfClientFromOp, matchesKmsTransientSignature, outputsToObject, recreateStack, requiresRecreate, startOrUpdateStack } from './cfn-stack';
 import { CfnCustomResourceEvent, SfnInvokeEvent } from './types';

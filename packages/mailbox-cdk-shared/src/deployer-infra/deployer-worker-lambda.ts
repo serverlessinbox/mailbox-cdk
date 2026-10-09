@@ -17,12 +17,16 @@ export interface DeployerWorkerLambdaProps {
  */
 export class DeployerWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DeployerWorkerLambdaProps) {
+    // Must register the package BEFORE calling super(), which will try to resolve.
+    // Idempotent (Set-backed).
+    props.artifactResolver.registerPackages(['mailbox-cdk-shared']);
+
     super(scope, id, {
       lambdaId: 'stack-deployer',
       pipeline: 'infra',
       serviceName: props.serviceName,
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
+      packageName: 'mailbox-cdk-shared',
       handler: 'index.workerHandler',
       timeout: Duration.minutes(15),
       memorySize: 512,

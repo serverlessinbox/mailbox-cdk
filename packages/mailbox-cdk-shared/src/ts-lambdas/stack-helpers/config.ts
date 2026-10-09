@@ -1,4 +1,5 @@
-import { env, parseLogLevelStrict, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as env from '../shared/env';
+import { parseLogLevelStrict, type LogLevel } from '../shared/logger-buffer';
 
 export interface Config {
   readonly logLevel: LogLevel;
