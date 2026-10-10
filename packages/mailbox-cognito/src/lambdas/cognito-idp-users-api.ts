@@ -2,13 +2,13 @@ import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import type { ICognitoIdpUsersPoolConfig } from '../api/cognito-idp-users-addon';
 
 export interface CognitoIdpUsersApiLambdaProps {
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /** Cognito user pool ID to manage. */
   userPoolId: string;

@@ -4,7 +4,7 @@ import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { IJmapApiAddon, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
@@ -16,7 +16,7 @@ export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
   readonly pool: MailboxUserPool;
   /** Artifact resolver for provisioning Lambda functions. */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** Base URL of the JMAP API (where well-known docs are mounted). */
   readonly apiBaseUrl: string;
   /** The `identity-provisioner` Lambda, invoked by the DCR route to provision new clients. */

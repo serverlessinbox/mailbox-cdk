@@ -6,6 +6,7 @@
     ]
   },
   "dependencies": {
+    "@serverlessinbox/artifact-registry-cdk": "^0.2.0",
     "@serverlessinbox/mailbox": "0.0.0",
     "aws-cdk-lib": "^2.261.0",
     "constructs": "^10.5.0"
@@ -90,6 +91,13 @@
           ],
           "distName": "aws-cdk.cloud-assembly-schema",
           "module": "aws_cdk.cloud_assembly_schema"
+        }
+      }
+    },
+    "@serverlessinbox/artifact-registry-cdk": {
+      "targets": {
+        "js": {
+          "npm": "@serverlessinbox/artifact-registry-cdk"
         }
       }
     },
@@ -9313,7 +9321,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 505
+            "line": 500
           },
           "name": "addBootstrapUser",
           "parameters": [
@@ -9340,7 +9348,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 262
+            "line": 257
           },
           "name": "addSupportedIdentityProvider",
           "parameters": [
@@ -9355,7 +9363,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 466
+            "line": 461
           },
           "name": "adminUiConfig",
           "returns": {
@@ -9372,7 +9380,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 470
+            "line": 465
           },
           "name": "authorizationConfig",
           "returns": {
@@ -9384,7 +9392,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 432
+            "line": 427
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9416,7 +9424,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 448
+            "line": 443
           },
           "name": "createJmapApiAddons",
           "parameters": [
@@ -9447,7 +9455,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 474
+            "line": 469
           },
           "name": "fetchAuthorizationConfig",
           "returns": {
@@ -9459,7 +9467,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 542
+            "line": 537
           },
           "name": "grantAdminAccess",
           "parameters": [
@@ -9474,7 +9482,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 461
+            "line": 456
           },
           "name": "jmapOAuthIssuerUrl",
           "returns": {
@@ -9490,7 +9498,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 388
+            "line": 383
           },
           "name": "provisionAdminUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9511,7 +9519,7 @@
         {
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 355
+            "line": 350
           },
           "name": "provisionHeadlessClient",
           "parameters": [
@@ -9534,7 +9542,7 @@
           },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 410
+            "line": 405
           },
           "name": "provisionJmapUiClient",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9571,7 +9579,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 275
+            "line": 270
           },
           "name": "authorizationEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9643,7 +9651,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
-            "line": 271
+            "line": 266
           },
           "name": "tokenEndpoint",
           "overrides": "@serverlessinbox/mailbox.IMailboxAuthProviderBase",
@@ -9919,8 +9927,8 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "When omitted, defaults to pinned behavior (byte-identical to old behavior, zero infra).",
-            "summary": "Artifact resolver for Lambda code resolution (stack-self-update subplan #3, Phase A, D1/D2)."
+            "remarks": "When omitted, defaults to a pinned resolver built from the versions shipped with the package.",
+            "summary": "Artifact resolver for Lambda code resolution."
           },
           "immutable": true,
           "locationInModule": {
@@ -9930,7 +9938,7 @@
           "name": "artifactResolver",
           "optional": true,
           "type": {
-            "fqn": "@serverlessinbox/mailbox.IArtifactResolver"
+            "fqn": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver"
           }
         },
         {
@@ -10097,5 +10105,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "e2/OJT/Z4iEdUwPzUIrqi4X/vFWQu0aAF4yd7JnCaNs="
+  "fingerprint": "8Ej0lHy7aeNj5vc7cayQiIp61toWSz5vqSRn2Pya8CU="
 }

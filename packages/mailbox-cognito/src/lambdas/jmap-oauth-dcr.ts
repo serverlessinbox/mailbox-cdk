@@ -3,12 +3,12 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
 
 export interface JmapOAuthDcrLambdaProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 
   /**
    * The `identity-provisioner` Lambda this construct invokes for tenant resolution

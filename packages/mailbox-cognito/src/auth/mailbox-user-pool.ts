@@ -19,10 +19,10 @@ import {
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
-import { PinnedResolver, CdkArtifactEngine, resolveDeployerType, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory, resolveDeployerType, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
-import type { IArtifactResolver } from '@serverlessinbox/mailbox';
+import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
@@ -98,8 +98,8 @@ export interface MailboxUserPoolProps {
   readonly passwordMinLength?: number;
 
   /**
-   * Artifact resolver for Lambda code resolution (stack-self-update subplan #3, Phase A, D1/D2).
-   * When omitted, defaults to pinned behavior (byte-identical to old behavior, zero infra).
+   * Artifact resolver for Lambda code resolution.
+   * When omitted, defaults to a pinned resolver built from the versions shipped with the package.
    */
   readonly artifactResolver?: IArtifactResolver;
 
@@ -172,7 +172,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly adminUiClients = new Map<string, AuthClientConfig>();
   private readonly jmapUiClients = new Map<string, AuthClientConfig>();
   private readonly headlessClients = new Map<string, AuthClientConfig>();
-  private readonly artifacts: ICdkArtifactEngine;
+  private readonly artifacts: IArtifactResolver;
   private bootstrapUserCount = 0;
   private enableJmapOAuthDiscovery = false;
   private dynamicClientRegistration: DynamicClientRegistrationMode = DynamicClientRegistrationMode.DISABLED;
@@ -188,15 +188,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     this.enableJmapOAuthDiscovery = props.enableJmapOAuthDiscovery ?? false;
     this.dynamicClientRegistration = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
 
-    // Artifact resolution (stack-self-update subplan #3, Phase A):
-    // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
-    // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
-    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this, loadMailboxCognitoRegistryRecord());
-
-    // Register this package for artifact updates
-    resolver.registerPackages(['mailbox-cognito']);
-
-    this.artifacts = new CdkArtifactEngine(this, resolver);
+    // One resolver, threaded to every sub-construct. Default is pinned from the package's baked
+    // versions, overridden by CDK context; inject an AutoUpdater for track-based resolution.
+    this.artifacts = props.artifactResolver
+      ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
 
     this.authzConfig = {
       adminGroups: props.authorization?.adminGroups ?? ['admin'],
@@ -227,7 +222,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const cognitoDomainPrefix = props.domain.kind === 'cognito'
       ? props.domain.cognitoDomainPrefix
       : props.domain.kind === 'cognito-auto'
-      ? StackHelpers.getOrCreate(this, resolver)
+      ? StackHelpers.getOrCreate(this, this.artifacts)
           .resolveCognitoDomainPrefix(this, 'domain-prefix', props.domain.hostedZoneId)
       : Aws.STACK_NAME;
 

@@ -7,7 +7,7 @@ import { Construct } from 'constructs';
 import { IAdminApiAddon, type IAuditEventsQueue, type IIdentityProvisioner } from '@serverlessinbox/mailbox';
 
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface CognitoIdpUsersAuthorizationConfig {
   readonly adminGroups: string[];
@@ -22,7 +22,7 @@ export interface ICognitoIdpUsersPoolConfig {
 
 export interface CognitoIdpUsersAdminApiAddonProps {
   /** Artifact resolver — provided by MailboxUserPool, not created independently. */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 
   /** Audit events queue used by the existing audit-writer lambda. */
   readonly auditEventsQueue: IAuditEventsQueue;

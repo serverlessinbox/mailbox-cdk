@@ -7,10 +7,10 @@ import {
   rootStackRequestTagCondition,
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface MailboxCognitoDataDeployerWorkerProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** S3 object ARN for the cognito data stack CloudFormation template. */
   readonly templateObjectArn: string;
 }

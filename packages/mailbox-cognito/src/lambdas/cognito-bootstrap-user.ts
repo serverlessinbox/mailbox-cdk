@@ -3,11 +3,11 @@ import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { COGNITO_ARTIFACT_PACKAGE } from '../index';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
 export interface CognitoBootstrapUserLambdaProps {
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 }
 
 /**

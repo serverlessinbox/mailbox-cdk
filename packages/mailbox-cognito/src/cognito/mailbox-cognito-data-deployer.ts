@@ -3,7 +3,8 @@ import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
 import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
@@ -21,8 +22,8 @@ export interface MailboxCognitoDataDeployerProps {
   readonly mfaMode?: 'OFF' | 'OPTIONAL' | 'ON';
   /** Minimum password length (6–99). @default 8 */
   readonly passwordMinLength?: number;
-  /** Engine for artifact resolution (threaded from parent MailboxUserPool). */
-  readonly artifactResolver: ICdkArtifactEngine;
+  /** Resolver for artifact locations (threaded from parent MailboxUserPool). */
+  readonly artifactResolver: IArtifactResolver;
   /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
   readonly deployerType: ServerlessInboxDeployerType;
 }
