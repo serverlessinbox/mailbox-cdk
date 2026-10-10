@@ -13,9 +13,9 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { ReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
-import { PinnedResolver, CdkArtifactEngine, DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { BootstrapLambda } from '../bootstrap';
 import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 import { DataTable } from '../../data/data-tables';
@@ -42,12 +42,14 @@ describe('BootstrapLambda auth-key-store grant', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
+    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     const configTable = new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },

@@ -15,9 +15,9 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { PinnedResolver, CdkArtifactEngine, SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { EmailSenderLambda } from '../email-sender';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
@@ -26,7 +26,7 @@ import { DataBlobStore } from '../../data/data-blob-store';
 describe('EmailSenderLambda IAM scoping', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let submissionQueue: EmailSendingQueue;
 
   beforeEach(() => {
@@ -46,12 +46,14 @@ describe('EmailSenderLambda IAM scoping', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },

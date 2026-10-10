@@ -11,9 +11,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { PinnedResolver, CdkArtifactEngine, DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { AuthKeyStoreUpdaterLambda } from '../auth-key-store-updater';
 import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
@@ -39,12 +39,14 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
+    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
 

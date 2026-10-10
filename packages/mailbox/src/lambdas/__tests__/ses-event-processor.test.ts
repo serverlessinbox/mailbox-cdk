@@ -13,9 +13,9 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Topic } from 'aws-cdk-lib/aws-sns';
-import { PinnedResolver, CdkArtifactEngine, SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { SESEventProcessorLambda } from '../ses-event-processor';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SesEventQueue } from '../../email/ses-events/ses-event-queue';
@@ -44,12 +44,14 @@ describe('SESEventProcessorLambda event-source wiring', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
+    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },

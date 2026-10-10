@@ -11,9 +11,8 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { SupportApiLambda } from '../support-api';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
@@ -23,7 +22,7 @@ import { DataTable } from '../../data/data-tables';
 describe('SupportApiLambda tag-key env vars', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
     app = new App({
@@ -42,12 +41,14 @@ describe('SupportApiLambda tag-key env vars', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
