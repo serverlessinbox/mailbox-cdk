@@ -6,21 +6,21 @@
  * Tests for the singleton StackHelpers construct:
  * - Singleton behavior: multiple getOrCreate calls return the same instance
  * - Custom resource attachment: each resolver call creates its own CR under the caller's scope
- * - Regression guard: artifact resolver can register unrelated packages without throwing
+ * - Regression guard: creating the singleton against a resolver does not throw at synth time
  */
 
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
-import { PinnedResolver } from '../artifact-engine';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { StackHelpers } from '../stack-helpers';
 
 describe('StackHelpers Construct', () => {
   let app: App;
   let stack: cdk.Stack;
-  let resolver: any; // PinnedResolver - passed directly to StackHelpers
+  let resolver: IArtifactResolver;
 
   beforeEach(() => {
     // Set up app with artifact context
@@ -41,10 +41,14 @@ describe('StackHelpers Construct', () => {
     });
 
     // Create a pinned resolver with required packages
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    resolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
+    resolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
   });
 
   /**
@@ -129,19 +133,18 @@ describe('StackHelpers Construct', () => {
   });
 
   /**
-   * Regression guard: artifact resolver can register additional unrelated packages
-   * without throwing at synth time (idempotent registerPackages call).
+   * Regression guard: creating the singleton against a resolver that pins 'mailbox-cdk-shared'
+   * does not throw at synth time.
    */
   describe('Regression guard', () => {
     it('does not throw when creating StackHelpers with artifact resolver', () => {
-      // Should not throw - StackHelpers internally calls registerPackages(['mailbox-cdk-shared'])
       expect(() => {
         StackHelpers.getOrCreate(stack, resolver);
         app.synth();
       }).not.toThrow();
     });
 
-    it('idempotent registerPackages: multiple StackHelpers creations succeed', () => {
+    it('multiple StackHelpers creations succeed', () => {
       // Multiple attempts to create/get the singleton
       const helpers1 = StackHelpers.getOrCreate(stack, resolver);
       const helpers2 = StackHelpers.getOrCreate(stack, resolver);

@@ -1,25 +1,22 @@
 import { App, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { Code } from 'aws-cdk-lib/aws-lambda';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { BucketAutoEmpty } from '../bucket-auto-empty';
-import type { ICdkArtifactEngine, ResolvedArtifact } from '../artifact-engine';
 
-/** Minimal stand-in for the real engine — resolves everything to a fixed S3 location. */
-const fakeEngine: ICdkArtifactEngine = {
-  getCode: () => Code.fromBucket(Bucket.fromBucketName(new Stack(new App(), 'code-scope'), 'b', 'artifacts'), 'lambdas/x.zip'),
+/** Minimal stand-in for the real resolver — resolves everything to a fixed S3 location. */
+const fakeResolver: IArtifactResolver = {
   getUrl: () => 'https://example.invalid/x.zip',
   getArn: () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
   getVersion: () => 'dev',
   location: { bucketBase: 'artifacts', project: 'serverlessinbox' },
   resolve: (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
-  registerPackages: () => undefined,
 };
 
 function synth() {
   const stack = new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
   const bucket = new Bucket(stack, 'target-bucket');
-  const cr = BucketAutoEmpty.getOrCreate(stack, fakeEngine).attach(stack, 'auto-empty', bucket);
+  const cr = BucketAutoEmpty.getOrCreate(stack, fakeResolver).attach(stack, 'auto-empty', bucket);
   return { template: Template.fromStack(stack), stack, cr };
 }
 

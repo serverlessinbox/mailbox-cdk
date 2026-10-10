@@ -12,14 +12,14 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { PinnedResolver, CdkArtifactEngine, TypeScriptLambda } from '../index';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '../artifact-engine';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda } from '../index';
 
 describe('TypeScriptLambda Construct', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
     // Set up app with artifact context
@@ -40,13 +40,28 @@ describe('TypeScriptLambda Construct', () => {
     });
 
     // Create a pinned resolver with required packages
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk']);
-    const engine = new CdkArtifactEngine(stack, pinnedResolver);
-    artifactResolver = engine;
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
+  });
+
+  describe('Unpinned package', () => {
+    it('fails at synth naming the package when the resolver holds no pin for it', () => {
+      expect(
+        () =>
+          new TypeScriptLambda(stack, 'unpinned-lambda', {
+            lambdaId: 'artifact-updater',
+            packageName: 'not-pinned',
+            pipeline: 'infra',
+            artifactResolver,
+          }),
+      ).toThrow("No resolved data for package 'not-pinned'");
+    });
   });
 
   describe('Service name environment variable', () => {
@@ -187,18 +202,20 @@ describe('TypeScriptLambda Construct', () => {
           synthesizer: new BootstraplessSynthesizer(),
         });
 
-        const packages: Record<string, ArtifactVersionsEntry> = {
-          'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+        const packages: Record<string, ArtifactPin> = {
+          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         };
-        const pinnedResolver = new PinnedResolver(testStack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-        pinnedResolver.registerPackages(['mailbox-cdk']);
-        const engine = new CdkArtifactEngine(testStack, pinnedResolver);
+        const resolver = new PinnedArtifactResolver({
+          packages,
+          location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+          deploymentRegion: testStack.region,
+        });
 
         new TypeScriptLambda(testStack, 'lambda', {
           lambdaId,
           packageName: 'mailbox-cdk',
           pipeline: 'infra',
-          artifactResolver: engine,
+          artifactResolver: resolver,
         });
 
         const template = Template.fromStack(testStack);

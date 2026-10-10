@@ -12,15 +12,14 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '../artifact-engine';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { GoLambda } from '../go-lambda';
 
 describe('GoLambda Construct', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
     // Set up app with artifact context
@@ -41,13 +40,14 @@ describe('GoLambda Construct', () => {
     });
 
     // Create a pinned resolver with required packages
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-go']);
-    const engine = new CdkArtifactEngine(stack, pinnedResolver);
-    artifactResolver = engine;
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
   });
 
   describe('Service name environment variable', () => {
@@ -183,17 +183,19 @@ describe('GoLambda Construct', () => {
           synthesizer: new BootstraplessSynthesizer(),
         });
 
-        const packages: Record<string, ArtifactVersionsEntry> = {
-          'mailbox-go': { version: '1.0.0', zone: 'regional' },
+        const packages: Record<string, ArtifactPin> = {
+          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         };
-        const pinnedResolver = new PinnedResolver(testStack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-        pinnedResolver.registerPackages(['mailbox-go']);
-        const engine = new CdkArtifactEngine(testStack, pinnedResolver);
+        const resolver = new PinnedArtifactResolver({
+          packages,
+          location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+          deploymentRegion: testStack.region,
+        });
 
         new GoLambda(testStack, 'lambda', {
           lambdaId,
           pipeline: 'infra',
-          artifactResolver: engine,
+          artifactResolver: resolver,
         });
 
         const template = Template.fromStack(testStack);

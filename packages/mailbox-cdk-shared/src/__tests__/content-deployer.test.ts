@@ -11,9 +11,9 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { PinnedResolver, CdkArtifactEngine, StaticContentDeployer, StaticContentSource } from '../index';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '../artifact-engine';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { StaticContentDeployer, StaticContentSource } from '../index';
 
 /** Synthesizes a stack via `configure`, then returns the `Properties` of the single
  *  `Custom::ContentInvalidation` resource whose `distributionId` equals `distributionId`. Used to
@@ -36,12 +36,14 @@ function synthInvalidationProperties(
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  pinnedResolver.registerPackages(['mailbox-cdk-shared']);
-  const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
+  const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 
   const deployer = StaticContentDeployer.getOrCreate(stack, artifactResolver);
   configure(deployer, stack);
@@ -58,7 +60,7 @@ function synthInvalidationProperties(
 describe('StaticContentDeployer IAM scoping', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
     app = new App({
@@ -77,12 +79,14 @@ describe('StaticContentDeployer IAM scoping', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk-shared']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
   });
 
   it('scopes cloudfront:CreateInvalidation to the target distribution ARN', () => {
