@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
@@ -19,7 +19,7 @@ export interface SupportApiLambdaProps {
   /** SQS queue for audit events. */
   readonly auditEventsQueue: IAuditEventsQueue;
   /** Artifact resolver (engine) for Lambda code resolution. */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];
   /** IAM tag key for the support-diag tier, sourced from the support-roles tier registry. */

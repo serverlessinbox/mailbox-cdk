@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
@@ -16,7 +16,7 @@ export interface SupportRoleAssumptionCollectorLambdaProps {
   /** DynamoDB config table for storing collected role assumptions and tracking. */
   readonly configTable: IDataTable;
   /** Artifact resolver (engine) for Lambda code resolution. */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** IAM tag key for the support-diag tier, sourced from the support-roles tier registry. */
   readonly supportDiagTagKey: string;
   /** IAM tag key for the support-config-read tier, sourced from the support-roles tier registry. */

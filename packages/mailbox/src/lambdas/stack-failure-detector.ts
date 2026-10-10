@@ -2,10 +2,10 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface StackFailureDetectorLambdaProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** Pre-created (see stack-failure-detection-infra.ts for why). */
   readonly role: IRole;
   /** Pinned, not auto-named (see stack-failure-detection-infra.ts for why). */

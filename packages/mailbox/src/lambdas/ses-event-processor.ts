@@ -1,6 +1,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
 import { Construct } from 'constructs';
@@ -16,7 +16,7 @@ export interface SESEventProcessorLambdaProps {
   blobStore: IDataBlobStore;
   auditEventsQueue: IAuditEventsQueue;
   sesEventQueue: ISesEventQueue;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 }
 
 /**

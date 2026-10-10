@@ -1,11 +1,11 @@
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { type IRole } from 'aws-cdk-lib/aws-iam';
 
 export interface ResourceSweeperWorkerLambdaProps {
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /** IAM role for the worker Lambda */
   role: IRole;

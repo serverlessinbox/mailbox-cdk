@@ -1,6 +1,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import { Construct } from 'constructs';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -10,7 +10,7 @@ export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;
   readonly configTable: IDataTable;
   readonly artifactBucketBase: string;
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly templateVersionParamName: string;
   readonly pointerBucket: string;
   readonly pointerKey: string;
