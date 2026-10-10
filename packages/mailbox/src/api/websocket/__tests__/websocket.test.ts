@@ -14,19 +14,20 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { WebSocketPush } from '../websocket';
 import { DataTable } from '../../../data/data-tables';
 
 function buildWebSocketPush(stack: cdk.Stack): WebSocketPush {
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-go': { version: '1.0.0', zone: 'regional' },
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  pinnedResolver.registerPackages(['mailbox-go']);
-  const artifactResolver: ICdkArtifactEngine = new CdkArtifactEngine(stack, pinnedResolver);
+  const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 
   const configTable = new DataTable(new Table(stack, 'config-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },

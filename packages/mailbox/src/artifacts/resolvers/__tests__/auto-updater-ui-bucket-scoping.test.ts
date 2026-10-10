@@ -7,7 +7,7 @@
  * updater guessing the bucket's name from a synth-time pattern. This suite pins that the grant
  * actually lands on the updater's own IAM role, scoped to the real bucket the template creates —
  * not a hand-built ARN pattern that could silently diverge from it — and that a non-grantable
- * resolver (PinnedResolver, the default) leaves the stack with no such statement and synths clean.
+ * resolver (PinnedArtifactResolver, the default) leaves the stack with no such statement and synths clean.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -15,8 +15,9 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Mailbox } from '../../../mailbox';
 import { AutoUpdater } from '../auto-updater';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
 import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
+import { loadMailboxArtifactVersions } from '../../../mailbox-artifact-versions';
 import type { IMailboxAuthProvider } from '../../../auth/types';
 import { Permission } from '../../../auth/jmap-scopes';
 import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
@@ -24,12 +25,12 @@ import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStateme
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
   packages: {
-    'mailbox-go': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk-edge': { kind: 'release', version: '1.0.0' },
-    'mailbox-admin-ui': { kind: 'release', version: '1.0.0' },
-    'mailbox-webmail-ui': { kind: 'release', version: '1.0.0' },
+    'mailbox-go': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
+    'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+    'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
   },
 };
 
@@ -186,10 +187,10 @@ describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdate
   });
 });
 
-describe('MailboxUi.grantContentDeploy with a non-grantable resolver (PinnedResolver, the default)', () => {
+describe('MailboxUi.grantContentDeploy with a non-grantable resolver (PinnedArtifactResolver, the default)', () => {
   it('synthesizes without error, and no Lambda role is granted the auto-updater UI content-deploy shape', () => {
     const stack = buildStack('TestAutoUpdaterPinned');
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxRegistryRecord());
+    const pinnedResolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
 
     // The regression this guards: if the runtime `'grantPrincipal' in resolver` capability check in
     // Mailbox were dropped (or inverted) and `ui.grantContentDeploy(resolver)` were called

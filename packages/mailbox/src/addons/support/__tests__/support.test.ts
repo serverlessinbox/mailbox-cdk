@@ -14,9 +14,8 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { SupportAddon, SupportMode } from '../support-addon';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
@@ -25,15 +24,16 @@ import { DataTable } from '../../../data/data-tables';
 /**
  * Helper to create an artifact resolver for testing.
  */
-function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-    'mailbox-go': { version: '1.0.0', zone: 'regional' },
+function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-  const engine = new CdkArtifactEngine(stack, pinnedResolver);
-  return engine;
+  return new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 }
 
 describe('SupportAddon Unit Tests', () => {
@@ -157,7 +157,7 @@ describe('SupportAddon Unit Tests', () => {
   describe('Enabled mode - Construct verification', () => {
     let stack: cdk.Stack;
     let template: Template;
-    let artifactResolver: ICdkArtifactEngine;
+    let artifactResolver: IArtifactResolver;
     let configTable: DataTable;
     let auditEventsQueue: AuditEventsQueue;
 

@@ -10,9 +10,8 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
-import type { IArtifactResolver } from '../../../artifacts/i-artifact-resolver';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IIdentityProvisioner } from '../../../lambdas/identity-provisioner';
 import { SupportAddonProvider, SupportMode } from '../support-addon';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
@@ -31,13 +30,15 @@ const mockIdentityProvisioner: IIdentityProvisioner = {
  * Provides both mailbox-cdk and mailbox-go packages.
  */
 function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-    'mailbox-go': { version: '1.0.0', zone: 'regional' },
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-  return pinnedResolver;
+  return new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 }
 
 describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
@@ -561,13 +562,11 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
         env: { account: '111122223333', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
-      const mailboxResolver = new PinnedResolver(
-        stack,
-        { 'mailbox-go': { version: '9.9.9', zone: 'regional' } },
-        { bucketBase: 'mailbox-resolver-artifacts', project: 'serverlessinbox' },
-        {},
-      );
-      mailboxResolver.registerPackages(['mailbox-go']);
+      const mailboxResolver = new PinnedArtifactResolver({
+        packages: { 'mailbox-go': { version: '9.9.9', zone: ArtifactZone.REGIONAL } },
+        location: { bucketBase: 'mailbox-resolver-artifacts', project: 'serverlessinbox' },
+        deploymentRegion: stack.region,
+      });
 
       new SupportAddonProvider({ mode: SupportMode.ENABLED }).createAdminApiAddons(stack, {
         configTable: new DataTable(new Table(stack, 'config-table', {

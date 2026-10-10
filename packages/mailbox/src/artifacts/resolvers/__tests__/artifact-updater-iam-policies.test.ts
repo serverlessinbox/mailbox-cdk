@@ -18,20 +18,21 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { ServerlessInboxTagKeys, PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys, MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
 import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
+import { loadMailboxArtifactVersions } from '../../../mailbox-artifact-versions';
 import { ArtifactUpdaterLambda } from '../../../lambdas/artifact-updater';
 import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
   packages: {
-    'mailbox-go': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
-    'mailbox-cdk-edge': { kind: 'release', version: '1.0.0' },
-    'mailbox-admin-ui': { kind: 'release', version: '1.0.0' },
-    'mailbox-webmail-ui': { kind: 'release', version: '1.0.0' },
+    'mailbox-go': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
+    'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+    'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
   },
 };
 
@@ -85,9 +86,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
 
     // Set up artifact resolver using the same pattern as AutoUpdater
     const registryRecord = loadMailboxRegistryRecord();
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
-    pinnedResolver.registerPackages(['mailbox-cdk']);
-    const artifactResolver = new CdkArtifactEngine(stack, pinnedResolver, 'test-resolver');
+    const artifactResolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, loadMailboxArtifactVersions());
 
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
       artifactResolver,

@@ -22,19 +22,20 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-detection';
 
-function createTestArtifactResolver(stack: cdk.Stack): ICdkArtifactEngine {
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-    'mailbox-go': { version: '1.0.0', zone: 'regional' },
+function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-  return new CdkArtifactEngine(stack, pinnedResolver);
+  return new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 }
 
 /**
