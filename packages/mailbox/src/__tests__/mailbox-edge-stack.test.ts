@@ -296,16 +296,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Deployer Worker IAM', () => {
     it('edge deployer worker: grants only iam:PassRole on the concrete role ARN, no role authorship', () => {
-      const app = new App({
-        context: {
-          'serverlessinbox:artifacts': {
-            bucketBase: 'test-artifacts',
-            packages: {
-              'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
-            },
-          },
-        },
-      });
+      const app = new App();
       const testStack = new cdk.Stack(app, 'TestEdgeDeployerStack', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),

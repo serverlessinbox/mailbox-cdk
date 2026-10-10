@@ -55,16 +55,7 @@ function buildWebSocketPush(stack: cdk.Stack): WebSocketPush {
 
 describe('WebSocketPush.grantManageConnections', () => {
   it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
-    const app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    const app = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -99,16 +90,7 @@ describe('WebSocketPush.grantManageConnections', () => {
 
 describe('WebSocketPush.managementEndpoint', () => {
   it('builds the ApiGatewayManagementApi endpoint URL for the given stage', () => {
-    const app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    const app = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),

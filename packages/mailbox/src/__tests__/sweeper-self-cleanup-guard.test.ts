@@ -31,14 +31,7 @@ describe('SweeperWorkflow self-cleanup guard', () => {
   let def: string;
 
   beforeAll(() => {
-    app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: { 'mailbox-cdk': { kind: 'release', version: '1.0.0' } },
-        },
-      },
-    });
+    app = new App();
     stack = new cdk.Stack(app, 'SelfCleanupGuardStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),

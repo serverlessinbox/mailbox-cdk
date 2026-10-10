@@ -22,17 +22,7 @@ describe('GoLambda Construct', () => {
   let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
-    // Set up app with artifact context
-    app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
@@ -167,16 +157,7 @@ describe('GoLambda Construct', () => {
 
       for (const lambdaId of lambdaIds) {
         // Create a new app for each lambda to allow multiple synth calls
-        const testApp = new App({
-          context: {
-            'serverlessinbox:artifacts': {
-              bucketBase: 'test-artifacts',
-              packages: {
-                'mailbox-go': { kind: 'release', version: '1.0.0' },
-              },
-            },
-          },
-        });
+        const testApp = new App();
 
         const testStack = new cdk.Stack(testApp, 'TestStack', {
           env: { account: '123456789012', region: 'us-west-2' },

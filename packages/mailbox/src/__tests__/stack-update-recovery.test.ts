@@ -30,16 +30,7 @@ const TEST_ACCOUNT = '123456789012';
 const TEST_REGION = 'us-west-2';
 
 function buildTemplate(): Template {
-  const app = new App({
-    context: {
-      'serverlessinbox:artifacts': {
-        bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-go': { kind: 'release', version: '1.0.0' },
-        },
-      },
-    },
-  });
+  const app = new App();
   const stack = new cdk.Stack(app, 'TestStackUpdateRecovery', {
     env: { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),

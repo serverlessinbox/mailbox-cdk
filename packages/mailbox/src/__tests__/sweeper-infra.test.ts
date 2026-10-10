@@ -42,16 +42,7 @@ describe('SweeperInfra IAM Policies', () => {
   let artifactResolver: IArtifactResolver;
 
   beforeEach(() => {
-    app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    app = new App();
   });
 
   function buildStack(id: string): cdk.Stack {

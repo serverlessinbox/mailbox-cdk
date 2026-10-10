@@ -28,17 +28,7 @@ describe('BootstrapLambda SES rule set wiring', () => {
   let ruleSet: ses.IReceiptRuleSet;
 
   beforeEach(() => {
-    app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    app = new App();
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),

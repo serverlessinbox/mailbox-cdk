@@ -44,17 +44,7 @@ function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
 describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
   describe('Feature gating (disabled vs enabled)', () => {
     it('When disabled (literal DISABLED), synthesizes zero support resources', () => {
-      const app = new App({
-        context: {
-          'serverlessinbox:artifacts': {
-            bucketBase: 'test-artifacts',
-            packages: {
-              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-              'mailbox-go': { kind: 'release', version: '1.0.0' },
-            },
-          },
-        },
-      });
+      const app = new App();
       const stack = new cdk.Stack(app, 'test-stack', {
         env: { account: '111122223333', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -125,17 +115,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
     let auditLogTable: Table;
 
     beforeEach(() => {
-      const app = new App({
-        context: {
-          'serverlessinbox:artifacts': {
-            bucketBase: 'test-artifacts',
-            packages: {
-              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-              'mailbox-go': { kind: 'release', version: '1.0.0' },
-            },
-          },
-        },
-      });
+      const app = new App();
       stack = new cdk.Stack(app, 'test-stack', {
         env: { account: '111122223333', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -498,17 +478,7 @@ describe('SupportAddon Full-Stack IAM Verification (T1 Gates)', () => {
 
   describe('Feature gate completeness', () => {
     it('CfnCondition gates all support resources when mode is token-based', () => {
-      const app = new App({
-        context: {
-          'serverlessinbox:artifacts': {
-            bucketBase: 'test-artifacts',
-            packages: {
-              'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-              'mailbox-go': { kind: 'release', version: '1.0.0' },
-            },
-          },
-        },
-      });
+      const app = new App();
       const stack = new cdk.Stack(app, 'test-stack', {
         env: { account: '111122223333', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),

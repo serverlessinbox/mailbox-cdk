@@ -27,17 +27,7 @@ function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
 }
 
 function buildStack(id: string): cdk.Stack {
-  const app = new App({
-    context: {
-      'serverlessinbox:artifacts': {
-        bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-          'mailbox-go': { kind: 'release', version: '1.0.0' },
-        },
-      },
-    },
-  });
+  const app = new App();
   return new cdk.Stack(app, id, {
     env: { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),

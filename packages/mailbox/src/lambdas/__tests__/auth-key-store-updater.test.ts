@@ -23,16 +23,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
   let authKeyStoreTable: AuthKeyStoreTable;
 
   beforeEach(() => {
-    const app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },

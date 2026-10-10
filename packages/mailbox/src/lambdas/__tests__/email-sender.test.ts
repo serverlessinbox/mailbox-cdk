@@ -30,16 +30,7 @@ describe('EmailSenderLambda IAM scoping', () => {
   let submissionQueue: EmailSendingQueue;
 
   beforeEach(() => {
-    app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },

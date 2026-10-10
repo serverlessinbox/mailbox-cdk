@@ -98,17 +98,7 @@ describe('StackFailureDetectionInfra — physical name length', () => {
   let template: Template;
 
   beforeEach(() => {
-    const app = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-          },
-        },
-      },
-    });
+    const app = new App();
     const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
       env: { account: '111122223333', region: 'us-east-1' },
       synthesizer: new BootstraplessSynthesizer(),

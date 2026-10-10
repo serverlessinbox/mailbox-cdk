@@ -133,16 +133,7 @@ describe('Mailbox Resource Naming', () => {
     // resource pattern that appends a hardcoded '-data-' segment on top produces a broken
     // double '-data-data-' ARN. Assert against the real synthesized worker, not the source text.
     function synthDataDeployerWorker(nameBase: string): Template {
-      const app = new App({
-        context: {
-          'serverlessinbox:artifacts': {
-            bucketBase: 'test-artifacts',
-            packages: {
-              'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
-            },
-          },
-        },
-      });
+      const app = new App();
       const stack = new cdk.Stack(app, 'TestStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
