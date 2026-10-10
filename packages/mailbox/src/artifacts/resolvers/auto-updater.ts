@@ -15,13 +15,22 @@ import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-upd
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
- * The granularity at which the artifact updater derives a release track from a deployed
- * artifact's version: `'major'` or `'minor'`.
+ * How the artifact updater follows new releases.
  *
- * The updater reads the release pointer of that track for the configured dist-tag and moves the
- * artifact only to a strictly newer version.
+ * - `'major'`: the updater derives the release track from the major number of a deployed
+ *   artifact's version (`1.4.2` follows track `v1`) and moves the artifact to any strictly newer
+ *   version on that track, so new minor releases are adopted automatically.
+ * - `'minor'`: the updater derives the track from the major and minor numbers (`1.4.2` follows
+ *   track `v1.4`), so only patch releases are adopted automatically. This is the default of
+ *   {@link AutoUpdaterProps.granularity}.
+ * - `'pinned'`: automatic updates are off. The post-deploy trigger and the schedule are not
+ *   created and the deployed artifacts change only when you deploy a new template or invoke the
+ *   updater from the admin API.
+ *
+ * For `'major'` and `'minor'` the updater reads the release pointer of the derived track for the
+ * configured dist-tag and moves the artifact only to a strictly newer version.
  */
-export type Granularity = 'major' | 'minor';
+export type Granularity = 'major' | 'minor' | 'pinned';
 
 /**
  * Settings of the {@link AutoUpdater}: which release line to follow, how tightly, and how often
@@ -38,14 +47,13 @@ export interface AutoUpdaterProps {
   readonly distTag?: string;
 
   /**
-   * How the updater derives the release track it follows from a deployed artifact's version:
-   * `'major'` or `'minor'` (see {@link Granularity}). Pass `'pinned'` to disable automatic
-   * updates: the post-deploy trigger and the schedule are then not created, and the updater only
-   * runs when invoked from the admin API.
+   * How the updater follows new releases. The literal values are those of {@link Granularity}:
+   * `'major'`, `'minor'` or `'pinned'`. With `'pinned'` the post-deploy trigger and the schedule
+   * are not created, and the updater only runs when invoked from the admin API.
    *
    * Accepts a CloudFormation parameter token, so a stack parameter can switch tracking on and
-   * off at deploy time. The prop is typed `string` for that reason, so a literal other than
-   * `'major'`, `'minor'` or `'pinned'` is not caught at compile time.
+   * off at deploy time. The prop is typed `string` for that reason, so a literal that is not a
+   * {@link Granularity} value is not caught at compile time.
    *
    * @default 'minor'
    */

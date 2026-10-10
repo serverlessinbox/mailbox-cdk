@@ -9406,7 +9406,7 @@
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 104
+          "line": 112
         },
         "parameters": [
           {
@@ -9438,7 +9438,7 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 77
+        "line": 85
       },
       "methods": [
         {
@@ -9448,7 +9448,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 206
+            "line": 214
           },
           "name": "addDeployEndDependency",
           "parameters": [
@@ -9470,7 +9470,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 193
+            "line": 201
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
@@ -9511,7 +9511,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 172
+            "line": 180
           },
           "name": "getArn",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9547,7 +9547,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 161
+            "line": 169
           },
           "name": "getUrl",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9583,7 +9583,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 181
+            "line": 189
           },
           "name": "getVersion",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9610,7 +9610,7 @@
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 151
+            "line": 159
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9651,7 +9651,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 89
+            "line": 97
           },
           "name": "grantPrincipal",
           "overrides": "aws-cdk-lib.aws_iam.IGrantable",
@@ -9667,7 +9667,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 96
+            "line": 104
           },
           "name": "location",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9688,7 +9688,7 @@
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 30
+        "line": 39
       },
       "name": "AutoUpdaterProps",
       "properties": [
@@ -9702,7 +9702,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 38
+            "line": 47
           },
           "name": "distTag",
           "optional": true,
@@ -9714,13 +9714,13 @@
           "abstract": true,
           "docs": {
             "default": "'minor'",
-            "remarks": "Pass `'pinned'` to disable automatic\nupdates: the post-deploy trigger and the schedule are then not created, and the updater only\nruns when invoked from the admin API.\n\nAccepts a CloudFormation parameter token, so a stack parameter can switch tracking on and\noff at deploy time. The prop is typed `string` for that reason, so a literal other than\n`'major'`, `'minor'` or `'pinned'` is not caught at compile time.",
-            "summary": "How the updater derives the release track it follows from a deployed artifact's version: `'major'` or `'minor'` (see {@link Granularity})."
+            "remarks": "The literal values are those of {@link Granularity}:\n`'major'`, `'minor'` or `'pinned'`. With `'pinned'` the post-deploy trigger and the schedule\nare not created, and the updater only runs when invoked from the admin API.\n\nAccepts a CloudFormation parameter token, so a stack parameter can switch tracking on and\noff at deploy time. The prop is typed `string` for that reason, so a literal that is not a\n{@link Granularity} value is not caught at compile time.",
+            "summary": "How the updater follows new releases."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 52
+            "line": 60
           },
           "name": "granularity",
           "optional": true,
@@ -9738,7 +9738,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 60
+            "line": 68
           },
           "name": "updateInterval",
           "optional": true,
@@ -12385,5 +12385,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "FL4ByGn0u2xy4S++I6zVFE3xxboAOaZS399o4LZKbUs="
+  "fingerprint": "VLyW3hVIf29NVhSFrN6E74tUf0HCyQqcfY0T1QqcBds="
 }

@@ -9390,6 +9390,10 @@
           }
         },
         {
+          "docs": {
+            "remarks": "Create every construct of the addon under `scope`, not under another parent, so it sits with\nthe other API resources.",
+            "summary": "Creates the addons this provider contributes."
+          },
           "locationInModule": {
             "filename": "src/auth/mailbox-user-pool.ts",
             "line": 427
@@ -10105,5 +10109,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "8Ej0lHy7aeNj5vc7cayQiIp61toWSz5vqSRn2Pya8CU="
+  "fingerprint": "ImjBhkxLX9M+AL+FeYjf73bl+nr9ofc782rbNVgGfuY="
 }
