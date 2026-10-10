@@ -43,8 +43,6 @@ jobs:
       - run: yarn gitversion bump
       - name: Resolve component artifact versions
         run: yarn resolve-artifacts
-      - name: Embed component versions in package.json
-        run: yarn embed-component-versions
       - name: Build edge stack
         run: yarn workspace @serverlessinbox/mailbox build:edge-stack
       - name: Build data stack

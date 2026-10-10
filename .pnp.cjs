@@ -733,6 +733,10 @@ const RAW_RUNTIME_STATE =
       "npm:0.1.3"\
     ],\
     [\
+      "@serverlessinbox/artifact-registry-cdk",\
+      "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"\
+    ],\
+    [\
       "@serverlessinbox/artifact-registry-gitversion",\
       "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.1.3"\
     ],\
@@ -5838,6 +5842,32 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@serverlessinbox/artifact-registry-cdk", [\
+      ["npm:0.2.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-registry-cdk-npm-0.2.0-b8fd7e3c88-10c0.zip/node_modules/@serverlessinbox/artifact-registry-cdk/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-registry-cdk", "npm:0.2.0"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-artifact-registry-cdk-virtual-706f97aaab/6/.yarn/berry/cache/@serverlessinbox-artifact-registry-cdk-npm-0.2.0-b8fd7e3c88-10c0.zip/node_modules/@serverlessinbox/artifact-registry-cdk/",\
+        "packageDependencies": [\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
+          ["@types/aws-cdk-lib", null],\
+          ["@types/constructs", null],\
+          ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
+          ["constructs", "npm:10.6.0"]\
+        ],\
+        "packagePeers": [\
+          "@types/aws-cdk-lib",\
+          "@types/constructs",\
+          "aws-cdk-lib",\
+          "constructs"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@serverlessinbox/artifact-registry-gitversion", [\
       ["npm:0.1.3", {\
         "packageLocation": "../../../../../.yarn/berry/cache/@serverlessinbox-artifact-registry-gitversion-npm-0.1.3-3de31ba140-10c0.zip/node_modules/@serverlessinbox/artifact-registry-gitversion/",\
@@ -6023,6 +6053,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
           ["@types/jest", "npm:29.5.14"],\

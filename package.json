@@ -14,7 +14,6 @@
     "lint:all": "eslint packages --max-warnings=-1",
     "resolve-artifacts": "artifact-registry resolve-artifacts --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --component mailbox-go:package:mailbox-go --component mailbox-admin-ui:package:mailbox-admin-ui --component mailbox-webmail-ui:package:mailbox-webmail-ui --output artifact-versions.json --output packages/mailbox/artifact-versions.json",
     "fetch-registry-record": "artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox/registry-record.json && artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox-cognito/registry-record.json",
-    "embed-component-versions": "ts-node --project tsconfig.scripts.json scripts/embed-component-versions.ts",
     "test": "yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
   },
   "devDependencies": {

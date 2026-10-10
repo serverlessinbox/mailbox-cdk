@@ -10,6 +10,8 @@ export {
 // Artifact engine (D3 — replaces old ICdkArtifactResolver/CdkArtifactResolver)
 export { PinnedResolver, CdkArtifactEngine } from './artifact-engine';
 export { loadEmbeddedRegistryRecord } from './embedded-registry-record';
+export { loadEmbeddedArtifactVersions } from './embedded-artifact-versions';
+export type { EmbeddedArtifactVersions } from './embedded-artifact-versions';
 export type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
 export type { IArtifactResolver, ICdkArtifactEngine, ResolvedArtifact, VersionMap, VersionMapEntry } from './artifact-engine';
 
