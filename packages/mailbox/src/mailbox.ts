@@ -46,178 +46,309 @@ import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/
 import { loadMailboxRegistryRecord } from './mailbox-registry-record';
 import { loadMailboxArtifactVersions } from './mailbox-artifact-versions';
 
-/**
- * Re exports public API types and constructs for the mailbox package.
- */
-
+// SesReceivingMode is the type of MailboxProps.enableReceiving and is exported from the package through this module.
 export {
   SesReceivingMode
 } from './lambdas';
 
+/**
+ * Your own ACM certificates for the endpoints a Mailbox serves, for when you manage DNS and
+ * certificates yourself. Every field left out falls back to the certificate the Mailbox creates
+ * itself, which requires `MailboxProps.hostedZoneId`.
+ */
 export interface MailboxCertificateOverrides {
   /**
-   * us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>).
-   * Only needed when hostedZone is not provided (manual DNS setup).
+   * Certificate attached to the CDN's alternate domain name (cdn.<domain>). It must be issued in
+   * us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Used only when `MailboxProps.hostedZoneId` is not set; with a hosted zone the Mailbox's own
+   * edge certificate is used and this field is ignored. Without a hosted zone and without this
+   * certificate, the CDN is served on its default CloudFront domain.
    */
   readonly cloudFront?: acm.ICertificate;
   /**
-   * us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name.
-   * Overrides the shared edge certificate auto-created when hostedZone is provided.
+   * Certificate attached to the Admin UI's alternate domain name (admin.<domain>). It must be
+   * issued in us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.
+   * Without a hosted zone and without this certificate, the Admin UI is served on its default
+   * CloudFront domain.
    */
   readonly adminUi?: acm.ICertificate;
   /**
-   * us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name.
-   * Overrides the shared edge certificate auto-created when hostedZone is provided.
+   * Certificate attached to the Webmail UI's alternate domain name (webmail.<domain>). It must be
+   * issued in us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.
+   * Without a hosted zone and without this certificate, the Webmail UI is served on its default
+   * CloudFront domain.
    */
   readonly webmailUi?: acm.ICertificate;
   /**
-   * Regional ACM certificate for api.<domain> (Admin API custom domain).
-   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   * Certificate for the Admin API's custom domain (api.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Takes precedence over the regional certificate the Mailbox creates when a hosted zone is
+   * given. Without a hosted zone and without this certificate, the Admin API gets no custom
+   * domain, and the Admin UI is not given an API URL.
    */
   readonly api?: acm.ICertificate;
   /**
-   * Regional ACM certificate for jmap.<domain> (JMAP API custom domain).
-   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   * Certificate for the JMAP API's custom domain (jmap.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Takes precedence over the regional certificate the Mailbox creates when a hosted zone is
+   * given. Without a hosted zone and without this certificate, the JMAP API gets no custom
+   * domain, and the Webmail UI is not given an API URL.
    */
   readonly jmap?: acm.ICertificate;
   /**
-   * Regional ACM certificate for ws.<domain> (WebSocket push custom domain).
-   * Overrides the shared regional SAN cert auto-created when hostedZone is provided.
+   * Certificate for the WebSocket push custom domain (ws.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Used only when `MailboxProps.hostedZoneId` is set: it then takes precedence over the regional
+   * certificate the Mailbox creates. Without a hosted zone the WebSocket endpoint gets no custom
+   * domain and this field is ignored.
    */
   readonly ws?: acm.ICertificate;
 }
 
+/**
+ * Subdomain labels for the endpoints a Mailbox serves. Each label is a single DNS label, so it
+ * must not contain dots. A label you leave out keeps its default.
+ */
 export interface MailboxSubdomainOverrides {
-  /** @default "admin" */
+  /**
+   * Label for the Admin UI: `<label>.<domain>`.
+   * @default "admin"
+   */
   readonly admin?: string;
-  /** @default "webmail" */
+  /**
+   * Label for the Webmail UI: `<label>.<domain>`.
+   * @default "webmail"
+   */
   readonly webmail?: string;
-  /** @default "jmap" */
+  /**
+   * Label for the JMAP API: `<label>.<domain>`.
+   * @default "jmap"
+   */
   readonly jmap?: string;
-  /** @default "api" */
+  /**
+   * Label for the Admin API: `<label>.<domain>`.
+   * @default "api"
+   */
   readonly api?: string;
-  /** @default "ws" */
+  /**
+   * Label for the WebSocket push endpoint: `<label>.<domain>`.
+   * @default "ws"
+   */
   readonly ws?: string;
 }
 
+/**
+ * The public HTTPS URLs of the endpoints a Mailbox serves. The domain is derived at deploy time,
+ * so each value is an unresolved token at synth time: build on it by concatenation and do not
+ * parse it. With `MailboxProps.subdomainNamespace`, each host sits under the namespace
+ * (admin.<namespace>.<domain>).
+ */
 export interface MailboxUrls {
-  /** https://admin.<domainName> */
+  /** URL of the Admin UI: `https://admin.<domainName>`. */
   readonly adminUi: string;
-  /** https://webmail.<domainName> */
+  /** URL of the Webmail UI: `https://webmail.<domainName>`. */
   readonly webmail: string;
-  /** https://jmap.<domainName> */
+  /** URL of the JMAP API: `https://jmap.<domainName>`. */
   readonly jmapApi: string;
-  /** https://api.<domainName> */
+  /** URL of the Admin API: `https://api.<domainName>`. */
   readonly adminApi: string;
 }
 
+/**
+ * The ACM certificates a Mailbox created for itself. A field is undefined when the Mailbox did
+ * not create that certificate.
+ */
 export interface MailboxCertificates {
-  /** Auto-created us-east-1 ACM certificate for CloudFront (edge) alternate domain names.
-   *  Present only when hostedZone is provided and no overrides.certificates.cloudFront is set. */
+  /**
+   * The us-east-1 ACM certificate for the CloudFront (edge) alternate domain names. Present only
+   * when `MailboxProps.hostedZoneId` is set.
+   */
   readonly edge?: acm.ICertificate;
-  /** Auto-created regional ACM SAN certificate for api/jmap/ws subdomains.
-   *  Present only when hostedZone is provided and no overrides.certificates.api/jmap/ws are set. */
+  /**
+   * The regional ACM SAN certificate covering the api, jmap, ws and mcp subdomains. Present only
+   * when `MailboxProps.hostedZoneId` is set and at least one of `overrides.certificates.api` and
+   * `overrides.certificates.jmap` is not supplied.
+   */
   readonly regional?: acm.ICertificate;
 }
 
+/**
+ * Replacements for the certificates and subdomain labels a Mailbox would otherwise generate.
+ */
 export interface MailboxOverrides {
   /**
-   * ACM certificate overrides. When omitted, certificates are auto-created
-   * (requires hostedZone). Supply individual fields to bypass auto-creation
-   * for specific endpoints (e.g., manual DNS or cross-account certificate).
+   * Your own ACM certificates per endpoint. When omitted, the Mailbox creates the certificates it
+   * needs, which requires `MailboxProps.hostedZoneId`. Supply individual fields to bypass that
+   * for specific endpoints, for example with manual DNS or a cross-account certificate.
    */
   readonly certificates?: MailboxCertificateOverrides;
 
   /**
-   * Override the subdomain label for any endpoint.
-   * Default labels match the property names (e.g. admin → "admin").
-   * All labels must be valid single DNS labels (no dots).
+   * Subdomain labels per endpoint. Each endpoint keeps its default label (the property name, for
+   * example "admin") unless overridden here. Every label must be a single DNS label (no dots).
    */
   readonly subdomains?: MailboxSubdomainOverrides;
 }
 
+/**
+ * Settings of a {@link Mailbox}: the DNS and certificate setup, the authentication provider, which
+ * UIs and optional capabilities to create, and how artifacts are resolved.
+ */
 export interface MailboxProps {
-  /** Route53 hosted zone ID. The domain name is derived at deploy time via StackHelpers. */
+  /**
+   * The Route53 hosted zone that serves your domain. The Mailbox derives the domain name from the
+   * zone at deploy time, creates DNS records for its endpoints in it, and creates the ACM
+   * certificates they need.
+   *
+   * When omitted, no DNS records or certificates are created: supply your own through
+   * `overrides.certificates` and point DNS at the endpoints yourself.
+   */
   readonly hostedZoneId?: string;
 
-  /** Optional KMS configuration for at-rest encryption of core resources. */
+  /**
+   * Configuration for at-rest KMS encryption of the Mailbox's core resources. See
+   * {@link MailboxKmsConfig} for the available modes.
+   */
   readonly kms?: MailboxKmsConfig;
 
-  /** Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons). */
+  /**
+   * The construct that supplies authentication: the identity issuer and its token and
+   * authorization endpoints, the auth policies, the OAuth client settings and, optionally,
+   * Admin API and JMAP API addons. Required.
+   *
+   * Pass the provider your users sign in with: its issuer is what the Mailbox is configured to
+   * trust.
+   */
   readonly authProvider: IMailboxAuthProvider;
 
-  /** Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically. */
+  /**
+   * Extra origins allowed by CORS on the Admin API, the JMAP API and the CDN, as full origins
+   * including the scheme, for example `http://localhost:5173` during local development. The
+   * origins of the Admin and Webmail UIs are added automatically.
+   *
+   * @default - only the UI origins are allowed
+   */
   readonly extraAllowedOrigins?: string[];
 
-  /** Optional admin-api capability providers (e.g. the Update addon). The composing stack opts in by passing providers; the reusable construct does not bake them in. */
+  /**
+   * Providers that add capabilities to the Admin API, such as `StackUpdateAddonProvider` or
+   * `SupportAddonProvider`. Nothing beyond the addons your `authProvider` contributes is enabled
+   * unless a provider is listed here.
+   *
+   * @default - no additional providers
+   */
   readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
 
   /**
-   * Optional subdomain namespace. When set, all endpoints are placed under
-   * `{prefix}.{domainName}` — e.g. prefix "mailbox" on "example.com" yields
+   * Namespace for all endpoints. When set, every endpoint is placed under
+   * `{namespace}.{domainName}` — e.g. namespace "mailbox" on "example.com" yields
    * `admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.
-   * Must be a valid single DNS label (no dots).
+   *
+   * Must be a single DNS label (no dots). An empty string means no namespace, so a
+   * CloudFormation parameter can switch the namespace on and off at deploy time.
+   *
+   * @default - no namespace
    */
   readonly subdomainNamespace?: string;
   /**
-   * Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap).
-   * Defaults to true.
+   * Whether to create the Admin UI: the CloudFront distribution, its token-exchange API and its
+   * OAuth client. When false, there is no Admin UI OAuth client and no Admin UI origin in the CORS
+   * allow-lists.
+   *
+   * @default true
    */
   readonly enableAdminUi?: boolean;
 
   /**
-   * Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap).
-   * Defaults to true.
+   * Whether to create the Webmail UI: the CloudFront distribution, its token-exchange API and its
+   * OAuth client. Disabling it makes synthesis fail, because the JMAP API requires the JMAP UI
+   * OAuth client that the Webmail UI provisions.
+   *
+   * @default true
    */
   readonly enableWebmailUi?: boolean;
 
   /**
-   * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>.
-   * Requires an Advanced license tier. Defaults to false.
+   * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced
+   * license tier. The MCP endpoint uses the regional certificate the Mailbox creates, so it also
+   * requires `hostedZoneId`, and `overrides.certificates` must not supply both `api` and `jmap`,
+   * or no regional certificate is created.
+   *
+   * @default false
    */
   readonly enableMcp?: boolean;
 
   /**
-   * When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt
-   * rule set. Only one rule set can be active per account per region — this is an explicit operator
-   * decision.
+   * The mode (`'off'`, `'on'` or `'forced'`) the Bootstrap Lambda uses when it activates the SES
+   * receipt rule set by calling SetActiveReceiptRuleSet. Only one rule set can be active per
+   * account per region, so activating this one replaces whichever is active: choose it
+   * deliberately.
+   *
+   * @default - the Bootstrap Lambda's default receiving behavior
    */
   readonly enableReceiving?: SesReceivingMode;
 
   /**
-   * Certificate and data stack overrides.
+   * Certificate and subdomain overrides.
+   *
+   * @default - generated certificates and default subdomain labels
    */
   readonly overrides?: MailboxOverrides;
 
   /**
-   * Strategy for resolving Lambda code + UI bundle artifacts. Omit for pinned synth-time resolution
-   * from the versions shipped with the package (`PinnedArtifactResolver`); inject an `AutoUpdater`
-   * to track a dist-tag at deploy.
+   * The resolver that locates the Lambda code and UI bundle artifacts the Mailbox deploys. When
+   * omitted, a pinned resolver built from the artifact versions shipped with the package is used,
+   * so a deploy ships exactly those versions. Inject an `AutoUpdater` to additionally keep the
+   * deployed artifacts up to date with newer releases.
+   *
+   * @default - a pinned resolver
    */
   readonly artifactResolver?: IArtifactResolver;
 
   /**
-   * Consent for the stack-failure detector. `disabled` provisions no detector
-   * infrastructure at all (no Lambda, rule, role, or self-clean chain). Defaults to `ENABLED`.
+   * Consent for the stack-failure detector, which watches this stack's terminal status events.
+   * `SendStackFailuresMode.DISABLED` provisions no detector infrastructure at all (no Lambda,
+   * rule or role).
+   *
+   * @default SendStackFailuresMode.ENABLED
    */
   readonly sendStackFailures?: SendStackFailuresMode;
 }
 
+/**
+ * The OAuth clients a Mailbox created for its UIs. A field is present only when the
+ * corresponding UI is enabled.
+ */
 export interface MailboxOAuthClients {
+  /** The Admin UI's OAuth client; present only when `MailboxProps.enableAdminUi` is not false. */
   readonly adminUi?: AuthClientConfig;
+  /** The Webmail UI's OAuth client, used by the JMAP API's session metadata. */
   readonly jmapUi?: AuthClientConfig;
 }
 
 /**
- * Main Mailbox construct
+ * The complete Serverless Inbox mail server as one construct: data stack, email receiving and
+ * sending, the Admin and JMAP APIs, WebSocket push, the Admin and Webmail UIs, the CDN and edge
+ * stack, DNS, and the operational pieces around them (audit, license refresh, cleanup).
+ *
+ * Add it to your own stack and pass an `authProvider`. Optional capabilities are not built in:
+ * you opt in through the props, for example `adminApiAddonProviders` and `artifactResolver`.
  */
 export class Mailbox extends Construct {
   /** Grant-scoped handle to `blobStoreBucket`, for every consumer that only needs least-privilege object actions. */
   private readonly blobStoreHandle: IDataBlobStore;
   /**
-   * The raw blob-store bucket. Two consumers still need it directly — the CDN's CloudFront S3
-   * origin and the SES receipt rule's S3 delivery action both require an actual `IBucket`, which
-   * `IDataBlobStore`'s grant-only surface cannot provide.
+   * The raw blob-store bucket, for call sites that need an actual `IBucket` (the CDN's CloudFront
+   * S3 origin and the SES receipt rule's S3 delivery action), which `IDataBlobStore`'s grant-only
+   * surface cannot provide.
    */
   private readonly blobStoreBucket: IBucket;
   private readonly emailProcessorLambda: EmailProcessorLambda;
@@ -226,11 +357,16 @@ export class Mailbox extends Construct {
 
   private readonly jmapApi: JMapApi;
 
-  /** OAuth clients created by this construct (only when enabled). */
+  /**
+   * The OAuth clients this Mailbox created for its UIs. A client is present only when its UI is
+   * enabled.
+   */
   public readonly oauthClients: MailboxOAuthClients = {};
 
+  /** The public URLs of the endpoints this Mailbox serves. */
   public readonly urls: MailboxUrls;
 
+  /** The ACM certificates this Mailbox created for itself. */
   public readonly certificates: MailboxCertificates;
 
   constructor(scope: Construct, id: string, props: MailboxProps) {
@@ -240,21 +376,18 @@ export class Mailbox extends Construct {
 
     const deployerType = resolveDeployerType(this);
 
-    // Vendor account IDs are resolved once here — Mailbox is the composition root for the
-    // Lambda classes constructed directly under it (identity-provisioner, bootstrap, admin-api,
-    // jmap-api, license-refresher) — and threaded down as an already-resolved prop. The support
-    // addon (a separate composition root) resolves its own copy in its own top-level construct.
+    // Resolved once here, as the composition root, and threaded down as a prop.
     const vendorAccountIds = resolveVendorAccountIds(this);
     const stackIdentityTagKey = ServerlessInboxTagKeys.rootStack;
 
-    // Tag everything under this construct so customers can easily slice cost/usage.
-    // Use AWS::StackName so this also works when deployed via pure CloudFormation.
     // One resolver, threaded to every sub-construct. Default is pinned from the package's baked
-    // versions, overridden by CDK context; inject an AutoUpdater for track-based resolution.
+    // versions, overridden by CDK context.
     const artifactResolver: IArtifactResolver = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
     const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
+    // Tags everything under this construct so cost and usage can be sliced per deployment.
+    // Uses AWS::StackName so this also works when deployed via pure CloudFormation.
     applyServerlessInboxBaseTags(this, {
       // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
       rootStack: Aws.STACK_NAME,
@@ -297,7 +430,6 @@ export class Mailbox extends Construct {
       groups.ops, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
     );
 
-    // Register the main stack's S3-safe name for use by constructs that need deterministic bucket/table naming
     setStackNameBase(this, mainStackNameBase);
 
     const domainName: string = derivedDomainName;
@@ -327,15 +459,11 @@ export class Mailbox extends Construct {
       adminApi: `https://${mailboxDomains.api}`,
     };
 
-    // Configuration constants
-
     const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
     this.emailQueueProps = encryptionPlan.queues;
 
-    // Resolve retained data resources via the auto-deployed data stack. Every field on `dataRef` is
-    // already a narrow `IDataTable` grant interface (see `MailboxDataDeployer`/`MailboxDataStackRef`)
-    // — no raw `ITable` reaches this composition root, so every Lambda and feature construct below
-    // takes `dataRef.*` directly and grants itself.
+    // Retained data resources come from the auto-deployed data stack. Every field on `dataRef` is
+    // an `IDataTable` grant interface; no raw `ITable` reaches this scope.
     const dataRef = new MailboxDataDeployer(groups.data, 'data-deployer', {
       artifactResolver,
       nameBase,
@@ -354,7 +482,6 @@ export class Mailbox extends Construct {
       queueProps: encryptionPlan.queues,
     });
 
-    // Auth key store - writes to DynamoDB for Lambda@Edge
     const authKeyStore = new AuthKeyStore(groups.auth, 'auth-key-store', {
       issuers: [authProvider.issuer],
       artifactResolver,
@@ -362,7 +489,6 @@ export class Mailbox extends Construct {
 
     // Translate bare subdomainNamespace to dot-wrapped format for edge stack.
     // Edge stack expects: "." for no namespace, or ".{label}." for a namespace.
-    // Use Fn.conditionIf to generate the correct format based on whether namespace is present.
     const edgePrefix: string = subdomainNamespaceCondition
       ? (cdk.Fn.conditionIf(
           subdomainNamespaceCondition.logicalId,
@@ -398,14 +524,12 @@ export class Mailbox extends Construct {
 
     // Regional ACM certificates for regional services (API Gateway).
     // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
-    // Prefer a single SAN certificate for both api.<domain> and jmap.<domain> when *neither* is provided.
-    // If only one is provided, we still auto-create a certificate for the missing hostname so the API works.
     const providedApiCertificate = props.overrides?.certificates?.api;
     const providedJmapCertificate = props.overrides?.certificates?.jmap;
     const providedWsCertificate = props.overrides?.certificates?.ws;
 
-    // If either API certificate is missing and we have Route53, create a single SAN cert
-    // that covers both names and use it to fill the gaps.
+    // If either API certificate is missing and there is a hosted zone, one SAN certificate covers
+    // the api, jmap, ws and mcp names and fills the gaps.
     let regionalSanCertificate: acm.ICertificate | undefined;
     let cfnCert: acm.CfnCertificate | undefined;
     if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
@@ -437,8 +561,7 @@ export class Mailbox extends Construct {
     const jmapCertificate = providedJmapCertificate
       ?? regionalSanCertificate;
 
-    // WebSocket push should not create a third certificate.
-    // Use an explicit override when provided; otherwise only reuse the auto-created regional SAN cert.
+    // WebSocket push uses the explicit override or else the regional SAN cert; it never creates its own.
     const wsCertificate = providedWsCertificate
       ?? regionalSanCertificate;
 
@@ -451,7 +574,6 @@ export class Mailbox extends Construct {
     let adminUiCnameTarget: string | undefined;
     let webmailUiCnameTarget: string | undefined;
 
-    // SES event processing infrastructure (SNS, SQS, Lambda)
     const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
       itemTable,
       mailFeedbackTable,
@@ -463,7 +585,6 @@ export class Mailbox extends Construct {
       queueProps: encryptionPlan.queues,
     });
 
-    // Email sending infrastructure (SQS, Lambda) - must be before API
     const emailSending = new EmailSending(groups.email, 'email-sending', {
       configTable,
       itemTable,
@@ -501,10 +622,8 @@ export class Mailbox extends Construct {
         artifactResolver,
       };
 
-      // Collect addons from auth provider
       addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
 
-      // Collect addons from optional addon providers
       for (const provider of props.adminApiAddonProviders ?? []) {
         addons.push(...provider.createAdminApiAddons(groups.apis, ctx));
       }
@@ -541,7 +660,6 @@ export class Mailbox extends Construct {
           : {}),
       };
 
-      // Merge uiConfig from all addons
       for (const addon of adminApiAddons) {
         if (addon.uiConfig) {
           Object.assign(mergedAdminUiConfig, addon.uiConfig);
@@ -619,7 +737,6 @@ export class Mailbox extends Construct {
       },
     });
 
-    // Lambda function to process incoming emails
     this.emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
       configTable,
       itemTable,
@@ -687,13 +804,11 @@ export class Mailbox extends Construct {
 
     // Stack-failure detector: watches the root stack's own terminal `CloudFormation Stack
     // Status Change` events. A terminal stack status is emitted only after the whole operation
-    // concludes, so — unlike a resource-level trigger — this doesn't race resource creation and has
-    // no ordering requirement relative to its ops-group siblings. Consent defaults to ENABLED;
-    // `disabled` synthesizes zero detector resources (see StackFailureDetection for the CfnCondition
-    // gating). The detector has no knowledge of the sweeper; its retained rule/function/role are
-    // read below and registered as one removal on the shared sweeper — the same mechanism the
-    // cert/edge Lambda targets already use. Built BEFORE SweeperInfra so its real rule/function/role
-    // interfaces exist by the time the sweeper's worker IAM policy is assembled from the removals.
+    // concludes, so the detector has no ordering requirement relative to its ops-group siblings.
+    // Consent defaults to ENABLED; `disabled` synthesizes zero detector resources (see
+    // StackFailureDetection for the CfnCondition gating). Built before SweeperInfra: its retained
+    // rule/function/role are registered below as one removal, and the sweeper's worker IAM policy
+    // is assembled from the registered removals.
     const stackFailureDetection = new StackFailureDetection(groups.ops, 'stack-failure-detection', {
       mode: props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
       artifactResolver,
@@ -714,14 +829,11 @@ export class Mailbox extends Construct {
       Fn.select(6, fnArnParts), // <function-name>
       // Fn.select(7, ...) is the version number — intentionally dropped
     ]);
-    // Imported by ARN, not a real cross-stack construct reference: the blob authorizer lives in the
-    // separate edge sub-stack, so this is the standard CDK "import" pattern for handing the sweeper
-    // a real IFunction instead of a loose ARN string.
+    // Imported by ARN: the blob authorizer lives in the separate edge sub-stack, so there is no
+    // construct reference to it.
     const edgeFunction = awslambda.Function.fromFunctionArn(groups.ops, 'edge-fn-removal-target', edgeFunctionArn);
 
-    // Register every retained/orphan-prone resource as its own removal on the sweeper. Each
-    // implementation owns its own target data, IAM grants and state-machine steps — see
-    // `features/sweeper/*-removal.ts`.
+    // Each retained resource is registered as its own removal.
     const removals: IResourceRemoval[] = [];
     if (regionalSanCertificate) {
       removals.push(new CertificateRemoval(groups.ops, 'cert-removal', { certificate: regionalSanCertificate }));
@@ -731,25 +843,21 @@ export class Mailbox extends Construct {
       removals.push(new StackFailureDetectorRemoval(groups.ops, 'stack-failure-detector-removal', stackFailureDetection.sweepTargets));
     }
 
-    // Resource sweeper infrastructure (SFN + worker Lambda). Handles async cleanup of retained
-    // resources (ACM cert, edge Lambda, and — when enabled — the stack-failure detector's own
-    // rule/function/role) after stack deletion. Each registered removal contributes its own IAM
-    // grants and state-machine steps (including any waiting) — see `features/sweeper/removal.ts`.
+    // Resource sweeper (Step Functions + worker Lambda): asynchronous cleanup of the retained
+    // resources after stack deletion.
     const sweeperInfra = new SweeperInfra(groups.ops, 'sweeper-infra', {
       artifactResolver,
       removals,
     });
 
-    // Trigger + property carrier: fires the sweeper's starter Lambda on stack Delete or Update. Each
-    // removal above contributes its own keyed entry to the custom resource's properties (see
-    // `DeferredRemoval`), which the starter diffs against `OldResourceProperties` to sweep whatever
-    // changed on Update, or everything present on Delete.
+    // Fires the sweeper's starter Lambda on stack Delete or Update. CloudFormation supplies
+    // `OldResourceProperties` on Update, so the starter can sweep only what changed; on Delete it
+    // sweeps everything present.
     new DeferredRemoval(groups.ops, 'deferred-removal', {
       sweeperStarter: sweeperInfra.starter,
       removals,
     });
 
-    // CloudFront CDN for blob downloads with Lambda@Edge
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this.blobStoreBucket,
       configTable,
@@ -763,7 +871,6 @@ export class Mailbox extends Construct {
 
     // DNS is created later, once all endpoint targets are known.
 
-    // Tantivy search infrastructure (Rust Lambdas + S3 indexes)
     const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
       indexBucket: this.blobStoreHandle,
       itemTable,
@@ -812,7 +919,7 @@ export class Mailbox extends Construct {
     });
     const jmapApi = this.jmapApi;
 
-    // WebSocket Push infrastructure - must be after API to reuse authorizer
+    // Created after the JMAP API because it reuses that API's authorizer Lambda.
     const webSocketPush = new WebSocketPush(groups.apis, 'websocket-push', {
       configTable,
       itemTable,
@@ -865,8 +972,7 @@ export class Mailbox extends Construct {
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
 
-    // Enable WebSocket push emission from the ChangeTracker.
-    // This must be wired into every Lambda that records changelog state.
+    // Enable WebSocket push emission from the ChangeTracker in each Lambda that records changelog state.
     this.emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
     emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
     sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
@@ -876,11 +982,8 @@ export class Mailbox extends Construct {
     // construct cannot create the replacement alongside the still-existing original, so
     // create-before-delete would fail on a name collision. Pinning the logical ID keeps
     // CloudFormation updating the same domain name in place instead of replacing it.
-    // admin-api custom domain
     adminApi.domainCfnResource?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
-    // jmap-api custom domain
     jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
-    // websocket-push custom domain
     webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     if (hasHostedZone) {
@@ -901,9 +1004,7 @@ export class Mailbox extends Construct {
       void dns;
     }
 
-    // Phase 3: add Name tags and native descriptions to every L1 resource under this construct.
-    // The aspect writes Name tags directly to each resource's TagManager (no sub-aspect spawned),
-    // so default aspect priority is fine.
+    // Adds Name tags and native descriptions to every L1 resource under this construct.
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(id));
 
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
@@ -917,9 +1018,8 @@ export class Mailbox extends Construct {
 /**
  * Grants `resolver` write access to `ui`'s own content bucket, when `resolver` is capable of
  * being granted at all. `resolver` is typed `IArtifactResolver`, which carries no IAM principal,
- * so grantability is a runtime capability some resolvers have (e.g. `AutoUpdater`, which drives
- * the scheduled UI content refresh) and others don't (`PinnedArtifactResolver` never touches a UI bucket
- * at runtime, so it needs no grant and must be skipped rather than erroring).
+ * so grantability is a runtime capability: a resolver without a principal needs no grant and is
+ * skipped rather than erroring.
  */
 function grantUiContentDeployIfGrantable(ui: MailboxUi, resolver: IArtifactResolver): void {
   if (isGrantable(resolver)) {

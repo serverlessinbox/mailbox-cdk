@@ -19,27 +19,28 @@ import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT
 import { resolveVendorAccountIds } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
- * Support feature mode.
+ * Whether the support feature is provisioned.
+ *
+ * Pass a literal value to decide at synth time. Pass a CloudFormation parameter token to decide at
+ * deploy time: the support resources are then always in the template, behind a condition on the
+ * parameter, and a deployer can switch the feature on or off without re-synthesizing.
  */
 export enum SupportMode {
-  /** Support feature is enabled. */
+  /** Provisions the support roles, the support case API and the hourly role-assumption collector. */
   ENABLED = 'enabled',
-  /** Support feature is disabled. */
+  /**
+   * Provisions nothing: no roles, no Lambdas and no routes. This holds only for the literal
+   * value; an unresolved parameter token is always treated as possibly enabled.
+   */
   DISABLED = 'disabled',
 }
 
-/**
- * Props for constructing a SupportAddon directly (internal use).
- * Not exported; users should use SupportAddonProvider instead.
- */
+/** Inputs of `SupportAddon`, as threaded in by `SupportAddonProvider`. */
 export interface SupportAddonProps {
-  /** Support feature mode. */
   readonly mode: SupportMode;
-  /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
-  /** Config table for support grant records (D16). */
+  /** Config table that also holds the support grant records. */
   readonly configTable: IDataTable;
-  /** SQS queue for audit events. */
   readonly auditEventsQueue: IAuditEventsQueue;
 }
 
@@ -52,16 +53,15 @@ export interface SupportAddonProps {
  * permanently attached, and immutable from the lambda. Trust is the only gate; attachment is static.
  *
  * Constructs the entire support feature:
- * - Two support IAM roles (support-diag, support-config-read) with empty/deny default trust
- * - Two tier managed policies (permanently attached to their corresponding roles)
- * - One permissions boundary (immutable from lambda, blocks scope creep)
- * - Single Go Lambda for case RPCs and IAM trust policy binding
- * - Config table read/write for grant records (D16), SQS send for audit events
+ * - Support IAM roles (support-diag, support-config-read) with empty/deny default trust
+ * - Tier managed policies (permanently attached to their corresponding roles)
+ * - A permissions boundary (immutable from lambda, blocks scope creep)
+ * - A Go Lambda for case RPCs and IAM trust policy binding
+ * - An hourly collector Lambda for role-assumption archiving and expiry enforcement
+ * - Config table read/write for grant records, SQS send for audit events
  *
- * All resources are gated by a CfnCondition so that when the feature is disabled,
- * zero resources synthesize into the template.
- *
- * Implements IAdminApiAddon.
+ * Every resource is gated by a CfnCondition on the mode, so a feature that is disabled at deploy
+ * time leaves no live resources. A literal DISABLED mode synthesizes no resources at all.
  */
 export class SupportAddon extends Construct implements IAdminApiAddon {
   public uiConfig?: Record<string, unknown>;
@@ -82,33 +82,23 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
     const fullyDisabled = props.mode === SupportMode.DISABLED && !cdk.Token.isUnresolved(props.mode);
 
     if (!fullyDisabled) {
-      // Build condition: Support == ENABLED
-      // If mode is statically DISABLED (and not a token), this condition is never reached.
-      // If mode is a CFN-parameter token or literal ENABLED, the condition gates the subtree.
       const condition = new cdk.CfnCondition(this, 'IsEnabled', {
         expression: Fn.conditionEquals(props.mode, SupportMode.ENABLED),
       });
 
-      // Create all support resources unconditionally in the template.
-      // The GateOnConditionAspect will apply the condition to every resource,
-      // so they produce zero live resources when the condition evaluates to false at deploy.
+      // Resources are created unconditionally here; the GateOnConditionAspect registered below
+      // applies the condition to each, so a false condition yields no live resources.
 
-      // Vendor account IDs are resolved once here (this addon's own top-level construct is the
-      // composition root for the support feature) and threaded down as already-resolved props —
-      // no Lambda class below this point resolves it itself.
+      // Resolved once here, as the composition root of the support feature, and threaded down as props.
       const vendorAccountIds = resolveVendorAccountIds(this);
       const supportTierTagKeys = getSupportTierTagKeys();
 
-      // Support roles: hop + two support roles with static trust scoped by hop role tags
+      // Support roles: the hop role plus the tier roles, with static trust scoped by hop role tags.
       const rolesInfra = new SupportRolesInfra(this, 'roles-infra', {
         vendorAccountIds,
       });
 
-      // Support API Lambda (Go-based, code-signed)
-      // Handles case RPCs and tag-based access control via support-hop role.
-      // Uses the existing config table for grant records (D16).
-      // Tier inline policies are permanently attached in CDK (rolesInfra) and immutable from the lambda.
-      // Can only tag/untag the support-hop role (serverless-inbox:support:diag, serverless-inbox:support:config-read keys).
+      // Support API Lambda: case RPCs and tag-based access control via the support-hop role.
       this.apiHandler = new SupportApiLambda(this, 'lambda', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,
@@ -121,10 +111,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         supportTierTagKeys,
       });
 
-      // Role Assumption Collector Lambda (Go-based, scheduled hourly)
-      // Archives CloudTrail assume-role events into DynamoDB before the 90-day window closes.
-      // Also untaggs expired support cases from support-hop to enforce scheduled expiry.
-      // No async invoke grant and never disabled (queries the grant partition first and returns early when nothing to archive).
+      // Role-assumption collector Lambda.
       const collectorLambda = new SupportRoleAssumptionCollectorLambda(this, 'collector', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,
@@ -135,9 +122,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         supportTierTagKeys,
       });
 
-      // EventBridge rule: hourly schedule for the collector (permanently enabled)
-      // Rule stays on and lambda guards itself by checking the grant partition first.
-      // Hourly granularity matches the role's maxSessionDuration (3600s) to bound expiry overrun.
+      // EventBridge rule: hourly schedule for the collector.
       const rule = new events.Rule(this, 'hourly-collector-rule', {
         schedule: events.Schedule.cron({ minute: '0' }), // Hourly at minute 0
         description: 'Hourly trigger for support role assumption collector and expiry enforcement',
@@ -145,7 +130,6 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
 
       rule.addTarget(new targets.LambdaFunction(collectorLambda));
 
-      // Apply the condition to the entire subtree via the aspect
       cdk.Aspects.of(this).add(new GateOnConditionAspect(condition));
     }
   }
@@ -164,21 +148,34 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
   }
 }
 
-/**
- * Props for constructing SupportAddonProvider.
- */
+/** Settings of the {@link SupportAddonProvider}. */
 export interface SupportAddonProviderProps {
-  /** Support feature mode. */
+  /**
+   * Whether the support feature is provisioned. With `SupportMode.DISABLED` nothing is created and
+   * no support routes are mounted. A CloudFormation parameter token defers the decision to deploy
+   * time (see {@link SupportMode}).
+   */
   readonly mode: SupportMode;
 }
 
 /**
- * Provider for the Support addon. Pass this to Mailbox's adminApiAddonProviders
- * to enable support case management and cross-account trust mechanics in the Admin API.
+ * Enables support case management in the Admin API: the support roles and policies, the support
+ * case API mounted on `POST /support/{proxy+}` behind the Admin API's authorizer, and the
+ * cross-account trust binding per case.
+ *
+ * Pass an instance in `MailboxProps.adminApiAddonProviders`. Nothing is enabled unless it is
+ * listed there.
  */
 export class SupportAddonProvider implements IAdminApiAddonProvider {
   constructor(private readonly props: SupportAddonProviderProps) {}
 
+  /**
+   * Creates the support addon under `scope`, using the shared config table, audit queue and
+   * artifact resolver from `ctx`.
+   *
+   * @param scope The construct to create the addon under.
+   * @param ctx The shared tables, queue and artifact resolver the addon builds on.
+   */
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new SupportAddon(scope, 'support-addon', {

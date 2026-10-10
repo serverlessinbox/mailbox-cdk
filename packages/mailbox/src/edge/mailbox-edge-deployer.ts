@@ -10,10 +10,8 @@ import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mai
 import type { IDataTable } from '../data/data-tables';
 import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
 
+/** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
-  /**
-   * Artifact resolver for loading Lambda code and artifact locations from S3
-   */
   readonly artifactResolver: IArtifactResolver;
 
   /** Base domain name (e.g. example.com) */
@@ -28,19 +26,22 @@ export interface MailboxEdgeDeployerProps {
   /** Whether to enable termination protection on the edge stack (default: false) */
   readonly terminationProtection?: boolean;
 
-  /** DynamoDB item table (regional) used by blob-authorizer */
+  /** Regional item table; its ARN is passed to the edge stack as a template parameter. */
   readonly itemTable: IDataTable;
 
-  /** DynamoDB config table (regional) used by blob-authorizer */
+  /** Regional config table; its ARN is passed to the edge stack as a template parameter. */
   readonly configTable: IDataTable;
 
-  /** DynamoDB auth key store table (regional) used by blob-authorizer */
+  /**
+   * Regional auth key store table. Read access is granted to the blob-authorizer role, and its
+   * ARN is passed to the edge stack as a template parameter.
+   */
   readonly authKeyStoreTable: IDataTable;
 
   /** Product/stack version used for tagging edge resources. */
   readonly productVersion: string;
 
-  /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
+  /** Name of the shared home-region log group, passed to the edge stack as its `logGroupName` parameter. */
   readonly logGroupName: string;
 
   /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
@@ -60,10 +61,8 @@ export class MailboxEdgeDeployer extends Construct {
   /** us-east-1 ACM certificate for CloudFront (only when hosted zone info is provided). */
   public readonly edgeCertificate?: acm.ICertificate;
 
-  /** Blob-authorizer Lambda@Edge execution role. */
   public readonly blobAuthorizerRole: iam.IRole;
 
-  /** Exposes the raw output map (access via getOutput). */
   private readonly resource: CustomResource;
 
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerProps) {
@@ -86,13 +85,12 @@ export class MailboxEdgeDeployer extends Construct {
       ],
     });
 
-    // Grant DynamoDB read access (via the table's own grant method, not a hand-built ARN string).
-    // The blob-authorizer only reads a signing key from the auth key store; it never touches the
-    // item or config tables.
+    // Only the auth key store is granted to the role; the item and config table ARNs reach the
+    // edge stack as template parameters.
     props.authKeyStoreTable.grantRead(this.blobAuthorizerRole);
 
-    // IMPORTANT: use the *deployed* CloudFormation stack name, not the CDK logical stack id.
-    // This ensures the synthesized template behaves correctly when deployed via pure CloudFormation.
+    // Uses the deployed CloudFormation stack name, not the CDK logical stack id, so the
+    // synthesized template behaves correctly when deployed via pure CloudFormation.
     const edgeStackName = `${Aws.STACK_NAME}-edge`;
     const edgeStackArn = stack.formatArn({
       service: 'cloudformation',
@@ -101,7 +99,6 @@ export class MailboxEdgeDeployer extends Construct {
       resourceName: `${edgeStackName}/*`,
     });
 
-    // Worker Lambda, Step Functions workflow, and Starter Lambda wiring.
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
@@ -123,7 +120,6 @@ export class MailboxEdgeDeployer extends Construct {
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json');
 
-    // Build CloudFormation parameters from the edge construct props
     const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
 
     const cfnParameters: Record<string, string> = {
@@ -136,8 +132,8 @@ export class MailboxEdgeDeployer extends Construct {
       authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
       logGroupName: props.logGroupName,
 
-      // Tagging/back-reference parameters (consumed by the edge stack template).
-      // Keys MUST match the edge stack's CfnParameter overrideLogicalId (rootStack / rootRegion).
+      // Tagging and back-reference parameters. Keys must match the edge stack's CfnParameter
+      // overrideLogicalId (rootStack / rootRegion).
       rootStack: Aws.STACK_NAME,
       rootRegion: Stack.of(this).region,
       productVersion: props.productVersion,
@@ -150,12 +146,10 @@ export class MailboxEdgeDeployer extends Construct {
     // - A bare label (e.g., "mailbox") — normalize to dot-wrapped form
     // - An unresolved CDK token (e.g., from Fn.conditionIf) — pass through as-is
     // - Already dot-wrapped (e.g., ".mailbox.") — pass through as-is
-    // IMPORTANT: Check Token.isUnresolved BEFORE calling .trim(), which would resolve the token.
+    // Token.isUnresolved is checked before calling .trim(), which would resolve the token.
     if (Token.isUnresolved(props.prefix)) {
-      // Unresolved token (e.g., Fn.conditionIf) — pass through as-is
       cfnParameters.prefix = props.prefix as string;
     } else {
-      // Resolved string — normalize
       const rawPrefix = (props.prefix ?? '').trim();
       const normalizedPrefixLabel = rawPrefix.replace(/^\.+/, '').replace(/\.+$/, '');
       cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
@@ -190,7 +184,6 @@ export class MailboxEdgeDeployer extends Construct {
 
     this.edgeStackId = this.resource.ref;
 
-    // Import edge stack outputs as strongly typed CDK interfaces.
     this.blobAuthorizerVersion = lambda.Version.fromVersionArn(
       this,
       'blob-authorizer-version',

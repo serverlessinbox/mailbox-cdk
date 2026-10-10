@@ -12,24 +12,18 @@ import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '..
 import { StackUpdateApiLambda } from '../../lambdas/stack-update-api';
 import { TemplateVersionParam, type ITemplateVersionParam } from './template-version-param';
 
-/**
- * Props for constructing a StackUpdateAddon directly (internal use).
- * Not exported; users should use StackUpdateAddonProvider instead.
- */
+/** Inputs of `StackUpdateAddon`, as threaded in by `StackUpdateAddonProvider`. */
 export interface StackUpdateAddonProps {
-  /** DynamoDB table for configuration. */
   readonly configTable: IDataTable;
 
-  /** SQS queue for audit events (shared HTTP registry audit path). */
   readonly auditEventsQueue: IAuditEventsQueue;
 
-  /** Artifact resolver for resolving mailbox-go package. */
   readonly artifactResolver: IArtifactResolver;
 
   /** Template artifact name (e.g., 'mailbox-standard'). */
   readonly templateName: string;
 
-  /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev'). */
+  /** Template version string, stored in the template-version SSM parameter. */
   readonly templateVersion: string;
 
   /** Distribution tag (release line); defaults to 'stable'. */
@@ -43,8 +37,6 @@ export interface StackUpdateAddonProps {
  * that has CloudFormation ChangeSet permissions.
  *
  * Contributes { stackUpdate: { available: true } } to the admin UI config.
- *
- * Implements IAdminApiAddon.
  */
 export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   public uiConfig?: Record<string, unknown>;
@@ -67,21 +59,18 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
     const artifactLocation = props.artifactResolver.location;
 
-    // Build release pointer key and URL template using artifact-registry functions
     const pointerKey = buildReleasePointerKey('template', props.templateName, {
       distTag: props.distTag ?? 'stable',
       project: artifactLocation.project,
     });
     const pointerBucket = buildArtifactBucketName(artifactLocation, region);
 
-    // Build template URL template with placeholders for version and objectName
     const templateUrlTemplate = buildArtifactUrl(
       pointerBucket,
       region,
       buildArtifactKey('template', props.templateName, { type: 'release-template', project: artifactLocation.project }),
     );
 
-    // Create SSM StringParameter for template version.
     // This resource is rendered into the CloudFormation template and survives quick-create deploys.
     const templateVersionParamConstruct = new TemplateVersionParam(this, 'template-version', {
       templateVersion: props.templateVersion,
@@ -89,7 +78,6 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     this.templateVersionParamAccess = templateVersionParamConstruct;
     const templateVersionParam = templateVersionParamConstruct.parameter;
 
-    // Create the stack-update-api Lambda with its own role and CFN permissions.
     this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
       configTable: props.configTable,
@@ -102,7 +90,6 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       auditEventsQueue: props.auditEventsQueue,
     });
 
-    // Grant the Lambda read access to the template-version parameter.
     templateVersionParam.grantRead(this.lambdaConstruct);
   }
 
@@ -117,29 +104,56 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 }
 
 /**
- * Props for constructing StackUpdateAddonProvider.
+ * Settings of the {@link StackUpdateAddonProvider}: which template the stack is updated from and
+ * which version it was deployed at.
  */
 export interface StackUpdateAddonProviderProps {
-  /** Artifact resolver for resolving mailbox-go package. */
+  /**
+   * The artifact resolver the stack-update Lambda's code is resolved through. Its registry
+   * location (bucket base and project) also determines where the release pointer and the template
+   * URL are read from. Pass the resolver your Mailbox uses, so the Lambda ships at the same
+   * artifact version as the rest of the Mailbox.
+   */
   readonly artifactResolver: IArtifactResolver;
 
-  /** Template artifact name (e.g., 'mailbox-standard'). */
+  /**
+   * Name of the template artifact the stack is updated from, for example `'mailbox-standard'`.
+   * It selects the release pointer and the template URL the update flow reads.
+   */
   readonly templateName: string;
 
-  /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev'). */
+  /**
+   * The template version this stack was deployed from. It is stored as given in an SSM parameter
+   * that the stack-update Lambda reads, so it must match the version actually deployed.
+   */
   readonly templateVersion: string;
 
-  /** Distribution tag (release line); defaults to 'stable'. */
+  /**
+   * The release line (dist-tag) whose release pointer is read to find the template to update to.
+   *
+   * @default 'stable'
+   */
   readonly distTag?: string;
 }
 
 /**
- * Provider for the StackUpdate addon. Pass this to Mailbox's adminApiAddonProviders
- * to enable human-gated CloudFormation ChangeSet operations in the Admin API.
+ * Enables human-gated CloudFormation ChangeSet operations in the Admin API: it mounts the
+ * stack-update Lambda on `POST /stack-update/{proxy+}` behind the Admin API's authorizer and tells
+ * the Admin UI that stack updates are available (`stackUpdate.available` in its config).
+ *
+ * Pass an instance in `MailboxProps.adminApiAddonProviders`. Nothing is enabled unless it is
+ * listed there.
  */
 export class StackUpdateAddonProvider implements IAdminApiAddonProvider {
   constructor(private readonly props: StackUpdateAddonProviderProps) {}
 
+  /**
+   * Creates the stack-update addon under `scope`, using the shared config table and audit queue
+   * from `ctx` and the artifact resolver from this provider's props.
+   *
+   * @param scope The construct to create the addon under.
+   * @param ctx The shared tables and queue the addon builds on.
+   */
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new StackUpdateAddon(scope, 'stack-update-addon', {

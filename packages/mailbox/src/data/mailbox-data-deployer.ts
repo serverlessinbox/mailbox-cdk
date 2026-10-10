@@ -10,6 +10,7 @@ import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
 import type { IDataTable } from './data-tables';
 import type { IDataBlobStore } from './data-blob-store';
 
+/** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: IArtifactResolver;
   /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
@@ -26,8 +27,8 @@ export interface MailboxDataDeployerProps {
  *
  * Exposes narrow per-table grant interfaces and an IBucket built from the ARNs returned in the
  * custom resource Data dict (i.e. the CloudFormation stack outputs), so that CDK can generate
- * correct IAM policy resource ARNs at deploy time. Internal only (not reachable from
- * `src/index.ts`) — the raw CDK `ITable`s never leave `MailboxDataStackRef`.
+ * correct IAM policy resource ARNs at deploy time. The raw CDK `ITable`s never leave
+ * `MailboxDataStackRef`.
  */
 export class MailboxDataDeployer extends Construct {
   public readonly configTable: IDataTable;
@@ -40,9 +41,9 @@ export class MailboxDataDeployer extends Construct {
   public readonly blobStore: IDataBlobStore;
 
   /**
-   * The raw imported bucket, forwarded from `MailboxDataStackRef`. Only its two named consumers
-   * (`features/cdn/cdn-construct.ts`, `email/receiving/ses-rules.ts`) should use this — see that
-   * class's own comment for why. Every other consumer should take `blobStore`.
+   * The raw imported bucket, forwarded from `MailboxDataStackRef`. Use it only where an actual
+   * `IBucket` is required rather than grants on it, which `blobStore`'s grant-only surface cannot
+   * provide; everything else should take `blobStore`.
    */
   public readonly blobStoreBucket: IBucket;
 
@@ -51,8 +52,7 @@ export class MailboxDataDeployer extends Construct {
 
     const stack = Stack.of(this);
 
-    // CFN token for use as CloudFormation stack name parameter in the custom resource
-    // and for formatArn of the CFN stack ARN.
+    // CFN token used as the stack name in the custom resource properties and in the stack ARN.
     const dataStackNameToken = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
 
     const dataStackArn = stack.formatArn({
@@ -77,8 +77,7 @@ export class MailboxDataDeployer extends Construct {
 
     const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');
 
-    // Real product version for tagging (same source as the main Mailbox construct), so the data
-    // sub-stack's resources get serverless-inbox:version = the actual version, not 'unknown'.
+    // Written to the data sub-stack's serverless-inbox:version tag.
     const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
 
     const resource = new CustomResource(this, 'resource', {
@@ -91,11 +90,10 @@ export class MailboxDataDeployer extends Construct {
         preserveOnDelete: true,
         parameters: {
           nameBase: props.nameBase,
-          // Correlation tagging: pass the root (main) stack name so the data sub-stack's resources
-          // carry the same serverless-inbox:root-stack tag. Key MUST match the data stack's
-          // CfnParameter overrideLogicalId (rootStack).
+          // The root (main) stack name, so the data sub-stack's resources carry the same
+          // serverless-inbox:root-stack tag. Key must match the data stack's CfnParameter
+          // overrideLogicalId (rootStack).
           rootStack: Aws.STACK_NAME,
-          // Real product version so tags aren't 'unknown'.
           productVersion,
           deployerType: props.deployerType,
         },
@@ -123,8 +121,8 @@ export class MailboxDataDeployer extends Construct {
     });
     resolver.node.addDependency(resource);
 
-    // Read table and bucket ARNs from the deployed stack outputs and the resolver override
-    // (surfaced as custom resource Data attributes by the stack-deployer handler and resolver).
+    // Table ARNs come from the override resolver; the bucket ARN comes from the deployed stack's
+    // outputs. Both are surfaced as custom resource attributes.
     const ref = new MailboxDataStackRef(this, 'ref', {
       configTableArn:       resolver.getConfigTableArn(),
       itemTableArn:         resolver.getItemTableArn(),

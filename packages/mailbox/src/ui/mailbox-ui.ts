@@ -26,37 +26,36 @@ import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
+/** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {
   packageName: string;
   objectPath: string;
 };
 
+/** Inputs of `MailboxUi`: the CloudFront domain, the token-exchange wiring behind `/auth/*`, and the optional static content to deploy. */
 export interface MailboxUiProps {
-  /** Domain name for the CloudFront distribution (e.g., admin.example.com) */
   domainName: string;
 
-  /** Optional ACM certificate for `domainName`. */
+  /**
+   * Without a certificate the distribution is served on its default CloudFront domain and
+   * `domainName` is not attached to it as an alias.
+   */
   certificate?: acm.ICertificate;
 
-  /** Shared config table used by token exchange API. */
   configTable: IDataTable;
 
-  /** Which auth policy record to use for token exchange. */
   authPolicyName: AuthPolicyName;
 
-  /** Which OAuth client record to use for token exchange. */
   oauthClientName: OAuthClientName;
 
-  /** Audit events queue for publishing audit logs from token exchange. */
   auditEventsQueue: IAuditEventsQueue;
 
-  /** Human-friendly label used for CloudFront comments. */
+  /** Used for the CloudFront comments, and slugified into the bucket's construct ID. */
   label: string;
 
-  /** SERVICE_NAME for the token-exchange lambda; distinguishes Admin UI vs Webmail UI instances. */
+  /** SERVICE_NAME for the token-exchange lambda. */
   tokenExchangeServiceName: string;
 
-  /** Pipeline for the token-exchange lambda: 'admin' for Admin UI, 'jmap' for Webmail UI. */
   readonly tokenExchangePipeline: Pipeline;
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
@@ -64,18 +63,18 @@ export interface MailboxUiProps {
 
   /** Optional UI runtime config written to `s3://<ui-bucket>/config/config.json` via custom resource. */
   uiConfig?: {
-    /** Base URL for the UI's backend API (whatever the frontend consumes). */
+    /** Base URL of the UI's backend API. */
     apiUrl?: string;
-    /** Additional provider-/deployment-specific config for the UI. */
+    /** Further keys are written to `config.json` unchanged. */
     [key: string]: unknown;
   };
 
-  /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
   readonly artifactResolver: IArtifactResolver;
 }
 
 /**
- * Shared UI construct used by Admin UI and Webmail UI.
+ * Static-content UI: an S3 bucket behind a CloudFront distribution, with a `/config/*` behavior
+ * for runtime config and an `/auth/*` behavior routed to a token-exchange API.
  *
  * Creates:
  * - S3 bucket for static assets
@@ -87,7 +86,7 @@ export class MailboxUi extends Construct {
   readonly distribution: Distribution;
   readonly distributionDomainName: string;
 
-  /** Name of the static-content bucket. Narrow handle for subclasses that must reference it (e.g. a CfnOutput) without reaching the bucket resource itself. */
+  /** Name of the static-content bucket, so subclasses can reference it without access to the bucket resource itself. */
   protected readonly bucketName: string;
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
@@ -102,16 +101,14 @@ export class MailboxUi extends Construct {
     });
     this.bucketName = this.bucket.bucketName;
 
-    // Attach bucket auto-empty handler to clean up bucket on stack deletion
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
     const originAccessIdentity = new OriginAccessIdentity(this, 'origin-access-identity', {
       comment: `Mailbox ${Aws.STACK_NAME} ${props.label} OAI`,
     });
 
-    // CloudFront OAI only ever fetches individual objects (defaultRootObject and both custom
-    // error-page paths resolve to specific keys, never a listing) — grant exactly s3:GetObject
-    // rather than CDK's grantRead(), which also hands out s3:GetBucket*/s3:List*.
+    // The OAI only fetches individual objects: defaultRootObject and both custom error-page paths
+    // resolve to specific keys, never a listing. s3:GetObject is therefore the whole grant.
     this.bucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
@@ -136,7 +133,6 @@ export class MailboxUi extends Construct {
       domainNames: props.certificate ? [props.domainName] : undefined,
       certificate: props.certificate,
       defaultBehavior: {
-        // Default UI content lives under /content in the bucket.
         origin: contentOrigin,
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
@@ -158,7 +154,6 @@ export class MailboxUi extends Construct {
       ],
     });
 
-    // Tag the distribution for root-stack correlation (inherited via parent, but explicit for clarity).
     Tags.of(this.distribution).add(ServerlessInboxTagKeys.rootStack, Aws.STACK_NAME);
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
@@ -191,22 +186,16 @@ export class MailboxUi extends Construct {
   /**
    * Grants `grantee` exactly the S3 actions needed to deploy static content into this UI's own
    * bucket: `s3:PutObject`/`s3:DeleteObject` on the `content/` and `config/` prefixes, and
-   * `s3:ListBucket` scoped to list only those prefixes. This construct owns the bucket, so it
-   * grants access to it directly instead of a deployer (e.g. the auto-updater) having to guess
-   * this bucket's name from a synth-time pattern — the bucket names its own writer.
+   * `s3:ListBucket` scoped to list only those prefixes.
    *
-   * S3 object writes cannot be scoped by tag instead: `aws:ResourceTag` reads the (still-untagged)
-   * object being written, and `s3:BucketTag` — although listed as a supported condition key on the
-   * S3 `object` resource type — is not honored for `PutObject` (live-verified: denied against a
-   * bucket carrying the matching tag). Scoping to this bucket's own ARN with key patterns is the
-   * only mechanism that actually works.
+   * The grant is scoped by this bucket's ARN and key patterns, never by tag: `aws:ResourceTag`
+   * reads the still-untagged object being written, and `s3:BucketTag` is not honored for
+   * `PutObject` even though it is listed as a supported condition key on the S3 `object`
+   * resource type. A tag condition on these actions therefore denies the write.
    */
   grantContentDeploy(grantee: iam.IGrantable): void {
-    // Content prefix: UI bundle deployment
     grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'content/*');
-    // Config prefix: config.json deployment
     grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'config/*');
-    // ListBucket scoped to content and config prefixes
     grantListBucket(grantee, this.bucket, 'content/*');
     grantListBucket(grantee, this.bucket, 'config/*');
   }
@@ -214,14 +203,14 @@ export class MailboxUi extends Construct {
   private addUiDeployment(artifacts: IArtifactResolver, props: MailboxUiProps): void {
     const deployer = StaticContentDeployer.getOrCreate(this, artifacts);
 
-    // Tag the distribution for scheduled auto-update discovery
+    // Distribution tags: update type
     Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
 
     const uiResolved = props.uiBundle
       ? artifacts.resolve(props.uiBundle.packageName, props.uiBundle.objectPath)
       : undefined;
 
-    // Tag the distribution with artifact metadata for auto-update tracking
+    // Distribution tags: artifact metadata
     if (props.uiBundle) {
       const bundleVersion = artifacts.getVersion(props.uiBundle.packageName);
       Tags.of(this.distribution).add(ServerlessInboxTagKeys.artifactPackage, props.uiBundle.packageName);

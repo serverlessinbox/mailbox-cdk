@@ -14,44 +14,84 @@ import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
 import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 
-/** Update-drift granularity for the Phase B scheduled updater (like npm ^/~). Unused at deploy. */
+/**
+ * The granularity at which the artifact updater derives a release track from a deployed
+ * artifact's version: `'major'` or `'minor'`.
+ *
+ * The updater reads the release pointer of that track for the configured dist-tag and moves the
+ * artifact only to a strictly newer version.
+ */
 export type Granularity = 'major' | 'minor';
 
 /**
- * Auto-updater (stack-self-update #3). npm-style: at DEPLOY the per-package CR reads the
- * `{distTag}` pointer (`releases/{distTag}.json`) and locks that version — distTag only, no
- * synth-time version, no ambient-context dependency, works in any stack. `granularity` is retained
- * as config for the Phase B scheduled updater (drift range from the locked version) and is NOT used
- * at deploy-time resolution.
+ * Settings of the {@link AutoUpdater}: which release line to follow, how tightly, and how often
+ * the scheduled check runs.
  */
 export interface AutoUpdaterProps {
-  /** Dist-tag line to follow (default 'stable'); resolved to a concrete version at deploy. */
+  /**
+   * The release line (dist-tag) the updater follows, for example `'stable'`. The updater reads
+   * the release pointer published for this tag and moves deployed artifacts to the version it
+   * names.
+   *
+   * @default 'stable'
+   */
   readonly distTag?: string;
-  /** Literal Granularity OR a CFN-parameter token; used for the updater's env and IsTracking. Typed `string`. */
+
+  /**
+   * How the updater derives the release track it follows from a deployed artifact's version:
+   * `'major'` or `'minor'` (see {@link Granularity}). Pass `'pinned'` to disable automatic
+   * updates: the post-deploy trigger and the schedule are then not created, and the updater only
+   * runs when invoked from the admin API.
+   *
+   * Accepts a CloudFormation parameter token, so a stack parameter can switch tracking on and
+   * off at deploy time. The prop is typed `string` for that reason, so a literal other than
+   * `'major'`, `'minor'` or `'pinned'` is not caught at compile time.
+   *
+   * @default 'minor'
+   */
   readonly granularity?: string;
-  /** Update interval for the scheduled updater (default 6 hours). */
+
+  /**
+   * How often the updater checks for newer releases. Ignored when `granularity` is `'pinned'`,
+   * because the schedule is not created then.
+   *
+   * @default Duration.hours(6)
+   */
   readonly updateInterval?: Duration;
 }
 
+/**
+ * An artifact resolver that also keeps the deployed Mailbox up to date. Pass it as
+ * `MailboxProps.artifactResolver`.
+ *
+ * Artifact lookups (`resolve`, `getUrl`, `getArn`, `getVersion`) are answered by the pinned
+ * resolver built from the artifact versions shipped with the package. In addition the construct
+ * provisions an artifact-updater Lambda that finds this stack's tagged Lambdas, UI distributions
+ * and edge function and moves them to newer releases of `distTag`, within the bounds of
+ * `granularity`.
+ *
+ * Unless `granularity` is `'pinned'`, the updater runs after each deploy and on a schedule. The
+ * updater Lambda exists in every mode, so it can also be invoked from the admin API: pass this
+ * construct in `MailboxProps.adminApiAddonProviders` to expose that.
+ */
 export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider, iam.IGrantable {
   private readonly updater: ArtifactUpdaterLambda;
 
   /**
-   * The IAM principal of the updater's own Lambda role, so a resource this updater must write to
-   * (e.g. a `MailboxUi` UI bucket) can grant this updater direct access to itself instead of the
-   * updater guessing the resource's name from a synth-time pattern.
+   * The IAM principal of the updater Lambda's role. The updater writes to resources it does not
+   * create, such as a UI bucket; grant this principal on the target resource itself, scoped to
+   * that resource's own ARN.
    *
-   * S3 object writes are the motivating case: `aws:ResourceTag` reads a still-untagged object at
-   * write time, and `s3:BucketTag` — although listed as a supported condition key on the S3
-   * `object` resource type — is not honored for `PutObject` (live-verified: denied against a
-   * bucket carrying the matching tag). Tag-scoping the grant is therefore not an option; the
-   * target resource granting this principal directly, scoped to its own ARN, is.
+   * Do not scope such a grant by tag: for S3 object writes `aws:ResourceTag` reads the
+   * still-untagged object at write time, and `s3:BucketTag` is not honored for `PutObject` even
+   * though it is listed as a supported condition key on the S3 `object` resource type.
    */
   public readonly grantPrincipal: iam.IPrincipal;
 
   /**
-   * The registry location this updater resolves artifacts from, taken from the pinned resolver
-   * it delegates to.
+   * The artifact registry location (bucket base and project) this resolver reads from, taken
+   * from the pinned resolver it delegates to. Pass it to anything that must read from the same
+   * registry as the rest of the Mailbox.
    */
   public readonly location: RegistryLocation;
 
@@ -71,14 +111,13 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
     const granularity = props.granularity ?? 'minor';
 
-    // Phase B (scheduled updater) support: Fn.conditionIf on code keys + gating self-update infra
-    // IsTracking = NOT(granularity == 'pinned') — under pinned, no CRs, no EventBridge rule (updater Lambda always-on)
+    // IsTracking is false when granularity is 'pinned': the deploy-end CR and the EventBridge
+    // rule are then not created, while the updater Lambda stays.
     this.isTracking = new cdk.CfnCondition(this, 'IsTracking', {
       expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
     });
 
-    // Artifact updater Lambda (always-on, exists even under pinned for the admin-UI trigger path)
-    // Use pinned resolver (same composed instance) to resolve the handler code from stable release
+    // The updater Lambda exists under 'pinned' too, so it stays invocable from the admin API.
     const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: this.pinned,
       artifactBucketBase: this.bucketBase,
@@ -89,11 +128,9 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     this.updater = updater;
     this.grantPrincipal = updater.grantPrincipal;
 
-    // Tag the updater Lambda to exclude it from auto-update scanning (via serverless-inbox:auto-update-type=none).
-    // This removes the self-reference in environment variables and avoids a circular dependency with LogGroup.
+    // Excludes the updater from its own tag scan (auto-update-type none).
     Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    // Gated subtree: deploy-end CR + EventBridge rule (both tied to IsTracking)
     const trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {
       updater,
       isTracking: this.isTracking,
@@ -102,39 +139,69 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
     this.deployEndTrigger = trackedTriggers.deployEndCr;
 
-    // Gate only the TrackedUpdateTriggers subtree (CR + EventBridge rule) on IsTracking
     cdk.Aspects.of(trackedTriggers).add(new GateOnConditionAspect(this.isTracking));
   }
 
-  /** Delegate to the pinned resolver for artifact resolution. */
+  /**
+   * Resolves an artifact object to its bucket, key and version, as the pinned resolver does.
+   *
+   * @param packageName The registry package that publishes the artifact.
+   * @param objectPath The object's path within that package.
+   */
   resolve(packageName: string, objectPath: string): ResolvedArtifact {
     return this.pinned.resolve(packageName, objectPath);
   }
 
-  /** Delegate to the pinned resolver for the HTTPS URL of an artifact object. */
+  /**
+   * Returns the HTTPS URL of an artifact object, as the pinned resolver does.
+   *
+   * @param packageName The registry package that publishes the artifact.
+   * @param objectPath The object's path within that package.
+   */
   getUrl(packageName: string, objectPath: string): string {
     return this.pinned.getUrl(packageName, objectPath);
   }
 
-  /** Delegate to the pinned resolver for the S3 ARN of an artifact object. */
+  /**
+   * Returns the S3 ARN of an artifact object, for IAM policies that must reach it, as the pinned
+   * resolver does.
+   *
+   * @param packageName The registry package that publishes the artifact.
+   * @param objectPath The object's path within that package.
+   */
   getArn(packageName: string, objectPath: string): string {
     return this.pinned.getArn(packageName, objectPath);
   }
 
-  /** Delegate to the pinned resolver for the version a package resolves to. */
+  /**
+   * Returns the version a package resolves to, as the pinned resolver does.
+   *
+   * @param packageName The registry package whose version is requested.
+   */
   getVersion(packageName: string): string {
     return this.pinned.getVersion(packageName);
   }
 
-  /** Provide the artifact updater addon for admin API registration. */
+  /**
+   * Returns the admin API addon backed by the updater Lambda, which lets the updater be invoked
+   * from the admin API. It is only included in the Mailbox when this construct is listed in
+   * `MailboxProps.adminApiAddonProviders`.
+   *
+   * @param _scope Unused: the addon is not parented under the scope.
+   * @param _ctx Unused: the addon needs nothing from the shared context.
+   */
   createAdminApiAddons(_scope: Construct, _ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [new ArtifactUpdaterAddon({ updaterFunction: this.updater })];
   }
 
   /**
-   * Register a construct whose whole subtree the deploy-time update trigger must not fire
-   * before — e.g. a sub-stack or resource group that needs to finish deploying first. Safe to
-   * call multiple times (once per dependency).
+   * Makes the post-deploy update trigger wait until `dependency` and its whole subtree have
+   * finished deploying, for example a sub-stack or resource group the updater would otherwise
+   * scan too early. Call it once per dependency.
+   *
+   * The trigger exists only when `granularity` is not `'pinned'`.
+   *
+   * @param dependency The construct whose deployment must complete before the trigger fires.
    */
   addDeployEndDependency(dependency: IConstruct): void {
     this.deployEndTrigger.node.addDependency(dependency);
@@ -155,19 +222,21 @@ class TrackedUpdateTriggers extends Construct {
   }) {
     super(scope, id);
 
-    // Deploy-end CR: fires when the stack is deployed with ArtifactTracking != pinned
-    // ServiceToken points to the updater Lambda; the handler detects CFN CR events and routes accordingly
+    // Deploy-end CR: CloudFormation invokes the updater Lambda directly through the service
+    // token, and the handler routes on the event shape.
     const deployEndCr = new cdk.CustomResource(this, 'deploy-end-cr', {
       serviceToken: props.updater.functionArn,
       serviceTimeout: cdk.Duration.seconds(600),
       resourceType: 'Custom::DeployEndTrigger',
       properties: {
+        // CloudFormation re-invokes a custom resource only when its properties change; the nonce
+        // changes on every synth so the trigger fires on every deploy.
         Nonce: Date.now().toString(),
       },
     });
     this.deployEndCr = deployEndCr;
 
-    // EventBridge rule: trigger the updater on schedule (6-hourly self-healing loop)
+    // Scheduled trigger.
     new events.Rule(this, 'scheduled-update-rule', {
       schedule: events.Schedule.rate(props.updateInterval),
       targets: [new targets.LambdaFunction(props.updater)],

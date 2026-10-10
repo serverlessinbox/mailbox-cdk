@@ -4,7 +4,7 @@ import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DataOverrideResolverLambda } from '../lambdas/data-override-resolver';
 
-/** Incoming data table ARNs from the data stack deployer. */
+/** Incoming data table ARNs, one per table role, and the artifact resolver for the resolver Lambda's code. */
 export interface MailboxDataOverrideResolverProps {
   readonly configTableArn: string;
   readonly itemTableArn: string;
