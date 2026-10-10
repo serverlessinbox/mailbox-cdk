@@ -1,8 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DataOverrideResolverLambda } from '../lambdas/data-override-resolver';
 
 /** Incoming data table ARNs from the data stack deployer. */
@@ -30,11 +29,8 @@ export class MailboxDataOverrideResolver extends Construct {
   constructor(scope: Construct, id: string, props: MailboxDataOverrideResolverProps) {
     super(scope, id);
 
-    props.artifactResolver.registerPackages(['mailbox-cdk']);
-    const cdkArtifactResolver = new CdkArtifactEngine(this, props.artifactResolver);
-
     this.fn = new DataOverrideResolverLambda(this, 'handler', {
-      artifactResolver: cdkArtifactResolver,
+      artifactResolver: props.artifactResolver,
     });
 
     // Stack-owned override parameters, one per table role, initialised with the stack's own table ARN.

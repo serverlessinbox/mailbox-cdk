@@ -16,8 +16,8 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { SesReceivingMode, IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing/audit-writing';
-import { CdkArtifactEngine, PinnedResolver, PipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from './artifacts/i-artifact-resolver';
+import { MailboxArtifactResolverFactory, PipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Bootstrap } from './features/bootstrap/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
 import type { IResourceRemoval } from './features/sweeper';
@@ -44,6 +44,7 @@ import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
 import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 import { loadMailboxRegistryRecord } from './mailbox-registry-record';
+import { loadMailboxArtifactVersions } from './mailbox-artifact-versions';
 
 /**
  * Re exports public API types and constructs for the mailbox package.
@@ -190,7 +191,8 @@ export interface MailboxProps {
 
   /**
    * Strategy for resolving Lambda code + UI bundle artifacts. Omit for pinned synth-time resolution
-   * (`PinnedResolver`); inject an `AutoUpdater` to track a dist-tag at deploy.
+   * from the versions shipped with the package (`PinnedArtifactResolver`); inject an `AutoUpdater`
+   * to track a dist-tag at deploy.
    */
   readonly artifactResolver?: IArtifactResolver;
 
@@ -247,17 +249,10 @@ export class Mailbox extends Construct {
 
     // Tag everything under this construct so customers can easily slice cost/usage.
     // Use AWS::StackName so this also works when deployed via pure CloudFormation.
-    // Artifact resolution (stack-self-update subplan #3, Phase A):
-    // One injected strategy → one engine, threaded to every sub-construct. Default is pinned
-    // (byte-identical synth-time pinning); inject an AutoUpdater for track-based resolution.
-    const resolver = props.artifactResolver ?? PinnedResolver.loadFromArtifactMetadata(this, loadMailboxRegistryRecord());
-
-    // Register packages for artifact updates
-    resolver.registerPackages([
-      'mailbox-go', 'mailbox-cdk', 'mailbox-cdk-shared', 'mailbox-cdk-edge', 'mailbox-admin-ui', 'mailbox-webmail-ui',
-    ]);
-
-    const artifactResolver = new CdkArtifactEngine(this, resolver);
+    // One resolver, threaded to every sub-construct. Default is pinned from the package's baked
+    // versions, overridden by CDK context; inject an AutoUpdater for track-based resolution.
+    const artifactResolver: IArtifactResolver = props.artifactResolver
+      ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
     const stackVersion = artifactResolver.getVersion('mailbox-cdk');
 
     applyServerlessInboxBaseTags(this, {
@@ -292,7 +287,7 @@ export class Mailbox extends Construct {
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
-    const stackHelpers = StackHelpers.getOrCreate(this, resolver);
+    const stackHelpers = StackHelpers.getOrCreate(this, artifactResolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
       groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
@@ -503,7 +498,7 @@ export class Mailbox extends Construct {
         configTable,
         auditLogTable,
         identityProvisioner,
-        artifactResolver: resolver,
+        artifactResolver,
       };
 
       // Collect addons from auth provider
@@ -573,7 +568,7 @@ export class Mailbox extends Construct {
       adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
       adminUiCnameTarget = adminUi.distribution.distributionDomainName;
 
-      grantUiContentDeployIfGrantable(adminUi, resolver);
+      grantUiContentDeployIfGrantable(adminUi, artifactResolver);
     }
 
     if (enableWebmailUi) {
@@ -594,7 +589,7 @@ export class Mailbox extends Construct {
       webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
       webmailUiCnameTarget = webmailUi.distribution.distributionDomainName;
 
-      grantUiContentDeployIfGrantable(webmailUi, resolver);
+      grantUiContentDeployIfGrantable(webmailUi, artifactResolver);
     }
 
     const extraOrigins = props.extraAllowedOrigins ?? [];
@@ -923,7 +918,7 @@ export class Mailbox extends Construct {
  * Grants `resolver` write access to `ui`'s own content bucket, when `resolver` is capable of
  * being granted at all. `resolver` is typed `IArtifactResolver`, which carries no IAM principal,
  * so grantability is a runtime capability some resolvers have (e.g. `AutoUpdater`, which drives
- * the scheduled UI content refresh) and others don't (`PinnedResolver` never touches a UI bucket
+ * the scheduled UI content refresh) and others don't (`PinnedArtifactResolver` never touches a UI bucket
  * at runtime, so it needs no grant and must be skipped rather than erroring).
  */
 function grantUiContentDeployIfGrantable(ui: MailboxUi, resolver: IArtifactResolver): void {

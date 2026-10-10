@@ -5910,6 +5910,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
@@ -5920,6 +5921,7 @@ const RAW_RUNTIME_STATE =
           ["@types/mime-types", "npm:2.1.4"],\
           ["@types/node", "npm:24.10.1"],\
           ["@types/semver", "npm:7.7.1"],\
+          ["@types/serverlessinbox__artifact-registry-cdk", null],\
           ["@types/unzipper", "npm:0.10.11"],\
           ["@typescript-eslint/eslint-plugin", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
           ["@typescript-eslint/parser", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:6.21.0"],\
@@ -5942,8 +5944,10 @@ const RAW_RUNTIME_STATE =
           ["unzipper", "npm:0.12.3"]\
         ],\
         "packagePeers": [\
+          "@serverlessinbox/artifact-registry-cdk",\
           "@types/aws-cdk-lib",\
           "@types/constructs",\
+          "@types/serverlessinbox__artifact-registry-cdk",\
           "aws-cdk-lib",\
           "constructs"\
         ],\
@@ -5964,6 +5968,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
@@ -6084,6 +6089,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-sqs", "npm:3.1132.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
@@ -6094,6 +6100,7 @@ const RAW_RUNTIME_STATE =
           ["@types/constructs", null],\
           ["@types/jest", "npm:29.5.14"],\
           ["@types/node", "npm:24.10.1"],\
+          ["@types/serverlessinbox__artifact-registry-cdk", null],\
           ["@types/serverlessinbox__mailbox", null],\
           ["aws-cdk-lib", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:2.261.0"],\
           ["aws-custom-resources", "npm:0.0.4"],\
@@ -6113,6 +6120,7 @@ const RAW_RUNTIME_STATE =
         "packagePeers": [\
           "@types/aws-cdk-lib",\
           "@types/constructs",\
+          "@types/serverlessinbox__artifact-registry-cdk",\
           "@types/serverlessinbox__mailbox",\
           "aws-cdk-lib",\
           "constructs"\
@@ -6127,6 +6135,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-sqs", "npm:3.1132.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry-cdk", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\

@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { Fn, RemovalPolicy, Stack, Tags } from 'aws-cdk-lib';
+import { Fn, RemovalPolicy, Tags } from 'aws-cdk-lib';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import {
   AllowedMethods,
@@ -18,7 +18,8 @@ import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import type { IDataTable } from '../data/data-tables';
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import type { ICdkArtifactEngine, Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
+import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket, S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox/mailbox-cdk-shared';
 import { Aws } from 'aws-cdk-lib';
 import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
@@ -70,7 +71,7 @@ export interface MailboxUiProps {
   };
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 /**
@@ -210,14 +211,14 @@ export class MailboxUi extends Construct {
     grantListBucket(grantee, this.bucket, 'config/*');
   }
 
-  private addUiDeployment(artifacts: ICdkArtifactEngine, props: MailboxUiProps): void {
+  private addUiDeployment(artifacts: IArtifactResolver, props: MailboxUiProps): void {
     const deployer = StaticContentDeployer.getOrCreate(this, artifacts);
 
     // Tag the distribution for scheduled auto-update discovery
     Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
 
     const uiResolved = props.uiBundle
-      ? artifacts.resolve(props.uiBundle.packageName, props.uiBundle.objectPath, Stack.of(this).region)
+      ? artifacts.resolve(props.uiBundle.packageName, props.uiBundle.objectPath)
       : undefined;
 
     // Tag the distribution with artifact metadata for auto-update tracking
@@ -259,7 +260,7 @@ export class MailboxUi extends Construct {
 
   private addAuthBehavior(
     distribution: Distribution,
-    artifactResolver: ICdkArtifactEngine,
+    artifactResolver: IArtifactResolver,
     configTable: IDataTable,
     auditEventsQueue: IAuditEventsQueue,
     authPolicyName: AuthPolicyName,

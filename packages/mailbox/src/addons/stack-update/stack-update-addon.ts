@@ -3,13 +3,12 @@ import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Construct } from 'constructs';
-import { CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../../data/data-tables';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
-import type { IArtifactResolver } from '../../artifacts/i-artifact-resolver';
 import { StackUpdateApiLambda } from '../../lambdas/stack-update-api';
 import { TemplateVersionParam, type ITemplateVersionParam } from './template-version-param';
 
@@ -66,8 +65,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     const stack = cdk.Stack.of(this);
     const region = stack.region;
 
-    const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
-    const artifactLocation = artifactEngine.location;
+    const artifactLocation = props.artifactResolver.location;
 
     // Build release pointer key and URL template using artifact-registry functions
     const pointerKey = buildReleasePointerKey('template', props.templateName, {
@@ -96,7 +94,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       rootStackArn,
       configTable: props.configTable,
       artifactBucketBase: artifactLocation.bucketBase,
-      artifactResolver: artifactEngine,
+      artifactResolver: props.artifactResolver,
       templateVersionParamName: templateVersionParam.parameterName,
       pointerBucket,
       pointerKey,

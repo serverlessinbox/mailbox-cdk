@@ -89,7 +89,6 @@ export type {
 } from './utils/kms';
 
 // Artifact resolution (stack-self-update subplan #3, Phase A, D2/D3 — jsii-exported types)
-export type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from './artifacts/i-artifact-resolver';
 export { AutoUpdater } from './artifacts/resolvers';
 export type { AutoUpdaterProps, Granularity } from './artifacts/resolvers';
 

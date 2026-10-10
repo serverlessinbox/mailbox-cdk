@@ -5,9 +5,10 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import { PinnedResolver, CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver, PinnedArtifactResolver, RegistryLocation, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
-import type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from '../i-artifact-resolver';
+import { loadMailboxArtifactVersions } from '../../mailbox-artifact-versions';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
 import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
 import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
@@ -56,14 +57,14 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
   private readonly distTag: string;
   private readonly bucketBase: string;
-  private readonly pinned: PinnedResolver;
+  private readonly pinned: PinnedArtifactResolver;
   private readonly isTracking: cdk.CfnCondition;
   private readonly deployEndTrigger: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
     this.distTag = props.distTag ?? 'stable';
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(this, loadMailboxRegistryRecord());
+    const pinnedResolver = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
     this.pinned = pinnedResolver;
     this.location = pinnedResolver.location;
     this.bucketBase = this.location.bucketBase;
@@ -76,17 +77,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
     });
 
-    // Self-register the package name before constructing the updater Lambda, which will resolve it.
-    // This happens before Mailbox (which also registers 'mailbox-cdk' later), ensuring the package
-    // is registered when the updater Lambda's code is first resolved.
-    this.pinned.registerPackages(['mailbox-cdk']);
-
     // Artifact updater Lambda (always-on, exists even under pinned for the admin-UI trigger path)
     // Use pinned resolver (same composed instance) to resolve the handler code from stable release
-    const updaterEngine = new CdkArtifactEngine(this, this.pinned, 'updater-engine');
-
     const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
-      artifactResolver: updaterEngine,
+      artifactResolver: this.pinned,
       artifactBucketBase: this.bucketBase,
       distTag: this.distTag,
       granularity,
@@ -113,19 +107,23 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
   }
 
   /** Delegate to the pinned resolver for artifact resolution. */
-  resolve(packageName: string, objectPath: string, region: string): ResolvedArtifact {
-    return this.pinned.resolve(packageName, objectPath, region);
+  resolve(packageName: string, objectPath: string): ResolvedArtifact {
+    return this.pinned.resolve(packageName, objectPath);
+  }
+
+  /** Delegate to the pinned resolver for the HTTPS URL of an artifact object. */
+  getUrl(packageName: string, objectPath: string): string {
+    return this.pinned.getUrl(packageName, objectPath);
+  }
+
+  /** Delegate to the pinned resolver for the S3 ARN of an artifact object. */
+  getArn(packageName: string, objectPath: string): string {
+    return this.pinned.getArn(packageName, objectPath);
   }
 
   /** Delegate to the pinned resolver for the version a package resolves to. */
   getVersion(packageName: string): string {
     return this.pinned.getVersion(packageName);
-  }
-
-  /** Register packages for the updater to track. */
-  registerPackages(names: string[]): void {
-    // Delegate to pinned resolver to ensure consistent validation on resolve()
-    this.pinned.registerPackages(names);
   }
 
   /** Provide the artifact updater addon for admin API registration. */

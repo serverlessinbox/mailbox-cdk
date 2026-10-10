@@ -7,12 +7,12 @@ import { Fn } from 'aws-cdk-lib';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import type { IDataTable } from '../../data/data-tables';
-import { CdkArtifactEngine, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
-import type { IArtifactResolver } from '../../artifacts/i-artifact-resolver';
 import { SupportApiLambda } from '../../lambdas/support-api';
 import { SupportRoleAssumptionCollectorLambda } from '../../lambdas/support-role-assumption-collector';
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
@@ -104,9 +104,6 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         vendorAccountIds,
       });
 
-      // Wrap the artifact resolver in a CDK artifact engine
-      const artifactEngine = new CdkArtifactEngine(this, props.artifactResolver);
-
       // Support API Lambda (Go-based, code-signed)
       // Handles case RPCs and tag-based access control via support-hop role.
       // Uses the existing config table for grant records (D16).
@@ -117,7 +114,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         tierRoleArns: rolesInfra.tierArns,
         configTable: props.configTable,
         auditEventsQueue: props.auditEventsQueue,
-        artifactResolver: artifactEngine,
+        artifactResolver: props.artifactResolver,
         vendorAccountIds,
         supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
         supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
@@ -132,7 +129,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,
         configTable: props.configTable,
-        artifactResolver: artifactEngine,
+        artifactResolver: props.artifactResolver,
         supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
         supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
         supportTierTagKeys,

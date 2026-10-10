@@ -3,7 +3,7 @@ import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import type { Construct } from 'constructs';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { IDataTable } from '../data/data-tables';
-import type { IArtifactResolver } from '../artifacts/i-artifact-resolver';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IIdentityProvisioner } from '../lambdas/identity-provisioner';
 
 export interface IAdminApiAddon {
