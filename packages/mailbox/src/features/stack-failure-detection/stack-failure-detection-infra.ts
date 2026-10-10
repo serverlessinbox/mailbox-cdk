@@ -5,7 +5,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { IConstruct } from 'constructs';
 import { Fn, Stack, Aws, RemovalPolicy, CfnResource } from 'aws-cdk-lib';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { PipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectorLambda } from '../../lambdas';
 
@@ -26,7 +26,7 @@ function retainOnUpdateOrDelete(construct: IConstruct, description: string): voi
 }
 
 export interface StackFailureDetectionInfraProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';

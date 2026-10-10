@@ -4,7 +4,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import type { IDataTable } from '../../data/data-tables';
 import { BootstrapLambda, SesReceivingMode } from '../../lambdas';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 import {
   AuthPoliciesConfig,
@@ -27,7 +27,7 @@ export interface BootstrapProps {
   readonly authPolicies?: AuthPoliciesConfig;
   readonly oauthClients?: OAuthClientsConfig;
 
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly sesRuleSet: IReceiptRuleSet;
   readonly sesReceivingMode?: SesReceivingMode;
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */

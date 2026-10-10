@@ -3,7 +3,7 @@ import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CL
 import type { IDataTable } from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { MailboxUi } from './mailbox-ui';
 
 export interface AdminUiProps {
@@ -45,7 +45,7 @@ export interface AdminUiProps {
   readonly uiConfig?: Record<string, unknown>;
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 /**

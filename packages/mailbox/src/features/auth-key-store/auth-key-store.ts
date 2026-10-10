@@ -4,7 +4,7 @@ import { Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda } from '../../lambdas';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
 
 export interface AuthKeyStoreProps {
@@ -12,7 +12,7 @@ export interface AuthKeyStoreProps {
   /**
    * Artifact resolver for building/downloading lambdas
    */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 export class AuthKeyStore extends Construct {

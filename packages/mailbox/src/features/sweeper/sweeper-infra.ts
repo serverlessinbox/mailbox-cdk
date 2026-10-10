@@ -1,13 +1,13 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { SweeperWorkflow } from './sweeper-workflow';
 import type { IResourceRemoval } from './removal';
 import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
 
 export interface SweeperInfraProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /**
    * Removals to sweep. Each contributes the IAM grants its own resources need onto the shared
    * worker role, and its own steps (including any waiting) to the state machine — see

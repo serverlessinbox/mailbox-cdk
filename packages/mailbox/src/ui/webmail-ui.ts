@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import type { IDataTable } from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
 import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
@@ -37,7 +37,7 @@ export interface WebmailUiProps {
   readonly apiUrl?: string;
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 export class WebmailUi extends MailboxUi {

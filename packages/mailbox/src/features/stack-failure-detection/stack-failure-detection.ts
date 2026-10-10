@@ -5,7 +5,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { StackFailureDetectionInfra } from './stack-failure-detection-infra';
 
 export enum SendStackFailuresMode {
@@ -15,7 +15,7 @@ export enum SendStackFailuresMode {
 
 export interface StackFailureDetectionProps {
   readonly mode: SendStackFailuresMode;
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 /**
