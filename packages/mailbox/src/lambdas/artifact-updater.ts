@@ -49,10 +49,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantTagDiscovery();
     this.grantLambdaManagementAccess(props.rootStackTagValue);
     this.grantLambdaTagAccess(props.rootStackTagValue);
-    // UI auto-update: bucket-side grant. Each UI construct (MailboxUi.grantContentDeploy) grants
-    // this updater's own principal write access to its own bucket, so this class never guesses a
-    // UI bucket's name from a synth-time pattern — see MailboxUi.grantContentDeploy for the S3
-    // action set and the tag-scoping finding that rules out a tag-based alternative.
+    // No grant on UI buckets here: the updater's write access to a UI bucket is granted on that
+    // bucket, scoped by its ARN rather than by tag (see MailboxUi.grantContentDeploy).
     this.grantEdgeLambdaAccess(props.rootStackTagValue);
     this.grantCloudFrontManagementAccess(props.rootStackTagValue);
     this.grantCloudFrontTagAccess(props.rootStackTagValue);

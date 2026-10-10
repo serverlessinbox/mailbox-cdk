@@ -9046,14 +9046,14 @@
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "remarks": "Passed to every\n{@link IAdminApiAddonProvider.createAdminApiAddons} call so a capability (support, stack-update, a\nCognito user-management addon, and any consumer-supplied addon) does not have to reach into\n`Mailbox` internals to get them.",
-        "summary": "Data an admin-api addon may need to build its own Lambda: the audit-events queue to send audit records to, and the config/audit-log tables most addons read from."
+        "remarks": "Passed to\nevery {@link IAdminApiAddonProvider.createAdminApiAddons} call so an addon does not have to\nreach into `Mailbox` internals to get them.",
+        "summary": "What an admin-api addon needs to build its own Lambda: the audit-events queue, the shared config and audit-log tables, the identity provisioner and the artifact resolver."
       },
       "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 24
+        "line": 44
       },
       "name": "AdminApiAddonContext",
       "properties": [
@@ -9065,7 +9065,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 48
+            "line": 73
           },
           "name": "artifactResolver",
           "type": {
@@ -9081,7 +9081,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 30
+            "line": 50
           },
           "name": "auditEventsQueue",
           "type": {
@@ -9091,12 +9091,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Shared audit-log table, for addons that need to read past audit records (not for writing — writes go through {@link auditEventsQueue} and the dedicated audit-writer consumer)."
+            "remarks": "Do not write to it: record audit\nevents by sending them to {@link auditEventsQueue}.",
+            "summary": "Shared audit-log table, for reading past audit records."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 35
+            "line": 60
           },
           "name": "auditLogTable",
           "type": {
@@ -9106,12 +9107,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Shared config table (accounts, aliases, settings) most addons read from."
+            "remarks": "Pass it to your addon's Lambda props and\ngrant the Lambda access inside its own constructor.",
+            "summary": "Shared config table (accounts, aliases, settings)."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 32
+            "line": 55
           },
           "name": "configTable",
           "type": {
@@ -9127,7 +9129,7 @@
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 41
+            "line": 66
           },
           "name": "identityProvisioner",
           "type": {
@@ -9396,11 +9398,15 @@
     "@serverlessinbox/mailbox.AutoUpdater": {
       "assembly": "@serverlessinbox/mailbox",
       "base": "constructs.Construct",
+      "docs": {
+        "remarks": "Artifact lookups (`resolve`, `getUrl`, `getArn`, `getVersion`) are answered by the pinned\nresolver built from the artifact versions shipped with the package. In addition the construct\nprovisions an artifact-updater Lambda that finds this stack's tagged Lambdas, UI distributions\nand edge function and moves them to newer releases of `distTag`, within the bounds of\n`granularity`.\n\nUnless `granularity` is `'pinned'`, the updater runs after each deploy and on a schedule. The\nupdater Lambda exists in every mode, so it can also be invoked from the admin API: pass this\nconstruct in `MailboxProps.adminApiAddonProviders` to expose that.",
+        "summary": "An artifact resolver that also keeps the deployed Mailbox up to date. Pass it as `MailboxProps.artifactResolver`."
+      },
       "fqn": "@serverlessinbox/mailbox.AutoUpdater",
       "initializer": {
         "locationInModule": {
           "filename": "src/artifacts/resolvers/auto-updater.ts",
-          "line": 64
+          "line": 104
         },
         "parameters": [
           {
@@ -9432,20 +9438,24 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 36
+        "line": 77
       },
       "methods": [
         {
           "docs": {
-            "summary": "Register a construct whose whole subtree the deploy-time update trigger must not fire before — e.g. a sub-stack or resource group that needs to finish deploying first. Safe to call multiple times (once per dependency)."
+            "remarks": "Call it once per dependency.\n\nThe trigger exists only when `granularity` is not `'pinned'`.",
+            "summary": "Makes the post-deploy update trigger wait until `dependency` and its whole subtree have finished deploying, for example a sub-stack or resource group the updater would otherwise scan too early."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 139
+            "line": 206
           },
           "name": "addDeployEndDependency",
           "parameters": [
             {
+              "docs": {
+                "summary": "The construct whose deployment must complete before the trigger fires."
+              },
               "name": "dependency",
               "type": {
                 "fqn": "constructs.IConstruct"
@@ -9455,22 +9465,29 @@
         },
         {
           "docs": {
-            "summary": "Provide the artifact updater addon for admin API registration."
+            "remarks": "It is only included in the Mailbox when this construct is listed in\n`MailboxProps.adminApiAddonProviders`.",
+            "summary": "Returns the admin API addon backed by the updater Lambda, which lets the updater be invoked from the admin API."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 130
+            "line": 193
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
           "parameters": [
             {
+              "docs": {
+                "summary": "Unused: the addon is not parented under the scope."
+              },
               "name": "_scope",
               "type": {
                 "fqn": "constructs.Construct"
               }
             },
             {
+              "docs": {
+                "summary": "Unused: the addon needs nothing from the shared context."
+              },
               "name": "_ctx",
               "type": {
                 "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
@@ -9490,22 +9507,28 @@
         },
         {
           "docs": {
-            "summary": "Delegate to the pinned resolver for the S3 ARN of an artifact object."
+            "summary": "Returns the S3 ARN of an artifact object, for IAM policies that must reach it, as the pinned resolver does."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 120
+            "line": 172
           },
           "name": "getArn",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
           "parameters": [
             {
+              "docs": {
+                "summary": "The registry package that publishes the artifact."
+              },
               "name": "packageName",
               "type": {
                 "primitive": "string"
               }
             },
             {
+              "docs": {
+                "summary": "The object's path within that package."
+              },
               "name": "objectPath",
               "type": {
                 "primitive": "string"
@@ -9520,22 +9543,28 @@
         },
         {
           "docs": {
-            "summary": "Delegate to the pinned resolver for the HTTPS URL of an artifact object."
+            "summary": "Returns the HTTPS URL of an artifact object, as the pinned resolver does."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 115
+            "line": 161
           },
           "name": "getUrl",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
           "parameters": [
             {
+              "docs": {
+                "summary": "The registry package that publishes the artifact."
+              },
               "name": "packageName",
               "type": {
                 "primitive": "string"
               }
             },
             {
+              "docs": {
+                "summary": "The object's path within that package."
+              },
               "name": "objectPath",
               "type": {
                 "primitive": "string"
@@ -9550,16 +9579,19 @@
         },
         {
           "docs": {
-            "summary": "Delegate to the pinned resolver for the version a package resolves to."
+            "summary": "Returns the version a package resolves to, as the pinned resolver does."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 125
+            "line": 181
           },
           "name": "getVersion",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
           "parameters": [
             {
+              "docs": {
+                "summary": "The registry package whose version is requested."
+              },
               "name": "packageName",
               "type": {
                 "primitive": "string"
@@ -9574,22 +9606,28 @@
         },
         {
           "docs": {
-            "summary": "Delegate to the pinned resolver for artifact resolution."
+            "summary": "Resolves an artifact object to its bucket, key and version, as the pinned resolver does."
           },
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 110
+            "line": 151
           },
           "name": "resolve",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
           "parameters": [
             {
+              "docs": {
+                "summary": "The registry package that publishes the artifact."
+              },
               "name": "packageName",
               "type": {
                 "primitive": "string"
               }
             },
             {
+              "docs": {
+                "summary": "The object's path within that package."
+              },
               "name": "objectPath",
               "type": {
                 "primitive": "string"
@@ -9607,13 +9645,13 @@
       "properties": [
         {
           "docs": {
-            "remarks": "S3 object writes are the motivating case: `aws:ResourceTag` reads a still-untagged object at\nwrite time, and `s3:BucketTag` — although listed as a supported condition key on the S3\n`object` resource type — is not honored for `PutObject` (live-verified: denied against a\nbucket carrying the matching tag). Tag-scoping the grant is therefore not an option; the\ntarget resource granting this principal directly, scoped to its own ARN, is.",
-            "summary": "The IAM principal of the updater's own Lambda role, so a resource this updater must write to (e.g. a `MailboxUi` UI bucket) can grant this updater direct access to itself instead of the updater guessing the resource's name from a synth-time pattern."
+            "remarks": "The updater writes to resources it does not\ncreate, such as a UI bucket; grant this principal on the target resource itself, scoped to\nthat resource's own ARN.\n\nDo not scope such a grant by tag: for S3 object writes `aws:ResourceTag` reads the\nstill-untagged object at write time, and `s3:BucketTag` is not honored for `PutObject` even\nthough it is listed as a supported condition key on the S3 `object` resource type.",
+            "summary": "The IAM principal of the updater Lambda's role."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 50
+            "line": 89
           },
           "name": "grantPrincipal",
           "overrides": "aws-cdk-lib.aws_iam.IGrantable",
@@ -9623,12 +9661,13 @@
         },
         {
           "docs": {
-            "summary": "The registry location this updater resolves artifacts from, taken from the pinned resolver it delegates to."
+            "remarks": "Pass it to anything that must read from the same\nregistry as the rest of the Mailbox.",
+            "summary": "The artifact registry location (bucket base and project) this resolver reads from, taken from the pinned resolver it delegates to."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 56
+            "line": 96
           },
           "name": "location",
           "overrides": "@serverlessinbox/artifact-registry-cdk.IArtifactResolver",
@@ -9643,27 +9682,27 @@
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "remarks": "npm-style: at DEPLOY the per-package CR reads the\n`{distTag}` pointer (`releases/{distTag}.json`) and locks that version — distTag only, no\nsynth-time version, no ambient-context dependency, works in any stack. `granularity` is retained\nas config for the Phase B scheduled updater (drift range from the locked version) and is NOT used\nat deploy-time resolution.",
-        "summary": "Auto-updater (stack-self-update #3)."
+        "summary": "Settings of the {@link AutoUpdater}: which release line to follow, how tightly, and how often the scheduled check runs."
       },
       "fqn": "@serverlessinbox/mailbox.AutoUpdaterProps",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/artifacts/resolvers/auto-updater.ts",
-        "line": 27
+        "line": 30
       },
       "name": "AutoUpdaterProps",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "remarks": "resolved to a concrete version at deploy.",
-            "summary": "Dist-tag line to follow (default 'stable');"
+            "default": "'stable'",
+            "remarks": "The updater reads\nthe release pointer published for this tag and moves deployed artifacts to the version it\nnames.",
+            "summary": "The release line (dist-tag) the updater follows, for example `'stable'`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 29
+            "line": 38
           },
           "name": "distTag",
           "optional": true,
@@ -9674,13 +9713,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "used for the updater's env and IsTracking. Typed `string`.",
-            "summary": "Literal Granularity OR a CFN-parameter token;"
+            "default": "'minor'",
+            "remarks": "Pass `'pinned'` to disable automatic\nupdates: the post-deploy trigger and the schedule are then not created, and the updater only\nruns when invoked from the admin API.\n\nAccepts a CloudFormation parameter token, so a stack parameter can switch tracking on and\noff at deploy time. The prop is typed `string` for that reason, so a literal other than\n`'major'`, `'minor'` or `'pinned'` is not caught at compile time.",
+            "summary": "How the updater derives the release track it follows from a deployed artifact's version: `'major'` or `'minor'` (see {@link Granularity})."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 31
+            "line": 52
           },
           "name": "granularity",
           "optional": true,
@@ -9691,12 +9731,14 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Update interval for the scheduled updater (default 6 hours)."
+            "default": "Duration.hours(6)",
+            "remarks": "Ignored when `granularity` is `'pinned'`,\nbecause the schedule is not created then.",
+            "summary": "How often the updater checks for newer releases."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/artifacts/resolvers/auto-updater.ts",
-            "line": 33
+            "line": 60
           },
           "name": "updateInterval",
           "optional": true,
@@ -9709,31 +9751,42 @@
     },
     "@serverlessinbox/mailbox.IAdminApiAddon": {
       "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Implement it, and return it from an {@link IAdminApiAddonProvider}, to add your\nown endpoints to the Admin API.",
+        "summary": "A capability that extends the Admin API with extra routes and, optionally, Admin UI configuration."
+      },
       "fqn": "@serverlessinbox/mailbox.IAdminApiAddon",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 9
+        "line": 14
       },
       "methods": [
         {
           "abstract": true,
           "docs": {
-            "summary": "Mount additional routes on the Admin API behind the same authorizer."
+            "remarks": "Pass `authorizer` to every route you add so it is protected like the other Admin API routes.",
+            "summary": "Mounts the addon's routes on the Admin API."
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 11
+            "line": 23
           },
           "name": "addRoutes",
           "parameters": [
             {
+              "docs": {
+                "summary": "The Admin API's HTTP API to add routes to."
+              },
               "name": "api",
               "type": {
                 "fqn": "aws-cdk-lib.aws_apigatewayv2.HttpApi"
               }
             },
             {
+              "docs": {
+                "summary": "The authorizer that protects every other Admin API route."
+              },
               "name": "authorizer",
               "type": {
                 "fqn": "aws-cdk-lib.aws_apigatewayv2_authorizers.HttpLambdaAuthorizer"
@@ -9747,11 +9800,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional UI config fragment to be merged into the Admin UI `/config/config.json`."
+            "default": "- the addon contributes no UI configuration",
+            "remarks": "The top-level keys of every addon are merged into one object, in addon order, so a later\naddon overwrites an earlier one that uses the same key: choose keys specific to your\naddon. The merge happens only when the Admin UI is enabled.",
+            "summary": "Configuration this addon contributes to the Admin UI's runtime `config/config.json`, for example a flag that tells the UI the capability is present."
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 14
+            "line": 35
           },
           "name": "uiConfig",
           "optional": true,
@@ -9770,31 +9825,41 @@
     "@serverlessinbox/mailbox.IAdminApiAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Both auth providers (e.g. Cognito) and other capabilities (e.g. Update addon)\nimplement this to register their Admin API routes and UI config without\nthe core package knowing capability-specific details.",
-        "summary": "Provider for contributing admin-api routes and UI configuration."
+        "remarks": "Implement it to add a\ncapability to the Admin API without changing the core package.",
+        "summary": "Contributes Admin API addons: extra routes and Admin UI configuration."
       },
       "fqn": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 70
+        "line": 111
       },
       "methods": [
         {
           "abstract": true,
+          "docs": {
+            "remarks": "Create every construct of the addon under `scope`, not under another parent, so it sits with\nthe other API resources.",
+            "summary": "Creates the addons this provider contributes."
+          },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 71
+            "line": 121
           },
           "name": "createAdminApiAddons",
           "parameters": [
             {
+              "docs": {
+                "summary": "The construct to create the addon's resources under."
+              },
               "name": "scope",
               "type": {
                 "fqn": "constructs.Construct"
               }
             },
             {
+              "docs": {
+                "summary": "The shared tables, queue, provisioner and artifact resolver the addon builds on."
+              },
               "name": "ctx",
               "type": {
                 "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
@@ -10040,26 +10105,33 @@
     },
     "@serverlessinbox/mailbox.IJmapApiAddon": {
       "assembly": "@serverlessinbox/mailbox",
+      "docs": {
+        "remarks": "Return it from an auth provider's\n`createJmapApiAddons` to add your own endpoints to the JMAP API.",
+        "summary": "A capability that extends the JMAP API with extra routes."
+      },
       "fqn": "@serverlessinbox/mailbox.IJmapApiAddon",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 51
+        "line": 80
       },
       "methods": [
         {
           "abstract": true,
           "docs": {
-            "remarks": "Unlike Admin API addons, JMAP\naddons do not share jmap-api's authorizer — each addon Lambda is\nresponsible for gating its own routes if it needs to.",
-            "summary": "Mount additional routes directly on the JMAP API's HttpApi."
+            "remarks": "Unlike Admin API addons, JMAP addons do not receive the JMAP API's authorizer: the addon's\nLambda is responsible for gating its own routes if they need gating.",
+            "summary": "Mounts the addon's routes directly on the JMAP API's HTTP API."
           },
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 55
+            "line": 89
           },
           "name": "addRoutes",
           "parameters": [
             {
+              "docs": {
+                "summary": "The JMAP API's HTTP API to add routes to."
+              },
               "name": "api",
               "type": {
                 "fqn": "aws-cdk-lib.aws_apigatewayv2.HttpApi"
@@ -10357,20 +10429,27 @@
     "@serverlessinbox/mailbox.JmapApiAddonContext": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "summary": "What a JMAP API addon needs to build its routes: the API's public base URL and the identity provisioner."
+      },
       "fqn": "@serverlessinbox/mailbox.JmapApiAddonContext",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/api/addons.ts",
-        "line": 58
+        "line": 96
       },
       "name": "JmapApiAddonContext",
       "properties": [
         {
           "abstract": true,
+          "docs": {
+            "remarks": "The host\nis derived at deploy time, so the value is an unresolved token at synth time: build URLs from\nit by concatenation and do not parse it.",
+            "summary": "Base URL of the JMAP API, `https://` followed by its host, without a trailing slash."
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 59
+            "line": 102
           },
           "name": "apiBaseUrl",
           "type": {
@@ -10380,12 +10459,12 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "The `identity-provisioner` Lambda, e.g. for `JmapOAuthAddon`'s DCR route."
+            "summary": "Handle to the shared `identity-provisioner` Lambda, for routes that provision identities."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/api/addons.ts",
-            "line": 61
+            "line": 104
           },
           "name": "identityProvisioner",
           "type": {
@@ -10399,13 +10478,14 @@
       "assembly": "@serverlessinbox/mailbox",
       "base": "constructs.Construct",
       "docs": {
-        "summary": "Main Mailbox construct."
+        "remarks": "Add it to your own stack and pass an `authProvider`. Optional capabilities are not built in:\nyou opt in through the props, for example `adminApiAddonProviders` and `artifactResolver`.",
+        "summary": "The complete Serverless Inbox mail server as one construct: data stack, email receiving and sending, the Admin and JMAP APIs, WebSocket push, the Admin and Webmail UIs, the CDN and edge stack, DNS, and the operational pieces around them (audit, license refresh, cleanup)."
       },
       "fqn": "@serverlessinbox/mailbox.Mailbox",
       "initializer": {
         "locationInModule": {
           "filename": "src/mailbox.ts",
-          "line": 236
+          "line": 372
         },
         "parameters": [
           {
@@ -10431,15 +10511,18 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 214
+        "line": 345
       },
       "name": "Mailbox",
       "properties": [
         {
+          "docs": {
+            "summary": "The ACM certificates this Mailbox created for itself."
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 234
+            "line": 370
           },
           "name": "certificates",
           "type": {
@@ -10448,12 +10531,13 @@
         },
         {
           "docs": {
-            "summary": "OAuth clients created by this construct (only when enabled)."
+            "remarks": "A client is present only when its UI is\nenabled.",
+            "summary": "The OAuth clients this Mailbox created for its UIs."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 230
+            "line": 364
           },
           "name": "oauthClients",
           "type": {
@@ -10461,10 +10545,13 @@
           }
         },
         {
+          "docs": {
+            "summary": "The public URLs of the endpoints this Mailbox serves."
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 232
+            "line": 367
           },
           "name": "urls",
           "type": {
@@ -10569,23 +10656,28 @@
     "@serverlessinbox/mailbox.MailboxCertificateOverrides": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "remarks": "Every field left out falls back to the certificate the Mailbox creates\nitself, which requires `MailboxProps.hostedZoneId`.",
+        "summary": "Your own ACM certificates for the endpoints a Mailbox serves, for when you manage DNS and certificates yourself."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxCertificateOverrides",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 57
+        "line": 59
       },
       "name": "MailboxCertificateOverrides",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "summary": "us-east-1 ACM certificate for admin.<domain> CloudFront alternate domain name. Overrides the shared edge certificate auto-created when hostedZone is provided."
+            "remarks": "Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.\nWithout a hosted zone and without this certificate, the Admin UI is served on its default\nCloudFront domain.",
+            "summary": "Certificate attached to the Admin UI's alternate domain name (admin.<domain>). It must be issued in us-east-1, because CloudFront only accepts certificates from there."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 67
+            "line": 77
           },
           "name": "adminUi",
           "optional": true,
@@ -10596,12 +10688,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Regional ACM certificate for api.<domain> (Admin API custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+            "remarks": "Takes precedence over the regional certificate the Mailbox creates when a hosted zone is\ngiven. Without a hosted zone and without this certificate, the Admin API gets no custom\ndomain, and the Admin UI is not given an API URL.",
+            "summary": "Certificate for the Admin API's custom domain (api.<domain>). It must be issued in the same region as the stack, because API Gateway custom domains use regional certificates."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 77
+            "line": 95
           },
           "name": "api",
           "optional": true,
@@ -10612,12 +10705,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "us-east-1 ACM certificate for CloudFront alternate domain name (cdn.<domain>). Only needed when hostedZone is not provided (manual DNS setup)."
+            "remarks": "Used only when `MailboxProps.hostedZoneId` is not set; with a hosted zone the Mailbox's own\nedge certificate is used and this field is ignored. Without a hosted zone and without this\ncertificate, the CDN is served on its default CloudFront domain.",
+            "summary": "Certificate attached to the CDN's alternate domain name (cdn.<domain>). It must be issued in us-east-1, because CloudFront only accepts certificates from there."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 62
+            "line": 68
           },
           "name": "cloudFront",
           "optional": true,
@@ -10628,12 +10722,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Regional ACM certificate for jmap.<domain> (JMAP API custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+            "remarks": "Takes precedence over the regional certificate the Mailbox creates when a hosted zone is\ngiven. Without a hosted zone and without this certificate, the JMAP API gets no custom\ndomain, and the Webmail UI is not given an API URL.",
+            "summary": "Certificate for the JMAP API's custom domain (jmap.<domain>). It must be issued in the same region as the stack, because API Gateway custom domains use regional certificates."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 82
+            "line": 104
           },
           "name": "jmap",
           "optional": true,
@@ -10644,12 +10739,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "us-east-1 ACM certificate for webmail.<domain> CloudFront alternate domain name. Overrides the shared edge certificate auto-created when hostedZone is provided."
+            "remarks": "Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.\nWithout a hosted zone and without this certificate, the Webmail UI is served on its default\nCloudFront domain.",
+            "summary": "Certificate attached to the Webmail UI's alternate domain name (webmail.<domain>). It must be issued in us-east-1, because CloudFront only accepts certificates from there."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 72
+            "line": 86
           },
           "name": "webmailUi",
           "optional": true,
@@ -10660,12 +10756,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Regional ACM certificate for ws.<domain> (WebSocket push custom domain). Overrides the shared regional SAN cert auto-created when hostedZone is provided."
+            "remarks": "Used only when `MailboxProps.hostedZoneId` is set: it then takes precedence over the regional\ncertificate the Mailbox creates. Without a hosted zone the WebSocket endpoint gets no custom\ndomain and this field is ignored.",
+            "summary": "Certificate for the WebSocket push custom domain (ws.<domain>). It must be issued in the same region as the stack, because API Gateway custom domains use regional certificates."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 87
+            "line": 113
           },
           "name": "ws",
           "optional": true,
@@ -10679,24 +10776,28 @@
     "@serverlessinbox/mailbox.MailboxCertificates": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "remarks": "A field is undefined when the Mailbox did\nnot create that certificate.",
+        "summary": "The ACM certificates a Mailbox created for itself."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxCertificates",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 114
+        "line": 169
       },
       "name": "MailboxCertificates",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "remarks": "Present only when hostedZone is provided and no overrides.certificates.cloudFront is set.",
-            "summary": "Auto-created us-east-1 ACM certificate for CloudFront (edge) alternate domain names."
+            "remarks": "Present only\nwhen `MailboxProps.hostedZoneId` is set.",
+            "summary": "The us-east-1 ACM certificate for the CloudFront (edge) alternate domain names."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 117
+            "line": 174
           },
           "name": "edge",
           "optional": true,
@@ -10707,13 +10808,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Present only when hostedZone is provided and no overrides.certificates.api/jmap/ws are set.",
-            "summary": "Auto-created regional ACM SAN certificate for api/jmap/ws subdomains."
+            "remarks": "Present only\nwhen `MailboxProps.hostedZoneId` is set and at least one of `overrides.certificates.api` and\n`overrides.certificates.jmap` is not supplied.",
+            "summary": "The regional ACM SAN certificate covering the api, jmap, ws and mcp subdomains."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 120
+            "line": 180
           },
           "name": "regional",
           "optional": true,
@@ -10866,20 +10967,28 @@
     "@serverlessinbox/mailbox.MailboxOAuthClients": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "remarks": "A field is present only when the\ncorresponding UI is enabled.",
+        "summary": "The OAuth clients a Mailbox created for its UIs."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxOAuthClients",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 206
+        "line": 330
       },
       "name": "MailboxOAuthClients",
       "properties": [
         {
           "abstract": true,
+          "docs": {
+            "remarks": "present only when `MailboxProps.enableAdminUi` is not false.",
+            "summary": "The Admin UI's OAuth client;"
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 207
+            "line": 332
           },
           "name": "adminUi",
           "optional": true,
@@ -10889,10 +10998,13 @@
         },
         {
           "abstract": true,
+          "docs": {
+            "summary": "The Webmail UI's OAuth client, used by the JMAP API's session metadata."
+          },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 208
+            "line": 334
           },
           "name": "jmapUi",
           "optional": true,
@@ -10906,24 +11018,27 @@
     "@serverlessinbox/mailbox.MailboxOverrides": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "summary": "Replacements for the certificates and subdomain labels a Mailbox would otherwise generate."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxOverrides",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 123
+        "line": 186
       },
       "name": "MailboxOverrides",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "remarks": "When omitted, certificates are auto-created\n(requires hostedZone). Supply individual fields to bypass auto-creation\nfor specific endpoints (e.g., manual DNS or cross-account certificate).",
-            "summary": "ACM certificate overrides."
+            "remarks": "When omitted, the Mailbox creates the certificates it\nneeds, which requires `MailboxProps.hostedZoneId`. Supply individual fields to bypass that\nfor specific endpoints, for example with manual DNS or a cross-account certificate.",
+            "summary": "Your own ACM certificates per endpoint."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 129
+            "line": 192
           },
           "name": "certificates",
           "optional": true,
@@ -10934,13 +11049,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Default labels match the property names (e.g. admin → \"admin\").\nAll labels must be valid single DNS labels (no dots).",
-            "summary": "Override the subdomain label for any endpoint."
+            "remarks": "Each endpoint keeps its default label (the property name, for\nexample \"admin\") unless overridden here. Every label must be a single DNS label (no dots).",
+            "summary": "Subdomain labels per endpoint."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 136
+            "line": 198
           },
           "name": "subdomains",
           "optional": true,
@@ -10954,23 +11069,27 @@
     "@serverlessinbox/mailbox.MailboxProps": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "summary": "Settings of a {@link Mailbox}: the DNS and certificate setup, the authentication provider, which UIs and optional capabilities to create, and how artifacts are resolved."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxProps",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 139
+        "line": 205
       },
       "name": "MailboxProps",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "summary": "Preferred: provider-owned construct implementing mailbox auth configuration (+ optional admin addons)."
+            "remarks": "Required.\n\nPass the provider your users sign in with: its issuer is what the Mailbox is configured to\ntrust.",
+            "summary": "The construct that supplies authentication: the identity issuer and its token and authorization endpoints, the auth policies, the OAuth client settings and, optionally, Admin API and JMAP API addons."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 147
+            "line": 230
           },
           "name": "authProvider",
           "type": {
@@ -10980,12 +11099,14 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional admin-api capability providers (e.g. the Update addon). The composing stack opts in by passing providers; the reusable construct does not bake them in."
+            "default": "- no additional providers",
+            "remarks": "Nothing beyond the addons your `authProvider` contributes is enabled\nunless a provider is listed here.",
+            "summary": "Providers that add capabilities to the Admin API, such as `StackUpdateAddonProvider` or `SupportAddonProvider`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 153
+            "line": 248
           },
           "name": "adminApiAddonProviders",
           "optional": true,
@@ -11001,13 +11122,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Omit for pinned synth-time resolution\nfrom the versions shipped with the package (`PinnedArtifactResolver`); inject an `AutoUpdater`\nto track a dist-tag at deploy.",
-            "summary": "Strategy for resolving Lambda code + UI bundle artifacts."
+            "default": "- a pinned resolver",
+            "remarks": "When\nomitted, a pinned resolver built from the artifact versions shipped with the package is used,\nso a deploy ships exactly those versions. Inject an `AutoUpdater` to additionally keep the\ndeployed artifacts up to date with newer releases.",
+            "summary": "The resolver that locates the Lambda code and UI bundle artifacts the Mailbox deploys."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 197
+            "line": 314
           },
           "name": "artifactResolver",
           "optional": true,
@@ -11018,13 +11140,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Defaults to true.",
-            "summary": "Whether to create the Admin UI (CloudFront + token-exchange API + OAuth client bootstrap)."
+            "default": "true",
+            "remarks": "When false, there is no Admin UI OAuth client and no Admin UI origin in the CORS\nallow-lists.",
+            "summary": "Whether to create the Admin UI: the CloudFront distribution, its token-exchange API and its OAuth client."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 166
+            "line": 268
           },
           "name": "enableAdminUi",
           "optional": true,
@@ -11035,12 +11158,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced license tier. Defaults to false."
+            "default": "false",
+            "summary": "Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced license tier. The MCP endpoint uses the regional certificate the Mailbox creates, so it also requires `hostedZoneId`, and `overrides.certificates` must not supply both `api` and `jmap`, or no regional certificate is created."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 178
+            "line": 287
           },
           "name": "enableMcp",
           "optional": true,
@@ -11051,13 +11175,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Only one rule set can be active per account per region — this is an explicit operator\ndecision.",
-            "summary": "When true, the Bootstrap Lambda will call SetActiveReceiptRuleSet to activate the SES receipt rule set."
+            "default": "- the Bootstrap Lambda's default receiving behavior",
+            "remarks": "Only one rule set can be active per\naccount per region, so activating this one replaces whichever is active: choose it\ndeliberately.",
+            "summary": "The mode (`'off'`, `'on'` or `'forced'`) the Bootstrap Lambda uses when it activates the SES receipt rule set by calling SetActiveReceiptRuleSet."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 185
+            "line": 297
           },
           "name": "enableReceiving",
           "optional": true,
@@ -11068,13 +11193,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "Defaults to true.",
-            "summary": "Whether to create the Webmail UI (CloudFront + token-exchange API + OAuth client bootstrap)."
+            "default": "true",
+            "remarks": "Disabling it makes synthesis fail, because the JMAP API requires the JMAP UI\nOAuth client that the Webmail UI provisions.",
+            "summary": "Whether to create the Webmail UI: the CloudFront distribution, its token-exchange API and its OAuth client."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 172
+            "line": 277
           },
           "name": "enableWebmailUi",
           "optional": true,
@@ -11085,12 +11211,14 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Extra origins to allow for CORS (e.g., local dev). UI origins are derived automatically."
+            "default": "- only the UI origins are allowed",
+            "remarks": "The\norigins of the Admin and Webmail UIs are added automatically.",
+            "summary": "Extra origins allowed by CORS on the Admin API, the JMAP API and the CDN, as full origins including the scheme, for example `http://localhost:5173` during local development."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 150
+            "line": 239
           },
           "name": "extraAllowedOrigins",
           "optional": true,
@@ -11106,13 +11234,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "The domain name is derived at deploy time via StackHelpers.",
-            "summary": "Route53 hosted zone ID."
+            "remarks": "The Mailbox derives the domain name from the\nzone at deploy time, creates DNS records for its endpoints in it, and creates the ACM\ncertificates they need.\n\nWhen omitted, no DNS records or certificates are created: supply your own through\n`overrides.certificates` and point DNS at the endpoints yourself.",
+            "summary": "The Route53 hosted zone that serves your domain."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 141
+            "line": 214
           },
           "name": "hostedZoneId",
           "optional": true,
@@ -11123,12 +11251,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Optional KMS configuration for at-rest encryption of core resources."
+            "remarks": "See\n{@link MailboxKmsConfig} for the available modes.",
+            "summary": "Configuration for at-rest KMS encryption of the Mailbox's core resources."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 144
+            "line": 220
           },
           "name": "kms",
           "optional": true,
@@ -11139,12 +11268,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Certificate and data stack overrides."
+            "default": "- generated certificates and default subdomain labels",
+            "summary": "Certificate and subdomain overrides."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 190
+            "line": 304
           },
           "name": "overrides",
           "optional": true,
@@ -11155,13 +11285,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "`disabled` provisions no detector\ninfrastructure at all (no Lambda, rule, role, or self-clean chain). Defaults to `ENABLED`.",
-            "summary": "Consent for the stack-failure detector."
+            "default": "SendStackFailuresMode.ENABLED",
+            "remarks": "`SendStackFailuresMode.DISABLED` provisions no detector infrastructure at all (no Lambda,\nrule or role).",
+            "summary": "Consent for the stack-failure detector, which watches this stack's terminal status events."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 203
+            "line": 323
           },
           "name": "sendStackFailures",
           "optional": true,
@@ -11172,13 +11303,14 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "When set, all endpoints are placed under\n`{prefix}.{domainName}` — e.g. prefix \"mailbox\" on \"example.com\" yields\n`admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.\nMust be a valid single DNS label (no dots).",
-            "summary": "Optional subdomain namespace."
+            "default": "- no namespace",
+            "remarks": "When set, every endpoint is placed under\n`{namespace}.{domainName}` — e.g. namespace \"mailbox\" on \"example.com\" yields\n`admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.\n\nMust be a single DNS label (no dots). An empty string means no namespace, so a\nCloudFormation parameter can switch the namespace on and off at deploy time.",
+            "summary": "Namespace for all endpoints."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 161
+            "line": 260
           },
           "name": "subdomainNamespace",
           "optional": true,
@@ -11289,23 +11421,28 @@
     "@serverlessinbox/mailbox.MailboxSubdomainOverrides": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "remarks": "Each label is a single DNS label, so it\nmust not contain dots. A label you leave out keeps its default.",
+        "summary": "Subdomain labels for the endpoints a Mailbox serves."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxSubdomainOverrides",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 90
+        "line": 120
       },
       "name": "MailboxSubdomainOverrides",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "default": "\"admin\""
+            "default": "\"admin\"",
+            "summary": "Label for the Admin UI: `<label>.<domain>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 92
+            "line": 125
           },
           "name": "admin",
           "optional": true,
@@ -11316,12 +11453,13 @@
         {
           "abstract": true,
           "docs": {
-            "default": "\"api\""
+            "default": "\"api\"",
+            "summary": "Label for the Admin API: `<label>.<domain>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 98
+            "line": 140
           },
           "name": "api",
           "optional": true,
@@ -11332,12 +11470,13 @@
         {
           "abstract": true,
           "docs": {
-            "default": "\"jmap\""
+            "default": "\"jmap\"",
+            "summary": "Label for the JMAP API: `<label>.<domain>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 96
+            "line": 135
           },
           "name": "jmap",
           "optional": true,
@@ -11348,12 +11487,13 @@
         {
           "abstract": true,
           "docs": {
-            "default": "\"webmail\""
+            "default": "\"webmail\"",
+            "summary": "Label for the Webmail UI: `<label>.<domain>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 94
+            "line": 130
           },
           "name": "webmail",
           "optional": true,
@@ -11364,12 +11504,13 @@
         {
           "abstract": true,
           "docs": {
-            "default": "\"ws\""
+            "default": "\"ws\"",
+            "summary": "Label for the WebSocket push endpoint: `<label>.<domain>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 100
+            "line": 145
           },
           "name": "ws",
           "optional": true,
@@ -11383,23 +11524,27 @@
     "@serverlessinbox/mailbox.MailboxUrls": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
+      "docs": {
+        "remarks": "The domain is derived at deploy time,\nso each value is an unresolved token at synth time: build on it by concatenation and do not\nparse it. With `MailboxProps.subdomainNamespace`, each host sits under the namespace\n(admin.<namespace>.<domain>).",
+        "summary": "The public HTTPS URLs of the endpoints a Mailbox serves."
+      },
       "fqn": "@serverlessinbox/mailbox.MailboxUrls",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/mailbox.ts",
-        "line": 103
+        "line": 154
       },
       "name": "MailboxUrls",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "summary": "https://api.<domainName>."
+            "summary": "URL of the Admin API: `https://api.<domainName>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 111
+            "line": 162
           },
           "name": "adminApi",
           "type": {
@@ -11409,12 +11554,12 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "https://admin.<domainName>."
+            "summary": "URL of the Admin UI: `https://admin.<domainName>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 105
+            "line": 156
           },
           "name": "adminUi",
           "type": {
@@ -11424,12 +11569,12 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "https://jmap.<domainName>."
+            "summary": "URL of the JMAP API: `https://jmap.<domainName>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 109
+            "line": 160
           },
           "name": "jmapApi",
           "type": {
@@ -11439,12 +11584,12 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "https://webmail.<domainName>."
+            "summary": "URL of the Webmail UI: `https://webmail.<domainName>`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/mailbox.ts",
-            "line": 107
+            "line": 158
           },
           "name": "webmail",
           "type": {
@@ -11946,14 +12091,14 @@
     "@serverlessinbox/mailbox.StackUpdateAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable human-gated CloudFormation ChangeSet operations in the Admin API.",
-        "summary": "Provider for the StackUpdate addon."
+        "remarks": "Pass an instance in `MailboxProps.adminApiAddonProviders`. Nothing is enabled unless it is\nlisted there.",
+        "summary": "Enables human-gated CloudFormation ChangeSet operations in the Admin API: it mounts the stack-update Lambda on `POST /stack-update/{proxy+}` behind the Admin API's authorizer and tells the Admin UI that stack updates are available (`stackUpdate.available` in its config)."
       },
       "fqn": "@serverlessinbox/mailbox.StackUpdateAddonProvider",
       "initializer": {
         "locationInModule": {
           "filename": "src/addons/stack-update/stack-update-addon.ts",
-          "line": 141
+          "line": 148
         },
         "parameters": [
           {
@@ -11970,24 +12115,33 @@
       "kind": "class",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 140
+        "line": 147
       },
       "methods": [
         {
+          "docs": {
+            "summary": "Creates the stack-update addon under `scope`, using the shared config table and audit queue from `ctx` and the artifact resolver from this provider's props."
+          },
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 143
+            "line": 157
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
           "parameters": [
             {
+              "docs": {
+                "summary": "The construct to create the addon under."
+              },
               "name": "scope",
               "type": {
                 "fqn": "constructs.Construct"
               }
             },
             {
+              "docs": {
+                "summary": "The shared tables and queue the addon builds on."
+              },
               "name": "ctx",
               "type": {
                 "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
@@ -12013,25 +12167,26 @@
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "summary": "Props for constructing StackUpdateAddonProvider."
+        "summary": "Settings of the {@link StackUpdateAddonProvider}: which template the stack is updated from and which version it was deployed at."
       },
       "fqn": "@serverlessinbox/mailbox.StackUpdateAddonProviderProps",
       "kind": "interface",
       "locationInModule": {
         "filename": "src/addons/stack-update/stack-update-addon.ts",
-        "line": 122
+        "line": 110
       },
       "name": "StackUpdateAddonProviderProps",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "summary": "Artifact resolver for resolving mailbox-go package."
+            "remarks": "Its registry\nlocation (bucket base and project) also determines where the release pointer and the template\nURL are read from. Pass the resolver your Mailbox uses, so the Lambda ships at the same\nartifact version as the rest of the Mailbox.",
+            "summary": "The artifact resolver the stack-update Lambda's code is resolved through."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 124
+            "line": 117
           },
           "name": "artifactResolver",
           "type": {
@@ -12041,12 +12196,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Template artifact name (e.g., 'mailbox-standard')."
+            "remarks": "It selects the release pointer and the template URL the update flow reads.",
+            "summary": "Name of the template artifact the stack is updated from, for example `'mailbox-standard'`."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 127
+            "line": 123
           },
           "name": "templateName",
           "type": {
@@ -12056,12 +12212,13 @@
         {
           "abstract": true,
           "docs": {
-            "summary": "Template version string (e.g., 'v0.0.53' or '0.0.0-dev')."
+            "remarks": "It is stored as given in an SSM parameter\nthat the stack-update Lambda reads, so it must match the version actually deployed.",
+            "summary": "The template version this stack was deployed from."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 130
+            "line": 129
           },
           "name": "templateVersion",
           "type": {
@@ -12071,13 +12228,13 @@
         {
           "abstract": true,
           "docs": {
-            "remarks": "defaults to 'stable'.",
-            "summary": "Distribution tag (release line);"
+            "default": "'stable'",
+            "summary": "The release line (dist-tag) whose release pointer is read to find the template to update to."
           },
           "immutable": true,
           "locationInModule": {
             "filename": "src/addons/stack-update/stack-update-addon.ts",
-            "line": 133
+            "line": 136
           },
           "name": "distTag",
           "optional": true,
@@ -12091,14 +12248,14 @@
     "@serverlessinbox/mailbox.SupportAddonProvider": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "remarks": "Pass this to Mailbox's adminApiAddonProviders\nto enable support case management and cross-account trust mechanics in the Admin API.",
-        "summary": "Provider for the Support addon."
+        "remarks": "Pass an instance in `MailboxProps.adminApiAddonProviders`. Nothing is enabled unless it is\nlisted there.",
+        "summary": "Enables support case management in the Admin API: the support roles and policies, the support case API mounted on `POST /support/{proxy+}` behind the Admin API's authorizer, and the cross-account trust binding per case."
       },
       "fqn": "@serverlessinbox/mailbox.SupportAddonProvider",
       "initializer": {
         "locationInModule": {
-          "filename": "src/addons/support/support-addon.ts",
-          "line": 180
+          "filename": "src/addons/support/support-addon-provider.ts",
+          "line": 23
         },
         "parameters": [
           {
@@ -12114,25 +12271,34 @@
       ],
       "kind": "class",
       "locationInModule": {
-        "filename": "src/addons/support/support-addon.ts",
-        "line": 179
+        "filename": "src/addons/support/support-addon-provider.ts",
+        "line": 22
       },
       "methods": [
         {
+          "docs": {
+            "summary": "Creates the support addon under `scope`, using the shared config table, audit queue and artifact resolver from `ctx`."
+          },
           "locationInModule": {
-            "filename": "src/addons/support/support-addon.ts",
-            "line": 182
+            "filename": "src/addons/support/support-addon-provider.ts",
+            "line": 32
           },
           "name": "createAdminApiAddons",
           "overrides": "@serverlessinbox/mailbox.IAdminApiAddonProvider",
           "parameters": [
             {
+              "docs": {
+                "summary": "The construct to create the addon under."
+              },
               "name": "scope",
               "type": {
                 "fqn": "constructs.Construct"
               }
             },
             {
+              "docs": {
+                "summary": "The shared tables, queue and artifact resolver the addon builds on."
+              },
               "name": "ctx",
               "type": {
                 "fqn": "@serverlessinbox/mailbox.AdminApiAddonContext"
@@ -12152,31 +12318,32 @@
         }
       ],
       "name": "SupportAddonProvider",
-      "symbolId": "src/addons/support/support-addon:SupportAddonProvider"
+      "symbolId": "src/addons/support/support-addon-provider:SupportAddonProvider"
     },
     "@serverlessinbox/mailbox.SupportAddonProviderProps": {
       "assembly": "@serverlessinbox/mailbox",
       "datatype": true,
       "docs": {
-        "summary": "Props for constructing SupportAddonProvider."
+        "summary": "Settings of the {@link SupportAddonProvider}."
       },
       "fqn": "@serverlessinbox/mailbox.SupportAddonProviderProps",
       "kind": "interface",
       "locationInModule": {
-        "filename": "src/addons/support/support-addon.ts",
-        "line": 170
+        "filename": "src/addons/support/support-addon-provider.ts",
+        "line": 5
       },
       "name": "SupportAddonProviderProps",
       "properties": [
         {
           "abstract": true,
           "docs": {
-            "summary": "Support feature mode."
+            "remarks": "With `SupportMode.DISABLED` nothing is created and\nno support routes are mounted. A CloudFormation parameter token defers the decision to deploy\ntime (see {@link SupportMode}).",
+            "summary": "Whether the support feature is provisioned."
           },
           "immutable": true,
           "locationInModule": {
-            "filename": "src/addons/support/support-addon.ts",
-            "line": 172
+            "filename": "src/addons/support/support-addon-provider.ts",
+            "line": 11
           },
           "name": "mode",
           "type": {
@@ -12184,29 +12351,31 @@
           }
         }
       ],
-      "symbolId": "src/addons/support/support-addon:SupportAddonProviderProps"
+      "symbolId": "src/addons/support/support-addon-provider:SupportAddonProviderProps"
     },
     "@serverlessinbox/mailbox.SupportMode": {
       "assembly": "@serverlessinbox/mailbox",
       "docs": {
-        "summary": "Support feature mode."
+        "remarks": "Pass a literal value to decide at synth time. Pass a CloudFormation parameter token to decide at\ndeploy time: the support resources are then always in the template, behind a condition on the\nparameter, and a deployer can switch the feature on or off without re-synthesizing.",
+        "summary": "Whether the support feature is provisioned."
       },
       "fqn": "@serverlessinbox/mailbox.SupportMode",
       "kind": "enum",
       "locationInModule": {
         "filename": "src/addons/support/support-addon.ts",
-        "line": 24
+        "line": 28
       },
       "members": [
         {
           "docs": {
-            "summary": "Support feature is enabled."
+            "summary": "Provisions the support roles, the support case API and the hourly role-assumption collector."
           },
           "name": "ENABLED"
         },
         {
           "docs": {
-            "summary": "Support feature is disabled."
+            "remarks": "This holds only for the literal\nvalue; an unresolved parameter token is always treated as possibly enabled.",
+            "summary": "Provisions nothing: no roles, no Lambdas and no routes."
           },
           "name": "DISABLED"
         }
@@ -12216,5 +12385,5 @@
     }
   },
   "version": "0.0.0",
-  "fingerprint": "o3/uMqI3rVi3NjZkoW84zPJUJYNoUoMUkblFFHjjZCo="
+  "fingerprint": "FL4ByGn0u2xy4S++I6zVFE3xxboAOaZS399o4LZKbUs="
 }

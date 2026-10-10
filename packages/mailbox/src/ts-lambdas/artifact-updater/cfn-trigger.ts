@@ -4,7 +4,7 @@ import type { UpdaterRuntime } from './updater-runtime';
 import { runUpdateCycle } from './update-cycle';
 
 /**
- * CloudFormation custom resource handler (stack-self-update, Phase B).
+ * CloudFormation custom resource handler for the deploy-end trigger of the artifact updater.
  *
  * Synchronously runs the artifact update cycle before responding to CloudFormation.
  * The serviceTimeout configured in the CDK construct (600s) covers this synchronous cost.
@@ -15,10 +15,8 @@ import { runUpdateCycle } from './update-cycle';
  * with full failure details captured in CloudWatch.
  *
  * On Delete, the handler returns immediately without running the update cycle and does no
- * other work. This resource's construct id was bumped (see TrackedUpdateTriggers in
- * auto-updater.ts) to force CloudFormation to create the new resource and then delete the old
- * one on the next deploy; running a full update cycle on that teardown Delete would be a
- * spurious, redundant second cycle, so it's skipped entirely.
+ * other work. CloudFormation also sends Delete when it removes or replaces the resource, a
+ * teardown after which a full update cycle would only be a redundant second cycle.
  *
  * A configuration error on Create/Update fails the custom resource (unlike an update-cycle
  * failure, which is swallowed). Delete still returns SUCCESS so the stack can be deleted.
