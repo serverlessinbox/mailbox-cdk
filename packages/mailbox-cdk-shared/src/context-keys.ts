@@ -6,10 +6,10 @@
  * IAM tag prefix — two separate conventions, not an inconsistency.
  */
 
-/** Artifact bucket/package metadata (`{ bucketBase?, packages? }`) — see `PinnedResolver.loadFromArtifactMetadata`. */
+/** Artifact bucket/package metadata (`{ bucketBase?, packages? }`) — see `MailboxArtifactResolverFactory.fromContext`. */
 export const ARTIFACTS_CONTEXT_KEY = 'serverlessinbox:artifacts';
 
-/** S3 object-version map for pinned artifact resolution — see `PinnedResolver.loadFromArtifactMetadata`. */
+/** S3 object-version map for pinned artifact resolution — see `MailboxArtifactResolverFactory.fromContext`. */
 export const ARTIFACT_VERSIONS_CONTEXT_KEY = 'serverlessinbox:artifact_versions';
 
 /** Deployment mechanism ('cdk' | 'cfn' | 'marketplace') — read by `Mailbox`. */

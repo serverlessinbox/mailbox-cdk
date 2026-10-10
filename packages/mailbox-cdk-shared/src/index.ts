@@ -7,13 +7,12 @@ export {
   VENDOR_ACCOUNT_IDS_CONTEXT_KEY,
 } from './context-keys';
 
-// Artifact engine (D3 — replaces old ICdkArtifactResolver/CdkArtifactResolver)
-export { PinnedResolver, CdkArtifactEngine } from './artifact-engine';
+// Artifact resolution: the resolver factory and the loaders of what a package ships
+export { MailboxArtifactResolverFactory } from './mailbox-artifact-resolver-factory';
 export { loadEmbeddedRegistryRecord } from './embedded-registry-record';
 export { loadEmbeddedArtifactVersions } from './embedded-artifact-versions';
 export type { EmbeddedArtifactVersions } from './embedded-artifact-versions';
 export type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
-export type { IArtifactResolver, ICdkArtifactEngine, ResolvedArtifact, VersionMap, VersionMapEntry } from './artifact-engine';
 
 // CDK aspects & patterns
 export { GateOnConditionAspect } from './gate-on-condition-aspect';

@@ -6,9 +6,10 @@ import {
 } from 'aws-cdk-lib/aws-lambda';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { ArtifactCode } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { applyArtifactTags } from './apply-artifact-tags';
 import { PipelineLogGroup } from './pipeline-log-groups';
-import type { ICdkArtifactEngine } from './artifact-engine';
 import type { Pipeline } from './pipelines';
 
 export interface GoLambda2Props extends FunctionOptions {
@@ -20,7 +21,7 @@ export interface GoLambda2Props extends FunctionOptions {
   /**
    * Code provider for obtaining lambda code asset
    */
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /**
    * The pipeline this Lambda belongs to. Selects the shared CloudWatch log group it writes to.
@@ -42,7 +43,7 @@ export class GoLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: GoLambda2Props) {
     const { lambdaId, artifactResolver, pipeline, serviceName, environment: callerEnvironment, ...restProps } = props;
 
-    const code = artifactResolver.getCode('mailbox-go', `lambdas/${lambdaId}.zip`);
+    const code = new ArtifactCode(scope, artifactResolver, 'mailbox-go', `lambdas/${lambdaId}.zip`);
 
     const logGroup = props.logGroup ?? PipelineLogGroup.getOrCreate(scope, pipeline);
 

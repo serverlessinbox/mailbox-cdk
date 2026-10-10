@@ -6,7 +6,8 @@ import {
 } from 'aws-cdk-lib/aws-lambda';
 import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { ICdkArtifactEngine } from './artifact-engine';
+import { ArtifactCode } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { applyArtifactTags } from './apply-artifact-tags';
 import { PipelineLogGroup } from './pipeline-log-groups';
 import type { Pipeline } from './pipelines';
@@ -20,11 +21,11 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
    * Artifact resolver for obtaining lambda code from S3
    */
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 
   /**
    * Package name where the lambda artifact is published (e.g. "mailbox-cdk-shared").
-   * Must already be registered on the artifact resolver.
+   * The artifact resolver must hold a pin for it.
    */
   readonly packageName: string;
 
@@ -85,7 +86,7 @@ export class TypeScriptLambda extends LambdaFunction {
       ...lambdaProps
     } = props;
 
-    const code = artifactResolver.getCode(packageName, `lambdas/${lambdaId}.zip`);
+    const code = new ArtifactCode(scope, artifactResolver, packageName, `lambdas/${lambdaId}.zip`);
 
     const logGroup = props.logGroup ?? PipelineLogGroup.getOrCreate(scope, pipeline);
 
