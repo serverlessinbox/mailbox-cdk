@@ -1,10 +1,10 @@
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from '../ts-lambda';
-import type { ICdkArtifactEngine } from '../artifact-engine';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface DeployerStarterLambdaProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 
   /** ARN of the state machine to start. */
   readonly stateMachineArn: string;
@@ -20,10 +20,6 @@ export interface DeployerStarterLambdaProps {
  */
 export class DeployerStarterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DeployerStarterLambdaProps) {
-    // Must register the package BEFORE calling super(), which will try to resolve.
-    // Idempotent (Set-backed).
-    props.artifactResolver.registerPackages(['mailbox-cdk-shared']);
-
     super(scope, id, {
       lambdaId: 'stack-deployer',
       pipeline: 'infra',

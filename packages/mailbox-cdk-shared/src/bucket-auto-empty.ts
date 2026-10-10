@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { Duration, CustomResource, Stack } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import type { ICdkArtifactEngine } from './artifact-engine';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from './ts-lambda';
 import { getOrCreateSharedGroup } from './shared-group';
 
@@ -24,7 +24,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
    * Get-or-create the one shared bucket-auto-empty Lambda for this Stack.
    * The singleton is placed under a "shared" group construct at stack root.
    */
-  static getOrCreate(scope: Construct, artifactResolver: ICdkArtifactEngine): BucketAutoEmpty {
+  static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): BucketAutoEmpty {
     const stack = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
     const existing = sharedGroup.node.tryFindChild('bucket-auto-empty');
@@ -34,11 +34,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
     return new BucketAutoEmpty(sharedGroup, 'bucket-auto-empty', artifactResolver);
   }
 
-  private constructor(scope: Construct, id: string, artifactResolver: ICdkArtifactEngine) {
-    // Must register the package BEFORE calling super(), which will try to resolve.
-    // Idempotent (Set-backed).
-    artifactResolver.registerPackages(['mailbox-cdk-shared']);
-
+  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
     super(scope, id, {
       lambdaId: 'bucket-auto-empty',
       pipeline: 'infra',

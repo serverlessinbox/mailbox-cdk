@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { Stack, RemovalPolicy } from 'aws-cdk-lib';
 import { IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import type { ICdkArtifactEngine } from './artifact-engine';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { BucketAutoEmpty } from './bucket-auto-empty';
 import { getOrCreateSharedGroup } from './shared-group';
 import { StackNamedBucket } from './named-bucket';
@@ -25,7 +25,7 @@ export class PublicStaticAssetsBucket {
    * Returns it as IBucket (no construct instance type-check needed).
    * BucketAutoEmpty is wired once, centrally, inside this method.
    */
-  static getOrCreate(scope: Construct, artifactResolver: ICdkArtifactEngine): IBucket {
+  static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): IBucket {
     const stack = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
 

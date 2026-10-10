@@ -2,12 +2,12 @@ import { Aws, Fn, Stack, ArnFormat } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import type { ICdkArtifactEngine } from '../artifact-engine';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DeployerStarterLambda } from './deployer-starter-lambda';
 import { PollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
 
 export interface DeployerInfraProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /**
    * Prefix for the Step Functions state machine name, e.g. 'mailbox-data-deployer-'.
    * The stack GUID is appended to keep the name unique and under 80 chars.

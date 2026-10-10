@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import type { ICdkArtifactEngine } from './artifact-engine';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from './ts-lambda';
 import type { StaticContentSourceSpec } from './static-content-source-spec';
 import { getOrCreateSharedGroup } from './shared-group';
@@ -48,7 +48,7 @@ export abstract class StaticContentSource {
 
   /** A zip-unpack-to-prefix deployment — e.g. a UI bundle. `sourceBucketName` is a plain bucket-name
    *  string, not `IBucket`: the real source (an artifact-registry bucket resolved via
-   *  `ICdkArtifactEngine.resolve()`) has no `IBucket` construct reference in this stack at all — it's
+   *  `IArtifactResolver.resolve()`) has no `IBucket` construct reference in this stack at all — it's
    *  an external bucket, always addressed by name/key. Resulting keys aren't known at synth time, so
    *  IAM is necessarily scoped to a prefix wildcard, not exact keys — the one case where a wildcard is
    *  correct, not merely convenient. */
@@ -103,7 +103,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
    * Get-or-create the one shared content-deployer Lambda for this Stack.
    * The singleton is placed under a "shared" group construct at stack root.
    */
-  static getOrCreate(scope: Construct, artifactResolver: ICdkArtifactEngine): StaticContentDeployer {
+  static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): StaticContentDeployer {
     const stack = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
     const existing = sharedGroup.node.tryFindChild('content-deployer');
@@ -113,12 +113,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
     return new StaticContentDeployer(sharedGroup, 'content-deployer', artifactResolver);
   }
 
-  private constructor(scope: Construct, id: string, artifactResolver: ICdkArtifactEngine) {
-    // Whichever caller's resolver wins the race, it MUST know about 'mailbox-cdk-shared' —
-    // this construct's own Lambda lives there regardless of who constructed the singleton first.
-    // Idempotent (Set-backed). Must register BEFORE calling super(), which will try to resolve.
-    artifactResolver.registerPackages(['mailbox-cdk-shared']);
-
+  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
     super(scope, id, {
       lambdaId: 'content-deployer', // artifact identifier in mailbox-cdk-shared package
       pipeline: 'infra',
