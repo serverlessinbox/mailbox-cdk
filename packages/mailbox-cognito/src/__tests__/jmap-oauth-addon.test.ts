@@ -25,8 +25,9 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
+import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 
@@ -37,10 +38,10 @@ function setUpArtifactContext(app: App): void {
   app.node.setContext('serverlessinbox:artifacts', {
     bucketBase: 'test-artifacts',
     packages: {
-      'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
-      'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
-      'mailbox': { kind: 'release', version: '0.0.1-test' },
-      'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
+      'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
+      'mailbox-cdk': { zone: 'regional', version: '0.0.1-test' },
+      'mailbox': { zone: 'regional', version: '0.0.1-test' },
+      'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
     },
   });
   app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -75,8 +76,7 @@ function buildHarness(
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
-  resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox']);
+  const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
 
   const mode = typeof dynamicClientRegistration === 'function'
     ? dynamicClientRegistration(stack)

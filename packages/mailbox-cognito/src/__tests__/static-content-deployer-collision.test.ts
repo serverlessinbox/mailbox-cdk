@@ -22,8 +22,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { PinnedResolver, CdkArtifactEngine, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
+import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
@@ -38,14 +39,14 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
 
   beforeEach(() => {
     app = new App();
-    // Set up CDK context with artifact metadata so PinnedResolver can load it
+    // Set up CDK context with artifact metadata so the resolver factory can load it
     app.node.setContext('serverlessinbox:artifacts', {
       bucketBase: 'test-artifacts',
       packages: {
-        'mailbox-cognito': { kind: 'release', version: '0.0.1-test' },
-        'mailbox-cdk': { kind: 'release', version: '0.0.1-test' },
-        'mailbox': { kind: 'release', version: '0.0.1-test' },
-        'mailbox-cdk-shared': { kind: 'release', version: '0.0.1-test' },
+        'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
+        'mailbox-cdk': { zone: 'regional', version: '0.0.1-test' },
+        'mailbox': { zone: 'regional', version: '0.0.1-test' },
+        'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
       },
     });
     app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -62,8 +63,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // This internally creates a JmapOAuthAddon that:
       // 1. Calls StaticContentDeployer.getOrCreate(this, artifactResolver)
       // 2. Creates CustomResources for .well-known/openid-configuration and .well-known/oauth-protected-resource
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, loadMailboxCognitoRegistryRecord());
-      resolver.registerPackages(['mailbox-cognito', 'mailbox-cdk', 'mailbox', 'mailbox-cdk-shared']);
+      const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
 
       const userPool = new MailboxUserPool(stack, 'user-pool-with-oauth', {
         domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth-domain' },
@@ -97,14 +97,12 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // This is what prevents the type-collision bug from manifesting.
 
       const registryRecord = loadMailboxCognitoRegistryRecord();
-      const resolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
-      resolver.registerPackages(['mailbox-cdk', 'mailbox-cdk-shared']);
-      const testEngine = new CdkArtifactEngine(stack, resolver);
+      const resolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, loadMailboxCognitoArtifactVersions());
 
       // Call getOrCreate twice from different constructs/scopes
       // Both should resolve to the same singleton on the stack
-      const deployer1 = StaticContentDeployer.getOrCreate(stack, testEngine);
-      const deployer2 = StaticContentDeployer.getOrCreate(stack, testEngine);
+      const deployer1 = StaticContentDeployer.getOrCreate(stack, resolver);
+      const deployer2 = StaticContentDeployer.getOrCreate(stack, resolver);
 
       // CRITICAL: Both should be the exact same instance (JavaScript object identity)
       // This verifies the singleton pattern is working correctly

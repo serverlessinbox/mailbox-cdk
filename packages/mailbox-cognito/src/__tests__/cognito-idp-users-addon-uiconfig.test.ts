@@ -10,13 +10,12 @@
 import { App, Stack, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   let stack: Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let auditEventsQueue: IAuditEventsQueue;
   const mockPoolConfig = {
     userPoolId: 'us-west-2_abcdefgh',
@@ -50,15 +49,17 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
     });
 
     // Set up artifact resolver
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
-      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
-      'mailbox-cognito': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go', 'mailbox-cdk-shared', 'mailbox-cognito']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     // Mock audit events queue
     auditEventsQueue = {
