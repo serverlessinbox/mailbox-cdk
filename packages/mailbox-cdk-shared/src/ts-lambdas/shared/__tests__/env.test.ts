@@ -191,16 +191,12 @@ describe('env helpers', () => {
       });
 
       it('returns whenInvalid when variable is absent and records problem', () => {
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => '',
-          report: () => {},
-          error: () => undefined,
-        };
+        delete process.env.MISSING;
 
-        const result = mandatoryAs(loader, 'MISSING', positiveInt, -1);
+        const { config, error } = tryLoad((l: Loader) => mandatoryAs(l, 'MISSING', positiveInt, -1));
 
-        expect(result).toBe(-1);
+        expect(config).toBe(-1);
+        expect(error).toBe('MISSING is not set');
       });
     });
 

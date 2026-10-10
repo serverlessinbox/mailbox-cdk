@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { Writable } from 'node:stream';
@@ -29,7 +29,24 @@ describe('BakeArtifactVersionsCommand', () => {
     );
   });
 
+  /**
+   * The command runs with an empty directory as its working directory, so a `--root` that is
+   * ignored in favour of the current directory finds no packages to bake and fails the run rather
+   * than overwriting the real `artifact-versions.json` files of this repository's packages.
+   */
   describe('execute', () => {
+    const originalCwd = process.cwd();
+    let emptyCwd: string;
+
+    beforeEach(() => {
+      emptyCwd = mkdtempSync(path.join(tmpdir(), 'bake-artifact-versions-cwd-'));
+      process.chdir(emptyCwd);
+    });
+
+    afterEach(() => {
+      process.chdir(originalCwd);
+    });
+
     it('bakes both packages under --root from --mailbox-pins', async () => {
       const root = mkdtempSync(path.join(tmpdir(), 'bake-artifact-versions-command-'));
       for (const name of ['mailbox', 'mailbox-cognito', 'mailbox-cdk-shared']) {
@@ -52,6 +69,7 @@ describe('BakeArtifactVersionsCommand', () => {
       );
 
       expect(exitCode).toBe(0);
+      expect(readdirSync(emptyCwd)).toEqual([]);
       expect(JSON.parse(readFileSync(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'), 'utf8'))).toEqual({
         'mailbox-go': { version: '7.8.9', zone: 'regional' },
         'mailbox-cdk': { version: '4.5.6', zone: 'regional' },
