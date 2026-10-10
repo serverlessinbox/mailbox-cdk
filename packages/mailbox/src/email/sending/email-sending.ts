@@ -3,7 +3,7 @@ import { EmailSenderLambda } from '../../lambdas';
 import type { IDataTable } from '../../data/data-tables';
 import type { IDataBlobStore } from '../../data/data-blob-store';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import { EmailSendingQueue, type IEmailSendingQueue } from './email-sending-queue';
 
@@ -12,7 +12,7 @@ export interface EmailSendingProps {
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
   readonly blobStore: IDataBlobStore;
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly sesConfigSetName: string;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */

@@ -17,7 +17,7 @@ import type { IDataTable } from '../../data/data-tables';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
 import { IMailboxAuthProvider } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -45,7 +45,7 @@ export interface JMapApiProps {
   readonly webSocketUrl?: string;
   readonly webSocketCapabilityDomain?: string;
 
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
 
   /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */

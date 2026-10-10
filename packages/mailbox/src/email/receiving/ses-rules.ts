@@ -4,13 +4,13 @@ import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
 import { Construct } from 'constructs';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
 
 export interface EmailDelivery {
   readonly blobStore: IBucket;
   readonly bucketPrefix: string;
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
   readonly queueProps?: Partial<BaseQueueProps>;
 }

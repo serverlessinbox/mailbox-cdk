@@ -13,7 +13,7 @@ import { Aws } from 'aws-cdk-lib';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { McpApiLambda } from '../../lambdas/mcp-api';
 
 export interface McpApiProps {
@@ -23,7 +23,7 @@ export interface McpApiProps {
   domainName: string;
   scopeMap: Record<string, string[]>;
   /** Artifact resolver for Lambda code resolution. */
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 }
 
 export class McpApi extends Construct {

@@ -7,10 +7,10 @@ import {
   rootStackRequestTagCondition,
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface MailboxEdgeDeployerWorkerProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly stack: Stack;
   /** Deployed CloudFormation stack name of the edge stack (`${AWS::StackName}-edge`). */
   readonly edgeStackName: string;

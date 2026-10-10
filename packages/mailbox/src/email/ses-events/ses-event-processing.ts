@@ -4,7 +4,7 @@ import type { IDataTable } from '../../data/data-tables';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
@@ -18,7 +18,7 @@ export interface SESEventProcessingProps {
   readonly configTable: IDataTable;
   readonly blobStore: IDataBlobStore;
   readonly auditEventsQueue: IAuditEventsQueue;
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;

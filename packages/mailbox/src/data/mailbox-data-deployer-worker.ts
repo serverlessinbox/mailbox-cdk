@@ -2,10 +2,10 @@ import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { DeployerWorkerLambda, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface MailboxDataDeployerWorkerProps {
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly stack: Stack;
   readonly dataStackArn: string;
   readonly dataStackName: string;

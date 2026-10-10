@@ -17,7 +17,7 @@ import {
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import type { IDataTable } from '../../data/data-tables';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -67,7 +67,7 @@ export interface WebSocketPushProps {
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
   readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly maxSubscriptions?: number;
 
   /** Optional custom domain name (e.g. ws.example.com). When set, a domain mapping is created. */

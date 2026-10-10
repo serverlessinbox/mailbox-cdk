@@ -14,7 +14,7 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
@@ -36,7 +36,7 @@ export interface AdminApiProps {
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly allowedOrigins?: string[];
-  readonly artifactResolver: ICdkArtifactEngine;
+  readonly artifactResolver: IArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
   readonly identityProvisioner: IIdentityProvisioner;
 
