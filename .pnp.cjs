@@ -5930,7 +5930,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
-          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.2.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
@@ -5988,7 +5988,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
-          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.2.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
@@ -6078,7 +6078,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-route-53", "npm:3.1132.0"],\
           ["@aws-sdk/client-s3", "npm:3.1132.0"],\
           ["@aws-sdk/client-sfn", "npm:3.1132.0"],\
-          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.2.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.2.0"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
@@ -6109,7 +6109,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-lambda", "npm:3.1132.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1132.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
-          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.2.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
@@ -6155,7 +6155,7 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/client-lambda", "npm:3.1132.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1132.0"],\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
-          ["@serverlessinbox/artifact-registry", "npm:0.1.3"],\
+          ["@serverlessinbox/artifact-registry", "npm:0.2.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.2.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
           ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
