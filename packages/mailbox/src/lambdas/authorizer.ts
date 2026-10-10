@@ -1,5 +1,5 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -10,7 +10,7 @@ import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-sto
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: IAuthKeyStoreTable;
   configTable: IDataTable;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
   authPolicyName?: AuthPolicyName;

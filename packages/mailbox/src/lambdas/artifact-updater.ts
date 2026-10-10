@@ -1,11 +1,11 @@
 import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface ArtifactUpdaterLambdaProps {
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /** Dist-tag to follow ('stable', 'beta', etc.). */
   distTag: string;

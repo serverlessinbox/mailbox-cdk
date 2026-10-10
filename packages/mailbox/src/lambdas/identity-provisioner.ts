@@ -1,5 +1,5 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
 import { Duration } from 'aws-cdk-lib';
@@ -27,7 +27,7 @@ export interface IdentityProvisionerLambdaProps {
   itemTable: IDataTable;
   changelogTable: IDataTable;
   auditEventsQueue: IAuditEventsQueue;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
   readonly adminUIURL: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */

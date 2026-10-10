@@ -1,5 +1,5 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
@@ -19,7 +19,7 @@ export interface AdminApiLambdaProps {
   blobStore: IDataBlobStore;
   emailSubmissionQueue: IEmailSendingQueue;
   auditEventsQueue: IAuditEventsQueue;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
   identityProvisioner: IIdentityProvisioner;
   /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
   sesRuleSetName: string;

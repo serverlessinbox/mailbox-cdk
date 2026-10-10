@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import type { IDataTable } from '../data/data-tables';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -13,7 +13,7 @@ export type SesReceivingMode = 'off' | 'on' | 'forced';
 export interface BootstrapLambdaProps {
   configTable: IDataTable;
   authKeyStoreTable: IAuthKeyStoreTable;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
   domain: string;
   sesRuleSet: IReceiptRuleSet;
   sesReceivingMode?: SesReceivingMode;

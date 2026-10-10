@@ -3,11 +3,11 @@ import type { IDataTable } from '../data/data-tables';
 import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface LicenseRefresherLambdaProps {
   configTable: IDataTable;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
   coreDomain: string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];

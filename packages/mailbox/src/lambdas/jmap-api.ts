@@ -1,5 +1,5 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
 import { Duration } from 'aws-cdk-lib';
@@ -30,7 +30,7 @@ export interface ApiHandlerLambdaProps {
   auditEventsQueue: IAuditEventsQueue;
   cdnHost: string;
   apiBaseUrl: string;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
   identityProvisioner: IIdentityProvisioner;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;

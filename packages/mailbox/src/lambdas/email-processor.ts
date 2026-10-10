@@ -3,7 +3,7 @@ import type { IDataBlobStore } from '../data/data-blob-store';
 import { GoLambda } from "@serverlessinbox/mailbox-cdk-shared";
 import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs"
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IWebSocketBroadcastPublisher } from "../api/websocket/websocket";
 import type { IEmailProcessingQueueConsumer } from "../email/receiving/email-processing-queue";
 
@@ -13,7 +13,7 @@ export interface EmailProcessorLambdaProps {
   changelogTable: IDataTable;
   blobStore: IDataBlobStore;
   emailProcessingQueue: IEmailProcessingQueueConsumer;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 }
 
 /**

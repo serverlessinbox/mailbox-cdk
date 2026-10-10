@@ -1,5 +1,5 @@
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Construct } from 'constructs';
 import type { IDataTable } from '../data/data-tables';
 import { Duration } from 'aws-cdk-lib';
@@ -12,7 +12,7 @@ export interface IdpTokenExchangeLambdaProps {
   auditEventsQueue: IAuditEventsQueue;
   authPolicyName?: AuthPolicyName;
   oauthClientName?: OAuthClientName;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 
   /** SERVICE_NAME for this physical function; distinguishes it from other IdpTokenExchangeLambda instances sharing the 'idp-token-exchange' lambdaId. */
   serviceName: string;

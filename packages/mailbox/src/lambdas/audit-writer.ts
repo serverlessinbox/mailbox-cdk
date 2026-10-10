@@ -1,6 +1,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import { Construct } from 'constructs';
 import type { IAuditEventsQueueConsumer } from '../features/audit-writing/audit-events-queue';
@@ -8,7 +8,7 @@ import type { IAuditEventsQueueConsumer } from '../features/audit-writing/audit-
 export interface AuditWriterLambdaProps {
   auditLogTable: IDataTable;
   auditEventsQueue: IAuditEventsQueueConsumer;
-  artifactResolver: ICdkArtifactEngine;
+  artifactResolver: IArtifactResolver;
 }
 
 /**
