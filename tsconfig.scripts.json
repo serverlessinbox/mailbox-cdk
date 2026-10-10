@@ -8,6 +8,7 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "types": ["node", "jest"],
     "outDir": ".ts-scripts-out"
   },
   "include": ["scripts/**/*.ts"]

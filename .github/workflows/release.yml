@@ -42,7 +42,9 @@ jobs:
           fi
       - run: yarn gitversion bump
       - name: Resolve component artifact versions
-        run: yarn resolve-artifacts
+        run: yarn resolve-artifacts --output "$RUNNER_TEMP/mailbox-external-pins.json"
+      - name: Bake artifact versions
+        run: yarn bake-artifact-versions --mailbox-pins "$RUNNER_TEMP/mailbox-external-pins.json"
       - name: Build edge stack
         run: yarn workspace @serverlessinbox/mailbox build:edge-stack
       - name: Build data stack
