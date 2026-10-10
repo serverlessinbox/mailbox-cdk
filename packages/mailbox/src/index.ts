@@ -61,10 +61,11 @@ export type { IIdentityProvisioner } from './lambdas/identity-provisioner';
 export type { IDataTable } from './data/data-tables';
 export { StackUpdateAddonProvider } from './addons/stack-update/stack-update-addon';
 export type { StackUpdateAddonProviderProps } from './addons/stack-update/stack-update-addon';
-export { SupportAddonProvider, SupportMode } from './addons/support/support-addon';
-export type { SupportAddonProviderProps } from './addons/support/support-addon';
+export { SupportMode } from './addons/support/support-addon';
+export { SupportAddonProvider } from './addons/support/support-addon-provider';
+export type { SupportAddonProviderProps } from './addons/support/support-addon-provider';
 
-// Utils — tagging & correlation (moved to shared package; re-exported from mailbox-cdk-shared)
+// Utils — tagging & correlation (re-exported from mailbox-cdk-shared)
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
@@ -88,7 +89,7 @@ export type {
   MailboxKmsConfig,
 } from './utils/kms';
 
-// Artifact resolution (stack-self-update subplan #3, Phase A, D2/D3 — jsii-exported types)
+// Artifact resolution — the auto-updating resolver and its settings
 export { AutoUpdater } from './artifacts/resolvers';
 export type { AutoUpdaterProps, Granularity } from './artifacts/resolvers';
 

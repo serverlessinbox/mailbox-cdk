@@ -12,7 +12,7 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+import { IAdminApiAddon } from '../../api/addons';
 import { SupportApiLambda } from '../../lambdas/support-api';
 import { SupportRoleAssumptionCollectorLambda } from '../../lambdas/support-role-assumption-collector';
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
@@ -71,15 +71,15 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
   constructor(scope: Construct, id: string, props: SupportAddonProps) {
     super(scope, id);
 
-    this.uiConfig = {
-      support: {
-        available: true,
-      },
-    };
-
     // A literal DISABLED is the only value that fully disables support access at synth time —
     // an unresolved CFN-parameter token falls through to the gated path.
     const fullyDisabled = props.mode === SupportMode.DISABLED && !cdk.Token.isUnresolved(props.mode);
+
+    this.uiConfig = {
+      support: {
+        available: !fullyDisabled,
+      },
+    };
 
     if (!fullyDisabled) {
       const condition = new cdk.CfnCondition(this, 'IsEnabled', {
@@ -145,45 +145,5 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       integration: new HttpLambdaIntegration('support', this.apiHandler),
       authorizer,
     });
-  }
-}
-
-/** Settings of the {@link SupportAddonProvider}. */
-export interface SupportAddonProviderProps {
-  /**
-   * Whether the support feature is provisioned. With `SupportMode.DISABLED` nothing is created and
-   * no support routes are mounted. A CloudFormation parameter token defers the decision to deploy
-   * time (see {@link SupportMode}).
-   */
-  readonly mode: SupportMode;
-}
-
-/**
- * Enables support case management in the Admin API: the support roles and policies, the support
- * case API mounted on `POST /support/{proxy+}` behind the Admin API's authorizer, and the
- * cross-account trust binding per case.
- *
- * Pass an instance in `MailboxProps.adminApiAddonProviders`. Nothing is enabled unless it is
- * listed there.
- */
-export class SupportAddonProvider implements IAdminApiAddonProvider {
-  constructor(private readonly props: SupportAddonProviderProps) {}
-
-  /**
-   * Creates the support addon under `scope`, using the shared config table, audit queue and
-   * artifact resolver from `ctx`.
-   *
-   * @param scope The construct to create the addon under.
-   * @param ctx The shared tables, queue and artifact resolver the addon builds on.
-   */
-  createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
-    return [
-      new SupportAddon(scope, 'support-addon', {
-        mode: this.props.mode,
-        artifactResolver: ctx.artifactResolver,
-        configTable: ctx.configTable,
-        auditEventsQueue: ctx.auditEventsQueue,
-      }),
-    ];
   }
 }
