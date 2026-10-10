@@ -32,6 +32,14 @@ export type UiBundleSource = {
   objectPath: string;
 };
 
+/** Runtime config of a UI, serialized as-is into the `config.json` that the UI fetches. */
+export interface MailboxUiConfig {
+  /** Base URL of the UI's backend API. */
+  apiUrl?: string;
+  /** Further keys are written to `config.json` unchanged. */
+  [key: string]: unknown;
+}
+
 /** Inputs of `MailboxUi`: the CloudFront domain, the token-exchange wiring behind `/auth/*`, and the optional static content to deploy. */
 export interface MailboxUiProps {
   domainName: string;
@@ -62,12 +70,7 @@ export interface MailboxUiProps {
   uiBundle?: UiBundleSource;
 
   /** Optional UI runtime config written to `s3://<ui-bucket>/config/config.json` via custom resource. */
-  uiConfig?: {
-    /** Base URL of the UI's backend API. */
-    apiUrl?: string;
-    /** Further keys are written to `config.json` unchanged. */
-    [key: string]: unknown;
-  };
+  uiConfig?: MailboxUiConfig;
 
   readonly artifactResolver: IArtifactResolver;
 }
@@ -153,8 +156,6 @@ export class MailboxUi extends Construct {
         },
       ],
     });
-
-    Tags.of(this.distribution).add(ServerlessInboxTagKeys.rootStack, Aws.STACK_NAME);
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.
