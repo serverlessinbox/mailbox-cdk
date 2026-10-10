@@ -53,12 +53,12 @@ describe('Mailbox stack pipeline log groups', () => {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-            'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
-            'mailbox-cdk-edge': { kind: 'release', version: '1.0.0' },
-            'mailbox-admin-ui': { kind: 'release', version: '1.0.0' },
-            'mailbox-webmail-ui': { kind: 'release', version: '1.0.0' },
+            'mailbox-go': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
+            'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+            'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
           },
         },
       },

@@ -12,8 +12,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
 import { MailboxDataStack } from '../data/mailbox-data-stack';
 import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import {
@@ -285,12 +285,14 @@ describe('MailboxDataStack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const packages: Record<string, ArtifactVersionsEntry> = {
-        'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
+      const packages: Record<string, ArtifactPin> = {
+        'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       };
-      const pinnedResolver = new PinnedResolver(testStack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-      pinnedResolver.registerPackages(['mailbox-cdk-shared']);
-      const artifactResolver = new CdkArtifactEngine(testStack, pinnedResolver);
+      const artifactResolver = new PinnedArtifactResolver({
+        packages,
+        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        deploymentRegion: testStack.region,
+      });
 
       new MailboxDataDeployerWorker(testStack, 'worker', {
         artifactResolver,

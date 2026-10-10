@@ -12,9 +12,9 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
-import { PinnedResolver, CdkArtifactEngine, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { BootstrapLambda } from '../lambdas/bootstrap';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { DataTable, type IDataTable } from '../data/data-tables';
@@ -22,7 +22,7 @@ import { DataTable, type IDataTable } from '../data/data-tables';
 describe('BootstrapLambda SES rule set wiring', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let configTable: IDataTable;
   let authKeyStoreTable: IAuthKeyStoreTable;
   let ruleSet: ses.IReceiptRuleSet;
@@ -44,13 +44,15 @@ describe('BootstrapLambda SES rule set wiring', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },

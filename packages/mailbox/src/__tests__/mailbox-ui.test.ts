@@ -14,9 +14,8 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxUi } from '../ui/mailbox-ui';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { OAUTH_CLIENT_ADMIN_UI, AUTH_POLICY_ADMIN_API } from '../auth/types';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import {
@@ -30,7 +29,7 @@ import { DataTable, type IDataTable } from '../data/data-tables';
 describe('MailboxUi.addUiDeployment IAM Policies', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let configTable: IDataTable;
   let auditEventsQueue: IAuditEventsQueue;
 
@@ -53,17 +52,16 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
     });
 
     // Create a pinned resolver with required packages
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
-      'mailbox-cdk-shared': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go', 'mailbox-cdk-shared']);
-
-    // Wrap in CdkArtifactEngine for the full interface
-    const engine = new CdkArtifactEngine(stack, pinnedResolver);
-    artifactResolver = engine;
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     // Create a minimal config table for the UI
     configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {

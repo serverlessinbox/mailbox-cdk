@@ -21,9 +21,8 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { AdminApi } from '../api/admin/admin-api';
 import { JMapApi } from '../api/jmap/jmap-api';
 import { McpApi } from '../api/mcp/mcp-api';
-import { PinnedResolver, CdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IMailboxAuthProvider } from '../auth/types';
 import { Permission } from '../auth/jmap-scopes';
 import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
@@ -118,7 +117,7 @@ function findRouteResources(
 describe('API Authorizer Wiring', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let configTable: IDataTable;
   let itemTable: IDataTable;
   let changelogTable: IDataTable;
@@ -150,14 +149,15 @@ describe('API Authorizer Wiring', () => {
     });
 
     // Create artifact resolver
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
-      'mailbox-go': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go']);
-    const engine = new CdkArtifactEngine(stack, pinnedResolver);
-    artifactResolver = engine;
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     // Create minimal required resources
     configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {

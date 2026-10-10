@@ -2,8 +2,10 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { MailboxDataDeployer } from '../data/mailbox-data-deployer';
-import { PinnedResolver, CdkArtifactEngine, applyServerlessInboxBaseTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxDataOverrideResolver } from '../data/mailbox-data-override-resolver';
+import { MailboxArtifactResolverFactory, applyServerlessInboxBaseTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxRegistryRecord } from '../mailbox-registry-record';
 
 const ROLES = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'] as const;
@@ -11,7 +13,7 @@ const ROLES = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'm
 describe('MailboxDataOverrideResolver synthesis', () => {
   let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let deployer: MailboxDataDeployer;
   let template: Template;
 
@@ -21,9 +23,9 @@ describe('MailboxDataOverrideResolver synthesis', () => {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
           packages: {
-            'mailbox-cdk': { kind: 'release', version: '1.0.0' },
-            'mailbox-go': { kind: 'release', version: '1.0.0' },
-            'mailbox-cdk-shared': { kind: 'release', version: '1.0.0' },
+            'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+            'mailbox-go': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
           },
         },
       },
@@ -33,9 +35,7 @@ describe('MailboxDataOverrideResolver synthesis', () => {
       env: { account: '123456789012', region: 'us-west-2' },
     });
     const registryRecord = loadMailboxRegistryRecord();
-    const pinnedResolver = PinnedResolver.loadFromArtifactMetadata(stack, registryRecord);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
-    pinnedResolver.registerPackages(['mailbox-cdk', 'mailbox-go', 'mailbox-cdk-shared']);
+    artifactResolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, {});
 
     applyServerlessInboxBaseTags(stack, {
       rootStack: cdk.Aws.STACK_NAME,
@@ -147,5 +147,30 @@ describe('MailboxDataOverrideResolver synthesis', () => {
       key.toLowerCase().includes('revision')
     );
     expect(revisionParams).toEqual([]);
+  });
+});
+
+describe('MailboxDataOverrideResolver with an unpinned package', () => {
+  it('fails to synthesize naming the package the resolver holds no pin for', () => {
+    const stack = new cdk.Stack(new App(), 'TestStack', {
+      synthesizer: new BootstraplessSynthesizer(),
+      env: { account: '123456789012', region: 'us-west-2' },
+    });
+    const resolverWithoutMailboxCdk = new PinnedArtifactResolver({
+      packages: { 'mailbox-go': { zone: ArtifactZone.REGIONAL, version: '1.0.0' } },
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
+
+    expect(() => {
+      new MailboxDataOverrideResolver(stack, 'override-resolver', {
+        configTableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/config',
+        itemTableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/item',
+        changelogTableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/changelog',
+        auditLogTableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/audit',
+        mailFeedbackTableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/feedback',
+        artifactResolver: resolverWithoutMailboxCdk,
+      });
+    }).toThrow("No resolved data for package 'mailbox-cdk'");
   });
 });

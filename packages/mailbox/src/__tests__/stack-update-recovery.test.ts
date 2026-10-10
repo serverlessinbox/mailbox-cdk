@@ -19,8 +19,8 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
 import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
 import { getPolicyStatements } from './iam-test-helpers';
 import { AuditEventsQueue } from '../features/audit-writing/audit-events-queue';
@@ -45,11 +45,14 @@ function buildTemplate(): Template {
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const packages: Record<string, ArtifactVersionsEntry> = {
-    'mailbox-go': { version: '1.0.0', zone: 'regional' },
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const artifactResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-  artifactResolver.registerPackages(['mailbox-go']);
+  const artifactResolver = new PinnedArtifactResolver({
+    packages,
+    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
 
   const configTable = new DataTable(dynamodb.Table.fromTableArn(
     stack,

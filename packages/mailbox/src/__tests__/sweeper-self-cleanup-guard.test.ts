@@ -20,13 +20,12 @@ import { CertificateRemoval } from '../features/sweeper/certificate-removal';
 import { EdgeFunctionRemoval } from '../features/sweeper/edge-function-removal';
 import { StackFailureDetectorRemoval } from '../features/sweeper/stack-failure-detector-removal';
 import type { IResourceRemoval } from '../features/sweeper/removal';
-import type { ICdkArtifactEngine } from '@serverlessinbox/mailbox-cdk-shared';
-import { CdkArtifactEngine, PinnedResolver } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ArtifactVersionsEntry } from '@serverlessinbox/artifact-registry';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 describe('SweeperWorkflow self-cleanup guard', () => {
   let app: App;
-  let artifactResolver: ICdkArtifactEngine;
+  let artifactResolver: IArtifactResolver;
   let stack: cdk.Stack;
   let template: Template;
   let def: string;
@@ -44,12 +43,14 @@ describe('SweeperWorkflow self-cleanup guard', () => {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
-    const packages: Record<string, ArtifactVersionsEntry> = {
-      'mailbox-cdk': { version: '1.0.0', zone: 'regional' },
+    const packages: Record<string, ArtifactPin> = {
+      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const pinnedResolver = new PinnedResolver(stack, packages, { bucketBase: 'test-artifacts', project: 'serverlessinbox' }, {});
-    pinnedResolver.registerPackages(['mailbox-cdk']);
-    artifactResolver = new CdkArtifactEngine(stack, pinnedResolver);
+    artifactResolver = new PinnedArtifactResolver({
+      packages,
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
 
     const opsGroup = new Construct(stack, 'ops');
 
