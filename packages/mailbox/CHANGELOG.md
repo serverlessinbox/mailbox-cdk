@@ -4,6 +4,76 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.19...v0.2.0) (Sun Oct 11 2026)
+
+### feat
+
+* publishable packages ship the registry record; release refreshes it (artifact-registry 0.1.3) ([c143255](https://github.com/serverlessinbox/mailbox-cdk/commit/c1432555e1803fd6dbd8930f9e49d75e95bc1e12))
+
+* publishable packages ship artifact-versions.json in the { version, zone } shape; drop serverlessinbox.components ([d86cdaa](https://github.com/serverlessinbox/mailbox-cdk/commit/d86cdaa724886244fd58ed41d1b0e5fe8918c494))
+
+* Granularity includes 'pinned'; docs per value ([8b6365d](https://github.com/serverlessinbox/mailbox-cdk/commit/8b6365d66833d2a0c2e6e4578f04f3881e76cb4e))
+
+### fix
+
+* migrate workspace configs to artifact-registry 0.1.3 ([6bca5f8](https://github.com/serverlessinbox/mailbox-cdk/commit/6bca5f8f8e762bd6aaa3c924429d76f0485ad717))
+
+* support addon reports available:false when DISABLED; provider in its own file; tests per unit ([9549c78](https://github.com/serverlessinbox/mailbox-cdk/commit/9549c781d66b051ccae07a9f4a9709349fa4a24f))
+
+### refactor
+
+* artifact resolver reports version and location; addons get it from the context ([1454d82](https://github.com/serverlessinbox/mailbox-cdk/commit/1454d829c07a2269519a18435db1e489bfbdbaee))
+
+* stack-deployer and stack-helpers move to mailbox-cdk-shared ([8637316](https://github.com/serverlessinbox/mailbox-cdk/commit/86373161fcb2cf50c4bccff42049d3ca21dc8544))
+
+* artifact-updater clients built once at the entry point ([6826a1c](https://github.com/serverlessinbox/mailbox-cdk/commit/6826a1c766fc5e095726fca1e204e8a4d729260e))
+
+* mailbox-cdk-shared resolves through artifact-registry-cdk; artifact-engine removed ([d7ca54c](https://github.com/serverlessinbox/mailbox-cdk/commit/d7ca54c48c5411437d4184695443bdd448d099dc))
+
+* mailbox Lambda wrappers take the artifact-registry-cdk resolver (1/2) ([009f19a](https://github.com/serverlessinbox/mailbox-cdk/commit/009f19a20285b3ac847f62e23590c1f41c7af8b3))
+
+* mailbox Lambda wrappers take the artifact-registry-cdk resolver (2/2) ([dea61e0](https://github.com/serverlessinbox/mailbox-cdk/commit/dea61e0339a09b175f48a7655911a49ff3ea06b9))
+
+* mailbox takes the artifact-registry-cdk resolver; drops its own IArtifactResolver ([9e9a5d1](https://github.com/serverlessinbox/mailbox-cdk/commit/9e9a5d129fa891d73e3965fe617d99e2b45e6b92))
+
+* mailbox constructs take the artifact-registry-cdk resolver (1/2) ([11800c1](https://github.com/serverlessinbox/mailbox-cdk/commit/11800c10a86256306b1350ba795515d856fc65bb))
+
+* mailbox constructs take the artifact-registry-cdk resolver (2/2) ([1abb846](https://github.com/serverlessinbox/mailbox-cdk/commit/1abb8466b9cd74c784357c982bdbb52ce73c3ca8))
+
+* MailboxUi takes a named uiConfig type; root-stack tag comes from the base-tags aspect ([4de4c3a](https://github.com/serverlessinbox/mailbox-cdk/commit/4de4c3a08ce16b97a1d881619a7e5125ad17c0df))
+
+### test
+
+* shared handler tests follow the stack-deployer move and the test type-check ([cb260b1](https://github.com/serverlessinbox/mailbox-cdk/commit/cb260b1201e6f2ec8abc05341c7016fdd3366d42))
+
+* cognito and record-loader tests; drift guard for RegistryLocation ([01f5715](https://github.com/serverlessinbox/mailbox-cdk/commit/01f57152a9c9735e85127f13e62052ec8c365626))
+
+* artifact-updater tests inject clients; deployer pins follow the shared package ([8caea2a](https://github.com/serverlessinbox/mailbox-cdk/commit/8caea2a2cdd27e669b9c9e599378b8ed2411f4de))
+
+* mailbox construct tests follow the resolver contract and addon context ([3acea5a](https://github.com/serverlessinbox/mailbox-cdk/commit/3acea5a7dcc0d14ef341f2e96755697fca4b6740))
+
+* Lambda construct tests pass a registry location to PinnedResolver ([3030a61](https://github.com/serverlessinbox/mailbox-cdk/commit/3030a611c1b8b023360238f3b4e428de968f5c19))
+
+* mailbox Lambda construct tests build PinnedArtifactResolver directly ([68d4b44](https://github.com/serverlessinbox/mailbox-cdk/commit/68d4b446488cbc2c6092337a035e7d508d90a39c))
+
+* mailbox construct tests pin with zone and build PinnedArtifactResolver ([1874fa1](https://github.com/serverlessinbox/mailbox-cdk/commit/1874fa1a470a1e0025b15484278077ca92a68667))
+
+* remaining mailbox tests build PinnedArtifactResolver directly ([cca49ec](https://github.com/serverlessinbox/mailbox-cdk/commit/cca49ec4790bbda34b3032635c6f905f397102fc))
+
+* drop the unread old-shape artifacts context from tests ([8ec0c6b](https://github.com/serverlessinbox/mailbox-cdk/commit/8ec0c6bbd2c671d7624b3204501e02ff62ed5610))
+
+### chore
+
+* artifact-versions placeholders follow the 0.1.3 shape and the shared deployer ([877c283](https://github.com/serverlessinbox/mailbox-cdk/commit/877c283013f7dc8fb6be997a14a878ccb21c16d1))
+
+* mailbox-cdk packages on artifact-registry ^0.2.0 ([440f451](https://github.com/serverlessinbox/mailbox-cdk/commit/440f4516489e3577bcd2c5cab2abad69677378dd))
+
+### docs
+
+* mailbox construct comments follow code-comments ([1c2e14a](https://github.com/serverlessinbox/mailbox-cdk/commit/1c2e14ab1e628c013d94890447130f4bdcf4e73e))
+
+* artifact-updater comments describe their own code; .jsii carries the new docs ([3df1eee](https://github.com/serverlessinbox/mailbox-cdk/commit/3df1eee1dd0f961c29d777119a2473b2e3b806f2))
+
 ## [0.1.19](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.18...v0.1.19) (Tue Sep 29 2026)
 
 ### fix

@@ -4,6 +4,46 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.19...v0.2.0) (Sun Oct 11 2026)
+
+### chore
+
+* Cleanup build ([5b35809](https://github.com/serverlessinbox/mailbox-cdk/commit/5b358094d36b4f2816293f1b4c553d58f098c8dc))
+
+* mailbox-cdk packages on artifact-registry ^0.2.0 ([440f451](https://github.com/serverlessinbox/mailbox-cdk/commit/440f4516489e3577bcd2c5cab2abad69677378dd))
+
+### feat
+
+* publishable packages ship the registry record; release refreshes it (artifact-registry 0.1.3) ([c143255](https://github.com/serverlessinbox/mailbox-cdk/commit/c1432555e1803fd6dbd8930f9e49d75e95bc1e12))
+
+* publishable packages ship artifact-versions.json in the { version, zone } shape; drop serverlessinbox.components ([d86cdaa](https://github.com/serverlessinbox/mailbox-cdk/commit/d86cdaa724886244fd58ed41d1b0e5fe8918c494))
+
+### fix
+
+* migrate workspace configs to artifact-registry 0.1.3 ([6bca5f8](https://github.com/serverlessinbox/mailbox-cdk/commit/6bca5f8f8e762bd6aaa3c924429d76f0485ad717))
+
+### refactor
+
+* artifact resolver reports version and location; addons get it from the context ([1454d82](https://github.com/serverlessinbox/mailbox-cdk/commit/1454d829c07a2269519a18435db1e489bfbdbaee))
+
+* stack-deployer and stack-helpers move to mailbox-cdk-shared ([8637316](https://github.com/serverlessinbox/mailbox-cdk/commit/86373161fcb2cf50c4bccff42049d3ca21dc8544))
+
+* mailbox-cdk-shared resolves through artifact-registry-cdk; artifact-engine removed ([d7ca54c](https://github.com/serverlessinbox/mailbox-cdk/commit/d7ca54c48c5411437d4184695443bdd448d099dc))
+
+* shared constructs take the artifact-registry-cdk resolver; no package registration ([e4263cc](https://github.com/serverlessinbox/mailbox-cdk/commit/e4263cc55f28ca32943fe0d17e7bfaad7c30d9a8))
+
+### test
+
+* shared construct tests for the resolver contract and the registry record ([261ed90](https://github.com/serverlessinbox/mailbox-cdk/commit/261ed9044e3defceee027e4da42895ba5cbc45f2))
+
+* shared handler tests follow the stack-deployer move and the test type-check ([cb260b1](https://github.com/serverlessinbox/mailbox-cdk/commit/cb260b1201e6f2ec8abc05341c7016fdd3366d42))
+
+* shared construct tests build PinnedArtifactResolver directly ([4c4e27a](https://github.com/serverlessinbox/mailbox-cdk/commit/4c4e27ac99d471a87a15c756e48c4caec427511b))
+
+* drop the unread old-shape artifacts context from tests ([8ec0c6b](https://github.com/serverlessinbox/mailbox-cdk/commit/8ec0c6bbd2c671d7624b3204501e02ff62ed5610))
+
+* env loader test asserts the recorded problem; bake command test cannot touch the repo ([3b0be17](https://github.com/serverlessinbox/mailbox-cdk/commit/3b0be1787a06dafa62dad7f712e1e61fd7566c63))
+
 ## [0.1.19](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.1.18...v0.1.19) (Tue Sep 29 2026)
 
 ### fix
