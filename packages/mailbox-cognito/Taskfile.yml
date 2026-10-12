@@ -27,40 +27,40 @@ tasks:
 
   # Regional artifact publishing
   bundle:idp-users-api:
-    desc: Bundle cognito idp-users API lambda zip to /tmp
+    desc: Bundle cognito idp-users API lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/cognito-idp-users-api/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/cognito-idp-users-api.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out /tmp/cognito-idp-users-api.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip
 
   bundle:bootstrap-user:
-    desc: Bundle cognito bootstrap-user custom resource lambda zip to /tmp
+    desc: Bundle cognito bootstrap-user custom resource lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/bootstrap-user/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/cognito-bootstrap-user.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-bootstrap-user.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out /tmp/cognito-bootstrap-user.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/bootstrap-user/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/cognito-bootstrap-user.zip
 
   # The output must publish as objectName `lambdas/jmap-oauth-dcr.zip` in artifact-registry.json:
   # JmapOAuthDcrLambda passes `lambdaId: 'jmap-oauth-dcr'` and TypeScriptLambda resolves
   # `lambdas/${lambdaId}.zip`.
   bundle:jmap-oauth-dcr:
-    desc: Bundle RFC 7591 dynamic client registration lambda zip to /tmp
+    desc: Bundle RFC 7591 dynamic client registration lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/jmap-oauth-dcr/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/jmap-oauth-dcr.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out /tmp/jmap-oauth-dcr.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip
 
   bundle:
-    desc: Bundle all cognito lambdas to /tmp/*.zip
+    desc: Bundle all cognito lambdas to dist/lambdas/*.zip
     cmds:
       - task: bundle:idp-users-api
       - task: bundle:bootstrap-user

@@ -20,67 +20,51 @@ tasks:
       - dist/data-stack-template.json
 
   bundle:blob-authorizer:
-    desc: Bundle blob-authorizer lambda zip to /tmp
+    desc: Bundle blob-authorizer lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/blob-authorizer/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/blob-authorizer.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
 
   bundle:resource-sweeper:
-    desc: Bundle resource-sweeper lambda zip to /tmp
+    desc: Bundle resource-sweeper lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/resource-sweeper/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/resource-sweeper.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip
 
   bundle:artifact-updater:
-    desc: Bundle artifact-updater lambda zip to /tmp
+    desc: Bundle artifact-updater lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/artifact-updater/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/artifact-updater.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out /tmp/artifact-updater.zip
-
-  # Republishes the shared content-deployer bundle under the retired `ui-deployer` name, so the
-  # artifact updater can patch pre-existing ui-deployer Lambdas still running in the field. Their
-  # old code deletes the content/ and config/ prefixes when CloudFormation removes the resource;
-  # the replacement's Delete is a no-op. Remove this task, its entry in artifact-registry.json,
-  # and the task: bundle:ui-deployer calls once no live stack runs that Lambda.
-  bundle:ui-deployer:
-    desc: Bundle ui-deployer lambda zip to /tmp (patches pre-2026-08-18 field deployments with no-op delete handler)
-    sources:
-      - ../mailbox-cdk-shared/src/ts-lambdas/content-deployer/**/*.ts
-      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
-    generates:
-      - /tmp/ui-deployer.zip
-    cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/../mailbox-cdk-shared/src/ts-lambdas/content-deployer/index.ts --out /tmp/ui-deployer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
 
   bundle:data-override-resolver:
-    desc: Bundle data-override-resolver lambda zip to /tmp
+    desc: Bundle data-override-resolver lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/data-override-resolver/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - /tmp/data-override-resolver.zip
+      - '{{.TASKFILE_DIR}}/dist/lambdas/data-override-resolver.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out /tmp/data-override-resolver.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/data-override-resolver.zip
 
   bundle:
-    desc: Bundle all TypeScript lambdas to /tmp/*.zip
+    desc: Bundle all TypeScript lambdas to dist/lambdas/*.zip
     cmds:
       - task: bundle:blob-authorizer
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
-      - task: bundle:ui-deployer
       - task: bundle:data-override-resolver
 
   bundle:jsii:
@@ -97,26 +81,26 @@ tasks:
     desc: Publish data stack template to dev channel
     cmds:
       - task: build:data-stack
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object data-stack-template.json
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object data-stack-template.json
 
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out /tmp/blob-authorizer.zip
-      - du -sh /tmp/blob-authorizer.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/blob-authorizer.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object edge-stack-template.json
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
+      - du -sh {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/blob-authorizer.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object edge-stack-template.json
 
   publish:regional:dev:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out /tmp/resource-sweeper.zip
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out /tmp/artifact-updater.zip
-      - yarn mailbox-bundler lambda-zip --entry {{.USER_WORKING_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out /tmp/data-override-resolver.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/resource-sweeper.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/artifact-updater.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.USER_WORKING_DIR}} --object lambdas/data-override-resolver.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/data-override-resolver.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/resource-sweeper.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/artifact-updater.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/data-override-resolver.zip
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
@@ -128,6 +112,5 @@ tasks:
       - task: bundle:blob-authorizer
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
-      - task: bundle:ui-deployer
       - task: bundle:data-override-resolver
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}}
