@@ -49,7 +49,7 @@
     "clean": "rm -rf lib *.tsbuildinfo"
   },
   "dependencies": {
-    "@serverlessinbox/artifact-registry": "^0.2.0",
+    "@serverlessinbox/artifact-registry": "^0.3.0",
     "aws-cdk-lib": "^2.261.0",
     "constructs": "^10.5.0",
     "typanion": "^3.14.0"
@@ -60,7 +60,7 @@
     "@aws-sdk/client-route-53": "^3.1132.0",
     "@aws-sdk/client-s3": "^3.1132.0",
     "@aws-sdk/client-sfn": "^3.1132.0",
-    "@serverlessinbox/artifact-registry-cdk": "^0.2.0",
+    "@serverlessinbox/artifact-registry-cdk": "^0.3.0",
     "@serverlessinbox/mailbox-bundler": "workspace:*",
     "@types/jest": "^29.0.0",
     "@types/mime-types": "^2.1.4",
