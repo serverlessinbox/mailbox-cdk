@@ -7,6 +7,8 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
+process.env['SERVICE_NAME'] = 'content-deployer';
+
 describe('ContentDeployer handler — smoke test wrapper', () => {
   const s3Mock = mockClient(S3Client);
   const cloudfrontMock = mockClient(CloudFrontClient);

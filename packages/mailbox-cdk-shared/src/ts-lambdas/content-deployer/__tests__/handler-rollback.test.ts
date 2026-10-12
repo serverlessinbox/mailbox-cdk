@@ -10,6 +10,8 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
+process.env['SERVICE_NAME'] = 'content-deployer';
+
 function parentStackInStatus(stackStatus: StackStatus): Stack {
   return { StackName: 'parent-stack', CreationTime: new Date(), StackStatus: stackStatus };
 }

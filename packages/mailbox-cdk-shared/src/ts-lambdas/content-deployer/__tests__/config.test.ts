@@ -26,14 +26,21 @@ describe('content-deployer config', () => {
     });
   });
 
-  it('uses defaults when all vars absent', () => {
+  it('uses the default log level when LOG_LEVEL is absent', () => {
+    process.env.SERVICE_NAME = 'test-service';
+
     const result = tryLoad(load);
     expect(result).toEqual({
       config: {
         logLevel: 'error',
-        serviceName: '',
+        serviceName: 'test-service',
       },
       error: undefined,
     });
+  });
+
+  it('reports SERVICE_NAME as missing when it is not set', () => {
+    const result = tryLoad(load);
+    expect(result.error).toContain('SERVICE_NAME');
   });
 });

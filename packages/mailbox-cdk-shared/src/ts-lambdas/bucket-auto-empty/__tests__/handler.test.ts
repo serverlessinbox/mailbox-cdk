@@ -6,6 +6,8 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
+process.env['SERVICE_NAME'] = 'bucket-auto-empty';
+
 describe('BucketAutoEmpty handler — smoke test wrapper', () => {
   const s3Mock = mockClient(S3Client);
 

@@ -9,8 +9,6 @@ export interface Config {
 export function load(l: Loader): Config {
   return {
     logLevel: optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
-    // BWCOMPAT(2026-09-01): SERVICE_NAME read as optional — no already-deployed template sets it.
-    // Remove when: every live stack has had a Path 2 template update on/after 2026-09-01.
-    serviceName: l.optional('SERVICE_NAME', ''),
+    serviceName: l.mandatory('SERVICE_NAME'),
   };
 }

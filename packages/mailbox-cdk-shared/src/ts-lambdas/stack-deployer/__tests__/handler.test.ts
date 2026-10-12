@@ -1,4 +1,5 @@
 // Set env vars before importing the handler (which loads config at module scope)
+process.env['SERVICE_NAME'] = 'stack-deployer';
 process.env['MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
 
 import * as handler from '../handler';

@@ -36,14 +36,15 @@ describe('stack-deployer config', () => {
       expect(result.error).toContain('MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN');
     });
 
-    it('uses defaults when all optionals absent', () => {
+    it('uses the default log level when LOG_LEVEL is absent', () => {
+      process.env.SERVICE_NAME = 'deployer-service';
       process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123:stateMachine:deployer';
 
       const result = env.tryLoad(loadStarter);
       expect(result).toEqual({
         config: {
           logLevel: 'error',
-          serviceName: '',
+          serviceName: 'deployer-service',
           stateMachineArn: 'arn:aws:states:us-east-1:123:stateMachine:deployer',
         },
         error: undefined,
@@ -69,8 +70,14 @@ describe('stack-deployer config', () => {
       });
     });
 
+    it('reports SERVICE_NAME as missing when it is not set', () => {
+      const result = env.tryLoad(loadWorker);
+      expect(result.error).toContain('SERVICE_NAME');
+    });
+
     it('never requires MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN', () => {
-      // No env vars set at all — still no error, and the state machine ARN is not on the shape.
+      process.env.SERVICE_NAME = 'deployer-worker-service';
+
       const result = env.tryLoad(loadWorker);
       expect(result.error).toBeUndefined();
       expect(result.config).not.toHaveProperty('stateMachineArn');

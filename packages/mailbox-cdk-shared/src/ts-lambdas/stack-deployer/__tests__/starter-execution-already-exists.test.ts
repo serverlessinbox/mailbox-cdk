@@ -15,6 +15,7 @@ import type { CfnCustomResourceEvent } from '../types';
 
 // Set env vars before any handler imports
 process.env.AWS_REGION = 'us-east-1';
+process.env.SERVICE_NAME = 'stack-deployer';
 process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123';
 
 const sfnMock = mockClient(SFNClient);

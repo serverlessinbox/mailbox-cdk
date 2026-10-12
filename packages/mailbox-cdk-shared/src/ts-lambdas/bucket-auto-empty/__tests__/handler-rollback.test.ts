@@ -8,6 +8,8 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
+process.env['SERVICE_NAME'] = 'bucket-auto-empty';
+
 function parentStackInStatus(stackStatus: StackStatus): Stack {
   return { StackName: 'parent-stack', CreationTime: new Date(), StackStatus: stackStatus };
 }
