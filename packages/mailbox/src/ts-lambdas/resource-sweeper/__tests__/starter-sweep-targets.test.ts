@@ -95,27 +95,4 @@ describe('computeSweepTargets', () => {
 
     expect(computeSweepTargets(event)).toEqual({ cert: { certArn: CERT_ARN_OLD } });
   });
-
-  it('BWCOMPAT: an Update whose OldResourceProperties are in the pre-rework flat shape sweeps the old cert ARN', () => {
-    // Simulates the very first update after this ships: the already-deployed stack's custom
-    // resource carried the old flat `CertArn`/`EdgeFnArn` properties, but the newly synthesized
-    // template already uses the per-removal-type keyed map.
-    const event = updateEvent(
-      { cert: { certArn: CERT_ARN_NEW }, 'edge-fn': { edgeFnArn: EDGE_FN_ARN } },
-      { CertArn: CERT_ARN_OLD, EdgeFnArn: EDGE_FN_ARN },
-    );
-
-    expect(computeSweepTargets(event)).toEqual({ cert: { certArn: CERT_ARN_OLD } });
-  });
-
-  it('BWCOMPAT: an old flat shape with an unchanged edge-fn ARN sweeps only the changed cert', () => {
-    const event = updateEvent(
-      { cert: { certArn: CERT_ARN_NEW }, 'edge-fn': { edgeFnArn: EDGE_FN_ARN } },
-      { CertArn: CERT_ARN_OLD, EdgeFnArn: EDGE_FN_ARN },
-    );
-
-    const result = computeSweepTargets(event);
-    expect(result).toEqual({ cert: { certArn: CERT_ARN_OLD } });
-    expect(result['edge-fn']).toBeUndefined();
-  });
 });

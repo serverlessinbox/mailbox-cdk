@@ -7,6 +7,10 @@ jest.mock('../targets/cert', () => ({
   sweepCert: jest.fn().mockResolvedValue({ status: 'done', target: 'cert' }),
 }));
 
+// The handler loads its config at module scope, so the env must be set before it is imported.
+process.env['SERVICE_NAME'] = 'resource-sweeper';
+process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-east-1:123456789012:stateMachine:mailbox-sweeper';
+
 import { starterHandler, workerHandler } from '../handler';
 
 describe('ResourceSweeper handlers — smoke test wrapper', () => {

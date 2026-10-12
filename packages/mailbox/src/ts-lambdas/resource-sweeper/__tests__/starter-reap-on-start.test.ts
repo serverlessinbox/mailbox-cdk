@@ -7,6 +7,7 @@
  */
 
 // Set env vars before importing the handler (which loads config at module scope)
+process.env['SERVICE_NAME'] = 'resource-sweeper-starter';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 
 import { mockClient } from 'aws-sdk-client-mock';

@@ -59,7 +59,20 @@ describe('artifact-updater config', () => {
     }
   });
 
-  it('uses defaults when all optionals absent', () => {
+  it('reports SERVICE_NAME as missing when every other var is set', () => {
+    process.env.AWS_REGION = 'eu-west-1';
+    process.env.PROJECT = 'serverlessinbox';
+    process.env.DIST_TAG = 'latest';
+    process.env.GRANULARITY = 'major';
+    process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
+    process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+
+    const result = env.tryLoad(load);
+    expect(result.error).toContain('SERVICE_NAME');
+  });
+
+  it('uses the default log level when LOG_LEVEL is absent', () => {
+    process.env.SERVICE_NAME = 'artifact-updater-service';
     process.env.AWS_REGION = 'eu-west-1';
     process.env.PROJECT = 'serverlessinbox';
     process.env.DIST_TAG = 'latest';
@@ -71,7 +84,7 @@ describe('artifact-updater config', () => {
     expect(result).toEqual({
       config: {
         logLevel: 'error',
-        serviceName: '',
+        serviceName: 'artifact-updater-service',
         region: 'eu-west-1',
         project: 'serverlessinbox',
         distTag: 'latest',

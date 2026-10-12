@@ -36,14 +36,15 @@ describe('resource-sweeper config', () => {
       expect(result.error).toContain('MAILBOX_SWEEPER_STATE_MACHINE_ARN');
     });
 
-    it('uses defaults when all optionals absent', () => {
+    it('uses the default log level when LOG_LEVEL is absent', () => {
+      process.env.SERVICE_NAME = 'sweeper-service';
       process.env.MAILBOX_SWEEPER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123:stateMachine:test';
 
       const result = env.tryLoad(loadStarter);
       expect(result).toEqual({
         config: {
           logLevel: 'error',
-          serviceName: '',
+          serviceName: 'sweeper-service',
           sweeperStateMachineArn: 'arn:aws:states:us-east-1:123:stateMachine:test',
         },
         error: undefined,
@@ -69,7 +70,14 @@ describe('resource-sweeper config', () => {
       });
     });
 
+    it('reports SERVICE_NAME as missing when it is not set', () => {
+      const result = env.tryLoad(loadWorker);
+      expect(result.error).toContain('SERVICE_NAME');
+    });
+
     it('never requires MAILBOX_SWEEPER_STATE_MACHINE_ARN', () => {
+      process.env.SERVICE_NAME = 'resource-sweeper-worker';
+
       const result = env.tryLoad(loadWorker);
       expect(result.error).toBeUndefined();
       expect(result.config).not.toHaveProperty('sweeperStateMachineArn');

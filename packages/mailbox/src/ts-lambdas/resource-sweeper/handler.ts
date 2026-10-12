@@ -75,30 +75,6 @@ function stripReservedKeys(props: RemovalPropertiesMap): RemovalPropertiesMap {
   return result;
 }
 
-/**
- * BWCOMPAT(2026-09-08): before this rework, the custom resource carried a flat `CertArn`/`EdgeFnArn`
- * shape instead of today's per-removal-type keyed map (see git history of
- * `features/sweeper/deferred-removal.ts` prior to this change). A stack's first update after this
- * ships hands the starter `OldResourceProperties` in that old flat shape — normalise it into the
- * keyed form (under the `cert`/`edge-fn` removal ids) so the diff below can treat every update the
- * same way, old or new. The stack-failure detector never had a deployed flat shape (it did not
- * exist before this rework), so it needs no fallback here — only `cert`/`edge-fn` do.
- * Remove when: every live stack has had a template update on/after 2026-09-08.
- */
-function normalizeOldProperties(old: RemovalPropertiesMap | undefined): RemovalPropertiesMap {
-  if (!old) return {};
-  const normalized = stripReservedKeys(old);
-  if (typeof old['CertArn'] === 'string') {
-    normalized['cert'] = { certArn: old['CertArn'] };
-    delete normalized['CertArn'];
-  }
-  if (typeof old['EdgeFnArn'] === 'string') {
-    normalized['edge-fn'] = { edgeFnArn: old['EdgeFnArn'] };
-    delete normalized['EdgeFnArn'];
-  }
-  return normalized;
-}
-
 /** Structural equality over plain JSON-shaped values — used to detect whether a removal's own entry
  * actually changed between old and new properties, without this starter knowing any of its fields. */
 function deepEqual(a: unknown, b: unknown): boolean {
@@ -118,7 +94,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 /**
  * Decides what this invocation needs to sweep, per registered removal:
  * - Delete: every removal present in `ResourceProperties` (the last-known targets).
- * - Update: for each removal present in the (BWCOMPAT-normalised) old properties, sweep its OLD
+ * - Update: for each removal present in the old properties, sweep its OLD
  *   value when that removal is now absent or its entry changed — e.g. a domain change replacing a
  *   cert or edge function. An unchanged removal contributes nothing.
  * - Create: nothing exists yet to sweep.
@@ -138,7 +114,7 @@ export function computeSweepTargets(event: CloudFormationCustomResourceEvent): R
     return {};
   }
 
-  const oldProps = normalizeOldProperties(event.OldResourceProperties as RemovalPropertiesMap | undefined);
+  const oldProps = stripReservedKeys(event.OldResourceProperties);
   const toSweep: RemovalPropertiesMap = {};
   for (const [removalId, oldValue] of Object.entries(oldProps)) {
     const newValue = currentProps[removalId];
