@@ -3,9 +3,9 @@
 /**
  * Regression test for the cap-burn bug: previously `USER_POOL_ID` was read (and could throw)
  * lazily inside `processRegistration`, *after* `identityProvisioner.dcrCheck(...)` had already
- * incremented the tenant's per-24h registration cap counter (never decremented — binding
- * decision #5). A misconfigured deployment therefore burned the cap on every request and stayed
- * broken for the rest of the period even once the config was fixed.
+ * incremented the tenant's per-24h registration cap counter (never decremented). A misconfigured
+ * deployment therefore burned the cap on every request and stayed broken for the rest of the
+ * period even once the config was fixed.
  *
  * This drives the REAL `../index` module (which loads config at module scope via `env.mustLoad`)
  * with a required env var missing/empty, and proves that in that state the module cannot even be

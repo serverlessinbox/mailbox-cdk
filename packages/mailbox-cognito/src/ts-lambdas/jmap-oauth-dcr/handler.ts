@@ -144,7 +144,7 @@ async function processRegistration(
 
   const clientName = body.client_name?.trim() || DEFAULT_CLIENT_NAME;
 
-  // Tenant is resolved server-side only (binding decision #11) — nothing from `body` reaches
+  // Tenant is resolved server-side only — nothing from `body` reaches
   // this call, so an identity-looking field in an unauthenticated RFC 7591 body can never
   // select a tenant.
   const { tenantId } = await deps.identityProvisioner.resolveTenant();

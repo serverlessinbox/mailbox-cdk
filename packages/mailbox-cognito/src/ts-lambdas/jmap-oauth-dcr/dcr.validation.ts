@@ -10,7 +10,7 @@ import * as t from 'typanion';
  * `redirect_uris` is required with at least one entry: this deployment issues public PKCE
  * clients doing `authorization_code`, which per §2 "MUST register their redirection URI
  * values". `software_statement` is accepted (so the schema doesn't reject a request that
- * includes one) but is never inspected — decision #9: no software-statement handling at all.
+ * includes one) but is never inspected: there is no software-statement handling at all.
  */
 export const isClientRegistrationRequest = t.isObject(
   {

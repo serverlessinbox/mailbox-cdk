@@ -7,8 +7,7 @@
  * in the request path.
  *
  * This matters beyond tidiness: the per-tenant DCR registration cap counter is incremented on
- * every dedup-miss request and is never decremented (binding decision #5,
- * `.claude/workitems/plans/jmap-oauth-dcr-poc/registration-plan.md`). Previously `USER_POOL_ID`
+ * every dedup-miss request and is never decremented. Previously `USER_POOL_ID`
  * was read (and could throw) *after* that increment, so a misconfigured deployment burned a
  * tenant's 20-per-24h slot on every request and stayed broken for the rest of the period even
  * after the config was fixed. Failing at cold start instead fails the container immediately,

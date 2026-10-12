@@ -6,10 +6,10 @@ import {
 
 /**
  * Cognito SDK calls for Dynamic Client Registration. Kept entirely in this TS Lambda — never in
- * `identity-provisioner`, which must stay provider-agnostic (binding decision #1).
+ * `identity-provisioner`, which must stay provider-agnostic.
  *
  * `offline_access` is never passed in `scopes`: it is excluded from the Cognito-bound scope list
- * before this is called (the plan's response-shaping rule) — Cognito refresh-token issuance for
+ * before this is called — Cognito refresh-token issuance for
  * `authorization_code` is controlled by `ExplicitAuthFlows`, not by an `AllowedOAuthScopes` entry,
  * and `offline_access` is not itself a valid Cognito OAuth scope value.
  */

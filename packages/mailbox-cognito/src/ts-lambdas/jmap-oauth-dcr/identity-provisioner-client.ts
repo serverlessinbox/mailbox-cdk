@@ -8,7 +8,7 @@ import * as t from 'typanion';
  * -rolled guard, never an `as` cast past the JSON.parse boundary.
  *
  * Cognito SDK calls never happen here — this client only ever exchanges JSON envelopes with a
- * Lambda that must stay provider-agnostic (binding decision #1).
+ * Lambda that must stay provider-agnostic.
  */
 
 const isResolveTenantResponse = t.isObject({ tenantId: t.isString() });
@@ -47,8 +47,8 @@ export class IdentityProvisionerClient {
   ) {}
 
   /**
-   * Resolves the tenant for this request. Never derives a tenant from the request body
-   * (binding decision #11) — the caller passes nothing identity-shaped in.
+   * Resolves the tenant for this request. Never derives a tenant from the request body: the
+   * caller passes nothing identity-shaped in.
    */
   async resolveTenant(): Promise<ResolveTenantResponse> {
     return this.invoke({ kind: 'RESOLVE_TENANT' }, isResolveTenantResponse);

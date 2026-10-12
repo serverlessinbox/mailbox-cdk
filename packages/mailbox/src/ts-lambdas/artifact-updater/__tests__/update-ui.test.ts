@@ -83,7 +83,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
       logger,
       testConfig,
     );
@@ -109,7 +109,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
       logger,
       testConfig,
     );
@@ -132,7 +132,7 @@ describe('advanceUiBucketIfStale', () => {
     cloudFrontMock.on(TagResourceCommand).resolves({});
     const logger = new LoggerBuffer();
 
-    const distributionArn = 'arn:aws:cloudfront::818189473156:distribution/ABCD1234';
+    const distributionArn = 'arn:aws:cloudfront::123456789012:distribution/ABCD1234';
     const updated = await advanceUiBucketIfStale(
       clients,
       'ui-content-bucket',
@@ -171,7 +171,7 @@ describe('advanceUiBucketIfStale', () => {
     expect(tagCalls).toHaveLength(1);
     // Verify TagResourceCommand was called with correct distribution ARN and artifact-version tag
     expect(tagCalls[0].args[0].input).toEqual({
-      Resource: 'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      Resource: 'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
       Tags: {
         Items: [
           { Key: 'serverless-inbox:artifact-version', Value: '1.2.4' },
@@ -194,7 +194,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
       logger,
       testConfig,
     );
@@ -225,7 +225,7 @@ describe('advanceUiBucketIfStale', () => {
       'ui-bundle',
       'ui-bundle.zip',
       '1.2.3',
-      'arn:aws:cloudfront::818189473156:distribution/ABCD1234',
+      'arn:aws:cloudfront::123456789012:distribution/ABCD1234',
       logger,
       customConfig,
     );

@@ -263,7 +263,7 @@ describe('jmap-oauth-dcr handler', () => {
     });
 
     // Exactly 3 identity-provisioner invokes total (RESOLVE_TENANT, DCR_CHECK, DCR_PERSIST) —
-    // no fourth call of any kind, i.e. no decrement request exists to make (decision #5: the
+    // no fourth call of any kind, i.e. no decrement request exists to make (the
     // cap counter is never decremented — there is no RPC for it at all).
     expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(3);
   });

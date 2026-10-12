@@ -37,7 +37,7 @@ describe('isClientRegistrationRequest', () => {
     expect(isClientRegistrationRequest(body)).toBe(true);
   });
 
-  it('accepts a software_statement field without inspecting it (decision #9: ignored, not rejected)', () => {
+  it('accepts a software_statement field without inspecting it (ignored, not rejected)', () => {
     const body = { redirect_uris: ['http://127.0.0.1/cb'], software_statement: 'not-a-real-jwt' };
     expect(isClientRegistrationRequest(body)).toBe(true);
   });
