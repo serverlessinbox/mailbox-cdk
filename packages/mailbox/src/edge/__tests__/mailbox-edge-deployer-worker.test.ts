@@ -1,89 +1,83 @@
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+/// <reference types="jest" />
+
+/**
+ * Pins the permissions the edge deployer worker holds. CloudFormation creates the edge stack's
+ * certificate, Lambda@Edge function and resource group with this role, and the ACM and Lambda grants
+ * are scoped by the root-stack tag: a grant that loses its tag condition lets the worker change
+ * certificates and functions of other stacks, and one that is too narrow fails the edge deployment.
+ */
+
 import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
 import { MailboxEdgeDeployerWorker } from '../mailbox-edge-deployer-worker';
+import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
+import {
+  TEST_ACCOUNT,
+  newDeployerTestStack,
+  renderWithTokens,
+  statementsForAction,
+} from '../../__tests__/deployer-test-helpers';
 
-function synthWorker(): Template {
-  const app = new App();
-  app.node.setContext('serverlessinbox:artifacts', {
-    bucketBase: 'test-artifacts',
-    packages: {
-      mailbox: { zone: 'regional', version: '0.0.1-test' },
-      'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
-    },
-  });
-  app.node.setContext('serverlessinbox:artifact_versions', {});
+const EDGE_REGION = 'us-east-1';
+const EDGE_STACK_ARN = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge/*';
+const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
+const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/blob-authorizer.zip';
+const BLOB_AUTHORIZER_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
+const ROOT_STACK_TAG = 'serverless-inbox:root-stack';
 
-  const stack = new cdk.Stack(app, 'test-stack', {
-    env: { account: '111122223333', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-
-  const registryRecord = loadMailboxRegistryRecord();
-  const artifactResolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, {});
-
+function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Template {
+  const { stack, artifactResolver } = newDeployerTestStack();
   new MailboxEdgeDeployerWorker(stack, 'worker', {
     artifactResolver,
     stack,
     edgeStackName: 'test-stack-edge',
-    edgeStackArn: 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge/*',
+    edgeStackArn: EDGE_STACK_ARN,
     rootStack: 'test-stack',
-    templateObjectArn: 'arn:aws:s3:::test-artifacts/templates/edge-template.json',
-    artifactObjectArns: ['arn:aws:s3:::test-artifacts-us-east-1/lambdas/blob-authorizer.zip'],
-    blobAuthorizerRoleArn: 'arn:aws:iam::111122223333:role/test-role',
+    templateObjectArn: TEMPLATE_OBJECT_ARN,
+    artifactObjectArns: [ARTIFACT_OBJECT_ARN],
+    blobAuthorizerRoleArn: BLOB_AUTHORIZER_ROLE_ARN,
+    ...props,
   });
-
   return Template.fromStack(stack);
 }
 
-/** Flattens every statement across every AWS::IAM::Policy resource in the template. */
-function allStatements(template: Template): any[] {
-  const policies = template.findResources('AWS::IAM::Policy');
-  const statements: any[] = [];
-  for (const [, policy] of Object.entries(policies)) {
-    const doc = (policy as any).Properties?.PolicyDocument;
-    for (const stmt of doc?.Statement ?? []) {
-      statements.push(stmt);
-    }
-  }
-  return statements;
+function resourceOf(template: Template, action: string, index = 0): string {
+  return renderWithTokens(statementsForAction(template, action)[index].Resource);
 }
 
-function statementsForAction(template: Template, action: string): any[] {
-  return allStatements(template).filter((stmt) => {
-    const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-    return actions.includes(action);
-  });
-}
-
-describe('MailboxEdgeDeployerWorker Tagging API grants', () => {
+describe('MailboxEdgeDeployerWorker', () => {
   let template: Template;
 
   beforeAll(() => {
     template = synthWorker();
   });
 
-  it('grants tag:GetResources unconditionally (read-only enumeration)', () => {
-    const stmts = statementsForAction(template, 'tag:GetResources');
-    expect(stmts.length).toBe(1);
-    expect(stmts[0].Condition).toBeUndefined();
-    expect(stmts[0].Resource).toContain('*');
+  it('runs as the edge deployer worker', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-edge-worker' } },
+    });
   });
 
-  it('constrains tag:TagResources and tag:UntagResources with ForAllValues:StringEquals on aws:TagKeys', () => {
-    const tagResourcesStmts = statementsForAction(template, 'tag:TagResources');
-    const untagResourcesStmts = statementsForAction(template, 'tag:UntagResources');
+  it('manages only the edge stack', () => {
+    const statements = statementsForAction(template, 'cloudformation:CreateStack');
 
-    expect(tagResourcesStmts.length).toBe(1);
-    expect(untagResourcesStmts.length).toBe(1);
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Resource).toBe(EDGE_STACK_ARN);
+  });
 
-    for (const stmt of [tagResourcesStmts[0], untagResourcesStmts[0]]) {
-      const tagKeys = stmt.Condition?.['ForAllValues:StringEquals']?.['aws:TagKeys'];
-      expect(Array.isArray(tagKeys)).toBe(true);
-      expect(tagKeys).toEqual(
-        expect.arrayContaining([
+  it('reads the edge template and every Lambda artifact it references', () => {
+    const statements = statementsForAction(template, 's3:GetObject');
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Resource).toEqual([TEMPLATE_OBJECT_ARN, ARTIFACT_OBJECT_ARN]);
+  });
+
+  it('writes the sub-stack tag keys and the two edge tag keys', () => {
+    for (const action of ['tag:TagResources', 'tag:UntagResources']) {
+      const statements = statementsForAction(template, action);
+
+      expect(statements).toHaveLength(1);
+      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
+        'aws:TagKeys': [
           'serverless-inbox:product',
           'serverless-inbox:root-stack',
           'serverless-inbox:stack',
@@ -92,14 +86,98 @@ describe('MailboxEdgeDeployerWorker Tagging API grants', () => {
           'serverless-inbox:deployer_type',
           'serverless-inbox:edge',
           'serverless-inbox:root-region',
-        ]),
-      );
-      expect(tagKeys.length).toBe(8);
-      expect(stmt.Resource).toContain('*');
-
-      // aws:TagKeys is multivalued; a plain StringEquals never matches it and silently denies
-      // every tag write. ForAllValues:StringEquals is the only correct operator here.
-      expect(stmt.Condition?.StringEquals?.['aws:TagKeys']).toBeUndefined();
+        ],
+      });
     }
+  });
+
+  describe('certificate lifecycle', () => {
+    const CERTIFICATE_ARNS = `arn:<token>:acm:${EDGE_REGION}:${TEST_ACCOUNT}:certificate/*`;
+
+    it('requests certificates unconditionally, since CloudFormation creates them untagged', () => {
+      const statements = statementsForAction(template, 'acm:RequestCertificate');
+
+      expect(statements).toHaveLength(1);
+      expect(statements[0].Condition).toBeUndefined();
+      expect(resourceOf(template, 'acm:RequestCertificate')).toBe(CERTIFICATE_ARNS);
+    });
+
+    it('adds tags on create when the request carries the root-stack tag, and on update when the certificate already has it', () => {
+      const statements = statementsForAction(template, 'acm:AddTagsToCertificate');
+
+      expect(statements.map((statement) => statement.Condition)).toEqual([
+        { StringEquals: { [`aws:RequestTag/${ROOT_STACK_TAG}`]: 'test-stack' } },
+        { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' } },
+      ]);
+    });
+
+    it('removes tags from and deletes only certificates carrying the root-stack tag', () => {
+      for (const action of ['acm:RemoveTagsFromCertificate', 'acm:DeleteCertificate']) {
+        const statements = statementsForAction(template, action);
+
+        expect(statements).toHaveLength(1);
+        expect(statements[0].Condition).toEqual({
+          StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' },
+        });
+      }
+    });
+  });
+
+  describe('Lambda function lifecycle', () => {
+    it('creates functions by the edge stack name, as an ARN prefix and as a function-name condition', () => {
+      const statements = statementsForAction(template, 'lambda:CreateFunction');
+
+      expect(statements).toHaveLength(2);
+      expect(resourceOf(template, 'lambda:CreateFunction', 0)).toBe(
+        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:test-stack-edge-*`,
+      );
+      expect(statements[1].Resource).toBe('*');
+      expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge-*' } });
+    });
+
+    it('also manages existing functions that carry the root-stack tag, which survives name truncation', () => {
+      const statements = statementsForAction(template, 'lambda:DeleteFunction');
+
+      expect(statements).toHaveLength(3);
+      expect(statements[2].Resource).toBe('*');
+      expect(statements[2].Condition).toEqual({
+        StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' },
+      });
+    });
+  });
+
+  it('passes only the blob-authorizer role, and only to the Lambda services', () => {
+    const statements = statementsForAction(template, 'iam:PassRole');
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Resource).toBe(BLOB_AUTHORIZER_ROLE_ARN);
+    expect(statements[0].Condition).toEqual({
+      StringEquals: { 'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'] },
+    });
+  });
+
+  describe('resource group lifecycle', () => {
+    it('creates groups on every resource, since scoping group creation is unverified', () => {
+      expect(statementsForAction(template, 'resource-groups:CreateGroup')[0].Resource).toBe('*');
+    });
+
+    it('changes only the edge stack’s group', () => {
+      expect(resourceOf(template, 'resource-groups:DeleteGroup')).toBe(
+        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-serverless-inbox`,
+      );
+    });
+  });
+
+  describe('DNS validation', () => {
+    it('writes records of the given hosted zone only, and reads change status', () => {
+      const withZone = synthWorker({ hostedZoneId: 'Z0TESTZONE' });
+
+      expect(resourceOf(withZone, 'route53:ChangeResourceRecordSets')).toBe('arn:<token>:route53:::hostedzone/Z0TESTZONE');
+      expect(resourceOf(withZone, 'route53:GetChange')).toBe('arn:<token>:route53:::change/*');
+    });
+
+    it('is not granted without a hosted zone', () => {
+      expect(statementsForAction(template, 'route53:ChangeResourceRecordSets')).toEqual([]);
+    });
   });
 });

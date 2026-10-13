@@ -1,101 +1,112 @@
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+/// <reference types="jest" />
+
+/**
+ * Pins the permissions the data deployer worker holds. CloudFormation creates the data stack's tables
+ * and bucket with this role, so each grant must reach exactly the resources named from the data stack's
+ * name base: a wider one lets the worker manage tables and buckets it does not own, and a missing one
+ * fails the data stack deployment.
+ */
+
 import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
 import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
+import {
+  TEST_ACCOUNT,
+  TEST_REGION,
+  newDeployerTestStack,
+  renderWithTokens,
+  statementsForAction,
+} from '../../__tests__/deployer-test-helpers';
+
+const DATA_STACK_ARN = 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*';
+const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/data-template.json';
 
 function synthWorker(): Template {
-  const app = new App();
-  app.node.setContext('serverlessinbox:artifacts', {
-    bucketBase: 'test-artifacts',
-    packages: {
-      mailbox: { zone: 'regional', version: '0.0.1-test' },
-      'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
-    },
-  });
-  app.node.setContext('serverlessinbox:artifact_versions', {});
-
-  const stack = new cdk.Stack(app, 'test-stack', {
-    env: { account: '111122223333', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-
-  const registryRecord = loadMailboxRegistryRecord();
-  const artifactResolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, {});
-
+  const { stack, artifactResolver } = newDeployerTestStack();
   new MailboxDataDeployerWorker(stack, 'worker', {
     artifactResolver,
     stack,
-    dataStackArn: 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*',
+    dataStackArn: DATA_STACK_ARN,
     dataStackName: 'test-stack-data',
-    templateObjectArn: 'arn:aws:s3:::test-artifacts/templates/data-template.json',
+    templateObjectArn: TEMPLATE_OBJECT_ARN,
     nameBase: 'test-stack-data',
   });
-
   return Template.fromStack(stack);
 }
 
-/** Flattens every statement across every AWS::IAM::Policy resource in the template. */
-function allStatements(template: Template): any[] {
-  const policies = template.findResources('AWS::IAM::Policy');
-  const statements: any[] = [];
-  for (const [, policy] of Object.entries(policies)) {
-    const doc = (policy as any).Properties?.PolicyDocument;
-    for (const stmt of doc?.Statement ?? []) {
-      statements.push(stmt);
-    }
-  }
-  return statements;
-}
-
-function statementsForAction(template: Template, action: string): any[] {
-  return allStatements(template).filter((stmt) => {
-    const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-    return actions.includes(action);
-  });
-}
-
-describe('MailboxDataDeployerWorker Tagging API grants', () => {
+describe('MailboxDataDeployerWorker', () => {
   let template: Template;
 
   beforeAll(() => {
     template = synthWorker();
   });
 
-  it('grants tag:GetResources unconditionally (read-only enumeration)', () => {
-    const stmts = statementsForAction(template, 'tag:GetResources');
-    expect(stmts.length).toBe(1);
-    expect(stmts[0].Condition).toBeUndefined();
-    expect(stmts[0].Resource).toContain('*');
+  it('runs as the data deployer worker', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-data-worker' } },
+    });
   });
 
-  it('constrains tag:TagResources and tag:UntagResources with ForAllValues:StringEquals on aws:TagKeys', () => {
-    const tagResourcesStmts = statementsForAction(template, 'tag:TagResources');
-    const untagResourcesStmts = statementsForAction(template, 'tag:UntagResources');
+  it('manages only the data stack', () => {
+    const statements = statementsForAction(template, 'cloudformation:CreateStack');
 
-    expect(tagResourcesStmts.length).toBe(1);
-    expect(untagResourcesStmts.length).toBe(1);
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Resource).toBe(DATA_STACK_ARN);
+  });
 
-    for (const stmt of [tagResourcesStmts[0], untagResourcesStmts[0]]) {
-      const tagKeys = stmt.Condition?.['ForAllValues:StringEquals']?.['aws:TagKeys'];
-      expect(Array.isArray(tagKeys)).toBe(true);
-      expect(tagKeys).toEqual(
-        expect.arrayContaining([
+  it('validates templates, which acts on a template URL rather than a stack', () => {
+    expect(statementsForAction(template, 'cloudformation:ValidateTemplate')).toHaveLength(1);
+  });
+
+  it('reads only the data stack template object', () => {
+    const statements = statementsForAction(template, 's3:GetObject');
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Resource).toBe(TEMPLATE_OBJECT_ARN);
+  });
+
+  it('manages only the tables named from the name base', () => {
+    const statements = statementsForAction(template, 'dynamodb:CreateTable');
+
+    expect(statements).toHaveLength(1);
+    expect(renderWithTokens(statements[0].Resource)).toBe(
+      `arn:aws:dynamodb:${TEST_REGION}:${TEST_ACCOUNT}:table/<token>-test-stack-data-*`,
+    );
+  });
+
+  it('manages only the buckets named from the name base', () => {
+    const statements = statementsForAction(template, 's3:CreateBucket');
+
+    expect(statements).toHaveLength(1);
+    expect(renderWithTokens(statements[0].Resource)).toBe(`arn:aws:s3:::${TEST_ACCOUNT}-test-stack-data-*`);
+  });
+
+  it('creates KMS grants only for AWS resources, on the DynamoDB and S3 managed keys and account keys', () => {
+    const statements = statementsForAction(template, 'kms:CreateGrant');
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Condition).toEqual({ Bool: { 'kms:GrantIsForAWSResource': 'true' } });
+    expect(statements[0].Resource).toEqual([
+      `arn:aws:kms:${TEST_REGION}:${TEST_ACCOUNT}:alias/aws/dynamodb`,
+      `arn:aws:kms:${TEST_REGION}:${TEST_ACCOUNT}:alias/aws/s3`,
+      `arn:aws:kms:${TEST_REGION}:${TEST_ACCOUNT}:key/*`,
+    ]);
+  });
+
+  it('writes only the tag keys the data stack template applies', () => {
+    for (const action of ['tag:TagResources', 'tag:UntagResources']) {
+      const statements = statementsForAction(template, action);
+
+      expect(statements).toHaveLength(1);
+      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
+        'aws:TagKeys': [
           'serverless-inbox:product',
           'serverless-inbox:root-stack',
           'serverless-inbox:stack',
           'serverless-inbox:component',
           'serverless-inbox:version',
           'serverless-inbox:deployer_type',
-        ]),
-      );
-      expect(tagKeys.length).toBe(6);
-      expect(stmt.Resource).toContain('*');
-
-      // aws:TagKeys is multivalued; a plain StringEquals never matches it and silently denies
-      // every tag write. ForAllValues:StringEquals is the only correct operator here.
-      expect(stmt.Condition?.StringEquals?.['aws:TagKeys']).toBeUndefined();
+        ],
+      });
     }
   });
 });

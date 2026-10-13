@@ -1,10 +1,10 @@
-import { Aws, CustomResource, Duration, Stack, Token } from 'aws-cdk-lib';
+import { Aws, CustomResource, Stack, Token } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
@@ -70,27 +70,10 @@ export class MailboxEdgeDeployer extends Construct {
 
     const stack = Stack.of(this);
 
-    // Lambda@Edge execution role. Note: replicas continue running for ~4 hours after function deletion,
-    // but they operate with cached credentials and do not need the role to remain. The role is deleted
-    // with the stack. On replacement (stack update), CloudFormation creates the new role before deleting
-    // the old one, and the edge function is updated with the new ARN in the same operation.
-    this.blobAuthorizerRole = new iam.Role(this, 'blob-authorizer-role', {
-      assumedBy: new iam.CompositePrincipal(
-        new iam.ServicePrincipal('lambda.amazonaws.com'),
-        new iam.ServicePrincipal('edgelambda.amazonaws.com'),
-      ),
-      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-      ],
-    });
+    this.blobAuthorizerRole = this.createBlobAuthorizerRole(props.authKeyStoreTable);
 
-    // Only the auth key store is granted to the role; the item and config table ARNs reach the
-    // edge stack as template parameters.
-    props.authKeyStoreTable.grantRead(this.blobAuthorizerRole);
-
-    // Uses the deployed CloudFormation stack name, not the CDK logical stack id, so the
-    // synthesized template behaves correctly when deployed via pure CloudFormation.
+    // The deployed CloudFormation stack name, not the CDK logical stack id, so the template also
+    // behaves correctly when deployed through plain CloudFormation.
     const edgeStackName = `${Aws.STACK_NAME}-edge`;
     const edgeStackArn = stack.formatArn({
       service: 'cloudformation',
@@ -102,7 +85,7 @@ export class MailboxEdgeDeployer extends Construct {
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
-      parent: 'edge',
+      deployedStackName: 'edge',
       createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorker(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
@@ -118,69 +101,18 @@ export class MailboxEdgeDeployer extends Construct {
       }),
     });
 
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json');
-
-    const blobAuthorizerResolved = props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
-
-    const cfnParameters: Record<string, string> = {
-      domainName: props.domainName,
-      artifactBucket: blobAuthorizerResolved.bucket,
-      blobAuthorizerKey: blobAuthorizerResolved.key,
-      blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
-      itemTableArn: props.itemTable.tableArn,
-      configTableArn: props.configTable.tableArn,
-      authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
-      logGroupName: props.logGroupName,
-
-      // Tagging and back-reference parameters. Keys must match the edge stack's CfnParameter
-      // overrideLogicalId (rootStack / rootRegion).
-      rootStack: Aws.STACK_NAME,
-      rootRegion: Stack.of(this).region,
-      productVersion: props.productVersion,
-      deployerType: props.deployerType,
-      blobAuthorizerS3VersionId: blobAuthorizerResolved.versionId ?? '',
-    };
-
-    // Edge template expects a dot-wrapped prefix: "." for no prefix, or ".{label}.".
-    // Props.prefix may be either:
-    // - A bare label (e.g., "mailbox") — normalize to dot-wrapped form
-    // - An unresolved CDK token (e.g., from Fn.conditionIf) — pass through as-is
-    // - Already dot-wrapped (e.g., ".mailbox.") — pass through as-is
-    // Token.isUnresolved is checked before calling .trim(), which would resolve the token.
-    if (Token.isUnresolved(props.prefix)) {
-      cfnParameters.prefix = props.prefix as string;
-    } else {
-      const rawPrefix = (props.prefix ?? '').trim();
-      const normalizedPrefixLabel = rawPrefix.replace(/^\.+/, '').replace(/\.+$/, '');
-      cfnParameters.prefix = normalizedPrefixLabel ? `.${normalizedPrefixLabel}.` : '.';
-    }
-
-    if (props.hostedZone) {
-      cfnParameters.hostedZoneId = props.hostedZone.hostedZoneId;
-      cfnParameters.hostedZoneName = props.hostedZone.zoneName;
-    }
-
-    this.resource = new CustomResource(this, 'resource', {
-      serviceToken: infra.starter.functionArn,
-      resourceType: 'Custom::MailboxEdgeDeployer',
-      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
-      properties: {
-        stackName: edgeStackName,
-        templateUrl,
-        parameters: cfnParameters,
-        // Object-level correlation tags on the edge AWS::CloudFormation::Stack itself.
-        tags: serverlessInboxSubStackTags({
-          rootStack: Aws.STACK_NAME,
-          stack: edgeStackName,
-          version: props.productVersion,
-        }),
-        terminationProtection: props.terminationProtection ?? false,
-        region: 'us-east-1',
-      },
+    this.resource = infra.deployStack(this, 'Custom::MailboxEdgeDeployer', {
+      stackName: edgeStackName,
+      templateUrl: props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
+      parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip')),
+      tags: serverlessInboxSubStackTags({
+        rootStack: Aws.STACK_NAME,
+        stack: edgeStackName,
+        version: props.productVersion,
+      }),
+      terminationProtection: props.terminationProtection ?? false,
+      region: 'us-east-1',
     });
-
-    // Ensure the workflow remains until after the custom resource is deleted.
-    this.resource.node.addDependency(infra.workflow.stateMachine);
 
     this.edgeStackId = this.resource.ref;
 
@@ -190,13 +122,11 @@ export class MailboxEdgeDeployer extends Construct {
       this.getOutput('blobAuthorizerVersionArn'),
     );
 
-    const hasHostedZone = Boolean(props.hostedZone);
-    if (hasHostedZone) {
-      const certificateArn = this.getOutput('edgeCertificateArn');
+    if (props.hostedZone) {
       this.edgeCertificate = acm.Certificate.fromCertificateArn(
         this,
         'edge-certificate',
-        certificateArn,
+        this.getOutput('edgeCertificateArn'),
       );
     }
   }
@@ -204,5 +134,65 @@ export class MailboxEdgeDeployer extends Construct {
   /** Read a specific CloudFormation output (OutputKey) from the deployed edge stack. */
   public getOutput(outputKey: string): string {
     return this.resource.getAttString(outputKey);
+  }
+
+  /**
+   * Lambda@Edge execution role. Replicas keep running for about four hours after the function is
+   * deleted, but on cached credentials, so they do not need the role to outlive the stack. On a
+   * replacement CloudFormation creates the new role before deleting the old one, and updates the
+   * edge function with the new ARN in the same operation.
+   */
+  private createBlobAuthorizerRole(authKeyStoreTable: IDataTable): iam.Role {
+    const role = new iam.Role(this, 'blob-authorizer-role', {
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal('lambda.amazonaws.com'),
+        new iam.ServicePrincipal('edgelambda.amazonaws.com'),
+      ),
+      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+    });
+
+    // Only the auth key store is granted; the item and config table ARNs reach the edge stack as template parameters.
+    authKeyStoreTable.grantRead(role);
+
+    return role;
+  }
+
+  private templateParameters(props: MailboxEdgeDeployerProps, blobAuthorizer: ResolvedArtifact): Record<string, string> {
+    return {
+      domainName: props.domainName,
+      artifactBucket: blobAuthorizer.bucket,
+      blobAuthorizerKey: blobAuthorizer.key,
+      blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
+      itemTableArn: props.itemTable.tableArn,
+      configTableArn: props.configTable.tableArn,
+      authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
+      logGroupName: props.logGroupName,
+      rootStack: Aws.STACK_NAME,
+      rootRegion: Stack.of(this).region,
+      productVersion: props.productVersion,
+      deployerType: props.deployerType,
+      blobAuthorizerS3VersionId: blobAuthorizer.versionId ?? '',
+      prefix: this.dotWrappedPrefix(props.prefix),
+      ...(props.hostedZone
+        ? { hostedZoneId: props.hostedZone.hostedZoneId, hostedZoneName: props.hostedZone.zoneName }
+        : {}),
+    };
+  }
+
+  /**
+   * The edge template expects a dot-wrapped prefix: "." for none, or ".{label}.". A bare label is
+   * wrapped, an unresolved token (e.g. from Fn.conditionIf) is passed through untouched, since
+   * trimming it would resolve it, and so is a prefix already wrapped.
+   */
+  private dotWrappedPrefix(prefix: string | undefined): string {
+    if (prefix !== undefined && Token.isUnresolved(prefix)) {
+      return prefix;
+    }
+
+    const label = (prefix ?? '').trim().replace(/^\.+/, '').replace(/\.+$/, '');
+    return label ? `.${label}.` : '.';
   }
 }

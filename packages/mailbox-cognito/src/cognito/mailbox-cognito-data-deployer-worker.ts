@@ -3,11 +3,11 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import {
   DeployerWorkerLambda,
-  ServerlessInboxTagKeys,
   rootStackRequestTagCondition,
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { cognitoDataStackName } from './mailbox-cognito-data-stack-name';
 
 export interface MailboxCognitoDataDeployerWorkerProps {
   readonly artifactResolver: IArtifactResolver;
@@ -19,20 +19,26 @@ export interface MailboxCognitoDataDeployerWorkerProps {
  * Worker Lambda that deploys the cognito data stack via CloudFormation: manages the stack,
  * reads its template from S3, and creates/manages its Cognito User Pool resources.
  *
- * All ARN strings use `Aws.REGION`, `Aws.ACCOUNT_ID`, `Aws.STACK_NAME` — never synthesis-time
- * values — so they remain as CloudFormation tokens.
+ * Every ARN it builds uses `Aws.*` tokens rather than synthesis-time values, so account and
+ * region resolve at deploy time.
  */
 export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
-      serviceName: 'stack-deployer-cognito-worker',
+      deployedStackName: 'cognito',
     });
 
-    this.grantStackLifecycle();
+    // Grants inherited from the shared deployer worker
+    this.grantStackLifecycle(
+      `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${cognitoDataStackName()}/*`,
+      true,
+    );
     this.grantTemplateValidation();
-    this.grantTemplateRead(props.templateObjectArn);
-    this.grantTaggingApiAccess();
+    this.grantArtifactRead([props.templateObjectArn]);
+    this.grantTaggingApi();
+
+    // Grants for the resources of the cognito data stack
     this.grantUserPoolCreation();
     this.grantUserPoolLifecycle();
     this.grantUserPoolTagging();
@@ -42,100 +48,20 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
     this.grantGroupLifecycle();
   }
 
-  private grantStackLifecycle(): void {
-    const cognitoDataStackArn = `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-cognito/*`;
-
-    // CloudFormation management of the cognito data stack
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'cloudformation:CreateStack',
-          'cloudformation:UpdateStack',
-          'cloudformation:DeleteStack',
-          'cloudformation:DescribeStacks',
-          'cloudformation:DescribeStackEvents',
-          'cloudformation:GetTemplate',
-          'cloudformation:GetTemplateSummary',
-          'cloudformation:GetStackPolicy',
-          'cloudformation:SetStackPolicy',
-        ],
-        resources: [cognitoDataStackArn],
-      }),
-    );
-  }
-
-  private grantTemplateValidation(): void {
-    // ValidateTemplate acts on S3 URLs, not stack ARNs — must be on *
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['cloudformation:ValidateTemplate'],
-        resources: ['*'],
-      }),
-    );
-  }
-
-  private grantTemplateRead(templateObjectArn: string): void {
-    // Read the cognito data stack template from the artifact bucket
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['s3:GetObject', 's3:GetObjectVersion'],
-        resources: [templateObjectArn],
-      }),
-    );
-  }
-
-  private grantTaggingApiAccess(): void {
-    // AWS Tagging API — CloudFormation uses these broadly when managing tagged resources.
-    // GetResources is read-only enumeration and must remain unscopable (on *).
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['tag:GetResources'],
-        resources: ['*'],
-      }),
-    );
-    // TagResources/UntagResources are constrained by aws:TagKeys to only the tag keys
-    // applyServerlessInboxBaseTags and applyServerlessInboxComponentTag actually apply:
-    // the product/correlation tags plus the component tag. Prevents escalation via rewriting
-    // the root-stack scoping tag or injecting arbitrary tags (same scoping as grantUserPoolTagging).
-    const cognitoStackTagKeys = [
-      ServerlessInboxTagKeys.product,
-      ServerlessInboxTagKeys.rootStack,
-      ServerlessInboxTagKeys.stack,
-      ServerlessInboxTagKeys.component,
-      ServerlessInboxTagKeys.version,
-      ServerlessInboxTagKeys.deployerType,
-    ];
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['tag:TagResources', 'tag:UntagResources'],
-        resources: ['*'],
-        conditions: {
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': cognitoStackTagKeys,
-          },
-        },
-      }),
-    );
-  }
-
+  // CreateUserPool binds to no resource type (cognito-idp Service Reference, same shape as ACM
+  // RequestCertificate), so aws:ResourceTag can never gate it: the pool does not exist yet.
   private grantUserPoolCreation(): void {
-    // CreateUserPool binds to no resource type (confirmed against the IAM Service Reference:
-    // cognito-idp.json Actions[CreateUserPool].Resources is absent, same shape as ACM
-    // RequestCertificate) — aws:ResourceTag can never gate it since the pool doesn't exist yet.
-    // Region+account scope only, same as every other unconditioned account-level action here.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['cognito-idp:CreateUserPool'],
-        resources: ['*'],
-      }),
+        resources: ['*'],      }),
     );
   }
 
+  // These actions bind to the "userpool" resource type and act on a pool that already exists and
+  // is already tagged, so aws:ResourceTag is satisfiable.
   private grantUserPoolLifecycle(): void {
-    // Cognito User Pool lifecycle — all bind to the "userpool" resource type, which the Service
-    // Reference lists as supporting aws:ResourceTag/${TagKey}. These act on the ALREADY-CREATED,
-    // already-tagged pool (creation is the statement above), so aws:ResourceTag is satisfiable here.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -156,24 +82,13 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
+  // aws:TagKeys is multivalued, so it needs ForAllValues: a plain StringEquals never matches and
+  // silently denies every tag write.
   private grantUserPoolTagging(): void {
-    // Tag keys applyServerlessInboxBaseTags/applyServerlessInboxComponentTag actually write onto
-    // this pool at the cognito-data stack root (mailbox-cognito-data-stack.ts) — the only keys this
-    // role may legitimately tag-write. Keep in lockstep with those two call sites, not invented here.
-    const legitimateTagKeys = [
-      ServerlessInboxTagKeys.product,
-      ServerlessInboxTagKeys.rootStack,
-      ServerlessInboxTagKeys.stack,
-      ServerlessInboxTagKeys.component,
-      ServerlessInboxTagKeys.version,
-      ServerlessInboxTagKeys.deployerType,
-    ];
+    const legitimateTagKeys = [...this.subStackTagKeys];
 
-    // TagResource on CREATE: CFN sends root-stack (and the other base/component tags) in-request
-    // against a still-untagged pool, so aws:RequestTag matches and aws:ResourceTag cannot (see
-    // iam-scoping §2). aws:TagKeys uses ForAllValues — a plain StringEquals never matches because
-    // aws:TagKeys is multivalued (do not "simplify" this back to StringEquals; that silently breaks
-    // every tag write, per the support-api.ts precedent).
+    // On CREATE, CloudFormation sends the tags in the request against a still-untagged pool, so
+    // aws:RequestTag matches and aws:ResourceTag cannot.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -187,9 +102,9 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         },
       }),
     );
-    // TagResource on UPDATE: CFN sends only the changed tags, so root-stack may be absent from the
-    // request (aws:RequestTag above won't match) — but the pool is already tagged from creation, so
-    // aws:ResourceTag links it. Union of the two (own statements, per iam-scoping §2) covers both.
+    // On UPDATE, CloudFormation sends only the changed tags, so root-stack may be absent from the
+    // request, but the pool is already tagged and aws:ResourceTag matches. The two statements together
+    // cover both.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -206,8 +121,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantUserPoolDomainLifecycle(): void {
-    // Cognito User Pool Domain — all but Describe bind to "userpool" (ResourceTag-satisfiable, same
-    // reasoning as the lifecycle statement above).
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -224,10 +137,9 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
+  // DescribeUserPoolDomain binds to no resource type (cognito-idp Service Reference), so it cannot
+  // be tag-gated.
   private grantUserPoolDomainRead(): void {
-    // DescribeUserPoolDomain binds to no resource type at all (Service Reference:
-    // Actions[DescribeUserPoolDomain].Resources is absent) and so cannot be tag-gated — kept
-    // unconditioned like CreateUserPool.
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -238,7 +150,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantResourceServerLifecycle(): void {
-    // Cognito Resource Server (OAuth scopes) — all bind to "userpool" (ResourceTag-satisfiable).
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -257,7 +168,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantGroupLifecycle(): void {
-    // Cognito Groups — all bind to "userpool" (ResourceTag-satisfiable).
     this.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,

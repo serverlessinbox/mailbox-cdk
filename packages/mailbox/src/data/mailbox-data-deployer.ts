@@ -1,4 +1,4 @@
-import { Aws, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
+import { Aws, Fn, Stack } from 'aws-cdk-lib';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -51,66 +51,47 @@ export class MailboxDataDeployer extends Construct {
     super(scope, id);
 
     const stack = Stack.of(this);
-
-    // CFN token used as the stack name in the custom resource properties and in the stack ARN.
-    const dataStackNameToken = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
-
+    const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
     const dataStackArn = stack.formatArn({
       service: 'cloudformation',
       resource: 'stack',
-      resourceName: `${dataStackNameToken}/*`,
+      resourceName: `${dataStackName}/*`,
     });
 
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
-      parent: 'data',
+      deployedStackName: 'data',
       createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorker(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         dataStackArn,
-        dataStackName: dataStackNameToken,
+        dataStackName,
         templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
         nameBase: props.nameBase,
       }),
     });
 
-    const templateUrl = props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json');
-
-    // Written to the data sub-stack's serverless-inbox:version tag.
     const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
 
-    const resource = new CustomResource(this, 'resource', {
-      serviceToken: infra.starter.functionArn,
-      resourceType: 'Custom::MailboxDataDeployer',
-      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
-      properties: {
-        stackName: dataStackNameToken,
-        templateUrl,
-        preserveOnDelete: true,
-        parameters: {
-          nameBase: props.nameBase,
-          // The root (main) stack name, so the data sub-stack's resources carry the same
-          // serverless-inbox:root-stack tag. Key must match the data stack's CfnParameter
-          // overrideLogicalId (rootStack).
-          rootStack: Aws.STACK_NAME,
-          productVersion,
-          deployerType: props.deployerType,
-        },
-        // Object-level correlation tags on the data AWS::CloudFormation::Stack itself.
-        tags: serverlessInboxSubStackTags({
-          rootStack: Aws.STACK_NAME,
-          stack: dataStackNameToken,
-          version: productVersion,
-        }),
+    const resource = infra.deployStack(this, 'Custom::MailboxDataDeployer', {
+      stackName: dataStackName,
+      templateUrl: props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
+      preserveOnDelete: true,
+      parameters: {
+        nameBase: props.nameBase,
+        rootStack: Aws.STACK_NAME,
+        productVersion,
+        deployerType: props.deployerType,
       },
+      tags: serverlessInboxSubStackTags({
+        rootStack: Aws.STACK_NAME,
+        stack: dataStackName,
+        version: productVersion,
+      }),
     });
 
-    // Ensure the workflow remains until after the custom resource is deleted.
-    resource.node.addDependency(infra.workflow.stateMachine);
-
-    // Resolve data table ARNs through the override resolver: an operator-supplied SSM override replaces a
-    // table's ARN, provided the override table exists and is ACTIVE.
+    // An operator-supplied SSM override replaces a table's ARN, provided the override table exists and is ACTIVE.
     const resolver = new MailboxDataOverrideResolver(this, 'override-resolver', {
       configTableArn:       resource.getAttString('configTableArn'),
       itemTableArn:         resource.getAttString('itemTableArn'),
@@ -121,8 +102,6 @@ export class MailboxDataDeployer extends Construct {
     });
     resolver.node.addDependency(resource);
 
-    // Table ARNs come from the override resolver; the bucket ARN comes from the deployed stack's
-    // outputs. Both are surfaced as custom resource attributes.
     const ref = new MailboxDataStackRef(this, 'ref', {
       configTableArn:       resolver.getConfigTableArn(),
       itemTableArn:         resolver.getItemTableArn(),

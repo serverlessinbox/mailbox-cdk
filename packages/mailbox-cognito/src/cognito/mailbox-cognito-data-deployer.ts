@@ -1,7 +1,8 @@
-import { Aws, CustomResource, Duration } from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
+import { cognitoDataStackName } from './mailbox-cognito-data-stack-name';
 import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -32,13 +33,9 @@ export interface MailboxCognitoDataDeployerProps {
  * Deploys the MailboxCognitoDataStack (Cognito User Pool + OAuth domain + resource server)
  * via a CloudFormation custom resource backed by a Step Functions workflow.
  *
- * The cognito data stack is deployed in the same region as the parent stack, using
- * `Aws.REGION` (never `Stack.of(this).region`) to keep the value as a CloudFormation token.
- *
- * Invariants:
- * - No `Stack.of(this)` anywhere — `Aws.*` tokens only.
- * - `preserveOnDelete: true` — cognito data stack is never deleted on CFN resource removal.
- * - `region: Aws.REGION` — token-safe, resolved at deploy time.
+ * The cognito data stack is deployed in the same region as the parent stack. Region and stack
+ * name stay `Aws.*` tokens, never `Stack.of(this)` values, so they resolve at deploy time.
+ * The custom resource sets `preserveOnDelete`: removing it never deletes the cognito data stack.
  */
 export class MailboxCognitoDataDeployer extends Construct {
   public readonly dataStackRef: MailboxCognitoDataStackRef;
@@ -48,66 +45,53 @@ export class MailboxCognitoDataDeployer extends Construct {
 
     const artifacts = props.artifactResolver;
 
-    // Resolve the cognito data stack template to S3 location.
-    const templateUrl = artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json');
-    const templateArn = artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json');
-
     const deployerInfra = new DeployerInfra(this, 'infra', {
       artifactResolver: artifacts,
       stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
-      parent: 'cognito',
+      deployedStackName: 'cognito',
       createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorker(workerScope, workerId, {
         artifactResolver: artifacts,
-        templateObjectArn: templateArn,
+        templateObjectArn: artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json'),
       }),
     });
 
     const productVersion = artifacts.getVersion('mailbox-cognito');
-    const cognitoStackName = Aws.STACK_NAME + '-cognito';
+    const stackName = cognitoDataStackName();
 
-    const parameters: Record<string, string> = {
-      cognitoDomainPrefix: props.cognitoDomainPrefix,
-      mfaMode: props.mfaMode ?? 'OPTIONAL',
-      passwordMinLength: String(props.passwordMinLength ?? 8),
-      // Correlation tagging: pass the root (main) stack name so the cognito sub-stack's resources
-      // carry the same serverless-inbox:root-stack tag. Key MUST match the cognito data stack's
-      // CfnParameter overrideLogicalId (rootStack).
-      rootStack: Aws.STACK_NAME,
-      // Real product version so tags aren't 'unknown'.
-      productVersion,
-      deployerType: props.deployerType,
-    };
-    if (props.customDomain !== undefined) {
-      parameters.customDomainName = props.customDomain.domainName;
-      parameters.customDomainCertArn = props.customDomain.certificateArn;
-    }
-
-    const resource = new CustomResource(this, 'resource', {
-      serviceToken: deployerInfra.starter.functionArn,
-      resourceType: 'Custom::MailboxCognitoDataDeployer',
-      serviceTimeout: Duration.hours(1), // caps CFN's default multi-hour wait
-      properties: {
-        region: Aws.REGION,
-        preserveOnDelete: true,
-        stackName: cognitoStackName,
-        templateUrl,
-        parameters,
-        // Object-level correlation tags on the cognito AWS::CloudFormation::Stack itself.
-        tags: serverlessInboxSubStackTags({
-          rootStack: Aws.STACK_NAME,
-          stack: cognitoStackName,
-          version: productVersion,
-        }),
-      },
+    const resource = deployerInfra.deployStack(this, 'Custom::MailboxCognitoDataDeployer', {
+      region: Aws.REGION,
+      preserveOnDelete: true,
+      stackName,
+      templateUrl: artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json'),
+      parameters: this.templateParameters(props, productVersion),
+      tags: serverlessInboxSubStackTags({
+        rootStack: Aws.STACK_NAME,
+        stack: stackName,
+        version: productVersion,
+      }),
     });
-
-    // Ensure the workflow remains until after the custom resource is deleted.
-    resource.node.addDependency(deployerInfra.workflow.stateMachine);
 
     this.dataStackRef = new MailboxCognitoDataStackRef(this, 'ref', {
       userPoolId:  resource.getAttString('userPoolId'),
       userPoolArn: resource.getAttString('userPoolArn'),
       oauthDomain: resource.getAttString('oauthDomain'),
     });
+  }
+
+  private templateParameters(props: MailboxCognitoDataDeployerProps, productVersion: string): Record<string, string> {
+    return {
+      cognitoDomainPrefix: props.cognitoDomainPrefix,
+      mfaMode: props.mfaMode ?? 'OPTIONAL',
+      passwordMinLength: String(props.passwordMinLength ?? 8),
+      rootStack: Aws.STACK_NAME,
+      productVersion,
+      deployerType: props.deployerType,
+      ...(props.customDomain !== undefined
+        ? {
+          customDomainName: props.customDomain.domainName,
+          customDomainCertArn: props.customDomain.certificateArn,
+        }
+        : {}),
+    };
   }
 }

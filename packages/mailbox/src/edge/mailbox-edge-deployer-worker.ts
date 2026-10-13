@@ -31,69 +31,36 @@ export interface MailboxEdgeDeployerWorkerProps {
  * CloudFormation (called without a RoleArn) uses the CALLER's permissions to create/update/delete
  * every resource in the template, so this role needs create/delete rights for exactly the resource
  * types the edge template contains: an ACM certificate, one Lambda function + version, and a resource
- * group. The IAM role is created in the root stack and passed via parameter; this worker only needs
- * iam:PassRole scoped to that specific role ARN.
+ * group. The execution role of the Lambda function is created outside the edge stack, so the worker
+ * only needs iam:PassRole on that one role.
  *
  * Scoping strategy: CFN-generated physical NAMES for Lambda functions are truncated to 64 chars for
  * long stack names, so name-prefix ARN patterns break. Lambda mutations carry a tag-condition fallback
  * keyed on the `serverless-inbox:root-stack` tag that the edge template applies to the function.
  *
- * The edge template contains no CloudWatch Log Groups, so this worker needs NO logs permissions
- * (its own logging comes from its execution role's basic policy).
+ * The edge template contains no CloudWatch Log Groups, so this worker needs NO logs permissions.
  */
 export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkerProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
-      serviceName: 'stack-deployer-edge-worker',
+      deployedStackName: 'edge',
     });
 
+    // Grants inherited from the shared deployer worker
     this.grantStackLifecycle(props.edgeStackArn);
-    this.grantTemplateAndArtifactRead(props.templateObjectArn, props.artifactObjectArns);
+    this.grantArtifactRead([props.templateObjectArn, ...props.artifactObjectArns]);
+    this.grantTaggingApi([ServerlessInboxTagKeys.edge, ServerlessInboxTagKeys.rootRegion]);
+
+    // Grants for the resources of the edge stack
     this.grantCertificateLifecycle(props.stack, props.rootStack);
     this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, props.rootStack);
     this.grantExecutionRolePassage(props.blobAuthorizerRoleArn);
-    this.grantTaggingApiAccess();
     this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
 
     if (props.hostedZoneId !== undefined) {
       this.grantDnsValidationAccess(props.hostedZoneId);
     }
-  }
-
-  private grantStackLifecycle(edgeStackArn: string): void {
-    // Allow the deployer to manage CloudFormation stacks in us-east-1
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'cloudformation:CreateStack',
-          'cloudformation:UpdateStack',
-          'cloudformation:DeleteStack',
-          'cloudformation:DescribeStacks',
-          'cloudformation:DescribeStackEvents',
-          'cloudformation:GetTemplateSummary',
-          'cloudformation:GetStackPolicy',
-          'cloudformation:SetStackPolicy',
-        ],
-        resources: [edgeStackArn],
-      })
-    );
-  }
-
-  private grantTemplateAndArtifactRead(templateObjectArn: string, artifactObjectArns: string[]): void {
-    // Allow reading the edge stack template and ALL Lambda artifact zips from S3.
-    // CloudFormation uses the CALLER's identity (this worker role) to fetch Lambda zip files
-    // when creating AWS::Lambda::Function resources — individual object ARNs are not sufficient.
-    // Edge artifacts are always in the us-east-1 artifact bucket regardless of regional stack.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          's3:GetObject',
-          's3:GetObjectVersion',
-        ],
-        resources: [templateObjectArn, ...artifactObjectArns],
-      })
-    );
   }
 
   /**
@@ -135,8 +102,6 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         resources: [certificateArnPrefix],
       })
     );
-    // AddTags on CREATE: CloudFormation tags the initially-untagged cert, so root-stack is in the request.
-    // aws:RequestTag gates to only the CREATE path.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
@@ -148,9 +113,6 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         },
       })
     );
-    // AddTags on an UPDATE: CloudFormation sends only changed tags, so root-stack may be absent from the
-    // request (aws:RequestTag above won't match) — but the cert already exists and carries the root-stack
-    // tag from creation, so aws:ResourceTag links it. Union of the two covers create + update.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['acm:AddTagsToCertificate'],
@@ -182,10 +144,19 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
+  /**
+   * Lambda function ARNs use a COLON separator (`:function:name`), so ArnFormat.COLON_RESOURCE_NAME is
+   * required; the slash form silently matches nothing.
+   *
+   * The same actions are granted three ways: on the function ARN prefix, on `*` with a function-name
+   * condition (CreateFunction evaluates against `*` with the name in the request context), and on `*` with
+   * the root-stack tag condition. The tag-scoped statement is the one that survives name truncation: the
+   * CFN-generated function name is cut to 64 chars for long stack names, which breaks both name-prefix
+   * patterns. lambda:TagResource/UntagResource carry no aws:TagKeys constraint because they act on functions
+   * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
+   * aws:TagKeys.
+   */
   private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, rootStack: string): void {
-    // Lambda function + version lifecycle. NOTE: Lambda function ARNs use a COLON separator
-    // (`:function:name`), so ArnFormat.COLON_RESOURCE_NAME is required — the slash form silently
-    // matches nothing.
     const edgeLambdaActions = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
@@ -210,8 +181,6 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         resources: [edgeLambdaArnPrefix],
       })
     );
-    // Same grant expressed as a function-name condition. Some Lambda authorization paths (notably
-    // CreateFunction) evaluate against resource "*" with the name in the request context.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: edgeLambdaActions,
@@ -223,14 +192,6 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         },
       })
     );
-    // Tag-scoped fallback for post-create operations: the CFN-generated function name is truncated
-    // to 64 chars for long stack names, breaking both name-prefix patterns above. The root-stack tag
-    // applied by the edge template is immune to truncation and keeps updates/deletion working.
-    // Lambda-level lambda:TagResource/lambda:UntagResource are not further constrained by aws:TagKeys
-    // here because they act on individual Lambda functions already scoped by the root-stack tag condition.
-    // The Resource Groups Tagging API (tag:TagResources/tag:UntagResources) IS constrained by aws:TagKeys
-    // in grantTaggingApiAccess() to only the keys this deployer legitimately applies, preventing
-    // escalation via rewriting tags on other resources in the account.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
@@ -251,10 +212,8 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
+  /** Gated to the Lambda services, so the role cannot be passed to any other service. */
   private grantExecutionRolePassage(blobAuthorizerRoleArn: string): void {
-    // The blob-authorizer execution role is created in the root stack and passed via parameter
-    // as a concrete ARN. Grant only iam:PassRole scoped to that specific role, gated to Lambda
-    // services to prevent passing the role to other services or to unauthorized principals.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['iam:PassRole'],
@@ -268,53 +227,13 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
-  private grantTaggingApiAccess(): void {
-    // Some CloudFormation resources use the Resource Groups Tagging API behind the scenes.
-    // GetResources is read-only enumeration and must remain unscopable (on *).
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'tag:GetResources',
-        ],
-        resources: ['*'],
-      })
-    );
-    // TagResources/UntagResources are constrained by aws:TagKeys to only the tag keys
-    // this deployer legitimately applies to the edge stack: the product/correlation tags
-    // (product, root-stack, stack, deployer_type, version) plus the component and edge-tier tags.
-    // Prevents escalation via rewriting the root-stack scoping tag or injecting arbitrary tags.
-    const edgeStackTagKeys = [
-      ServerlessInboxTagKeys.product,
-      ServerlessInboxTagKeys.rootStack,
-      ServerlessInboxTagKeys.stack,
-      ServerlessInboxTagKeys.component,
-      ServerlessInboxTagKeys.version,
-      ServerlessInboxTagKeys.deployerType,
-      ServerlessInboxTagKeys.edge,
-      ServerlessInboxTagKeys.rootRegion,
-    ];
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'tag:TagResources',
-          'tag:UntagResources',
-        ],
-        resources: ['*'],
-        conditions: {
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': edgeStackTagKeys,
-          },
-        },
-      })
-    );
-  }
-
+  /**
+   * AWS Resource Groups service actions (distinct from the tag:* Resource Groups Tagging API). The edge
+   * template creates one group named `<edge-stack-name>-serverless-inbox`, so everything except CreateGroup
+   * is scoped to it. CreateGroup stays on `*`: group-ARN scoping for it is unverified, and a wrongly scoped
+   * create fails the whole edge deployment.
+   */
   private grantResourceGroupLifecycle(stack: Stack, edgeStackName: string): void {
-    // AWS Resource Groups SERVICE actions (distinct from the tag:* Resource Groups Tagging API above).
-    // The edge template creates one group with the deterministic name
-    // `<edge-stack-name>-serverless-inbox` (see utils/resource-group.ts), so everything except
-    // CreateGroup is scoped to it. CreateGroup stays on "*" — group-ARN scoping for it is unverified
-    // and a wrongly-scoped create fails the whole edge deployment.
     const edgeResourceGroupArn = stack.formatArn({
       service: 'resource-groups',
       region: 'us-east-1',
@@ -345,10 +264,8 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     );
   }
 
+  /** Route53 record writes for the certificate's DNS validation. GetChange ARNs are random ids and cannot be scoped further. */
   private grantDnsValidationAccess(hostedZoneId: string): void {
-    // Route53 record writes for the certificate's DNS validation. Only needed (and only granted)
-    // when a hosted zone is configured — without one, the certificate resource is conditioned out
-    // of the edge stack. GetChange ARNs are random ids and cannot be scoped further.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [

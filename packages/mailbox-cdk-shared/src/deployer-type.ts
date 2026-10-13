@@ -1,30 +1,32 @@
+import * as t from 'typanion';
 import { Construct } from 'constructs';
 import { DEPLOYER_TYPE_CONTEXT_KEY } from './context-keys';
 
-export type ServerlessInboxDeployerType = 'cdk' | 'cfn' | 'marketplace';
+const DEPLOYER_TYPES = ['cdk', 'cfn', 'marketplace'] as const;
+
+const isDeployerType = t.isEnum(DEPLOYER_TYPES);
+
+export type ServerlessInboxDeployerType = (typeof DEPLOYER_TYPES)[number];
 
 /**
- * Resolve the deployment mechanism used to deploy this stack.
+ * The deployment mechanism of this stack, read from the `DEPLOYER_TYPE_CONTEXT_KEY` CDK context key.
+ * An unset key resolves to 'cdk': a customer install passes no CDK context at all, so absence must
+ * never throw.
  *
- * Reads the DEPLOYER_CONTEXT_KEY CDK context key, falling back to 'cdk' when unset — a customer
- * install passes no CDK context at all, so absence must never throw. Throws when the context
- * value is present but not one of the recognized deployer kinds.
- *
- * Called once from a composition root (`Mailbox`, or an addon's own top-level construct) and
- * threaded down as a prop — never called from a Lambda construct class.
- *
- * @param scope Construct used to read CDK context.
- * @returns The resolved deployer kind.
- * @throws Error if the context value is present but not one of: cdk, cfn, marketplace.
+ * @throws Error if the key is set to anything but a deployer type.
  */
 export function resolveDeployerType(scope: Construct): ServerlessInboxDeployerType {
-  const v = scope.node.tryGetContext(DEPLOYER_TYPE_CONTEXT_KEY);
-  if (v === 'cdk' || v === 'cfn' || v === 'marketplace') return v;
-  if (v !== undefined && v !== null) {
+  const configured: unknown = scope.node.tryGetContext(DEPLOYER_TYPE_CONTEXT_KEY);
+  if (configured === undefined || configured === null) {
+    return 'cdk';
+  }
+
+  if (!isDeployerType(configured)) {
     throw new Error(
-      `@serverlessinbox/mailbox: invalid CDK context value for "${DEPLOYER_TYPE_CONTEXT_KEY}": "${v}". ` +
-      'Must be one of: cdk, cfn, marketplace.',
+      `@serverlessinbox/mailbox: invalid CDK context value for "${DEPLOYER_TYPE_CONTEXT_KEY}": "${configured}". ` +
+      `Must be one of: ${DEPLOYER_TYPES.join(', ')}.`,
     );
   }
-  return 'cdk';
+
+  return configured;
 }
