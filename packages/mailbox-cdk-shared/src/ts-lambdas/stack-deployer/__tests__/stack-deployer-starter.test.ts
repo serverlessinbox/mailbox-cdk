@@ -2,6 +2,7 @@ import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws
 import { mockClient } from 'aws-sdk-client-mock';
 import { ExpectedFailure } from '../../shared/expected-failure';
 import { CfnResponder } from '../cfn-responder';
+import { toStackId, toStateMachineArn, type StackId, type StateMachineArn } from '../deployer-identifiers';
 import { StackDeployerStarter } from '../stack-deployer-starter';
 import { StackOperationFailure } from '../stack-operation-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
@@ -22,8 +23,8 @@ const ALREADY_EXISTS = { name: 'ExecutionAlreadyExists', message: 'Execution alr
 const ACCESS_DENIED = { name: 'AccessDeniedException', message: 'not allowed' };
 const EXISTING_EXECUTION_ARN = 'arn:aws:states:us-east-1:123456789012:execution:MailboxDataDeployer-abc123:request-123';
 
-function stackIdOfRootStack(rootStackName: string): string {
-  return `arn:aws:cloudformation:us-east-1:123456789012:stack/${rootStackName}/guid`;
+function stackIdOfRootStack(rootStackName: string): StackId {
+  return toStackId(`arn:aws:cloudformation:us-east-1:123456789012:stack/${rootStackName}/guid`);
 }
 
 /**
@@ -36,7 +37,7 @@ describe('StackDeployerStarter', () => {
   const sfn = mockClient(SFNClient);
   let endpoint: FakeCfnEndpoint;
 
-  function starterFor(stateMachineArn: string = STATE_MACHINE_ARN): StackDeployerStarter {
+  function starterFor(stateMachineArn: StateMachineArn = STATE_MACHINE_ARN): StackDeployerStarter {
     return new StackDeployerStarter(stateMachineArn, new SFNClient({}), new StackDeploymentEventReader(), new CfnResponder(), defaultLevelLogger());
   }
 
@@ -136,7 +137,7 @@ describe('StackDeployerStarter', () => {
     });
 
     it('does not check a stack id that is not split into a stack name', async () => {
-      await starterFor().start(cfnRequest({ StackId: 'not-a-stack-arn' }), replyTarget());
+      await starterFor().start(cfnRequest({ StackId: toStackId('not-a-stack-arn') }), replyTarget());
 
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });
@@ -152,7 +153,7 @@ describe('StackDeployerStarter', () => {
     it('rejects the slash form of the ARN as an ExpectedFailure and starts nothing', async () => {
       const slashForm = 'arn:aws:states:us-east-1:123456789012:stateMachine/MailboxDataDeployer-abc123';
 
-      const failure = await failureOf(starterFor(slashForm).start(cfnRequest(), replyTarget()));
+      const failure = await failureOf(starterFor(toStateMachineArn(slashForm)).start(cfnRequest(), replyTarget()));
 
       expect(failure).toBeInstanceOf(ExpectedFailure);
       expect(failure).toHaveProperty(

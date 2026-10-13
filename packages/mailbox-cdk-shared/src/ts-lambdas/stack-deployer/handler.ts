@@ -8,6 +8,7 @@ import { withSmokeTest } from '../shared/with-smoke-test';
 import { CfnResponder } from './cfn-responder';
 import { CloudFormationStacks } from './cloudformation-stacks';
 import { loadStarter, loadWorker } from './config';
+import { toRegion, type Region } from './deployer-identifiers';
 import { StackDeployerStarter } from './stack-deployer-starter';
 import { StackDeployerWorker } from './stack-deployer-worker';
 import { StackDeploymentEventReader } from './stack-deployment-event-reader';
@@ -30,8 +31,8 @@ const responder = new CfnResponder();
 const events = new StackDeploymentEventReader();
 
 // A stack operation names the region its stack lives in, so the CloudFormation clients are built per region on first use.
-const cloudFormationClients = new Map<string, CloudFormationClient>();
-const cloudFormationIn = (region: string): CloudFormationClient => {
+const cloudFormationClients = new Map<Region, CloudFormationClient>();
+const cloudFormationIn = (region: Region): CloudFormationClient => {
   let client = cloudFormationClients.get(region);
   if (!client) {
     client = new CloudFormationClient({ region });
@@ -89,7 +90,7 @@ export const workerHandler = withSmokeTest(async (event: unknown, context: Invoc
   }
 
   const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
-  const stacks = new CloudFormationStacks(cloudFormationIn, awsRegion ?? 'us-east-1', logger);
+  const stacks = new CloudFormationStacks(cloudFormationIn, toRegion(awsRegion ?? 'us-east-1'), logger);
   const worker = new StackDeployerWorker(stacks, responder, logger);
 
   try {

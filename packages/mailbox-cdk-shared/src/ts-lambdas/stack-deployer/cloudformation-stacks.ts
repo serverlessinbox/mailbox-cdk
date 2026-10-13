@@ -11,6 +11,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import { CaughtError } from '../shared/caught-error';
+import type { Region } from './deployer-identifiers';
 import type { OperationInput } from './stack-deployment';
 import { StackStatus } from './stack-status';
 
@@ -34,11 +35,11 @@ interface CfnTag {
  * from the region of the operation, or from the default region when the operation names none.
  */
 export class CloudFormationStacks {
-  private readonly clientForRegion: (region: string) => CloudFormationClient;
-  private readonly defaultRegion: string;
+  private readonly clientForRegion: (region: Region) => CloudFormationClient;
+  private readonly defaultRegion: Region;
   private readonly logger: LoggerBuffer;
 
-  constructor(clientForRegion: (region: string) => CloudFormationClient, defaultRegion: string, logger: LoggerBuffer) {
+  constructor(clientForRegion: (region: Region) => CloudFormationClient, defaultRegion: Region, logger: LoggerBuffer) {
     this.clientForRegion = clientForRegion;
     this.defaultRegion = defaultRegion;
     this.logger = logger;

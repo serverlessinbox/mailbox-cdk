@@ -1,15 +1,16 @@
+import { toPhysicalResourceId, type PhysicalResourceId } from './deployer-identifiers';
 import type { CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from './stack-deployment';
 
 // CloudFormation caps the size of a response reason; this leaves headroom.
 const MAX_REASON_LENGTH = 3500;
 const TRUNCATION_MARKER = ' …(truncated)';
 
-const UNNAMED_STACK_RESOURCE_ID = 'MailboxStack';
+const UNNAMED_STACK_RESOURCE_ID = toPhysicalResourceId('MailboxStack');
 
 /** Where an answer goes and which resource it concerns: the CloudFormation envelope, the physical id and the log stream a reason can point to. */
 export interface CfnReplyTarget {
   readonly cfn: CfnEnvelope;
-  readonly physicalResourceId: string;
+  readonly physicalResourceId: PhysicalResourceId;
   readonly logStreamName: string | undefined;
 }
 
@@ -36,13 +37,13 @@ export class CfnResponder {
         LogicalResourceId: request.LogicalResourceId,
         ResourceType: request.ResourceType,
       },
-      physicalResourceId: request.ResourceProperties.stackName ?? UNNAMED_STACK_RESOURCE_ID,
+      physicalResourceId: this.physicalIdOfRequest(request),
       logStreamName,
     };
   }
 
   targetForStep(event: SfnInvokeEvent, logStreamName: string | undefined): CfnReplyTarget {
-    return { cfn: event.cfn, physicalResourceId: event.op.stackName, logStreamName };
+    return { cfn: event.cfn, physicalResourceId: toPhysicalResourceId(event.op.stackName), logStreamName };
   }
 
   /** A reason cut to the size CloudFormation accepts, for the reasons that carry text of unbounded length such as stack events. */
@@ -98,6 +99,11 @@ export class CfnResponder {
       const text = await response.text().catch(() => '');
       throw new Error(`Failed to PUT CloudFormation response (HTTP ${response.status}): ${text}`);
     }
+  }
+
+  private physicalIdOfRequest(request: CfnRequest): PhysicalResourceId {
+    const stackName = request.ResourceProperties.stackName;
+    return stackName === undefined ? UNNAMED_STACK_RESOURCE_ID : toPhysicalResourceId(stackName);
   }
 
   private reasonOf(target: CfnReplyTarget, reason: string | undefined): string | undefined {

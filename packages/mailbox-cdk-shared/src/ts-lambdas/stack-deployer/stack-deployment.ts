@@ -1,4 +1,14 @@
 import * as t from 'typanion';
+import {
+  isLogicalResourceId,
+  isRegion,
+  isRequestId,
+  isResponseUrl,
+  isStackId,
+  isStackName,
+  isTemplateUrl,
+  type Unbranded,
+} from './deployer-identifiers';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);
 
@@ -13,16 +23,16 @@ const isTerminationProtection = t.isOneOf([t.isBoolean(), t.isEnum(['true', 'fal
 
 const stackDeployerPropertyFields = {
   ServiceToken: t.isOptional(t.isString()),
-  stackName: t.isString(),
+  stackName: isStackName,
   /** Absent only when the stack is being deleted; a create or update without one is refused by CloudFormation. */
-  templateUrl: t.isOptional(t.isString()),
+  templateUrl: t.isOptional(isTemplateUrl),
   /** CloudFormation stack parameters; an undefined or empty value is not passed on. */
   parameters: t.isOptional(isStringMap),
   /** Tags applied to the AWS::CloudFormation::Stack itself and propagated by CloudFormation to its resources. */
   tags: t.isOptional(isStringMap),
   terminationProtection: t.isOptional(isTerminationProtection),
   /** Region of the CloudFormation API calls; the Lambda's own region when absent. */
-  region: t.isOptional(t.isString()),
+  region: t.isOptional(isRegion),
   /** When set, a Delete skips DeleteStack and is answered SUCCESS, leaving the stack and its retained resources. Any non-empty string, `'false'` included, counts as set. */
   preserveOnDelete: t.isOptional(isFlag),
 };
@@ -33,13 +43,16 @@ export const isStackDeployerProperties = t.isPartial(stackDeployerPropertyFields
 
 /** The properties a Delete needs; it proceeds on these alone when the others are not valid. */
 export const isDeletionProperties = t.isPartial({
-  stackName: t.isString(),
-  region: t.isOptional(t.isString()),
+  stackName: isStackName,
+  region: t.isOptional(isRegion),
   preserveOnDelete: t.isOptional(isFlag),
 });
 
-/** The properties of the custom resource that deploys one CloudFormation stack. */
-export type StackDeployerProperties = t.InferType<typeof isStackDeployerProperties>;
+/** The properties of the custom resource that deploys one CloudFormation stack, with the identifiers as the Lambda reads them. */
+export type BrandedStackDeployerProperties = t.InferType<typeof isStackDeployerProperties>;
+
+/** The properties of the custom resource that deploys one CloudFormation stack, as the construct writes them: plain strings. */
+export type StackDeployerProperties = Unbranded<BrandedStackDeployerProperties>;
 
 // The starter copies the properties of the resource into the operation as they came, so the operation accepts
 // the keys the properties accept.
@@ -49,10 +62,10 @@ const isOperationInput = t.isPartial({ ...stackDeployerPropertyFields, requestTy
 export type OperationInput = t.InferType<typeof isOperationInput>;
 
 const cfnEnvelopeFields = {
-  ResponseURL: t.isString(),
-  StackId: t.isString(),
-  RequestId: t.isString(),
-  LogicalResourceId: t.isString(),
+  ResponseURL: isResponseUrl,
+  StackId: isStackId,
+  RequestId: isRequestId,
+  LogicalResourceId: isLogicalResourceId,
   ResourceType: t.isOptional(t.isString()),
 };
 
@@ -66,7 +79,7 @@ export type CfnEnvelope = t.InferType<typeof isCfnEnvelope>;
 export const isCfnRequest = t.isPartial({
   ...cfnEnvelopeFields,
   RequestType: isRequestType,
-  ResourceProperties: t.isPartial({ stackName: t.isOptional(t.isString()) }),
+  ResourceProperties: t.isPartial({ stackName: t.isOptional(isStackName) }),
 });
 
 /** A CloudFormation custom-resource request, as far as it must be known to answer it. */

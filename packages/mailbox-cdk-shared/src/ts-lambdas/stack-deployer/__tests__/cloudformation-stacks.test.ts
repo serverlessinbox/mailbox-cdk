@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
 import { CloudFormationStacks } from '../cloudformation-stacks';
+import { toRegion } from '../deployer-identifiers';
 import { defaultLevelLogger, operation, silenceConsole, stack, STACK_NAME } from './stack-deployer-helpers';
 
 // A status the SDK's enum does not list, as CloudFormation could send it: the wire is JSON, so the fixture is too.
@@ -37,7 +38,7 @@ describe('CloudFormationStacks', () => {
         regions.push(region);
         return new CloudFormationClient({ region });
       },
-      'eu-west-1',
+      toRegion('eu-west-1'),
       defaultLevelLogger(),
     );
   });
@@ -83,7 +84,7 @@ describe('CloudFormationStacks', () => {
     it('calls CloudFormation in the region of the operation', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_COMPLETE')] });
 
-      await stacks.describe(operation({ region: 'us-east-1' }));
+      await stacks.describe(operation({ region: toRegion('us-east-1') }));
 
       expect(regions).toEqual(['us-east-1']);
     });

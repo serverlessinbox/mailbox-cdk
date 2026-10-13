@@ -7,8 +7,8 @@ import {
   isStackDeployerProperties,
   type CfnRequest,
   type RequestType,
+  type BrandedStackDeployerProperties,
   type SfnInvokeEvent,
-  type StackDeployerProperties,
 } from './stack-deployment';
 
 /**
@@ -31,7 +31,7 @@ export class StackDeploymentEventReader {
    * reason the request is answered with, except for a Delete: it proceeds on the properties it needs when
    * those are valid, so that a stack is still deleted.
    */
-  readProperties(properties: unknown, requestType: RequestType): StackDeployerProperties {
+  readProperties(properties: unknown, requestType: RequestType): BrandedStackDeployerProperties {
     const read = t.as(properties, isStackDeployerProperties, { errors: true });
     if (!read.errors) {
       return read.value;
@@ -50,7 +50,7 @@ export class StackDeploymentEventReader {
     return read.value;
   }
 
-  private readDeletionProperties(properties: unknown, fullErrors: string[]): StackDeployerProperties {
+  private readDeletionProperties(properties: unknown, fullErrors: string[]): BrandedStackDeployerProperties {
     const read = t.as(properties, isDeletionProperties, { errors: true });
     if (read.errors) {
       throw new ExpectedFailure(`Invalid ResourceProperties: ${fullErrors.join('; ')}`);

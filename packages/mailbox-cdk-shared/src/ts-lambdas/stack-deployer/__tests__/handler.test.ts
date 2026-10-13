@@ -1,6 +1,7 @@
 import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
 import type * as SfnSdk from '@aws-sdk/client-sfn';
 import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
+import { toRegion, toStackId } from '../deployer-identifiers';
 import type * as HandlerModule from '../handler';
 import {
   cfnRequest,
@@ -129,7 +130,7 @@ describe('stack-deployer handlers', () => {
 
     it('answers FAILED with the reason of an expected failure and writes none of the buffered trace', async () => {
       const { handlers, sfn } = loadHandlers(starterEnvironment);
-      const request = cfnRequest({ StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/guid' });
+      const request = cfnRequest({ StackId: toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/guid') });
 
       await handlers.starterHandler(request, CONTEXT);
 
@@ -240,7 +241,7 @@ describe('stack-deployer handlers', () => {
         const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
         cloudFormation.callsFake(inProgress);
 
-        await handlers.workerHandler(sfnEvent({ op: operation({ region: 'us-west-2' }) }), CONTEXT);
+        await handlers.workerHandler(sfnEvent({ op: operation({ region: toRegion('us-west-2') }) }), CONTEXT);
 
         await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('us-west-2');
       });

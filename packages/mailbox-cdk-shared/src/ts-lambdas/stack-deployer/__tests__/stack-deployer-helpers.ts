@@ -2,12 +2,24 @@ import * as t from 'typanion';
 import type { Stack } from '@aws-sdk/client-cloudformation';
 import { LoggerBuffer } from '../../shared/logger-buffer';
 import type { CfnReplyTarget } from '../cfn-responder';
-import type { CfnRequest, OperationInput, SfnInvokeEvent, StackDeployerProperties } from '../stack-deployment';
+import {
+  toLogicalResourceId,
+  toPhysicalResourceId,
+  toRequestId,
+  toResponseUrl,
+  toStackId,
+  toStackName,
+  toStateMachineArn,
+  toTemplateUrl,
+} from '../deployer-identifiers';
+import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack-deployment';
 
-export const RESPONSE_URL = 'https://example.com/cfn-response';
-export const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid';
-export const STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123';
-export const STACK_NAME = 'test-data-stack';
+export const RESPONSE_URL = toResponseUrl('https://example.com/cfn-response');
+export const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid');
+export const STATE_MACHINE_ARN = toStateMachineArn('arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123');
+export const STACK_NAME = toStackName('test-data-stack');
+export const REQUEST_ID = toRequestId('request-123');
+export const LOGICAL_RESOURCE_ID = toLogicalResourceId('MailboxDeployer');
 export const LOG_STREAM_NAME = '/aws/lambda/test';
 
 const isCfnAnswerBody = t.isObject({
@@ -71,8 +83,8 @@ export function awsError(name: string, message: string): Error {
   return Object.assign(new Error(message), { name });
 }
 
-export function stackDeployerProperties(overrides: Partial<StackDeployerProperties> = {}): StackDeployerProperties {
-  return { stackName: STACK_NAME, templateUrl: 'https://example.com/template.json', ...overrides };
+export function stackDeployerProperties(overrides: Partial<BrandedStackDeployerProperties> = {}): BrandedStackDeployerProperties {
+  return { stackName: STACK_NAME, templateUrl: toTemplateUrl('https://example.com/template.json'), ...overrides };
 }
 
 export function operation(overrides: Partial<OperationInput> = {}): OperationInput {
@@ -84,8 +96,8 @@ export function cfnRequest(overrides: Partial<CfnRequest> = {}, properties: CfnR
     RequestType: 'Create',
     ResponseURL: RESPONSE_URL,
     StackId: STACK_ID,
-    RequestId: 'request-123',
-    LogicalResourceId: 'MailboxDeployer',
+    RequestId: REQUEST_ID,
+    LogicalResourceId: LOGICAL_RESOURCE_ID,
     ResourceType: 'Custom::MailboxDataDeployer',
     ResourceProperties: properties,
     ...overrides,
@@ -133,7 +145,8 @@ export const DEPLOYER_RESOURCE_PROPERTIES = {
 
 /** A request as one of the deployer resources sends it, with its real property keys. */
 export function deployerRequest(resource: keyof typeof DEPLOYER_RESOURCE_PROPERTIES, requestType: CfnRequest['RequestType'] = 'Create'): CfnRequest {
-  return cfnRequest({ RequestType: requestType }, DEPLOYER_RESOURCE_PROPERTIES[resource]);
+  const properties = DEPLOYER_RESOURCE_PROPERTIES[resource];
+  return cfnRequest({ RequestType: requestType }, { ...properties, stackName: toStackName(properties.stackName) });
 }
 
 export function sfnEvent(overrides: Partial<SfnInvokeEvent> = {}): SfnInvokeEvent {
@@ -142,8 +155,8 @@ export function sfnEvent(overrides: Partial<SfnInvokeEvent> = {}): SfnInvokeEven
     cfn: {
       ResponseURL: RESPONSE_URL,
       StackId: STACK_ID,
-      RequestId: 'request-123',
-      LogicalResourceId: 'MailboxDeployer',
+      RequestId: REQUEST_ID,
+      LogicalResourceId: LOGICAL_RESOURCE_ID,
     },
     op: operation(),
     attempt: 1,
@@ -154,7 +167,7 @@ export function sfnEvent(overrides: Partial<SfnInvokeEvent> = {}): SfnInvokeEven
 export function replyTarget(overrides: Partial<CfnReplyTarget> = {}): CfnReplyTarget {
   return {
     cfn: sfnEvent().cfn,
-    physicalResourceId: STACK_NAME,
+    physicalResourceId: toPhysicalResourceId(STACK_NAME),
     logStreamName: LOG_STREAM_NAME,
     ...overrides,
   };

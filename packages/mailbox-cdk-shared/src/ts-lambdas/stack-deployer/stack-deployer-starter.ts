@@ -6,6 +6,7 @@ import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 import { StackOperationFailure } from './stack-operation-failure';
 import type { StackDeploymentEventReader } from './stack-deployment-event-reader';
 import type { CfnRequest, RequestType, WorkflowInput } from './stack-deployment';
+import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn } from './deployer-identifiers';
 
 // CloudFormation truncates auto-generated physical names to 64 characters, and the names of the IAM roles
 // built from the root stack name need room beside it.
@@ -25,14 +26,14 @@ type NameAttempt = 'started' | 'nameTaken' | 'failed';
  * The failures that are answered to CloudFormation are the ExpectedFailure and the StackOperationFailure.
  */
 export class StackDeployerStarter {
-  private readonly stateMachineArn: string;
+  private readonly stateMachineArn: StateMachineArn;
   private readonly stepFunctions: SFNClient;
   private readonly events: StackDeploymentEventReader;
   private readonly responder: CfnResponder;
   private readonly logger: LoggerBuffer;
 
   constructor(
-    stateMachineArn: string,
+    stateMachineArn: StateMachineArn,
     stepFunctions: SFNClient,
     events: StackDeploymentEventReader,
     responder: CfnResponder,
@@ -62,7 +63,7 @@ export class StackDeployerStarter {
     this.rejectSlashStateMachineArn();
 
     const input: WorkflowInput = { cfn: target.cfn, op: { ...properties, requestType: request.RequestType } };
-    await this.startExecution(request.RequestId, input, target);
+    await this.startExecution(toExecutionName(request.RequestId), input, target);
   }
 
   private rejectTooLongRootStackName(request: CfnRequest): void {
@@ -95,7 +96,7 @@ export class StackDeployerStarter {
     }
   }
 
-  private async startExecution(executionName: string, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
+  private async startExecution(executionName: ExecutionName, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
     try {
       this.logger.debug('Starting Step Functions execution', { executionName, stateMachineArn: this.stateMachineArn });
       await this.sendStart(executionName, input);
@@ -105,7 +106,7 @@ export class StackDeployerStarter {
     }
   }
 
-  private async handleStartFailure(failure: unknown, executionName: string, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
+  private async handleStartFailure(failure: unknown, executionName: ExecutionName, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
     const caught = new CaughtError(failure);
     this.logger.error('Failed to start Step Functions execution', {
       errorName: caught.name,
@@ -127,7 +128,7 @@ export class StackDeployerStarter {
     await this.resumeAfterExistingExecution(executionName, input, failure);
   }
 
-  private async resumeAfterExistingExecution(executionName: string, input: WorkflowInput, alreadyExistsFailure: unknown): Promise<void> {
+  private async resumeAfterExistingExecution(executionName: ExecutionName, input: WorkflowInput, alreadyExistsFailure: unknown): Promise<void> {
     const executionArn = this.executionArn(executionName);
 
     let status: string;
@@ -153,13 +154,13 @@ export class StackDeployerStarter {
     throw this.startFailure(input.op.requestType, alreadyExistsFailure);
   }
 
-  private async existingExecutionStatus(executionArn: string): Promise<string> {
+  private async existingExecutionStatus(executionArn: ExecutionArn): Promise<string> {
     this.logger.debug('Checking existing execution status', { executionArn });
     const response = await this.stepFunctions.send(new DescribeExecutionCommand({ executionArn }));
     return response.status ?? '';
   }
 
-  private async startAfterTerminalExecution(executionName: string, input: WorkflowInput): Promise<void> {
+  private async startAfterTerminalExecution(executionName: ExecutionName, input: WorkflowInput): Promise<void> {
     if (await this.startWithSuffixedNames(executionName, input)) {
       return;
     }
@@ -167,7 +168,7 @@ export class StackDeployerStarter {
     throw new ExpectedFailure(this.responder.limitedReason(`Could not start execution after ${LAST_EXECUTION_NAME_ATTEMPT} retries: all suffixed names exhausted`));
   }
 
-  private async startAfterDescribeFailure(executionName: string, input: WorkflowInput, describeFailure: unknown): Promise<void> {
+  private async startAfterDescribeFailure(executionName: ExecutionName, input: WorkflowInput, describeFailure: unknown): Promise<void> {
     // The earlier execution cannot be inspected, so it is treated as ended.
     const describeMessage = new CaughtError(describeFailure).describeWithMetadata();
     this.logger.warn('DescribeExecution failed; attempting retry with suffixed name', { error: describeMessage });
@@ -178,9 +179,9 @@ export class StackDeployerStarter {
     throw new ExpectedFailure(this.responder.limitedReason(`DescribeExecution failed and could not start retry: ${describeMessage}`));
   }
 
-  private async startWithSuffixedNames(executionName: string, input: WorkflowInput): Promise<boolean> {
+  private async startWithSuffixedNames(executionName: ExecutionName, input: WorkflowInput): Promise<boolean> {
     for (let attempt = 2; attempt <= LAST_EXECUTION_NAME_ATTEMPT; attempt++) {
-      const outcome = await this.tryStart(`${executionName}-r${attempt}`, input);
+      const outcome = await this.tryStart(toExecutionName(`${executionName}-r${attempt}`), input);
       if (outcome === 'started') {
         return true;
       }
@@ -191,7 +192,7 @@ export class StackDeployerStarter {
     return false;
   }
 
-  private async tryStart(suffixedName: string, input: WorkflowInput): Promise<NameAttempt> {
+  private async tryStart(suffixedName: ExecutionName, input: WorkflowInput): Promise<NameAttempt> {
     try {
       await this.sendStart(suffixedName, input);
       this.logger.info('Retry execution started successfully', { suffixedName });
@@ -201,7 +202,7 @@ export class StackDeployerStarter {
     }
   }
 
-  private classifySuffixedStartFailure(failure: unknown, suffixedName: string): NameAttempt {
+  private classifySuffixedStartFailure(failure: unknown, suffixedName: ExecutionName): NameAttempt {
     const caught = new CaughtError(failure);
     if (this.isExecutionAlreadyExists(caught)) {
       this.logger.warn('Suffixed name also exists (retry)', { suffixedName, error: caught.describeWithMetadata() });
@@ -211,7 +212,7 @@ export class StackDeployerStarter {
     return 'failed';
   }
 
-  private async sendStart(executionName: string, input: WorkflowInput): Promise<void> {
+  private async sendStart(executionName: ExecutionName, input: WorkflowInput): Promise<void> {
     await this.stepFunctions.send(
       new StartExecutionCommand({
         stateMachineArn: this.stateMachineArn,
@@ -226,8 +227,8 @@ export class StackDeployerStarter {
   }
 
   // State machine ARNs and execution ARNs differ in the resource type only: `…:stateMachine:{name}` and `…:execution:{name}:{executionName}`.
-  private executionArn(executionName: string): string {
-    return `${this.stateMachineArn.replace(':stateMachine:', ':execution:')}:${executionName}`;
+  private executionArn(executionName: ExecutionName): ExecutionArn {
+    return toExecutionArn(`${this.stateMachineArn.replace(':stateMachine:', ':execution:')}:${executionName}`);
   }
 
   private startFailure(requestType: RequestType, failure: unknown): StackOperationFailure {
