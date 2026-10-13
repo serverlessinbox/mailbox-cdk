@@ -22,4 +22,7 @@ packages/mailbox-cdk-shared/tsconfig.build.tsbuildinfo
 .jsii
 build.log
 /build
+
+# Synthesized templates captured by `yarn template-baseline capture`
+.template-baseline/
 .github/copilot-instructions.md
