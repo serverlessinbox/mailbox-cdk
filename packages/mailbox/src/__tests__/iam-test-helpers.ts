@@ -10,17 +10,6 @@ export interface CloudFormationTag {
   Value: string | { Ref: string } | { 'Fn::Sub': string };
 }
 
-export interface CloudFormationPolicyStatement {
-  Effect?: 'Allow' | 'Deny';
-  Action: string | string[];
-  Resource: string | string[];
-  Condition?: Record<string, Record<string, string | string[]>>;
-}
-
-export interface CloudFormationPolicyDocument {
-  Statement: CloudFormationPolicyStatement[];
-}
-
 export interface CloudFormationResource {
   Type: string;
   Properties?: Record<string, unknown>;
@@ -74,17 +63,4 @@ export function getTagValue(tag: CloudFormationTag): string | { Ref: string } | 
 
 export function isResourceOfType(resource: CloudFormationResource, type: string): boolean {
   return resource.Type === type;
-}
-
-export function getPolicyStatements(policyDoc: unknown): CloudFormationPolicyStatement[] {
-  if (typeof policyDoc !== 'object' || policyDoc === null) {
-    return [];
-  }
-  const doc = policyDoc as Record<string, unknown>;
-  if (!Array.isArray(doc.Statement)) {
-    return [];
-  }
-  return doc.Statement.filter((stmt): stmt is CloudFormationPolicyStatement => {
-    return typeof stmt === 'object' && stmt !== null;
-  });
 }

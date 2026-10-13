@@ -16,6 +16,7 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { EmailSenderLambda } from '../email-sender';
@@ -71,60 +72,44 @@ describe('EmailSenderLambda IAM scoping', () => {
 
   it('scopes ses:SendRawEmail to identity and configuration-set ARNs without condition', () => {
     const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
 
     // Find the statement that grants ses:SendRawEmail
-    let foundStatement = false;
-    for (const policy of Object.values(policies)) {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      for (const statement of statements) {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        if (actions.includes('ses:SendRawEmail')) {
-          foundStatement = true;
+    const sendRawEmailStatements = statementsForAction(template, 'ses:SendRawEmail');
+    for (const statement of sendRawEmailStatements) {
+      // Verify there is no Condition block
+      expect(statement.Condition).toBeUndefined();
 
-          // Verify there is no Condition block
-          expect(statement.Condition).toBeUndefined();
+      // Verify the resources are an array with two elements
+      expect(Array.isArray(statement.Resource)).toBe(true);
+      expect(statement.Resource).toHaveLength(2);
 
-          // Verify the resources are an array with two elements
-          expect(Array.isArray(statement.Resource)).toBe(true);
-          expect(statement.Resource.length).toBe(2);
+      // Verify both resources are properly formed with account/region tokens
+      const [identityArn, configSetArn] = resourcesOf(statement);
 
-          // Verify both resources are properly formed with account/region tokens
-          const [identityArn, configSetArn] = statement.Resource;
+      // Check identity ARN contains the partition and region tokens
+      expect(JSON.stringify(identityArn)).toContain('AWS::Partition');
+      expect(JSON.stringify(identityArn)).toContain('AWS::Region');
+      expect(JSON.stringify(identityArn)).toContain('AWS::AccountId');
+      expect(JSON.stringify(identityArn)).toContain('identity/*');
 
-          // Check identity ARN contains the partition and region tokens
-          expect(JSON.stringify(identityArn)).toContain('AWS::Partition');
-          expect(JSON.stringify(identityArn)).toContain('AWS::Region');
-          expect(JSON.stringify(identityArn)).toContain('AWS::AccountId');
-          expect(JSON.stringify(identityArn)).toContain('identity/*');
-
-          // Check config-set ARN contains the partition, region, and config-set name
-          expect(JSON.stringify(configSetArn)).toContain('AWS::Partition');
-          expect(JSON.stringify(configSetArn)).toContain('AWS::Region');
-          expect(JSON.stringify(configSetArn)).toContain('AWS::AccountId');
-          expect(JSON.stringify(configSetArn)).toContain('test-config-set');
-        }
-      }
+      // Check config-set ARN contains the partition, region, and config-set name
+      expect(JSON.stringify(configSetArn)).toContain('AWS::Partition');
+      expect(JSON.stringify(configSetArn)).toContain('AWS::Region');
+      expect(JSON.stringify(configSetArn)).toContain('AWS::AccountId');
+      expect(JSON.stringify(configSetArn)).toContain('test-config-set');
     }
 
-    expect(foundStatement).toBe(true);
+    expect(sendRawEmailStatements.length).toBeGreaterThan(0);
   });
 
   it('does not grant ses:SendRawEmail on wildcard resources', () => {
     const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
-    for (const policy of Object.values(policies)) {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      for (const statement of statements) {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        if (actions.includes('ses:SendRawEmail')) {
-          // Ensure resources are not a bare wildcard
-          expect(statement.Resource).not.toEqual('*');
-          // Resources should be an array of specific ARNs
-          expect(Array.isArray(statement.Resource)).toBe(true);
-          expect((statement.Resource as string[]).length).toBeGreaterThan(0);
-        }
-      }
+    for (const statement of statementsForAction(template, 'ses:SendRawEmail')) {
+      // Ensure resources are not a bare wildcard
+      expect(statement.Resource).not.toEqual('*');
+      // Resources should be an array of specific ARNs
+      expect(Array.isArray(statement.Resource)).toBe(true);
+      expect(resourcesOf(statement).length).toBeGreaterThan(0);
     }
   });
 
@@ -141,15 +126,7 @@ describe('EmailSenderLambda IAM scoping', () => {
 
   it('grants the role exactly the SqsActions.consume statement on the email-submissions queue', () => {
     const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
-
-    const consumeStatements = Object.values(policies).flatMap((policy) => {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      return statements.filter((statement: { Action?: unknown }) => {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        return actions.includes('sqs:ReceiveMessage');
-      });
-    });
+    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);
     const [statement] = consumeStatements;

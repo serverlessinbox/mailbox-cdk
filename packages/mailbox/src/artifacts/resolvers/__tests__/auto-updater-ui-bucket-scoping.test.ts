@@ -20,7 +20,8 @@ import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
 import { loadMailboxArtifactVersions } from '../../../mailbox-artifact-versions';
 import type { IMailboxAuthProvider } from '../../../auth/types';
 import { Permission } from '../../../auth/jmap-scopes';
-import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
+import { actionsOf, resourcesOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { CloudFormationResource, isResourceOfType } from '../../../__tests__/iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -96,23 +97,6 @@ function findUpdaterRoleLogicalId(template: Record<string, unknown>): string {
   throw new Error('No Lambda function with a DIST_TAG environment variable (the artifact updater) found');
 }
 
-/** All policy statements attached (via an AWS::IAM::Policy's Roles list) to the given role. */
-function findPolicyStatementsForRole(template: Record<string, unknown>, roleLogicalId: string): CloudFormationPolicyStatement[] {
-  const resources = (template.Resources ?? {}) as Record<string, CloudFormationResource>;
-  const statements: CloudFormationPolicyStatement[] = [];
-  for (const resource of Object.values(resources)) {
-    if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-    const roles = (resource.Properties?.Roles ?? []) as { Ref?: string }[];
-    if (!roles.some((r) => r.Ref === roleLogicalId)) continue;
-    statements.push(...getPolicyStatements(resource.Properties?.PolicyDocument));
-  }
-  return statements;
-}
-
-function statementActions(stmt: CloudFormationPolicyStatement): string[] {
-  return Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-}
-
 describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdater)', () => {
   it("grants the updater's own role write/list access scoped to content/* and config/* prefixes", () => {
     const stack = buildStack('TestAutoUpdaterGrantable');
@@ -122,20 +106,21 @@ describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdate
       artifactResolver: autoUpdater,
     });
 
-    const template = Template.fromStack(stack).toJSON() as Record<string, unknown>;
+    const synthesized = Template.fromStack(stack);
+    const template = synthesized.toJSON() as Record<string, unknown>;
     const adminBucketId = findBucketLogicalIdBySuffix(template, 'ui-admin-ui');
     const updaterRoleId = findUpdaterRoleLogicalId(template);
-    const updaterStatements = findPolicyStatementsForRole(template, updaterRoleId);
+    const updaterStatements = statementsForRole(synthesized, updaterRoleId);
 
     // Find write statements (s3:PutObject and s3:DeleteObject)
     const writeStmts = updaterStatements.filter((s) => {
-      const actions = statementActions(s);
+      const actions = actionsOf(s);
       return actions.includes('s3:PutObject') && actions.includes('s3:DeleteObject');
     });
     expect(writeStmts.length).toBeGreaterThanOrEqual(1);
 
     // Verify that write statements include both content/* and config/* resources
-    const allWriteResources = writeStmts.map((s) => (Array.isArray(s.Resource) ? s.Resource : [s.Resource])).flat();
+    const allWriteResources = writeStmts.flatMap(resourcesOf);
 
     // Check if a resource contains a specific prefix (handling both string and Fn::Join formats)
     const hasPrefix = (resource: unknown, prefix: string): boolean => {
@@ -155,7 +140,7 @@ describe('MailboxUi.grantContentDeploy wired to a grantable resolver (AutoUpdate
     expect(hasConfigWrite).toBe(true);
 
     // Find list statements (s3:ListBucket)
-    const listStmts = updaterStatements.filter((s) => statementActions(s).includes('s3:ListBucket'));
+    const listStmts = updaterStatements.filter((s) => actionsOf(s).includes('s3:ListBucket'));
     expect(listStmts.length).toBeGreaterThanOrEqual(1);
 
     // Verify that list statements reference the bucket ARN (either as direct reference or in Fn::Join)

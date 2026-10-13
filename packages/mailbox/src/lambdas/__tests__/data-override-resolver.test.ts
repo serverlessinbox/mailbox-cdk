@@ -10,13 +10,8 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
+import { allPolicyStatements } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { DataOverrideResolverLambda } from '../data-override-resolver';
-
-interface PolicyStatementJson {
-  Action: string | string[];
-  Effect: string;
-  Resource: unknown;
-}
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
@@ -40,9 +35,7 @@ describe('DataOverrideResolverLambda', () => {
       artifactResolver: resolverWithPins(stack, { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } }),
     });
 
-    const statements = Object.values(Template.fromStack(stack).findResources('AWS::IAM::Policy')).flatMap(
-      (policy) => policy.Properties.PolicyDocument.Statement as PolicyStatementJson[],
-    );
+    const statements = allPolicyStatements(Template.fromStack(stack));
 
     expect(statements).toEqual([
       { Action: 'dynamodb:DescribeTable', Effect: 'Allow', Resource: expect.anything() },

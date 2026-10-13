@@ -15,14 +15,6 @@ import { DataTable } from '../../../data/data-tables';
 /** A resource of a synthesized template, as `Template.findResources` returns it. */
 export type SynthesizedResource = ReturnType<Template['findResources']>[string];
 
-/** A CloudFormation policy statement as it appears in a synthesized template. */
-export interface SynthesizedStatement {
-  readonly Effect: string;
-  readonly Action: string | string[];
-  readonly Resource: unknown;
-  readonly Condition?: Record<string, Record<string, unknown>>;
-}
-
 /** The shared inputs a support addon is built from, on a stack with an explicit environment. */
 export interface SupportTestStack {
   readonly stack: cdk.Stack;
@@ -114,11 +106,4 @@ export function findFunction(template: Template, serviceName: string): Synthesiz
     environment: fn.Properties.Environment.Variables,
     roleLogicalId: fn.Properties.Role['Fn::GetAtt'][0],
   };
-}
-
-/** Policy statements granted to the execution role of `fn`. */
-export function statementsGrantedTo(template: Template, fn: SynthesizedFunction): SynthesizedStatement[] {
-  return Object.values(template.findResources('AWS::IAM::Policy'))
-    .filter((policy) => policy.Properties.Roles.some((role: { Ref: string }) => role.Ref === fn.roleLogicalId))
-    .flatMap((policy) => policy.Properties.PolicyDocument.Statement as SynthesizedStatement[]);
 }

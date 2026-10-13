@@ -1,8 +1,6 @@
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { CloudFormationPolicyStatement } from './iam-test-helpers';
 
 export const TEST_ACCOUNT = '111122223333';
 export const TEST_REGION = 'us-west-2';
@@ -30,26 +28,4 @@ export function newDeployerTestStack(): DeployerTestStack {
     deploymentRegion: stack.region,
   });
   return { stack, artifactResolver };
-}
-
-/** Renders a synthesized value that may hold intrinsic functions as a string, each intrinsic as `<token>`. */
-export function renderWithTokens(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-  const join = (value as { 'Fn::Join'?: [string, unknown[]] })['Fn::Join'];
-  if (join === undefined) {
-    return '<token>';
-  }
-  const [separator, parts] = join;
-  return parts.map(renderWithTokens).join(separator);
-}
-
-/** Every statement across every IAM policy of the template that includes `action`. */
-export function statementsForAction(template: Template, action: string): CloudFormationPolicyStatement[] {
-  const statements: CloudFormationPolicyStatement[] = [];
-  for (const policy of Object.values(template.findResources('AWS::IAM::Policy'))) {
-    statements.push(...policy.Properties.PolicyDocument.Statement);
-  }
-  return statements.filter((statement) => [statement.Action].flat().includes(action));
 }

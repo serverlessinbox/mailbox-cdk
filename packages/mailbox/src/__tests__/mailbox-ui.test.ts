@@ -20,9 +20,9 @@ import { OAUTH_CLIENT_ADMIN_UI, AUTH_POLICY_ADMIN_API } from '../auth/types';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import {
   CloudFormationResource,
-  getPolicyStatements,
   isResourceOfType,
 } from './iam-test-helpers';
+import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import { DataTable, type IDataTable } from '../data/data-tables';
 
@@ -92,14 +92,14 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
         const stmt = statements.find((s) => {
-          const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+          const actions = actionsOf(s);
           return actions.includes('s3:ListBucket');
         });
 
         if (stmt) {
-          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const stmtResources = resourcesOf(stmt);
           // Must NOT use bare wildcard
           expect(stmtResources).not.toContain('*');
           // Should be scoped to an S3 bucket ARN (arn:aws:s3:::bucket-name) or an intrinsic function
@@ -155,18 +155,18 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
         const stmt = statements.find((s) => {
-          const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+          const actions = actionsOf(s);
           return actions.includes('s3:GetObject');
         });
 
         if (stmt) {
-          const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const resources = resourcesOf(stmt);
           // Must NOT use bare wildcard
           expect(resources).not.toContain('*');
           // Should be scoped to a specific artifact object
-          expect(resources.some((r) => r?.includes('arn:aws:s3:::') && r?.includes('/'))).toBe(true);
+          expect(resources.some((r) => typeof r === 'string' && r.includes('arn:aws:s3:::') && r.includes('/'))).toBe(true);
           getObjectScoped = true;
         }
       }
@@ -202,18 +202,18 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
         const stmt = statements.find((s) => {
-          const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+          const actions = actionsOf(s);
           return actions.includes('s3:GetObjectVersion');
         });
 
         if (stmt) {
-          const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const resources = resourcesOf(stmt);
           // Must NOT use bare wildcard
           expect(resources).not.toContain('*');
           // Should be scoped to a specific artifact object
-          expect(resources.some((r) => r?.includes('arn:aws:s3:::') && r?.includes('/'))).toBe(true);
+          expect(resources.some((r) => typeof r === 'string' && r.includes('arn:aws:s3:::') && r.includes('/'))).toBe(true);
           getObjectVersionScoped = true;
         }
       }
@@ -259,14 +259,14 @@ describe('MailboxUi.addUiDeployment IAM Policies', () => {
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
         const stmt = statements.find((s) => {
-          const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+          const actions = actionsOf(s);
           return actions.includes('cloudfront:CreateInvalidation');
         });
 
         if (stmt) {
-          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const stmtResources = resourcesOf(stmt);
           expect(stmtResources).not.toContain('*');
           expect(stmtResources).toEqual([
             {

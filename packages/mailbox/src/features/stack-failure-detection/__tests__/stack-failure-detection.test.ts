@@ -12,6 +12,14 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import {
+  actionsOf,
+  allPolicyStatements,
+  getAttLogicalId,
+  resourcesOf,
+  statementsForAction,
+} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-detection';
 
 function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
@@ -102,13 +110,8 @@ describe('StackFailureDetection', () => {
 
       // The detector's own policy must never grant states:StartExecution — it has no sweeper
       // knowledge at all.
-      const policies = template.findResources('AWS::IAM::Policy');
-      for (const [, policy] of Object.entries(policies)) {
-        const statements = (policy as any).Properties.PolicyDocument.Statement as any[];
-        for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          expect(actions).not.toContain('states:StartExecution');
-        }
+      for (const stmt of allPolicyStatements(template)) {
+        expect(actionsOf(stmt)).not.toContain('states:StartExecution');
       }
 
       // Exactly one deferred-deletion (sweeper) state machine anywhere the detector could reach —
@@ -165,36 +168,16 @@ describe('StackFailureDetection', () => {
       expect(typeof envLogicalId).toBe('string');
 
       // Find all policies (grants may place statements on different policies than the detector's own)
-      const policies = template.findResources('AWS::IAM::Policy');
-      let foundFilterEventsMatch = false;
-      let foundWriteMatch = false;
+      const referencesLogGroup = (stmt: PolicyStatementJson): boolean =>
+        getAttLogicalId(resourcesOf(stmt)[0]) === envLogicalId;
 
-      for (const policy of Object.values(policies)) {
-        const statements = (policy as any).Properties.PolicyDocument.Statement as any[];
-        for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+      // Check FilterLogEvents statement references the same log group
+      const foundFilterEventsMatch = statementsForAction(template, 'logs:FilterLogEvents').some(referencesLogGroup);
 
-          // Check FilterLogEvents statement references the same log group
-          if (actions.includes('logs:FilterLogEvents')) {
-            const resource = stmt.Resource;
-            const logGroupId = Array.isArray(resource) ? resource[0] : resource;
-            if (logGroupId['Fn::GetAtt']?.[0] === envLogicalId) {
-              foundFilterEventsMatch = true;
-            }
-          }
-
-          // Check write (CreateLogStream/PutLogEvents) statements reference the same log group
-          const hasCreateLogStream = actions.includes('logs:CreateLogStream');
-          const hasPutLogEvents = actions.includes('logs:PutLogEvents');
-          if (hasCreateLogStream && hasPutLogEvents) {
-            const resource = stmt.Resource;
-            const logGroupId = Array.isArray(resource) ? resource[0] : resource;
-            if (logGroupId['Fn::GetAtt']?.[0] === envLogicalId) {
-              foundWriteMatch = true;
-            }
-          }
-        }
-      }
+      // Check write (CreateLogStream/PutLogEvents) statements reference the same log group
+      const foundWriteMatch = allPolicyStatements(template)
+        .filter((stmt) => actionsOf(stmt).includes('logs:CreateLogStream') && actionsOf(stmt).includes('logs:PutLogEvents'))
+        .some(referencesLogGroup);
 
       expect(foundFilterEventsMatch).toBe(true);
       expect(foundWriteMatch).toBe(true);

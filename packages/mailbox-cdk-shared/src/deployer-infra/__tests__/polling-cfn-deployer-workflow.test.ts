@@ -10,15 +10,14 @@ import { CfnResource, Duration, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
 import type { PollingCfnDeployerWorkflowProps } from '../polling-cfn-deployer-workflow';
+import { renderWithTokens, statementsForAction } from '../../cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
   newWorkerStandIn,
-  renderWithTokens,
   stateMachineDefinition,
   stateMachineLogicalId,
-  statementsForAction,
 } from './deployer-infra-helpers';
 
 interface SynthesizedWorkflow {

@@ -26,6 +26,7 @@ import { Template, Match } from 'aws-cdk-lib/assertions';
 import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
+import { renderLiteralText } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
@@ -163,21 +164,9 @@ function findDiscoveryDocumentFnIfBranches(template: Template): { trueBranch: un
   return { trueBranch, falseBranch };
 }
 
-/** Flattens a resolved CFN value back to searchable text by concatenating only the literal string
- *  fragments of an `Fn::Join` (dropping token refs) — sufficient for substring/key-name checks
- *  because doc keys are always literal, even where some field values are token-derived. */
-function flattenToSearchableText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object' && 'Fn::Join' in (value as Record<string, unknown>)) {
-    const [, parts] = (value as { 'Fn::Join': [string, unknown[]] })['Fn::Join'];
-    return parts.map((p) => (typeof p === 'string' ? p : '')).join('');
-  }
-  return '';
-}
-
 /** Extracts the ordered list of JSON object key names from flattened document text. Key names are
  *  always literal (never token-derived), so this survives token fragments dropped by
- *  flattenToSearchableText — letting the two Fn::If branches be compared by key set rather than by
+ *  renderLiteralText — letting the two Fn::If branches be compared by key set rather than by
  *  brittle whole-string matching. */
 function extractDocumentKeys(flattenedText: string): string[] {
   const keys: string[] = [];
@@ -208,7 +197,7 @@ function assertDcrFullyDisabled(harness: Harness): void {
 
   const body = findDiscoveryDocumentBody(template);
   expect(isFnIf(body)).toBe(false);
-  const keys = extractDocumentKeys(flattenToSearchableText(body));
+  const keys = extractDocumentKeys(renderLiteralText(body));
   expect(keys).not.toContain('registration_endpoint');
 }
 
@@ -262,8 +251,8 @@ describe('JmapOAuthAddon — dynamicClientRegistration gating', () => {
     const template = Template.fromStack(stack);
     const { trueBranch, falseBranch } = findDiscoveryDocumentFnIfBranches(template);
 
-    const trueText = flattenToSearchableText(trueBranch);
-    const falseText = flattenToSearchableText(falseBranch);
+    const trueText = renderLiteralText(trueBranch);
+    const falseText = renderLiteralText(falseBranch);
 
     const trueKeys = extractDocumentKeys(trueText);
     const falseKeys = extractDocumentKeys(falseText);

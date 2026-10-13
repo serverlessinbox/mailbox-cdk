@@ -4,16 +4,10 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens } from '../../cdk-test-support';
 
 export const TEST_ACCOUNT = '123456789012';
 export const TEST_REGION = 'us-west-2';
-
-/** One statement of a synthesized IAM policy document. */
-export interface PolicyStatementJson {
-  readonly Action: string | string[];
-  readonly Resource: unknown;
-  readonly Condition?: Record<string, Record<string, unknown>>;
-}
 
 /** One state of a synthesized state machine definition. */
 export interface StateJson {
@@ -60,27 +54,6 @@ export function newWorkerStandIn(scope: Construct, id: string): lambda.IFunction
     handler: 'index.handler',
     code: lambda.Code.fromInline('exports.handler = async () => ({});'),
   });
-}
-
-export function statementsForAction(template: Template, action: string): PolicyStatementJson[] {
-  const statements: PolicyStatementJson[] = [];
-  for (const policy of Object.values(template.findResources('AWS::IAM::Policy'))) {
-    statements.push(...policy.Properties.PolicyDocument.Statement);
-  }
-  return statements.filter((statement) => [statement.Action].flat().includes(action));
-}
-
-/** Renders a synthesized value that may hold intrinsic functions as a string, each intrinsic as `<token>`. */
-export function renderWithTokens(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-  const join = (value as { 'Fn::Join'?: [string, unknown[]] })['Fn::Join'];
-  if (join === undefined) {
-    return '<token>';
-  }
-  const [separator, parts] = join;
-  return parts.map(renderWithTokens).join(separator);
 }
 
 export function stateMachineDefinition(template: Template): DefinitionJson {

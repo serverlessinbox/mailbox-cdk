@@ -12,6 +12,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { AuditWriterLambda } from '../audit-writer';
@@ -66,15 +67,7 @@ describe('AuditWriterLambda event-source wiring', () => {
   });
 
   it('grants the role exactly the SqsActions.consume statement on the audit-events queue', () => {
-    const policies = template.findResources('AWS::IAM::Policy');
-
-    const consumeStatements = Object.values(policies).flatMap((policy) => {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      return statements.filter((statement: { Action?: unknown }) => {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        return actions.includes('sqs:ReceiveMessage');
-      });
-    });
+    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);
     const [statement] = consumeStatements;

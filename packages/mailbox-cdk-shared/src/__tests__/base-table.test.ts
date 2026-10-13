@@ -13,37 +13,8 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BaseTable } from '../base-table';
-
-interface PolicyStatement {
-  Effect: 'Allow' | 'Deny';
-  Action: string | string[];
-  Resource: string | string[] | Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-interface PolicyDocument {
-  Statement?: PolicyStatement[];
-  [key: string]: unknown;
-}
-
-/**
- * Extract policy statements from a template policy document.
- * Handles both string and object forms of Action and Resource.
- */
-function extractPolicyStatements(policyDoc: unknown): PolicyStatement[] {
-  if (typeof policyDoc !== 'object' || policyDoc === null) {
-    return [];
-  }
-  const doc = policyDoc as PolicyDocument;
-  return doc.Statement || [];
-}
-
-/**
- * Normalize actions into an array for consistent checking.
- */
-function normalizeActions(action: string | string[]): string[] {
-  return Array.isArray(action) ? action : [action];
-}
+import { actionsOf, statementsOfDocument } from '../cdk-test-support';
+import type { PolicyStatementJson } from '../cdk-test-support';
 
 /**
  * Normalize resources into an array for consistent checking.
@@ -130,14 +101,14 @@ describe('BaseTable Deny Enumeration', () => {
       }
 
       const policyDoc = policyDetails.PolicyDocument;
-      const statements = extractPolicyStatements(policyDoc);
+      const statements = statementsOfDocument(policyDoc);
 
       for (const stmt of statements) {
         if (stmt.Effect !== 'Deny') {
           continue;
         }
 
-        const actions = normalizeActions(stmt.Action);
+        const actions = actionsOf(stmt);
 
         // Check if this is a scan/partiql deny with all required actions
         if (
@@ -229,11 +200,11 @@ describe('BaseTable Deny Enumeration', () => {
 
       const policyDetails = resource.Properties as Record<string, unknown>;
       const policyDoc = policyDetails.PolicyDocument;
-      const statements = extractPolicyStatements(policyDoc);
+      const statements = statementsOfDocument(policyDoc);
 
       for (const stmt of statements) {
         if (stmt.Effect === 'Deny') {
-          const actions = normalizeActions(stmt.Action);
+          const actions = actionsOf(stmt);
           if (actions.includes('dynamodb:Scan') || actions.includes('dynamodb:PartiQLSelect')) {
             denyCount++;
             const stmtResources = normalizeResources(stmt.Resource);
@@ -296,13 +267,13 @@ describe('BaseTable Deny Enumeration', () => {
 
       const policyDetails = resource.Properties as Record<string, unknown>;
       const policyDoc = policyDetails.PolicyDocument;
-      const statements = extractPolicyStatements(policyDoc);
+      const statements = statementsOfDocument(policyDoc);
 
-      if (statements.some((stmt: PolicyStatement) => {
+      if (statements.some((stmt: PolicyStatementJson) => {
         if (stmt.Effect !== 'Deny') {
           return false;
         }
-        const actions = normalizeActions(stmt.Action);
+        const actions = actionsOf(stmt);
         return actions.includes('dynamodb:Scan');
       })) {
         foundDeny = true;
@@ -352,13 +323,13 @@ describe('BaseTable Deny Enumeration', () => {
 
       const policyDetails = resource.Properties as Record<string, unknown>;
       const policyDoc = policyDetails.PolicyDocument;
-      const statements = extractPolicyStatements(policyDoc);
+      const statements = statementsOfDocument(policyDoc);
 
-      if (statements.some((stmt: PolicyStatement) => {
+      if (statements.some((stmt: PolicyStatementJson) => {
         if (stmt.Effect !== 'Allow') {
           return false;
         }
-        const actions = normalizeActions(stmt.Action);
+        const actions = actionsOf(stmt);
         return (
           actions.includes('dynamodb:GetItem') ||
           actions.includes('dynamodb:Query') ||

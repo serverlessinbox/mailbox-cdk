@@ -22,8 +22,8 @@ import {
   KNOWN_WILDCARDS,
   getTagValue,
   isResourceOfType,
-  getPolicyStatements,
 } from './iam-test-helpers';
+import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 
 describe('MailboxEdgeStack Template Synthesis', () => {
   /**
@@ -110,11 +110,11 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
         const policyDoc = resource.Properties?.PolicyDocument;
-        const statements = getPolicyStatements(policyDoc);
+        const statements = statementsOfDocument(policyDoc);
 
         for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          const resourceList = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const actions = actionsOf(stmt);
+          const resourceList = resourcesOf(stmt);
 
           // Check if any write action is on "*" without a condition
           for (const action of actions) {
@@ -338,10 +338,10 @@ describe('MailboxEdgeStack Template Synthesis', () => {
 
       for (const [logicalId, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
 
         for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+          const actions = actionsOf(stmt);
 
           for (const action of actions) {
             if (forbiddenRoleAuthorshipActions.has(action)) {

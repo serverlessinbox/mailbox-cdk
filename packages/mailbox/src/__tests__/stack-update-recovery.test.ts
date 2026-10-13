@@ -22,7 +22,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
 import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
-import { getPolicyStatements } from './iam-test-helpers';
+import { actionsOf, resourcesOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { AuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import { DataTable } from '../data/data-tables';
 
@@ -108,14 +108,10 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const attachedToRole = Object.values(policies).filter((p: any) =>
-      (p.Properties?.Roles ?? []).some((r: any) => r?.Ref === roleLogicalId),
-    );
-    const allStatements = attachedToRole.flatMap((p: any) => getPolicyStatements(p.Properties.PolicyDocument));
+    const allStatements = statementsForRole(template, roleLogicalId);
 
     for (const stmt of allStatements) {
-      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+      const actions = actionsOf(stmt);
       expect(actions).not.toContain('cloudformation:ExecuteChangeSet');
     }
   });
@@ -125,14 +121,10 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const attachedToRole = Object.values(policies).filter((p: any) =>
-      (p.Properties?.Roles ?? []).some((r: any) => r?.Ref === roleLogicalId),
-    );
-    const allStatements = attachedToRole.flatMap((p: any) => getPolicyStatements(p.Properties.PolicyDocument));
+    const allStatements = statementsForRole(template, roleLogicalId);
 
     for (const stmt of allStatements) {
-      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+      const actions = actionsOf(stmt);
       expect(actions).not.toContain('states:StartExecution');
       expect(actions).not.toContain('states:ListExecutions');
       expect(actions).not.toContain('states:DescribeExecution');
@@ -145,11 +137,7 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const attachedToRole = Object.values(policies).filter((p: any) =>
-      (p.Properties?.Roles ?? []).some((r: any) => r?.Ref === roleLogicalId),
-    );
-    const allStatements = attachedToRole.flatMap((p: any) => getPolicyStatements(p.Properties.PolicyDocument));
+    const allStatements = statementsForRole(template, roleLogicalId);
 
     const forbiddenActions = [
       'cloudformation:ContinueUpdateRollback',
@@ -158,7 +146,7 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     ];
 
     for (const stmt of allStatements) {
-      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+      const actions = actionsOf(stmt);
       for (const forbidden of forbiddenActions) {
         expect(actions).not.toContain(forbidden);
       }
@@ -170,14 +158,10 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const attachedToRole = Object.values(policies).filter((p: any) =>
-      (p.Properties?.Roles ?? []).some((r: any) => r?.Ref === roleLogicalId),
-    );
-    const allStatements = attachedToRole.flatMap((p: any) => getPolicyStatements(p.Properties.PolicyDocument));
+    const allStatements = statementsForRole(template, roleLogicalId);
 
     const changesetStmt = allStatements.find((s) => {
-      const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+      const actions = actionsOf(s);
       return actions.includes('cloudformation:CreateChangeSet');
     });
     expect(changesetStmt).toBeDefined();
@@ -194,7 +178,7 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     // Must NOT have ExecuteChangeSet
     expect(changesetStmt!.Action).not.toContain('cloudformation:ExecuteChangeSet');
     // Scoped to root stack, never wildcard
-    const resources = Array.isArray(changesetStmt!.Resource) ? changesetStmt!.Resource : [changesetStmt!.Resource];
+    const resources = resourcesOf(changesetStmt!);
     expect(resources).toEqual([{ Ref: 'AWS::StackId' }]);
   });
 
@@ -203,15 +187,11 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
     const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const attachedToRole = Object.values(policies).filter((p: any) =>
-      (p.Properties?.Roles ?? []).some((r: any) => r?.Ref === roleLogicalId),
-    );
-    const allStatements = attachedToRole.flatMap((p: any) => getPolicyStatements(p.Properties.PolicyDocument));
+    const allStatements = statementsForRole(template, roleLogicalId);
 
     for (const stmt of allStatements) {
-      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-      const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+      const actions = actionsOf(stmt);
+      const resources = resourcesOf(stmt);
 
       // No service wildcards like lambda:*, dynamodb:*, etc.
       for (const action of actions) {

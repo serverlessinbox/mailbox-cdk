@@ -10,7 +10,8 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DeployerWorkerLambda } from '../deployer-worker-lambda';
-import { newDeployerTestStack, statementsForAction } from './deployer-infra-helpers';
+import { statementsForAction } from '../../cdk-test-support';
+import { newDeployerTestStack } from './deployer-infra-helpers';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
 class ProbeWorker extends DeployerWorkerLambda {

@@ -14,13 +14,8 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, allPolicyStatements } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ResourceSweeperStarterLambda } from '../resource-sweeper-starter';
-
-interface PolicyStatementJson {
-  Action: string | string[];
-  Effect: string;
-  Resource: unknown;
-}
 
 describe('ResourceSweeperStarterLambda IAM', () => {
   let template: Template;
@@ -45,11 +40,8 @@ describe('ResourceSweeperStarterLambda IAM', () => {
   });
 
   it('grants cloudformation:DescribeStacks on the stack id and no other CloudFormation action', () => {
-    const statements = Object.values(template.findResources('AWS::IAM::Policy')).flatMap(
-      (policy) => policy.Properties.PolicyDocument.Statement as PolicyStatementJson[],
-    );
-    const cloudFormationStatements = statements.filter((statement) =>
-      [statement.Action].flat().some((action) => action.startsWith('cloudformation:')),
+    const cloudFormationStatements = allPolicyStatements(template).filter((statement) =>
+      actionsOf(statement).some((action) => action.startsWith('cloudformation:')),
     );
 
     expect(cloudFormationStatements).toEqual([

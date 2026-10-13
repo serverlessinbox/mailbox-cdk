@@ -15,6 +15,13 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as awslambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import {
+  actionsOf,
+  renderLiteralText,
+  resourcesOf,
+  statementsOfDocument,
+  statementsOfNamedPolicy,
+} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { SweeperInfra } from '../features/sweeper/sweeper-infra';
 import { CertificateRemoval } from '../features/sweeper/certificate-removal';
 import { EdgeFunctionRemoval } from '../features/sweeper/edge-function-removal';
@@ -84,17 +91,8 @@ describe('SweeperWorkflow self-cleanup guard', () => {
     template = Template.fromStack(stack);
     const machines = template.findResources('AWS::StepFunctions::StateMachine');
     const [, sm] = Object.entries(machines)[0];
-    def = flattenDefinition((sm as any).Properties.DefinitionString);
+    def = renderLiteralText((sm as any).Properties.DefinitionString);
   });
-
-  /** Flattens a state machine's `DefinitionString` intrinsic into one searchable string — mirrors
-   * the helper in `mailbox-sweeper-removal-wiring.test.ts`. */
-  function flattenDefinition(definitionString: unknown): string {
-    const obj = definitionString as { 'Fn::Join'?: [string, unknown[]] } | string;
-    if (typeof obj === 'string') return obj;
-    const parts = obj?.['Fn::Join']?.[1] ?? [];
-    return parts.filter((p): p is string => typeof p === 'string').join('');
-  }
 
   /**
    * Extracts a state's own JSON body from the "States" map by key, via brace counting — not a
@@ -171,19 +169,11 @@ describe('SweeperWorkflow self-cleanup guard', () => {
   });
 
   it('grants cloudformation:DescribeStackResource, scoped to the stack ARN, on the execution policy', () => {
-    const policies = template.findResources('AWS::IAM::Policy');
-    const executionPolicy = Object.values(policies).find(
-      (p: any) => p.Properties?.PolicyName === 'sweeper-execution-policy',
-    ) as any;
-    expect(executionPolicy).toBeDefined();
-
-    const statements: any[] = executionPolicy.Properties.PolicyDocument.Statement;
-    const stmt = statements.find((s) => {
-      const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
-      return actions.includes('cloudformation:DescribeStackResource');
-    });
+    const stmt = statementsOfNamedPolicy(template, 'sweeper-execution-policy').find((s) =>
+      actionsOf(s).includes('cloudformation:DescribeStackResource'),
+    );
     expect(stmt).toBeDefined();
-    const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+    const resources = resourcesOf(stmt!);
     expect(resources).not.toContain('*');
     // Aws.STACK_ID renders as {"Ref":"AWS::StackId"} — an exact stack ARN pseudo-parameter.
     expect(resources[0]).toEqual({ Ref: 'AWS::StackId' });
@@ -191,21 +181,13 @@ describe('SweeperWorkflow self-cleanup guard', () => {
 
   it('grants cloudformation:DescribeStackResource, scoped to the stack ARN, on the permissions boundary too', () => {
     const managedPolicies = template.findResources('AWS::IAM::ManagedPolicy');
-    const boundary = Object.values(managedPolicies).find((p: any) => {
-      const statements: any[] = p.Properties?.PolicyDocument?.Statement ?? [];
-      return statements.some((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
-        return actions.includes('cloudformation:DescribeStackResource');
-      });
-    }) as any;
-    expect(boundary).toBeDefined();
+    const boundaryStatements = Object.values(managedPolicies)
+      .map((p) => statementsOfDocument(p.Properties?.PolicyDocument))
+      .find((statements) => statements.some((s) => actionsOf(s).includes('cloudformation:DescribeStackResource')));
+    expect(boundaryStatements).toBeDefined();
 
-    const statements: any[] = boundary.Properties.PolicyDocument.Statement;
-    const stmt = statements.find((s) => {
-      const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
-      return actions.includes('cloudformation:DescribeStackResource');
-    });
-    const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+    const stmt = boundaryStatements!.find((s) => actionsOf(s).includes('cloudformation:DescribeStackResource'));
+    const resources = resourcesOf(stmt!);
     expect(resources).not.toContain('*');
     expect(resources[0]).toEqual({ Ref: 'AWS::StackId' });
 

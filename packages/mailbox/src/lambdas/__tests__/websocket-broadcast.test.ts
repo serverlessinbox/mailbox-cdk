@@ -15,6 +15,8 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { WebSocketBroadcastLambda } from '../websocket-broadcast';
@@ -70,20 +72,12 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     template = Template.fromStack(stack);
   });
 
-  function connectionsTableStatements(): Array<{ Action: unknown; Effect: unknown; Resource: unknown }> {
-    const policies = template.findResources('AWS::IAM::Policy');
-    const allStatements = Object.values(policies).flatMap(
-      (policy) => policy.Properties?.PolicyDocument?.Statement ?? [],
-    );
-
+  function connectionsTableStatements(): PolicyStatementJson[] {
     const tableId = 'websockettablewebsocketEF927F93';
-    const expectedResourceJson = JSON.stringify([
+    return statementsForResource(template, [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
     ]);
-    return allStatements.filter(
-      (statement: { Resource?: unknown }) => JSON.stringify(statement.Resource) === expectedResourceJson,
-    );
   }
 
   it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
@@ -108,7 +102,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
 
   it('grants no Scan/PartiQL and no Deny on the connections table', () => {
     const statements = connectionsTableStatements();
-    const actionsFlat = statements.flatMap((statement) => (Array.isArray(statement.Action) ? statement.Action : [statement.Action]));
+    const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');
     expect(actionsFlat.some((action) => typeof action === 'string' && action.startsWith('dynamodb:PartiQL'))).toBe(false);

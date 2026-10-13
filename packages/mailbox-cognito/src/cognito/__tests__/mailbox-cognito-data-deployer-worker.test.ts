@@ -8,13 +8,9 @@
  */
 
 import { Template } from 'aws-cdk-lib/assertions';
+import { actionsOf, allPolicyStatements, renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
-import {
-  allStatements,
-  newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
-} from './cognito-deployer-helpers';
+import { newDeployerTestStack } from './cognito-deployer-helpers';
 
 const ROOT_STACK_TAG_KEY = 'aws:ResourceTag/serverless-inbox:root-stack';
 const REQUEST_STACK_TAG_KEY = 'aws:RequestTag/serverless-inbox:root-stack';
@@ -150,9 +146,9 @@ describe('MailboxCognitoDataDeployerWorker', () => {
     });
 
     it('does not grant any cognito-idp action unconditionally other than the two unbindable actions', () => {
-      const unconditionedCognitoActions = allStatements(template)
+      const unconditionedCognitoActions = allPolicyStatements(template)
         .filter((stmt) => stmt.Condition === undefined)
-        .flatMap((stmt) => [stmt.Action].flat())
+        .flatMap(actionsOf)
         .filter((action) => action.startsWith('cognito-idp:'));
 
       expect(new Set(unconditionedCognitoActions)).toEqual(

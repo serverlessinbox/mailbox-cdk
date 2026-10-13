@@ -22,7 +22,9 @@ import { ServerlessInboxTagKeys, MailboxArtifactResolverFactory } from '@serverl
 import { loadMailboxRegistryRecord } from '../../../mailbox-registry-record';
 import { loadMailboxArtifactVersions } from '../../../mailbox-artifact-versions';
 import { ArtifactUpdaterLambda } from '../../../lambdas/artifact-updater';
-import { CloudFormationResource, CloudFormationPolicyStatement, getPolicyStatements, isResourceOfType } from '../../../__tests__/iam-test-helpers';
+import { actionsOf, resourcesOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { CloudFormationResource, isResourceOfType } from '../../../__tests__/iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -57,29 +59,11 @@ function findUpdaterRoleLogicalId(template: Record<string, unknown>): string {
   throw new Error('No Lambda function with DIST_TAG environment variable (the artifact updater) found');
 }
 
-/** All policy statements attached (via AWS::IAM::Policy's Roles list) to the given role. */
-function findPolicyStatementsForRole(template: Record<string, unknown>, roleLogicalId: string): CloudFormationPolicyStatement[] {
-  const resources = (template.Resources ?? {}) as Record<string, CloudFormationResource>;
-  const statements: CloudFormationPolicyStatement[] = [];
-  for (const resource of Object.values(resources)) {
-    if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-    const roles = (resource.Properties?.Roles ?? []) as { Ref?: string }[];
-    if (!roles.some((r) => r.Ref === roleLogicalId)) continue;
-    statements.push(...getPolicyStatements(resource.Properties?.PolicyDocument));
-  }
-  return statements;
-}
-
-/** Normalizes an action or resource to a string array for consistent comparison. */
-function normalizeToArray(value: string | string[]): string[] {
-  return Array.isArray(value) ? value : [value];
-}
-
 describe('ArtifactUpdaterLambda — own IAM policies', () => {
   let stack: cdk.Stack;
   let template: Record<string, unknown>;
   let updaterRoleId: string;
-  let updaterStatements: CloudFormationPolicyStatement[];
+  let updaterStatements: PolicyStatementJson[];
 
   beforeAll(() => {
     stack = buildStack('TestArtifactUpdater');
@@ -96,13 +80,14 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
       artifactBucketBase: ARTIFACT_CONTEXT.bucketBase,
     });
 
-    template = Template.fromStack(stack).toJSON() as Record<string, unknown>;
+    const synthesized = Template.fromStack(stack);
+    template = synthesized.toJSON() as Record<string, unknown>;
     updaterRoleId = findUpdaterRoleLogicalId(template);
-    updaterStatements = findPolicyStatementsForRole(template, updaterRoleId);
+    updaterStatements = statementsForRole(synthesized, updaterRoleId);
   });
 
   it('grants tag:GetResources for resource discovery with wildcard resources', () => {
-    const stmt = updaterStatements.find((s) => normalizeToArray(s.Action).includes('tag:GetResources'));
+    const stmt = updaterStatements.find((s) => actionsOf(s).includes('tag:GetResources'));
     expect(stmt).toBeDefined();
     expect(stmt?.Resource).toEqual('*');
     expect(stmt?.Condition).toBeUndefined();
@@ -110,7 +95,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
 
   it('grants lambda:GetFunction, GetFunctionConfiguration, UpdateFunctionCode, InvokeFunction scoped to aws:ResourceTag', () => {
     const stmt = updaterStatements.find((s) => {
-      const actions = normalizeToArray(s.Action);
+      const actions = actionsOf(s);
       return (
         actions.includes('lambda:GetFunction') &&
         actions.includes('lambda:GetFunctionConfiguration') &&
@@ -119,7 +104,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
       );
     });
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     // Resource is synthesized as Fn::Join, so verify it contains the ARN pattern
     const resourceStr = JSON.stringify(resources);
     expect(resourceStr).toContain('arn:aws:lambda:*');
@@ -129,9 +114,9 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
   });
 
   it('grants lambda:TagResource scoped to aws:ResourceTag and aws:TagKeys', () => {
-    const stmt = updaterStatements.find((s) => normalizeToArray(s.Action).includes('lambda:TagResource'));
+    const stmt = updaterStatements.find((s) => actionsOf(s).includes('lambda:TagResource'));
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     const resourceStr = JSON.stringify(resources);
     expect(resourceStr).toContain('arn:aws:lambda:*');
     expect(resourceStr).toContain('function:*');
@@ -142,11 +127,11 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
 
   it('grants lambda:GetFunctionConfiguration, PublishVersion scoped to us-east-1 functions with aws:ResourceTag', () => {
     const stmt = updaterStatements.find((s) => {
-      const actions = normalizeToArray(s.Action);
+      const actions = actionsOf(s);
       return actions.includes('lambda:GetFunctionConfiguration') && actions.includes('lambda:PublishVersion');
     });
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     const resourceStr = JSON.stringify(resources);
     expect(resourceStr).toContain('arn:aws:lambda:us-east-1');
     expect(resourceStr).toContain('function:*');
@@ -156,7 +141,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
 
   it('grants cloudfront:GetDistributionConfig, UpdateDistribution, CreateInvalidation scoped to aws:ResourceTag', () => {
     const stmt = updaterStatements.find((s) => {
-      const actions = normalizeToArray(s.Action);
+      const actions = actionsOf(s);
       return (
         actions.includes('cloudfront:GetDistributionConfig') &&
         actions.includes('cloudfront:UpdateDistribution') &&
@@ -164,7 +149,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
       );
     });
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     const resourceStr = JSON.stringify(resources);
     expect(resourceStr).toContain('arn:aws:cloudfront::');
     expect(resourceStr).toContain('distribution/*');
@@ -173,9 +158,9 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
   });
 
   it('grants cloudfront:TagResource scoped to aws:ResourceTag and aws:TagKeys', () => {
-    const stmt = updaterStatements.find((s) => normalizeToArray(s.Action).includes('cloudfront:TagResource'));
+    const stmt = updaterStatements.find((s) => actionsOf(s).includes('cloudfront:TagResource'));
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     const resourceStr = JSON.stringify(resources);
     expect(resourceStr).toContain('arn:aws:cloudfront::');
     expect(resourceStr).toContain('distribution/*');
@@ -185,16 +170,16 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
   });
 
   it('grants cloudfront:ListDistributions with wildcard resources', () => {
-    const stmt = updaterStatements.find((s) => normalizeToArray(s.Action).includes('cloudfront:ListDistributions'));
+    const stmt = updaterStatements.find((s) => actionsOf(s).includes('cloudfront:ListDistributions'));
     expect(stmt).toBeDefined();
     expect(stmt?.Resource).toEqual('*');
     expect(stmt?.Condition).toBeUndefined();
   });
 
   it('grants s3:GetObject scoped to artifact release pattern', () => {
-    const stmt = updaterStatements.find((s) => normalizeToArray(s.Action).includes('s3:GetObject'));
+    const stmt = updaterStatements.find((s) => actionsOf(s).includes('s3:GetObject'));
     expect(stmt).toBeDefined();
-    const resources = normalizeToArray(stmt!.Resource);
+    const resources = resourcesOf(stmt!);
     expect(resources.length).toBe(1);
     expect(resources[0]).toContain(`arn:aws:s3:::${ARTIFACT_CONTEXT.bucketBase}-*`);
     expect(resources[0]).toContain('/serverlessinbox/packages/*/releases/*');
@@ -204,10 +189,10 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
     // 8 statements from ArtifactUpdaterLambda methods + lock table read/write statements
     // Verify at least the 8 core updater statements are present
     const hasTagDiscovery = updaterStatements.some((s) =>
-      normalizeToArray(s.Action).includes('tag:GetResources') && s.Resource === '*'
+      actionsOf(s).includes('tag:GetResources') && s.Resource === '*'
     );
     const hasLambdaManagement = updaterStatements.some((s) => {
-      const actions = normalizeToArray(s.Action);
+      const actions = actionsOf(s);
       return (
         actions.includes('lambda:GetFunction') &&
         actions.includes('lambda:UpdateFunctionCode') &&
@@ -215,7 +200,7 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
       );
     });
     const hasCloudFrontManagement = updaterStatements.some((s) => {
-      const actions = normalizeToArray(s.Action);
+      const actions = actionsOf(s);
       return (
         actions.includes('cloudfront:GetDistributionConfig') &&
         actions.includes('cloudfront:UpdateDistribution') &&
@@ -223,10 +208,10 @@ describe('ArtifactUpdaterLambda — own IAM policies', () => {
       );
     });
     const hasCloudFrontList = updaterStatements.some((s) =>
-      normalizeToArray(s.Action).includes('cloudfront:ListDistributions') && s.Resource === '*'
+      actionsOf(s).includes('cloudfront:ListDistributions') && s.Resource === '*'
     );
     const hasS3GetObject = updaterStatements.some((s) =>
-      normalizeToArray(s.Action).includes('s3:GetObject')
+      actionsOf(s).includes('s3:GetObject')
     );
 
     expect(hasTagDiscovery).toBe(true);

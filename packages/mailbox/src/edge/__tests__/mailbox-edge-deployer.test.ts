@@ -15,11 +15,10 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DataTable } from '../../data/data-tables';
 import { MailboxEdgeDeployer } from '../mailbox-edge-deployer';
 import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
 } from '../../__tests__/deployer-test-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxEdgeDeployer';

@@ -18,11 +18,7 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { StaticContentDeployer } from '../content-deployer';
 import { StaticContentSource } from '../static-content-source';
-
-interface PolicyStatement {
-  Action: string | string[];
-  Resource: unknown;
-}
+import { statementsForAction } from '../cdk-test-support';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {
@@ -44,17 +40,6 @@ function newArtifactResolver(stack: Stack): IArtifactResolver {
 
 function targetBucket(scope: Construct): IBucket {
   return Bucket.fromBucketArn(scope, 'target-bucket', 'arn:aws:s3:::ui-bucket');
-}
-
-/** Every IAM statement in the stack, in the order the template lists them. */
-function grantedStatements(template: Template): PolicyStatement[] {
-  return Object.values(template.findResources('AWS::IAM::Policy')).flatMap(
-    (policy) => policy.Properties.PolicyDocument.Statement as PolicyStatement[],
-  );
-}
-
-function statementsGranting(template: Template, action: string): PolicyStatement[] {
-  return grantedStatements(template).filter((statement) => [statement.Action].flat().includes(action));
 }
 
 /** The logical id CloudFormation gives a custom resource, which its dependents list in `DependsOn`. */
@@ -89,7 +74,7 @@ describe('StaticContentDeployer', () => {
     });
 
     it('lets the Lambda read the status of its parent stack', () => {
-      expect(statementsGranting(Template.fromStack(stack), 'cloudformation:DescribeStacks')).toEqual([
+      expect(statementsForAction(Template.fromStack(stack), 'cloudformation:DescribeStacks')).toEqual([
         expect.objectContaining({ Resource: { Ref: 'AWS::StackId' } }),
       ]);
     });
@@ -120,14 +105,14 @@ describe('StaticContentDeployer', () => {
       });
 
       const template = Template.fromStack(stack);
-      expect(statementsGranting(template, 's3:PutObject')).toEqual([
+      expect(statementsForAction(template, 's3:PutObject')).toEqual([
         expect.objectContaining({
           Action: ['s3:PutObject', 's3:DeleteObject'],
           Resource: 'arn:aws:s3:::ui-bucket/config/config.json',
         }),
       ]);
-      expect(statementsGranting(template, 's3:ListBucket')).toEqual([]);
-      expect(statementsGranting(template, 's3:GetObject')).toEqual([]);
+      expect(statementsForAction(template, 's3:ListBucket')).toEqual([]);
+      expect(statementsForAction(template, 's3:GetObject')).toEqual([]);
     });
 
     it('lets a zip source write under its prefix, list the target bucket and read its source archive', () => {
@@ -137,16 +122,16 @@ describe('StaticContentDeployer', () => {
       });
 
       const template = Template.fromStack(stack);
-      expect(statementsGranting(template, 's3:PutObject')).toEqual([
+      expect(statementsForAction(template, 's3:PutObject')).toEqual([
         expect.objectContaining({
           Action: ['s3:PutObject', 's3:DeleteObject'],
           Resource: 'arn:aws:s3:::ui-bucket/content/*',
         }),
       ]);
-      expect(statementsGranting(template, 's3:ListBucket')).toEqual([
+      expect(statementsForAction(template, 's3:ListBucket')).toEqual([
         expect.objectContaining({ Action: 's3:ListBucket', Resource: 'arn:aws:s3:::ui-bucket' }),
       ]);
-      expect(statementsGranting(template, 's3:GetObject')).toEqual([
+      expect(statementsForAction(template, 's3:GetObject')).toEqual([
         expect.objectContaining({
           Action: ['s3:GetObject', 's3:GetObjectVersion'],
           Resource: 'arn:aws:s3:::artifacts-bucket/ui/admin-ui.zip',
@@ -175,7 +160,7 @@ describe('StaticContentDeployer', () => {
       // Aws.PARTITION/Aws.ACCOUNT_ID are CFN pseudo-parameters — CDK renders the concatenation as
       // an Fn::Join of literal segments and { Ref: 'AWS::Partition' | 'AWS::AccountId' }, not a
       // plain resolved string, even with a fixed-account test stack.
-      expect(statementsGranting(Template.fromStack(stack), 'cloudfront:CreateInvalidation')).toEqual([
+      expect(statementsForAction(Template.fromStack(stack), 'cloudfront:CreateInvalidation')).toEqual([
         expect.objectContaining({
           Resource: {
             'Fn::Join': [

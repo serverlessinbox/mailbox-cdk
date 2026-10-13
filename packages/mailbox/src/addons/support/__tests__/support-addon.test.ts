@@ -9,12 +9,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { SupportAddon, SupportMode } from '../support-addon';
 import {
   createApiWithAuthorizer,
   createSupportTestStack,
   findFunction,
-  statementsGrantedTo,
   type SupportTestStack,
   type SynthesizedResource,
 } from './support-test-fixtures';
@@ -203,7 +203,7 @@ describe('SupportAddon', () => {
     describe.each([SUPPORT_API, COLLECTOR])('%s Lambda role', (serviceName) => {
       const template = synthesizeEnabled();
       const fn = findFunction(template, serviceName);
-      const statements = statementsGrantedTo(template, fn);
+      const statements = statementsForRole(template, fn.roleLogicalId);
 
       it('may only tag and untag the hop role, with only the two tier tag keys', () => {
         expect(statements).toContainEqual({
@@ -231,7 +231,7 @@ describe('SupportAddon', () => {
     describe('support-api Lambda role', () => {
       const template = synthesizeEnabled();
       const fn = findFunction(template, SUPPORT_API);
-      const statements = statementsGrantedTo(template, fn);
+      const statements = statementsForRole(template, fn.roleLogicalId);
 
       it('may send messages to the audit queue it was given', () => {
         const queueArn = { 'Fn::GetAtt': [(fn.environment.AUDIT_EVENTS_QUEUE_URL as { Ref: string }).Ref, 'Arn'] };
@@ -242,7 +242,7 @@ describe('SupportAddon', () => {
 
     describe('vendor account IDs', () => {
       const EXECUTE_API_SUFFIX = ':*/*/POST/support-case-sync';
-      const executeApiStatement = (template: Template) => statementsGrantedTo(template, findFunction(template, SUPPORT_API))
+      const executeApiStatement = (template: Template) => statementsForRole(template, findFunction(template, SUPPORT_API).roleLogicalId)
         .find((statement) => statement.Action === 'execute-api:Invoke');
 
       it('defaults to the product vendor account for hop role trust and the execute-api grant', () => {

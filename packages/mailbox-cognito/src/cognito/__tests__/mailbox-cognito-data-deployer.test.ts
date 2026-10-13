@@ -10,14 +10,10 @@
 import { Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxCognitoDataDeployer } from '../mailbox-cognito-data-deployer';
 import type { MailboxCognitoDataDeployerProps } from '../mailbox-cognito-data-deployer';
-import {
-  TEST_ARTIFACT_VERSION,
-  newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
-} from './cognito-deployer-helpers';
+import { TEST_ARTIFACT_VERSION, newDeployerTestStack } from './cognito-deployer-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxCognitoDataDeployer';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };

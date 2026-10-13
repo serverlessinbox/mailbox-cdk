@@ -9,12 +9,11 @@
 
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
 } from '../../__tests__/deployer-test-helpers';
 
 const DATA_STACK_ARN = 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*';

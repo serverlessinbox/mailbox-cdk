@@ -31,11 +31,8 @@ import { StackFailureDetectorRemoval } from '../features/sweeper/stack-failure-d
 import type { IResourceRemoval } from '../features/sweeper/removal';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import {
-  CloudFormationResource,
-  getPolicyStatements,
-  isResourceOfType,
-} from './iam-test-helpers';
+import { actionsOf, renderLiteralText, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 
 describe('SweeperInfra IAM Policies', () => {
   let app: App;
@@ -97,30 +94,12 @@ describe('SweeperInfra IAM Policies', () => {
     ];
   }
 
-  function findWorkerPolicyStatements(parent: cdk.Stack): ReturnType<typeof getPolicyStatements> {
-    const template = Template.fromStack(parent);
-    const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-    if (!resources) throw new Error('No resources in template');
-
-    for (const [, resource] of Object.entries(resources)) {
-      if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-      if (resource.Properties?.PolicyName !== 'sweeper-worker-policy') continue;
-      return getPolicyStatements(resource.Properties?.PolicyDocument);
-    }
-    throw new Error('sweeper-worker-policy not found');
+  function findWorkerPolicyStatements(parent: cdk.Stack): PolicyStatementJson[] {
+    return statementsOfNamedPolicy(Template.fromStack(parent), 'sweeper-worker-policy');
   }
 
-  function findExecutionPolicyStatements(parent: cdk.Stack): ReturnType<typeof getPolicyStatements> {
-    const template = Template.fromStack(parent);
-    const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-    if (!resources) throw new Error('No resources in template');
-
-    for (const [, resource] of Object.entries(resources)) {
-      if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-      if (resource.Properties?.PolicyName !== 'sweeper-execution-policy') continue;
-      return getPolicyStatements(resource.Properties?.PolicyDocument);
-    }
-    throw new Error('sweeper-execution-policy not found');
+  function findExecutionPolicyStatements(parent: cdk.Stack): PolicyStatementJson[] {
+    return statementsOfNamedPolicy(Template.fromStack(parent), 'sweeper-execution-policy');
   }
 
   /**
@@ -135,14 +114,11 @@ describe('SweeperInfra IAM Policies', () => {
     }
     if (typeof resource === 'object' && resource !== null) {
       const obj = resource as Record<string, unknown>;
-      if ('Fn::Join' in obj && Array.isArray(obj['Fn::Join'])) {
-        const parts = obj['Fn::Join'][1];
-        if (Array.isArray(parts)) {
-          const joined = parts.map((p) => (typeof p === 'string' ? p : '')).join('');
-          return typeof expectedPattern === 'string'
-            ? joined.includes(expectedPattern)
-            : expectedPattern.test(joined);
-        }
+      if ('Fn::Join' in obj) {
+        const joined = renderLiteralText(resource);
+        return typeof expectedPattern === 'string'
+          ? joined.includes(expectedPattern)
+          : expectedPattern.test(joined);
       }
       if ('Fn::Sub' in obj && typeof obj['Fn::Sub'] === 'string') {
         const value = obj['Fn::Sub'] as string;
@@ -162,12 +138,12 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findExecutionPolicyStatements(stack);
       const deleteRolePolicyStmts = statements.filter((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('iam:DeleteRolePolicy');
       });
       expect(deleteRolePolicyStmts.length).toBeGreaterThan(0);
       for (const stmt of deleteRolePolicyStmts) {
-        const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+        const stmtResources = resourcesOf(stmt);
         expect(stmtResources).not.toContain('*');
         const isWorkerScoped = isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-worker-');
         const isExecScoped = isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-exec-');
@@ -182,11 +158,11 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findExecutionPolicyStatements(stack);
       const stmt = statements.find((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('states:DeleteStateMachine');
       });
       expect(stmt).toBeDefined();
-      const stmtResources = Array.isArray(stmt?.Resource) ? stmt?.Resource : [stmt?.Resource];
+      const stmtResources = resourcesOf(stmt!);
       expect(stmtResources).not.toContain('*');
       expect(isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-')).toBe(true);
     });
@@ -200,7 +176,7 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findWorkerPolicyStatements(stack);
       const stmt = statements.find((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('acm:DeleteCertificate');
       });
       expect(stmt).toBeDefined();
@@ -217,7 +193,7 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findWorkerPolicyStatements(stack);
       const lambdaDeleteStmts = statements.filter((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('lambda:DeleteFunction');
       });
       // One for the us-east-1 edge target, one for the stack's own-region detector target.
@@ -236,12 +212,12 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findWorkerPolicyStatements(stack);
       const stmt = statements.find((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('events:DeleteRule');
       });
       expect(stmt).toBeDefined();
       expect(stmt?.Condition).toBeDefined();
-      const stmtResources = Array.isArray(stmt?.Resource) ? stmt?.Resource : [stmt?.Resource];
+      const stmtResources = resourcesOf(stmt!);
       expect(stmtResources).not.toContain('*');
     });
 
@@ -252,7 +228,7 @@ describe('SweeperInfra IAM Policies', () => {
 
       const statements = findWorkerPolicyStatements(stack);
       const stmt = statements.find((s) => {
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const actions = actionsOf(s);
         return actions.includes('iam:DeleteRole') && actions.includes('iam:DeleteRolePolicy');
       });
 
@@ -260,7 +236,7 @@ describe('SweeperInfra IAM Policies', () => {
       // iam:DeleteRole/DeleteRolePolicy don't support aws:ResourceTag at all — must NOT be
       // tag-conditioned (that would be a no-op gate, not real scoping).
       expect(stmt?.Condition).toBeUndefined();
-      const stmtResources = Array.isArray(stmt?.Resource) ? stmt?.Resource : [stmt?.Resource];
+      const stmtResources = resourcesOf(stmt!);
       expect(stmtResources).not.toContain('*');
       // Scoped to the role's own real ARN (a GetAtt token), not a wildcard name-prefix pattern.
       expect(typeof stmtResources?.[0]).toBe('object');
@@ -274,7 +250,7 @@ describe('SweeperInfra IAM Policies', () => {
       const statements = findWorkerPolicyStatements(stack);
       for (const action of ['acm:DescribeCertificate', 'lambda:GetFunction', 'events:DescribeRule', 'iam:ListRoleTags']) {
         const stmt = statements.find((s) => {
-          const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+          const actions = actionsOf(s);
           return actions.includes(action);
         });
         expect(stmt).toBeDefined();

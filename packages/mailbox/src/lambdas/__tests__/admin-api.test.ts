@@ -19,6 +19,7 @@ import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { AdminApiLambda } from '../admin-api';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
@@ -234,16 +235,8 @@ describe('AdminApiLambda IAM scoping', () => {
 
   it('does not grant execute-api:Invoke on a wildcard resource', () => {
     const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
-    for (const policy of Object.values(policies)) {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      for (const statement of statements) {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        if (actions.includes('execute-api:Invoke')) {
-          const resources = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
-          expect(resources).not.toContain('*');
-        }
-      }
+    for (const statement of statementsForAction(template, 'execute-api:Invoke')) {
+      expect(resourcesOf(statement)).not.toContain('*');
     }
   });
 
@@ -307,24 +300,14 @@ describe('AdminApiLambda IAM scoping', () => {
 
   it('does not permit CREATE action on Route53 records', () => {
     const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
-    for (const policyRecord of Object.values(policies)) {
-      const policy = policyRecord as any;
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      for (const statement of statements) {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        if (actions.includes('route53:ChangeResourceRecordSets') && statement.Effect !== 'Deny') {
-          const conditions = statement.Condition as Record<string, any> | undefined;
-          if (conditions) {
-            for (const condValues of Object.values(conditions)) {
-              if (typeof condValues === 'object' && condValues !== null) {
-                const allowedActions = (condValues as any)['route53:ChangeResourceRecordSetsActions'];
-                if (Array.isArray(allowedActions)) {
-                  expect(allowedActions).not.toContain('CREATE');
-                }
-              }
-            }
-          }
+    for (const statement of statementsForAction(template, 'route53:ChangeResourceRecordSets')) {
+      if (statement.Effect === 'Deny') {
+        continue;
+      }
+      for (const condValues of Object.values(statement.Condition ?? {})) {
+        const allowedActions = condValues['route53:ChangeResourceRecordSetsActions'];
+        if (Array.isArray(allowedActions)) {
+          expect(allowedActions).not.toContain('CREATE');
         }
       }
     }

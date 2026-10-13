@@ -9,7 +9,8 @@
 import { Template } from 'aws-cdk-lib/assertions';
 import { DeployerStarterLambda } from '../deployer-starter-lambda';
 import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
-import { newDeployerTestStack, newWorkerStandIn, statementsForAction } from './deployer-infra-helpers';
+import { statementsForAction } from '../../cdk-test-support';
+import { newDeployerTestStack, newWorkerStandIn } from './deployer-infra-helpers';
 
 function synthStarter() {
   const { stack, artifactResolver } = newDeployerTestStack();

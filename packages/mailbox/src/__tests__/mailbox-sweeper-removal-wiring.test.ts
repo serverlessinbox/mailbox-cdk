@@ -14,6 +14,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { actionsOf, renderLiteralText, statementsOfDocument, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Mailbox } from '../mailbox';
 import type { IMailboxAuthProvider } from '../auth/types';
 import { Permission } from '../auth/jmap-scopes';
@@ -66,16 +67,6 @@ function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Templa
   return Template.fromStack(stack);
 }
 
-/** Flattens a state machine's `DefinitionString` intrinsic into a single searchable string. Token
- * (non-string) parts are dropped — state NAMES are always literal, so they always survive intact in
- * one of the literal string chunks either side of a token. */
-function flattenDefinition(definitionString: unknown): string {
-  const obj = definitionString as { 'Fn::Join'?: [string, unknown[]] } | string;
-  if (typeof obj === 'string') return obj;
-  const parts = obj?.['Fn::Join']?.[1] ?? [];
-  return parts.filter((p): p is string => typeof p === 'string').join('');
-}
-
 describe('Mailbox: sweeper removal wiring', () => {
   let template: Template;
 
@@ -107,14 +98,11 @@ describe('Mailbox: sweeper removal wiring', () => {
     const policies = template.findResources('AWS::IAM::Policy');
     const startExecutionPolicyNames: string[] = [];
     for (const [, policy] of Object.entries(policies)) {
-      const doc = (policy as any).Properties?.PolicyDocument;
-      const statements: any[] = doc?.Statement ?? [];
-      const grantsStartExecution = statements.some((stmt) => {
-        const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-        return actions.includes('states:StartExecution');
-      });
+      const grantsStartExecution = statementsOfDocument(policy.Properties?.PolicyDocument).some((stmt) =>
+        actionsOf(stmt).includes('states:StartExecution'),
+      );
       if (grantsStartExecution) {
-        startExecutionPolicyNames.push((policy as any).Properties?.PolicyName);
+        startExecutionPolicyNames.push(policy.Properties?.PolicyName);
       }
     }
     expect(startExecutionPolicyNames).not.toContain('stack-failure-detector-policy');
@@ -150,7 +138,7 @@ describe('Mailbox: sweeper removal wiring', () => {
 
   it('the state machine definition contains steps contributed by each registered removal', () => {
     const sm = sweeperStateMachine();
-    const def = flattenDefinition(sm.Properties.DefinitionString);
+    const def = renderLiteralText(sm.Properties.DefinitionString);
 
     // This test's Mailbox config has no custom regional-SAN certificate, so CertificateRemoval is
     // never registered (mirrors mailbox.ts's own `if (regionalSanCertificate)` gate) — only assert
@@ -174,7 +162,7 @@ describe('Mailbox: sweeper removal wiring', () => {
 
   it('the detector\'s grace-period Wait state comes from its own removal, not shared retry logic', () => {
     const sm = sweeperStateMachine();
-    const def = flattenDefinition(sm.Properties.DefinitionString);
+    const def = renderLiteralText(sm.Properties.DefinitionString);
 
     // Only the detector removal contributes a grace-period wait.
     expect(def).toContain('"DetectorGraceWait"');
@@ -194,16 +182,8 @@ describe('Mailbox: sweeper removal wiring', () => {
   });
 
   it('the stack-failure detector\'s own policies carry no sweeper-related grant', () => {
-    const policies = template.findResources('AWS::IAM::Policy');
-    const detectorPolicy = Object.values(policies).find(
-      (p: any) => p.Properties?.PolicyName === 'stack-failure-detector-policy',
-    ) as any;
-    expect(detectorPolicy).toBeDefined();
-
-    const statements: any[] = detectorPolicy.Properties.PolicyDocument.Statement;
-    for (const stmt of statements) {
-      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-      expect(actions).not.toContain('states:StartExecution');
+    for (const stmt of statementsOfNamedPolicy(template, 'stack-failure-detector-policy')) {
+      expect(actionsOf(stmt)).not.toContain('states:StartExecution');
     }
 
     // No env var on the detector Lambda carries a state-machine ARN either.
@@ -248,7 +228,7 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
   it('registers no detector removal on the sweeper: no grace-wait/invoke steps and no "detector" key on the deferred-removal custom resource', () => {
     const machines = template.findResources('AWS::StepFunctions::StateMachine');
     const [, sm] = Object.entries(machines)[0];
-    const def = flattenDefinition((sm as any).Properties.DefinitionString);
+    const def = renderLiteralText((sm as any).Properties.DefinitionString);
     expect(def).not.toContain('"DetectorGraceWait"');
     expect(def).not.toContain('"DetectorInvoke"');
     expect(def).not.toContain('"DetectorWaitRetry"');

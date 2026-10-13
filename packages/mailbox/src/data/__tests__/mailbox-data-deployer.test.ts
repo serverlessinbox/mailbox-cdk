@@ -10,13 +10,12 @@
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { MailboxDataDeployer } from '../mailbox-data-deployer';
 import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_ARTIFACT_VERSION,
   TEST_REGION,
   newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
 } from '../../__tests__/deployer-test-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxDataDeployer';

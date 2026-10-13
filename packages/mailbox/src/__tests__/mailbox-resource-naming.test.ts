@@ -18,6 +18,7 @@ import { MailboxDataStack } from '../data/mailbox-data-stack';
 import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { WebSocketTable } from '../api/websocket/websocket-table';
+import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -165,18 +166,7 @@ describe('Mailbox Resource Naming', () => {
     // (Aws.* is always a token — see cdk-construct-pattern's "Account/region in a template
     // value"). Return the raw entries so each test can assert on the shape it actually gets.
     function resourcesForAction(template: Template, action: string): unknown[] {
-      const policies = template.findResources('AWS::IAM::Policy');
-      const resources: unknown[] = [];
-      for (const [, policy] of Object.entries(policies)) {
-        const statements = (policy as any).Properties?.PolicyDocument?.Statement ?? [];
-        for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          if (!actions.includes(action)) continue;
-          const stmtResources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
-          resources.push(...stmtResources);
-        }
-      }
-      return resources;
+      return statementsForAction(template, action).flatMap(resourcesOf);
     }
 
     it('grants DynamoDB table access with correct resource pattern (no double -data-)', () => {

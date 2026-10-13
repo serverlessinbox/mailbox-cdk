@@ -10,11 +10,10 @@
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxEdgeDeployerWorker } from '../mailbox-edge-deployer-worker';
 import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-  renderWithTokens,
-  statementsForAction,
 } from '../../__tests__/deployer-test-helpers';
 
 const EDGE_REGION = 'us-east-1';

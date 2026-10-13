@@ -12,16 +12,10 @@ import { MailboxCognitoDataStack } from '../cognito/mailbox-cognito-data-stack';
 import { MailboxCognitoDataDeployerWorker } from '../cognito/mailbox-cognito-data-deployer-worker';
 import { MailboxUserPool } from '../auth/mailbox-user-pool';
 import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
+import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
-
-interface CloudFormationPolicyStatement {
-  Effect?: 'Allow' | 'Deny';
-  Action: string | string[];
-  Resource: string | string[];
-  Condition?: Record<string, Record<string, string | string[]>>;
-}
 
 interface CloudFormationResource {
   Type: string;
@@ -49,19 +43,6 @@ const KNOWN_WILDCARDS: Record<string, string> = {
 
 function isResourceOfType(resource: CloudFormationResource, type: string): boolean {
   return resource.Type === type;
-}
-
-function getPolicyStatements(policyDoc: unknown): CloudFormationPolicyStatement[] {
-  if (typeof policyDoc !== 'object' || policyDoc === null) {
-    return [];
-  }
-  const doc = policyDoc as Record<string, unknown>;
-  if (!Array.isArray(doc.Statement)) {
-    return [];
-  }
-  return doc.Statement.filter((stmt): stmt is CloudFormationPolicyStatement => {
-    return typeof stmt === 'object' && stmt !== null;
-  });
 }
 
 describe('Cognito Data Stack Template Synthesis', () => {
@@ -140,11 +121,11 @@ describe('Cognito Data Stack Template Synthesis', () => {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
 
         const policyDoc = resource.Properties?.PolicyDocument;
-        const statements = getPolicyStatements(policyDoc);
+        const statements = statementsOfDocument(policyDoc);
 
         for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          const resourceList = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const actions = actionsOf(stmt);
+          const resourceList = resourcesOf(stmt);
 
           for (const action of actions) {
             if (writeActions.has(action) && resourceList.includes('*') && !stmt.Condition) {
@@ -306,11 +287,11 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       for (const [logicalId, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
-        const statements = getPolicyStatements(resource.Properties?.PolicyDocument);
+        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
 
         for (const stmt of statements) {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          const resourceList = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+          const actions = actionsOf(stmt);
+          const resourceList = resourcesOf(stmt);
 
           for (const action of actions) {
             if (action === 'cloudformation:CreateStack') {
