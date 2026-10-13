@@ -1,7 +1,8 @@
 import { wrapHandler } from 'aws-custom-resources';
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { withSmokeTest, emitManualFinalize, env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { withSmokeTest, emitManualFinalize, env, LoggerBuffer, isParentStackBeingDeleted } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { ACMClient } from '@aws-sdk/client-acm';
 import { LambdaClient } from '@aws-sdk/client-lambda';
 import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
@@ -20,6 +21,7 @@ const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
 const lambdaClientEdge = new LambdaClient({ region: 'us-east-1' });
 const eventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION });
 const iamClient = new IAMClient({ region: process.env.AWS_REGION });
+const cfnClient = new CloudFormationClient({ region: process.env.AWS_REGION });
 
 // The starter and worker Lambdas are two physical functions sharing this code bundle, but the CDK
 // gives each a different environment (see StarterConfig's comment in config.ts) — so each loads
@@ -125,6 +127,32 @@ export function computeSweepTargets(event: CloudFormationCustomResourceEvent): R
   return toSweep;
 }
 
+const STARTER_RESPONSE = {
+  PhysicalResourceId: 'mailbox-deferred-removal',
+  Data: {},
+};
+
+/**
+ * `computeSweepTargets`, except that a Delete yields no targets unless the parent stack is being
+ * deleted: CloudFormation also sends Delete to a replaced resource of a stack that stays alive, and
+ * sweeping then would destroy the live resources the targets describe. An unreadable stack status
+ * counts as "not being deleted"; a skipped sweep leaves orphans that can be reclaimed later.
+ */
+async function resolveSweepTargets(
+  event: CloudFormationCustomResourceEvent,
+  logger: LoggerBuffer,
+): Promise<RemovalPropertiesMap> {
+  if (event.RequestType === 'Delete' && !(await isParentStackBeingDeleted(event.StackId, cfnClient, logger))) {
+    // recordUpdate so the flush surfaces this at the default emit level; the skip is a deliberate decision, not a failure.
+    logger.recordUpdate();
+    logger.warn('Delete received while the parent stack is not being deleted; skipping the sweep', {
+      stackId: event.StackId,
+    });
+    return {};
+  }
+  return computeSweepTargets(event);
+}
+
 /**
  * Worker handler: invoked by Step Functions once per removal, with that removal's own typed
  * payload. Idempotent — each invocation re-checks and deletes whatever is still pending.
@@ -171,6 +199,11 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
  * removals whose entry changed/disappeared on Update (e.g. a domain change replacing a cert or edge
  * function). Called by CloudFormation custom resource (DeferredRemoval).
  *
+ * A Delete sweeps only while the parent stack itself is being deleted. CloudFormation also sends
+ * Delete to a replaced custom resource of a stack that stays alive, and sweeping then would destroy
+ * the live resources the removals describe; that Delete answers SUCCESS without a sweep. A Delete
+ * with unusable config answers SUCCESS too, so a stack in DELETE_FAILED can still be fixed.
+ *
  * Each removal's own target data lives in the custom resource's `ResourceProperties`, one opaque
  * entry per removal keyed by its `id` (see `features/sweeper/deferred-removal.ts`); this starter
  * never interprets those fields, it only diffs entries structurally and forwards whichever ones
@@ -183,9 +216,16 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
  * completing (best-effort).
  */
 export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
-  // Custom resource handlers must use tryLoad at module scope; throw inside the handler
-  // so wrapHandler converts it to a CloudFormation FAILED response.
-  if (starterConfigError) throw new Error(starterConfigError);
+  // Config is loaded with tryLoad at module scope so a bad config cannot kill the process before a
+  // response is sent. Create and Update throw it, which wrapHandler turns into a FAILED response;
+  // Delete answers SUCCESS without a sweep so a stack in DELETE_FAILED stays fixable.
+  if (starterConfigError) {
+    if (event.RequestType !== 'Delete') throw new Error(starterConfigError);
+    new LoggerBuffer().error('Invalid starter config; answering SUCCESS to Delete without a sweep', {
+      configError: starterConfigError,
+    });
+    return STARTER_RESPONSE;
+  }
 
   const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
 
@@ -214,7 +254,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   // carries it on Update. Re-assert the real, still-discriminated union type here instead of
   // reaching for `any` — `computeSweepTargets` still gets full narrowing on `RequestType`.
   const cfnEvent = event as CloudFormationCustomResourceEvent;
-  const toSweep = computeSweepTargets(cfnEvent);
+  const toSweep = await resolveSweepTargets(cfnEvent, logger);
   const sweepTargetIds = Object.keys(toSweep);
 
   if (sweepTargetIds.length > 0) {
@@ -277,8 +317,5 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
 
   // Return response object. wrapHandler will always send this to CloudFormation,
   // even if the function threw an uncaught error (which we don't have here).
-  return {
-    PhysicalResourceId: 'mailbox-deferred-removal',
-    Data: {},
-  };
+  return STARTER_RESPONSE;
 }), env.check(loadStarter));

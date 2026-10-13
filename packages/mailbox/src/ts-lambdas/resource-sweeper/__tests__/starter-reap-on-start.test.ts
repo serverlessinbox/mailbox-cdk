@@ -17,6 +17,7 @@ import {
   ListExecutionsCommand,
   StopExecutionCommand,
 } from '@aws-sdk/client-sfn';
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
 import { starterHandler } from '../handler';
 
@@ -30,6 +31,7 @@ jest.mock('https', () => ({
 }));
 
 const sfnMock = mockClient(SFNClient);
+const cfnMock = mockClient(CloudFormationClient);
 
 const SM_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 
@@ -58,6 +60,10 @@ function context(): Context {
 describe('starterHandler — reap-on-start', () => {
   beforeEach(() => {
     sfnMock.reset();
+    cfnMock.reset();
+    cfnMock.on(DescribeStacksCommand).resolves({
+      Stacks: [{ StackName: 'test', CreationTime: new Date(), StackStatus: 'DELETE_IN_PROGRESS' }],
+    });
     process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = SM_ARN;
   });
 

@@ -1,6 +1,7 @@
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Duration } from 'aws-cdk-lib';
+import { Aws, Duration } from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface ResourceSweeperStarterLambdaProps {
@@ -29,5 +30,16 @@ export class ResourceSweeperStarterLambda extends TypeScriptLambda {
         MAILBOX_SWEEPER_STATE_MACHINE_ARN: props.stateMachineArn,
       },
     });
+
+    this.grantDescribeOwnStack();
+  }
+
+  private grantDescribeOwnStack(): void {
+    this.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [Aws.STACK_ID],
+      }),
+    );
   }
 }

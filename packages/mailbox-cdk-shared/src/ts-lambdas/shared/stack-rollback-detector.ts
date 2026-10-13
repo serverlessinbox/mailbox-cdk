@@ -23,27 +23,48 @@ export async function isParentStackRollingBack(
   cfnClient?: CloudFormationClient,
   logger?: LoggerBuffer,
 ): Promise<boolean> {
-  const client = cfnClient || new CloudFormationClient();
+  const status = await readParentStackStatus(stackId, cfnClient || new CloudFormationClient(), logger);
+  return status === 'UPDATE_ROLLBACK_IN_PROGRESS';
+}
 
+/**
+ * Detects whether the parent CloudFormation stack is being deleted (`DELETE_IN_PROGRESS`).
+ *
+ * A custom resource also receives Delete when it is merely replaced or removed from a stack that
+ * stays alive; only a Delete during stack deletion means the whole stack is going away. When the
+ * status cannot be read this reports false, so the caller skips destructive work: skipping leaves
+ * orphans that can be reclaimed later, while acting wrongly destroys live resources.
+ *
+ * The client and logger parameters behave as in {@link isParentStackRollingBack}.
+ */
+export async function isParentStackBeingDeleted(
+  stackId: string,
+  cfnClient?: CloudFormationClient,
+  logger?: LoggerBuffer,
+): Promise<boolean> {
+  const status = await readParentStackStatus(stackId, cfnClient || new CloudFormationClient(), logger);
+  return status === 'DELETE_IN_PROGRESS';
+}
+
+/**
+ * Reads the parent stack's status. Returns undefined when the stack is not returned or the lookup
+ * fails (not found, permission denied, ...), so each caller treats an unknown status as "not in the
+ * state I am looking for" and proceeds with its normal handling. The failure is logged at warn level
+ * so it is visible in the trace if that gets flushed.
+ */
+async function readParentStackStatus(
+  stackId: string,
+  client: CloudFormationClient,
+  logger?: LoggerBuffer,
+): Promise<string | undefined> {
   try {
     const response = await client.send(
       new DescribeStacksCommand({ StackName: stackId }),
     );
-
-    const stack = response.Stacks?.[0];
-    if (!stack) {
-      return false;
-    }
-
-    // Check if the stack is in a rollback-in-progress state
-    const status = stack.StackStatus;
-    return status === 'UPDATE_ROLLBACK_IN_PROGRESS';
+    return response.Stacks?.[0]?.StackStatus;
   } catch (err) {
-    // If DescribeStacks fails (stack not found, permission denied, etc.),
-    // treat it as "not rolling back" so the handler proceeds with normal error handling.
-    // Log at warn level so the failure is visible in the trace if it gets flushed.
     const message = err instanceof Error ? err.message : String(err);
     logger?.warn(`Failed to check parent stack status: ${message}`);
-    return false;
+    return undefined;
   }
 }

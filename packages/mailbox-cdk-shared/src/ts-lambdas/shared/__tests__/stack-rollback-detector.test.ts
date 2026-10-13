@@ -1,5 +1,36 @@
-import { isParentStackRollingBack } from '../stack-rollback-detector';
+import { isParentStackRollingBack, isParentStackBeingDeleted } from '../stack-rollback-detector';
 import { LoggerBuffer } from '../logger-buffer';
+
+describe('isParentStackBeingDeleted', () => {
+  it('returns true when stack status is DELETE_IN_PROGRESS', async () => {
+    const mockClient = {
+      send: jest.fn(async () => ({ Stacks: [{ StackStatus: 'DELETE_IN_PROGRESS' }] })),
+    };
+
+    await expect(isParentStackBeingDeleted('arn:aws:cloudformation:...', mockClient as any)).resolves.toBe(true);
+  });
+
+  it('returns false for any other status, including UPDATE_COMPLETE', async () => {
+    const mockClient = {
+      send: jest.fn(async () => ({ Stacks: [{ StackStatus: 'UPDATE_COMPLETE' }] })),
+    };
+
+    await expect(isParentStackBeingDeleted('arn:aws:cloudformation:...', mockClient as any)).resolves.toBe(false);
+  });
+
+  it('returns false and warns on the caller-provided logger when DescribeStacks throws', async () => {
+    const mockClient = {
+      send: jest.fn(async () => {
+        throw new Error('AccessDenied');
+      }),
+    };
+    const logger = new LoggerBuffer();
+    const warnSpy = jest.spyOn(logger, 'warn');
+
+    await expect(isParentStackBeingDeleted('arn:aws:cloudformation:...', mockClient as any, logger)).resolves.toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith('Failed to check parent stack status: AccessDenied');
+  });
+});
 
 describe('isParentStackRollingBack', () => {
   describe('stack status detection with mock client', () => {
