@@ -1,77 +1,188 @@
-jest.mock('@aws-sdk/client-sfn');
-jest.mock('@aws-sdk/client-acm');
-jest.mock('@aws-sdk/client-lambda');
-jest.mock('@aws-sdk/client-eventbridge');
-jest.mock('@aws-sdk/client-iam');
-jest.mock('../targets/cert', () => ({
-  sweepCert: jest.fn().mockResolvedValue({ status: 'done', target: 'cert' }),
-}));
+/**
+ * Coverage for the handler file's wiring with a valid config: the starter hands a custom-resource
+ * request to its `SweepStarter` and answers CloudFormation, and the worker hands a removal payload
+ * to its `SweepWorker`. The classes' own behaviour is covered in their own test files.
+ *
+ * Each starter invocation must get its own logger: a `LoggerBuffer` keeps its unflushed entries for
+ * its whole life, so one shared by warm invocations would flush an earlier request's trace when a
+ * later request fails.
+ *
+ * Flush: an unexpected error flushes the trace exactly once before it is answered, an
+ * `ExpectedFailure` is answered without a flush, and a success never flushes. A handler that flushed
+ * for an expected failure would write the trace of every rejected request; one that did not flush an
+ * unexpected error would leave the bug without its trace.
+ *
+ * Config is loaded when the handler module loads, so the environment is set before it is imported.
+ */
 
-// The handler loads its config at module scope, so the env must be set before it is imported.
+const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 process.env['SERVICE_NAME'] = 'resource-sweeper';
-process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-east-1:123456789012:stateMachine:mailbox-sweeper';
+process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
+import { mockClient } from 'aws-sdk-client-mock';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand } from '@aws-sdk/client-sfn';
+import {
+  ACMClient,
+  DescribeCertificateCommand,
+  DeleteCertificateCommand,
+  ListTagsForCertificateCommand,
+} from '@aws-sdk/client-acm';
+import { ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { starterHandler, workerHandler } from '../handler';
+import { SweepStarter } from '../sweep-starter';
+import { SweepWorker } from '../sweep-worker';
+import { captureCfnResponse, createEvent, lambdaContext, updateEvent } from './sweep-helpers';
 
-describe('ResourceSweeper handlers — smoke test wrapper', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.MAILBOX_SWEEPER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:mailbox-sweeper';
-  });
+// wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
+jest.mock('https', () => ({ request: jest.fn() }));
 
-  afterEach(() => {
-    delete process.env.MAILBOX_SWEEPER_STATE_MACHINE_ARN;
-  });
+const sfnMock = mockClient(SFNClient);
+const acmMock = mockClient(ACMClient);
 
-  describe('starterHandler', () => {
-    it('responds to smoke test probe without invoking the real handler', async () => {
-      const probeEvent = { serverlessInboxSmokeTest: true };
-      const result = await (starterHandler as any)(probeEvent, {});
-      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
-    });
-  });
+describe('starterHandler with a valid config', () => {
+  it('hands the request to the SweepStarter and answers SUCCESS with the removal resource id', async () => {
+    sfnMock.reset();
+    sfnMock.on(ListExecutionsCommand).resolves({ executions: [] });
+    sfnMock.on(StartExecutionCommand).resolves({ executionArn: 'arn:execution', startDate: new Date() });
+    const cfnResponse = captureCfnResponse();
 
-  describe('workerHandler', () => {
-    it('responds to smoke test probe without invoking the real handler', async () => {
-      const probeEvent = { serverlessInboxSmokeTest: true };
-      const result = await (workerHandler as any)(probeEvent, {});
-      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
-    });
+    await starterHandler(updateEvent(), lambdaContext());
+
+    expect(sfnMock.commandCalls(StartExecutionCommand)[0].args[0].input.stateMachineArn).toBe(STATE_MACHINE_ARN);
+    expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'mailbox-deferred-removal' });
   });
 });
 
-describe('ResourceSweeper workerHandler — MAILBOX_SWEEPER_STATE_MACHINE_ARN absent (regression, 2026-09-13)', () => {
-  // The worker's CDK wrapper (resource-sweeper-worker.ts) never sets
-  // MAILBOX_SWEEPER_STATE_MACHINE_ARN — only the starter's wrapper does. The worker must load
-  // and run successfully without it. Before the fix (a single shared Config with
-  // sweeperStateMachineArn mandatory for both handlers), this environment made every worker
-  // invocation throw "Configuration error" and never reach real work.
-  beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
-    delete process.env.MAILBOX_SWEEPER_STATE_MACHINE_ARN;
-    process.env.SERVICE_NAME = 'resource-sweeper-worker';
-  });
-
+describe('starterHandler logger scope', () => {
   afterEach(() => {
-    delete process.env.SERVICE_NAME;
+    jest.restoreAllMocks();
   });
 
-  it('smoke test probe succeeds', async () => {
-    const handlerModule = require('../handler');
-    const result = await handlerModule.workerHandler({ serverlessInboxSmokeTest: true }, {});
-    expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+  it('does not carry one request\'s trace into the next: a failing request flushes only its own', async () => {
+    sfnMock.reset();
+    sfnMock.on(ListExecutionsCommand).resolves({ executions: [] });
+    sfnMock.on(StartExecutionCommand).resolves({ executionArn: 'arn:execution', startDate: new Date() });
+    captureCfnResponse();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleDebug = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const eventWithoutProperties = createEvent();
+    Reflect.deleteProperty(eventWithoutProperties, 'ResourceProperties');
+
+    await starterHandler(updateEvent(), lambdaContext());
+    expect(consoleDebug).not.toHaveBeenCalled();
+
+    await starterHandler(eventWithoutProperties, lambdaContext());
+
+    const invocationStarts = consoleDebug.mock.calls.filter(([message]) => message === 'Starter invoked');
+    expect(invocationStarts).toHaveLength(1);
   });
+});
 
-  it('a real cert-removal invocation succeeds and never reports a Configuration error', async () => {
-    const handlerModule = require('../handler');
+describe('workerHandler with a valid config', () => {
+  it('hands the removal payload to the SweepWorker and returns its output', async () => {
+    acmMock.reset();
+    acmMock.on(ListTagsForCertificateCommand).resolves({
+      Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
+    });
+    acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
+    acmMock.on(DeleteCertificateCommand).resolves({});
 
-    const result = await handlerModule.workerHandler({
+    const output = await workerHandler({
       removalType: 'cert',
       certArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test',
       rootStackName: 'test-stack',
     });
 
-    expect(result).toEqual({ status: 'SUCCESS' });
+    expect(output).toEqual({ status: 'SUCCESS' });
+    expect(acmMock.commandCalls(DeleteCertificateCommand)).toHaveLength(1);
+  });
+});
+
+const CERT_PAYLOAD = {
+  removalType: 'cert',
+  certArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test',
+  rootStackName: 'test-stack',
+} as const;
+
+describe('handler flush', () => {
+  let flush: jest.SpyInstance;
+
+  beforeEach(() => {
+    sfnMock.reset();
+    sfnMock.on(ListExecutionsCommand).resolves({ executions: [] });
+    sfnMock.on(StartExecutionCommand).resolves({ executionArn: 'arn:execution', startDate: new Date() });
+    acmMock.reset();
+    acmMock.on(ListTagsForCertificateCommand).resolves({
+      Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
+    });
+    acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
+    acmMock.on(DeleteCertificateCommand).resolves({});
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    flush = jest.spyOn(LoggerBuffer.prototype, 'flush');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('starterHandler', () => {
+    it('flushes once and answers FAILED with the error when the starter throws an unexpected error', async () => {
+      jest.spyOn(SweepStarter.prototype, 'handle').mockRejectedValue(new Error('planner blew up'));
+      const cfnResponse = captureCfnResponse();
+
+      await starterHandler(updateEvent(), lambdaContext());
+
+      expect(flush).toHaveBeenCalledTimes(1);
+      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('planner blew up') });
+    });
+
+    it('answers FAILED with the reason and does not flush when the starter throws an ExpectedFailure', async () => {
+      jest.spyOn(SweepStarter.prototype, 'handle').mockRejectedValue(new ExpectedFailure('request rejected on purpose'));
+      const cfnResponse = captureCfnResponse();
+
+      await starterHandler(updateEvent(), lambdaContext());
+
+      expect(flush).not.toHaveBeenCalled();
+      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('request rejected on purpose') });
+    });
+
+    it('does not flush when the request succeeds', async () => {
+      const cfnResponse = captureCfnResponse();
+
+      await starterHandler(updateEvent(), lambdaContext());
+
+      expect(flush).not.toHaveBeenCalled();
+      expect(cfnResponse().Status).toBe('SUCCESS');
+    });
+  });
+
+  describe('workerHandler', () => {
+    it('flushes once and rethrows the same error when the worker throws an unexpected error', async () => {
+      const failure = new Error('sweeper blew up');
+      jest.spyOn(SweepWorker.prototype, 'handle').mockRejectedValue(failure);
+
+      await expect(workerHandler(CERT_PAYLOAD)).rejects.toBe(failure);
+
+      expect(flush).toHaveBeenCalledTimes(1);
+    });
+
+    it('rethrows the same ExpectedFailure without a flush', async () => {
+      const failure = new ExpectedFailure('sweep refused');
+      jest.spyOn(SweepWorker.prototype, 'handle').mockRejectedValue(failure);
+
+      await expect(workerHandler(CERT_PAYLOAD)).rejects.toBe(failure);
+
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it('does not flush when the sweep succeeds', async () => {
+      await expect(workerHandler(CERT_PAYLOAD)).resolves.toEqual({ status: 'SUCCESS' });
+
+      expect(flush).not.toHaveBeenCalled();
+    });
   });
 });

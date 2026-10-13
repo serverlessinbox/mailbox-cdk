@@ -6,7 +6,11 @@ import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import type { StackFailureDetectorSweepTargets } from '../stack-failure-detection';
-import { withTargetPresenceGuard } from './removal';
+import type {
+  StackFailureDetectorRemovalTarget,
+  StackFailureDetectorWorkerInput,
+} from '../../ts-lambdas/resource-sweeper/removal';
+import { targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {
@@ -22,20 +26,15 @@ const DEFAULT_GRACE_PERIOD = Duration.minutes(15);
 
 /**
  * Registers the stack-failure detector's rule, function and role as ONE removal — grouped
- * because they are torn down together, in a single worker invocation, after a single grace-period
- * wait, rather than as three independent registrations. See
- * `ts-lambdas/resource-sweeper/targets/stack-failure-detector.ts` for the sub-handler.
+ * because they are torn down together, after a single grace-period wait, rather than as three
+ * independent registrations.
  *
- * The grace period is a real Wait step this removal contributes to the state machine — not a flag
- * threaded through the worker's decision logic (that was the pre-rework design; see
- * `StackFailureDetectorRemovalInput`'s doc for why it no longer needs one).
+ * The grace period is a Wait step this removal contributes to the state machine.
  *
- * `role` is a real `iam.IRole` reference, so its IAM grants are scoped to that role's own ARN — no
- * name-prefix wildcard is needed here (iam:DeleteRole/DeleteRolePolicy don't support
- * `aws:ResourceTag` at all, which is why a wildcard was needed before this construct could see the
- * detector's real role).
+ * `role` is an `iam.IRole` reference, so its IAM grants are scoped to that role's own ARN
+ * (iam:DeleteRole/DeleteRolePolicy don't support `aws:ResourceTag` at all).
  */
-export class StackFailureDetectorRemoval extends Construct implements IResourceRemoval {
+export class StackFailureDetectorRemoval extends Construct implements IResourceRemoval<'detector'> {
   readonly id = 'detector';
   private readonly targets: StackFailureDetectorSweepTargets;
   private readonly gracePeriod: Duration;
@@ -86,7 +85,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     ];
   }
 
-  crProperties(): Record<string, string> {
+  crProperties(): StackFailureDetectorRemovalTarget {
     return {
       ruleArn: this.targets.rule.ruleArn,
       ruleTargetId: this.targets.ruleTargetId,
@@ -97,8 +96,15 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   }
 
   buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const rootStackName = Stack.of(this).stackName;
-    const targetPath = `$.toSweep.${this.id}`;
+    const workerInput: StackFailureDetectorWorkerInput = {
+      removalType: 'detector',
+      ruleArn: targetField(this.id, 'ruleArn'),
+      ruleTargetId: targetField(this.id, 'ruleTargetId'),
+      detectorFnArn: targetField(this.id, 'detectorFnArn'),
+      detectorRoleArn: targetField(this.id, 'detectorRoleArn'),
+      detectorRolePolicyName: targetField(this.id, 'detectorRolePolicyName'),
+      rootStackName: Stack.of(this).stackName,
+    };
 
     const graceWait = new sfn.Wait(this, 'DetectorGraceWait', {
       time: sfn.WaitTime.duration(this.gracePeriod),
@@ -108,15 +114,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       lambdaFunction: worker,
       payloadResponseOnly: true,
       resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({
-        removalType: 'detector',
-        ruleArn: sfn.JsonPath.stringAt(`${targetPath}.ruleArn`),
-        ruleTargetId: sfn.JsonPath.stringAt(`${targetPath}.ruleTargetId`),
-        detectorFnArn: sfn.JsonPath.stringAt(`${targetPath}.detectorFnArn`),
-        detectorRoleArn: sfn.JsonPath.stringAt(`${targetPath}.detectorRoleArn`),
-        detectorRolePolicyName: sfn.JsonPath.stringAt(`${targetPath}.detectorRolePolicyName`),
-        rootStackName,
-      }),
+      payload: sfn.TaskInput.fromObject({ ...workerInput }),
       retryOnServiceExceptions: true,
     });
 

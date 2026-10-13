@@ -61,8 +61,8 @@ export interface SweeperWorkflowProps {
 export class SweeperWorkflow extends Construct {
   private readonly stateMachine: sfn.StateMachine;
 
-  // Pre-built ARN string for this state machine (no GetAtt — see SweeperInfra's formatArn
-  // comment); grantStartExecution/grantExecutionReaping below scope statements to it directly
+  // Pre-built ARN string for this state machine (no GetAtt); grantStartExecution/grantExecutionReaping
+  // below scope statements to it directly
   // instead of going through CDK's stateMachine.grantStartExecution, which resolves via Ref.
   private readonly stateMachineArn: string;
 
@@ -85,8 +85,7 @@ export class SweeperWorkflow extends Construct {
   }
 
   /**
-   * Grants the given principal permission to list and stop executions of this state machine —
-   * used by the starter to stop any stale RUNNING execution before starting a new one.
+   * Grants the given principal permission to list and stop executions of this state machine.
    */
   public grantExecutionReaping(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({

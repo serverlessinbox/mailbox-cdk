@@ -36,10 +36,10 @@ describe('Sweeper removal boundary guard', () => {
 
       // Look for removal implementations: classes implementing IResourceRemoval
       // or methods returning removal statements.
-      // Key indicators: implements IResourceRemoval, grantStatements() method definition,
-      // or direct instantiation of removal types.
+      // Key indicators: implements IResourceRemoval (alone or among other interfaces), or a
+      // grantStatements() method definition alongside a PolicyStatement.
       const isRemovalImplementation =
-        /implements\s+IResourceRemoval|implements.*Removal/.test(content) ||
+        /\bimplements\b[^{]*\bIResourceRemoval\b/.test(content) ||
         (/grantStatements\s*\(\s*\)/.test(content) &&
           /PolicyStatement|iam\.PolicyStatement/.test(content));
 

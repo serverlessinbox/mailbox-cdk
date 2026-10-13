@@ -3,42 +3,36 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import type { RemovalId, RemovalTargets } from '../../ts-lambdas/resource-sweeper/removal';
 
 /**
- * Contract for registering a resource type with the sweeper. One implementation per removal type
- * (`CertificateRemoval`, `EdgeFunctionRemoval`, `StackFailureDetectorRemoval`) — each owns its own target data,
- * the IAM grants its own resources need on the shared worker role, its own entry in the custom
+ * Contract for registering a resource type with the sweeper. An implementation owns its own target
+ * data, the IAM grants its own resources need on the shared worker role, its own entry in the custom
  * resource's `ResourceProperties` map, and its own state-machine steps, including any waiting before
- * its target is deletable. There is no registry, no discovery and no base class: `SweeperInfra` /
- * `DeferredRemoval` just take a plain array of these.
+ * its target is deletable. There is no registry, no discovery and no base class.
  *
- * Update semantics: a removal's *current* target (e.g. a cert ARN after a domain change) is what the
- * state machine definition would otherwise bake in at synth time — but on Update, the resource that
- * actually needs sweeping is the OLD one, which by definition isn't in the newly synthesized
- * definition. So a removal's chain never bakes its target in as a literal; it reads it at runtime from
- * `$.toSweep.<id>` in the execution input (see `withTargetPresenceGuard` below), and the starter Lambda
- * decides what that input holds: the current target on Delete, the old (orphaned) one on a changed
- * Update, or nothing at all when the execution has nothing to do for this removal.
+ * A removal's chain never bakes its target in as a literal: on Update the resource that needs
+ * sweeping is the OLD one, which isn't in the newly synthesized definition. It reads its target at
+ * runtime from `$.toSweep.<id>` in the execution input (see `withTargetPresenceGuard` below), and
+ * skips itself when nothing is there.
  */
-export interface IResourceRemoval {
+export interface IResourceRemoval<TId extends RemovalId = RemovalId> {
   /**
    * Unique id for this removal. Used to keep its Step Functions state names collision-free, as the
    * key under which this removal's own `crProperties()` entry is placed in the custom resource's
    * `ResourceProperties` map, and as the key under which its runtime target is looked up in the
    * execution input (`$.toSweep.<id>`).
    */
-  readonly id: string;
+  readonly id: TId;
 
   /** IAM statements this removal needs granted on the shared worker role, for its own resources only. */
   grantStatements(): iam.PolicyStatement[];
 
   /**
-   * This removal's own entry for the custom resource's `ResourceProperties` map, placed under this
-   * removal's `id` key by `DeferredRemoval`. Opaque to `DeferredRemoval` and to every other
-   * removal — only this removal's own `buildChain` (via the execution input) and its worker
-   * sub-handler ever interpret these fields.
+   * This removal's own entry for the custom resource's `ResourceProperties` map, keyed by this
+   * removal's `id`.
    */
-  crProperties(): Record<string, string>;
+  crProperties(): RemovalTargets[TId];
 
   /**
    * Builds this removal's own state-machine chain: a presence check on `$.toSweep.<id>` (see
@@ -49,6 +43,15 @@ export interface IResourceRemoval {
    * Returns the chain's entry state.
    */
   buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State;
+}
+
+/**
+ * Shared helper: a state-machine reference to one field of a removal's target in the execution
+ * input. The field names are those of the removal's own target type, so a rename there breaks the
+ * compile here.
+ */
+export function targetField<TId extends RemovalId>(removalId: TId, field: keyof RemovalTargets[TId] & string): string {
+  return sfn.JsonPath.stringAt(`$.toSweep.${removalId}.${field}`);
 }
 
 /**

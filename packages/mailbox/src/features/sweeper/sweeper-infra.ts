@@ -225,11 +225,8 @@ export class SweeperInfra extends Construct {
       stateMachineArn: smArn,
     });
 
-    // Worker role: single consolidated inline policy for every registered removal's grants, plus
-    // CloudWatch Logs. Ownership is verified in code (the worker's own ownership check) AND enforced
-    // by IAM: each removal's own destructive-action statements are conditioned on this stack's
-    // root-stack tag (see `IResourceRemoval.grantStatements()` on each removal implementation), so
-    // the worker can never delete resources of another deployment. This construct has no knowledge
+    // Worker role: single consolidated inline policy for every registered removal's grants
+    // (`IResourceRemoval.grantStatements()`), plus CloudWatch Logs. This construct has no knowledge
     // of what any individual removal actually grants — it just concatenates them.
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: 'sweeper-worker-policy',
@@ -242,8 +239,8 @@ export class SweeperInfra extends Construct {
           resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
         }),
         // Write-only, same effective scope as AWSLambdaBasicExecutionRole. Cannot be pinned to the
-        // worker's own group: its name is CFN-generated (see the log-group note in ts-lambda.ts)
-        // and this role is built before the lambda, without GetAtt.
+        // worker's own group: its name is CFN-generated and this role is built before the lambda,
+        // without GetAtt.
         new iam.PolicyStatement({
           actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
           resources: [

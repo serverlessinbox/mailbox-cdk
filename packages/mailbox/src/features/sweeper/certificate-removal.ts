@@ -6,7 +6,8 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
-import { withTargetPresenceGuard } from './removal';
+import type { CertRemovalTarget, CertWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
+import { targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
 export interface CertificateRemovalProps {
@@ -15,12 +16,11 @@ export interface CertificateRemovalProps {
 }
 
 /**
- * Registers an ACM certificate for deferred removal: DescribeCertificate -> check InUseBy ->
- * DeleteCertificate, retried until the certificate is detached from whatever is using it (e.g.
- * CloudFront) — identical behaviour to the sweeper's cert handling before the per-removal-type
- * rework, see `ts-lambdas/resource-sweeper/targets/cert.ts`.
+ * Registers an ACM certificate for deferred removal. It contributes the worker's ACM grants, the
+ * certificate's ARN as its `ResourceProperties` entry, and a chain that invokes the worker with
+ * that ARN and retries on RETRY.
  */
-export class CertificateRemoval extends Construct implements IResourceRemoval {
+export class CertificateRemoval extends Construct implements IResourceRemoval<'cert'> {
   readonly id = 'cert';
   private readonly certificateArn: string;
 
@@ -45,23 +45,22 @@ export class CertificateRemoval extends Construct implements IResourceRemoval {
     ];
   }
 
-  crProperties(): Record<string, string> {
+  crProperties(): CertRemovalTarget {
     return { certArn: this.certificateArn };
   }
 
   buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const rootStackName = Stack.of(this).stackName;
-    const targetPath = `$.toSweep.${this.id}`;
+    const workerInput: CertWorkerInput = {
+      removalType: 'cert',
+      certArn: targetField(this.id, 'certArn'),
+      rootStackName: Stack.of(this).stackName,
+    };
 
     const invoke = new tasks.LambdaInvoke(this, 'CertInvoke', {
       lambdaFunction: worker,
       payloadResponseOnly: true,
       resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({
-        removalType: 'cert',
-        certArn: sfn.JsonPath.stringAt(`${targetPath}.certArn`),
-        rootStackName,
-      }),
+      payload: sfn.TaskInput.fromObject({ ...workerInput }),
       retryOnServiceExceptions: true,
     });
 

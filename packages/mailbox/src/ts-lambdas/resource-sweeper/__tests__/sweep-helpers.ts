@@ -1,5 +1,28 @@
+/**
+ * Fixtures shared by the starter-side tests: CloudFormation custom-resource events that each carry
+ * one removal entry, and the capture of the response a `wrapHandler`-wrapped handler PUTs.
+ */
+
 import { Writable } from 'stream';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+import { SFNClient } from '@aws-sdk/client-sfn';
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SweepStarter } from '../sweep-starter';
+import { SweepTargetPlanner } from '../sweep-target-planner';
+
+export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
+
+/** A `SweepStarter` on the default clients; a test's `mockClient(SFNClient)` / `mockClient(CloudFormationClient)` intercepts them. */
+export function createSweepStarter(): SweepStarter {
+  return new SweepStarter(
+    { logLevel: 'error', serviceName: 'resource-sweeper-starter', sweeperStateMachineArn: STATE_MACHINE_ARN },
+    new SFNClient({ region: 'us-west-2' }),
+    new CloudFormationClient({ region: 'us-west-2' }),
+    new SweepTargetPlanner(),
+    new LoggerBuffer('resource-sweeper-starter', 'error'),
+  );
+}
 
 /** The fields of the CloudFormation response the starter PUTs that its tests assert on. */
 export interface CapturedCfnResponse {
@@ -68,7 +91,9 @@ export function captureCfnResponse(): () => CapturedCfnResponse {
   const https = require('https');
   let body = '';
   https.request.mockImplementation((_options: unknown, callback?: (res: { statusCode: number }) => void) => {
-    if (callback) callback({ statusCode: 200 });
+    if (callback) {
+      callback({ statusCode: 200 });
+    }
     return new Writable({
       write(chunk: Buffer, _encoding: string, done: () => void) {
         body += chunk.toString();

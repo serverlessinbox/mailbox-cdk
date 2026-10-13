@@ -5,7 +5,8 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
-import { withTargetPresenceGuard } from './removal';
+import type { EdgeFunctionRemovalTarget, EdgeFunctionWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
+import { targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
 export interface EdgeFunctionRemovalProps {
@@ -14,13 +15,10 @@ export interface EdgeFunctionRemovalProps {
 }
 
 /**
- * Registers a Lambda@Edge function for deferred removal: GetFunction -> verify tag ->
- * DeleteFunction, retried until CloudFront's replicas finish draining — identical behaviour to the
- * sweeper's edge-function handling before the per-removal-type rework, see
- * `ts-lambdas/resource-sweeper/targets/edge-fn.ts`. Always us-east-1, per Lambda@Edge's own
- * constraint, regardless of which region the worker itself runs in.
+ * Registers a Lambda@Edge function for deferred removal. Its grants are always for us-east-1, per
+ * Lambda@Edge's own constraint, regardless of which region the worker itself runs in.
  */
-export class EdgeFunctionRemoval extends Construct implements IResourceRemoval {
+export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'edge-fn'> {
   readonly id = 'edge-fn';
   private readonly edgeFnArn: string;
 
@@ -45,23 +43,22 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval {
     ];
   }
 
-  crProperties(): Record<string, string> {
+  crProperties(): EdgeFunctionRemovalTarget {
     return { edgeFnArn: this.edgeFnArn };
   }
 
   buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const rootStackName = Stack.of(this).stackName;
-    const targetPath = `$.toSweep.${this.id}`;
+    const workerInput: EdgeFunctionWorkerInput = {
+      removalType: 'edge-fn',
+      edgeFnArn: targetField(this.id, 'edgeFnArn'),
+      rootStackName: Stack.of(this).stackName,
+    };
 
     const invoke = new tasks.LambdaInvoke(this, 'EdgeFnInvoke', {
       lambdaFunction: worker,
       payloadResponseOnly: true,
       resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({
-        removalType: 'edge-fn',
-        edgeFnArn: sfn.JsonPath.stringAt(`${targetPath}.edgeFnArn`),
-        rootStackName,
-      }),
+      payload: sfn.TaskInput.fromObject({ ...workerInput }),
       retryOnServiceExceptions: true,
     });
 
