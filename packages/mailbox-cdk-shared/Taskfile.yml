@@ -6,7 +6,6 @@ tasks:
     sources:
       - src/ts-lambdas/content-deployer/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
-      - src/static-content-source-spec.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/content-deployer.zip'
     cmds:

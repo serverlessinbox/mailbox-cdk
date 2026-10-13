@@ -1,21 +1,11 @@
-import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
-import { isParentStackRollingBack } from '../shared/stack-rollback-detector';
 import type { BucketEmptier } from './bucket-emptier';
 import {
   isBucketAutoEmptyResourceProperties,
   type BucketAutoEmptyResourceProperties,
 } from './resource-properties';
-
-/** The fields of a CloudFormation custom-resource request that this Lambda reads. */
-export interface BucketAutoEmptyRequest {
-  readonly RequestType: string;
-  readonly StackId: string;
-  readonly LogicalResourceId: string;
-  readonly PhysicalResourceId?: string;
-  readonly ResourceProperties?: unknown;
-}
 
 /** The answer sent to CloudFormation for a request that succeeded. */
 export interface BucketAutoEmptyResponse {
@@ -30,16 +20,14 @@ export interface BucketAutoEmptyResponse {
  */
 export class BucketAutoEmptyRequestHandler {
   private readonly bucketEmptier: BucketEmptier;
-  private readonly cloudFormation: CloudFormationClient;
   private readonly logger: LoggerBuffer;
 
-  constructor(bucketEmptier: BucketEmptier, cloudFormation: CloudFormationClient, logger: LoggerBuffer) {
+  constructor(bucketEmptier: BucketEmptier, logger: LoggerBuffer) {
     this.bucketEmptier = bucketEmptier;
-    this.cloudFormation = cloudFormation;
     this.logger = logger;
   }
 
-  async handle(request: BucketAutoEmptyRequest): Promise<BucketAutoEmptyResponse> {
+  async handle(request: CustomResourceRequest): Promise<BucketAutoEmptyResponse> {
     this.logger.debug('CustomResource event received', { requestType: request.RequestType });
 
     const properties = this.readProperties(request);
@@ -57,32 +45,7 @@ export class BucketAutoEmptyRequestHandler {
     throw new ExpectedFailure(`Unknown RequestType: ${request.RequestType}`);
   }
 
-  /**
-   * Logs the failure and returns the answer that suppresses it, or undefined when the failure stands.
-   * CloudFormation re-sends Update with the old properties while the parent stack rolls back, and
-   * answering FAILED to that strands the stack in UPDATE_ROLLBACK_FAILED.
-   */
-  async answerFailedRequest(
-    request: BucketAutoEmptyRequest,
-    failure: unknown,
-  ): Promise<BucketAutoEmptyResponse | undefined> {
-    const reason = failure instanceof Error ? failure.message : String(failure);
-    this.logger.error('Handler failed', { error: reason });
-
-    if (request.RequestType !== 'Update') {
-      return undefined;
-    }
-
-    const rollingBack = await isParentStackRollingBack(request.StackId, this.cloudFormation, this.logger);
-    if (!rollingBack) {
-      return undefined;
-    }
-
-    this.logger.warn('Suppressing error during stack rollback', { error: reason });
-    return { PhysicalResourceId: request.PhysicalResourceId };
-  }
-
-  private readProperties(request: BucketAutoEmptyRequest): BucketAutoEmptyResourceProperties {
+  private readProperties(request: CustomResourceRequest): BucketAutoEmptyResourceProperties {
     const properties = request.ResourceProperties ?? {};
     if (!isBucketAutoEmptyResourceProperties(properties)) {
       throw new ExpectedFailure('Invalid ResourceProperties: bucketName must be a string when present');
@@ -91,7 +54,7 @@ export class BucketAutoEmptyRequestHandler {
   }
 
   private async emptyBucketOnDelete(
-    request: BucketAutoEmptyRequest,
+    request: CustomResourceRequest,
     properties: BucketAutoEmptyResourceProperties,
   ): Promise<BucketAutoEmptyResponse> {
     const bucketName = (properties.bucketName ?? '').trim();
@@ -106,7 +69,7 @@ export class BucketAutoEmptyRequestHandler {
     return this.answerDeleted(request.PhysicalResourceId || this.derivePhysicalResourceId(request), deleted);
   }
 
-  private derivePhysicalResourceId(request: BucketAutoEmptyRequest): string {
+  private derivePhysicalResourceId(request: CustomResourceRequest): string {
     return `bucket-auto-empty:${request.StackId}:${request.LogicalResourceId}`;
   }
 

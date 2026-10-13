@@ -1,102 +1,57 @@
 import { createHash } from 'node:crypto';
-import { Construct } from 'constructs';
+import { Construct, type IDependable } from 'constructs';
 import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from './ts-lambda';
-import type { StaticContentSourceSpec } from './static-content-source-spec';
+import type { IStaticContentSource } from './static-content-source';
 import { getOrCreateSharedGroup } from './shared-group';
+import type {
+  ContentDeployerResourceProperties,
+  StaticContentSourceSpec,
+} from './ts-lambdas/content-deployer/resource-properties';
 
-export type { StaticContentSourceSpec } from './static-content-source-spec';
-
-export interface StaticContentWriteOptions {
-  readonly contentType?: string;
-  readonly cacheControl?: string;
-}
-
-export interface StaticContentZipOptions {
-  readonly sourceVersionId?: string;
-}
-
-/** Synth-time-only source descriptor. `.spec` is what actually gets embedded in the CustomResource's
- *  `properties.sources` array (see `StaticContentDeployer.deploy()` below); `.objectArns(bucket)` is
- *  the structural answer to the IAM-scoping critique — callers grant IAM from this, never by
- *  hand-writing `bucket.arnForObjects(...)` themselves. Covers `s3:PutObject`/`s3:DeleteObject` object
- *  scope only — `s3:ListBucket` (a bucket-level, not object-level, action) stays a separate, unchanged,
- *  caller-added grant where a zip source's enumeration needs it (see `MailboxUi` call site below).
- *  `sourceArns()` returns the ARNs for source-read access (zip sources only; data sources have nothing
- *  to read, their content is inline). */
-export interface IStaticContentSource {
-  readonly spec: StaticContentSourceSpec;
-  objectArns(bucket: IBucket): string[];
-  sourceArns?(): string[];
-}
-
-export abstract class StaticContentSource {
-  private constructor() {} // static factory only, mirrors aws-s3-deployment's real `Source` class shape
-
-  /** A literal write at an exact, known key — e.g. a config/metadata file. IAM is scoped to exactly
-   *  this one object ARN. No source to read — content is inline. */
-  static data(key: string, body: string, options: StaticContentWriteOptions = {}): IStaticContentSource {
-    return {
-      spec: { kind: 'data', key, body, ...options },
-      objectArns: (bucket) => [bucket.arnForObjects(key)],
-      // No sourceArns — data sources have no external source to read
-    };
-  }
-
-  /** A zip-unpack-to-prefix deployment — e.g. a UI bundle. `sourceBucketName` is a plain bucket-name
-   *  string, not `IBucket`: the real source (an artifact-registry bucket resolved via
-   *  `IArtifactResolver.resolve()`) has no `IBucket` construct reference in this stack at all — it's
-   *  an external bucket, always addressed by name/key. Resulting keys aren't known at synth time, so
-   *  IAM is necessarily scoped to a prefix wildcard, not exact keys — the one case where a wildcard is
-   *  correct, not merely convenient. */
-  static zipFromBucket(
-    sourceBucketName: string,
-    sourceKey: string,
-    targetPrefix: string,
-    options: StaticContentZipOptions = {},
-  ): IStaticContentSource {
-    const normalizedPrefix = targetPrefix.endsWith('/') ? targetPrefix : `${targetPrefix}/`;
-    return {
-      spec: { kind: 'zip', sourceBucket: sourceBucketName, sourceKey, targetPrefix: normalizedPrefix, ...options },
-      objectArns: (bucket) => [bucket.arnForObjects(`${normalizedPrefix}*`)],
-      sourceArns: () => [`arn:aws:s3:::${sourceBucketName}/${sourceKey}`],
-    };
-  }
-}
-
+/** What `StaticContentDeployer.deploy` deploys, and where. */
 export interface StaticContentDeploymentProps {
   readonly targetBucket: IBucket;
-  /** A single, closed discriminated source — data write or zip unpack. For multiple independent
-   *  deployments (e.g. UI bundle + config file), call deploy() separately for each. */
+
+  /** The single source to deploy. To deploy several sources, call `deploy()` once per source. */
   readonly source: IStaticContentSource;
 }
 
+/** What `StaticContentDeployer.invalidate` invalidates. */
 export interface StaticContentInvalidationProps {
   readonly distributionId: string;
   readonly paths: string[];
 }
 
-export class StaticContentDeployer extends TypeScriptLambda {
-  /** Each tracked deployment pairs its CustomResource (for dependency wiring) with an identity
-   *  string derived from its source content — see `sourceIdentity()`. */
-  private readonly deploymentsByScope = new Map<Construct, { resource: CustomResource; identity: string }[]>();
+/** A deployment made from a scope: the resource to depend on, and the identity of the content it deploys. */
+interface TrackedDeployment {
+  readonly resource: IDependable;
+  readonly identity: string;
+}
 
-  /** A deterministic identity for one deployed source: two deploys of the same content produce the
-   *  same identity, any change to the deployed content changes it. Used by `invalidate()` to build a
-   *  nonce so the invalidation CustomResource's properties change exactly when the content it follows
-   *  changes — CloudFormation only re-invokes a custom resource whose properties changed, so without
-   *  this the invalidation would never re-run on redeploy. A zip source's identity is its
-   *  bucket/key/version triple, already the only thing that changes between artifact versions; a data
-   *  source's identity hashes its body instead of embedding it, so a large config payload isn't
-   *  duplicated into the invalidation resource's own properties. */
-  private sourceIdentity(spec: StaticContentSourceSpec): string {
-    if (spec.kind === 'zip') {
-      return `zip:${spec.sourceBucket}:${spec.sourceKey}:${spec.sourceVersionId ?? ''}`;
-    }
-    return `data:${spec.key}:${createHash('sha256').update(spec.body).digest('hex')}`;
+/**
+ * The one content-deployer Lambda of a stack, and the factory of the custom resources it serves:
+ * `deploy()` writes static content into a bucket, and `invalidate()` clears the CloudFront cache once
+ * the content deployed from the same scope is in place.
+ */
+export class StaticContentDeployer extends TypeScriptLambda {
+  private readonly deploymentsByScope = new Map<Construct, TrackedDeployment[]>();
+
+  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
+    super(scope, id, {
+      lambdaId: 'content-deployer',
+      pipeline: 'infra',
+      artifactResolver,
+      packageName: 'mailbox-cdk-shared',
+      handler: 'index.handler',
+      timeout: Duration.minutes(15),
+      memorySize: 1024,
+    });
+
+    this.grantParentStackStatusRead();
   }
 
   /**
@@ -113,19 +68,57 @@ export class StaticContentDeployer extends TypeScriptLambda {
     return new StaticContentDeployer(sharedGroup, 'content-deployer', artifactResolver);
   }
 
-  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
-    super(scope, id, {
-      lambdaId: 'content-deployer', // artifact identifier in mailbox-cdk-shared package
-      pipeline: 'infra',
-      artifactResolver,
-      packageName: 'mailbox-cdk-shared', // Lambda artifacts published under mailbox-cdk-shared package
-      handler: 'index.handler',
-      timeout: Duration.minutes(15),
-      memorySize: 1024,
+  /**
+   * Deploys one source into the target bucket through its own custom resource, and grants the Lambda the
+   * S3 access that source needs. Returns the custom resource so other resources can depend on it.
+   */
+  deploy(scope: Construct, id: string, props: StaticContentDeploymentProps): CustomResource {
+    this.grantDeployment(props);
+
+    const properties: ContentDeployerResourceProperties = {
+      targetBucket: props.targetBucket.bucketName,
+      sources: [props.source.spec],
+    };
+    const resource = new CustomResource(scope, id, {
+      serviceToken: this.functionArn,
+      serviceTimeout: Duration.minutes(15),
+      resourceType: 'Custom::ContentDeployment',
+      properties,
     });
 
-    // Grant permission to check parent stack rollback status during custom-resource Update failures.
-    this.grantParentStackStatusRead();
+    this.trackDeployment(scope, resource, props.source.spec);
+
+    return resource;
+  }
+
+  /**
+   * Invalidates `paths` of a CloudFront distribution once the content deployed from `scope` is in place:
+   * the resource depends on every `deploy()` made from the same scope. Its `deploymentNonce` is derived
+   * from those deployments' content, so the properties change exactly when the content does.
+   * CloudFormation only re-invokes a custom resource whose properties changed.
+   */
+  invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
+    this.grantInvalidation(props.distributionId);
+
+    const deployments = this.deploymentsByScope.get(scope) ?? [];
+    const properties: ContentDeployerResourceProperties = {
+      sources: [],
+      distributionId: props.distributionId,
+      invalidationPaths: props.paths,
+      deploymentNonce: this.deploymentNonce(deployments),
+    };
+    const resource = new CustomResource(scope, id, {
+      serviceToken: this.functionArn,
+      serviceTimeout: Duration.minutes(15),
+      resourceType: 'Custom::ContentInvalidation',
+      properties,
+    });
+
+    for (const deployment of deployments) {
+      resource.node.addDependency(deployment.resource);
+    }
+
+    return resource;
   }
 
   private grantParentStackStatusRead(): void {
@@ -138,23 +131,14 @@ export class StaticContentDeployer extends TypeScriptLambda {
     );
   }
 
-  /** Deploy a single source (data write or zip unpack) to the target bucket. Each source gets its own
-   *  CustomResource; call this separately for each source. IAM grants are derived from the source's own
-   *  `.objectArns()` and `.sourceArns()` methods — callers grant what they get from those, never
-   *  hand-written wildcards. The method wires the CustomResource → shared Lambda plumbing and flattens
-   *  the single source down to its plain, CFN-serializable `.spec` value. Returns the CustomResource
-   *  so it can be depended on by other resources (e.g., invalidation). */
-  deploy(scope: Construct, id: string, props: StaticContentDeploymentProps): CustomResource {
-    // Grant target-write access derived from the single source
-    const objectArns = props.source.objectArns(props.targetBucket);
+  private grantDeployment(props: StaticContentDeploymentProps): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:DeleteObject'],
-        resources: objectArns,
+        resources: props.source.objectArns(props.targetBucket),
       }),
     );
 
-    // Grant s3:ListBucket only when source is a zip (requires enumeration)
     if (props.source.spec.kind === 'zip') {
       this.addToRolePolicy(
         new iam.PolicyStatement({
@@ -164,7 +148,6 @@ export class StaticContentDeployer extends TypeScriptLambda {
       );
     }
 
-    // Grant source-read access, only if sourceArns is defined (zip sources only)
     if (props.source.sourceArns) {
       this.addToRolePolicy(
         new iam.PolicyStatement({
@@ -173,67 +156,36 @@ export class StaticContentDeployer extends TypeScriptLambda {
         }),
       );
     }
-
-    // Create and track the CustomResource
-    const resource = new CustomResource(scope, id, {
-      serviceToken: this.functionArn,
-      serviceTimeout: Duration.minutes(15),
-      resourceType: 'Custom::ContentDeployment',
-      properties: {
-        targetBucket: props.targetBucket.bucketName,
-        sources: [props.source.spec],
-        // These fields are omitted from deploy() — only used by invalidate()
-        distributionId: undefined,
-        invalidationPaths: undefined,
-        deploymentNonce: undefined,
-      },
-    });
-
-    // Track this deployment by its calling scope for invalidate() to wire dependencies and derive its nonce
-    const tracked = this.deploymentsByScope.get(scope) ?? [];
-    tracked.push({ resource, identity: this.sourceIdentity(props.source.spec) });
-    this.deploymentsByScope.set(scope, tracked);
-
-    return resource;
   }
 
-  /** Invalidate a CloudFront distribution after content deployments complete. Wires automatic
-   *  dependencies on all prior `deploy()` calls from the same calling scope, so invalidation always
-   *  follows the deployments it targets, and derives `deploymentNonce` from those same deployments'
-   *  source identities (see `sourceIdentity()`) so the invalidation CustomResource's properties change
-   *  exactly when — and only when — the content it follows changes. No caller has to remember a
-   *  nonce, and there is no timestamp or random value that would fire on every synth. */
-  invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
-    // Grant CloudFront invalidation permission, scoped to the target distribution
+  private grantInvalidation(distributionId: string): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cloudfront:CreateInvalidation'],
-        resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${props.distributionId}`],
+        resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${distributionId}`],
       }),
     );
+  }
 
-    const tracked = this.deploymentsByScope.get(scope) ?? [];
-    const deploymentNonce = tracked.length > 0 ? tracked.map((t) => t.identity).join('|') : undefined;
+  private trackDeployment(scope: Construct, resource: IDependable, spec: StaticContentSourceSpec): void {
+    const deployments = this.deploymentsByScope.get(scope) ?? [];
+    deployments.push({ resource, identity: this.sourceIdentity(spec) });
+    this.deploymentsByScope.set(scope, deployments);
+  }
 
-    // Create the invalidation CustomResource with empty sources (invalidation-only call)
-    const resource = new CustomResource(scope, id, {
-      serviceToken: this.functionArn,
-      serviceTimeout: Duration.minutes(15),
-      resourceType: 'Custom::ContentInvalidation',
-      properties: {
-        targetBucket: undefined,
-        sources: [],
-        distributionId: props.distributionId,
-        invalidationPaths: props.paths,
-        deploymentNonce,
-      },
-    });
+  /**
+   * Identifies a deployed source by its content: two deploys of the same content have the same identity.
+   * A zip source is identified by its bucket, key and version; a data source by a hash of its body, so a
+   * large body is not copied into the invalidation resource's properties.
+   */
+  private sourceIdentity(spec: StaticContentSourceSpec): string {
+    if (spec.kind === 'zip') {
+      return `zip:${spec.sourceBucket}:${spec.sourceKey}:${spec.sourceVersionId ?? ''}`;
+    }
+    return `data:${spec.key}:${createHash('sha256').update(spec.body).digest('hex')}`;
+  }
 
-    // Wire dependencies: this invalidation must follow all prior deployments in the same scope
-    tracked.forEach(({ resource: deployment }) => {
-      resource.node.addDependency(deployment);
-    });
-
-    return resource;
+  private deploymentNonce(deployments: TrackedDeployment[]): string | undefined {
+    return deployments.length > 0 ? deployments.map((deployment) => deployment.identity).join('|') : undefined;
   }
 }

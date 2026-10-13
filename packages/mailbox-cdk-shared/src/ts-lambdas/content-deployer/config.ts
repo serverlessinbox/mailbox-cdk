@@ -1,14 +1,9 @@
-import { Loader, optionalAs } from '../shared/env';
-import { LogLevel, parseLogLevelStrict } from '../shared/logger-buffer';
+import { loadBaseConfig, type BaseConfig } from '../shared/base-config';
+import type * as env from '../shared/env';
 
-export interface Config {
-  readonly logLevel: LogLevel;
-  readonly serviceName: string;
-}
+/** The environment the content-deployer Lambda reads: the shared base only. */
+export type Config = BaseConfig;
 
-export function load(l: Loader): Config {
-  return {
-    logLevel: optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
-    serviceName: l.mandatory('SERVICE_NAME'),
-  };
+export function load(l: env.Loader): Config {
+  return loadBaseConfig(l);
 }

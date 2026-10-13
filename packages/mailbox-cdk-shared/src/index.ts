@@ -54,8 +54,11 @@ export type {
 } from './serverless-inbox-tags';
 
 // Static content deployer (used for UI bundles, well-known docs, etc.)
-export { StaticContentDeployer, StaticContentSource } from './content-deployer';
-export type { StaticContentDeploymentProps, StaticContentInvalidationProps, IStaticContentSource, StaticContentSourceSpec, StaticContentWriteOptions, StaticContentZipOptions } from './content-deployer';
+export { StaticContentDeployer } from './content-deployer';
+export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './content-deployer';
+export { StaticContentSource } from './static-content-source';
+export type { IStaticContentSource, StaticContentWriteOptions, StaticContentZipOptions } from './static-content-source';
+export type { StaticContentSourceSpec } from './ts-lambdas/content-deployer/resource-properties';
 
 // Bucket auto-empty (removes all objects & versions on stack deletion, enabling RemovalPolicy.DESTROY)
 export { BucketAutoEmpty } from './bucket-auto-empty';

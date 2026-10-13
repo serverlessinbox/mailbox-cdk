@@ -1,7 +1,6 @@
 /**
- * Coverage for the data override resolver's config loader. LOG_LEVEL is parsed strictly: a mistyped
- * level must be reported, not silently replaced by the default, or the Lambda would stay degraded for
- * the life of the deployment. Both variables are optional with a default.
+ * Coverage for what the data override resolver config differs in from the shared base config: SERVICE_NAME is
+ * optional and defaults to empty, so a template that does not set it still loads.
  */
 
 import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -18,7 +17,7 @@ describe('data-override-resolver config', () => {
     delete process.env.SERVICE_NAME;
   });
 
-  it('loads both variables when set', () => {
+  it('loads the service name when set', () => {
     process.env.LOG_LEVEL = 'info';
     process.env.SERVICE_NAME = 'data-override-resolver';
 
@@ -28,13 +27,7 @@ describe('data-override-resolver config', () => {
     });
   });
 
-  it('defaults the log level to error and the service name to empty', () => {
-    expect(env.tryLoad(load).config).toEqual({ logLevel: 'error', serviceName: '' });
-  });
-
-  it('reports an unrecognised LOG_LEVEL rather than falling back to the default', () => {
-    process.env.LOG_LEVEL = 'verbose';
-
-    expect(env.tryLoad(load).error).toContain('LOG_LEVEL');
+  it('defaults the service name to empty without reporting a problem', () => {
+    expect(env.tryLoad(load)).toEqual({ config: { logLevel: 'error', serviceName: '' }, error: undefined });
   });
 });

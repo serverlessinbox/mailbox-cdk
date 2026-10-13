@@ -1,173 +1,323 @@
 /// <reference types="jest" />
 
 /**
- * StaticContentDeployer IAM Scoping Tests
- *
- * Verifies invalidate() scopes cloudfront:CreateInvalidation to the target distribution ARN
- * rather than granting it on '*'.
+ * Pins what StaticContentDeployer puts into the template: the custom resources of a deployment and of an
+ * invalidation, the IAM statements each one needs (scoped to exact object ARNs and the one distribution),
+ * the dependency of an invalidation on the deployments of its own scope, and the
+ * deploymentNonce that makes CloudFormation re-run an invalidation exactly when the deployed content
+ * changed. The custom resources and their grants are checked on the synthesized template, because that is
+ * what CloudFormation and IAM act on.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { StaticContentDeployer, StaticContentSource } from '../index';
+import { StaticContentDeployer } from '../content-deployer';
+import { StaticContentSource } from '../static-content-source';
 
-/** Synthesizes a stack via `configure`, then returns the `Properties` of the single
- *  `Custom::ContentInvalidation` resource whose `distributionId` equals `distributionId`. Used to
- *  inspect the auto-derived `deploymentNonce` without depending on CDK's logical-ID naming. */
-function synthInvalidationProperties(
-  distributionId: string,
-  configure: (deployer: StaticContentDeployer, stack: cdk.Stack) => void,
-): Record<string, unknown> {
-  const app = new App();
-  const stack = new cdk.Stack(app, 'TestStack', {
+interface PolicyStatement {
+  Action: string | string[];
+  Resource: unknown;
+}
+
+function newStack(): Stack {
+  return new Stack(new App(), 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
+}
+
+function newArtifactResolver(stack: Stack): IArtifactResolver {
   const packages: Record<string, ArtifactPin> = {
     'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+  return new PinnedArtifactResolver({
     packages,
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-
-  const deployer = StaticContentDeployer.getOrCreate(stack, artifactResolver);
-  configure(deployer, stack);
-
-  const template = Template.fromStack(stack);
-  const resources = template.findResources('Custom::ContentInvalidation');
-  const matches = Object.values(resources).filter((r) => r.Properties?.distributionId === distributionId);
-  if (matches.length !== 1) {
-    throw new Error(`Expected exactly one Custom::ContentInvalidation resource for ${distributionId}, found ${matches.length}`);
-  }
-  return matches[0].Properties as Record<string, unknown>;
 }
 
-describe('StaticContentDeployer IAM scoping', () => {
-  let app: App;
-  let stack: cdk.Stack;
-  let artifactResolver: IArtifactResolver;
+function targetBucket(scope: Construct): IBucket {
+  return Bucket.fromBucketArn(scope, 'target-bucket', 'arn:aws:s3:::ui-bucket');
+}
+
+/** Every IAM statement in the stack, in the order the template lists them. */
+function grantedStatements(template: Template): PolicyStatement[] {
+  return Object.values(template.findResources('AWS::IAM::Policy')).flatMap(
+    (policy) => policy.Properties.PolicyDocument.Statement as PolicyStatement[],
+  );
+}
+
+function statementsGranting(template: Template, action: string): PolicyStatement[] {
+  return grantedStatements(template).filter((statement) => [statement.Action].flat().includes(action));
+}
+
+/** The logical id CloudFormation gives a custom resource, which its dependents list in `DependsOn`. */
+function logicalIdOf(stack: Stack, resource: { ref: string }): string {
+  return stack.resolve(resource.ref).Ref;
+}
+
+describe('StaticContentDeployer', () => {
+  let stack: Stack;
+  let deployer: StaticContentDeployer;
 
   beforeEach(() => {
-    app = new App();
+    stack = newStack();
+    deployer = StaticContentDeployer.getOrCreate(stack, newArtifactResolver(stack));
+  });
 
-    stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
+  describe('getOrCreate', () => {
+    it('returns the one deployer of the stack on every call', () => {
+      expect(StaticContentDeployer.getOrCreate(stack, newArtifactResolver(stack))).toBe(deployer);
     });
 
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver = new PinnedArtifactResolver({
-      packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
+    it('places the deployer under the shared group of the stack', () => {
+      expect(stack.node.findChild('shared').node.tryFindChild('content-deployer')).toBe(deployer);
+    });
+
+    it('runs a 15 minute, 1024 MB Lambda', () => {
+      Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+        Handler: 'index.handler',
+        Timeout: 900,
+        MemorySize: 1024,
+      });
+    });
+
+    it('lets the Lambda read the status of its parent stack', () => {
+      expect(statementsGranting(Template.fromStack(stack), 'cloudformation:DescribeStacks')).toEqual([
+        expect.objectContaining({ Resource: { Ref: 'AWS::StackId' } }),
+      ]);
     });
   });
 
-  it('scopes cloudfront:CreateInvalidation to the target distribution ARN', () => {
-    const deployer = StaticContentDeployer.getOrCreate(stack, artifactResolver);
-    deployer.invalidate(stack, 'test-invalidation', {
-      distributionId: 'E1234567890ABC',
-      paths: ['/*'],
+  describe('deploy', () => {
+    it('creates a Custom::ContentDeployment resource carrying the target bucket and the source', () => {
+      const source = StaticContentSource.data('config/config.json', '{"a":1}', { contentType: 'application/json' });
+
+      deployer.deploy(stack, 'ui-config', { targetBucket: targetBucket(stack), source });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::ContentDeployment', {
+        ServiceTimeout: '900',
+        targetBucket: 'ui-bucket',
+        sources: [
+          { kind: 'data', key: 'config/config.json', body: '{"a":1}', contentType: 'application/json' },
+        ],
+        distributionId: Match.absent(),
+        invalidationPaths: Match.absent(),
+        deploymentNonce: Match.absent(),
+      });
     });
 
-    const template = Template.fromStack(stack);
-    // Aws.PARTITION/Aws.ACCOUNT_ID are CFN pseudo-parameters — CDK renders the concatenation as
-    // an Fn::Join of literal segments and { Ref: 'AWS::Partition' | 'AWS::AccountId' }, not a
-    // plain resolved string, even with a fixed-account test stack.
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: 'cloudfront:CreateInvalidation',
-            Resource: {
-              'Fn::Join': [
-                '',
-                [
-                  'arn:',
-                  { Ref: 'AWS::Partition' },
-                  ':cloudfront::',
-                  { Ref: 'AWS::AccountId' },
-                  ':distribution/E1234567890ABC',
-                ],
-              ],
-            },
-          }),
-        ]),
-      },
-    });
-  });
-
-  it('does not grant cloudfront:CreateInvalidation on a wildcard resource', () => {
-    const deployer = StaticContentDeployer.getOrCreate(stack, artifactResolver);
-    deployer.invalidate(stack, 'test-invalidation', {
-      distributionId: 'E1234567890ABC',
-      paths: ['/*'],
-    });
-
-    const template = Template.fromStack(stack);
-    const policies = template.findResources('AWS::IAM::Policy');
-    for (const policy of Object.values(policies)) {
-      const statements = policy.Properties?.PolicyDocument?.Statement ?? [];
-      for (const statement of statements) {
-        const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
-        if (actions.includes('cloudfront:CreateInvalidation')) {
-          const resources = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
-          expect(resources).not.toContain('*');
-        }
-      }
-    }
-  });
-});
-
-describe('StaticContentDeployer invalidate() auto-derived deploymentNonce', () => {
-  // Regression coverage for the acc defect (2026-09-14): the invalidation CustomResource's
-  // properties were caller-supplied and constant, so CloudFormation never re-invoked it on
-  // redeploy and stale content stayed cached. These pin that the properties instead track the
-  // content of the deployments they follow, deterministically.
-
-  const deployUiBundle = (deployer: StaticContentDeployer, scope: cdk.Stack, id: string, sourceKey: string, sourceVersionId: string) => {
-    const bucket = Bucket.fromBucketName(scope, 'target-bucket', 'ui-bucket');
-    deployer.deploy(scope, id, {
-      targetBucket: bucket,
-      source: StaticContentSource.zipFromBucket('artifacts-bucket', sourceKey, 'content/', { sourceVersionId }),
-    });
-  };
-
-  it('gives identical properties across two synths of identical inputs', () => {
-    const build = () =>
-      synthInvalidationProperties('E-IDENTICAL', (deployer, stack) => {
-        deployUiBundle(deployer, stack, 'ui-content', 'admin-ui.zip', 'v1');
-        deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E-IDENTICAL', paths: ['/*'] });
+    it('lets a data source write exactly its own object and nothing else', () => {
+      deployer.deploy(stack, 'ui-config', {
+        targetBucket: targetBucket(stack),
+        source: StaticContentSource.data('config/config.json', '{"a":1}'),
       });
 
-    expect(build()).toEqual(build());
+      const template = Template.fromStack(stack);
+      expect(statementsGranting(template, 's3:PutObject')).toEqual([
+        expect.objectContaining({
+          Action: ['s3:PutObject', 's3:DeleteObject'],
+          Resource: 'arn:aws:s3:::ui-bucket/config/config.json',
+        }),
+      ]);
+      expect(statementsGranting(template, 's3:ListBucket')).toEqual([]);
+      expect(statementsGranting(template, 's3:GetObject')).toEqual([]);
+    });
+
+    it('lets a zip source write under its prefix, list the target bucket and read its source archive', () => {
+      deployer.deploy(stack, 'ui-content', {
+        targetBucket: targetBucket(stack),
+        source: StaticContentSource.zipFromBucket('artifacts-bucket', 'ui/admin-ui.zip', 'content'),
+      });
+
+      const template = Template.fromStack(stack);
+      expect(statementsGranting(template, 's3:PutObject')).toEqual([
+        expect.objectContaining({
+          Action: ['s3:PutObject', 's3:DeleteObject'],
+          Resource: 'arn:aws:s3:::ui-bucket/content/*',
+        }),
+      ]);
+      expect(statementsGranting(template, 's3:ListBucket')).toEqual([
+        expect.objectContaining({ Action: 's3:ListBucket', Resource: 'arn:aws:s3:::ui-bucket' }),
+      ]);
+      expect(statementsGranting(template, 's3:GetObject')).toEqual([
+        expect.objectContaining({
+          Action: ['s3:GetObject', 's3:GetObjectVersion'],
+          Resource: 'arn:aws:s3:::artifacts-bucket/ui/admin-ui.zip',
+        }),
+      ]);
+    });
   });
 
-  it('changes properties when the deployed bundle source key or version changes', () => {
-    const before = synthInvalidationProperties('E-CHANGED', (deployer, stack) => {
-      deployUiBundle(deployer, stack, 'ui-content', 'admin-ui.zip', 'v1');
-      deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E-CHANGED', paths: ['/*'] });
+  describe('invalidate', () => {
+    it('creates a Custom::ContentInvalidation resource with no sources', () => {
+      deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E1234567890ABC', paths: ['/*'] });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::ContentInvalidation', {
+        ServiceTimeout: '900',
+        sources: [],
+        distributionId: 'E1234567890ABC',
+        invalidationPaths: ['/*'],
+        targetBucket: Match.absent(),
+        deploymentNonce: Match.absent(),
+      });
     });
 
-    const afterVersionBump = synthInvalidationProperties('E-CHANGED', (deployer, stack) => {
-      deployUiBundle(deployer, stack, 'ui-content', 'admin-ui.zip', 'v2');
-      deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E-CHANGED', paths: ['/*'] });
+    it('scopes cloudfront:CreateInvalidation to the target distribution ARN', () => {
+      deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E1234567890ABC', paths: ['/*'] });
+
+      // Aws.PARTITION/Aws.ACCOUNT_ID are CFN pseudo-parameters — CDK renders the concatenation as
+      // an Fn::Join of literal segments and { Ref: 'AWS::Partition' | 'AWS::AccountId' }, not a
+      // plain resolved string, even with a fixed-account test stack.
+      expect(statementsGranting(Template.fromStack(stack), 'cloudfront:CreateInvalidation')).toEqual([
+        expect.objectContaining({
+          Resource: {
+            'Fn::Join': [
+              '',
+              [
+                'arn:',
+                { Ref: 'AWS::Partition' },
+                ':cloudfront::',
+                { Ref: 'AWS::AccountId' },
+                ':distribution/E1234567890ABC',
+              ],
+            ],
+          },
+        }),
+      ]);
     });
 
-    const afterKeyChange = synthInvalidationProperties('E-CHANGED', (deployer, stack) => {
-      deployUiBundle(deployer, stack, 'ui-content', 'admin-ui-v2.zip', 'v1');
-      deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E-CHANGED', paths: ['/*'] });
+    it('depends on the deployments of its own scope and on no others', () => {
+      const uiScope = new Construct(stack, 'ui');
+      const otherScope = new Construct(stack, 'other');
+      const uiContent = deployer.deploy(uiScope, 'content', {
+        targetBucket: targetBucket(uiScope),
+        source: StaticContentSource.zipFromBucket('artifacts-bucket', 'admin-ui.zip', 'content/'),
+      });
+      const uiConfig = deployer.deploy(uiScope, 'config', {
+        targetBucket: targetBucket(new Construct(uiScope, 'config-target')),
+        source: StaticContentSource.data('config.json', '{}'),
+      });
+      deployer.deploy(otherScope, 'content', {
+        targetBucket: targetBucket(otherScope),
+        source: StaticContentSource.data('other.json', '{}'),
+      });
+
+      deployer.invalidate(uiScope, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
+
+      const invalidations = Object.values(Template.fromStack(stack).findResources('Custom::ContentInvalidation'));
+      expect(invalidations).toHaveLength(1);
+      expect([...invalidations[0].DependsOn].sort()).toEqual(
+        [logicalIdOf(stack, uiContent), logicalIdOf(stack, uiConfig)].sort(),
+      );
+    });
+  });
+
+  describe('invalidate deploymentNonce', () => {
+    // Regression coverage for a defect where the invalidation's properties were caller-supplied and
+    // constant, so CloudFormation never re-invoked it on redeploy and stale content stayed cached.
+
+    /** The properties of the one invalidation resource of a stack built by `configure`. */
+    function synthInvalidationProperties(
+      configure: (deployer: StaticContentDeployer, stack: Stack) => void,
+    ): Record<string, unknown> {
+      const configuredStack = newStack();
+      configure(StaticContentDeployer.getOrCreate(configuredStack, newArtifactResolver(configuredStack)), configuredStack);
+
+      const invalidations = Object.values(Template.fromStack(configuredStack).findResources('Custom::ContentInvalidation'));
+      expect(invalidations).toHaveLength(1);
+      return invalidations[0].Properties;
+    }
+
+    function deployUi(source: ReturnType<typeof StaticContentSource.data>) {
+      return (configuredDeployer: StaticContentDeployer, configuredStack: Stack) => {
+        configuredDeployer.deploy(configuredStack, 'ui-content', { targetBucket: targetBucket(configuredStack), source });
+        configuredDeployer.invalidate(configuredStack, 'ui-invalidate', { distributionId: 'E-UI', paths: ['/*'] });
+      };
+    }
+
+    const zip = (key: string, versionId: string) =>
+      StaticContentSource.zipFromBucket('artifacts-bucket', key, 'content/', { sourceVersionId: versionId });
+
+    it('gives identical properties across two synths of identical inputs', () => {
+      expect(synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1')))).toEqual(
+        synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1'))),
+      );
     });
 
-    expect(afterVersionBump.deploymentNonce).not.toEqual(before.deploymentNonce);
-    expect(afterKeyChange.deploymentNonce).not.toEqual(before.deploymentNonce);
+    it('changes when the deployed archive version changes', () => {
+      const before = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1')));
+      const after = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v2')));
+
+      expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
+    });
+
+    it('changes when the deployed archive key changes', () => {
+      const before = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1')));
+      const after = synthInvalidationProperties(deployUi(zip('admin-ui-v2.zip', 'v1')));
+
+      expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
+    });
+
+    it('changes when the body of a deployed data source changes, without embedding the body', () => {
+      const before = synthInvalidationProperties(deployUi(StaticContentSource.data('config.json', '{"theme":"light"}')));
+      const after = synthInvalidationProperties(deployUi(StaticContentSource.data('config.json', '{"theme":"dark"}')));
+
+      expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
+      expect(JSON.stringify(after)).not.toContain('dark');
+    });
+
+    it('ignores the deployments of other scopes', () => {
+      const properties = synthInvalidationProperties((configuredDeployer, configuredStack) => {
+        const uiScope = new Construct(configuredStack, 'ui');
+        const otherScope = new Construct(configuredStack, 'other');
+        configuredDeployer.deploy(otherScope, 'content', {
+          targetBucket: targetBucket(otherScope),
+          source: zip('other.zip', 'v9'),
+        });
+        configuredDeployer.deploy(uiScope, 'content', {
+          targetBucket: targetBucket(uiScope),
+          source: zip('admin-ui.zip', 'v1'),
+        });
+        configuredDeployer.invalidate(uiScope, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
+      });
+
+      expect(properties.deploymentNonce).toBe('zip:artifacts-bucket:admin-ui.zip:v1');
+    });
+
+    it('has no deploymentNonce when the scope deployed nothing', () => {
+      const properties = synthInvalidationProperties((configuredDeployer, configuredStack) => {
+        const otherScope = new Construct(configuredStack, 'other');
+        configuredDeployer.deploy(otherScope, 'content', {
+          targetBucket: targetBucket(otherScope),
+          source: zip('other.zip', 'v9'),
+        });
+        configuredDeployer.invalidate(configuredStack, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
+      });
+
+      expect(properties.deploymentNonce).toBeUndefined();
+    });
+
+    it('joins the identities of every deployment of the scope, in deployment order', () => {
+      const properties = synthInvalidationProperties((configuredDeployer, configuredStack) => {
+        configuredDeployer.deploy(configuredStack, 'ui-content', {
+          targetBucket: targetBucket(configuredStack),
+          source: zip('admin-ui.zip', 'v1'),
+        });
+        configuredDeployer.deploy(configuredStack, 'ui-extra', {
+          targetBucket: targetBucket(new Construct(configuredStack, 'extra-target')),
+          source: zip('extra.zip', 'v9'),
+        });
+        configuredDeployer.invalidate(configuredStack, 'ui-invalidate', { distributionId: 'E-UI', paths: ['/*'] });
+      });
+
+      expect(properties.deploymentNonce).toBe('zip:artifacts-bucket:admin-ui.zip:v1|zip:artifacts-bucket:extra.zip:v9');
+    });
   });
 });
