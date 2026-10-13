@@ -5,20 +5,26 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from './ts-lambda';
 import { getOrCreateSharedGroup } from './shared-group';
+import type { BucketAutoEmptyResourceProperties } from './ts-lambdas/bucket-auto-empty/resource-properties';
 
 /**
- * A dedicated construct for emptying S3 buckets on CloudFormation stack deletion.
- *
- * When a bucket has `RemovalPolicy.DESTROY`, CloudFormation cannot delete it if it contains objects.
- * This construct provides a CustomResource that, on Delete, lists and batch-deletes all objects and
- * versions, allowing the bucket to be torn down cleanly.
- *
- * Create/Update are pure no-ops — all work happens in Delete when the stack is being torn down.
- *
- * Singleton pattern: only one per Stack.
+ * Empties S3 buckets when the stack is deleted, so that a bucket with `RemovalPolicy.DESTROY` can be
+ * torn down while it still holds objects. One shared Lambda per stack serves every attached bucket.
  */
 export class BucketAutoEmpty extends TypeScriptLambda {
-  private readonly attachments = new Map<Construct, CustomResource[]>();
+  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
+    super(scope, id, {
+      lambdaId: 'bucket-auto-empty',
+      pipeline: 'infra',
+      artifactResolver,
+      packageName: 'mailbox-cdk-shared',
+      handler: 'index.handler',
+      timeout: Duration.minutes(15),
+      memorySize: 512,
+    });
+
+    this.grantParentStackStatusRead();
+  }
 
   /**
    * Get-or-create the one shared bucket-auto-empty Lambda for this Stack.
@@ -34,64 +40,21 @@ export class BucketAutoEmpty extends TypeScriptLambda {
     return new BucketAutoEmpty(sharedGroup, 'bucket-auto-empty', artifactResolver);
   }
 
-  private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
-    super(scope, id, {
-      lambdaId: 'bucket-auto-empty',
-      pipeline: 'infra',
-      artifactResolver,
-      packageName: 'mailbox-cdk-shared',
-      handler: 'index.handler',
-      timeout: Duration.minutes(15),
-      memorySize: 512,
-    });
-
-    // Grant permission to check parent stack rollback status during custom-resource Update failures.
-    this.grantParentStackStatusRead();
-  }
-
-  private grantParentStackStatusRead(): void {
-    const stack = Stack.of(this);
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudformation:DescribeStacks'],
-        resources: [stack.stackId],
-      }),
-    );
-  }
-
   /**
-   * Attach this bucket-emptier to a specific bucket.
-   *
-   * Creates a CustomResource that, on stack Delete, will list and batch-delete all objects
-   * and versions in the bucket. The CustomResource implicitly depends on the bucket (via
-   * the embedded bucketName reference), so it will be deleted before the bucket itself.
-   *
-   * The method automatically grants the required S3 permissions:
-   * - s3:ListBucket and s3:ListBucketVersions on the bucket
-   * - s3:DeleteObject and s3:DeleteObjectVersion on all objects within the bucket
-   *
-   * Returns the CustomResource so it can be explicitly depended on if needed.
+   * Empties `bucket` when the stack is deleted. The custom resource refers to the bucket by name, so
+   * CloudFormation deletes it before the bucket itself.
    */
-  attach(scope: Construct, id: string, bucket: IBucket): CustomResource {
+  attach(scope: Construct, id: string, bucket: IBucket): void {
     if (!this.role) {
       throw new Error('BucketAutoEmpty.attach: Lambda has no execution role to grant on');
     }
 
-    // These grants MUST live in their own AWS::IAM::Policy resource, NOT in the Lambda role's
-    // shared DefaultPolicy via addToRolePolicy(). DefaultPolicy already exists across updates, so
-    // adding a statement to it is an UPDATE of an existing resource — and on a rollback CFN reverts
-    // that update to the prior document and *then* invokes this CustomResource's Delete. The
-    // handler is left without the permission the rollback is asking it to use:
-    //   "not authorized to perform: s3:ListBucketVersions" → CR Delete FAILED
-    //   → "The bucket you tried to delete is not empty" (409) → rollback stalls.
-    // There is no ordering handle for an updated resource, so the fix is a dedicated Policy that is
-    // CREATED and DELETED alongside this attachment, plus an explicit dependency below so CFN tears
-    // the CustomResource down BEFORE the policy that authorizes it.
-    // Do NOT "simplify" this back to addToRolePolicy().
+    // The bucket grants live in their own AWS::IAM::Policy, never in the role's shared DefaultPolicy.
+    // On rollback CloudFormation reverts an updated DefaultPolicy before it invokes this resource's
+    // Delete, which then fails with AccessDenied and leaves the bucket undeletable.
     const policy = new iam.Policy(scope, `${id}-policy`, {
       roles: [this.role],
       statements: [
-        // Enumerate every object and (if the bucket is versioned) every version.
         new iam.PolicyStatement({
           actions: ['s3:ListBucket', 's3:ListBucketVersions'],
           resources: [bucket.bucketArn],
@@ -103,27 +66,25 @@ export class BucketAutoEmpty extends TypeScriptLambda {
       ],
     });
 
-    // Create the CustomResource.
-    // Embedding bucket.bucketName in properties creates an implicit CFN dependency
-    // (via Ref) — the CustomResource is created before the bucket and deleted after.
+    const properties: BucketAutoEmptyResourceProperties = { bucketName: bucket.bucketName };
     const resource = new CustomResource(scope, id, {
       serviceToken: this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType: 'Custom::BucketAutoEmpty',
-      properties: {
-        bucketName: bucket.bucketName,
-      },
+      properties,
     });
 
-    // Deletion order is the whole point: CFN deletes dependents first, so the CustomResource's
-    // Delete (which empties the bucket) runs while `policy` is still in place.
+    // The resource's Delete empties the bucket, so it must run before the policy that authorizes it is deleted.
     resource.node.addDependency(policy);
+  }
 
-    // Track attachments by scope for potential future coordination
-    const tracked = this.attachments.get(scope) ?? [];
-    tracked.push(resource);
-    this.attachments.set(scope, tracked);
-
-    return resource;
+  private grantParentStackStatusRead(): void {
+    const stack = Stack.of(this);
+    this.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [stack.stackId],
+      }),
+    );
   }
 }

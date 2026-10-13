@@ -1,6 +1,13 @@
+/**
+ * Pins the template that BucketAutoEmpty synthesizes. The bucket grants must sit in a Policy of their own and
+ * the custom resource must depend on it: a grant added to the role's shared DefaultPolicy is reverted by a
+ * rollback before the resource's Delete runs, which then fails with AccessDenied and the bucket cannot be deleted.
+ */
+
 import { App, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { CfnRole } from 'aws-cdk-lib/aws-iam';
+import { Bucket, CfnBucket } from 'aws-cdk-lib/aws-s3';
 import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { BucketAutoEmpty } from '../bucket-auto-empty';
 
@@ -13,68 +20,115 @@ const fakeResolver: IArtifactResolver = {
   resolve: (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
 };
 
-function synth() {
-  const stack = new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
-  const bucket = new Bucket(stack, 'target-bucket');
-  const cr = BucketAutoEmpty.getOrCreate(stack, fakeResolver).attach(stack, 'auto-empty', bucket);
-  return { template: Template.fromStack(stack), stack, cr };
+function newStack(): Stack {
+  return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
 }
 
-describe('BucketAutoEmpty.attach', () => {
-  // REGRESSION: these grants used to go through addToRolePolicy(), landing in the Lambda role's
-  // shared DefaultPolicy. DefaultPolicy survives across updates, so adding a statement to it is an
-  // UPDATE — and on rollback CFN reverts that update and *then* invokes this CustomResource's
-  // Delete, leaving the handler without the permission it needs:
-  //   "not authorized to perform: s3:ListBucketVersions"  → CR Delete FAILED
-  //   "The bucket you tried to delete is not empty" (409) → rollback stalls.
-  // An updated resource has no ordering handle, so the grants must live in their own Policy that is
-  // created and destroyed with the attachment.
-  it('puts the bucket grants in a dedicated Policy, not the role DefaultPolicy', () => {
-    const { template } = synth();
+function synth() {
+  const stack = newStack();
+  const bucket = new Bucket(stack, 'target-bucket');
+  const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
+  bucketAutoEmpty.attach(stack, 'auto-empty', bucket);
+  return {
+    template: Template.fromStack(stack),
+    bucketLogicalId: stack.getLogicalId(bucket.node.defaultChild as CfnBucket),
+    roleLogicalId: stack.getLogicalId(bucketAutoEmpty.role?.node.defaultChild as CfnRole),
+  };
+}
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const withBucketGrants = Object.entries(policies).filter(([logicalId, res]) => {
-      if (logicalId.toLowerCase().includes('defaultpolicy')) return false;
-      const statements = (res as any).Properties.PolicyDocument.Statement as any[];
-      return statements.some((s) => ([] as string[]).concat(s.Action).includes('s3:ListBucketVersions'));
+const LIST_VERSIONS_STATEMENT = Match.objectLike({ Action: Match.arrayWith(['s3:ListBucketVersions']) });
+
+describe('BucketAutoEmpty', () => {
+  describe('Lambda', () => {
+    it('is created once per stack', () => {
+      const stack = newStack();
+
+      const first = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
+      const second = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
+
+      expect(second).toBe(first);
     });
 
-    expect(withBucketGrants).toHaveLength(1);
+    it('wires the Lambda to the bundle entry point and the service name its configuration requires', () => {
+      const { template } = synth();
 
-    const statements = (withBucketGrants[0][1] as any).Properties.PolicyDocument.Statement as any[];
-    expect(statements.map((s) => ([] as string[]).concat(s.Action)).flat().sort()).toEqual([
-      's3:DeleteObject',
-      's3:DeleteObjectVersion',
-      's3:ListBucket',
-      's3:ListBucketVersions',
-    ]);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Handler: 'index.handler',
+        Environment: { Variables: Match.objectLike({ SERVICE_NAME: 'bucket-auto-empty' }) },
+      });
+    });
 
-    // And the DefaultPolicy must NOT carry them.
-    const defaultPolicies = Object.entries(policies).filter(([id]) => id.toLowerCase().includes('defaultpolicy'));
-    for (const [, res] of defaultPolicies) {
-      const stmts = (res as any).Properties.PolicyDocument.Statement as any[];
-      const actions = stmts.map((s) => ([] as string[]).concat(s.Action)).flat();
-      expect(actions).not.toContain('s3:ListBucketVersions');
-    }
+    it('lets the Lambda read the status of its own stack', () => {
+      const { template } = synth();
+
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            { Action: 'cloudformation:DescribeStacks', Effect: 'Allow', Resource: { Ref: 'AWS::StackId' } },
+          ]),
+        },
+      });
+    });
   });
 
-  // Deletion order is the entire point of the fix: CFN deletes dependents first, so the
-  // CustomResource's Delete (which empties the bucket) must run while the Policy still exists.
-  it('makes the CustomResource depend on that Policy so it is torn down first', () => {
-    const { template } = synth();
+  describe('attach', () => {
+    it('puts the bucket grants in a dedicated Policy on the Lambda role, not in the role DefaultPolicy', () => {
+      const { template, bucketLogicalId, roleLogicalId } = synth();
 
-    const crs = template.findResources('Custom::BucketAutoEmpty');
-    expect(Object.keys(crs)).toHaveLength(1);
+      const grantPolicies = template.findResources('AWS::IAM::Policy', {
+        Properties: { PolicyDocument: { Statement: Match.arrayWith([LIST_VERSIONS_STATEMENT]) } },
+      });
 
-    const dependsOn: string[] = ([] as string[]).concat((Object.values(crs)[0] as any).DependsOn ?? []);
+      expect(Object.keys(grantPolicies)).toHaveLength(1);
+      expect(Object.keys(grantPolicies)[0].toLowerCase()).not.toContain('defaultpolicy');
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        Roles: [{ Ref: roleLogicalId }],
+        PolicyDocument: {
+          Statement: [
+            {
+              Action: ['s3:ListBucket', 's3:ListBucketVersions'],
+              Effect: 'Allow',
+              Resource: { 'Fn::GetAtt': [bucketLogicalId, 'Arn'] },
+            },
+            {
+              Action: ['s3:DeleteObject', 's3:DeleteObjectVersion'],
+              Effect: 'Allow',
+              Resource: { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketLogicalId, 'Arn'] }, '/*']] },
+            },
+          ],
+        },
+      });
+    });
 
-    const policies = template.findResources('AWS::IAM::Policy');
-    const grantPolicyId = Object.entries(policies).find(([logicalId, res]) => {
-      if (logicalId.toLowerCase().includes('defaultpolicy')) return false;
-      const statements = (res as any).Properties.PolicyDocument.Statement as any[];
-      return statements.some((s) => ([] as string[]).concat(s.Action).includes('s3:ListBucketVersions'));
-    })![0];
+    it('makes the custom resource depend on that Policy so it is deleted first', () => {
+      const { template } = synth();
+      const grantPolicyId = Object.keys(
+        template.findResources('AWS::IAM::Policy', {
+          Properties: { PolicyDocument: { Statement: Match.arrayWith([LIST_VERSIONS_STATEMENT]) } },
+        }),
+      )[0];
 
-    expect(dependsOn).toContain(grantPolicyId);
+      template.hasResource('Custom::BucketAutoEmpty', { DependsOn: Match.arrayWith([grantPolicyId]) });
+    });
+
+    it('creates a custom resource that names the bucket and gives up after the Lambda timeout', () => {
+      const { template, bucketLogicalId } = synth();
+
+      template.resourceCountIs('Custom::BucketAutoEmpty', 1);
+      template.hasResourceProperties('Custom::BucketAutoEmpty', {
+        bucketName: { Ref: bucketLogicalId },
+        ServiceTimeout: '900',
+      });
+    });
+
+    it('refuses to attach when the Lambda has no execution role', () => {
+      const stack = newStack();
+      const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
+      Object.defineProperty(bucketAutoEmpty, 'role', { value: undefined });
+
+      expect(() => bucketAutoEmpty.attach(stack, 'auto-empty', new Bucket(stack, 'target-bucket'))).toThrow(
+        'Lambda has no execution role',
+      );
+    });
   });
 });

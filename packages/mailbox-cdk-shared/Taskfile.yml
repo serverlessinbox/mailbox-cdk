@@ -17,7 +17,6 @@ tasks:
     sources:
       - src/ts-lambdas/bucket-auto-empty/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
-      - src/ts-lambdas/shared/bucket-empty.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/bucket-auto-empty.zip'
     cmds:
