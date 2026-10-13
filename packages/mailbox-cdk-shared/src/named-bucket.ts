@@ -1,7 +1,7 @@
 import { Bucket, BucketProps, IBucket } from 'aws-cdk-lib/aws-s3';
 import { Aws, IResolvable, Fn, Lazy, Stack, Token } from 'aws-cdk-lib';
 import { Construct, IConstruct } from 'constructs';
-import { getStackNameBase } from './stack-name-base-registry';
+import { getStackNameBase } from './naming/stack-name-base-registry';
 
 export interface INamedBucket extends IBucket {
   readonly explicitBucketName: string;

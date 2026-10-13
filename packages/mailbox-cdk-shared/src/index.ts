@@ -68,7 +68,7 @@ export { StackNamedBucket } from './named-bucket';
 export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
 
 // Sanitize stack name utility (for AWS resource naming)
-export { sanitizeStackName } from './sanitize-name';
+export { sanitizeStackName } from './naming/sanitize-name';
 
 // Shared group utility (for singleton constructs at stack root)
 export { getOrCreateSharedGroup } from './shared-group';
@@ -79,7 +79,7 @@ export { StackHelpers } from './stack-helpers';
 export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './stack-helpers';
 
 // Stack name-base registry (for coordinating S3-safe names across constructs)
-export { setStackNameBase, getStackNameBase } from './stack-name-base-registry';
+export { setStackNameBase, getStackNameBase } from './naming/stack-name-base-registry';
 
 // Pipeline taxonomy & shared per-pipeline log groups
 export type { Pipeline } from './pipelines';
@@ -94,8 +94,8 @@ export { StackNamedTable } from './named-table';
 export type { INamedTable, StackNamedTableProps } from './named-table';
 
 // Resource naming utilities
-export { makePhysicalName, slugifyLabel } from './resource-names';
-export type { PhysicalNameOptions } from './resource-names';
+export { makePhysicalName, slugifyLabel } from './naming/resource-names';
+export type { PhysicalNameOptions } from './naming/resource-names';
 
 // Resource group
 export { addServerlessInboxResourceGroup } from './resource-group';

@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
-import { makePhysicalName } from './resource-names';
+import { makePhysicalName } from './naming/resource-names';
 
 export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {
   /**
