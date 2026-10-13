@@ -1,7 +1,7 @@
 /**
  * Coverage for `SweepWorker`: each `removalType` reaches the sweeper of that type with its own
  * payload, and a sweep outcome maps to the worker status Step Functions branches on. The sweepers
- * are fakes; their own behaviour is covered in their own test files.
+ * are fakes.
  */
 
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';

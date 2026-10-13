@@ -12,8 +12,7 @@ import { TargetResults } from '../target-results';
 
 /**
  * Sweeps the ACM certificate named by `CertRemovalInput.certArn`: deletes it once it is owned by
- * the root stack and no longer in use. A certificate that is already gone counts as swept; one still
- * in use is retried; an ownership mismatch or any other error fails.
+ * the root stack and no longer in use.
  */
 export class CertSweeper implements TargetSweeper<CertRemovalInput> {
   private readonly results = new TargetResults('cert');

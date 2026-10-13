@@ -13,8 +13,6 @@ import type {
  * Sweeps one removal per invocation: dispatches the removal's payload on `removalType` to the
  * sweeper of that type and reports the sweep's outcome. Idempotent — every invocation re-checks and
  * deletes whatever is still pending.
- *
- * A retry or failed outcome is an answer to Step Functions, not a throw.
  */
 export class SweepWorker {
   constructor(

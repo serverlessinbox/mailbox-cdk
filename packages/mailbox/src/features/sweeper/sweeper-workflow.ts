@@ -76,7 +76,6 @@ export class SweeperWorkflow extends Construct {
     this.stateMachine = this.createSweeperStateMachine(props, retryInterval, timeout);
   }
 
-  /** Grants the given principal permission to start an execution of this state machine. */
   public grantStartExecution(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions: ['states:StartExecution'],

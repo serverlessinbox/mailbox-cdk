@@ -19,13 +19,7 @@ export interface SweeperInfraProps {
 /**
  * Core sweeper infrastructure: execution role, worker Lambda, state machine, and starter Lambda.
  *
- * Creates:
- * - `worker` TypeScriptLambda (RETAIN'd — invoked by SFN for us-east-1 edge Lambda delete)
- * - `workflow` SweeperWorkflow state machine (RETAIN'd)
- * - `starter` TypeScriptLambda (NOT retained — CFN deletes normally)
- * - `executionRole` IAM role for the state machine (RETAIN'd, self-strips policies in cleanup tail)
- *
- * The worker and execution role are RETAIN'd to survive stack deletion and continue running
+ * The worker, state machine and execution role are RETAIN'd to survive stack deletion and continue running
  * the sweeper execution asynchronously. The self-cleanup tail deletes them after targets are gone.
  *
  * Circular-dependency mitigation: both the execution role and the worker role carry GUID-suffixed
@@ -107,7 +101,6 @@ export class SweeperInfra extends Construct {
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Worker Lambda (RETAIN'd — invoked by SFN Branch B post-stack-delete)
-    // Now instantiated via the typed wrapper construct
     this.worker = new ResourceSweeperWorkerLambda(this, 'worker', {
       artifactResolver: props.artifactResolver,
       role: workerRole,
@@ -116,7 +109,7 @@ export class SweeperInfra extends Construct {
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Execution role: consolidated inline policy for SFN + self-cleanup operations ONLY.
-    // Worker owns ACM and Lambda deletion now; exec role only invokes worker and self-cleans.
+    // The worker role owns the deletions; this role only invokes the worker and self-cleans.
     // Self-referential ARNs (worker role, own role) use pre-built formatArn strings — no GetAtt.
     const executionPolicy = new iam.Policy(this, 'execution-policy', {
       policyName: 'sweeper-execution-policy',
@@ -160,7 +153,6 @@ export class SweeperInfra extends Construct {
       ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Permissions boundary: restrict execution role to invoke + self-cleanup only.
-    // ACM/Lambda deletion responsibility moved to worker role.
     // Self-referential ARNs use formatArn strings — no GetAtt edges (breaks the boundary→role cycle).
     const boundaryPolicy = new iam.ManagedPolicy(this, 'execution-role-boundary', {
       statements: [
@@ -219,7 +211,6 @@ export class SweeperInfra extends Construct {
     this.workflow.markForRetention();
 
     // Starter Lambda (NOT retained — CFN deletes normally)
-    // Now instantiated via the typed wrapper construct with minimal env vars
     this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
       artifactResolver: props.artifactResolver,
       stateMachineArn: smArn,

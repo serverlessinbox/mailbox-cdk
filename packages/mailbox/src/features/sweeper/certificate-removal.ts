@@ -16,9 +16,7 @@ export interface CertificateRemovalProps {
 }
 
 /**
- * Registers an ACM certificate for deferred removal. It contributes the worker's ACM grants, the
- * certificate's ARN as its `ResourceProperties` entry, and a chain that invokes the worker with
- * that ARN and retries on RETRY.
+ * Registers an ACM certificate for deferred removal.
  */
 export class CertificateRemoval extends Construct implements IResourceRemoval<'cert'> {
   readonly id = 'cert';

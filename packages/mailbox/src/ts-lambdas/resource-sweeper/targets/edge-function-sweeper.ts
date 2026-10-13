@@ -8,8 +8,7 @@ import { TargetResults } from '../target-results';
 /**
  * Sweeps the Lambda@Edge function named by `EdgeFunctionRemovalInput.edgeFnArn`: deletes it once the
  * root stack owns it. The Lambda client must be the us-east-1 one, the only region Lambda@Edge
- * functions live in. A function that is already gone counts as swept; an ownership mismatch fails;
- * any other error (e.g. CloudFront replicas still draining) is retried.
+ * functions live in.
  */
 export class EdgeFunctionSweeper implements TargetSweeper<EdgeFunctionRemovalInput> {
   private readonly results = new TargetResults('edge-fn');

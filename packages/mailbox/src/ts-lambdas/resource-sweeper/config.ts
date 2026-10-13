@@ -13,11 +13,6 @@ export interface WorkerConfig {
   readonly serviceName: string;
 }
 
-/**
- * Reads the starter's configuration from the environment through `l`. `SERVICE_NAME` and
- * `MAILBOX_SWEEPER_STATE_MACHINE_ARN` are mandatory; `LOG_LEVEL` is optional and defaults to `error`.
- * Every missing or invalid variable is reported through `l`, all at once, rather than thrown.
- */
 export function loadStarter(l: env.Loader): StarterConfig {
   return {
     logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
@@ -26,11 +21,6 @@ export function loadStarter(l: env.Loader): StarterConfig {
   };
 }
 
-/**
- * Reads the worker's configuration from the environment through `l`. `SERVICE_NAME` is mandatory;
- * `LOG_LEVEL` is optional and defaults to `error`. The worker never reads the state machine ARN.
- * Every missing or invalid variable is reported through `l`, all at once, rather than thrown.
- */
 export function loadWorker(l: env.Loader): WorkerConfig {
   return {
     logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),

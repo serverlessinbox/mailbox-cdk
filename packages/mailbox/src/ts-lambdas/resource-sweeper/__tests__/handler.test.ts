@@ -1,7 +1,7 @@
 /**
  * Coverage for the handler file's wiring with a valid config: the starter hands a custom-resource
  * request to its `SweepStarter` and answers CloudFormation, and the worker hands a removal payload
- * to its `SweepWorker`. The classes' own behaviour is covered in their own test files.
+ * to its `SweepWorker`.
  *
  * Each starter invocation must get its own logger: a `LoggerBuffer` keeps its unflushed entries for
  * its whole life, so one shared by warm invocations would flush an earlier request's trace when a

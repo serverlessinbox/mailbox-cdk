@@ -28,9 +28,8 @@ export class SweepStarter {
   ) {}
 
   /**
-   * Handles one custom-resource request: starts the sweep its targets call for, if any. Resolves
-   * once the request is dealt with, also when the sweep could not be started (that is logged at
-   * error level, never thrown). A Delete sweeps only while the parent stack is being deleted.
+   * Starts the sweep the request's targets call for, if any. Resolves also when the sweep could not
+   * be started (logged at error level, never thrown).
    */
   public async handle(event: CloudFormationCustomResourceEvent): Promise<void> {
     this.announce(event);
