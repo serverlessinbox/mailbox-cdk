@@ -1,98 +1,79 @@
+/// <reference types="jest" />
+
+/**
+ * Pins the variables the artifact-updater configuration adds to the shared base: each is mandatory and named
+ * in the error when missing, and the granularity must be one the release tracks understand. The base's own
+ * variables are pinned in the suite of the shared base configuration.
+ */
+
 import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { load } from '../config';
 
+const ENVIRONMENT = {
+  SERVICE_NAME: 'artifact-updater',
+  AWS_REGION: 'eu-west-1',
+  AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
+  PROJECT: 'serverlessinbox',
+  DIST_TAG: 'latest',
+  GRANULARITY: 'major',
+  ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE: 'my-stack',
+};
+
 describe('artifact-updater config', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
-    delete process.env.LOG_LEVEL;
-    delete process.env.SERVICE_NAME;
-    delete process.env.AWS_REGION;
-    delete process.env.PROJECT;
-    delete process.env.DIST_TAG;
-    delete process.env.GRANULARITY;
-    delete process.env.ARTIFACT_BUCKET_BASE;
-    delete process.env.ROOT_STACK_TAG_VALUE;
+    process.env = { ...originalEnv, ...ENVIRONMENT };
   });
 
   afterEach(() => {
-    delete process.env.LOG_LEVEL;
-    delete process.env.SERVICE_NAME;
-    delete process.env.AWS_REGION;
-    delete process.env.PROJECT;
-    delete process.env.DIST_TAG;
-    delete process.env.GRANULARITY;
-    delete process.env.ARTIFACT_BUCKET_BASE;
-    delete process.env.ROOT_STACK_TAG_VALUE;
+    process.env = originalEnv;
   });
 
-  it('loads all vars when set', () => {
-    process.env.LOG_LEVEL = 'debug';
-    process.env.SERVICE_NAME = 'artifact-updater-service';
-    process.env.AWS_REGION = 'eu-west-1';
-    process.env.PROJECT = 'serverlessinbox';
-    process.env.DIST_TAG = 'latest';
-    process.env.GRANULARITY = 'major';
-    process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-    process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
-
+  it('loads the variables it adds to the base', () => {
     const result = env.tryLoad(load);
-    expect(result).toEqual({
-      config: {
-        logLevel: 'debug',
-        serviceName: 'artifact-updater-service',
-        region: 'eu-west-1',
-        project: 'serverlessinbox',
-        distTag: 'latest',
-        granularity: 'major',
-        artifactBucketBase: 'mailbox-artifacts',
-        rootStackTagValue: 'my-stack',
-      },
-      error: undefined,
+
+    expect(result.error).toBeUndefined();
+    expect(result.config).toMatchObject({
+      region: 'eu-west-1',
+      functionName: 'artifact-updater-function',
+      project: 'serverlessinbox',
+      distTag: 'latest',
+      granularity: 'major',
+      artifactBucketBase: 'mailbox-artifacts',
+      rootStackTagValue: 'my-stack',
     });
   });
 
-  it('reports error when mandatory vars missing', () => {
-    const mandatoryVars = ['AWS_REGION', 'PROJECT', 'DIST_TAG', 'GRANULARITY', 'ARTIFACT_BUCKET_BASE', 'ROOT_STACK_TAG_VALUE'];
-
-    for (const varName of mandatoryVars) {
-      const result = env.tryLoad(load);
-      expect(result.error).toContain(varName);
-    }
-  });
-
-  it('reports SERVICE_NAME as missing when every other var is set', () => {
-    process.env.AWS_REGION = 'eu-west-1';
-    process.env.PROJECT = 'serverlessinbox';
-    process.env.DIST_TAG = 'latest';
-    process.env.GRANULARITY = 'major';
-    process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-    process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+  it.each([
+    'AWS_REGION',
+    'AWS_LAMBDA_FUNCTION_NAME',
+    'PROJECT',
+    'DIST_TAG',
+    'GRANULARITY',
+    'ARTIFACT_BUCKET_BASE',
+    'ROOT_STACK_TAG_VALUE',
+  ])('reports %s as missing when it is the only variable not set', (variable) => {
+    delete process.env[variable];
 
     const result = env.tryLoad(load);
-    expect(result.error).toContain('SERVICE_NAME');
+
+    expect(result.error).toBe(`${variable} is not set`);
   });
 
-  it('uses the default log level when LOG_LEVEL is absent', () => {
-    process.env.SERVICE_NAME = 'artifact-updater-service';
-    process.env.AWS_REGION = 'eu-west-1';
-    process.env.PROJECT = 'serverlessinbox';
-    process.env.DIST_TAG = 'latest';
-    process.env.GRANULARITY = 'major';
-    process.env.ARTIFACT_BUCKET_BASE = 'mailbox-artifacts';
-    process.env.ROOT_STACK_TAG_VALUE = 'my-stack';
+  it('accepts the minor granularity', () => {
+    process.env.GRANULARITY = 'minor';
+
+    expect(env.tryLoad(load).config.granularity).toBe('minor');
+  });
+
+  it('rejects a granularity that is not major or minor, naming the variable and the value', () => {
+    process.env.GRANULARITY = 'patch';
 
     const result = env.tryLoad(load);
-    expect(result).toEqual({
-      config: {
-        logLevel: 'error',
-        serviceName: 'artifact-updater-service',
-        region: 'eu-west-1',
-        project: 'serverlessinbox',
-        distTag: 'latest',
-        granularity: 'major',
-        artifactBucketBase: 'mailbox-artifacts',
-        rootStackTagValue: 'my-stack',
-      },
-      error: undefined,
-    });
+
+    expect(result.error).toContain('GRANULARITY');
+    expect(result.error).toContain('"patch"');
   });
 });
