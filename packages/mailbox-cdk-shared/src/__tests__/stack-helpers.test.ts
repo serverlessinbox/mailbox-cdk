@@ -1,149 +1,108 @@
 /// <reference types="jest" />
 
 /**
- * StackHelpers Construct Tests
- *
- * Tests for the singleton StackHelpers construct:
- * - Singleton behavior: multiple getOrCreate calls return the same instance
- * - Custom resource attachment: each resolver call creates its own CR under the caller's scope
- * - Regression guard: creating the singleton against a resolver does not throw at synth time
+ * Pins what StackHelpers puts in a consumer's stack: one shared Lambda per stack, and for each
+ * resolver call a Custom::StackHelpers resource carrying the properties the Lambda reads and
+ * exposing the attributes it answers with. A renamed property or attribute here is not caught by
+ * the compiler, and CloudFormation would only report it when the resource is created.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { StackHelpers } from '../stack-helpers';
+import { createStackWithResolver } from './stack-helpers-helpers';
 
-describe('StackHelpers Construct', () => {
-  let app: App;
-  let stack: cdk.Stack;
-  let resolver: IArtifactResolver;
+describe('StackHelpers', () => {
+  const { stack, resolver } = createStackWithResolver();
 
-  beforeEach(() => {
-    app = new App();
+  function logicalIdOfOnlyCustomResource(template: Template): string {
+    const logicalIds = Object.keys(template.findResources('Custom::StackHelpers'));
+    expect(logicalIds).toHaveLength(1);
+    return logicalIds[0];
+  }
 
-    stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
+  describe('getOrCreate', () => {
+    it('returns the same instance on every call for one stack', () => {
+      const { stack: freshStack, resolver: freshResolver } = createStackWithResolver();
+
+      expect(StackHelpers.getOrCreate(freshStack, freshResolver)).toBe(StackHelpers.getOrCreate(freshStack, freshResolver));
     });
 
-    // Create a pinned resolver with required packages
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    resolver = new PinnedArtifactResolver({
-      packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
-  });
+    it('places the singleton under the stack\'s shared group', () => {
+      const { stack: freshStack, resolver: freshResolver } = createStackWithResolver();
 
-  /**
-   * Singleton behavior: getOrCreate returns the same instance for multiple calls
-   * on the same Stack, placed under Stack → shared → stack-helpers hierarchy.
-   */
-  describe('Singleton getOrCreate', () => {
-    it('returns the same StackHelpers instance for multiple getOrCreate calls on same stack', () => {
-      // First call
-      const helpers1 = StackHelpers.getOrCreate(stack, resolver);
-
-      // Second call on same stack
-      const helpers2 = StackHelpers.getOrCreate(stack, resolver);
-
-      // Both should be the same instance
-      expect(helpers1).toBe(helpers2);
+      expect(StackHelpers.getOrCreate(freshStack, freshResolver).node.path).toBe('TestStack/shared/stack-helpers');
     });
 
-    it('places the singleton under Stack → shared → stack-helpers construct hierarchy', () => {
-      const helpers = StackHelpers.getOrCreate(stack, resolver);
+    it('synthesizes one Lambda however often it is called', () => {
+      const { stack: freshStack, resolver: freshResolver } = createStackWithResolver();
+      StackHelpers.getOrCreate(freshStack, freshResolver);
+      StackHelpers.getOrCreate(freshStack, freshResolver);
 
-      // Check the construct path
-      expect(helpers.node.path).toBe('TestStack/shared/stack-helpers');
-    });
-
-    it('synthesizes to exactly one Lambda in the template regardless of call count', () => {
-      // Multiple getOrCreate calls
-      StackHelpers.getOrCreate(stack, resolver);
-      StackHelpers.getOrCreate(stack, resolver);
-      StackHelpers.getOrCreate(stack, resolver);
-
-      const template = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, any> | undefined;
-
-      // Count Lambda functions
-      const lambdas = Object.values(resources || {}).filter(
-        (r: any) => r.Type === 'AWS::Lambda::Function'
-      );
-
-      // Exactly one Lambda for the shared stack-helpers
-      expect(lambdas).toHaveLength(1);
+      Template.fromStack(freshStack).resourceCountIs('AWS::Lambda::Function', 1);
     });
   });
 
-  /**
-   * Custom resource attachment: each resolver call creates its own CfnCustomResource
-   * under the caller's scope, while sharing the single Lambda.
-   */
-  describe('Custom resource attachment', () => {
-    it('creates separate custom resources for resolveMailboxData and resolveCognitoDomainPrefix', () => {
-      const helpers = StackHelpers.getOrCreate(stack, resolver);
+  describe('resolveMailboxData', () => {
+    const { stack: mailboxStack, resolver: mailboxResolver } = createStackWithResolver();
+    const data = StackHelpers.getOrCreate(mailboxStack, mailboxResolver).resolveMailboxData(
+      new Construct(mailboxStack, 'Caller'),
+      'mailbox-data',
+      { hostedZoneId: 'Z123', dataStackName: 'my-data-stack' },
+    );
+    const template = Template.fromStack(mailboxStack);
 
-      // Create a scope for caller resources
-      const callerScope = new Construct(stack, 'CallerScope');
-
-      // First resolver call: resolveMailboxData
-      helpers.resolveMailboxData(callerScope, 'stack-helpers', {
-        hostedZoneId: 'Z123',
-        dataStackName: 'my-data-stack',
+    it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
+      template.hasResourceProperties('Custom::StackHelpers', {
+        ServiceToken: Match.objectLike({ 'Fn::GetAtt': Match.arrayWith(['Arn']) }),
+        ServiceTimeout: '120',
+        HostedZoneId: 'Z123',
+        DataStackName: 'my-data-stack',
       });
+    });
 
-      // Second resolver call: resolveCognitoDomainPrefix
-      helpers.resolveCognitoDomainPrefix(callerScope, 'domain-prefix', 'Z456');
+    it('returns the domainName and s3SafeDataStackName attributes of that resource', () => {
+      const logicalId = logicalIdOfOnlyCustomResource(template);
 
-      const template = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, any> | undefined;
-
-      // Count custom resources
-      const customResources = Object.values(resources || {}).filter(
-        (r: any) => r.Type === 'Custom::StackHelpers'
-      );
-
-      // Should have exactly 2 custom resources (one per resolver call)
-      expect(customResources).toHaveLength(2);
-
-      // Should still have exactly 1 Lambda
-      const lambdas = Object.values(resources || {}).filter(
-        (r: any) => r.Type === 'AWS::Lambda::Function'
-      );
-      expect(lambdas).toHaveLength(1);
+      expect(mailboxStack.resolve(data.derivedDomainName)).toEqual({ 'Fn::GetAtt': [logicalId, 'domainName'] });
+      expect(mailboxStack.resolve(data.derivedS3SafeDataStackName)).toEqual({
+        'Fn::GetAtt': [logicalId, 's3SafeDataStackName'],
+      });
     });
   });
 
-  /**
-   * Regression guard: creating the singleton against a resolver that pins 'mailbox-cdk-shared'
-   * does not throw at synth time.
-   */
-  describe('Regression guard', () => {
-    it('does not throw when creating StackHelpers with artifact resolver', () => {
-      expect(() => {
-        StackHelpers.getOrCreate(stack, resolver);
-        app.synth();
-      }).not.toThrow();
+  describe('resolveCognitoDomainPrefix', () => {
+    const { stack: cognitoStack, resolver: cognitoResolver } = createStackWithResolver();
+    const prefix = StackHelpers.getOrCreate(cognitoStack, cognitoResolver).resolveCognitoDomainPrefix(
+      new Construct(cognitoStack, 'Caller'),
+      'cognito-prefix',
+      'Z456',
+    );
+    const template = Template.fromStack(cognitoStack);
+
+    it('attaches a Custom::StackHelpers resource falling back to the stack name', () => {
+      template.hasResourceProperties('Custom::StackHelpers', {
+        HostedZoneId: 'Z456',
+        Fallback: { Ref: 'AWS::StackName' },
+      });
     });
 
-    it('multiple StackHelpers creations succeed', () => {
-      // Multiple attempts to create/get the singleton
-      const helpers1 = StackHelpers.getOrCreate(stack, resolver);
-      const helpers2 = StackHelpers.getOrCreate(stack, resolver);
+    it('returns the cognitoDomainPrefix attribute of that resource', () => {
+      const logicalId = logicalIdOfOnlyCustomResource(template);
 
-      // Should return the same instance
-      expect(helpers1).toBe(helpers2);
-
-      // Should synth successfully
-      expect(() => app.synth()).not.toThrow();
+      expect(cognitoStack.resolve(prefix)).toEqual({ 'Fn::GetAtt': [logicalId, 'cognitoDomainPrefix'] });
     });
+  });
+
+  it('gives every resolver call its own resource while the Lambda stays shared', () => {
+    const helpers = StackHelpers.getOrCreate(stack, resolver);
+    const callerScope = new Construct(stack, 'CallerScope');
+    helpers.resolveMailboxData(callerScope, 'mailbox-data', { hostedZoneId: 'Z123', dataStackName: 'data' });
+    helpers.resolveCognitoDomainPrefix(callerScope, 'cognito-prefix', 'Z123');
+
+    const template = Template.fromStack(stack);
+
+    template.resourceCountIs('Custom::StackHelpers', 2);
+    template.resourceCountIs('AWS::Lambda::Function', 1);
   });
 });

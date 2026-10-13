@@ -1,6 +1,7 @@
 import * as env from '../shared/env';
 import { parseLogLevelStrict, type LogLevel } from '../shared/logger-buffer';
 
+/** The environment the stack-helpers Lambda reads. */
 export interface Config {
   readonly logLevel: LogLevel;
   readonly serviceName: string;

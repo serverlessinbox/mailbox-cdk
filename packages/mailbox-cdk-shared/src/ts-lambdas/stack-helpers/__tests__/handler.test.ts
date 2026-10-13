@@ -1,161 +1,129 @@
 /// <reference types="jest" />
 
 /**
- * Stack Helpers Handler Tests
- *
- * Tests for the sanitizeStackName and deriveCognitoDomainPrefix functions.
+ * Pins what the stack-helpers handler file decides: a bad configuration is answered to CloudFormation
+ * as FAILED (never a crash that leaves the resource waiting for its service timeout), Delete does no
+ * lookup, and a Create hands its resource properties to the resolver and returns the result as the
+ * resource's attributes. The response is read from the request the handler sends to the ResponseURL.
  */
 
-import { deriveCognitoDomainPrefix, sanitizeStackName } from '../handler';
+import { Writable } from 'stream';
+import { mockClient } from 'aws-sdk-client-mock';
+import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext } from './cfn-helpers';
+import type { FakeCfnEvent } from './cfn-helpers';
+import type * as Https from 'https';
+import type * as Route53Sdk from '@aws-sdk/client-route-53';
+import type * as HandlerModule from '../handler';
+import type { SmokeTestProbe } from '../../shared/with-smoke-test';
 
-describe('Stack Helpers Handler', () => {
-  describe('deriveCognitoDomainPrefix', () => {
-    it('normal domain: dots are replaced with hyphens', () => {
-      expect(deriveCognitoDomainPrefix('example.com', '')).toBe('example-com');
+jest.mock('https', () => ({
+  request: jest.fn(),
+}));
+
+interface CfnResponseBody {
+  Status: string;
+  Reason?: string;
+  Data?: Record<string, string>;
+}
+
+describe('stack-helpers handler', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.restoreAllMocks();
+  });
+
+  /**
+   * Loads the handler fresh under the given environment, with Route 53 faked and the CloudFormation
+   * response captured, then invokes it with the event.
+   */
+  async function invoke(event: FakeCfnEvent | SmokeTestProbe, environment: Record<string, string>) {
+    jest.resetModules();
+    process.env = { ...originalEnv, ...environment };
+
+    // Required after resetModules so the faked client class is the one the handler constructs.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { GetHostedZoneCommand, Route53Client } = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
+    const route53Mock = mockClient(Route53Client);
+    route53Mock.on(GetHostedZoneCommand).resolves({
+      HostedZone: { Id: '/hostedzone/Z123', Name: 'example.com.', CallerReference: 'ref' },
     });
 
-    it('normal domain: multiple dots produce multiple hyphens collapsed to one', () => {
-      expect(deriveCognitoDomainPrefix('mail.example.co.uk', '')).toBe('mail-example-co-uk');
-    });
+    let responseJson = '';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const https = require('https') as typeof Https;
+    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
+      callback({ statusCode: 200 });
+      return new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          responseJson += chunk.toString();
+          done();
+        },
+      });
+    }) as typeof https.request);
 
-    it('mixed case: input is lowercased', () => {
-      expect(deriveCognitoDomainPrefix('EXAMPLE.COM', '')).toBe('example-com');
-    });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { handler } = require('../handler') as typeof HandlerModule;
+    const result = await handler(event, fakeLambdaContext());
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    it('reserved word "aws": is stripped and replaced with hyphen', () => {
-      expect(deriveCognitoDomainPrefix('aws.example.com', '')).toBe('example-com');
-    });
+    const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
+    return { result, response, hostedZoneLookups: route53Mock.commandCalls(GetHostedZoneCommand) };
+  }
 
-    it('reserved word "amazon": is stripped and replaced with hyphen', () => {
-      expect(deriveCognitoDomainPrefix('amazon.example.com', '')).toBe('example-com');
-    });
+  it('reports the smoke-test probe unhealthy when the configuration is bad', async () => {
+    const { result } = await invoke({ serverlessInboxSmokeTest: true }, { SERVICE_NAME: '' });
 
-    it('reserved word "cognito": is stripped and replaced with hyphen', () => {
-      expect(deriveCognitoDomainPrefix('cognito.example.com', '')).toBe('example-com');
-    });
+    expect(result).toEqual({ serverlessInboxSmokeTestOk: false });
+  });
 
-    it('reserved words combined: all are stripped', () => {
-      expect(deriveCognitoDomainPrefix('aws.amazon.cognito.com', '')).toBe('com');
-    });
+  it('answers FAILED naming the variable when the configuration is bad', async () => {
+    const { response, hostedZoneLookups } = await invoke(
+      fakeCreateEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: '' },
+    );
 
-    it('reserved word as substring: "aws-mail.com" contains full "aws" substring', () => {
-      // This demonstrates substring matching (not word-boundary aware)
-      // "aws" is replaced with "-", then leading hyphen is trimmed
-      expect(deriveCognitoDomainPrefix('aws-mail.com', '')).toBe('mail-com');
-    });
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('SERVICE_NAME');
+    expect(hostedZoneLookups).toHaveLength(0);
+  });
 
-    it('reserved word NOT as substring: "aweso-mail.com" does NOT trigger "aws"', () => {
-      // "awesome" does not contain "aws" as a substring (it's a-w-e, not a-w-s)
-      expect(deriveCognitoDomainPrefix('aweso-mail.com', '')).toBe('aweso-mail-com');
-    });
+  it('answers SUCCESS to Delete without looking anything up', async () => {
+    const { response, hostedZoneLookups } = await invoke(
+      fakeDeleteEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: 'stack-helpers' },
+    );
 
-    it('truncation at 63 chars: no trailing hyphen survives', () => {
-      // Create a string that will be exactly 63 chars and end with a hyphen before truncation
-      const longDomain = 'a'.repeat(62) + '.com'; // 66 chars
-      const result = deriveCognitoDomainPrefix(longDomain, '');
-      expect(result.length).toBeLessThanOrEqual(63);
-      expect(result).not.toMatch(/-$/);
-    });
+    expect(response.Status).toBe('SUCCESS');
+    expect(hostedZoneLookups).toHaveLength(0);
+  });
 
-    it('truncation boundary: 63-char limit with no trailing hyphen', () => {
-      // Construct a domain that yields exactly 63 chars, then would add a hyphen
-      const domain = 'a'.repeat(60) + '-b.com'; // After processing: 'a' * 60 + '-b-com' = 66 chars
-      const result = deriveCognitoDomainPrefix(domain, '');
-      expect(result.length).toBeLessThanOrEqual(63);
-      expect(result).not.toMatch(/-$/);
-    });
+  it('answers a Create with the resolver result as the resource attributes', async () => {
+    const { response, hostedZoneLookups } = await invoke(
+      fakeCreateEvent({ HostedZoneId: 'Z123', DataStackName: 'Data_Stack' }),
+      { SERVICE_NAME: 'stack-helpers' },
+    );
 
-    it('empty after strip: falls back to provided fallback', () => {
-      expect(deriveCognitoDomainPrefix('aws.amazon.cognito', 'my-stack')).toBe('my-stack');
-    });
-
-    it('empty after strip: fallback is itself sanitized', () => {
-      // If the fallback also contains reserved words, it's sanitized
-      expect(deriveCognitoDomainPrefix('aws', 'aws-backup')).toBe('backup');
-    });
-
-    it('double fallback empty: final literal "installer" is returned', () => {
-      // If both primary and fallback strip to nothing, return 'installer'
-      expect(deriveCognitoDomainPrefix('aws.amazon.cognito', '')).toBe('installer');
-    });
-
-    it('uppercase reserved words: case-insensitive matching', () => {
-      expect(deriveCognitoDomainPrefix('AWS.EXAMPLE.COM', '')).toBe('example-com');
-      expect(deriveCognitoDomainPrefix('Amazon.Example.Com', '')).toBe('example-com');
-      expect(deriveCognitoDomainPrefix('COGNITO.example.com', '')).toBe('example-com');
-    });
-
-    it('leading/trailing hyphens: are trimmed', () => {
-      const result = deriveCognitoDomainPrefix('-example.com-', '');
-      expect(result).not.toMatch(/^-/);
-      expect(result).not.toMatch(/-$/);
-      expect(result).toBe('example-com');
-    });
-
-    it('repeated hyphens after reserved-word stripping: are collapsed', () => {
-      // "my-aws-backup.com" → "my-aws-backup-com" → "my---backup-com" (aws replaced with -) → "my-backup-com"
-      expect(deriveCognitoDomainPrefix('my-aws-backup.com', '')).toBe('my-backup-com');
-    });
-
-    it('special characters (beyond dots): are replaced with hyphens', () => {
-      expect(deriveCognitoDomainPrefix('example_com@test', '')).toBe('example-com-test');
-    });
-
-    // Fallback-property behavior test cases
-    it('Fallback behavior: explicit fallback wins when primary domain is empty', () => {
-      expect(deriveCognitoDomainPrefix('', 'my-fallback')).toBe('my-fallback');
-    });
-
-    it('Fallback behavior: explicit fallback is used when primary domain strips to empty', () => {
-      expect(deriveCognitoDomainPrefix('aws.amazon', 'backup-name')).toBe('backup-name');
-    });
-
-    it('Fallback behavior: ultimate fallback is "installer" when both primary and fallback strip to empty', () => {
-      expect(deriveCognitoDomainPrefix('aws', '')).toBe('installer');
-      expect(deriveCognitoDomainPrefix('cognito.amazon', '')).toBe('installer');
+    expect(hostedZoneLookups[0].args[0].input).toEqual({ Id: 'Z123' });
+    expect(response).toMatchObject({
+      Status: 'SUCCESS',
+      Data: { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },
     });
   });
 
-  describe('sanitizeStackName', () => {
-    it('normal stack name: mixed case is lowercased', () => {
-      expect(sanitizeStackName('MyStack')).toBe('mystack');
-    });
+  it('answers FAILED when the resource properties are invalid', async () => {
+    const { response } = await invoke(
+      fakeCreateEvent({ HostedZoneId: 5 }),
+      { SERVICE_NAME: 'stack-helpers' },
+    );
 
-    it('dots are replaced with hyphens', () => {
-      expect(sanitizeStackName('my.stack.name')).toBe('my-stack-name');
-    });
-
-    it('special characters: are replaced with hyphens', () => {
-      expect(sanitizeStackName('my_stack@name!')).toBe('my-stack-name');
-    });
-
-    it('repeated hyphens: are collapsed', () => {
-      expect(sanitizeStackName('my--stack---name')).toBe('my-stack-name');
-    });
-
-    it('leading/trailing hyphens: are trimmed', () => {
-      expect(sanitizeStackName('-my-stack-')).toBe('my-stack');
-    });
-
-    it('40-char truncation: result is at most 40 chars', () => {
-      const longName = 'a'.repeat(50);
-      const result = sanitizeStackName(longName);
-      expect(result.length).toBeLessThanOrEqual(40);
-    });
-
-    it('empty input: returns empty string', () => {
-      expect(sanitizeStackName('')).toBe('');
-    });
-
-    it('only special chars: results in hyphen(s) which are trimmed to empty', () => {
-      expect(sanitizeStackName('___')).toBe('');
-    });
-
-    it('truncation at 40 chars does not remove final meaningful char', () => {
-      const name = 'a'.repeat(41); // 41 'a's
-      const result = sanitizeStackName(name);
-      expect(result.length).toBe(40);
-      expect(result).toBe('a'.repeat(40));
-    });
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('Invalid ResourceProperties');
   });
 });

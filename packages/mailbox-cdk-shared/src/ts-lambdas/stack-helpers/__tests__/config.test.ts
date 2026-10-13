@@ -1,3 +1,8 @@
+/**
+ * Pins the environment the stack-helpers Lambda reads. The smoke-test probe and the handler both
+ * rely on a missing SERVICE_NAME or an unknown LOG_LEVEL being reported, not defaulted.
+ */
+
 import * as env from '../../shared/env';
 import { load } from '../config';
 
@@ -37,6 +42,15 @@ describe('stack-helpers config', () => {
       },
       error: undefined,
     });
+  });
+
+  it('reports an unknown LOG_LEVEL', () => {
+    process.env.SERVICE_NAME = 'helpers-service';
+    process.env.LOG_LEVEL = 'verbose';
+
+    const result = env.tryLoad(load);
+
+    expect(result.error).toContain('LOG_LEVEL');
   });
 
   it('reports SERVICE_NAME as missing when it is not set', () => {

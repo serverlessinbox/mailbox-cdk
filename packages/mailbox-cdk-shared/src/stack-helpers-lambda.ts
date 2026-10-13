@@ -4,14 +4,12 @@ import { Construct } from 'constructs';
 import { TypeScriptLambda } from './ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
+/** The artifact resolver the stack-helpers Lambda's code is loaded through. */
 export interface StackHelpersLambdaProps {
   readonly artifactResolver: IArtifactResolver;
 }
 
-/**
- * The shared domain-name / S3-safe-stack-name / Cognito-domain-prefix derivation Lambda backing
- * `StackHelpers`'s `Custom::StackHelpers` resources.
- */
+/** The Lambda behind `Custom::StackHelpers` resources. */
 export class StackHelpersLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackHelpersLambdaProps) {
     super(scope, id, {
