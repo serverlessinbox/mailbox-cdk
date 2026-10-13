@@ -4,13 +4,14 @@ import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Construct } from 'constructs';
 
+/** Props of the data override resolver Lambda. */
 export interface DataOverrideResolverLambdaProps {
   readonly artifactResolver: IArtifactResolver;
 }
 
 /**
- * Custom-resource handler for MailboxDataOverrideResolver: given a table role's incoming ARN and
- * the operator-overridable SSM parameter's current value, decides whether to honor an override.
+ * Custom-resource Lambda that, for each data table role, takes the incoming table ARN and the
+ * operator-overridable parameter's current value and decides whether to honor the override.
  */
 export class DataOverrideResolverLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DataOverrideResolverLambdaProps) {
