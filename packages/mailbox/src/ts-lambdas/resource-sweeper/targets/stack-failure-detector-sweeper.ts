@@ -6,8 +6,7 @@ import {
 } from '@aws-sdk/client-eventbridge';
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
 import { IAMClient, ListRoleTagsCommand, DeleteRolePolicyCommand, DeleteRoleCommand } from '@aws-sdk/client-iam';
-import { parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { CaughtError } from '../caught-error';
+import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper } from '../removal';
 import { StackOwnership } from '../stack-ownership';
 import { TargetResults } from '../target-results';

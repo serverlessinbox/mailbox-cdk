@@ -1,8 +1,7 @@
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
 import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { emitManualFinalize, isParentStackBeingDeleted, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { CaughtError } from './caught-error';
+import { CaughtError, emitManualFinalize, isParentStackBeingDeleted, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { StarterConfig } from './config';
 import type { RemovalPropertiesMap } from './removal';
 import type { SweepTargetPlanner } from './sweep-target-planner';

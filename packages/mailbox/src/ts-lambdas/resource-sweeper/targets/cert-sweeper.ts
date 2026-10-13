@@ -4,8 +4,7 @@ import {
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
-import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { CaughtError } from '../caught-error';
+import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CertRemovalInput, TargetResult, TargetSweeper } from '../removal';
 import { StackOwnership } from '../stack-ownership';
 import { TargetResults } from '../target-results';

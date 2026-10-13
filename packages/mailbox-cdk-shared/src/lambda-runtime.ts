@@ -10,5 +10,6 @@ export { emitManualFinalize, type EmitManualFinalizeOptions } from './ts-lambdas
 export { LoggerBuffer, parseLogLevelStrict, type LogLevel, type LogEntry } from './ts-lambdas/shared/logger-buffer';
 export { loadBaseConfig, loadLogLevel, type BaseConfig } from './ts-lambdas/shared/base-config';
 export { ExpectedFailure } from './ts-lambdas/shared/expected-failure';
+export { CaughtError } from './ts-lambdas/shared/caught-error';
 export { parseArn, type ParsedArn } from './ts-lambdas/shared/arn';
 export { isParentStackRollingBack, isParentStackBeingDeleted } from './ts-lambdas/shared/stack-rollback-detector';

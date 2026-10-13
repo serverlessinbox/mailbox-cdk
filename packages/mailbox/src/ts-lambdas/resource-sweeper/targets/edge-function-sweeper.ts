@@ -1,6 +1,5 @@
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
-import { parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { CaughtError } from '../caught-error';
+import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { EdgeFunctionRemovalInput, TargetResult, TargetSweeper } from '../removal';
 import { StackOwnership } from '../stack-ownership';
 import { TargetResults } from '../target-results';

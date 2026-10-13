@@ -1,849 +1,332 @@
-// Set env vars before importing the handler (which loads config at module scope)
-process.env['SERVICE_NAME'] = 'stack-deployer';
-process.env['MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN'] = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
+import type * as SfnSdk from '@aws-sdk/client-sfn';
+import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
+import type * as HandlerModule from '../handler';
+import {
+  cfnRequest,
+  fakeCfnEndpoint,
+  LOG_STREAM_NAME,
+  operation,
+  sfnEvent,
+  silenceConsole,
+  stack,
+  STATE_MACHINE_ARN,
+  type ConsoleSpies,
+  type FakeCfnEndpoint,
+} from './stack-deployer-helpers';
 
-import * as handler from '../handler';
-import * as cfnStack from '../cfn-stack';
-import * as cfnResponse from '../cfn-response';
-import { SfnInvokeEvent } from '../types';
+interface LoadedHandlers {
+  readonly handlers: typeof HandlerModule;
+  readonly sfn: AwsClientStub<SfnSdk.SFNClient>;
+  readonly cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
+}
 
-jest.mock('../cfn-response');
-jest.mock('@aws-sdk/client-sfn');
+const CONTEXT = { logStreamName: LOG_STREAM_NAME };
+const ACCESS_DENIED = { name: 'AccessDeniedException', message: 'not allowed' };
+const ALREADY_EXISTS = { name: 'ExecutionAlreadyExists', message: 'Execution already exists' };
 
-// Mock only the I/O operations, not the status checking logic
-jest.mock('../cfn-stack', () => ({
-  ...jest.requireActual('../cfn-stack'),
-  describeStack: jest.fn(),
-  describeRecentFailureEvents: jest.fn(),
-  makeCfClientFromOp: jest.fn(),
-}));
+/**
+ * Pins the entry wiring of the two deployed functions that share this bundle: each loads its own config, a
+ * config problem is answered to CloudFormation rather than thrown at load, and a failure is answered by its
+ * kind. The handler loads its config when the module loads, so every scenario loads a fresh module. The
+ * classes the handlers hand events to have their own tests.
+ */
+describe('stack-deployer handlers', () => {
+  const originalEnvironment = { ...process.env };
+  let endpoint: FakeCfnEndpoint;
+  let consoleSpies: ConsoleSpies;
 
-const mockDescribeStack = cfnStack.describeStack as jest.MockedFunction<typeof cfnStack.describeStack>;
-const mockDescribeRecentFailureEvents = cfnStack.describeRecentFailureEvents as jest.MockedFunction<typeof cfnStack.describeRecentFailureEvents>;
-const mockMakeCfClientFromOp = cfnStack.makeCfClientFromOp as jest.MockedFunction<typeof cfnStack.makeCfClientFromOp>;
-const mockPutCfnResponse = cfnResponse.putCfnResponse as jest.MockedFunction<typeof cfnResponse.putCfnResponse>;
+  function loadHandlers(environment: Record<string, string | undefined>): LoadedHandlers {
+    for (const [name, value] of Object.entries(environment)) {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
 
-describe('stack deployer handler - DELETE_* hard-fail on non-Delete operations', () => {
-  const baseEvent: SfnInvokeEvent = {
-    mode: 'check',
-    cfn: {
-      ResponseURL: 'https://example.com/cfn-response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/abc',
-      RequestId: 'test-request-id',
-      LogicalResourceId: 'TestResource',
-    },
-    op: {
-      requestType: 'Create',
-      stackName: 'test-stack',
-      templateUrl: 'https://example.com/template.json',
-    },
-    attempt: 1,
-  };
+    let loaded: LoadedHandlers | undefined;
+    jest.isolateModules(() => {
+      const sfnSdk: typeof SfnSdk = require('@aws-sdk/client-sfn');
+      const cloudFormationSdk: typeof CloudFormationSdk = require('@aws-sdk/client-cloudformation');
+      loaded = {
+        handlers: require('../handler'),
+        sfn: mockClient(sfnSdk.SFNClient),
+        cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
+      };
+    });
+    if (!loaded) {
+      throw new Error('the handler module did not load');
+    }
+    return loaded;
+  }
+
+  const starterEnvironment = { SERVICE_NAME: 'stack-deployer-data-starter', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: STATE_MACHINE_ARN, LOG_LEVEL: undefined };
+  const workerEnvironment = { SERVICE_NAME: 'stack-deployer-data-worker', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockMakeCfClientFromOp.mockReturnValue({} as any);
-  });
-
-  it('non-Delete check with DELETE_IN_PROGRESS should respond FAILED and done: true', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'DELETE_IN_PROGRESS',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        physicalResourceId: 'test-stack',
-        reason: expect.stringMatching(/being deleted.*DELETE_IN_PROGRESS/s),
-      })
-    );
-  });
-
-  it('non-Delete check with DELETE_COMPLETE should respond FAILED', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'DELETE_COMPLETE',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        physicalResourceId: 'test-stack',
-        reason: expect.stringContaining('being deleted'),
-      })
-    );
-  });
-
-  it('non-Delete check with DELETE_FAILED should respond FAILED', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'DELETE_FAILED',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringContaining('being deleted'),
-      })
-    );
-  });
-
-  it('non-Delete check with stack missing should respond FAILED "does not exist"', async () => {
-    mockDescribeStack.mockResolvedValue(undefined);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringContaining('does not exist'),
-      })
-    );
-  });
-
-  it('non-Delete check at attempt >= MAX_POLL_ATTEMPTS with in-progress status should respond FAILED (cap fires)', async () => {
-    const eventAtCap = { ...baseEvent, attempt: 135 };
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'CREATE_IN_PROGRESS',
-      Outputs: [],
-    });
-
-    const result = await handler.workerHandler(eventAtCap, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringMatching(/did not reach a terminal state after 135 attempts.*CREATE_IN_PROGRESS/s),
-      })
-    );
-  });
-
-  it('non-Delete check at attempt >= MAX_POLL_ATTEMPTS + 1 should respond FAILED', async () => {
-    const eventBeyondCap = { ...baseEvent, attempt: 136 };
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'UPDATE_IN_PROGRESS',
-      Outputs: [],
-    });
-
-    const result = await handler.workerHandler(eventBeyondCap, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringContaining('did not reach a terminal state after 136 attempts'),
-      })
-    );
-  });
-
-  it('delete check at the cap should still respond SUCCESS (unchanged)', async () => {
-    const deleteEvent: SfnInvokeEvent = {
-      ...baseEvent,
-      op: { ...baseEvent.op, requestType: 'Delete' },
-      attempt: 135,
-    };
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'DELETE_IN_PROGRESS',
-      Outputs: [],
-    });
-
-    const result = await handler.workerHandler(deleteEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'SUCCESS',
-        reason: expect.stringContaining('deletion still in progress'),
-      })
-    );
-  });
-
-  it('non-Delete check with CREATE_COMPLETE should respond SUCCESS and done: true', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'CREATE_COMPLETE',
-      Outputs: [{ OutputKey: 'TestKey', OutputValue: 'TestValue' }],
-    });
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'SUCCESS',
-        data: { TestKey: 'TestValue' },
-      })
-    );
-  });
-
-  it('non-Delete check with UPDATE_IN_PROGRESS should return done: false (continue polling)', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'UPDATE_IN_PROGRESS',
-      Outputs: [],
-    });
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-  });
-
-  it('non-Delete check with CREATE_FAILED should respond FAILED', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'CREATE_FAILED',
-      StackStatusReason: 'Resource creation failed',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-      })
-    );
-  });
-
-  it('includes recent failure events in DELETE_* hard-fail response', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'DELETE_IN_PROGRESS',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'TestResource (AWS::S3::Bucket) CREATE_FAILED: Access Denied',
-    ]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringMatching(/Recent events:.*Access Denied/s),
-      })
-    );
-  });
-});
-
-describe('stack deployer handler - root stack name length validation', () => {
-  const baseCfnEvent = {
-    RequestType: 'Create' as const,
-    ResponseURL: 'https://example.com/cfn-response',
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123',
-    RequestId: 'test-request-id-123',
-    LogicalResourceId: 'StackDeployer',
-    ResourceType: 'AWS::CloudFormation::CustomResource',
-    ResourceProperties: {
-      stackName: 'edge-stack',
-      templateUrl: 'https://example.com/template.json',
-    },
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+    consoleSpies = silenceConsole();
+    endpoint = fakeCfnEndpoint();
   });
 
   afterEach(() => {
-    delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
-  });
-
-  it('Create request with too-long root stack name should respond FAILED and not call StartExecutionCommand', async () => {
-    // Stack name exceeds 24 chars (25 chars here: "this-is-a-very-long-names")
-    const longNameEvent = {
-      ...baseCfnEvent,
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
-    };
-
-    await handler.starterHandler(longNameEvent, {});
-
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringMatching(/exceeds maximum length.*24.*CloudFormation truncates/),
-      })
-    );
-
-    // Verify StartExecutionCommand was NOT called
-    const sfnModule = require('@aws-sdk/client-sfn');
-    expect(sfnModule.SFNClient.prototype.send).not.toHaveBeenCalled();
-  });
-
-  it('Create request with valid-length root stack name should call StartExecutionCommand', async () => {
-    const validNameEvent = {
-      ...baseCfnEvent,
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/valid-short-name/abc123',
-    };
-
-    // Mock the SFN client send method
-    const sfnModule = require('@aws-sdk/client-sfn');
-    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
-
-    await handler.starterHandler(validNameEvent, {});
-
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
-  });
-
-  it('Update request with too-long root stack name should NOT be blocked', async () => {
-    const updateEvent = {
-      ...baseCfnEvent,
-      RequestType: 'Update' as const,
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
-    };
-
-    // Mock the SFN client send method
-    const sfnModule = require('@aws-sdk/client-sfn');
-    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
-
-    await handler.starterHandler(updateEvent, {});
-
-    // Should NOT respond with FAILED due to name length
-    if (mockPutCfnResponse.mock.calls.length > 0) {
-      expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'FAILED',
-          reason: expect.stringMatching(/exceeds maximum length/),
-        })
-      );
-    }
-
-    // Should proceed to StartExecutionCommand
-    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
-  });
-
-  it('Delete request with too-long root stack name should NOT be blocked', async () => {
-    const deleteEvent = {
-      ...baseCfnEvent,
-      RequestType: 'Delete' as const,
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/abc123',
-    };
-
-    // Mock the SFN client send method
-    const sfnModule = require('@aws-sdk/client-sfn');
-    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
-
-    await handler.starterHandler(deleteEvent, {});
-
-    // Should NOT respond with FAILED due to name length
-    if (mockPutCfnResponse.mock.calls.length > 0) {
-      expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'FAILED',
-          reason: expect.stringMatching(/exceeds maximum length/),
-        })
-      );
-    }
-
-    // Should proceed to StartExecutionCommand
-    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
-  });
-
-  it('Create request at exactly the max length (24 chars) should be allowed', async () => {
-    // "exactly-twenty-four-char" is exactly 24 characters
-    const maxLengthEvent = {
-      ...baseCfnEvent,
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/exactly-twenty-four-char/abc123',
-    };
-
-    // Mock the SFN client send method
-    const sfnModule = require('@aws-sdk/client-sfn');
-    sfnModule.SFNClient.prototype.send = jest.fn().mockResolvedValue({});
-
-    await handler.starterHandler(maxLengthEvent, {});
-
-    // Should NOT respond with FAILED
-    expect(mockPutCfnResponse).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-        reason: expect.stringMatching(/exceeds maximum length/),
-      })
-    );
-
-    // Should proceed to StartExecutionCommand
-    expect(sfnModule.SFNClient.prototype.send).toHaveBeenCalled();
-  });
-});
-
-describe('stack deployer handler - KMS transient-error retry (Create operations)', () => {
-  const baseEvent: SfnInvokeEvent = {
-    mode: 'check',
-    cfn: {
-      ResponseURL: 'https://example.com/cfn-response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/abc',
-      RequestId: 'test-request-id',
-      LogicalResourceId: 'TestResource',
-    },
-    op: {
-      requestType: 'Create',
-      stackName: 'test-stack',
-      templateUrl: 'https://example.com/template.json',
-    },
-    attempt: 1,
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockMakeCfClientFromOp.mockReturnValue({} as any);
-  });
-
-  it('(a) ROLLBACK_IN_PROGRESS + matching KMS signature + Create: wait for rollback (no delete/recreate)', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_IN_PROGRESS',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: com.amazonaws.services.kms.model.NotFoundException: Key does not exist',
-    ]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    // Should return done: false (continue polling) without calling putCfnResponse
-    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-  });
-
-  it('(b) ROLLBACK_COMPLETE + matching KMS signature + budget remaining: recreate and increment count', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_COMPLETE',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'ItemTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException when validating alias/aws/dynamodb',
-    ]);
-
-    const baseEventWithCreateCount = {
-      ...baseEvent,
-      createRetryCount: 0,
-    };
-
-    const result = await handler.workerHandler(baseEventWithCreateCount as SfnInvokeEvent, {});
-
-    // Should return done: false with incremented createRetryCount
-    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 1 });
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-  });
-
-  it('(c) Budget exhausted (createRetryCount=3): falls through to FAILED path', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_COMPLETE',
-      StackStatusReason: 'The following resource(s) failed to create: [DynamoDBTable]',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: NotFoundException',
-    ]);
-
-    const baseEventWithMaxRetries = {
-      ...baseEvent,
-      createRetryCount: 3,
-    };
-
-    const result = await handler.workerHandler(baseEventWithMaxRetries as SfnInvokeEvent, {});
-
-    // Should respond FAILED (createRetryCount exhausted)
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 3 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-      })
-    );
-  });
-
-  it('(d) Non-matching KMS signature: falls through to FAILED path (regression guard)', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'CREATE_FAILED',
-      StackStatusReason: 'The following resource(s) failed to create: [S3Bucket]',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'S3Bucket (AWS::S3::Bucket) CREATE_FAILED: Access Denied',
-    ]);
-
-    const result = await handler.workerHandler(baseEvent, {});
-
-    // Should respond FAILED immediately (no KMS signature match)
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-      })
-    );
-  });
-
-  it('(e) requestType=Update: new branches never fire (unchanged FAILED path)', async () => {
-    const updateEvent: SfnInvokeEvent = {
-      ...baseEvent,
-      op: {
-        ...baseEvent.op,
-        requestType: 'Update',
-      },
-    };
-
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'UPDATE_FAILED',
-      StackStatusReason: 'The following resource(s) failed to update: [DynamoDBTable]',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'DynamoDBTable (AWS::DynamoDB::Table) UPDATE_FAILED: KMS NotFoundException',
-    ]);
-
-    const result = await handler.workerHandler(updateEvent, {});
-
-    // Should respond FAILED immediately (Update request, not Create)
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-      })
-    );
-  });
-
-  it('ROLLBACK_FAILED + matching KMS signature + budget remaining: should also trigger recreate', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_FAILED',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'ItemTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS validation error: NotFoundException for alias/aws/dynamodb',
-    ]);
-
-    const baseEventWithRetryCount = {
-      ...baseEvent,
-      createRetryCount: 1,
-    };
-
-    const result = await handler.workerHandler(baseEventWithRetryCount as SfnInvokeEvent, {});
-
-    // Should return done: false with incremented createRetryCount
-    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 2 });
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-  });
-
-  it('ROLLBACK_COMPLETE + matching KMS signature at retry budget boundary (createRetryCount=2): should recreate', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_COMPLETE',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'Table (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException',
-    ]);
-
-    const baseEventAtBoundary = {
-      ...baseEvent,
-      createRetryCount: 2, // Still within budget (< 3)
-    };
-
-    const result = await handler.workerHandler(baseEventAtBoundary as SfnInvokeEvent, {});
-
-    // Should return done: false with incremented createRetryCount (now 3)
-    expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 3 });
-    expect(mockPutCfnResponse).not.toHaveBeenCalled();
-  });
-
-  it('ROLLBACK_COMPLETE + matching KMS signature exceeding budget: should NOT retry', async () => {
-    mockDescribeStack.mockResolvedValue({
-      StackStatus: 'ROLLBACK_COMPLETE',
-      StackStatusReason: 'Failed to create stack',
-      Outputs: [],
-    });
-    mockDescribeRecentFailureEvents.mockResolvedValue([
-      'DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: KMS NotFoundException',
-    ]);
-
-    const baseEventOverBudget = {
-      ...baseEvent,
-      createRetryCount: 3, // At budget limit
-    };
-
-    const result = await handler.workerHandler(baseEventOverBudget as SfnInvokeEvent, {});
-
-    // Should respond FAILED (budget exhausted)
-    expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 3 });
-    expect(mockPutCfnResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'FAILED',
-      })
-    );
-  });
-});
-
-describe('stack deployer handlers — smoke test wrapper', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
-  });
-
-  afterEach(() => {
-    delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
+    jest.restoreAllMocks();
+    process.env = { ...originalEnvironment };
   });
 
   describe('starterHandler', () => {
-    it('responds to smoke test probe without invoking the CFN handler', async () => {
-      const probeEvent = { serverlessInboxSmokeTest: true };
+    it('starts the execution, writes the break-glass finalization lines and answers nothing', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+      sfn.callsFake(async () => ({}));
 
-      const result = await (handler.starterHandler as any)(probeEvent, {});
+      await handlers.starterHandler(cfnRequest(), CONTEXT);
 
-      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
-      expect(mockPutCfnResponse).not.toHaveBeenCalled();
+      expect(sfn.calls()).toHaveLength(1);
+      expect(endpoint.answers()).toEqual([]);
+      const written = consoleSpies.log.mock.calls.map((call) => String(call[0])).join('\n');
+      expect(written).toContain('MANUAL_FINALIZE stack=test-data-stack logical=MailboxDeployer type=Create requestId=request-123');
+      expect(written).toContain(`MANUAL_FINALIZE responseUrl=https://example.com/cfn-response`);
+      expect(consoleSpies.info).toHaveBeenCalledWith('stack-deployer-starter dispatch', { requestType: 'Create', logicalResourceId: 'MailboxDeployer' });
+    });
+
+    it('starts the execution with a Step Functions client of the region the function runs in', async () => {
+      const { handlers, sfn } = loadHandlers({ ...starterEnvironment, AWS_REGION: 'eu-west-1' });
+      sfn.callsFake(async () => ({}));
+
+      await handlers.starterHandler(cfnRequest(), CONTEXT);
+
+      await expect(sfn.calls()[0].thisValue.config.region()).resolves.toBe('eu-west-1');
+    });
+
+    it.each([
+      ['Create', 'FAILED'],
+      ['Delete', 'SUCCESS'],
+      ['Update', 'FAILED'],
+    ] as const)('answers a %s %s when the config is bad, and starts nothing', async (requestType, status) => {
+      const { handlers, sfn } = loadHandlers({ ...starterEnvironment, MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined });
+
+      await handlers.starterHandler(cfnRequest({ RequestType: requestType }), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({
+          Status: status,
+          Reason: 'Configuration error: MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set',
+          PhysicalResourceId: 'test-data-stack',
+        }),
+      ]);
+      expect(sfn.calls()).toHaveLength(0);
+      expect(consoleSpies.log).not.toHaveBeenCalled();
+    });
+
+    it('throws for an event it cannot answer and sends no answer', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+
+      await expect(handlers.starterHandler({ RequestType: 'Create' }, CONTEXT)).rejects.toThrow(/Invalid event/);
+
+      expect(endpoint.answers()).toEqual([]);
+      expect(sfn.calls()).toHaveLength(0);
+    });
+
+    it('answers FAILED with the reason of an expected failure and writes none of the buffered trace', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+      const request = cfnRequest({ StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/this-is-a-very-long-names/guid' });
+
+      await handlers.starterHandler(request, CONTEXT);
+
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Root stack name "this-is-a-very-long-names" exceeds maximum length') })]);
+      expect(sfn.calls()).toHaveLength(0);
+      expect(consoleSpies.debug).not.toHaveBeenCalled();
+    });
+
+    it('answers a Delete SUCCESS with the reason of an expected failure', async () => {
+      const { handlers } = loadHandlers({ ...starterEnvironment, MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: 'arn:aws:states:us-east-1:123456789012:stateMachine/deployer' });
+
+      await handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: expect.stringContaining(':stateMachine/{name}') })]);
+    });
+
+    it('answers properties it cannot run FAILED, naming the resource MailboxStack when they name no stack', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+
+      await handlers.starterHandler(cfnRequest({}, {}), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'FAILED', PhysicalResourceId: 'MailboxStack', Reason: expect.stringContaining('Invalid ResourceProperties') }),
+      ]);
+      expect(sfn.calls()).toHaveLength(0);
+    });
+
+    it('writes the buffered trace and answers FAILED when the execution cannot be started', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+      sfn.callsFake(async () => {
+        throw Object.assign(new Error(ACCESS_DENIED.message), { name: ACCESS_DENIED.name });
+      });
+
+      await handlers.starterHandler(cfnRequest(), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'FAILED', Reason: 'Failed to start Step Functions execution: AccessDeniedException: not allowed' }),
+      ]);
+      expect(consoleSpies.debug).toHaveBeenCalledWith('Starting Step Functions execution', expect.objectContaining({ executionName: 'request-123' }));
+    });
+
+    it('answers a Delete SUCCESS when the execution cannot be started', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+      sfn.callsFake(async () => {
+        throw Object.assign(new Error(ACCESS_DENIED.message), { name: ACCESS_DENIED.name });
+      });
+
+      await handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'SUCCESS', Reason: 'Failed to start Step Functions execution (ignored for Delete): AccessDeniedException: not allowed' }),
+      ]);
+    });
+
+    it('writes the buffered trace and rethrows a failure it does not answer, with a single attempt to answer', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+      sfn.callsFake(async () => {
+        throw Object.assign(new Error(ALREADY_EXISTS.message), { name: ALREADY_EXISTS.name });
+      });
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rejected', { status: 500 }));
+
+      await expect(handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT)).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 500): rejected');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(consoleSpies.debug).toHaveBeenCalledWith('Starting Step Functions execution', expect.objectContaining({ executionName: 'request-123' }));
+    });
+
+    it('reports a probe unhealthy when the starter config is bad, and healthy when it is good', async () => {
+      const bad = loadHandlers({ ...starterEnvironment, MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined });
+      await expect(bad.handlers.starterHandler({ serverlessInboxSmokeTest: true })).resolves.toEqual({ serverlessInboxSmokeTestOk: false });
+
+      const good = loadHandlers(starterEnvironment);
+      await expect(good.handlers.starterHandler({ serverlessInboxSmokeTest: true })).resolves.toEqual({ serverlessInboxSmokeTestOk: true });
     });
   });
 
   describe('workerHandler', () => {
-    it('responds to smoke test probe without invoking the SFN handler', async () => {
-      const probeEvent = { serverlessInboxSmokeTest: true };
+    it('runs a check without the starter state machine ARN, which the worker function is never given', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(async () => ({ Stacks: [stack('CREATE_COMPLETE')], StackEvents: [] }));
 
-      const result = await (handler.workerHandler as any)(probeEvent, {});
-
-      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
-    });
-  });
-});
-
-describe('stack deployer handlers — config error handling', () => {
-  const baseCfnEvent = {
-    RequestType: 'Create' as const,
-    ResponseURL: 'https://example.com/cfn-response',
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123',
-    RequestId: 'test-request-id-123',
-    LogicalResourceId: 'StackDeployer',
-    ResourceType: 'AWS::CloudFormation::CustomResource',
-    ResourceProperties: {
-      stackName: 'test-edge-stack',
-      templateUrl: 'https://example.com/template.json',
-    },
-  };
-
-  const baseSfnEvent: SfnInvokeEvent = {
-    mode: 'start',
-    cfn: {
-      ResponseURL: 'https://example.com/cfn-response',
-      StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/abc',
-      RequestId: 'test-request-id',
-      LogicalResourceId: 'TestResource',
-    },
-    op: {
-      requestType: 'Create',
-      stackName: 'test-sfn-stack',
-      templateUrl: 'https://example.com/template.json',
-    },
-  };
-
-  describe('starterHandler with bad config', () => {
-    it('Create event with bad LOG_LEVEL should send FAILED response', async () => {
-      jest.isolateModules(() => {
-        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
-        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        // Re-require the handler to reload with bad config
-        const handlerModule = require('../handler');
-
-        return handlerModule.starterHandler(baseCfnEvent, {}).then(() => {
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'FAILED',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-
-    it('Delete event with bad LOG_LEVEL should send SUCCESS response', async () => {
-      jest.isolateModules(() => {
-        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
-        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.starterHandler(
-          { ...baseCfnEvent, RequestType: 'Delete' },
-          {}
-        ).then(() => {
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'SUCCESS',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-
-    it('Create event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send FAILED response', async () => {
-      jest.isolateModules(() => {
-        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.starterHandler(baseCfnEvent, {}).then(() => {
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'FAILED',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-
-    it('Delete event with missing MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN should send SUCCESS response', async () => {
-      jest.isolateModules(() => {
-        delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // Missing required var
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.starterHandler(
-          { ...baseCfnEvent, RequestType: 'Delete' },
-          {}
-        ).then(() => {
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'SUCCESS',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-  });
-
-  describe('workerHandler with bad config', () => {
-    it('Create event with bad LOG_LEVEL should send FAILED response and return done: true', async () => {
-      jest.isolateModules(() => {
-        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
-        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.workerHandler(baseSfnEvent, {}).then((result: any) => {
-          expect(result).toEqual({ done: true });
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'FAILED',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-
-    it('Delete event with bad LOG_LEVEL should send SUCCESS response and return done: true', async () => {
-      jest.isolateModules(() => {
-        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
-        process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
-
-        jest.clearAllMocks();
-        const cfnResponse = require('../cfn-response');
-        cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-
-        const handlerModule = require('../handler');
-
-        return handlerModule.workerHandler(
-          { ...baseSfnEvent, op: { ...baseSfnEvent.op, requestType: 'Delete' } },
-          {}
-        ).then((result: any) => {
-          expect(result).toEqual({ done: true });
-          expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-            expect.objectContaining({
-              status: 'SUCCESS',
-              reason: expect.stringContaining('Configuration error'),
-            })
-          );
-        });
-      });
-    });
-
-    // Regression coverage for the 2026-09-13 incident: the worker's CDK wrapper
-    // (stack-deployer-worker.ts) never sets MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN — only the
-    // starter's wrapper does. The worker must load successfully without it. Before the fix (a
-    // single shared Config with stateMachineArn mandatory for both handlers), this environment
-    // made every worker invocation respond with "Configuration error" and never reach real work.
-    it('handles a check event normally with MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN absent (the worker Lambda\'s real environment)', async () => {
-      jest.resetModules();
-      delete process.env.LOG_LEVEL; // earlier tests in this describe leave 'verbose' set
-      delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // never set on the worker
-      process.env.SERVICE_NAME = 'stack-deployer-worker';
-
-      jest.clearAllMocks();
-      const cfnResponse = require('../cfn-response');
-      cfnResponse.putCfnResponse.mockResolvedValue(undefined);
-      const cfnStack = require('../cfn-stack');
-      cfnStack.makeCfClientFromOp.mockReturnValue({} as any);
-      cfnStack.describeStack.mockResolvedValue({
-        StackStatus: 'CREATE_COMPLETE',
-        Outputs: [],
-      });
-      cfnStack.describeRecentFailureEvents.mockResolvedValue([]);
-
-      const handlerModule = require('../handler');
-
-      const checkEvent = { ...baseSfnEvent, mode: 'check' as const };
-      const result = await handlerModule.workerHandler(checkEvent, {});
+      const result = await handlers.workerHandler(sfnEvent(), CONTEXT);
 
       expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
-      expect(cfnResponse.putCfnResponse).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'SUCCESS' }),
-      );
-      expect(cfnResponse.putCfnResponse).not.toHaveBeenCalledWith(
-        expect.objectContaining({ reason: expect.stringContaining('Configuration error') }),
-      );
-
-      delete process.env.SERVICE_NAME;
-      process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS' })]);
+      expect(consoleSpies.info).toHaveBeenCalledWith('stack-deployer-worker dispatch', { mode: 'check', attempt: 1 });
     });
 
-    it('workerHandler smoke test probe succeeds with MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN absent', async () => {
-      jest.resetModules();
-      delete process.env.LOG_LEVEL; // earlier tests in this describe leave 'verbose' set
-      delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN; // never set on the worker
-      process.env.SERVICE_NAME = 'stack-deployer-worker';
+    it.each([
+      ['Create', 'FAILED'],
+      ['Delete', 'SUCCESS'],
+    ] as const)('answers a %s %s and ends the workflow when the config is bad', async (requestType, status) => {
+      const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, SERVICE_NAME: undefined });
 
-      const handlerModule = require('../handler');
+      const result = await handlers.workerHandler(sfnEvent({ op: operation({ requestType }) }), CONTEXT);
 
-      const result = await handlerModule.workerHandler({ serverlessInboxSmokeTest: true }, {});
-      expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+      expect(result).toEqual({ done: true });
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: status, Reason: 'Configuration error: SERVICE_NAME is not set', PhysicalResourceId: 'test-data-stack' }),
+      ]);
+      expect(cloudFormation.calls()).toHaveLength(0);
+    });
 
-      delete process.env.SERVICE_NAME;
-      process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:stack-deployer';
+    describe('the CloudFormation client of a stack operation', () => {
+      const inProgress = async () => ({ Stacks: [stack('UPDATE_IN_PROGRESS')], StackEvents: [] });
+
+      it('is built for the region the operation names', async () => {
+        const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
+        cloudFormation.callsFake(inProgress);
+
+        await handlers.workerHandler(sfnEvent({ op: operation({ region: 'us-west-2' }) }), CONTEXT);
+
+        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('us-west-2');
+      });
+
+      it('is built for the region the function runs in when the operation names none', async () => {
+        const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
+        cloudFormation.callsFake(inProgress);
+
+        await handlers.workerHandler(sfnEvent(), CONTEXT);
+
+        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('eu-west-1');
+      });
+
+      it('is built for us-east-1 when the function reports no region and the operation names none', async () => {
+        const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: undefined });
+        cloudFormation.callsFake(inProgress);
+
+        await handlers.workerHandler(sfnEvent(), CONTEXT);
+
+        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('us-east-1');
+      });
+
+      it('is built once per region and reused by later operations', async () => {
+        const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+        cloudFormation.callsFake(inProgress);
+
+        await handlers.workerHandler(sfnEvent(), CONTEXT);
+        await handlers.workerHandler(sfnEvent(), CONTEXT);
+
+        const clients = new Set(cloudFormation.calls().map((call) => call.thisValue));
+        expect(cloudFormation.calls().length).toBeGreaterThan(1);
+        expect(clients.size).toBe(1);
+      });
+    });
+
+    it('throws for an input it cannot read and sends no answer', async () => {
+      const { handlers } = loadHandlers(workerEnvironment);
+
+      await expect(handlers.workerHandler({ mode: 'check' }, CONTEXT)).rejects.toThrow(/Invalid event/);
+
+      expect(endpoint.answers()).toEqual([]);
+    });
+
+    it('writes the buffered trace, answers FAILED and ends the workflow when a stack call fails', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(async () => {
+        throw Object.assign(new Error('cannot describe'), { name: 'AccessDenied' });
+      });
+
+      const result = await handlers.workerHandler(sfnEvent(), CONTEXT);
+
+      expect(result).toEqual({ done: true });
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'FAILED', Reason: 'Stack deployer check failed (DescribeStacks): AccessDenied: cannot describe' }),
+      ]);
+      expect(consoleSpies.info).toHaveBeenCalledWith('Stack deployer op', expect.objectContaining({ mode: 'check' }));
+    });
+
+    it('writes the buffered trace and rethrows a failure it does not answer, with a single attempt to answer', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(async () => ({ Stacks: [stack('CREATE_COMPLETE')], StackEvents: [] }));
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rejected', { status: 500 }));
+
+      await expect(handlers.workerHandler(sfnEvent(), CONTEXT)).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 500): rejected');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(consoleSpies.info).toHaveBeenCalledWith('Stack deployer op', expect.objectContaining({ mode: 'check' }));
+    });
+
+    it('answers a Delete SUCCESS when a stack call fails', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(async () => {
+        throw Object.assign(new Error('cannot describe'), { name: 'AccessDenied' });
+      });
+
+      await handlers.workerHandler(sfnEvent({ op: operation({ requestType: 'Delete' }) }), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS' })]);
+    });
+
+    it('reports a probe healthy without the starter ARN, and unhealthy when the worker config is bad', async () => {
+      const good = loadHandlers(workerEnvironment);
+      await expect(good.handlers.workerHandler({ serverlessInboxSmokeTest: true })).resolves.toEqual({ serverlessInboxSmokeTestOk: true });
+
+      const bad = loadHandlers({ ...workerEnvironment, SERVICE_NAME: undefined });
+      await expect(bad.handlers.workerHandler({ serverlessInboxSmokeTest: true })).resolves.toEqual({ serverlessInboxSmokeTestOk: false });
     });
   });
-
 });
