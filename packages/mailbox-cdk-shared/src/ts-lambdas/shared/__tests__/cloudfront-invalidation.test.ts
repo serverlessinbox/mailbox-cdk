@@ -1,7 +1,13 @@
+/**
+ * Pins when an invalidation is created and what it carries: a request without a distribution or without a
+ * non-blank path creates nothing, and a caller reference longer than CloudFront accepts is hashed rather than
+ * sent, because CloudFront rejects the request otherwise and the deployment fails.
+ */
+
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
 import { mockClient } from 'aws-sdk-client-mock';
 import type { AwsClientStub } from 'aws-sdk-client-mock';
-import { invalidateCloudFront } from '../ui-cloudfront';
+import { invalidateCloudFront } from '../cloudfront-invalidation';
 
 describe('invalidateCloudFront', () => {
   let cloudFrontMock: AwsClientStub<CloudFrontClient>;

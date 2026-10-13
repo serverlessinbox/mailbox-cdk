@@ -4,7 +4,7 @@ import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
-import { invalidateCloudFront } from '../shared/ui-cloudfront';
+import { invalidateCloudFront } from '../shared/cloudfront-invalidation';
 import {
   isContentDeployerResourceProperties,
   type ContentDeployerResourceProperties,

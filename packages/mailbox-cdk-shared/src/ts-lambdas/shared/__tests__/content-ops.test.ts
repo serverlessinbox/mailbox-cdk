@@ -2,52 +2,31 @@
 /// <reference types="node" />
 
 /**
- * Unit tests for deployZipToPrefix.
- *
- * Tests the buffered zip approach (unzipper.Open.buffer) by mocking S3 client
- * and unzipper.Open.buffer to verify:
- * - Correct entries are uploaded with proper keys/content-types
- * - Directory entries are skipped
- * - Empty body throws cleanly
- * - uploaded count is accurate
+ * Pins the S3 content operations the content deployers share: a zip is unpacked entry by entry under a
+ * prefix with the key and content type each entry is given, a prefix is emptied page by page in batches S3
+ * accepts, and one object is written with its headers. A regression here corrupts a deployed UI bucket or
+ * leaves stale objects behind. The key an entry is written under and the content type it is given are steps of
+ * deployZipToPrefix and are pinned through it: a path that leaves the prefix would write outside the directory
+ * a deployment owns, and text without its charset would be decoded with the browser's default.
  */
 
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   S3Client,
+  DeleteObjectsCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
+  type _Object,
 } from '@aws-sdk/client-s3';
-import { deployZipToPrefix } from '../content-ops';
+import { deletePrefix, deployZipToPrefix, writeObject } from '../content-ops';
 
-// Mock unzipper.Open.buffer to return test directory structure
 jest.mock('unzipper', () => ({
   Open: {
     buffer: jest.fn(),
   },
 }));
 
-// Mock content-type and path utilities
-jest.mock('../ui-content-type', () => ({
-  guessContentType: jest.fn((key: string) => {
-    if (key.endsWith('.html')) return 'text/html';
-    if (key.endsWith('.js')) return 'application/javascript';
-    if (key.endsWith('.css')) return 'text/css';
-    if (key.endsWith('.json')) return 'application/json';
-    return 'application/octet-stream';
-  }),
-}));
-
-jest.mock('../ui-paths', () => ({
-  normalizeRelativeKey: jest.fn((path: string) => {
-    // Strip leading ./ or similar
-    return path.replace(/^\.\//, '');
-  }),
-  normalizePrefix: jest.fn((prefix: string) => prefix),
-}));
-
-
-// Import the mock after defining it
 const unzipperMock = require('unzipper');
 
 describe('deployZipToPrefix', () => {
@@ -63,7 +42,7 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: 'index.html',
+          path: './index.html',
           type: 'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('<html>test</html>')),
         },
@@ -121,28 +100,28 @@ describe('deployZipToPrefix', () => {
       expect.objectContaining({
         Bucket: 'target-bucket',
         Key: 'v1/index.html',
-        ContentType: 'text/html',
+        ContentType: 'text/html; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
         Bucket: 'target-bucket',
         Key: 'v1/app.js',
-        ContentType: 'application/javascript',
+        ContentType: 'application/javascript; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
         Bucket: 'target-bucket',
         Key: 'v1/style.css',
-        ContentType: 'text/css',
+        ContentType: 'text/css; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
         Bucket: 'target-bucket',
         Key: 'v1/config.json',
-        ContentType: 'application/json',
+        ContentType: 'application/json; charset=utf-8',
       }),
     );
   });
@@ -317,5 +296,185 @@ describe('deployZipToPrefix', () => {
     const putCommands = calls.filter((call) => call[0] instanceof PutObjectCommand);
     expect(getCommands.length).toBeGreaterThan(0);
     expect(putCommands.length).toBeGreaterThan(0);
+  });
+});
+
+describe('deletePrefix', () => {
+  const s3Mock = mockClient(S3Client);
+
+  beforeEach(() => {
+    s3Mock.reset();
+    s3Mock.on(DeleteObjectsCommand).resolves({});
+  });
+
+  function keysNamed(count: number, from = 0): _Object[] {
+    return Array.from({ length: count }, (_, index) => ({ Key: `content/file-${from + index}` }));
+  }
+
+  it('deletes nothing and returns 0 when the prefix holds no objects', async () => {
+    s3Mock.on(ListObjectsV2Command).resolves({});
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(0);
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(0);
+  });
+
+  it('stops at a page without keys even when S3 offers a continuation token', async () => {
+    s3Mock
+      .on(ListObjectsV2Command)
+      .resolvesOnce({ Contents: [], NextContinuationToken: 'never-followed' })
+      .resolves({ Contents: keysNamed(1) });
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(0);
+    expect(s3Mock.commandCalls(ListObjectsV2Command)).toHaveLength(1);
+  });
+
+  it('skips a listed object that has no key', async () => {
+    s3Mock.on(ListObjectsV2Command).resolves({ Contents: [...keysNamed(1), { Size: 5 }] });
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(1);
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)[0].args[0].input.Delete?.Objects).toEqual(keysNamed(1));
+  });
+
+  it('lists the prefix in the bucket it is given and deletes the listed keys quietly', async () => {
+    s3Mock.on(ListObjectsV2Command).resolves({ Contents: keysNamed(2) });
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(2);
+    expect(s3Mock.commandCalls(ListObjectsV2Command)[0].args[0].input).toMatchObject({
+      Bucket: 'target-bucket',
+      Prefix: 'content/',
+    });
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)[0].args[0].input).toEqual({
+      Bucket: 'target-bucket',
+      Delete: { Objects: keysNamed(2), Quiet: true },
+    });
+  });
+
+  it('follows the continuation token to delete every page', async () => {
+    s3Mock
+      .on(ListObjectsV2Command)
+      .resolvesOnce({ Contents: keysNamed(2), NextContinuationToken: 'page-2' })
+      .resolvesOnce({ Contents: keysNamed(1, 2) });
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(3);
+    const listCalls = s3Mock.commandCalls(ListObjectsV2Command);
+    expect(listCalls[0].args[0].input.ContinuationToken).toBeUndefined();
+    expect(listCalls[1].args[0].input.ContinuationToken).toBe('page-2');
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(2);
+  });
+
+  it('deletes a page of more than 1000 keys in batches of at most 1000', async () => {
+    s3Mock.on(ListObjectsV2Command).resolves({ Contents: keysNamed(1001) });
+
+    const deleted = await deletePrefix(new S3Client({}), 'target-bucket', 'content/');
+
+    expect(deleted).toBe(1001);
+    const batchSizes = s3Mock
+      .commandCalls(DeleteObjectsCommand)
+      .map((call) => call.args[0].input.Delete?.Objects?.length);
+    expect(batchSizes).toEqual([1000, 1]);
+  });
+});
+
+describe('writeObject', () => {
+  const s3Mock = mockClient(S3Client);
+
+  beforeEach(() => {
+    s3Mock.reset();
+    s3Mock.on(PutObjectCommand).resolves({});
+  });
+
+  it('writes the body under the key in the target bucket with its content type and cache control', async () => {
+    await writeObject(new S3Client({}), {
+      targetBucket: 'target-bucket',
+      key: 'config.json',
+      body: '{"a":1}',
+      contentType: 'application/json',
+      cacheControl: 'no-store',
+    });
+
+    expect(s3Mock.commandCalls(PutObjectCommand)[0].args[0].input).toEqual({
+      Bucket: 'target-bucket',
+      Key: 'config.json',
+      Body: '{"a":1}',
+      ContentType: 'application/json',
+      CacheControl: 'no-store',
+    });
+  });
+});
+
+describe('deployZipToPrefix, for one entry', () => {
+  const s3Mock = mockClient(S3Client);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    s3Mock.reset();
+    s3Mock.on(PutObjectCommand).resolves({});
+  });
+
+  async function deployEntry(entryPath: string): Promise<void> {
+    unzipperMock.Open.buffer.mockResolvedValue({
+      files: [{ path: entryPath, type: 'File', buffer: jest.fn().mockResolvedValue(Buffer.from('content')) }],
+    });
+    const body = { transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array()) };
+    s3Mock.on(GetObjectCommand).resolves({ Body: body as any });
+
+    await deployZipToPrefix(new S3Client({}), {
+      sourceBucket: 'source-bucket',
+      sourceKey: 'ui.zip',
+      targetBucket: 'target-bucket',
+      targetPrefix: 'v1/',
+    });
+  }
+
+  function writtenInput() {
+    return s3Mock.commandCalls(PutObjectCommand)[0].args[0].input;
+  }
+
+  it.each([
+    ['index.html', 'text/html; charset=utf-8'],
+    ['style.css', 'text/css; charset=utf-8'],
+    ['app.js', 'application/javascript; charset=utf-8'],
+    ['config.json', 'application/json; charset=utf-8'],
+    ['logo.png', 'image/png'],
+    ['data.unknownextension', undefined],
+  ])('stores %s with the content type %s', async (entryPath, contentType) => {
+    await deployEntry(entryPath);
+
+    expect(writtenInput().ContentType).toBe(contentType);
+  });
+
+  it.each([
+    ['index.html', 'v1/index.html'],
+    ['  assets/app.js  ', 'v1/assets/app.js'],
+    ['///assets/app.js', 'v1/assets/app.js'],
+    ['assets/./img/../app.js', 'v1/assets/app.js'],
+  ])('writes the entry path %j under the key %j', async (entryPath, key) => {
+    await deployEntry(entryPath);
+
+    expect(writtenInput().Key).toBe(key);
+  });
+
+  it.each([
+    ['an empty path', ''],
+    ['a blank path', '   '],
+    ['only slashes', '///'],
+    ['the current directory', '.'],
+    ['a path that leaves the prefix', '../outside.txt'],
+    ['a path that climbs out after descending', 'assets/../../outside.txt'],
+    ['a Windows drive path', 'C:/windows/file.txt'],
+  ])('refuses %s and writes nothing', async (_description, entryPath) => {
+    await expect(deployEntry(entryPath)).rejects.toThrow(`Invalid relative key: ${entryPath}`);
+
+    expect(s3Mock.commandCalls(PutObjectCommand)).toHaveLength(0);
   });
 });

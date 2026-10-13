@@ -3,19 +3,41 @@
 import type { S3Client } from '@aws-sdk/client-s3';
 import type { ListObjectsV2CommandOutput } from '@aws-sdk/client-s3';
 import {
-  DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
+import mime from 'mime-types';
+import { posix as pathPosix } from 'node:path';
 import unzipper from 'unzipper';
 
-import { guessContentType } from './ui-content-type';
-import { normalizeRelativeKey, normalizePrefix } from './ui-paths';
+const S3_DELETE_OBJECTS_LIMIT = 1000;
 
-export { normalizePrefix };
+/** The zip object to unpack and the bucket and prefix its entries are written under. */
+export interface ZipDeployment {
+  readonly sourceBucket: string;
+  readonly sourceKey: string;
+  readonly sourceVersionId?: string;
+  readonly targetBucket: string;
+  readonly targetPrefix: string;
+}
 
+/** How many entries of a zip were written. */
+export interface ZipDeploymentResult {
+  readonly uploaded: number;
+}
+
+/** One object to write: its key, its body and the optional headers it is stored with. */
+export interface ObjectWrite {
+  readonly targetBucket: string;
+  readonly key: string;
+  readonly body: string;
+  readonly contentType?: string;
+  readonly cacheControl?: string;
+}
+
+/** Deletes every object under the prefix and returns how many it deleted. */
 export async function deletePrefix(s3: S3Client, bucket: string, prefix: string): Promise<number> {
   let deleted = 0;
   let token: string | undefined = undefined;
@@ -33,11 +55,12 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
       .map((o) => o.Key)
       .filter((k): k is string => typeof k === 'string');
 
-    if (keys.length === 0) break;
+    if (keys.length === 0) {
+      break;
+    }
 
-    // DeleteObjects caps at 1000 keys.
-    for (let i = 0; i < keys.length; i += 1000) {
-      const batch: string[] = keys.slice(i, i + 1000);
+    for (let i = 0; i < keys.length; i += S3_DELETE_OBJECTS_LIMIT) {
+      const batch: string[] = keys.slice(i, i + S3_DELETE_OBJECTS_LIMIT);
       await s3.send(
         new DeleteObjectsCommand({
           Bucket: bucket,
@@ -56,82 +79,33 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
   return deleted;
 }
 
-export async function deleteObject(s3: S3Client, bucket: string, key: string): Promise<void> {
-  await s3.send(
-    new DeleteObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    }),
-  );
-}
+/**
+ * Unpacks the zip object and writes each file entry under the target prefix, with the content type its
+ * extension implies. Directory entries are skipped. Throws when the zip object has no body or an entry
+ * path leaves the prefix.
+ */
+export async function deployZipToPrefix(s3: S3Client, deployment: ZipDeployment): Promise<ZipDeploymentResult> {
+  const { sourceBucket, sourceKey, sourceVersionId, targetBucket, targetPrefix } = deployment;
 
-export async function deployZipToPrefix(s3: S3Client, params: {
-  sourceBucket: string;
-  sourceKey: string;
-  sourceVersionId?: string;
-  targetBucket: string;
-  targetPrefix: string;
-}): Promise<{ uploaded: number }> {
-  const { sourceBucket, sourceKey, sourceVersionId, targetBucket, targetPrefix } = params;
-
-  const obj = await s3.send(
-    new GetObjectCommand({
-      Bucket: sourceBucket,
-      Key: sourceKey,
-      VersionId: sourceVersionId,
-    }),
-  );
-
-  const body = obj.Body;
-  if (!body) throw new Error('S3 GetObject returned empty body');
-
-  // Buffer the entire (small) UI zip, then read entries via random access.
-  // This avoids two issues with the streaming pipe + for-await approach:
-  // 1. .pipe() does NOT forward source-stream errors, so errors on zipStream
-  //    (the S3 body) emit with no listener → uncaught exception → process exit
-  // 2. unzipper.Parse with forceStream consumed via for-await can leave the
-  //    final iterator promise unsettled → event loop empties → Node exits
-  // Both bypass the try/catch → Lambda NodeJsExit crash.
-  const zipBuffer = Buffer.from(await body.transformToByteArray());
-  const directory = await unzipper.Open.buffer(zipBuffer);
+  const directory = await readZipDirectory(s3, sourceBucket, sourceKey, sourceVersionId);
 
   let uploaded = 0;
   for (const file of directory.files) {
-    if (file.type === 'Directory') continue;
+    if (file.type === 'Directory') {
+      continue;
+    }
 
-    const relative = normalizeRelativeKey(file.path);
-    const key = `${targetPrefix}${relative}`;
-
-    // Don't stream the entry directly into S3 PutObject.
-    // The AWS SDK may sign streaming bodies with strict chunking requirements
-    // ("Only the last chunk is allowed to have a size less than 8192 bytes").
-    // Buffering avoids that failure mode and is fine for UI asset zips.
-    const content = await file.buffer();
-
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: targetBucket,
-        Key: key,
-        Body: content,
-        ContentLength: content.length,
-        ContentType: guessContentType(key),
-      }),
-    );
-
+    const key = `${targetPrefix}${normalizeRelativeKey(file.path)}`;
+    await uploadZipEntry(s3, targetBucket, key, file);
     uploaded += 1;
   }
 
   return { uploaded };
 }
 
-export async function writeObject(s3: S3Client, params: {
-  targetBucket: string;
-  key: string;
-  body: string;
-  contentType?: string;
-  cacheControl?: string;
-}): Promise<void> {
-  const { targetBucket, key, body, contentType, cacheControl } = params;
+/** Writes one object. */
+export async function writeObject(s3: S3Client, write: ObjectWrite): Promise<void> {
+  const { targetBucket, key, body, contentType, cacheControl } = write;
 
   await s3.send(
     new PutObjectCommand({
@@ -142,4 +116,90 @@ export async function writeObject(s3: S3Client, params: {
       CacheControl: cacheControl,
     }),
   );
+}
+
+/**
+ * Reads the whole zip object into memory and opens it for random access by entry. The UI zips are small, and
+ * the streaming alternatives fail outside any try/catch: `.pipe()` does not forward source-stream errors, so
+ * an error on the S3 body has no listener and ends the process, and `unzipper.Parse` consumed with `for await`
+ * can leave its last iterator promise unsettled so the event loop empties and Node exits. Either one crashes
+ * the Lambda with NodeJsExit.
+ */
+async function readZipDirectory(
+  s3: S3Client,
+  sourceBucket: string,
+  sourceKey: string,
+  sourceVersionId: string | undefined,
+): Promise<unzipper.CentralDirectory> {
+  const obj = await s3.send(
+    new GetObjectCommand({
+      Bucket: sourceBucket,
+      Key: sourceKey,
+      VersionId: sourceVersionId,
+    }),
+  );
+
+  const body = obj.Body;
+  if (!body) {
+    throw new Error('S3 GetObject returned empty body');
+  }
+
+  const zipBuffer = Buffer.from(await body.transformToByteArray());
+  return unzipper.Open.buffer(zipBuffer);
+}
+
+/**
+ * Writes one zip entry, buffered and not streamed into PutObject: the AWS SDK can sign a streaming body with
+ * strict chunking requirements ("Only the last chunk is allowed to have a size less than 8192 bytes").
+ */
+async function uploadZipEntry(
+  s3: S3Client,
+  targetBucket: string,
+  key: string,
+  file: unzipper.File,
+): Promise<void> {
+  const content = await file.buffer();
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: targetBucket,
+      Key: key,
+      Body: content,
+      ContentLength: content.length,
+      ContentType: guessContentType(key),
+    }),
+  );
+}
+
+/**
+ * Normalizes the path of a zip entry into the key it is written under, relative to a target prefix.
+ * Throws for a path that is empty or leaves the prefix (`..`), and for one containing `:` (a Windows drive).
+ */
+function normalizeRelativeKey(input: string): string {
+  const trimmed = (input ?? '').toString().trim();
+  const withoutLeading = trimmed.replace(/^\/+/, '');
+  const normalized = pathPosix.normalize(withoutLeading);
+
+  if (!normalized || normalized === '.' || normalized.startsWith('..') || normalized.includes(':')) {
+    throw new Error(`Invalid relative key: ${input}`);
+  }
+
+  return normalized;
+}
+
+/**
+ * The `Content-Type` an object with this key is stored with, or undefined when the extension is unknown.
+ * Text, JavaScript and JSON types carry `charset=utf-8`.
+ */
+function guessContentType(key: string): string | undefined {
+  const contentType = mime.lookup(key);
+  if (!contentType) {
+    return undefined;
+  }
+
+  if (contentType.startsWith('text/') || contentType === 'application/javascript' || contentType === 'application/json') {
+    return `${contentType}; charset=utf-8`;
+  }
+
+  return contentType;
 }

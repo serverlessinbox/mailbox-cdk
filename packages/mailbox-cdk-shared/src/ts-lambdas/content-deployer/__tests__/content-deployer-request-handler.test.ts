@@ -10,7 +10,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../../shared/content-ops';
 import { ExpectedFailure } from '../../shared/expected-failure';
 import { LoggerBuffer } from '../../shared/logger-buffer';
-import { invalidateCloudFront } from '../../shared/ui-cloudfront';
+import { invalidateCloudFront } from '../../shared/cloudfront-invalidation';
 import { ContentDeployerRequestHandler } from '../content-deployer-request-handler';
 import {
   LOG_GROUP_NAME,
@@ -28,7 +28,7 @@ jest.mock('../../shared/content-ops', () => ({
   deployZipToPrefix: jest.fn(),
   writeObject: jest.fn(),
 }));
-jest.mock('../../shared/ui-cloudfront', () => ({
+jest.mock('../../shared/cloudfront-invalidation', () => ({
   invalidateCloudFront: jest.fn(),
 }));
 
