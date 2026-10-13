@@ -8,4 +8,6 @@ export * as env from './ts-lambdas/shared/env';
 export { withSmokeTest, SmokeTestProbe, SmokeTestResponse } from './ts-lambdas/shared/with-smoke-test';
 export { emitManualFinalize, type EmitManualFinalizeOptions } from './ts-lambdas/shared/manual-finalize';
 export { LoggerBuffer, parseLogLevelStrict, type LogLevel, type LogEntry } from './ts-lambdas/shared/logger-buffer';
+export { ExpectedFailure } from './ts-lambdas/shared/expected-failure';
+export { parseArn, type ParsedArn } from './ts-lambdas/shared/arn';
 export { isParentStackRollingBack, isParentStackBeingDeleted } from './ts-lambdas/shared/stack-rollback-detector';
