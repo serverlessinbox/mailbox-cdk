@@ -1,34 +1,33 @@
 import * as crypto from 'crypto';
 
+const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
+const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DIGITS = '0123456789';
+// Symbols are allowed by Cognito but not required; they are left out for simplicity.
+const ALL_CHARACTERS = LOWERCASE + UPPERCASE + DIGITS;
+const PASSWORD_LENGTH = 16;
+
 /**
  * Generate a cryptographically unpredictable random password that meets Cognito policy requirements.
- * Returns a 16-character password containing lowercase, uppercase, and digits.
- * Never logged or exposed in responses.
+ * Returns a 16-character password containing lowercase, uppercase, and digits. Never logged.
  *
  * Uses Node's built-in crypto.randomInt (CSPRNG) because this password is the initial admin
  * credential for the entire deployment. Math.random() would be recoverable from observed outputs,
  * violating the security requirement for an initial credential.
  */
 export function generateSecurePassword(): string {
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const digits = '0123456789';
-  // Symbols are allowed by Cognito but not required; we exclude them for simplicity
-  const allChars = lowercase + uppercase + digits;
-
   const passwordChars: string[] = [];
 
-  // Ensure at least one of each required character type by selecting from specific sets
-  passwordChars.push(lowercase[crypto.randomInt(0, lowercase.length)]);
-  passwordChars.push(uppercase[crypto.randomInt(0, uppercase.length)]);
-  passwordChars.push(digits[crypto.randomInt(0, digits.length)]);
-
-  // Fill remaining 13 positions with random characters from the full set
-  for (let i = 3; i < 16; i++) {
-    passwordChars.push(allChars[crypto.randomInt(0, allChars.length)]);
+  // One character of each required type is chosen from its own set, so the policy is always met.
+  for (const requiredSet of [LOWERCASE, UPPERCASE, DIGITS]) {
+    passwordChars.push(requiredSet[crypto.randomInt(0, requiredSet.length)]);
   }
 
-  // Shuffle using Fisher-Yates with cryptographic random selection to avoid predictable structure
+  while (passwordChars.length < PASSWORD_LENGTH) {
+    passwordChars.push(ALL_CHARACTERS[crypto.randomInt(0, ALL_CHARACTERS.length)]);
+  }
+
+  // Fisher-Yates with cryptographic random selection, so the required characters do not sit at fixed positions.
   for (let i = passwordChars.length - 1; i > 0; i--) {
     const j = crypto.randomInt(0, i + 1);
     [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];

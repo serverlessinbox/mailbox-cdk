@@ -1,65 +1,81 @@
 import {
-  CognitoIdentityProviderClient,
-  AdminCreateUserCommand,
   AdminAddUserToGroupCommand,
-  UsernameExistsException,
+  AdminCreateUserCommand,
+  type CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
-import type { BootstrapUserProperties } from './properties';
+import { CaughtError } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { GroupName, UserPoolId, Username } from './cognito-identifiers';
+
+/** A user that must exist in a user pool, the groups it belongs to, and the password it is created with. */
+export interface BootstrapUser {
+  readonly userPoolId: UserPoolId;
+  readonly username: Username;
+  readonly groups: readonly GroupName[];
+  readonly temporaryPassword: string;
+}
+
+const USERNAME_EXISTS = 'UsernameExistsException';
 
 /**
- * Ensure a bootstrap user exists in Cognito.
- *
- * If the user does not exist, creates it with the provided password.
- * If the user already exists (UsernameExistsException), leaves it unchanged.
- * Attempts to add the user to groups on a best-effort basis; group errors do not fail the operation.
- *
- * @param cognito - The CognitoIdentityProviderClient (injected for testability)
- * @param props - The resource properties from CloudFormation
- * @param resolvedPassword - The password to set on user creation
- * @returns true if the user was newly created, false if it already existed
+ * Makes the bootstrap user exist in a Cognito user pool without touching a user that is already there. It does
+ * not choose the password: the caller generates it once and passes it in.
  */
-export async function ensureUser(
-  cognito: CognitoIdentityProviderClient,
-  props: BootstrapUserProperties,
-  resolvedPassword: string,
-): Promise<boolean> {
-  const { userPoolId } = props;
-  const username = props.username ?? 'admin';
-  const groups = (props.groups ?? []).filter(Boolean);
+export class UserEnsurer {
+  private readonly cognito: CognitoIdentityProviderClient;
 
-  let userWasCreated = false;
+  constructor(cognito: CognitoIdentityProviderClient) {
+    this.cognito = cognito;
+  }
 
-  try {
-    await cognito.send(
-      new AdminCreateUserCommand({
-        UserPoolId: userPoolId,
-        Username: username,
-        MessageAction: 'SUPPRESS',
-        TemporaryPassword: resolvedPassword,
-      }),
-    );
-    userWasCreated = true;
-  } catch (err: unknown) {
-    if (err instanceof UsernameExistsException || (err as { name?: string }).name === 'UsernameExistsException') {
-      // User already exists; leave it unchanged
-    } else {
-      throw err;
+  /**
+   * Creates the user, or leaves an existing one unchanged, and adds it to its groups. A group that cannot be
+   * joined does not fail the call. Resolves to true when the user was newly created, false when it already existed.
+   */
+  public async ensure(user: BootstrapUser): Promise<boolean> {
+    const userWasCreated = await this.createUser(user);
+
+    for (const groupName of user.groups) {
+      await this.addToGroup(user, groupName);
+    }
+
+    return userWasCreated;
+  }
+
+  private async createUser(user: BootstrapUser): Promise<boolean> {
+    try {
+      await this.cognito.send(
+        new AdminCreateUserCommand({
+          UserPoolId: user.userPoolId,
+          Username: user.username,
+          MessageAction: 'SUPPRESS',
+          TemporaryPassword: user.temporaryPassword,
+        }),
+      );
+      return true;
+    } catch (failure) {
+      return this.answerCreateFailure(failure);
     }
   }
 
-  for (const groupName of groups) {
+  // A user that already exists is the expected outcome of a repeated request; any other failure stands.
+  private answerCreateFailure(failure: unknown): boolean {
+    if (new CaughtError(failure).is(USERNAME_EXISTS)) {
+      return false;
+    }
+    throw failure;
+  }
+
+  private async addToGroup(user: BootstrapUser, groupName: GroupName): Promise<void> {
     try {
-      await cognito.send(
+      await this.cognito.send(
         new AdminAddUserToGroupCommand({
-          UserPoolId: userPoolId,
-          Username: username,
+          UserPoolId: user.userPoolId,
+          Username: user.username,
           GroupName: groupName,
         }),
       );
     } catch {
-      // best-effort: don't fail the stack if groups are missing or misconfigured
+      // A group that is missing or misconfigured must not fail the stack.
     }
   }
-
-  return userWasCreated;
 }
