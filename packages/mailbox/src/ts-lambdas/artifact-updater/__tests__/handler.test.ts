@@ -1,907 +1,284 @@
 /// <reference types="jest" />
 
 /**
- * Integration tests for the scheduled updater Lambda handler (stack-self-update, Phase B).
- *
- * Tests the handler's core scanning, routing, and dispatch logic by importing and exercising
- * the REAL handler function from ../handler. Tests how the handler discovers resources,
- * routes them to appropriate update functions (code/ui/edge), and handles errors.
- *
- * PENDING PUBLISH NOTE: This test suite imports from @serverlessinbox/artifact-registry,
- * which has NOT been published yet. The tests are written fully and correct, but will not
- * execute until artifact-registry is published to npm and mailbox's package.json is updated
- * with the new version.
+ * Pins what the handler file decides: which trigger an event belongs to, how each trigger is answered when the
+ * configuration is bad (FAILED to CloudFormation but SUCCESS on Delete so a stack in DELETE_FAILED can still be
+ * deleted, a 500 to the HTTP API, a throw to a scheduled run), and that the buffered trace is flushed when an
+ * invocation fails unexpectedly and not otherwise. The handler is loaded fresh under each environment, with the
+ * AWS clients it builds faked and CloudFormation's response read from the request sent to the ResponseURL.
  */
 
+import { Writable } from 'stream';
 import { mockClient } from 'aws-sdk-client-mock';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
-import {
-  LambdaClient,
-  UpdateFunctionCodeCommand,
-  TagResourceCommand,
-  InvokeCommand,
-  PublishVersionCommand,
-  GetFunctionConfigurationCommand,
-} from '@aws-sdk/client-lambda';
-import {
-  ResourceGroupsTaggingAPIClient,
-  GetResourcesCommand,
-} from '@aws-sdk/client-resource-groups-tagging-api';
-import {
-  CloudFrontClient,
-  ListDistributionsCommand,
-  GetDistributionConfigCommand,
-  UpdateDistributionCommand,
-  TagResourceCommand as CloudFrontTagResourceCommand,
-} from '@aws-sdk/client-cloudfront';
-import { createHandler } from '../handler';
-import { fakeUpdaterClients } from './fake-updater-clients';
-import type { Config } from '../config';
+import type { AwsClientStub } from 'aws-sdk-client-mock';
+import type * as Https from 'https';
+import type * as LambdaSdk from '@aws-sdk/client-lambda';
+import type * as TaggingSdk from '@aws-sdk/client-resource-groups-tagging-api';
+import type * as LambdaRuntime from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type * as HandlerModule from '../handler';
+import { deployEndTriggerEvent, fakeLambdaContext, httpApiEvent } from './updater-helpers';
 
-// Mock @serverlessinbox/artifact-registry before importing any handler code.
-// Note: artifact-registry is not yet published (pending), so this mock allows
-// the test file to compile even if the actual package isn't available yet.
+jest.mock('https', () => ({
+  request: jest.fn(),
+}));
+
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack: jest.fn(),
   buildArtifactKey: jest.fn(),
   readReleasePointer: jest.fn(),
-}), { virtual: true });
+}));
 
-// Mock mailbox-cdk-shared content operations.
-// update-ui.ts (invoked indirectly here via handler -> advanceUiBucketIfStale) imports
-// from the '/lambda-runtime' subpath export (a distinct module specifier from the
-// package's root export), so the mock must target that same subpath or Jest loads the
-// real content-ops.ts module — including its module-scope S3Client — and issues real
-// AWS calls.
-// Use jest.requireActual to spread the real module and override only the volatile boundaries.
-jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => {
-  const actual = jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime');
-  return {
-    ...actual,
-    deployZipToPrefix: jest.fn(),
-    invalidateCloudFront: jest.fn(),
-    withSmokeTest: (handler: any) => handler,
-    emitManualFinalize: jest.fn(),
-  };
-});
-
-// Import mocks as any to work around jest.requireMock's untyped return
-const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock('@serverlessinbox/artifact-registry') as any;
-const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime') as any;
-
-// Fixture helpers to reduce boilerplate
-function lambdaResource(
-  arn: string,
-  pkg: string,
-  name: string,
-  version: string,
-): { ResourceARN: string; Tags: Array<{ Key: string; Value: string }> } {
-  return {
-    ResourceARN: arn,
-    Tags: [
-      { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-      { Key: 'serverless-inbox:artifact-package', Value: pkg },
-      { Key: 'serverless-inbox:artifact-name', Value: name },
-      { Key: 'serverless-inbox:artifact-version', Value: version },
-    ],
-  };
+interface CfnResponseBody {
+  Status: string;
+  Reason?: string;
+  PhysicalResourceId?: string;
 }
 
-// CloudFront mock helper to create distributions with edge lambda associations
-function createDistributionWithEdgeLambda(
-  distId: string,
-  lambdaArn: string,
-  lambdaVersion: string,
-): any {
-  return {
-    Id: distId,
-    DomainName: `${distId}.cloudfront.net`,
-    DefaultCacheBehavior: {
-      TargetOriginId: 'myOrigin',
-      ViewerProtocolPolicy: 'allow-all',
-      TrustedSigners: { Enabled: false, Quantity: 0 },
-      ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
-      LambdaFunctionAssociations: {
-        Quantity: 1,
-        Items: [
-          {
-            EventType: 'origin-request',
-            LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
-          },
-        ],
-      },
-    },
-    ETag: 'test-etag',
-  };
+/** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
+interface Fakes {
+  tagging: AwsClientStub<TaggingSdk.ResourceGroupsTaggingAPIClient>;
+  lambda: AwsClientStub<LambdaSdk.LambdaClient>;
+  taggingSdk: typeof TaggingSdk;
+  lambdaSdk: typeof LambdaSdk;
+  lambdaRuntime: typeof LambdaRuntime;
 }
 
-function createDistributionConfig(lambdaArn: string, lambdaVersion: string, additionalBehaviorWithLambda?: boolean): any {
-  const config: any = {
-    CallerReference: 'test-ref',
-    Comment: 'test-distribution',
-    Enabled: true,
-    Origins: {
-      Quantity: 1,
-      Items: [{ Id: 'myOrigin', DomainName: 'example.com', CustomOriginConfig: { HTTPPort: 80, OriginProtocolPolicy: 'http-only' } }],
-    },
-    DefaultCacheBehavior: {
-      TargetOriginId: 'myOrigin',
-      ViewerProtocolPolicy: 'allow-all',
-      TrustedSigners: { Enabled: false, Quantity: 0 },
-      ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
-      LambdaFunctionAssociations: {
-        Quantity: 1,
-        Items: [
-          {
-            EventType: 'origin-request',
-            LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
-          },
-        ],
-      },
-    },
-  };
-
-  if (additionalBehaviorWithLambda) {
-    config.CacheBehaviors = {
-      Quantity: 1,
-      Items: [
-        {
-          PathPattern: '/api/*',
-          TargetOriginId: 'myOrigin',
-          ViewerProtocolPolicy: 'allow-all',
-          TrustedSigners: { Enabled: false, Quantity: 0 },
-          ForwardedValues: { QueryString: false, Cookies: { Forward: 'none' } },
-          LambdaFunctionAssociations: {
-            Quantity: 1,
-            Items: [
-              {
-                EventType: 'viewer-request',
-                LambdaFunctionARN: `${lambdaArn}:${lambdaVersion}`,
-              },
-            ],
-          },
-        },
-      ],
-    };
-  }
-
-  return config;
-}
-
-const testConfig: Config = {
-  logLevel: 'error',
-  serviceName: '',
-  region: 'us-east-1',
-  project: 'serverlessinbox',
-  distTag: 'latest',
-  granularity: 'major',
-  artifactBucketBase: 'mailbox-artifacts',
-  rootStackTagValue: 'my-stack',
+const GOOD_ENVIRONMENT = {
+  SERVICE_NAME: 'artifact-updater',
+  AWS_REGION: 'us-east-1',
+  AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
+  PROJECT: 'serverlessinbox',
+  DIST_TAG: 'latest',
+  GRANULARITY: 'major',
+  ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE: 'my-stack',
 };
-const clients = fakeUpdaterClients();
-const handler = createHandler({ config: testConfig, clients, error: undefined });
-const westHandler = createHandler({
-  config: { ...testConfig, region: 'us-west-2' },
-  clients: fakeUpdaterClients('us-west-2'),
-  error: undefined,
-});
+const BAD_ENVIRONMENT = { ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
 
-describe('Scheduled Updater Handler — Integration Tests', () => {
-  const lambdaMock = mockClient(LambdaClient);
-  const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
-  const cloudFrontMock = mockClient(CloudFrontClient);
-
-  // Get mocked functions from artifact-registry mock
-  const mockReadReleasePointer = readReleasePointer as jest.Mock;
-  const mockDeriveTrack = deriveTrack as jest.Mock;
-  const mockBuildArtifactKey = buildArtifactKey as jest.Mock;
+describe('artifact-updater handler', () => {
+  const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    lambdaMock.reset();
-    taggingMock.reset();
-    cloudFrontMock.reset();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  describe('handler (main entry point)', () => {
-    it('scans both the deployment region and us-east-1 for Lambdas', async () => {
-      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.restoreAllMocks();
+  });
 
-      await westHandler({});
+  /**
+   * Loads the handler fresh under the given environment with tagging and Lambda faked, lets the test arrange the
+   * fakes, then invokes the handler. Returns what it resolved with, what it threw, and the response it sent to
+   * CloudFormation.
+   */
+  async function invoke(
+    event: unknown,
+    environment: Record<string, string>,
+    arrange: (fakes: Fakes) => void = () => undefined,
+  ) {
+    jest.resetModules();
+    process.env = { ...originalEnv, ...environment };
 
-      // Verify GetResourcesCommand was called for both regions (us-west-2 and us-east-1)
-      const getCalls = taggingMock.commandCalls(GetResourcesCommand);
-      expect(getCalls.length).toBeGreaterThanOrEqual(2);
-    });
+    // Required after resetModules so the faked client classes are the ones the handler constructs.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const taggingSdk = require('@aws-sdk/client-resource-groups-tagging-api') as typeof TaggingSdk;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const lambdaSdk = require('@aws-sdk/client-lambda') as typeof LambdaSdk;
+    // The handler's `instanceof ExpectedFailure` sees the class of its own module registry, so the test takes it from the same one.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const lambdaRuntime = require('@serverlessinbox/mailbox-cdk-shared/lambda-runtime') as typeof LambdaRuntime;
+    const fakes: Fakes = {
+      tagging: mockClient(taggingSdk.ResourceGroupsTaggingAPIClient),
+      lambda: mockClient(lambdaSdk.LambdaClient),
+      taggingSdk,
+      lambdaSdk,
+      lambdaRuntime,
+    };
+    arrange(fakes);
 
-    it('updates lambda with auto-update-type=code (default)', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({
-        version: '1.2.4',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('release/1.2.4/lambdas/mailbox-go.zip');
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-            ],
-          },
-        ],
-      });
-
-      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
-      lambdaMock.on(TagResourceCommand).resolves({});
-
-      await handler({});
-
-      // Verify advanceLambdaIfStale WAS called (code type should be updated)
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
-    });
-
-    it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'scheduled-updater' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to none type)
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('routes ui auto-update-type on CloudFront distribution to advanceUiBucketIfStale', async () => {
-      const cloudFrontMockLocal = mockClient(CloudFrontClient as any);
-      process.env.AWS_ACCOUNT_ID = '123456789012';
-
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({
-        version: '2.0.0',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('ui-bundle/release/2.0.0/ui-bundle.zip');
-      (deployZipToPrefix as jest.Mock).mockResolvedValue({ uploaded: 5 });
-      (invalidateCloudFront as jest.Mock).mockResolvedValue({ invalidated: true });
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:cloudfront::123456789012:distribution/D123',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'ui-bundle' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'ui-bundle.zip' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'ui' },
-              { Key: 'serverless-inbox:bucket-name', Value: 'ui-content-bucket' },
-            ],
-          },
-        ],
-      });
-
-      cloudFrontMockLocal.on(CloudFrontTagResourceCommand).resolves({});
-
-      await handler({});
-
-      // Verify readReleasePointer was called (ui path)
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      // Verify deployZipToPrefix was called (bucket update, not Lambda invoke)
-      expect(deployZipToPrefix).toHaveBeenCalled();
-      expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
-
-      cloudFrontMockLocal.restore();
-    });
-
-    it('routes edge auto-update-type to advanceEdgeLambdaIfStale in us-east-1', async () => {
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({
-        version: '2.0.0',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('edge-lambda.zip');
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-edge' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'blob-authorizer' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'edge' },
-            ],
-          },
-        ],
-      });
-
-      const edgeLambdaArn = 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer';
-      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
-      lambdaMock.on(GetFunctionConfigurationCommand).resolves({
-        LastUpdateStatus: 'Successful',
-      });
-      lambdaMock.on(PublishVersionCommand).resolves({
-        FunctionArn: edgeLambdaArn + ':5',
-      });
-
-      const distribution = createDistributionWithEdgeLambda('DIST123', edgeLambdaArn, '3');
-      cloudFrontMock.on(ListDistributionsCommand).resolves({
-        DistributionList: {
-          IsTruncated: false,
-          Items: [distribution],
-          Marker: '',
-          MaxItems: 100,
-          Quantity: 1,
+    let responseJson = '';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const https = require('https') as typeof Https;
+    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
+      callback({ statusCode: 200 });
+      return new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          responseJson += chunk.toString();
+          done();
         },
       });
+    }) as typeof https.request);
 
-      const distConfig = createDistributionConfig(edgeLambdaArn, '3');
-      cloudFrontMock.on(GetDistributionConfigCommand).resolves({
-        DistributionConfig: distConfig,
-        ETag: 'test-etag-123',
-      });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { handler } = require('../handler') as typeof HandlerModule;
+    let result: Awaited<ReturnType<typeof handler>> = undefined;
+    let failure: unknown;
+    try {
+      result = await handler(event, fakeLambdaContext());
+    } catch (thrown) {
+      failure = thrown;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-      cloudFrontMock.on(UpdateDistributionCommand).resolves({});
-      lambdaMock.on(TagResourceCommand).resolves({});
+    const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
+    return { result, failure, response, fakes };
+  }
 
-      await handler({});
+  function tracedStart() {
+    return ['artifact update cycle started', expect.objectContaining({ rootStackTag: 'my-stack' })] as const;
+  }
 
-      // Verify readReleasePointer was called
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      // Verify edge path was taken (PublishVersion called, not InvokeCommand)
-      expect(lambdaMock.commandCalls(PublishVersionCommand)).toHaveLength(1);
-      expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
-      expect(cloudFrontMock.commandCalls(UpdateDistributionCommand)).toHaveLength(1);
-    });
-
-    it('skips edge update when not in us-east-1 region', async () => {
-      // First call (us-west-2): return edge lambda
-      // Second call (us-east-1): return empty
-      taggingMock
-        .on(GetResourcesCommand)
-        .resolvesOnce({
-          ResourceTagMappingList: [
-            {
-              ResourceARN: 'arn:aws:lambda:us-west-2:123456789012:function:blob-authorizer',
-              Tags: [
-                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-                { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-edge' },
-                { Key: 'serverless-inbox:artifact-name', Value: 'blob-authorizer' },
-                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-                { Key: 'serverless-inbox:auto-update-type', Value: 'edge' },
-              ],
-            },
-          ],
-        })
-        .resolves({ ResourceTagMappingList: [] });
-
-      await westHandler({});
-
-      // Verify readReleasePointer was NOT called (edge skipped in non-us-east-1 region)
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('skips resources with auto-update-type=none (e.g. scheduled-updater itself)', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:scheduled-updater',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'scheduled-updater' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Verify advanceLambdaIfStale was NOT called (resource was skipped due to none type)
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('skips Lambdas missing required artifact tags', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
-              // Missing artifact-name and artifact-version
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Verify advanceLambdaIfStale was NOT called (readReleasePointer not called)
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('skips resource with auto-update-type=none and NO artifact tags (branch-order fix)', async () => {
-
-      // Blob CDN distribution or infrastructure lambda: marked as auto-update-type=none with no artifact tags
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:blob-cdn',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'none' },
-              // No artifact-package, artifact-name, artifact-version
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Should log "skipping auto-update-type=none" and NOT "missing artifact tags"
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('skips untagged resource (defaults to auto-update-type=none)', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:untagged-lambda',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              // No auto-update-type tag, no artifact tags
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Should default to auto-update-type=none and skip cleanly
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('logs missing artifact tags for auto-update-type=code resource missing artifact-version', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-              // Missing artifact-version: should trigger "missing artifact tags" log
-            ],
-          },
-        ],
-      });
-
-      await handler({});
-
-      // Should NOT call readReleasePointer (opt-in but misconfigured)
-      expect(mockReadReleasePointer).not.toHaveBeenCalled();
-    });
-
-    it('handles pagination correctly in region scan', async () => {
-
-      // Queue responses: first page with continuation token, then second page without token
-      taggingMock
-        .on(GetResourcesCommand)
-        .resolvesOnce({
-          ResourceTagMappingList: [
-            {
-              ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:lambda-1',
-              Tags: [
-                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-                { Key: 'serverless-inbox:artifact-package', Value: 'pkg1' },
-                { Key: 'serverless-inbox:artifact-name', Value: 'lambda-1' },
-                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-                { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-              ],
-            },
-          ],
-          PaginationToken: 'next-token',
-        })
-        .resolvesOnce({
-          ResourceTagMappingList: [
-            {
-              ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:lambda-2',
-              Tags: [
-                { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-                { Key: 'serverless-inbox:artifact-package', Value: 'pkg2' },
-                { Key: 'serverless-inbox:artifact-name', Value: 'lambda-2' },
-                { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-                { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-              ],
-            },
-          ],
-        });
-
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue(null);
-
-      await handler({});
-
-      // Verify both resources from both pages were processed (readReleasePointer called twice)
-      expect(mockReadReleasePointer).toHaveBeenCalledTimes(2);
-    });
-
-    it('continues processing even if one Lambda update fails', async () => {
-
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'mailbox-go' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.2.3' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-            ],
-          },
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:admin-api',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'admin-api' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'admin-api' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-            ],
-          },
-        ],
-      });
-
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({ version: '1.2.4', s3Location: { bucket: 'test-bucket', key: 'test-key' } });
-      mockBuildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
-
-      // First update fails, second succeeds
-      lambdaMock.on(UpdateFunctionCodeCommand).rejectsOnce(new Error('UpdateFunctionCodeCommand failed'));
-      lambdaMock.on(UpdateFunctionCodeCommand).resolvesOnce({});
-      lambdaMock.on(TagResourceCommand).resolvesOnce({});
-
-      // Handler should NOT throw even though one Lambda update failed
-      await expect(handler({})).resolves.toBeUndefined();
-
-      // Verify both Lambdas were attempted
-      expect(mockReadReleasePointer).toHaveBeenCalledTimes(2);
-    });
-
-    it('processes packages not previously in REGISTERED_PACKAGES env list (regression: content-deployer)', async () => {
-      // Regression test: when REGISTERED_PACKAGES env var was used, packages like
-      // 'mailbox-cdk-shared' (containing content-deployer) were silently filtered out.
-      // After removing the env var filter, all packages with valid tags should be processed.
-
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({
-        version: '1.0.1',
-        s3Location: { bucket: 'test-bucket', key: 'test-key' },
-      });
-      mockBuildArtifactKey.mockReturnValue('release/1.0.1/lambdas/content-deployer.zip');
-
-      // Lambda with package 'mailbox-cdk-shared' (would have been filtered out before)
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          {
-            ResourceARN: 'arn:aws:lambda:us-east-1:123456789012:function:content-deployer',
-            Tags: [
-              { Key: 'serverless-inbox:root-stack', Value: 'my-stack' },
-              { Key: 'serverless-inbox:artifact-package', Value: 'mailbox-cdk-shared' },
-              { Key: 'serverless-inbox:artifact-name', Value: 'content-deployer' },
-              { Key: 'serverless-inbox:artifact-version', Value: '1.0.0' },
-              { Key: 'serverless-inbox:auto-update-type', Value: 'code' },
-            ],
-          },
-        ],
-      });
-
-      lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
-      lambdaMock.on(TagResourceCommand).resolves({});
-
-      await handler({});
-
-      // Verify the previously-filtered package IS now processed
-      expect(mockReadReleasePointer).toHaveBeenCalled();
-      expect(mockReadReleasePointer).toHaveBeenCalledWith(
-        expect.any(Object),
-        { bucketBase: 'mailbox-artifacts', project: 'serverlessinbox' },
-        'mailbox-cdk-shared',
-        'latest',
-        'us-east-1',
-        'v1',
+  describe('dispatch', () => {
+    it.each([
+      ['a CloudFormation request', deployEndTriggerEvent('Delete'), 'cfn-custom-resource'],
+      ['an HTTP API request', httpApiEvent('GET', '/other'), 'http-api'],
+      ['any other event', {}, 'eventbridge-or-self-invoke'],
+    ])('logs which trigger fired for %s', async (_description, event, mode) => {
+      await invoke(event, GOOD_ENVIRONMENT, (fakes) =>
+        fakes.tagging.on(fakes.taggingSdk.GetResourcesCommand).resolves({ ResourceTagMappingList: [] }),
       );
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+
+      expect(console.info).toHaveBeenCalledWith('artifact-updater dispatch', { mode });
     });
   });
 
-  describe('Version comparison using real semver', () => {
-    beforeEach(() => {
+  describe('a CloudFormation request', () => {
+    it('is answered FAILED naming the variable when the configuration is bad', async () => {
+      const { response, failure, result } = await invoke(deployEndTriggerEvent('Create'), BAD_ENVIRONMENT);
+
+      expect(failure).toBeUndefined();
+      expect(result).toBeUndefined();
+      expect(response.Status).toBe('FAILED');
+      expect(response.Reason).toContain('LOG_LEVEL');
     });
 
-    it('does not advance on downgrade (pointer version < deployed version)', async () => {
-      taggingMock.on(GetResourcesCommand).resolves({
-        ResourceTagMappingList: [
-          lambdaResource('arn:aws:lambda:us-east-1:123456789012:function:mailbox-go', 'mailbox-go', 'mailbox-go', '1.2.3'),
-        ],
+    it('is answered SUCCESS to a Delete when the configuration is bad, and the error is logged', async () => {
+      const { response } = await invoke(deployEndTriggerEvent('Delete'), BAD_ENVIRONMENT);
+
+      expect(response.Status).toBe('SUCCESS');
+      expect(response.PhysicalResourceId).toBe('deploy-end-physical-id');
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
+        error: expect.stringContaining('LOG_LEVEL'),
+      });
+    });
+
+    it('is answered SUCCESS to a Delete with the physical id CloudFormation sent, without running the cycle', async () => {
+      const { response, fakes } = await invoke(deployEndTriggerEvent('Delete'), GOOD_ENVIRONMENT);
+
+      expect(response.Status).toBe('SUCCESS');
+      expect(response.PhysicalResourceId).toBe('deploy-end-physical-id');
+      expect(fakes.tagging.calls()).toHaveLength(0);
+    });
+
+    it('emits the manual-finalize hint under the configured service name', async () => {
+      await invoke(deployEndTriggerEvent('Delete'), GOOD_ENVIRONMENT);
+
+      expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^MANUAL_FINALIZE .* service=artifact-updater$/));
+    });
+
+    it('runs the update cycle and is answered SUCCESS, flushing nothing', async () => {
+      const { response, fakes } = await invoke(deployEndTriggerEvent('Create'), GOOD_ENVIRONMENT, (arranged) =>
+        arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).resolves({ ResourceTagMappingList: [] }),
+      );
+
+      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(1);
+      expect(response.Status).toBe('SUCCESS');
+      expect(console.info).not.toHaveBeenCalledWith(...tracedStart());
+    });
+
+    it('is answered SUCCESS and flushes the buffered trace when the update cycle fails', async () => {
+      const { response, failure, result } = await invoke(deployEndTriggerEvent('Create'), GOOD_ENVIRONMENT, (arranged) =>
+        arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).rejects(new Error('ThrottlingException')),
+      );
+
+      expect(failure).toBeUndefined();
+      expect(result).toBeUndefined();
+      expect(response.Status).toBe('SUCCESS');
+      expect(console.info).toHaveBeenCalledWith(...tracedStart());
+    });
+  });
+
+  describe('an HTTP API request', () => {
+    it('is answered 500 naming the variable when the configuration is bad', async () => {
+      const { result } = await invoke(httpApiEvent('POST', '/artifact-updates/trigger'), BAD_ENVIRONMENT);
+
+      expect(result).toMatchObject({ statusCode: 500, body: expect.stringContaining('LOG_LEVEL') });
+      expect(console.error).toHaveBeenCalledWith('Configuration error', { error: expect.stringContaining('LOG_LEVEL') });
+    });
+
+    it('is answered 404, and no update cycle runs, when its request context names no method and path', async () => {
+      const { result, fakes } = await invoke({ requestContext: {} }, GOOD_ENVIRONMENT);
+
+      expect(result).toEqual({ statusCode: 404, body: '' });
+      expect(fakes.tagging.calls()).toHaveLength(0);
+    });
+
+    it('is answered 202 when the update is started', async () => {
+      const { result, fakes } = await invoke(httpApiEvent('POST', '/artifact-updates/trigger'), GOOD_ENVIRONMENT, (arranged) =>
+        arranged.lambda.on(arranged.lambdaSdk.InvokeCommand).resolves({}),
+      );
+
+      expect(result).toMatchObject({ statusCode: 202 });
+      expect(fakes.lambda.commandCalls(fakes.lambdaSdk.InvokeCommand)[0].args[0].input.FunctionName).toBe(
+        'artifact-updater-function',
+      );
+      expect(console.debug).not.toHaveBeenCalled();
+    });
+
+    it('is answered 500 and flushes the buffered trace when the update cannot be started', async () => {
+      const { result } = await invoke(httpApiEvent('POST', '/artifact-updates/trigger'), GOOD_ENVIRONMENT, (arranged) =>
+        arranged.lambda.on(arranged.lambdaSdk.InvokeCommand).rejects(new Error('AccessDeniedException')),
+      );
+
+      expect(result).toMatchObject({ statusCode: 500, body: expect.stringContaining('AccessDeniedException') });
+      expect(console.debug).toHaveBeenCalledWith('http trigger received', {
+        method: 'POST',
+        path: '/artifact-updates/trigger',
+        service: 'artifact-updater',
+      });
+    });
+  });
+
+  describe('any other event', () => {
+    it('is rejected naming the variable when the configuration is bad', async () => {
+      const { failure } = await invoke({}, BAD_ENVIRONMENT);
+
+      expect(failure).toMatchObject({ message: expect.stringContaining('LOG_LEVEL') });
+    });
+
+    it('runs the update cycle and flushes nothing when it succeeds', async () => {
+      const { failure, fakes } = await invoke({}, GOOD_ENVIRONMENT, (arranged) =>
+        arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).resolves({ ResourceTagMappingList: [] }),
+      );
+
+      expect(failure).toBeUndefined();
+      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(1);
+      expect(console.info).not.toHaveBeenCalledWith(...tracedStart());
+    });
+
+    it('rejects with the failure and flushes the buffered trace when the update cycle fails', async () => {
+      const { failure } = await invoke({}, GOOD_ENVIRONMENT, (arranged) =>
+        arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).rejects(new Error('ThrottlingException')),
+      );
+
+      expect(failure).toEqual(new Error('ThrottlingException'));
+      expect(console.info).toHaveBeenCalledWith(...tracedStart());
+    });
+
+    it('rejects with an expected failure and flushes nothing', async () => {
+      let expected: Error | undefined;
+      const { failure } = await invoke({}, GOOD_ENVIRONMENT, (arranged) => {
+        expected = new arranged.lambdaRuntime.ExpectedFailure('no release published');
+        arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).rejects(expected);
       });
 
-      mockDeriveTrack.mockReturnValue('v1');
-      mockReadReleasePointer.mockResolvedValue({ version: '1.2.2', s3Location: { bucket: 'test-bucket', key: 'test-key' } });
-
-      await handler({});
-
-      // Downgrade case: pointer (1.2.2) < deployed (1.2.3), should NOT advance
-      expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(0);
-    });
-  });
-
-  describe('CFN custom resource trigger', () => {
-    it('detects CFN CR events by presence of ResponseURL, RequestType, StackId, and PhysicalResourceId', async () => {
-      const notACfnEvent = {
-        // Missing ResponseURL and StackId
-        RequestType: 'Delete',
-        RequestId: 'unique-id',
-        LogicalResourceId: 'MyResource',
-        PhysicalResourceId: 'my-resource-id',
-      };
-
-
-      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
-
-      // Should route to update-cycle (EventBridge/default path), not CFN handler
-      await handler(notACfnEvent);
-
-      // Verify tagging API was called (update cycle ran)
-      expect(taggingMock.commandCalls(GetResourcesCommand).length).toBeGreaterThan(0);
-    });
-
-    it('recognizes valid CFN CR events with all required fields', async () => {
-      // This test verifies that valid CFN events are correctly identified
-      // The full CFN handler behavior (HTTP response sending) is tested indirectly
-      // through integration with wrapHandler when invoked as an actual Lambda handler.
-
-      const validCfnEvent = {
-        RequestType: 'Delete' as const,
-        ResponseURL: 'https://cloudformation-custom-resource-response-url/',
-        StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/MyStack/guid',
-        RequestId: 'unique-id-for-this-request',
-        LogicalResourceId: 'MyResource',
-        PhysicalResourceId: 'my-resource-id',
-        ResourceType: 'Custom::ArtifactUpdater',
-        ResourceProperties: {},
-      };
-
-      // Mock Lambda invoke for self-invoke dispatch
-      lambdaMock.on(InvokeCommand).resolves({});
-
-      // Verify the event structure meets CFN requirements
-      expect(validCfnEvent.ResponseURL).toBeDefined();
-      expect(validCfnEvent.StackId).toBeDefined();
-      expect(validCfnEvent.RequestType).toBeDefined();
-      expect(validCfnEvent.PhysicalResourceId).toBeDefined();
-    });
-
-    it('recognizes realistic FULL CFN CR event with all production fields', () => {
-      // This test verifies isCfnCrEvent correctly identifies a realistic CloudFormation event
-      // with ALL fields that real CFN events carry beyond the 6 discriminating fields.
-      // This proves the typanion schema with `extra: t.isRecord(t.isUnknown())` allows extra properties
-      // and doesn't falsely reject production events.
-      //
-      // CRITICAL TEST: If typanion's isObject incorrectly rejects objects with properties beyond
-      // the 6 listed (RequestType, StackId, ResponseURL, LogicalResourceId, PhysicalResourceId, RequestId),
-      // this event would fail validation despite being a valid CFN event. This test ensures the schema
-      // allows the ResourceType, ResourceProperties, ServiceToken, and OldResourceProperties fields
-      // that ALL real CloudFormation custom resource events carry.
-      const fullCfnEvent = {
-        RequestType: 'Update' as const,
-        ResponseURL: 'https://cloudformation-custom-resource-response-url.example.com/',
-        StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/serverless-inbox-prod/guid123',
-        RequestId: 'request-guid-12345',
-        LogicalResourceId: 'ArtifactUpdaterCustomResource',
-        PhysicalResourceId: 'physical-resource-id-abc123',
-        // Extra fields that real CFN events always include (the critical test for schema strictness):
-        ResourceType: 'Custom::ArtifactUpdater',
-        ResourceProperties: {
-          StackName: 'serverless-inbox-prod',
-          SubstackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/mailbox-edge-stack/guid456',
-          ArtifactBucket: 'artifact-bucket-us-east-1',
-          ArtifactKey: 'lambdas/artifact-updater.zip',
-        },
-        OldResourceProperties: {
-          StackName: 'serverless-inbox-prod',
-          SubstackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/mailbox-edge-stack/guid456',
-          ArtifactBucket: 'artifact-bucket-us-east-1',
-          ArtifactKey: 'lambdas/artifact-updater-old.zip',
-        },
-        ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
-        NoEcho: false,
-      };
-
-      // Empirical verification: check that the full event has all discriminating fields
-      // and verify the schema would accept it by checking each required field
-      expect(fullCfnEvent.RequestType).toBeDefined();
-      expect(typeof fullCfnEvent.RequestType).toBe('string');
-      expect(fullCfnEvent.StackId).toBeDefined();
-      expect(typeof fullCfnEvent.StackId).toBe('string');
-      expect(fullCfnEvent.ResponseURL).toBeDefined();
-      expect(typeof fullCfnEvent.ResponseURL).toBe('string');
-      expect(fullCfnEvent.LogicalResourceId).toBeDefined();
-      expect(typeof fullCfnEvent.LogicalResourceId).toBe('string');
-      expect(fullCfnEvent.PhysicalResourceId).toBeDefined();
-      expect(typeof fullCfnEvent.PhysicalResourceId).toBe('string');
-      expect(fullCfnEvent.RequestId).toBeDefined();
-      expect(typeof fullCfnEvent.RequestId).toBe('string');
-      // Verify the extra fields are present (these must NOT cause schema rejection)
-      expect(fullCfnEvent.ResourceType).toBeDefined();
-      expect(fullCfnEvent.ResourceProperties).toBeDefined();
-      expect(fullCfnEvent.ServiceToken).toBeDefined();
-      expect(fullCfnEvent.OldResourceProperties).toBeDefined();
-    });
-  });
-
-  describe('HTTP API trigger', () => {
-    it('routes HTTP POST /trigger to self-invoke with 202 response', async () => {
-      const httpEvent: APIGatewayProxyEventV2 = {
-        version: '2.0',
-        routeKey: 'POST /trigger',
-        rawPath: '/artifact-updates/trigger',
-        rawQueryString: '',
-        headers: {
-          'content-type': 'application/json',
-        },
-        requestContext: {
-          http: {
-            method: 'POST',
-            path: '/artifact-updates/trigger',
-            protocol: 'HTTP/1.1',
-            sourceIp: '127.0.0.1',
-            userAgent: 'test',
-          },
-          routeKey: 'POST /trigger',
-          stage: '$default',
-          requestId: 'id',
-          timeEpoch: Date.now(),
-          accountId: '123456789012',
-          apiId: 'api-id',
-          domainName: 'example.com',
-          domainPrefix: 'example',
-          time: new Date().toISOString(),
-        },
-        isBase64Encoded: false,
-      };
-
-      lambdaMock.on(InvokeCommand).resolves({});
-
-      const result = await handler(httpEvent);
-
-      expect(result.statusCode).toBe(202);
-      expect(JSON.parse(result.body)).toEqual({ status: 'triggered' });
-      expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(1);
-    });
-
-    it('returns 404 for unknown HTTP routes', async () => {
-      const httpEvent: APIGatewayProxyEventV2 = {
-        version: '2.0',
-        routeKey: 'GET /unknown',
-        rawPath: '/unknown',
-        rawQueryString: '',
-        headers: {},
-        requestContext: {
-          http: {
-            method: 'GET',
-            path: '/unknown',
-            protocol: 'HTTP/1.1',
-            sourceIp: '127.0.0.1',
-            userAgent: 'test',
-          },
-          routeKey: 'GET /unknown',
-          stage: '$default',
-          requestId: 'id',
-          timeEpoch: Date.now(),
-          accountId: '123456789012',
-          apiId: 'api-id',
-          domainName: 'example.com',
-          domainPrefix: 'example',
-          time: new Date().toISOString(),
-        },
-        isBase64Encoded: false,
-      };
-
-      const result = await handler(httpEvent);
-
-      expect(result.statusCode).toBe(404);
-    });
-
-    it('routes realistic FULL HTTP API v2 event with all production fields', async () => {
-      // This test verifies isHttpApiEvent correctly identifies a realistic API Gateway v2 event
-      // with ALL fields that real HTTP API v2 events carry beyond requestContext.http.
-      // This proves the typanion schema allows extra properties and doesn't falsely reject production events.
-      const fullHttpEvent: APIGatewayProxyEventV2 = {
-        version: '2.0',
-        routeKey: 'POST /artifact-updates/trigger',
-        rawPath: '/artifact-updates/trigger',
-        rawQueryString: 'force=true',
-        headers: {
-          'content-type': 'application/json',
-          'user-agent': 'admin-ui/1.0.0',
-          'x-forwarded-for': '203.0.113.42',
-          'x-forwarded-proto': 'https',
-          'x-forwarded-port': '443',
-        },
-        body: JSON.stringify({ force: true }),
-        isBase64Encoded: false,
-        requestContext: {
-          accountId: '123456789012',
-          apiId: 'api-gateway-id-xyz',
-          domainName: 'api.example.com',
-          domainPrefix: 'api',
-          http: {
-            method: 'POST',
-            path: '/artifact-updates/trigger',
-            protocol: 'HTTP/1.1',
-            sourceIp: '203.0.113.42',
-            userAgent: 'admin-ui/1.0.0',
-          },
-          requestId: 'request-id-JgH9xf_MxDw=',
-          routeKey: 'POST /artifact-updates/trigger',
-          stage: '$default',
-          time: '26/Jul/2026:14:30:45 +0000',
-          timeEpoch: 1753616445000,
-        },
-      };
-
-      lambdaMock.on(InvokeCommand).resolves({});
-
-      // Should route to HTTP trigger handler and return 202, not reject the event
-      const result = await handler(fullHttpEvent);
-
-      expect(result.statusCode).toBe(202);
-      expect(JSON.parse(result.body)).toEqual({ status: 'triggered' });
-    });
-  });
-
-  describe('config error', () => {
-    const brokenHandler = createHandler({ config: testConfig, clients: undefined, error: 'LOG_LEVEL: invalid log level "bogus"' });
-
-    it('HTTP API event with bad config returns 500 naming the problem', async () => {
-      const result = await brokenHandler({ requestContext: { http: { method: 'GET', path: '/artifact-updates/status' } } });
-      expect(result.statusCode).toBe(500);
-      expect(result.body).toContain('LOG_LEVEL');
-    });
-
-    it('EventBridge event with bad config rejects naming the problem', async () => {
-      await expect(brokenHandler({})).rejects.toThrow('LOG_LEVEL');
+      expect(failure).toBe(expected);
+      expect(console.info).not.toHaveBeenCalledWith(...tracedStart());
     });
   });
 });

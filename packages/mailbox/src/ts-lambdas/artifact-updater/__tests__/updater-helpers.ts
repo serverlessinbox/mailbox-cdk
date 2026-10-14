@@ -18,6 +18,8 @@ import type { HttpTriggerEvent } from '../updater-event';
 import { UiBucketUpdater } from '../ui-bucket-updater';
 import { UpdateCycle } from '../update-cycle';
 import { EDGE_REGION, type RegionClients, type UpdaterClients } from '../updater-clients';
+import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
+import type { NewUpdateCycle } from '../updater-trigger';
 import {
   toArtifactName,
   toArtifactPackageName,
@@ -124,6 +126,23 @@ export function newUpdateCycle(): UpdateCycle {
     ),
     new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger),
   );
+}
+
+export const BAD_CONFIG_ERROR = 'LOG_LEVEL: invalid log level "verbose"';
+
+/** What the composition hands a trigger as its update-cycle factory when the configuration failed to load. */
+export const badConfigCycle: NewUpdateCycle = () => {
+  throw new Error(BAD_CONFIG_ERROR);
+};
+
+/** What the entry point hands to the composition when the configuration loaded, with fake clients. */
+export function readyRuntime(): ReadyUpdater {
+  return { config: testConfig, clients: fakeUpdaterClients(), error: undefined };
+}
+
+/** What the entry point hands to the composition when the configuration failed to load: no clients. */
+export function failedRuntime(): FailedUpdater {
+  return { config: testConfig, clients: undefined, error: BAD_CONFIG_ERROR };
 }
 
 /**

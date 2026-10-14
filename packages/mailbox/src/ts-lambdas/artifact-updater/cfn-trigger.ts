@@ -1,60 +1,88 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { emitManualFinalize } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { UpdaterRuntime } from './updater-runtime';
-import { runUpdateCycle } from './update-cycle';
+import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+import {
+  answerRequestWithBadConfig,
+  emitManualFinalize,
+  type CustomResourceAnswer,
+  type CustomResourceRequest,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { NewUpdateCycle, UpdaterTrigger } from './updater-trigger';
+
+/** The answer to CloudFormation: the physical id when this resource sets one, and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
+export type CfnTriggerAnswer = {
+  readonly PhysicalResourceId?: string;
+  readonly Data: Record<string, never>;
+};
 
 /**
- * CloudFormation custom resource handler for the deploy-end trigger of the artifact updater.
- *
- * Synchronously runs the artifact update cycle before responding to CloudFormation.
- * The serviceTimeout configured in the CDK construct (600s) covers this synchronous cost.
- *
- * If the artifact update cycle fails, the error is caught to prevent a CFN FAILED response.
- * Errors are logged by LoggerBuffer in runUpdateCycle(), which flushes to CloudWatch before
- * rethrowing. The handler catches and swallows the error (allowing deployment to continue),
- * with full failure details captured in CloudWatch.
- *
- * On Delete, the handler returns immediately without running the update cycle and does no
- * other work. CloudFormation also sends Delete when it removes or replaces the resource, a
- * teardown after which a full update cycle would only be a redundant second cycle.
- *
- * A configuration error on Create/Update fails the custom resource (unlike an update-cycle
- * failure, which is swallowed). Delete still returns SUCCESS so the stack can be deleted.
- *
- * PhysicalResourceId is omitted from the Delete response on purpose: wrapHandler's internal
- * getPhysicalResourceId() falls back to the real incoming event's PhysicalResourceId for
- * Update/Delete requests, so CloudFormation sees the same id it already knows about. (The
- * TypeSafeCloudFormationResourceEvent type wrapHandler exposes to this callback collapses
- * aws-lambda's discriminated union to its common fields via Omit<>, so PhysicalResourceId
- * isn't reachable here even after narrowing on RequestType === 'Delete' -- relying on the
- * wrapper's own fallback avoids needing an unsound cast to reach it.)
+ * Answers the custom-resource request of the deploy-end trigger. Create and Update run the update cycle before
+ * they answer, Delete answers without running it and with no physical id of its own, and a bad configuration
+ * is answered FAILED, except to a Delete. CloudFormation is answered from `handle`, so a failed cycle does not
+ * fail the request: the stack's deployment goes on, and the failure is thrown afterwards for the trace.
  */
-export function createCfnTriggerHandler(runtime: UpdaterRuntime) {
-  return wrapHandler(async (event) => {
-    // Emit finalization details for manual recovery of hung custom resources
-    emitManualFinalize(event, { service: runtime.config.serviceName });
+export class CfnTrigger implements UpdaterTrigger<void> {
+  private readonly event: CloudFormationCustomResourceEvent;
+  private readonly context: Context;
+  private readonly newUpdateCycle: NewUpdateCycle;
+  private readonly configError: string | undefined;
+  private readonly serviceName: string;
 
-    if (event.RequestType === 'Delete') {
-      return {
-        Data: {},
-      };
+  constructor(
+    event: CloudFormationCustomResourceEvent,
+    context: Context,
+    newUpdateCycle: NewUpdateCycle,
+    configError: string | undefined,
+    serviceName: string,
+  ) {
+    this.event = event;
+    this.context = context;
+    this.newUpdateCycle = newUpdateCycle;
+    this.configError = configError;
+    this.serviceName = serviceName;
+  }
+
+  /** Answers CloudFormation, then throws what the update cycle threw. */
+  public async handle(): Promise<void> {
+    const cycleFailures: unknown[] = [];
+    const answerCloudFormation = wrapHandler(async (event) => {
+      const request: CustomResourceRequest = event;
+
+      emitManualFinalize(event, { service: this.serviceName });
+      return this.answerRequest(request, cycleFailures);
+    });
+    await answerCloudFormation(this.event, this.context, () => undefined);
+
+    if (cycleFailures.length > 0) {
+      throw cycleFailures[0];
+    }
+  }
+
+  public answerFailure(): void {
+    // CloudFormation was answered from `handle` before the failure surfaced; nothing is left to answer.
+  }
+
+  private async answerRequest(
+    request: CustomResourceRequest,
+    cycleFailures: unknown[],
+  ): Promise<CfnTriggerAnswer | CustomResourceAnswer> {
+    if (this.configError !== undefined) {
+      return answerRequestWithBadConfig(request, this.configError);
     }
 
-    if (runtime.error !== undefined) {
-      // Config error on Create/Update fails the custom resource (unlike an update-cycle failure, which is swallowed).
-      throw new Error(runtime.error);
+    // A Delete also arrives when CloudFormation replaces the resource, after which another cycle would only repeat the one just run.
+    if (request.RequestType === 'Delete') {
+      return { Data: {} };
     }
 
+    await this.runCycle(cycleFailures);
+    return { PhysicalResourceId: request.LogicalResourceId, Data: {} };
+  }
+
+  private async runCycle(cycleFailures: unknown[]): Promise<void> {
     try {
-      await runUpdateCycle(runtime.config, runtime.clients);
-    } catch (err: unknown) {
-      // runUpdateCycle() already logged the error via LoggerBuffer and flushed it to CloudWatch
-      // before rethrowing. We catch here to prevent CFN FAILED and allow deployment to continue.
+      await this.newUpdateCycle().run();
+    } catch (thrown) {
+      cycleFailures.push(thrown);
     }
-
-    return {
-      PhysicalResourceId: event.LogicalResourceId,
-      Data: {},
-    };
-  });
+  }
 }

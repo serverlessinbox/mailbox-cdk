@@ -1,170 +1,121 @@
 /// <reference types="jest" />
 
 /**
- * Unit tests for cfnTriggerHandler (stack-self-update, Phase B).
- *
- * Exercises the real handler (wrapped by aws-custom-resources' wrapHandler) against each
- * CloudFormation RequestType. The two volatile boundaries are faked:
- *  - '../update-cycle' (real AWS calls) is mocked to isolate the branch logic under test.
- *  - Node's 'https' module (the real network PUT that wrapHandler issues to ResponseURL) is
- *    mocked so the response body can be captured and asserted without a real network call.
+ * Pins how the deploy-end trigger answers CloudFormation: Create and Update run the update cycle and answer
+ * with the logical id as physical id, Delete answers without running it so CloudFormation keeps the physical id
+ * it has, a bad configuration is answered FAILED except to a Delete, and a failed cycle still answers SUCCESS so
+ * the stack's deployment goes on while the failure is thrown afterwards for the handler to flush the trace.
+ * The update cycle is faked because it reads and writes AWS; the response is read from the request sent to the
+ * ResponseURL.
  */
 
+import { Writable } from 'stream';
 import * as https from 'https';
-import type { Context, CloudFormationCustomResourceEvent } from 'aws-lambda';
-import type { Config } from '../config';
-import { createCfnTriggerHandler } from '../cfn-trigger';
-import { fakeUpdaterClients } from './fake-updater-clients';
-import { runUpdateCycle } from '../update-cycle';
+import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
+import { CfnTrigger } from '../cfn-trigger';
+import { UpdateCycle } from '../update-cycle';
+import {
+  BAD_CONFIG_ERROR,
+  badConfigCycle,
+  deployEndTriggerEvent,
+  fakeLambdaContext,
+  newUpdateCycle,
+} from './updater-helpers';
 
-const clients = fakeUpdaterClients();
-
-jest.mock('../update-cycle', () => ({
-  runUpdateCycle: jest.fn(),
+jest.mock('../update-cycle');
+jest.mock('https', () => ({
+  request: jest.fn(),
 }));
 
-jest.mock('https');
-
-const mockRunUpdateCycle = runUpdateCycle as jest.MockedFunction<typeof runUpdateCycle>;
-const mockHttpsRequest = https.request as unknown as jest.Mock;
-
-/** Minimal stub context; only fields wrapHandler's CustomResourceHandler reads are load-bearing. */
-function fakeContext(): Context {
-  return {
-    callbackWaitsForEmptyEventLoop: false,
-    functionName: 'artifact-updater',
-    functionVersion: '$LATEST',
-    invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
-    memoryLimitInMB: '128',
-    awsRequestId: 'test-request-id',
-    logGroupName: '/aws/lambda/artifact-updater',
-    logStreamName: 'test-log-stream',
-    getRemainingTimeInMillis: () => 600000,
-    done: () => {},
-    fail: () => {},
-    succeed: () => {},
-  };
+interface CfnResponseBody {
+  Status: string;
+  Reason?: string;
+  PhysicalResourceId?: string;
 }
 
-const testConfig: Config = {
-  logLevel: 'error',
-  serviceName: 'artifact-updater-service',
-  region: 'us-east-1',
-  project: 'serverlessinbox',
-  distTag: 'latest',
-  granularity: 'major',
-  artifactBucketBase: 'mailbox-artifacts',
-  rootStackTagValue: 'my-stack',
-};
-
-const baseFields = {
-  ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
-  ResponseURL: 'https://cloudformation-custom-resource-response-url.example.com/',
-  StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/my-stack/guid',
-  RequestId: 'request-id-1',
-  LogicalResourceId: 'DeployEndTrigger',
-  ResourceType: 'Custom::DeployEndTrigger',
-};
-
-describe('cfnTriggerHandler', () => {
-  let writtenBodies: string[];
-  let cfnTriggerHandler: ReturnType<typeof createCfnTriggerHandler>;
+describe('CfnTrigger', () => {
+  let responseJson: string;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    writtenBodies = [];
-    cfnTriggerHandler = createCfnTriggerHandler({ config: testConfig, clients, error: undefined });
-    mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
-      // Simulate CloudFormation accepting the PUT immediately.
-      process.nextTick(() => callback({ statusCode: 200, headers: {} }));
-      return {
-        on: jest.fn(),
-        write: jest.fn((body: string) => {
-          writtenBodies.push(body);
-        }),
-        end: jest.fn(),
-      };
-    });
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    responseJson = '';
+    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
+      callback({ statusCode: 200 });
+      return new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          responseJson += chunk.toString();
+          done();
+        },
+      });
+    }) as typeof https.request);
   });
 
-  it('does not run the update cycle on Delete, and preserves the physical resource id', async () => {
-    const event: CloudFormationCustomResourceEvent = {
-      ...baseFields,
-      RequestType: 'Delete',
-      PhysicalResourceId: 'deploy-end-cr-physical-id',
-      ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
-    };
-
-    await cfnTriggerHandler(event, fakeContext(), () => {});
-
-    expect(mockRunUpdateCycle).not.toHaveBeenCalled();
-    expect(writtenBodies).toHaveLength(1);
-    const response = JSON.parse(writtenBodies[0]);
-    expect(response.Status).toBe('SUCCESS');
-    // No PhysicalResourceId is returned by the handler for Delete; wrapHandler falls back to
-    // the incoming event's PhysicalResourceId, so CloudFormation sees no id change.
-    expect(response.PhysicalResourceId).toBe('deploy-end-cr-physical-id');
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it('runs the update cycle on Create', async () => {
-    const event: CloudFormationCustomResourceEvent = {
-      ...baseFields,
-      RequestType: 'Create',
-      ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
-    };
+  function sentResponse(): CfnResponseBody {
+    return JSON.parse(responseJson);
+  }
 
-    await cfnTriggerHandler(event, fakeContext(), () => {});
+  const cycleRuns = () => jest.mocked(UpdateCycle.prototype.run);
 
-    expect(mockRunUpdateCycle).toHaveBeenCalledTimes(1);
-    const response = JSON.parse(writtenBodies[0]);
-    expect(response.Status).toBe('SUCCESS');
-    expect(response.PhysicalResourceId).toBe('DeployEndTrigger');
+  function healthyTrigger(event: CloudFormationCustomResourceEvent): CfnTrigger {
+    return new CfnTrigger(event, fakeLambdaContext(), newUpdateCycle, undefined, 'artifact-updater');
+  }
+
+  function misconfiguredTrigger(event: CloudFormationCustomResourceEvent): CfnTrigger {
+    return new CfnTrigger(event, fakeLambdaContext(), badConfigCycle, BAD_CONFIG_ERROR, 'artifact-updater');
+  }
+
+  it('does not run the update cycle on Delete, and answers SUCCESS with the physical id CloudFormation sent', async () => {
+    await healthyTrigger(deployEndTriggerEvent('Delete')).handle();
+
+    expect(cycleRuns()).not.toHaveBeenCalled();
+    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
   });
 
-  it('runs the update cycle on Update and swallows a failure from it', async () => {
-    mockRunUpdateCycle.mockRejectedValueOnce(new Error('boom'));
+  it.each(['Create', 'Update'] as const)('runs the update cycle on %s and answers with the logical id as physical id', async (requestType) => {
+    const event = deployEndTriggerEvent(requestType);
 
-    const event: CloudFormationCustomResourceEvent = {
-      ...baseFields,
-      RequestType: 'Update',
-      PhysicalResourceId: 'deploy-end-cr-physical-id',
-      ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '456' },
-      OldResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
-    };
+    await healthyTrigger(event).handle();
 
-    await cfnTriggerHandler(event, fakeContext(), () => {});
-
-    expect(mockRunUpdateCycle).toHaveBeenCalledTimes(1);
-    // The error is caught and swallowed (documented, deliberate behavior) so CFN still sees SUCCESS.
-    const response = JSON.parse(writtenBodies[0]);
-    expect(response.Status).toBe('SUCCESS');
+    expect(cycleRuns()).toHaveBeenCalledTimes(1);
+    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
   });
 
-  it('fails Create on config error and does not run the update cycle', async () => {
-    writtenBodies = [];
-    const cfnTriggerHandlerWithError = createCfnTriggerHandler({ config: testConfig, clients: undefined, error: 'LOG_LEVEL: invalid' });
-    mockHttpsRequest.mockImplementation((_options: unknown, callback: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
-      process.nextTick(() => callback({ statusCode: 200, headers: {} }));
-      return {
-        on: jest.fn(),
-        write: jest.fn((body: string) => {
-          writtenBodies.push(body);
-        }),
-        end: jest.fn(),
-      };
+  it('answers SUCCESS when the update cycle fails, then throws what the cycle threw', async () => {
+    const event = deployEndTriggerEvent('Create');
+    cycleRuns().mockRejectedValueOnce(new Error('tagging unavailable'));
+
+    await expect(healthyTrigger(event).handle()).rejects.toThrow('tagging unavailable');
+
+    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
+  });
+
+  it('emits the manual-finalize hint under the configured service name', async () => {
+    await healthyTrigger(deployEndTriggerEvent('Delete')).handle();
+
+    expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^MANUAL_FINALIZE .* service=artifact-updater$/));
+  });
+
+  describe('when the configuration failed to load', () => {
+    it('answers FAILED naming the problem on Create, without running the update cycle', async () => {
+      await misconfiguredTrigger(deployEndTriggerEvent('Create')).handle();
+
+      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining(BAD_CONFIG_ERROR) });
+      expect(cycleRuns()).not.toHaveBeenCalled();
     });
 
-    const event: CloudFormationCustomResourceEvent = {
-      ...baseFields,
-      RequestType: 'Create',
-      ResourceProperties: { ServiceToken: baseFields.ServiceToken, Nonce: '123' },
-    };
+    it('answers SUCCESS on Delete with the physical id CloudFormation sent, and logs the problem', async () => {
+      await misconfiguredTrigger(deployEndTriggerEvent('Delete')).handle();
 
-    await cfnTriggerHandlerWithError(event, fakeContext(), () => {});
-
-    expect(mockRunUpdateCycle).not.toHaveBeenCalled();
-    expect(writtenBodies).toHaveLength(1);
-    const response = JSON.parse(writtenBodies[0]);
-    expect(response.Status).toBe('FAILED');
+      expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
+        error: BAD_CONFIG_ERROR,
+      });
+    });
   });
 });
