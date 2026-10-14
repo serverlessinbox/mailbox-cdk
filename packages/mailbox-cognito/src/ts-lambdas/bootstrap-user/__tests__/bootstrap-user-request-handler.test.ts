@@ -1,160 +1,132 @@
-import type { CloudFormationCustomResourceUpdateEvent, Context } from 'aws-lambda';
-import { isParentStackRollingBack } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+/// <reference types="jest" />
 
-// wrapHandler uses https module, so mock it to capture responses
-const mockSentResponseBodies: string[] = [];
-jest.mock('https', () => ({
-  ...jest.requireActual<typeof import('https')>('https'),
-  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
-    const chunks: string[] = [];
-    return {
-      on: () => undefined,
-      write: (chunk: string) => {
-        chunks.push(chunk);
-      },
-      end: () => {
-        mockSentResponseBodies.push(chunks.join(''));
-        onResponse({ statusCode: 200, headers: {} });
-      },
-    };
-  },
-}));
+/**
+ * Pins the answers of the bootstrap user custom resource: which password it reports, which physical id it
+ * answers with, and when a failed Update is answered with success. A password reported although it was never
+ * applied would hand the operator a credential that does not work, and a failed Update answered with failure
+ * during a stack rollback leaves the stack in UPDATE_ROLLBACK_FAILED.
+ */
+
+import { mockClient } from 'aws-sdk-client-mock';
+import {
+  AdminAddUserToGroupCommand,
+  AdminCreateUserCommand,
+  CognitoIdentityProviderClient,
+  UsernameExistsException,
+} from '@aws-sdk/client-cognito-identity-provider';
+import { ExpectedFailure, isParentStackRollingBack, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { BootstrapUserRequestHandler } from '../bootstrap-user-request-handler';
+import { UserEnsurer } from '../ensure-user';
+import { PASSWORD_SET_AT_INSTALL_TIME } from '../password';
+import { PHYSICAL_RESOURCE_ID, request, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 
 // mailbox-cognito has no dependency on @aws-sdk/client-cloudformation (the boundary
 // isParentStackRollingBack itself talks to), so — unlike the mailbox-cdk-shared
 // handler suites, which mock CloudFormationClient directly — this suite mocks the
-// helper function itself and lets everything else in the handler run for real.
+// helper function itself and lets everything else run for real.
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   isParentStackRollingBack: jest.fn(),
 }));
 
-// Import handler after mocking
-import { handler } from '../index';
+const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<typeof isParentStackRollingBack>;
 
-const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<
-  typeof isParentStackRollingBack
->;
+const SUPPLIED_PASSWORD = 'Supplied1Password';
 
-const FUNCTION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:bootstrap-user';
-const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/guid';
-const RESPONSE_URL = 'https://cloudformation-custom-resource-response.example.com/response';
+describe('BootstrapUserRequestHandler', () => {
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  let requestHandler: BootstrapUserRequestHandler;
 
-const context: Context = {
-  callbackWaitsForEmptyEventLoop: false,
-  functionName: 'bootstrap-user',
-  functionVersion: '$LATEST',
-  invokedFunctionArn: FUNCTION_ARN,
-  memoryLimitInMB: '256',
-  awsRequestId: 'aws-request-id',
-  logGroupName: '/aws/lambda/bootstrap-user',
-  logStreamName: 'log-stream',
-  getRemainingTimeInMillis: () => 60000,
-  done: () => undefined,
-  fail: () => undefined,
-  succeed: () => undefined,
-};
-
-function baseEvent(overrides: Record<string, unknown> = {}): CloudFormationCustomResourceUpdateEvent {
-  return {
-    RequestType: 'Update',
-    ServiceToken: FUNCTION_ARN,
-    ResponseURL: RESPONSE_URL,
-    StackId: STACK_ID,
-    RequestId: 'unique-id',
-    ResourceType: 'Custom::BootstrapUser',
-    LogicalResourceId: 'BootstrapUserResource',
-    // Missing userPoolId forces the handler's own validation to throw, driving it
-    // into the rollback-suppression branch without any real Cognito call.
-    ResourceProperties: {
-      ServiceToken: FUNCTION_ARN,
-    },
-    PhysicalResourceId: 'physical-id',
-    OldResourceProperties: {
-      ServiceToken: FUNCTION_ARN,
-    },
-    ...overrides,
-  };
-}
-
-/**
- * Invokes the real handler and returns the parsed CFN response body sent via
- * the mocked https module — captures what wrapHandler sends.
- */
-async function invokeAndCaptureResponse(event: CloudFormationCustomResourceUpdateEvent): Promise<any> {
-  mockSentResponseBodies.length = 0;
-
-  // The handler may throw after sending a FAILED response (wrapHandler catches it),
-  // or may return after sending SUCCESS (for rollback suppression).
-  await (handler as any)(event, context).catch(() => undefined);
-
-  expect(mockSentResponseBodies).toHaveLength(1);
-  return JSON.parse(mockSentResponseBodies[0]);
-}
-
-describe('bootstrap-user handler rollback behavior', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    cognitoMock.reset();
+    cognitoMock.on(AdminCreateUserCommand).resolves({});
+    cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
+    mockIsParentStackRollingBack.mockReset();
+    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({})), new LoggerBuffer('test-service', 'error'));
   });
 
-  describe('on Update with Cognito failure and parent rolling back', () => {
-    it('sends SUCCESS response with the unchanged PhysicalResourceId', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+  describe('handle', () => {
+    it('Create answers the physical id and the password it applied when the properties supply one', async () => {
+      const answer = await requestHandler.handle(request('Create', templateProperties({ username: 'testadmin', temporaryPassword: SUPPLIED_PASSWORD })));
 
-      const event = baseEvent({ RequestType: 'Update' });
-      const response = await invokeAndCaptureResponse(event);
-
-      expect(response.Status).toBe('SUCCESS');
-      expect(response.PhysicalResourceId).toBe(event.PhysicalResourceId);
+      expect(answer).toEqual({
+        PhysicalResourceId: `BootstrapUser:${USER_POOL_ID}:testadmin`,
+        Data: { temporaryPassword: SUPPLIED_PASSWORD },
+      });
     });
 
-    it('includes password marker in Data on rollback suppression', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+    it('Create without a username creates and names the user admin', async () => {
+      const answer = await requestHandler.handle(request('Create'));
 
-      const event = baseEvent({ RequestType: 'Update' });
-      const response = await invokeAndCaptureResponse(event);
+      expect(answer.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
+      expect(cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input).toMatchObject({ Username: 'admin' });
+    });
 
-      expect(response.Status).toBe('SUCCESS');
-      expect(response.Data?.temporaryPassword).toBe('(password set at install time)');
+    it('Create without a password reports the password it generated and applied', async () => {
+      const answer = await requestHandler.handle(request('Create'));
+
+      const appliedPassword = cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.TemporaryPassword;
+      expect(answer.Data.temporaryPassword).toBe(appliedPassword);
+      expect(answer.Data.temporaryPassword).not.toBe(PASSWORD_SET_AT_INSTALL_TIME);
+    });
+
+    it('reports the marker, not the supplied password, when the user already existed', async () => {
+      cognitoMock.on(AdminCreateUserCommand).rejects(new UsernameExistsException({ message: 'exists', $metadata: {} }));
+
+      const answer = await requestHandler.handle(request('Create', templateProperties({ temporaryPassword: SUPPLIED_PASSWORD })));
+
+      expect(answer.Data.temporaryPassword).toBe(PASSWORD_SET_AT_INSTALL_TIME);
+      expect(answer.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
+    });
+
+    it('Update answers the password without a physical id, so the resource keeps its own', async () => {
+      const answer = await requestHandler.handle(request('Update', templateProperties({ temporaryPassword: SUPPLIED_PASSWORD })));
+
+      expect(answer).toEqual({ Data: { temporaryPassword: SUPPLIED_PASSWORD } });
+    });
+
+    it('Delete answers the marker without a physical id', async () => {
+      const answer = await requestHandler.handle(request('Delete'));
+
+      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+    });
+
+    it('adds the user to its groups and skips an empty group name', async () => {
+      await requestHandler.handle(request('Create', templateProperties({ groups: ['admin', '', 'user'] })));
+
+      const groupNames = cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName);
+      expect(groupNames).toEqual(['admin', 'user']);
+    });
+
+    it('throws an ExpectedFailure that names the invalid field when the properties are not valid', async () => {
+      const failure: unknown = await requestHandler.handle(request('Create', { ServiceToken: 'x' })).catch((thrown: unknown) => thrown);
+
+      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: .*userPoolId/));
     });
   });
 
-  describe('on Update with Cognito failure and parent not rolling back', () => {
-    it('sends FAILED response when not rolling back', async () => {
+  describe('answerFailure', () => {
+    const failure = new Error('cognito failed');
+
+    it('answers an Update that fails while the parent stack rolls back with the marker', async () => {
+      mockIsParentStackRollingBack.mockResolvedValue(true);
+
+      const answer = await requestHandler.answerFailure(request('Update'), failure);
+
+      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+    });
+
+    it('throws the failure of an Update when the parent stack is not rolling back', async () => {
       mockIsParentStackRollingBack.mockResolvedValue(false);
 
-      const event = baseEvent({ RequestType: 'Update' });
-      const response = await invokeAndCaptureResponse(event);
-
-      expect(response.Status).toBe('FAILED');
-      expect(response.Reason).toContain('Invalid ResourceProperties');
-      expect(response.PhysicalResourceId).toBe(event.PhysicalResourceId);
+      await expect(requestHandler.answerFailure(request('Update'), failure)).rejects.toBe(failure);
     });
-  });
 
-  describe('on Update with Cognito failure and DescribeStacks error', () => {
-    it('treats as not rolling back and sends FAILED', async () => {
-      // isParentStackRollingBack itself already swallows a DescribeStacks error into
-      // `false` (see stack-rollback-detector.ts) — the handler sees exactly that.
-      mockIsParentStackRollingBack.mockResolvedValue(false);
-
-      const event = baseEvent({ RequestType: 'Update' });
-      const response = await invokeAndCaptureResponse(event);
-
-      expect(response.Status).toBe('FAILED');
-      expect(response.PhysicalResourceId).toBe(event.PhysicalResourceId);
-    });
-  });
-
-  describe('on Create with failure and parent rolling back', () => {
-    it('sends FAILED — rollback suppression only applies to Update', async () => {
+    it('throws the failure of a Create without consulting the stack status', async () => {
       mockIsParentStackRollingBack.mockResolvedValue(true);
 
-      const event: any = baseEvent({ RequestType: 'Create', PhysicalResourceId: undefined });
-      const response = await invokeAndCaptureResponse(event);
-
-      expect(response.Status).toBe('FAILED');
-      // Rollback suppression must never even consult the detector for a Create failure.
+      await expect(requestHandler.answerFailure(request('Create'), failure)).rejects.toBe(failure);
       expect(mockIsParentStackRollingBack).not.toHaveBeenCalled();
     });
   });

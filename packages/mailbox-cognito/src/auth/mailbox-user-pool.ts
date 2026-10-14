@@ -30,6 +30,7 @@ import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
 import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
 import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
+import type { BootstrapUserProperties } from '../ts-lambdas/bootstrap-user/properties';
 import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
 
 /**
@@ -504,17 +505,18 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       artifactResolver: this.artifacts,
     });
 
+    const properties: BootstrapUserProperties = {
+      userPoolId: this.userPoolId,
+      username: config.username,
+      groups: config.groups,
+      temporaryPassword: config.temporaryPassword,
+      // Force re-invocation when response contract changes (e.g., Data field added)
+      responseContractVersion: '1',
+    };
     const customResource = new CustomResource(this, constructId, {
       resourceType: 'Custom::CognitoBootstrapUser',
       serviceToken: handler.functionArn,
-      properties: {
-        userPoolId: this.userPoolId,
-        username: config.username,
-        groups: config.groups,
-        temporaryPassword: config.temporaryPassword,
-        // Force re-invocation when response contract changes (e.g., Data field added)
-        responseContractVersion: '1',
-      },
+      properties,
       serviceTimeout: Duration.minutes(4),
     });
 

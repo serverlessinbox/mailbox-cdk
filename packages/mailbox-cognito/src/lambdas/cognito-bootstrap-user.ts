@@ -6,6 +6,7 @@ import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
+/** What `CognitoBootstrapUserLambda` needs to resolve its code artifact. */
 export interface CognitoBootstrapUserLambdaProps {
   artifactResolver: IArtifactResolver;
 }

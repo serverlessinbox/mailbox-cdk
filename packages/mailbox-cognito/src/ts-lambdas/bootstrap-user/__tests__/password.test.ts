@@ -1,12 +1,14 @@
-import { generateSecurePassword, PASSWORD_SET_AT_INSTALL_TIME } from '../password';
+/// <reference types="jest" />
+
+/**
+ * Pins the password the bootstrap user Lambda generates for the initial admin credential: it meets the Cognito
+ * policy, differs per call, and comes from the CSPRNG. A password from Math.random would be recoverable from
+ * observed outputs.
+ */
+
+import { generateSecurePassword } from '../password';
 
 describe('password module', () => {
-  describe('PASSWORD_SET_AT_INSTALL_TIME marker', () => {
-    it('is defined', () => {
-      expect(PASSWORD_SET_AT_INSTALL_TIME).toBe('(password set at install time)');
-    });
-  });
-
   describe('generateSecurePassword', () => {
     function validatePassword(password: string): { isValid: boolean; reason?: string } {
       // Policy: minimum length 8, requires lowercase, uppercase, and digits
