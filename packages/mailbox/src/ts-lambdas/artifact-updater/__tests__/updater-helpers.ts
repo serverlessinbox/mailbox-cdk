@@ -10,6 +10,7 @@ import type { LambdaTarget, UiTarget } from '../artifact-target';
 import type { Config } from '../config';
 import { EdgeLambdaUpdater } from '../edge-lambda-updater';
 import { FunctionSmokeTester } from '../function-smoke-tester';
+import { LambdaCodeRollback } from '../lambda-code-rollback';
 import { LambdaCodeUpdater } from '../lambda-code-updater';
 import { LambdaFunctionCode, type Sleep } from '../lambda-function-code';
 import { ReleaseArtifacts } from '../release-artifacts';
@@ -104,12 +105,23 @@ export function newUpdateCycle(): UpdateCycle {
   const logger = new LoggerBuffer();
   const releases = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
   const functionCode = new LambdaFunctionCode(noSleep);
+  const smokeTester = new FunctionSmokeTester(logger);
+  const rollback = new LambdaCodeRollback(functionCode, logger);
   return new UpdateCycle(
     testConfig,
     clients,
     logger,
-    new LambdaCodeUpdater(releases, functionCode, new FunctionSmokeTester(logger), logger),
-    new EdgeLambdaUpdater(clients.edge, clients.cloudFront, releases, functionCode, logger, noSleep),
+    new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger),
+    new EdgeLambdaUpdater(
+      clients.edge,
+      clients.cloudFront,
+      releases,
+      functionCode,
+      smokeTester,
+      rollback,
+      logger,
+      noSleep,
+    ),
     new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger),
   );
 }
