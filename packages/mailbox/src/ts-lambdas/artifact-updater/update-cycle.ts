@@ -1,127 +1,274 @@
-import { GetResourcesCommand } from '@aws-sdk/client-resource-groups-tagging-api';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import {
+  GetResourcesCommand,
+  type ResourceTagMapping,
+  type Tag,
+} from '@aws-sdk/client-resource-groups-tagging-api';
+import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { LambdaTarget, UiTarget } from './artifact-target';
 import type { Config } from './config';
-import { EDGE_REGION, type UpdaterClients } from './updater-clients';
-import { advanceLambdaIfStale } from './update-code';
-import { advanceUiBucketIfStale } from './update-ui';
-import { advanceEdgeLambdaIfStale } from './update-edge';
-import { tagMapFrom } from './common';
+import type { EdgeLambdaUpdater } from './edge-lambda-updater';
+import type { LambdaCodeUpdater } from './lambda-code-updater';
+import type { UiBucketUpdater } from './ui-bucket-updater';
+import { EDGE_REGION, type RegionClients, type UpdaterClients } from './updater-clients';
+import {
+  toArtifactName,
+  toArtifactPackageName,
+  toArtifactVersion,
+  toContentBucketName,
+  toDistributionArn,
+  toLambdaFunctionArn,
+} from './updater-identifiers';
+import { UpdaterTagKeys } from './updater-tags';
+
+/** One page of the resources that carry the root stack tag, and the token of the next page when there is one. */
+interface TaggedResourcePage {
+  readonly resources: ResourceTagMapping[];
+  readonly nextToken: string | undefined;
+}
 
 /**
- * Run the artifact update cycle: scan for stale resources and update them.
- * Implements buffered logging: only logs when updates occur or errors happen.
- * Scans both regions and filters by registered packages.
+ * A managed resource that opted in to automatic updates and carries the tags that say what it was deployed
+ * from. Its values are as the tags hold them, not yet checked to be of the kinds the updaters take.
  */
-export async function runUpdateCycle(config: Config, clients: UpdaterClients): Promise<void> {
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+interface UpdatableResource {
+  readonly arn: string;
+  readonly service: string | undefined;
+  readonly autoUpdateType: string;
+  readonly packageName: string;
+  readonly artifactName: string;
+  readonly deployedVersion: string;
+  readonly bucketName: string | undefined;
+}
 
-  try {
-    // Extract config needed for update functions
-    const updateConfig = {
-      distTag: config.distTag,
-      granularity: config.granularity,
-      project: config.project,
-      artifactBucketBase: config.artifactBucketBase,
-    };
-    // Avoid scanning the same region twice when the deployment region is the edge region.
-    const scanTargets = clients.edge === clients.deployment ? [clients.deployment] : [clients.deployment, clients.edge];
+/**
+ * One scan of the stack's tagged Lambda functions and CloudFront distributions in the deployment region and
+ * the edge region, advancing each one that opted in to the update path its auto-update-type names. A resource
+ * whose update fails is logged and does not stop the scan of the others.
+ */
+export class UpdateCycle {
+  private readonly config: Config;
+  private readonly clients: UpdaterClients;
+  private readonly logger: LoggerBuffer;
+  private readonly codeUpdater: LambdaCodeUpdater;
+  private readonly edgeUpdater: EdgeLambdaUpdater;
+  private readonly uiUpdater: UiBucketUpdater;
 
-    logger.info('artifact update cycle started', {
-      rootStackTag: config.rootStackTagValue,
+  constructor(
+    config: Config,
+    clients: UpdaterClients,
+    logger: LoggerBuffer,
+    codeUpdater: LambdaCodeUpdater,
+    edgeUpdater: EdgeLambdaUpdater,
+    uiUpdater: UiBucketUpdater,
+  ) {
+    this.config = config;
+    this.clients = clients;
+    this.logger = logger;
+    this.codeUpdater = codeUpdater;
+    this.edgeUpdater = edgeUpdater;
+    this.uiUpdater = uiUpdater;
+  }
+
+  /** Throws when the scan itself fails; a failed update of one resource is logged and the scan goes on. */
+  public async run(): Promise<void> {
+    try {
+      const scanTargets = this.beginCycle();
+      for (const scan of scanTargets) {
+        await this.scanRegion(scan);
+      }
+      this.logger.info('artifact update cycle completed');
+    } catch (thrown) {
+      this.recordFailedCycle(thrown);
+      throw thrown;
+    }
+  }
+
+  private beginCycle(): RegionClients[] {
+    const { deployment, edge } = this.clients;
+    // The deployment region is scanned once when it is the edge region.
+    const scanTargets = edge === deployment ? [deployment] : [deployment, edge];
+
+    this.logger.info('artifact update cycle started', {
+      rootStackTag: this.config.rootStackTagValue,
       regions: scanTargets.map((target) => target.region),
-      granularity: config.granularity,
+      granularity: this.config.granularity,
     });
+    return scanTargets;
+  }
 
-    // Scan Lambda functions and CloudFront distributions in both regions.
-    for (const scan of scanTargets) {
-      const tagging = scan.tagging;
-      let nextToken: string | undefined;
+  private async scanRegion(scan: RegionClients): Promise<void> {
+    let nextToken: string | undefined;
 
-      do {
-        const response = await tagging.send(
-          new GetResourcesCommand({
-            TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [config.rootStackTagValue] }],
-            ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-            PaginationToken: nextToken,
-          }),
-        );
+    do {
+      const page = await this.fetchTaggedResources(scan, nextToken);
+      for (const mapping of page.resources) {
+        await this.updateResource(scan, mapping);
+      }
+      nextToken = page.nextToken;
+    } while (nextToken);
+  }
 
-        if (response.ResourceTagMappingList) {
-          for (const resource of response.ResourceTagMappingList) {
-            const arn = resource.ResourceARN;
-            if (!arn) continue;
+  private async fetchTaggedResources(scan: RegionClients, paginationToken: string | undefined): Promise<TaggedResourcePage> {
+    const response = await scan.tagging.send(
+      new GetResourcesCommand({
+        TagFilters: [{ Key: UpdaterTagKeys.rootStack, Values: [this.config.rootStackTagValue] }],
+        ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
+        PaginationToken: paginationToken,
+      }),
+    );
+    return { resources: response.ResourceTagMappingList ?? [], nextToken: response.PaginationToken };
+  }
 
-            const tags = tagMapFrom(resource.Tags);
-            const resourceType = arn.split(':')[2]; // Extract service type from ARN (position 2 = s3|lambda|etc)
-
-            // Read auto-update type
-            const autoUpdateType = tags['serverless-inbox:auto-update-type'] ?? 'none';
-            const pkg = tags['serverless-inbox:artifact-package'];
-            const artifactName = tags['serverless-inbox:artifact-name'];
-            const deployedVersion = tags['serverless-inbox:artifact-version'];
-
-            if (autoUpdateType === 'none') {
-              logger.debug('skipping auto-update-type=none', { arn });
-              continue;
-            }
-
-            if (!pkg || !artifactName || !deployedVersion) {
-              logger.warn('resource missing artifact tags', { arn, resourceType, pkg, artifactName, deployedVersion });
-              continue;
-            }
-
-            try {
-              // Route by resource type and auto-update-type
-              if (resourceType === 'cloudfront') {
-                // CloudFront distribution: only UI type is supported
-                if (autoUpdateType === 'ui') {
-                  const bucketName = tags['serverless-inbox:bucket-name'];
-                  if (!bucketName) {
-                    logger.debug('UI distribution missing bucket-name tag', { arn });
-                    continue;
-                  }
-                  await advanceUiBucketIfStale(clients, bucketName, pkg, artifactName, deployedVersion, arn, logger, updateConfig);
-                } else {
-                  logger.debug('unsupported auto-update-type for CloudFront distribution', { arn, type: autoUpdateType });
-                }
-              } else if (resourceType === 'lambda') {
-                // Lambda function: code or edge types
-                switch (autoUpdateType) {
-                  case 'code':
-                    await advanceLambdaIfStale(clients, scan, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
-                    break;
-                  case 'edge':
-                    if (scan.region === EDGE_REGION) {
-                      await advanceEdgeLambdaIfStale(clients, arn, pkg, artifactName, deployedVersion, logger, updateConfig);
-                    } else {
-                      logger.debug('skipping edge update in non-us-east-1 region', { arn, region: scan.region });
-                    }
-                    break;
-                  default:
-                    logger.debug('unknown auto-update-type for lambda', { arn, type: autoUpdateType });
-                }
-              } else {
-                logger.debug('unknown resource type', { arn, resourceType });
-              }
-            } catch (err: any) {
-              logger.error('failed to update resource', { arn, error: err.message });
-              // Continue processing other targets.
-            }
-          }
-        }
-
-        nextToken = response.PaginationToken;
-      } while (nextToken);
+  private async updateResource(scan: RegionClients, mapping: ResourceTagMapping): Promise<void> {
+    const resource = this.readUpdatableResource(mapping);
+    if (!resource) {
+      return;
     }
 
-    logger.info('artifact update cycle completed');
-  } catch (err: any) {
-    logger.error('artifact update cycle failed', { error: err.message });
-    throw err;
-  } finally {
-    // Flush buffered logs only if there were updates or errors.
-    if (logger.shouldFlush()) {
-      logger.flush();
+    try {
+      await this.advance(scan, resource);
+    } catch (thrown) {
+      this.recordFailedResource(resource.arn, thrown);
     }
+  }
+
+  /** The resource when it opted in to updates and is fully tagged; otherwise undefined, with the reason logged. */
+  private readUpdatableResource(mapping: ResourceTagMapping): UpdatableResource | undefined {
+    const arn = mapping.ResourceARN;
+    if (!arn) {
+      return undefined;
+    }
+
+    const tags = this.tagMapFrom(mapping.Tags);
+    const service = this.serviceOf(arn);
+    const autoUpdateType = tags[UpdaterTagKeys.autoUpdateType] ?? 'none';
+    const packageName = tags[UpdaterTagKeys.artifactPackage];
+    const artifactName = tags[UpdaterTagKeys.artifactName];
+    const deployedVersion = tags[UpdaterTagKeys.artifactVersion];
+
+    // A resource that did not opt in is skipped before its artifact tags are checked, since it needs none.
+    if (autoUpdateType === 'none') {
+      this.logger.debug('skipping auto-update-type=none', { arn });
+      return undefined;
+    }
+
+    if (!packageName || !artifactName || !deployedVersion) {
+      this.logger.warn('resource missing artifact tags', {
+        arn,
+        resourceType: service,
+        pkg: packageName,
+        artifactName,
+        deployedVersion,
+      });
+      return undefined;
+    }
+
+    return {
+      arn,
+      service,
+      autoUpdateType,
+      packageName,
+      artifactName,
+      deployedVersion,
+      bucketName: tags[UpdaterTagKeys.bucketName],
+    };
+  }
+
+  private async advance(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+    if (resource.service === 'cloudfront') {
+      await this.advanceDistribution(resource);
+      return;
+    }
+    if (resource.service === 'lambda') {
+      await this.advanceFunction(scan, resource);
+      return;
+    }
+    this.logger.debug('unknown resource type', { arn: resource.arn, resourceType: resource.service });
+  }
+
+  /** Only a distribution in front of a UI bucket is updated. */
+  private async advanceDistribution(resource: UpdatableResource): Promise<void> {
+    if (resource.autoUpdateType !== 'ui') {
+      this.logger.debug('unsupported auto-update-type for CloudFront distribution', {
+        arn: resource.arn,
+        type: resource.autoUpdateType,
+      });
+      return;
+    }
+
+    if (!resource.bucketName) {
+      this.logger.debug('UI distribution missing bucket-name tag', { arn: resource.arn });
+      return;
+    }
+
+    await this.uiUpdater.advanceIfStale(this.uiTarget(resource, resource.bucketName));
+  }
+
+  private async advanceFunction(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+    switch (resource.autoUpdateType) {
+      case 'code':
+        await this.codeUpdater.advanceIfStale(scan, this.lambdaTarget(resource));
+        return;
+      case 'edge':
+        await this.advanceEdgeFunction(scan, resource);
+        return;
+      default:
+        this.logger.debug('unknown auto-update-type for lambda', { arn: resource.arn, type: resource.autoUpdateType });
+    }
+  }
+
+  /** Lambda@Edge functions live in the edge region only. */
+  private async advanceEdgeFunction(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+    if (scan.region !== EDGE_REGION) {
+      this.logger.debug('skipping edge update in non-us-east-1 region', { arn: resource.arn, region: scan.region });
+      return;
+    }
+    await this.edgeUpdater.advanceIfStale(this.lambdaTarget(resource));
+  }
+
+  private lambdaTarget(resource: UpdatableResource): LambdaTarget {
+    return {
+      arn: toLambdaFunctionArn(resource.arn),
+      packageName: toArtifactPackageName(resource.packageName),
+      artifactName: toArtifactName(resource.artifactName),
+      deployedVersion: toArtifactVersion(resource.deployedVersion),
+    };
+  }
+
+  private uiTarget(resource: UpdatableResource, bucketName: string): UiTarget {
+    return {
+      arn: toDistributionArn(resource.arn),
+      bucketName: toContentBucketName(bucketName),
+      packageName: toArtifactPackageName(resource.packageName),
+      artifactName: toArtifactName(resource.artifactName),
+      deployedVersion: toArtifactVersion(resource.deployedVersion),
+    };
+  }
+
+  /** The service of the ARN, or undefined for an ARN that is malformed, which is then not a resource of a managed service. */
+  private serviceOf(arn: string): string | undefined {
+    try {
+      return parseArn(arn).service;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private tagMapFrom(tags: Tag[] | undefined): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const tag of tags ?? []) {
+      if (tag.Key && tag.Value) {
+        map[tag.Key] = tag.Value;
+      }
+    }
+    return map;
+  }
+
+  private recordFailedResource(arn: string, thrown: unknown): void {
+    this.logger.error('failed to update resource', { arn, error: new CaughtError(thrown).message });
+  }
+
+  private recordFailedCycle(thrown: unknown): void {
+    this.logger.error('artifact update cycle failed', { error: new CaughtError(thrown).message });
   }
 }
