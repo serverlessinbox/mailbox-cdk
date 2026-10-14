@@ -14,4 +14,5 @@ export { answerRequestWithBadConfig } from './ts-lambdas/shared/bad-config-answe
 export type { CustomResourceAnswer, CustomResourceRequest } from './ts-lambdas/shared/custom-resource-request';
 export { CaughtError } from './ts-lambdas/shared/caught-error';
 export { parseArn, type ParsedArn } from './ts-lambdas/shared/arn';
+export type { Branded } from './ts-lambdas/shared/branded';
 export { isParentStackRollingBack, isParentStackBeingDeleted } from './ts-lambdas/shared/stack-rollback-detector';

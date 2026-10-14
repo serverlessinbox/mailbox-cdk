@@ -88,12 +88,6 @@ const GO_ARTIFACTS = new Set<string>([
   'websocket-message',
 ]);
 
-/**
- * Managed TypeScript Lambdas that do not answer the probe yet, each with the outcome it has today. A Lambda
- * that starts to answer fails its expectation here, which is the signal to remove it from this list.
- */
-const KNOWN_UNANSWERED = new Set<string>(['blob-authorizer']);
-
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
     issuer: 'https://example.com/issuer',
@@ -289,7 +283,7 @@ describe('Lambdas the artifact updater manages', () => {
     expect({ unplaced, goWithSource }).toEqual({ unplaced: [], goWithSource: [] });
   });
 
-  it('lists only Go artifacts and known gaps that the templates hold, and every listed Go artifact is of the Go package', () => {
+  it('lists only Go artifacts that the templates hold, and every listed Go artifact is of the Go package', () => {
     const names = new Set(managed.map((lambda) => lambda.artifactName));
     const listedOutsideGoPackage = managed
       .filter((lambda) => GO_ARTIFACTS.has(lambda.artifactName) && lambda.packageName !== GO_PACKAGE)
@@ -297,15 +291,14 @@ describe('Lambdas the artifact updater manages', () => {
 
     expect(listedOutsideGoPackage).toEqual([]);
     expect([...GO_ARTIFACTS].filter((name) => !names.has(name))).toEqual([]);
-    expect([...KNOWN_UNANSWERED].filter((name) => !names.has(name))).toEqual([]);
   });
 
-  it('answer the smoke-test probe with a boolean serverlessInboxSmokeTestOk, except the known gaps', async () => {
+  it('answer the smoke-test probe with a boolean serverlessInboxSmokeTestOk', async () => {
     const failures: string[] = [];
 
     for (const lambda of managed.filter((candidate) => !GO_ARTIFACTS.has(candidate.artifactName))) {
       const source = await handlerSourceOf(lambda.artifactName);
-      if (source === undefined || KNOWN_UNANSWERED.has(lambda.artifactName)) {
+      if (source === undefined) {
         continue;
       }
       const outcome = await probe(lambda, source);
@@ -317,18 +310,15 @@ describe('Lambdas the artifact updater manages', () => {
     expect(failures).toEqual([]);
   });
 
-  it.each([...KNOWN_UNANSWERED])('%s still does not answer the probe, which is the known gap', async (artifactName) => {
-    const lambda = managed.find((candidate) => candidate.artifactName === artifactName);
-    const source = await handlerSourceOf(artifactName);
+  it('include the blob-authorizer, which answers the probe', async () => {
+    const lambda = managed.find((candidate) => candidate.artifactName === 'blob-authorizer');
+    const source = await handlerSourceOf('blob-authorizer');
     if (lambda === undefined || source === undefined) {
-      throw new Error(`Known gap ${artifactName} is not a managed TypeScript Lambda`);
+      throw new Error('blob-authorizer is not a managed TypeScript Lambda');
     }
 
     const outcome = await probe(lambda, source);
 
-    expect({ answered: outcome.answered, handlerReached: outcome.handlerReached }).toEqual({
-      answered: false,
-      handlerReached: true,
-    });
+    expect(outcome).toMatchObject({ answered: true, handlerReached: true });
   });
 });
