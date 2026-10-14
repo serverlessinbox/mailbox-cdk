@@ -8,7 +8,7 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { HmacVerifier } from '../hmac-verifier';
-import { AUTH_KEY_STORE_TABLE, blobMacSignedBy, sessionTokenOverPayload, sessionTokenSignedBy } from './blob-authorizer-helpers';
+import { AUTH_KEY_STORE_TABLE, blobMacSignedBy, sessionTokenOverPayload, sessionTokenSignedBy } from './jmap-blob-download-helpers';
 
 const CURRENT_KEY = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');

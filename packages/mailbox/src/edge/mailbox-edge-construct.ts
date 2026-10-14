@@ -30,37 +30,37 @@ export interface MailboxEdgeConstructProps {
   /** S3 bucket containing artifacts */
   readonly artifactBucket: string | s3.IBucket;
 
-  /** Blob-authorizer Lambda artifact reference (key + optional S3 version ID) */
-  readonly blobAuthorizerReference: ResolvedArtifact;
+  /** JMAP blob download Lambda artifact reference (key + optional S3 version ID) */
+  readonly jmapBlobDownloadReference: ResolvedArtifact;
 
-  /** DynamoDB item table ARN (regional) used by blob-authorizer */
+  /** DynamoDB item table ARN (regional) used by jmap-blob-download */
   readonly itemTableArn: string;
 
-  /** DynamoDB config table ARN (regional) used by blob-authorizer */
+  /** DynamoDB config table ARN (regional) used by jmap-blob-download */
   readonly configTableArn: string;
 
-  /** DynamoDB auth key store table ARN (regional) used by blob-authorizer */
+  /** DynamoDB auth key store table ARN (regional) used by jmap-blob-download */
   readonly authKeyStoreTableArn: string;
 
   /** Product version for artifact tagging (e.g., '1.2.3') */
   readonly productVersion: string;
 
-  /** Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into */
+  /** Name of the shared "jmap" pipeline log group (home region) that jmap-blob-download logs into */
   readonly logGroupName: string;
 
-  /** ARN of the blob-authorizer Lambda@Edge execution role (created in the root stack) */
-  readonly blobAuthorizerRoleArn: string;
+  /** ARN of the jmap-blob-download Lambda@Edge execution role (created in the root stack) */
+  readonly jmapBlobDownloadRoleArn: string;
 }
 
 /**
- * Creates an ACM certificate and optionally a blob-authorizer Lambda@Edge function.
+ * Creates an ACM certificate and optionally a jmap-blob-download Lambda@Edge function.
  *
  * Accepts pre-resolved S3 locations - artifact prefix calculation happens in the deployer.
  */
 export class MailboxEdgeConstruct extends Construct {
   public readonly certificate: acm.CfnCertificate;
-  public readonly blobAuthorizerFunction: lambda.IFunction;
-  public readonly blobAuthorizerVersion: lambda.IVersion;
+  public readonly jmapBlobDownloadFunction: lambda.IFunction;
+  public readonly jmapBlobDownloadVersion: lambda.IVersion;
 
   constructor(scope: Construct, id: string, props: MailboxEdgeConstructProps) {
     super(scope, id);
@@ -100,14 +100,14 @@ export class MailboxEdgeConstruct extends Construct {
       ],
     });
 
-    // Create blob-authorizer Lambda
+    // Create jmap-blob-download Lambda
     const artifactBucket = typeof props.artifactBucket === 'string'
       ? s3.Bucket.fromBucketName(this, 'artifact-bucket', props.artifactBucket)
       : props.artifactBucket;
 
-    // Import the blob-authorizer execution role created in the root stack (immutable).
+    // Import the jmap-blob-download execution role created in the root stack (immutable).
     // The role trust and policies are configured there; this construct uses it as-is.
-    const blobAuthorizerRole = iam.Role.fromRoleArn(this, 'blob-authorizer-role', props.blobAuthorizerRoleArn, {
+    const jmapBlobDownloadRole = iam.Role.fromRoleArn(this, 'jmap-blob-download-role', props.jmapBlobDownloadRoleArn, {
       mutable: false,
     });
 
@@ -119,17 +119,17 @@ export class MailboxEdgeConstruct extends Construct {
     // 1. Uses pre-resolved S3 reference (deployer-calculated key) rather than artifact resolver
     // 2. Lambda@Edge hard restrictions: must live in us-east-1, cannot have environment variables,
     //    cannot use VPC
-    const blobAuthorizerFunction = new lambda.Function(this, 'blob-authorizer', {
+    const jmapBlobDownloadFunction = new lambda.Function(this, 'jmap-blob-download', {
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromBucket(
         artifactBucket,
-        props.blobAuthorizerReference.key,
-        props.blobAuthorizerReference.versionId,
+        props.jmapBlobDownloadReference.key,
+        props.jmapBlobDownloadReference.versionId,
       ),
-      role: blobAuthorizerRole,
+      role: jmapBlobDownloadRole,
       memorySize: 512,
-      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge (${Aws.STACK_NAME})`,
+      description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge (${Aws.STACK_NAME})`,
       // Lambda@Edge sends logs to the SAME custom group name in every invocation region (no
       // Region prefix). In the home region that name already belongs to the CFN-created "jmap"
       // pipeline group, so home-region edge logs merge into it; other regions get same-named,
@@ -139,9 +139,9 @@ export class MailboxEdgeConstruct extends Construct {
     });
 
     // Apply artifact tags for auto-update tracking.
-    // Package: mailbox-cdk-edge (us-east-1), artifact: blob-authorizer
+    // Package: mailbox-cdk-edge (us-east-1), artifact: jmap-blob-download
     // updateType='edge' because it's updated via the scheduled updater (UpdateFunctionCode + PublishVersion + CloudFront)
-    applyArtifactTags(blobAuthorizerFunction, 'mailbox-cdk-edge', 'blob-authorizer', props.productVersion, 'edge');
+    applyArtifactTags(jmapBlobDownloadFunction, 'mailbox-cdk-edge', 'jmap-blob-download', props.productVersion, 'edge');
 
     // The root-stack tag (used by the scheduled updater for discovery, the sweeper's ownership
     // check, and the tag-scoped IAM conditions in the deployer/sweeper policies) comes from the
@@ -150,27 +150,27 @@ export class MailboxEdgeConstruct extends Construct {
     // resolves to the EDGE stack's own name and, being closer to the resource, it overrides the
     // stack aspect with the wrong value — breaking sweeper ownership verification.
 
-    this.blobAuthorizerFunction = blobAuthorizerFunction;
+    this.jmapBlobDownloadFunction = jmapBlobDownloadFunction;
 
     // CloudFront Lambda@Edge requires a published version.
-    this.blobAuthorizerVersion = blobAuthorizerFunction.currentVersion;
+    this.jmapBlobDownloadVersion = jmapBlobDownloadFunction.currentVersion;
 
     // Force a new AWS::Lambda::Version resource (replacement) whenever the S3 version ID changes.
     // Without this, CFn updates $LATEST but the immutable version resource stays the same.
-    const cfnVersion = this.blobAuthorizerVersion.node.defaultChild as cdk.CfnResource;
-    cfnVersion.addPropertyOverride('Description', props.blobAuthorizerReference.versionId ?? '');
+    const cfnVersion = this.jmapBlobDownloadVersion.node.defaultChild as cdk.CfnResource;
+    cfnVersion.addPropertyOverride('Description', props.jmapBlobDownloadReference.versionId ?? '');
 
     // S3ObjectVersion must be absent (not empty string) when no version ID is provided;
     // Lambda rejects an empty string for this field.
-    const hasBlobAuthorizerVersion = new cdk.CfnCondition(this, 'has-blob-authorizer-version', {
+    const hasJmapBlobDownloadVersion = new cdk.CfnCondition(this, 'has-jmap-blob-download-version', {
       expression: cdk.Fn.conditionNot(
-        cdk.Fn.conditionEquals(props.blobAuthorizerReference.versionId ?? '', ''),
+        cdk.Fn.conditionEquals(props.jmapBlobDownloadReference.versionId ?? '', ''),
       ),
     });
-    const cfnFunction = blobAuthorizerFunction.node.defaultChild as lambda.CfnFunction;
+    const cfnFunction = jmapBlobDownloadFunction.node.defaultChild as lambda.CfnFunction;
     cfnFunction.addPropertyOverride(
       'Code.S3ObjectVersion',
-      cdk.Fn.conditionIf(hasBlobAuthorizerVersion.logicalId, props.blobAuthorizerReference.versionId ?? '', cdk.Aws.NO_VALUE),
+      cdk.Fn.conditionIf(hasJmapBlobDownloadVersion.logicalId, props.jmapBlobDownloadReference.versionId ?? '', cdk.Aws.NO_VALUE),
     );
   }
 }

@@ -19,15 +19,15 @@ tasks:
     generates:
       - dist/data-stack-template.json
 
-  bundle:blob-authorizer:
-    desc: Bundle blob-authorizer lambda zip to dist/lambdas
+  bundle:jmap-blob-download:
+    desc: Bundle jmap-blob-download lambda zip to dist/lambdas
     sources:
-      - src/ts-lambdas/blob-authorizer/**/*.ts
+      - src/ts-lambdas/jmap-blob-download/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
     generates:
-      - '{{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip'
+      - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-blob-download/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip
 
   bundle:resource-sweeper:
     desc: Bundle resource-sweeper lambda zip to dist/lambdas
@@ -62,7 +62,7 @@ tasks:
   bundle:
     desc: Bundle all TypeScript lambdas to dist/lambdas/*.zip
     cmds:
-      - task: bundle:blob-authorizer
+      - task: bundle:jmap-blob-download
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
       - task: bundle:data-override-resolver
@@ -87,9 +87,9 @@ tasks:
     desc: Publish edge stack template and lambdas to dev channel
     cmds:
       - task: build:edge-stack
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/blob-authorizer/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
-      - du -sh {{.TASKFILE_DIR}}/dist/lambdas/blob-authorizer.zip
-      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/blob-authorizer.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-blob-download/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip
+      - du -sh {{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip
+      - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/jmap-blob-download.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object edge-stack-template.json
 
   publish:regional:dev:
@@ -109,7 +109,7 @@ tasks:
     cmds:
       - task: build:edge-stack
       - task: build:data-stack
-      - task: bundle:blob-authorizer
+      - task: bundle:jmap-blob-download
       - task: bundle:resource-sweeper
       - task: bundle:artifact-updater
       - task: bundle:data-override-resolver

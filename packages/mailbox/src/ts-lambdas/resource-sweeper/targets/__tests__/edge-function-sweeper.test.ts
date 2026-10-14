@@ -15,7 +15,7 @@ import { EdgeFunctionSweeper } from '../edge-function-sweeper';
 
 const lambdaMock = mockClient(LambdaClient);
 const ROOT_STACK_NAME = 'test-stack';
-const EDGE_FN_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer';
+const EDGE_FN_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download';
 
 const INPUT: EdgeFunctionRemovalInput = { edgeFnArn: EDGE_FN_ARN, rootStackName: ROOT_STACK_NAME };
 
@@ -36,8 +36,8 @@ describe('EdgeFunctionSweeper', () => {
     const result = await sweep();
 
     expect(result).toEqual({ target: 'edge-fn', status: 'done' });
-    expect(lambdaMock.commandCalls(GetFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'blob-authorizer' });
-    expect(lambdaMock.commandCalls(DeleteFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'blob-authorizer' });
+    expect(lambdaMock.commandCalls(GetFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'jmap-blob-download' });
+    expect(lambdaMock.commandCalls(DeleteFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'jmap-blob-download' });
   });
 
   it('treats a missing function as already deleted', async () => {

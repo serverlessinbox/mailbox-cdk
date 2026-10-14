@@ -52,23 +52,23 @@ describe('parseArn', () => {
   });
 
   it('parses type:id', () => {
-    expect(parseArn('arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer')).toEqual({
+    expect(parseArn('arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download')).toEqual({
       partition: 'aws',
       service: 'lambda',
       region: 'us-east-1',
       account: '123456789012',
-      resource: 'function:blob-authorizer',
+      resource: 'function:jmap-blob-download',
       resourceType: 'function',
-      resourceId: 'blob-authorizer',
-      resourceName: 'blob-authorizer',
+      resourceId: 'jmap-blob-download',
+      resourceName: 'jmap-blob-download',
       qualifier: undefined,
     });
   });
 
   it('parses type:id:qualifier, keeping any colon inside the qualifier', () => {
-    const alias = parseArn('arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer:live');
+    const alias = parseArn('arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download:live');
     expect(alias.resourceType).toBe('function');
-    expect(alias.resourceId).toBe('blob-authorizer');
+    expect(alias.resourceId).toBe('jmap-blob-download');
     expect(alias.qualifier).toBe('live');
 
     const nested = parseArn('arn:aws:logs:us-west-2:123456789012:log-group:/aws/lambda/fn:log-stream:s1');
@@ -79,7 +79,7 @@ describe('parseArn', () => {
   describe('rejects a malformed ARN', () => {
     it.each<[string, string, string]>([
       ['has too few parts', 'arn:aws:lambda:us-east-1:123456789012', 'expected arn:partition:service:region:account:resource'],
-      ['is not an ARN at all', 'blob-authorizer', 'expected arn:partition:service:region:account:resource'],
+      ['is not an ARN at all', 'jmap-blob-download', 'expected arn:partition:service:region:account:resource'],
       ['has the wrong prefix', 'urn:aws:s3:::mailbox-blobs', 'expected the prefix "arn", got "urn"'],
       ['has an empty partition', 'arn::s3:::mailbox-blobs', 'the partition is empty'],
       ['has an empty service', 'arn:aws::::mailbox-blobs', 'the service is empty'],
@@ -87,7 +87,7 @@ describe('parseArn', () => {
       ['has an empty resource type', 'arn:aws:iam::123456789012:/detector-role', 'the resource type is empty'],
       ['has an empty id after a slash', 'arn:aws:iam::123456789012:role/', 'the resource id is empty'],
       ['has an empty id after a colon', 'arn:aws:lambda:us-east-1:123456789012:function:', 'the resource id is empty'],
-      ['has an empty qualifier', 'arn:aws:lambda:us-east-1:123456789012:function:blob-authorizer:', 'the qualifier is empty'],
+      ['has an empty qualifier', 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download:', 'the qualifier is empty'],
     ])('when it %s', (_name, arn, problem) => {
       expect(() => parseArn(arn)).toThrow(`Invalid ARN "${arn}": ${problem}`);
     });

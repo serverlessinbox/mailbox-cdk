@@ -97,15 +97,15 @@ describe('MailboxEdgeDeployer', () => {
       });
     });
 
-    it('passes the domain, the blob authorizer artifact, the tables, the log group and the tagging values as template parameters', () => {
+    it('passes the domain, the JMAP blob download artifact, the tables, the log group and the tagging values as template parameters', () => {
       const { artifactResolver, template } = synthDeployer();
-      const blobAuthorizer = artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip');
+      const jmapBlobDownload = artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip');
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({
           domainName: 'example.com',
-          artifactBucket: blobAuthorizer.bucket,
-          blobAuthorizerKey: blobAuthorizer.key,
+          artifactBucket: jmapBlobDownload.bucket,
+          jmapBlobDownloadKey: jmapBlobDownload.key,
           itemTableArn: ITEM_TABLE_ARN,
           configTableArn: CONFIG_TABLE_ARN,
           authKeyStoreTableArn: AUTH_KEY_STORE_TABLE_ARN,
@@ -188,27 +188,27 @@ describe('MailboxEdgeDeployer', () => {
       );
     });
 
-    it('reads the edge template and the blob authorizer zip it deploys', () => {
+    it('reads the edge template and the JMAP blob download zip it deploys', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 
       const statements = statementsForAction(template, 's3:GetObject');
       expect(statements).toHaveLength(1);
       expect(statements[0].Resource).toEqual([
         stack.resolve(artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json')),
-        stack.resolve(artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip')),
+        stack.resolve(artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
       ]);
     });
 
-    it('may pass only the blob authorizer role', () => {
+    it('may pass only the JMAP blob download role', () => {
       const { stack, deployer, template } = synthDeployer();
 
       const statements = statementsForAction(template, 'iam:PassRole');
       expect(statements).toHaveLength(1);
-      expect(statements[0].Resource).toEqual(stack.resolve(deployer.blobAuthorizerRole.roleArn));
+      expect(statements[0].Resource).toEqual(stack.resolve(deployer.jmapBlobDownloadRole.roleArn));
     });
   });
 
-  describe('blob authorizer role', () => {
+  describe('JMAP blob download role', () => {
     it('is assumed by Lambda and Lambda@Edge, with the basic execution policy', () => {
       const { template } = synthDeployer();
 
@@ -252,8 +252,8 @@ describe('MailboxEdgeDeployer', () => {
     it('takes the Lambda@Edge version from the edge stack output', () => {
       const { stack, deployer } = synthDeployer();
 
-      expect(stack.resolve(deployer.blobAuthorizerVersion.functionArn)).toEqual({
-        'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'blobAuthorizerVersionArn'],
+      expect(stack.resolve(deployer.jmapBlobDownloadVersion.functionArn)).toEqual({
+        'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'jmapBlobDownloadVersionArn'],
       });
     });
   });

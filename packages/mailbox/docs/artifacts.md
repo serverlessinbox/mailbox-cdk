@@ -102,7 +102,7 @@ HTTPS URL form:
 Channel `main`:
 
 - `packages/mailbox-cdk/channels/main/edge/edge-stack-template.json`
-- `packages/mailbox-cdk/channels/main/edge/lambdas/blob-authorizer.zip`
+- `packages/mailbox-cdk/channels/main/edge/lambdas/jmap-blob-download.zip`
 - `packages/mailbox-cdk-shared/channels/main/regional/lambdas/stack-deployer.zip`
 
 ## Notes on CloudFormation/Lambda constraints

@@ -33,7 +33,7 @@ export interface MailboxEdgeDeployerProps {
   readonly configTable: IDataTable;
 
   /**
-   * Regional auth key store table. Read access is granted to the blob-authorizer role, and its
+   * Regional auth key store table. Read access is granted to the jmap-blob-download role, and its
    * ARN is passed to the edge stack as a template parameter.
    */
   readonly authKeyStoreTable: IDataTable;
@@ -55,13 +55,13 @@ export interface MailboxEdgeDeployerProps {
 export class MailboxEdgeDeployer extends Construct {
   public readonly edgeStackId: string;
 
-  /** Published Lambda@Edge version for blob authorization (always present). */
-  public readonly blobAuthorizerVersion: lambda.IVersion;
+  /** Published Lambda@Edge version for the JMAP blob download (always present). */
+  public readonly jmapBlobDownloadVersion: lambda.IVersion;
 
   /** us-east-1 ACM certificate for CloudFront (only when hosted zone info is provided). */
   public readonly edgeCertificate?: acm.ICertificate;
 
-  public readonly blobAuthorizerRole: iam.IRole;
+  public readonly jmapBlobDownloadRole: iam.IRole;
 
   private readonly resource: CustomResource;
 
@@ -70,7 +70,7 @@ export class MailboxEdgeDeployer extends Construct {
 
     const stack = Stack.of(this);
 
-    this.blobAuthorizerRole = this.createBlobAuthorizerRole(props.authKeyStoreTable);
+    this.jmapBlobDownloadRole = this.createJmapBlobDownloadRole(props.authKeyStoreTable);
 
     // The deployed CloudFormation stack name, not the CDK logical stack id, so the template also
     // behaves correctly when deployed through plain CloudFormation.
@@ -94,17 +94,17 @@ export class MailboxEdgeDeployer extends Construct {
         rootStack: Aws.STACK_NAME,
         templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
         artifactObjectArns: [
-          props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip'),
+          props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),
         ],
         hostedZoneId: props.hostedZone?.hostedZoneId,
-        blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
+        jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
       }),
     });
 
     this.resource = infra.deployStack(this, 'Custom::MailboxEdgeDeployer', {
       stackName: edgeStackName,
       templateUrl: props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
-      parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/blob-authorizer.zip')),
+      parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
         stack: edgeStackName,
@@ -116,10 +116,10 @@ export class MailboxEdgeDeployer extends Construct {
 
     this.edgeStackId = this.resource.ref;
 
-    this.blobAuthorizerVersion = lambda.Version.fromVersionArn(
+    this.jmapBlobDownloadVersion = lambda.Version.fromVersionArn(
       this,
-      'blob-authorizer-version',
-      this.getOutput('blobAuthorizerVersionArn'),
+      'jmap-blob-download-version',
+      this.getOutput('jmapBlobDownloadVersionArn'),
     );
 
     if (props.hostedZone) {
@@ -142,13 +142,13 @@ export class MailboxEdgeDeployer extends Construct {
    * replacement CloudFormation creates the new role before deleting the old one, and updates the
    * edge function with the new ARN in the same operation.
    */
-  private createBlobAuthorizerRole(authKeyStoreTable: IDataTable): iam.Role {
-    const role = new iam.Role(this, 'blob-authorizer-role', {
+  private createJmapBlobDownloadRole(authKeyStoreTable: IDataTable): iam.Role {
+    const role = new iam.Role(this, 'jmap-blob-download-role', {
       assumedBy: new iam.CompositePrincipal(
         new iam.ServicePrincipal('lambda.amazonaws.com'),
         new iam.ServicePrincipal('edgelambda.amazonaws.com'),
       ),
-      description: `Serverless Inbox Mailbox: blob-authorizer Lambda@Edge role (${Aws.STACK_NAME})`,
+      description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
@@ -160,12 +160,12 @@ export class MailboxEdgeDeployer extends Construct {
     return role;
   }
 
-  private templateParameters(props: MailboxEdgeDeployerProps, blobAuthorizer: ResolvedArtifact): Record<string, string> {
+  private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): Record<string, string> {
     return {
       domainName: props.domainName,
-      artifactBucket: blobAuthorizer.bucket,
-      blobAuthorizerKey: blobAuthorizer.key,
-      blobAuthorizerRoleArn: this.blobAuthorizerRole.roleArn,
+      artifactBucket: jmapBlobDownload.bucket,
+      jmapBlobDownloadKey: jmapBlobDownload.key,
+      jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
       itemTableArn: props.itemTable.tableArn,
       configTableArn: props.configTable.tableArn,
       authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
@@ -174,7 +174,7 @@ export class MailboxEdgeDeployer extends Construct {
       rootRegion: Stack.of(this).region,
       productVersion: props.productVersion,
       deployerType: props.deployerType,
-      blobAuthorizerS3VersionId: blobAuthorizer.versionId ?? '',
+      jmapBlobDownloadS3VersionId: jmapBlobDownload.versionId ?? '',
       prefix: this.dotWrappedPrefix(props.prefix),
       ...(props.hostedZone
         ? { hostedZoneId: props.hostedZone.hostedZoneId, hostedZoneName: props.hostedZone.zoneName }

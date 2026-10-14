@@ -21,8 +21,8 @@ export interface MailboxEdgeDeployerWorkerProps {
   readonly artifactObjectArns: string[];
   /** Route53 hosted zone used for the edge certificate's DNS validation (omit when no hosted zone is configured). */
   readonly hostedZoneId?: string;
-  /** ARN of the blob-authorizer Lambda@Edge execution role (created in root stack) */
-  readonly blobAuthorizerRoleArn: string;
+  /** ARN of the jmap-blob-download Lambda@Edge execution role (created in root stack) */
+  readonly jmapBlobDownloadRoleArn: string;
 }
 
 /**
@@ -55,7 +55,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     // Grants for the resources of the edge stack
     this.grantCertificateLifecycle(props.stack, props.rootStack);
     this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, props.rootStack);
-    this.grantExecutionRolePassage(props.blobAuthorizerRoleArn);
+    this.grantExecutionRolePassage(props.jmapBlobDownloadRoleArn);
     this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
 
     if (props.hostedZoneId !== undefined) {
@@ -213,11 +213,11 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
   }
 
   /** Gated to the Lambda services, so the role cannot be passed to any other service. */
-  private grantExecutionRolePassage(blobAuthorizerRoleArn: string): void {
+  private grantExecutionRolePassage(jmapBlobDownloadRoleArn: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['iam:PassRole'],
-        resources: [blobAuthorizerRoleArn],
+        resources: [jmapBlobDownloadRoleArn],
         conditions: {
           StringEquals: {
             'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'],

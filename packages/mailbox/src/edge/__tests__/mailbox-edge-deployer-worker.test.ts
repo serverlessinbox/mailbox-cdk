@@ -19,8 +19,8 @@ import {
 const EDGE_REGION = 'us-east-1';
 const EDGE_STACK_ARN = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge/*';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
-const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/blob-authorizer.zip';
-const BLOB_AUTHORIZER_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
+const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
+const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
 const ROOT_STACK_TAG = 'serverless-inbox:root-stack';
 
 function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Template {
@@ -33,7 +33,7 @@ function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Templ
     rootStack: 'test-stack',
     templateObjectArn: TEMPLATE_OBJECT_ARN,
     artifactObjectArns: [ARTIFACT_OBJECT_ARN],
-    blobAuthorizerRoleArn: BLOB_AUTHORIZER_ROLE_ARN,
+    jmapBlobDownloadRoleArn: JMAP_BLOB_DOWNLOAD_ROLE_ARN,
     ...props,
   });
   return Template.fromStack(stack);
@@ -145,11 +145,11 @@ describe('MailboxEdgeDeployerWorker', () => {
     });
   });
 
-  it('passes only the blob-authorizer role, and only to the Lambda services', () => {
+  it('passes only the jmap-blob-download role, and only to the Lambda services', () => {
     const statements = statementsForAction(template, 'iam:PassRole');
 
     expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toBe(BLOB_AUTHORIZER_ROLE_ARN);
+    expect(statements[0].Resource).toBe(JMAP_BLOB_DOWNLOAD_ROLE_ARN);
     expect(statements[0].Condition).toEqual({
       StringEquals: { 'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'] },
     });

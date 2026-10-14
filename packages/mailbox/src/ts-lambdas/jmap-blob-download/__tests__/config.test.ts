@@ -5,7 +5,7 @@
  */
 
 import { extractConfig } from '../config';
-import { AUTH_KEY_STORE_TABLE, originRequestOf } from './blob-authorizer-helpers';
+import { AUTH_KEY_STORE_TABLE, originRequestOf } from './jmap-blob-download-helpers';
 
 describe('extractConfig', () => {
   it('reads the table, region and algorithm list from the custom origin headers', () => {

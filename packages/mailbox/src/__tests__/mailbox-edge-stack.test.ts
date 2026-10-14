@@ -135,7 +135,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
   /**
    * S2.3: Edge Stack Policy Quality — verify policies follow least-privilege pattern
    *
-   * The edge stack template contains no IAM roles or policies; the blob-authorizer execution
+   * The edge stack template contains no IAM roles or policies; the jmap-blob-download execution
    * role and deployer worker policies live in the root stack and are covered by separate
    * deployer-worker tests. This suite pins that the edge stack carries no unexpected policies.
    */
@@ -212,9 +212,29 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       expect(parameters).toHaveProperty('rootStack');
       expect(parameters).toHaveProperty('artifactBucket');
       expect(parameters).toHaveProperty('logGroupName');
+      expect(parameters).toHaveProperty('jmapBlobDownloadKey');
+      expect(parameters).toHaveProperty('jmapBlobDownloadS3VersionId');
+      expect(parameters).toHaveProperty('jmapBlobDownloadRoleArn');
     });
 
-    it('edge stack: blob-authorizer LoggingConfig.LogGroup resolves to a Ref on the logGroupName parameter', () => {
+    it('edge stack: the Lambda@Edge function, its version and the version output are named jmap-blob-download', () => {
+      const app = new App();
+      const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
+        env: { account: '123456789012', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack).toJSON();
+      const resources = template.Resources as Record<string, CloudFormationResource>;
+      const logicalIdsOfType = (type: string): string[] =>
+        Object.entries(resources).filter(([, resource]) => isResourceOfType(resource, type)).map(([logicalId]) => logicalId);
+
+      expect(logicalIdsOfType('AWS::Lambda::Function')).toEqual([expect.stringMatching(/^edgejmapblobdownload[0-9A-F]{8}$/)]);
+      expect(logicalIdsOfType('AWS::Lambda::Version')).toEqual([expect.stringMatching(/^edgejmapblobdownloadCurrentVersion[0-9A-F]{8}/)]);
+      expect(template.Outputs).toHaveProperty('jmapBlobDownloadVersionArn');
+    });
+
+    it('edge stack: jmap-blob-download LoggingConfig.LogGroup resolves to a Ref on the logGroupName parameter', () => {
       const app = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
@@ -227,12 +247,12 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         throw new Error('No resources found in template');
       }
 
-      const blobAuthorizerFn = Object.values(resources).find(
+      const jmapBlobDownloadFn = Object.values(resources).find(
         (r) => isResourceOfType(r, 'AWS::Lambda::Function') && r.Properties?.Handler === 'index.handler'
       );
 
-      expect(blobAuthorizerFn).toBeDefined();
-      const loggingConfig = blobAuthorizerFn?.Properties?.LoggingConfig as { LogGroup?: unknown } | undefined;
+      expect(jmapBlobDownloadFn).toBeDefined();
+      const loggingConfig = jmapBlobDownloadFn?.Properties?.LoggingConfig as { LogGroup?: unknown } | undefined;
       expect(loggingConfig?.LogGroup).toEqual({ Ref: 'logGroupName' });
     });
   });
@@ -318,9 +338,9 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         edgeStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge/*',
         rootStack: 'test-root',
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        artifactObjectArns: ['arn:aws:s3:::bucket/lambdas/blob-authorizer.zip'],
+        artifactObjectArns: ['arn:aws:s3:::bucket/lambdas/jmap-blob-download.zip'],
         hostedZoneId: 'Z123456',
-        blobAuthorizerRoleArn: 'arn:aws:iam::123456789012:role/test-role',
+        jmapBlobDownloadRoleArn: 'arn:aws:iam::123456789012:role/test-role',
       });
 
       const template = Template.fromStack(testStack);

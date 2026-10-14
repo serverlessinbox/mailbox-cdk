@@ -27,7 +27,7 @@ const ARTIFACT_TAGS = {
  *
  * @param scope The construct to tag
  * @param packageName The artifact package name (e.g., 'mailbox-cdk', 'mailbox-cdk-edge')
- * @param artifactName The lambda identifier / artifact name (e.g., 'stack-deployer', 'blob-authorizer')
+ * @param artifactName The lambda identifier / artifact name (e.g., 'stack-deployer', 'jmap-blob-download')
  * @param version The artifact version string
  * @param updateType The auto-update mechanism type (default: 'code' for direct UpdateFunctionCode)
  */

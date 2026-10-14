@@ -6,7 +6,7 @@
 
 import { toEncodedBlobId } from '../blob-id';
 import { BlobIdFormat } from '../blob-id-format';
-import { decodedBlobIdOf, encodedBlobIdOf } from './blob-authorizer-helpers';
+import { decodedBlobIdOf, encodedBlobIdOf } from './jmap-blob-download-helpers';
 
 describe('BlobIdFormat.decode', () => {
   it('decodes the unpadded base64url form back to the id', () => {

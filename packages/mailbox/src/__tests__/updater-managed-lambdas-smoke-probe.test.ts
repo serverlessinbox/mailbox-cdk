@@ -310,11 +310,11 @@ describe('Lambdas the artifact updater manages', () => {
     expect(failures).toEqual([]);
   });
 
-  it('include the blob-authorizer, which answers the probe', async () => {
-    const lambda = managed.find((candidate) => candidate.artifactName === 'blob-authorizer');
-    const source = await handlerSourceOf('blob-authorizer');
+  it('include the jmap-blob-download, which answers the probe', async () => {
+    const lambda = managed.find((candidate) => candidate.artifactName === 'jmap-blob-download');
+    const source = await handlerSourceOf('jmap-blob-download');
     if (lambda === undefined || source === undefined) {
-      throw new Error('blob-authorizer is not a managed TypeScript Lambda');
+      throw new Error('jmap-blob-download is not a managed TypeScript Lambda');
     }
 
     const outcome = await probe(lambda, source);

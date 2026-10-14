@@ -1,5 +1,5 @@
 /**
- * Pins every decision the blob authorizer makes about a download request: each denial with its status and
+ * Pins every decision the JMAP blob download function makes about a download request: each denial with its status and
  * answer, in the order the checks run, and each allowed blob type with the S3 key and headers it is rewritten
  * to. The verifiers are faked at their entry points, because their own suites pin the cryptography; what is
  * pinned here is what the authorizer asks them and what it does with their answers. A check that stopped
@@ -29,7 +29,7 @@ import {
   originRequestOf,
   TENANT_ID,
   type OriginRequestOptions,
-} from './blob-authorizer-helpers';
+} from './jmap-blob-download-helpers';
 
 const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUDIENCE };
 const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, accountIds: [ACCOUNT_ID] };

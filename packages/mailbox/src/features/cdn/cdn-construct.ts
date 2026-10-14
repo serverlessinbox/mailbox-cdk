@@ -18,7 +18,7 @@ export interface CdnProps {
   readonly jwtAlgorithms?: string[];
 
   /** Pre-deployed Lambda@Edge version (us-east-1). */
-  readonly blobAuthorizerVersion: lambda.IVersion;
+  readonly jmapBlobDownloadVersion: lambda.IVersion;
 
   /** Optional custom domain name for the CDN distribution (e.g., cdn.example.com). */
   readonly domainName?: string;
@@ -94,7 +94,7 @@ export class Cdn extends Construct {
         // Lambda@Edge runs at viewer-request (before cache lookup)
         edgeLambdas: [
           {
-            functionVersion: props.blobAuthorizerVersion,
+            functionVersion: props.jmapBlobDownloadVersion,
             eventType: cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
           },
         ],

@@ -131,54 +131,54 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     artifactBucketParam.overrideLogicalId('artifactBucket');
 
-    const blobAuthorizerKeyParam = new cdk.CfnParameter(this, 'blob-authorizer-key', {
+    const jmapBlobDownloadKeyParam = new cdk.CfnParameter(this, 'jmap-blob-download-key', {
       type: 'String',
-      description: 'S3 key for blob-authorizer Lambda code (full path including artifact prefix)',
+      description: 'S3 key for jmap-blob-download Lambda code (full path including artifact prefix)',
     });
-    blobAuthorizerKeyParam.overrideLogicalId('blobAuthorizerKey');
+    jmapBlobDownloadKeyParam.overrideLogicalId('jmapBlobDownloadKey');
 
-    const blobAuthorizerS3VersionIdParam = new cdk.CfnParameter(this, 'blob-authorizer-s3-version-id', {
+    const jmapBlobDownloadS3VersionIdParam = new cdk.CfnParameter(this, 'jmap-blob-download-s3-version-id', {
       type: 'String',
-      description: 'S3 object version ID for blob-authorizer Lambda code (optional)',
+      description: 'S3 object version ID for jmap-blob-download Lambda code (optional)',
       default: '',
     });
-    blobAuthorizerS3VersionIdParam.overrideLogicalId('blobAuthorizerS3VersionId');
+    jmapBlobDownloadS3VersionIdParam.overrideLogicalId('jmapBlobDownloadS3VersionId');
 
     const itemTableArnParam = new cdk.CfnParameter(this, 'item-table-arn', {
       type: 'String',
-      description: 'DynamoDB item table ARN (regional) used by blob-authorizer',
+      description: 'DynamoDB item table ARN (regional) used by jmap-blob-download',
     });
     itemTableArnParam.overrideLogicalId('itemTableArn');
 
     const configTableArnParam = new cdk.CfnParameter(this, 'config-table-arn', {
       type: 'String',
-      description: 'DynamoDB config table ARN (regional) used by blob-authorizer',
+      description: 'DynamoDB config table ARN (regional) used by jmap-blob-download',
     });
     configTableArnParam.overrideLogicalId('configTableArn');
 
     const authKeyStoreTableArnParam = new cdk.CfnParameter(this, 'auth-key-store-table-arn', {
       type: 'String',
-      description: 'DynamoDB auth key store table ARN (regional) used by blob-authorizer',
+      description: 'DynamoDB auth key store table ARN (regional) used by jmap-blob-download',
     });
     authKeyStoreTableArnParam.overrideLogicalId('authKeyStoreTableArn');
 
     const logGroupNameParam = new cdk.CfnParameter(this, 'log-group-name', {
       type: 'String',
-      description: 'Name of the shared "jmap" pipeline log group (home region) that blob-authorizer logs into',
+      description: 'Name of the shared "jmap" pipeline log group (home region) that jmap-blob-download logs into',
     });
     logGroupNameParam.overrideLogicalId('logGroupName');
 
-    const blobAuthorizerRoleArnParam = new cdk.CfnParameter(this, 'blob-authorizer-role-arn', {
+    const jmapBlobDownloadRoleArnParam = new cdk.CfnParameter(this, 'jmap-blob-download-role-arn', {
       type: 'String',
-      description: 'ARN of the blob-authorizer Lambda@Edge execution role (created in root stack)',
+      description: 'ARN of the jmap-blob-download Lambda@Edge execution role (created in root stack)',
     });
-    blobAuthorizerRoleArnParam.overrideLogicalId('blobAuthorizerRoleArn');
+    jmapBlobDownloadRoleArnParam.overrideLogicalId('jmapBlobDownloadRoleArn');
 
     // Build artifact reference from parameters
-    const blobAuthorizerReference: ResolvedArtifact = {
-      key: blobAuthorizerKeyParam.valueAsString,
+    const jmapBlobDownloadReference: ResolvedArtifact = {
+      key: jmapBlobDownloadKeyParam.valueAsString,
       bucket: artifactBucketParam.valueAsString,
-      versionId: blobAuthorizerS3VersionIdParam.valueAsString,
+      versionId: jmapBlobDownloadS3VersionIdParam.valueAsString,
     };
 
     // Create the construct with values from CF parameters
@@ -190,24 +190,24 @@ export class MailboxEdgeStack extends cdk.Stack {
       hostedZoneId: hostedZoneIdParam.valueAsString,
       hostedZoneName: hostedZoneNameParam.valueAsString,
       artifactBucket: artifactBucketParam.valueAsString,
-      blobAuthorizerReference,
+      jmapBlobDownloadReference,
       itemTableArn: itemTableArnParam.valueAsString,
       configTableArn: configTableArnParam.valueAsString,
       authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
       productVersion: productVersionParam.valueAsString,
       logGroupName: logGroupNameParam.valueAsString,
-      blobAuthorizerRoleArn: blobAuthorizerRoleArnParam.valueAsString,
+      jmapBlobDownloadRoleArn: jmapBlobDownloadRoleArnParam.valueAsString,
     };
 
     this.construct = new MailboxEdgeConstruct(this, 'edge', constructProps);
 
-    // RETAIN_ON_UPDATE_OR_DELETE the blob-authorizer Lambda@Edge function and version to prevent CloudFormation
+    // RETAIN_ON_UPDATE_OR_DELETE the jmap-blob-download Lambda@Edge function and version to prevent CloudFormation
     // from deleting them while CloudFront replicas still hold references. The resource sweeper
     // will delete them asynchronously after the replica propagation window drains (~4 hours).
     // RETAIN_ON_UPDATE_OR_DELETE ensures we don't orphan failed-create stubs while still protecting real deletions.
-    (this.construct.blobAuthorizerFunction.node.defaultChild as cdk.CfnResource)
+    (this.construct.jmapBlobDownloadFunction.node.defaultChild as cdk.CfnResource)
       .applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-    (this.construct.blobAuthorizerVersion.node.defaultChild as cdk.CfnResource)
+    (this.construct.jmapBlobDownloadVersion.node.defaultChild as cdk.CfnResource)
       .applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
     // Only create the certificate resource when hosted zone parameters are provided.
@@ -227,10 +227,10 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     edgeCertificateArnOutput.overrideLogicalId('edgeCertificateArn');
 
-    const blobAuthorizerVersionArnOutput = new cdk.CfnOutput(this, 'blob-authorizer-version-arn', {
-      value: this.construct.blobAuthorizerVersion.functionArn,
-      description: 'ARN of the published blob-authorizer Lambda@Edge version',
+    const jmapBlobDownloadVersionArnOutput = new cdk.CfnOutput(this, 'jmap-blob-download-version-arn', {
+      value: this.construct.jmapBlobDownloadVersion.functionArn,
+      description: 'ARN of the published jmap-blob-download Lambda@Edge version',
     });
-    blobAuthorizerVersionArnOutput.overrideLogicalId('blobAuthorizerVersionArn');
+    jmapBlobDownloadVersionArnOutput.overrideLogicalId('jmapBlobDownloadVersionArn');
   }
 }

@@ -1,4 +1,4 @@
-# Blob authorizer (Lambda@Edge)
+# JMAP blob download (Lambda@Edge)
 
 An origin-request function on the CloudFront distribution in front of the blob store. It decides whether a
 JMAP blob download (RFC 8620) may reach the S3 origin, and rewrites an allowed request to the blob's S3 key.

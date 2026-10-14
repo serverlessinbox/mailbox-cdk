@@ -1,7 +1,7 @@
 import type { Branded } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /**
- * The identifiers the blob authorizer passes between the verifiers that read a token and the authorizer that
+ * The identifiers the JMAP blob download function passes between the verifiers that read a token and the authorizer that
  * compares them, each a string of its own kind so that one kind cannot be passed where another is expected.
  * Every kind has exactly one factory, and the cast to the brand sits in that factory and nowhere else.
  */

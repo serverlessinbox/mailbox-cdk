@@ -10,7 +10,7 @@ import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import * as crypto from 'crypto';
 import { JwtVerifier } from '../jwt-verifier';
-import { AUTH_KEY_STORE_TABLE } from './blob-authorizer-helpers';
+import { AUTH_KEY_STORE_TABLE } from './jmap-blob-download-helpers';
 
 const ISSUER = 'https://idp.example.com/pool';
 const KID = 'kid-1';

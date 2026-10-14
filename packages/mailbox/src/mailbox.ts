@@ -814,10 +814,10 @@ export class Mailbox extends Construct {
       artifactResolver,
     });
 
-    // Extract the edge blob-authorizer Lambda ARN (strip version qualifier).
+    // Extract the edge jmap-blob-download Lambda ARN (strip version qualifier).
     // Version ARN:  arn:aws:lambda:us-east-1:<acct>:function:<name>:<version>
     // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
-    const versionArn = edgeStack.getOutput('blobAuthorizerVersionArn');
+    const versionArn = edgeStack.getOutput('jmapBlobDownloadVersionArn');
     const fnArnParts = Fn.split(':', versionArn);
     const edgeFunctionArn = Fn.join(':', [
       Fn.select(0, fnArnParts), // arn
@@ -829,7 +829,7 @@ export class Mailbox extends Construct {
       Fn.select(6, fnArnParts), // <function-name>
       // Fn.select(7, ...) is the version number — intentionally dropped
     ]);
-    // Imported by ARN: the blob authorizer lives in the separate edge sub-stack, so there is no
+    // Imported by ARN: the JMAP blob download function lives in the separate edge sub-stack, so there is no
     // construct reference to it.
     const edgeFunction = awslambda.Function.fromFunctionArn(groups.ops, 'edge-fn-removal-target', edgeFunctionArn);
 
@@ -864,7 +864,7 @@ export class Mailbox extends Construct {
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
-      blobAuthorizerVersion: edgeStack.blobAuthorizerVersion,
+      jmapBlobDownloadVersion: edgeStack.jmapBlobDownloadVersion,
       domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
       certificate: hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront,
     });
