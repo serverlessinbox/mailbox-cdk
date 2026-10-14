@@ -4,6 +4,13 @@
 export { getAttLogicalId } from './cdk-test-support/get-att-logical-id';
 export { renderLiteralText, renderWithTokens } from './cdk-test-support/render-with-tokens';
 export {
+  handlerSourceOf,
+  managedLambdasOf,
+  probeManagedLambda,
+  type ManagedLambda,
+  type ProbeOutcome,
+} from './cdk-test-support/managed-lambdas';
+export {
   actionsOf,
   allPolicyStatements,
   resourcesOf,
