@@ -6,7 +6,7 @@ import {
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { BootstrapUserAnswers, type BootstrapUserAnswer } from './bootstrap-user-answers';
-import { toGroupName, toUserPoolId, toUsername } from './cognito-identifiers';
+import { toGroupName, toUserPoolId, toUsername } from '../shared/cognito-identifiers';
 import { UserEnsurer, type BootstrapUser } from './ensure-user';
 import { generateSecurePassword, PASSWORD_SET_AT_INSTALL_TIME } from './password';
 import { isBootstrapUserProperties, type BootstrapUserProperties } from './properties';

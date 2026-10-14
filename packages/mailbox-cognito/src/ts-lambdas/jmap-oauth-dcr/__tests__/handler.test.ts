@@ -15,7 +15,7 @@ import { load } from '../config';
 
 import { createHandler } from '../handler';
 import { CognitoUserPoolClientManager } from '../cognito-client';
-import { IdentityProvisionerClient } from '../identity-provisioner-client';
+import { IdentityProvisionerClient } from '../../shared/identity-provisioner-client';
 
 /** See `identity-provisioner-client.test.ts` for why this shape (not a plain `Uint8Array`). */
 function encode(value: unknown): Uint8Array & { transformToString(encoding?: string): string } {

@@ -4,7 +4,7 @@ import {
   type CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CaughtError } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { GroupName, UserPoolId, Username } from './cognito-identifiers';
+import type { GroupName, UserPoolId, Username } from '../shared/cognito-identifiers';
 
 /** A user that must exist in a user pool, the groups it belongs to, and the password it is created with. */
 export interface BootstrapUser {

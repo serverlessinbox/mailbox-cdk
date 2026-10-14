@@ -4,7 +4,7 @@ import { env, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-r
 
 import { CognitoUserPoolClientManager } from './cognito-client';
 import { load } from './config';
-import { IdentityProvisionerClient } from './identity-provisioner-client';
+import { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
 import { createHandler } from './handler';
 
 const config = env.mustLoad(load);

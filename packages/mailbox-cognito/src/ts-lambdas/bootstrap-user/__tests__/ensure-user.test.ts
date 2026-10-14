@@ -14,7 +14,7 @@ import {
   NotAuthorizedException,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { toGroupName, toUserPoolId, toUsername } from '../cognito-identifiers';
+import { toGroupName, toUserPoolId, toUsername } from '../../shared/cognito-identifiers';
 import { UserEnsurer, type BootstrapUser } from '../ensure-user';
 
 function bootstrapUser(overrides: Partial<BootstrapUser> = {}): BootstrapUser {

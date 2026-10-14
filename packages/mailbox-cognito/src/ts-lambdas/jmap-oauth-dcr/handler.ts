@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { LoggerBuffer, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { CognitoUserPoolClientManager } from './cognito-client';
 import { ClientRegistrationErrorResponse, ClientRegistrationRequest, ClientRegistrationResponse, isClientRegistrationRequest } from './dcr.validation';
-import { IdentityProvisionerClient } from './identity-provisioner-client';
+import { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
 import { resolvePoolId } from './pool-resolver';
 import { validateRedirectUris } from './redirect-uri';
 
