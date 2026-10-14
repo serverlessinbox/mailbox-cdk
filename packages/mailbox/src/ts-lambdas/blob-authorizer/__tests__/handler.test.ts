@@ -10,7 +10,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { handler } from '../handler';
 import { RegionBoundVerifiers } from '../region-bound-verifiers';
-import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, originRequestOf } from './blob-authorizer-helpers';
+import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, EU_CENTRAL_1, originRequestOf } from './blob-authorizer-helpers';
 
 jest.mock('../region-bound-verifiers');
 
@@ -82,7 +82,7 @@ describe('handler', () => {
   });
 
   it('builds the DynamoDB client of the verifiers in the region it is asked for', async () => {
-    const client = verifiersFactory('eu-central-1');
+    const client = verifiersFactory(EU_CENTRAL_1);
 
     expect(client).toBeInstanceOf(DynamoDBClient);
     await expect(client.config.region()).resolves.toBe('eu-central-1');

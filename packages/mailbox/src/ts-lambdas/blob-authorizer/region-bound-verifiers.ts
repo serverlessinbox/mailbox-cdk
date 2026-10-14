@@ -1,4 +1,5 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import type { Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { HmacVerifier } from './hmac-verifier';
 import { JwtVerifier } from './jwt-verifier';
 
@@ -15,14 +16,14 @@ export interface Verifiers {
  * verifiers of the first.
  */
 export class RegionBoundVerifiers {
-  private readonly createDynamoDBClient: (region: string) => DynamoDBClient;
+  private readonly createDynamoDBClient: (region: Region) => DynamoDBClient;
   private verifiers: Verifiers | undefined;
 
-  constructor(createDynamoDBClient: (region: string) => DynamoDBClient) {
+  constructor(createDynamoDBClient: (region: Region) => DynamoDBClient) {
     this.createDynamoDBClient = createDynamoDBClient;
   }
 
-  public get(region: string): Verifiers {
+  public get(region: Region): Verifiers {
     if (!this.verifiers) {
       const dynamodb = this.createDynamoDBClient(region);
       this.verifiers = { jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) };

@@ -9,11 +9,11 @@
 
 import { mockClient } from 'aws-sdk-client-mock';
 import { CloudFrontClient, TagResourceCommand } from '@aws-sdk/client-cloudfront';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { ReleaseArtifacts } from '../release-artifacts';
 import { UiBucketUpdater } from '../ui-bucket-updater';
 import type { S3Client } from '@aws-sdk/client-s3';
-import { DISTRIBUTION_ARN, fakeUpdaterClients, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
+import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack: jest.fn(),
@@ -49,7 +49,7 @@ const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock(
 describe('UiBucketUpdater', () => {
   const cloudFrontMock = mockClient(CloudFrontClient);
 
-  function newUpdater(deploymentRegion?: string): UpdaterFixture {
+  function newUpdater(deploymentRegion?: Region): UpdaterFixture {
     const clients = fakeUpdaterClients(deploymentRegion);
     const logger = new LoggerBuffer();
     const updater = new UiBucketUpdater(
@@ -112,7 +112,7 @@ describe('UiBucketUpdater', () => {
   });
 
   it('reads the bundle from the artifact bucket of the deployment region', async () => {
-    await newUpdater('eu-west-1').updater.advanceIfStale(uiTarget());
+    await newUpdater(EU_WEST_1).updater.advanceIfStale(uiTarget());
 
     expect(deployZipToPrefix).toHaveBeenCalledWith(
       expect.anything(),

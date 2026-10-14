@@ -1,6 +1,8 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { webcrypto } from 'crypto';
 import * as t from 'typanion';
+import type { TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAudience, toIssuer, type Audience, type Issuer } from './auth-identifiers';
 import type { VerifiedJwt } from './auth-tokens';
 
 const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;
@@ -75,7 +77,7 @@ interface ParsedJwt {
  */
 export class JwtVerifier {
   private readonly dynamodb: DynamoDBClient;
-  private readonly jwksByIssuer = new Map<string, Jwks>();
+  private readonly jwksByIssuer = new Map<Issuer, Jwks>();
   private readonly verificationKeysByKid = new Map<string, webcrypto.CryptoKey>();
 
   constructor(dynamodb: DynamoDBClient) {
@@ -90,7 +92,7 @@ export class JwtVerifier {
    */
   public async verifySignatureOnly(
     token: string,
-    authKeyStoreTable: string,
+    authKeyStoreTable: TableName,
     allowedAlgorithms: string[] | undefined,
   ): Promise<VerifiedJwt | null> {
     try {
@@ -155,15 +157,15 @@ export class JwtVerifier {
     return allowedAlgorithms && allowedAlgorithms.length > 0 ? allowedAlgorithms : DEFAULT_ALLOWED_ALGORITHMS;
   }
 
-  private normalizeIssuer(issuer: string): string {
-    return issuer.trim().replace(/\/+$/, '');
+  private normalizeIssuer(issuer: string): Issuer {
+    return toIssuer(issuer.trim().replace(/\/+$/, ''));
   }
 
   private async verificationKey(
     kid: string,
     algorithm: SupportedAlgorithm,
-    authKeyStoreTable: string,
-    issuer: string,
+    authKeyStoreTable: TableName,
+    issuer: Issuer,
   ): Promise<webcrypto.CryptoKey> {
     const jwks = await this.jwksOf(issuer, authKeyStoreTable);
     const jwk = jwks.keys.find((key) => key.kid === kid);
@@ -173,7 +175,7 @@ export class JwtVerifier {
     return this.importVerificationKey(kid, jwk, algorithm);
   }
 
-  private async jwksOf(issuer: string, authKeyStoreTable: string): Promise<Jwks> {
+  private async jwksOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks> {
     const cached = this.jwksByIssuer.get(issuer);
     if (cached) {
       return cached;
@@ -184,7 +186,7 @@ export class JwtVerifier {
     return jwks;
   }
 
-  private async loadJwks(issuer: string, authKeyStoreTable: string): Promise<Jwks> {
+  private async loadJwks(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks> {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
@@ -254,13 +256,13 @@ export class JwtVerifier {
     return true;
   }
 
-  private audienceOf(payload: JwtPayload): string {
+  private audienceOf(payload: JwtPayload): Audience {
     const clientId = payload.client_id?.trim();
     if (clientId) {
-      return clientId;
+      return toAudience(clientId);
     }
 
     const audience = Array.isArray(payload.aud) ? payload.aud[0] : payload.aud;
-    return audience || '';
+    return toAudience(audience || '');
   }
 }

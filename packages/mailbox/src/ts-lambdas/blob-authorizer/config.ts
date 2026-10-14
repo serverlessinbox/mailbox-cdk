@@ -1,3 +1,4 @@
+import { toRegion, toTableName, type Region, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { firstHeaderValue, type CloudFrontRequest } from './cloudfront-event';
 
 /**
@@ -5,8 +6,8 @@ import { firstHeaderValue, type CloudFrontRequest } from './cloudfront-event';
  * Lambda@Edge supports no environment variables.
  */
 export interface Config {
-  authKeyStoreTable: string;
-  region: string;
+  authKeyStoreTable: TableName;
+  region: Region;
   jwtAlgorithms?: string[];
 }
 
@@ -29,8 +30,8 @@ export function extractConfig(request: CloudFrontRequest): Config | null {
   const jwtAlgorithmsRaw = firstHeaderValue(customHeaders, 'x-jwt-algorithms');
 
   return {
-    authKeyStoreTable,
-    region: firstHeaderValue(customHeaders, 'x-region') || 'us-east-1',
+    authKeyStoreTable: toTableName(authKeyStoreTable),
+    region: toRegion(firstHeaderValue(customHeaders, 'x-region') || 'us-east-1'),
     jwtAlgorithms: jwtAlgorithmsRaw
       ? jwtAlgorithmsRaw.split(',').map((algorithm) => algorithm.trim()).filter(Boolean)
       : undefined,

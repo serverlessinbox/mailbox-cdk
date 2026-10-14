@@ -1,5 +1,7 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
+import type { TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAccountId, toAudience, toIssuer, toTenantId } from './auth-identifiers';
 import type { HmacTokenPayload } from './auth-tokens';
 
 const HMAC_KEYS_TTL_MS = 30 * 60 * 1000;
@@ -39,7 +41,7 @@ export class HmacVerifier {
    * `base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload))`, with the payload string
    * `{tenantId}|{issuer}|{audience}|{accountId1,accountId2,...}`.
    */
-  public async verifySessionToken(token: string, authKeyStoreTable: string): Promise<HmacTokenPayload | null> {
+  public async verifySessionToken(token: string, authKeyStoreTable: TableName): Promise<HmacTokenPayload | null> {
     const keys = await this.hmacKeys(authKeyStoreTable);
     if (keys === null) {
       return null;
@@ -57,7 +59,7 @@ export class HmacVerifier {
    * Whether a blob id's MAC, `base64url(HMAC-SHA256(key, payload))` without padding, was made over `payload` by a
    * current or previous key; a store without keys verifies nothing.
    */
-  public async verifyBlobMac(payload: string, macBase64Url: string, authKeyStoreTable: string): Promise<boolean> {
+  public async verifyBlobMac(payload: string, macBase64Url: string, authKeyStoreTable: TableName): Promise<boolean> {
     const keys = await this.hmacKeys(authKeyStoreTable);
     if (keys === null) {
       return false;
@@ -70,7 +72,7 @@ export class HmacVerifier {
     return keys.previous !== undefined && this.blobMacMatches(payload, macBase64Url, keys.previous);
   }
 
-  private async hmacKeys(authKeyStoreTable: string): Promise<HmacKeys | null> {
+  private async hmacKeys(authKeyStoreTable: TableName): Promise<HmacKeys | null> {
     const now = Date.now();
     if (this.cachedKeys && now - this.cachedKeys.fetchedAt < HMAC_KEYS_TTL_MS) {
       return this.cachedKeys.keys;
@@ -83,7 +85,7 @@ export class HmacVerifier {
     return keys;
   }
 
-  private async loadHmacKeys(authKeyStoreTable: string): Promise<HmacKeys | null> {
+  private async loadHmacKeys(authKeyStoreTable: TableName): Promise<HmacKeys | null> {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
@@ -130,7 +132,12 @@ export class HmacVerifier {
     }
 
     const [tenantId, issuer, audience, accountIds] = fields;
-    return { tenantId, issuer, audience, accountIds: accountIds.split(',').filter(Boolean) };
+    return {
+      tenantId: toTenantId(tenantId),
+      issuer: toIssuer(issuer),
+      audience: toAudience(audience),
+      accountIds: accountIds.split(',').filter(Boolean).map(toAccountId),
+    };
   }
 
   private blobMacMatches(payload: string, macBase64Url: string, key: Buffer): boolean {

@@ -4,7 +4,7 @@ import { LambdaClient } from '@aws-sdk/client-lambda';
 import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
 import { S3Client } from '@aws-sdk/client-s3';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { env, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { CfnTrigger } from './cfn-trigger';
 import { load } from './config';
 import { EdgeLambdaUpdater } from './edge-lambda-updater';
@@ -106,7 +106,7 @@ export class UpdaterComposition implements TriggerBuilder {
     return this.runtime;
   }
 
-  private static buildUpdaterClients(deploymentRegion: string): UpdaterClients {
+  private static buildUpdaterClients(deploymentRegion: Region): UpdaterClients {
     const deployment = UpdaterComposition.buildRegionClients(deploymentRegion);
     return {
       // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
@@ -117,7 +117,7 @@ export class UpdaterComposition implements TriggerBuilder {
     };
   }
 
-  private static buildRegionClients(region: string): RegionClients {
+  private static buildRegionClients(region: Region): RegionClients {
     return {
       region,
       lambda: new LambdaClient({ region }),

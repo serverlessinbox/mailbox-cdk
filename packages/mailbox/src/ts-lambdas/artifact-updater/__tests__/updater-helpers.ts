@@ -5,7 +5,7 @@ import { LambdaClient, type InvokeCommandOutput } from '@aws-sdk/client-lambda';
 import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
 import { S3Client } from '@aws-sdk/client-s3';
 import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, toRegion, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { LambdaTarget, UiTarget } from '../artifact-target';
 import type { Config } from '../config';
 import { EdgeLambdaUpdater } from '../edge-lambda-updater';
@@ -21,6 +21,7 @@ import { EDGE_REGION, type RegionClients, type UpdaterClients } from '../updater
 import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
 import type { NewUpdateCycle } from '../updater-trigger';
 import {
+  toArtifactBucketName,
   toArtifactName,
   toArtifactPackageName,
   toArtifactVersion,
@@ -47,11 +48,17 @@ export interface TargetValues {
 
 export const LAMBDA_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go';
 export const DISTRIBUTION_ARN = 'arn:aws:cloudfront::123456789012:distribution/ABCD1234';
+export const EU_WEST_1 = toRegion('eu-west-1');
+export const US_WEST_2 = toRegion('us-west-2');
+export const ARTIFACT_BUCKET_US_EAST_1 = toArtifactBucketName('mailbox-artifacts-us-east-1');
+
+/** The release a target deployed at 1.2.3 is behind on. */
+export const NEWER_VERSION = toArtifactVersion('1.2.4');
 
 export const testConfig: Config = {
   logLevel: 'error',
   serviceName: 'artifact-updater',
-  region: 'us-east-1',
+  region: EDGE_REGION,
   functionName: 'artifact-updater-function',
   project: 'serverlessinbox',
   distTag: 'latest',
@@ -63,7 +70,7 @@ export const testConfig: Config = {
 /** Resolves at once, so a test does not wait out a poll interval or a retry delay. */
 export const noSleep: Sleep = async () => undefined;
 
-function regionClients(region: string): RegionClients {
+function regionClients(region: Region): RegionClients {
   return { region, lambda: new LambdaClient({ region }), tagging: new ResourceGroupsTaggingAPIClient({ region }) };
 }
 
@@ -72,7 +79,7 @@ function regionClients(region: string): RegionClients {
  * with aws-sdk-client-mock; the edge set is shared with the deployment set when the deployment region is the
  * edge region, as in the entry point.
  */
-export function fakeUpdaterClients(deploymentRegion: string = EDGE_REGION): UpdaterClients {
+export function fakeUpdaterClients(deploymentRegion: Region = EDGE_REGION): UpdaterClients {
   const deployment = regionClients(deploymentRegion);
   return {
     registryS3: new S3Client({ region: deploymentRegion }),

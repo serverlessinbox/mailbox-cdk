@@ -3,7 +3,7 @@ import {
   type ResourceTagMapping,
   type Tag,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { LambdaTarget, UiTarget } from './artifact-target';
 import type { Config } from './config';
 import type { EdgeLambdaUpdater } from './edge-lambda-updater';
@@ -18,7 +18,6 @@ import {
   toDistributionArn,
   toLambdaFunctionArn,
 } from './updater-identifiers';
-import { UpdaterTagKeys } from './updater-tags';
 
 /** One page of the resources that carry the root stack tag, and the token of the next page when there is one. */
 interface TaggedResourcePage {
@@ -111,7 +110,7 @@ export class UpdateCycle {
   private async fetchTaggedResources(scan: RegionClients, paginationToken: string | undefined): Promise<TaggedResourcePage> {
     const response = await scan.tagging.send(
       new GetResourcesCommand({
-        TagFilters: [{ Key: UpdaterTagKeys.rootStack, Values: [this.config.rootStackTagValue] }],
+        TagFilters: [{ Key: ServerlessInboxTagKeys.rootStack, Values: [this.config.rootStackTagValue] }],
         ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
         PaginationToken: paginationToken,
       }),
@@ -141,10 +140,10 @@ export class UpdateCycle {
 
     const tags = this.tagMapFrom(mapping.Tags);
     const service = this.serviceOf(arn);
-    const autoUpdateType = tags[UpdaterTagKeys.autoUpdateType] ?? 'none';
-    const packageName = tags[UpdaterTagKeys.artifactPackage];
-    const artifactName = tags[UpdaterTagKeys.artifactName];
-    const deployedVersion = tags[UpdaterTagKeys.artifactVersion];
+    const autoUpdateType = tags[ServerlessInboxTagKeys.autoUpdateType] ?? 'none';
+    const packageName = tags[ServerlessInboxTagKeys.artifactPackage];
+    const artifactName = tags[ServerlessInboxTagKeys.artifactName];
+    const deployedVersion = tags[ServerlessInboxTagKeys.artifactVersion];
 
     // A resource that did not opt in is skipped before its artifact tags are checked, since it needs none.
     if (autoUpdateType === 'none') {
@@ -170,7 +169,7 @@ export class UpdateCycle {
       packageName,
       artifactName,
       deployedVersion,
-      bucketName: tags[UpdaterTagKeys.bucketName],
+      bucketName: tags[ServerlessInboxTagKeys.bucketName],
     };
   }
 

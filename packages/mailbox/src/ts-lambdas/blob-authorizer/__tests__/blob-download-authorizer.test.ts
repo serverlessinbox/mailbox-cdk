@@ -17,18 +17,22 @@ import type { CloudFrontResponse } from '../cloudfront-responses';
 import { HmacVerifier } from '../hmac-verifier';
 import { JwtVerifier } from '../jwt-verifier';
 import {
+  ACCOUNT_ID,
+  ANOTHER_AUDIENCE,
+  ANOTHER_ISSUER,
+  AUDIENCE,
   AUTH_KEY_STORE_TABLE,
   downloadQuery,
   encodedBlobIdOf,
+  ISSUER,
+  NO_AUDIENCE,
   originRequestOf,
+  TENANT_ID,
   type OriginRequestOptions,
 } from './blob-authorizer-helpers';
 
-const ISSUER = 'https://idp.example.com/pool';
-const AUDIENCE = 'client-1';
-
 const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUDIENCE };
-const SESSION: HmacTokenPayload = { tenantId: 'tenant-1', issuer: ISSUER, audience: AUDIENCE, accountIds: ['account-1'] };
+const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, accountIds: [ACCOUNT_ID] };
 
 interface DownloadOptions {
   readonly blob?: string;
@@ -238,20 +242,20 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('identity agreement between JWT and session', () => {
     it('rejects a session issued for another issuer with a 403', async () => {
-      verifySessionToken.mockResolvedValue({ ...SESSION, issuer: 'https://another-idp.example.com' });
+      verifySessionToken.mockResolvedValue({ ...SESSION, issuer: ANOTHER_ISSUER });
 
       await expectRejected(downloadRequest(), 403, 'Access denied: issuer mismatch');
     });
 
     it('rejects a session issued for another audience with a 403', async () => {
-      verifySessionToken.mockResolvedValue({ ...SESSION, audience: 'client-2' });
+      verifySessionToken.mockResolvedValue({ ...SESSION, audience: ANOTHER_AUDIENCE });
 
       await expectRejected(downloadRequest(), 403, 'Access denied: audience mismatch');
     });
 
     it('does not hold the session to an audience the JWT does not name', async () => {
-      verifySignatureOnly.mockResolvedValue({ ...VERIFIED_JWT, audience: '' });
-      verifySessionToken.mockResolvedValue({ ...SESSION, audience: 'client-2' });
+      verifySignatureOnly.mockResolvedValue({ ...VERIFIED_JWT, audience: NO_AUDIENCE });
+      verifySessionToken.mockResolvedValue({ ...SESSION, audience: ANOTHER_AUDIENCE });
 
       await expect(authorizer.authorize(downloadRequest())).resolves.toHaveProperty('uri');
     });

@@ -4,8 +4,8 @@ import {
   UpdateFunctionCodeCommand,
   type LambdaClient,
 } from '@aws-sdk/client-lambda';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { ArtifactLocation } from './release-artifacts';
-import { UpdaterTagKeys } from './updater-tags';
 import type { ArtifactVersion, LambdaFunctionArn } from './updater-identifiers';
 
 const MAX_POLL_ATTEMPTS = 30;
@@ -68,7 +68,7 @@ export class LambdaFunctionCode {
     await lambda.send(
       new TagResourceCommand({
         Resource: functionArn,
-        Tags: { [UpdaterTagKeys.artifactVersion]: version },
+        Tags: { [ServerlessInboxTagKeys.artifactVersion]: version },
       }),
     );
   }

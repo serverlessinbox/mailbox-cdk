@@ -14,8 +14,7 @@ import {
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
 import { LambdaFunctionCode } from '../lambda-function-code';
-import { toArtifactBucketName, toArtifactVersion } from '../updater-identifiers';
-import { lambdaTarget } from './updater-helpers';
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION } from './updater-helpers';
 
 describe('LambdaFunctionCode', () => {
   const lambdaMock = mockClient(LambdaClient);
@@ -34,7 +33,7 @@ describe('LambdaFunctionCode', () => {
       lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
 
       await functionCode.update(lambda, functionArn, {
-        bucket: toArtifactBucketName('mailbox-artifacts-us-east-1'),
+        bucket: ARTIFACT_BUCKET_US_EAST_1,
         key: 'releases/v1.2.4/lambdas/mailbox-go.zip',
       });
 
@@ -107,7 +106,7 @@ describe('LambdaFunctionCode', () => {
     it('tags the function with the artifact version it now runs', async () => {
       lambdaMock.on(TagResourceCommand).resolves({});
 
-      await functionCode.tagArtifactVersion(lambda, functionArn, toArtifactVersion('1.2.4'));
+      await functionCode.tagArtifactVersion(lambda, functionArn, NEWER_VERSION);
 
       expect(lambdaMock.commandCalls(TagResourceCommand)[0].args[0].input).toEqual({
         Resource: functionArn,

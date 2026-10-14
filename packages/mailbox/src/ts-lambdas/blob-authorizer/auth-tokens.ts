@@ -1,9 +1,11 @@
+import type { AccountId, Audience, Issuer, TenantId } from './auth-identifiers';
+
 /** What the authorizer takes from a JWT whose signature and time claims verified. */
 export interface VerifiedJwt {
   readonly sub: string;
-  readonly issuer: string;
+  readonly issuer: Issuer;
   /** The `client_id` claim, else the first `aud` value; empty when the token names neither. */
-  readonly audience: string;
+  readonly audience: Audience;
 }
 
 /**
@@ -11,8 +13,8 @@ export interface VerifiedJwt {
  * with the JWT, and the accounts the bearer may read blobs of.
  */
 export interface HmacTokenPayload {
-  readonly tenantId: string;
-  readonly issuer: string;
-  readonly audience: string;
-  readonly accountIds: string[];
+  readonly tenantId: TenantId;
+  readonly issuer: Issuer;
+  readonly audience: Audience;
+  readonly accountIds: AccountId[];
 }

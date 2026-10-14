@@ -1,8 +1,20 @@
 import * as crypto from 'crypto';
+import { toRegion, toTableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAccountId, toAudience, toIssuer, toTenantId } from '../auth-identifiers';
 import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobId } from '../blob-id';
 import { readOriginRequest, type CloudFrontRequest } from '../cloudfront-event';
 
-export const AUTH_KEY_STORE_TABLE = 'auth-key-store';
+export const AUTH_KEY_STORE_TABLE = toTableName('auth-key-store');
+export const EU_CENTRAL_1 = toRegion('eu-central-1');
+export const EU_WEST_1 = toRegion('eu-west-1');
+export const US_EAST_1 = toRegion('us-east-1');
+export const TENANT_ID = toTenantId('tenant-1');
+export const ACCOUNT_ID = toAccountId('account-1');
+export const ISSUER = toIssuer('https://idp.example.com/pool');
+export const AUDIENCE = toAudience('client-1');
+export const ANOTHER_ISSUER = toIssuer('https://another-idp.example.com');
+export const ANOTHER_AUDIENCE = toAudience('client-2');
+export const NO_AUDIENCE = toAudience('');
 
 /** The unpadded base64url form of a decoded blob id, as a download URL carries it. */
 export function encodedBlobIdOf(decoded: string): EncodedBlobId {

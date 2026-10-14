@@ -10,8 +10,7 @@
 import { SemVer } from 'semver';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { ReleaseArtifacts } from '../release-artifacts';
-import { toArtifactPackageName, toArtifactVersion } from '../updater-identifiers';
-import { fakeUpdaterClients, testConfig, type RegistryMocks } from './updater-helpers';
+import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack: jest.fn(),
@@ -25,7 +24,7 @@ const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
 
 describe('ReleaseArtifacts', () => {
   const registryS3 = fakeUpdaterClients().registryS3;
-  const packageName = toArtifactPackageName('mailbox-go');
+  const { packageName, deployedVersion: DEPLOYED_VERSION } = lambdaTarget();
   const releases = new ReleaseArtifacts(registryS3, testConfig, new LoggerBuffer());
 
   beforeEach(() => {
@@ -37,7 +36,7 @@ describe('ReleaseArtifacts', () => {
     it('reads the release pointer of the deployed version\'s track through the S3 client it is given', async () => {
       readReleasePointer.mockResolvedValue({ version: '1.2.4' });
 
-      await releases.findNewer('eu-west-1', packageName, toArtifactVersion('1.2.3'));
+      await releases.findNewer(EU_WEST_1, packageName, DEPLOYED_VERSION);
 
       expect(deriveTrack).toHaveBeenCalledWith('1.2.3', 'major');
       expect(readReleasePointer).toHaveBeenCalledWith(
@@ -53,7 +52,7 @@ describe('ReleaseArtifacts', () => {
     it('returns the newer version as published and parsed, with the deployed version parsed', async () => {
       readReleasePointer.mockResolvedValue({ version: '1.2.4' });
 
-      const stale = await releases.findNewer('eu-west-1', packageName, toArtifactVersion('1.2.3'));
+      const stale = await releases.findNewer(EU_WEST_1, packageName, DEPLOYED_VERSION);
 
       expect(stale?.version).toBe('1.2.4');
       expect(stale?.parsed.version).toBe('1.2.4');
@@ -63,7 +62,7 @@ describe('ReleaseArtifacts', () => {
     it('returns null when the track has no release pointer', async () => {
       readReleasePointer.mockResolvedValue(null);
 
-      await expect(releases.findNewer('eu-west-1', packageName, toArtifactVersion('1.2.3'))).resolves.toBeNull();
+      await expect(releases.findNewer(EU_WEST_1, packageName, DEPLOYED_VERSION)).resolves.toBeNull();
     });
 
     it.each([
@@ -75,7 +74,7 @@ describe('ReleaseArtifacts', () => {
       readReleasePointer.mockResolvedValue({ version: pointerVersion });
 
       await expect(
-        releases.findNewer('eu-west-1', packageName, toArtifactVersion(deployedVersion)),
+        releases.findNewer(EU_WEST_1, packageName, lambdaTarget({ deployedVersion }).deployedVersion),
       ).resolves.toBeNull();
     });
   });
@@ -85,7 +84,7 @@ describe('ReleaseArtifacts', () => {
       buildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
       const release = new SemVer('1.2.4');
 
-      const location = releases.locate('eu-west-1', packageName, release, 'lambdas/mailbox-go.zip');
+      const location = releases.locate(EU_WEST_1,packageName, release, 'lambdas/mailbox-go.zip');
 
       expect(location).toEqual({
         bucket: 'mailbox-artifacts-eu-west-1',

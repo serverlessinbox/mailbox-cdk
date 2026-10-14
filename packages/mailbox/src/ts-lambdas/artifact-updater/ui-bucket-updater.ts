@@ -5,12 +5,12 @@ import {
   deployZipToPrefix,
   invalidateCloudFront,
   parseArn,
+  ServerlessInboxTagKeys,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { UiTarget } from './artifact-target';
 import type { ReleaseArtifacts, StaleTarget } from './release-artifacts';
 import type { RegionClients } from './updater-clients';
-import { UpdaterTagKeys } from './updater-tags';
 
 const CONTENT_PREFIX = 'content/';
 
@@ -92,7 +92,7 @@ export class UiBucketUpdater {
       new TagResourceCommand({
         Resource: target.arn,
         Tags: {
-          Items: [{ Key: UpdaterTagKeys.artifactVersion, Value: stale.version }],
+          Items: [{ Key: ServerlessInboxTagKeys.artifactVersion, Value: stale.version }],
         },
       }),
     );

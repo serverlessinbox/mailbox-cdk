@@ -1,4 +1,4 @@
-import { env, loadBaseConfig, type BaseConfig } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, loadBaseConfig, toRegion, type BaseConfig, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 const GRANULARITIES = ['major', 'minor'] as const;
 
@@ -7,7 +7,7 @@ export type Granularity = (typeof GRANULARITIES)[number];
 
 /** The environment the artifact-updater Lambda reads: the shared base plus where and what it updates. */
 export interface Config extends BaseConfig {
-  readonly region: string;
+  readonly region: Region;
   readonly functionName: string;
   readonly project: string;
   readonly distTag: string;
@@ -22,7 +22,7 @@ export type UpdaterTargetConfig = Pick<Config, 'project' | 'distTag' | 'granular
 export function load(l: env.Loader): Config {
   return {
     ...loadBaseConfig(l),
-    region: l.mandatory('AWS_REGION'),
+    region: toRegion(l.mandatory('AWS_REGION')),
     functionName: l.mandatory('AWS_LAMBDA_FUNCTION_NAME'),
     project: l.mandatory('PROJECT'),
     distTag: l.mandatory('DIST_TAG'),

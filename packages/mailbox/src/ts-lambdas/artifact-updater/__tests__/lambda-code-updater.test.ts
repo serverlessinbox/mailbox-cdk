@@ -22,6 +22,7 @@ import { LambdaCodeUpdater } from '../lambda-code-updater';
 import { LambdaFunctionCode } from '../lambda-function-code';
 import { ReleaseArtifacts } from '../release-artifacts';
 import {
+  EU_WEST_1,
   fakeUpdaterClients,
   invokeResponse,
   lambdaTarget,
@@ -103,7 +104,7 @@ describe('LambdaCodeUpdater', () => {
   });
 
   it('works through the Lambda client of the region it is given', async () => {
-    const euClients = fakeUpdaterClients('eu-west-1');
+    const euClients = fakeUpdaterClients(EU_WEST_1);
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
     lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":true}'));
 

@@ -19,20 +19,19 @@ import { SemVer } from 'semver';
 import { LambdaCodeRollback } from '../lambda-code-rollback';
 import { LambdaFunctionCode } from '../lambda-function-code';
 import type { ArtifactLocation, StaleTarget } from '../release-artifacts';
-import { toArtifactBucketName, toArtifactVersion } from '../updater-identifiers';
-import { lambdaTarget, noSleep } from './updater-helpers';
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from './updater-helpers';
 
 describe('LambdaCodeRollback', () => {
   const lambdaMock = mockClient(LambdaClient);
   const lambda = new LambdaClient({ region: 'us-east-1' });
   const target = lambdaTarget();
   const stale: StaleTarget = {
-    version: toArtifactVersion('1.2.4'),
+    version: NEWER_VERSION,
     parsed: new SemVer('1.2.4'),
     deployed: new SemVer('1.2.3'),
   };
   const deployedLocation: ArtifactLocation = {
-    bucket: toArtifactBucketName('mailbox-artifacts-us-east-1'),
+    bucket: ARTIFACT_BUCKET_US_EAST_1,
     key: 'releases/v1.2.3/lambdas/mailbox-go.zip',
   };
 

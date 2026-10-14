@@ -1,12 +1,10 @@
-import { parseArn } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { parseArn, type Branded } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /**
  * The identifiers and names the artifact updater passes between its units, each a string of its own kind so
  * that one kind cannot be passed where another is expected. The brand exists in the type only. Every kind has
  * exactly one factory, and the cast to the brand sits in that factory and nowhere else.
  */
-
-type Branded<Kind extends string> = string & { readonly __brand: Kind };
 
 /** The ARN of a Lambda function the updater manages. */
 export type LambdaFunctionArn = Branded<'LambdaFunctionArn'>;

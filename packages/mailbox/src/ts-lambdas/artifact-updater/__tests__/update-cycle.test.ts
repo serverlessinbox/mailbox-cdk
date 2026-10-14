@@ -12,7 +12,7 @@ import {
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { EdgeLambdaUpdater } from '../edge-lambda-updater';
 import { FunctionSmokeTester } from '../function-smoke-tester';
 import { LambdaCodeRollback } from '../lambda-code-rollback';
@@ -29,6 +29,7 @@ import {
   noSleep,
   testConfig,
   uiTarget,
+  US_WEST_2,
 } from './updater-helpers';
 
 jest.mock('../lambda-code-updater');
@@ -66,7 +67,7 @@ function distributionWithType(autoUpdateType: string, bucketName?: string): Reso
 describe('UpdateCycle', () => {
   const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
 
-  function newCycle(deploymentRegion?: string) {
+  function newCycle(deploymentRegion?: Region) {
     const clients = fakeUpdaterClients(deploymentRegion);
     const logger = new LoggerBuffer(undefined, 'debug');
     const releases = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
@@ -117,7 +118,7 @@ describe('UpdateCycle', () => {
 
     it('scans the deployment region and the edge region when they differ', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
-      const { cycle, clients } = newCycle('us-west-2');
+      const { cycle, clients } = newCycle(US_WEST_2);
 
       await cycle.run();
 
@@ -258,7 +259,7 @@ describe('UpdateCycle', () => {
         .on(GetResourcesCommand)
         .resolvesOnce({ ResourceTagMappingList: [lambdaWithType('edge')] })
         .resolves({ ResourceTagMappingList: [] });
-      const { cycle, edgeUpdater } = newCycle('us-west-2');
+      const { cycle, edgeUpdater } = newCycle(US_WEST_2);
 
       await cycle.run();
 

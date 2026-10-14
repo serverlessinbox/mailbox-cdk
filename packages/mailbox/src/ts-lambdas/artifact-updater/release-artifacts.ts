@@ -1,7 +1,7 @@
 import type { S3Client } from '@aws-sdk/client-s3';
 import { buildArtifactKey, deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { UpdaterTargetConfig } from './config';
 import {
   toArtifactBucketName,
@@ -44,7 +44,7 @@ export class ReleaseArtifacts {
    * pointer, a pointer or deployed version that is not a semantic version, or a pointer that is not newer.
    */
   public async findNewer(
-    region: string,
+    region: Region,
     packageName: ArtifactPackageName,
     deployedVersion: ArtifactVersion,
   ): Promise<StaleTarget | null> {
@@ -96,7 +96,7 @@ export class ReleaseArtifacts {
 
   /** The bucket of the region and the key of the object of one release of the package. */
   public locate(
-    region: string,
+    region: Region,
     packageName: ArtifactPackageName,
     release: SemVer,
     objectName: string,

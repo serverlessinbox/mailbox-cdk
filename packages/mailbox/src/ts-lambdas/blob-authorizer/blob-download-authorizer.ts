@@ -1,4 +1,5 @@
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, type LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAccountId, type AccountId, type TenantId } from './auth-identifiers';
 import type { HmacTokenPayload, VerifiedJwt } from './auth-tokens';
 import { BlobIdFormat } from './blob-id-format';
 import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId } from './blob-id';
@@ -10,7 +11,7 @@ import type { Verifiers } from './region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {
-  readonly accountId: string;
+  readonly accountId: AccountId;
   readonly blobId: EncodedBlobId;
   readonly type?: string;
   readonly name?: string;
@@ -25,9 +26,9 @@ interface DownloadParams {
  */
 export class BlobDownloadAuthorizer {
   private readonly logger: LoggerBuffer;
-  private readonly verifiersFor: (region: string) => Verifiers;
+  private readonly verifiersFor: (region: Region) => Verifiers;
 
-  constructor(logger: LoggerBuffer, verifiersFor: (region: string) => Verifiers) {
+  constructor(logger: LoggerBuffer, verifiersFor: (region: Region) => Verifiers) {
     this.logger = logger;
     this.verifiersFor = verifiersFor;
   }
@@ -93,7 +94,7 @@ export class BlobDownloadAuthorizer {
 
     this.logger.debug('Download parameters extracted', { accountId });
     return {
-      accountId,
+      accountId: toAccountId(accountId),
       blobId: toEncodedBlobId(blobId),
       type: query.get('type') || undefined,
       name: query.get('name') || undefined,
@@ -154,7 +155,7 @@ export class BlobDownloadAuthorizer {
   }
 
   // A principal blob belongs to the tenant, not to an account, so it needs no account in the session.
-  private requireAccountAccess(session: HmacTokenPayload, accountId: string, blob: ParsedBlobId): void {
+  private requireAccountAccess(session: HmacTokenPayload, accountId: AccountId, blob: ParsedBlobId): void {
     if (blob.type !== 'principal' && !session.accountIds.includes(accountId)) {
       throw this.reject(403, 'Access denied: account not authorized', undefined, { accountId });
     }
@@ -174,7 +175,7 @@ export class BlobDownloadAuthorizer {
   private async requireBlobMac(
     hmac: Verifiers['hmac'],
     session: HmacTokenPayload,
-    accountId: string,
+    accountId: AccountId,
     blob: ParsedBlobId,
     config: Config,
   ): Promise<void> {
@@ -204,7 +205,7 @@ export class BlobDownloadAuthorizer {
 
   private forward(
     request: CloudFrontRequest,
-    tenantId: string,
+    tenantId: TenantId,
     params: DownloadParams,
     blob: ParsedBlobId,
   ): CloudFrontRequest {
@@ -218,7 +219,7 @@ export class BlobDownloadAuthorizer {
   }
 
   // A principal blob is keyed under the tenant only, not under an account.
-  private s3KeyOf(tenantId: string, accountId: string, blob: ParsedBlobId): string {
+  private s3KeyOf(tenantId: TenantId, accountId: AccountId, blob: ParsedBlobId): string {
     switch (blob.type) {
       case 'email':
         return `tenants/${tenantId}/accounts/${accountId}/emails/${blob.entityId}/${blob.path}`;

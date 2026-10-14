@@ -6,22 +6,23 @@
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { RegionBoundVerifiers } from '../region-bound-verifiers';
+import { EU_WEST_1, US_EAST_1 } from './blob-authorizer-helpers';
 
 describe('RegionBoundVerifiers', () => {
   it('creates the DynamoDB client in the region of the first request', () => {
     const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
 
-    new RegionBoundVerifiers(createDynamoDBClient).get('eu-west-1');
+    new RegionBoundVerifiers(createDynamoDBClient).get(EU_WEST_1);
 
-    expect(createDynamoDBClient).toHaveBeenCalledWith('eu-west-1');
+    expect(createDynamoDBClient).toHaveBeenCalledWith(EU_WEST_1);
   });
 
   it('serves later requests, whatever region they name, from the verifiers of the first', () => {
     const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
     const verifiers = new RegionBoundVerifiers(createDynamoDBClient);
 
-    const first = verifiers.get('eu-west-1');
-    const second = verifiers.get('us-east-1');
+    const first = verifiers.get(EU_WEST_1);
+    const second = verifiers.get(US_EAST_1);
 
     expect(second).toBe(first);
     expect(createDynamoDBClient).toHaveBeenCalledTimes(1);
