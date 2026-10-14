@@ -3,30 +3,25 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import type { Granularity } from '../artifacts/resolvers/auto-updater';
+import { ArtifactUpdaterEnvNames, type ArtifactUpdaterEnvName } from '../ts-lambdas/artifact-updater/env-names';
 
 export interface ArtifactUpdaterLambdaProps {
   artifactResolver: IArtifactResolver;
-
-  /** Dist-tag to follow ('stable', 'beta', etc.). */
   distTag: string;
-
-  /** Literal Granularity OR a CFN-parameter token; used for the updater's env and IsTracking. Typed `string`. */
-  granularity: string;
-
-  /** Root stack name (Aws.STACK_NAME). */
+  granularity: Granularity;
   rootStackTagValue: string;
-
-  /** Base name for artifact S3 buckets (e.g., 'mailbox-artifacts'). */
   artifactBucketBase: string;
 }
 
 /**
- * Artifact updater Lambda wrapper.
- * Handles artifact updates via three trigger paths (deploy-end CR, EventBridge schedule, admin API invoke).
- * Runs tag-scan discovery and swaps deployed artifacts out-of-band, bounded by granularity.
+ * The Lambda that moves a stack's tagged artifacts to newer releases. Its role holds every grant the
+ * update needs, each scoped to the root stack by tag wherever the service honours the tag.
  */
 export class ArtifactUpdaterLambda extends TypeScriptLambda {
   private static readonly project = 'serverlessinbox';
+  private static readonly anyFunctionArn = `arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`;
+  private static readonly anyDistributionArn = `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`;
 
   constructor(scope: Construct, id: string, props: ArtifactUpdaterLambdaProps) {
     super(scope, id, {
@@ -36,21 +31,13 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       packageName: 'mailbox-cdk',
       timeout: Duration.minutes(5),
       memorySize: 256,
-      environment: {
-        ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
-        DIST_TAG: props.distTag,
-        GRANULARITY: props.granularity,
-        PROJECT: 'serverlessinbox',
-        ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
-      },
+      environment: ArtifactUpdaterLambda.environmentOf(props),
     });
 
-    // Updater IAM: comprehensive least-privilege (all always-on, apply to updater Lambda for all three trigger paths)
+    // No grant on UI buckets: S3 object writes cannot be scoped by tag, so a bucket's own ARN is the only scope.
     this.grantTagDiscovery();
     this.grantLambdaManagementAccess(props.rootStackTagValue);
     this.grantLambdaTagAccess(props.rootStackTagValue);
-    // No grant on UI buckets here: the updater's write access to a UI bucket is granted on that
-    // bucket, scoped by its ARN rather than by tag (see MailboxUi.grantContentDeploy).
     this.grantEdgeLambdaAccess(props.rootStackTagValue);
     this.grantCloudFrontManagementAccess(props.rootStackTagValue);
     this.grantCloudFrontTagAccess(props.rootStackTagValue);
@@ -59,6 +46,17 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantSelfInvoke();
   }
 
+  private static environmentOf(props: ArtifactUpdaterLambdaProps): Record<ArtifactUpdaterEnvName, string> {
+    return {
+      [ArtifactUpdaterEnvNames.artifactBucketBase]: props.artifactBucketBase,
+      [ArtifactUpdaterEnvNames.distTag]: props.distTag,
+      [ArtifactUpdaterEnvNames.granularity]: props.granularity,
+      [ArtifactUpdaterEnvNames.project]: ArtifactUpdaterLambda.project,
+      [ArtifactUpdaterEnvNames.rootStackTagValue]: props.rootStackTagValue,
+    };
+  }
+
+  /** GetResources is read-only enumeration and cannot be scoped. */
   private grantTagDiscovery(): void {
     this.addToRolePolicy(
       new PolicyStatement({
@@ -72,7 +70,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
-        resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
+        resources: [ArtifactUpdaterLambda.anyFunctionArn],
         conditions: {
           StringEquals: rootStackResourceTagCondition(rootStackTagValue),
         },
@@ -81,23 +79,11 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   }
 
   private grantLambdaTagAccess(rootStackTagValue: string): void {
-    // TagResource constrained to artifact-version tag only; prevents rewriting root-stack scope or injecting arbitrary tags
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['lambda:TagResource'],
-        resources: [`arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
-          },
-        },
-      }),
-    );
+    this.grantArtifactVersionTagging('lambda:TagResource', ArtifactUpdaterLambda.anyFunctionArn, rootStackTagValue);
   }
 
+  /** Edge functions are always in us-east-1. */
   private grantEdgeLambdaAccess(rootStackTagValue: string): void {
-    // Edge auto-update: publish new versions + update CloudFront
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
@@ -109,13 +95,12 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     );
   }
 
+  /** The CloudFront distribution resource type supports `aws:ResourceTag`, so distributions are scoped by the root-stack tag. */
   private grantCloudFrontManagementAccess(rootStackTagValue: string): void {
-    // CloudFront distribution management: scope to this account and root-stack tag.
-    // CloudFront distribution resource type supports aws:ResourceTag, so distributions are scoped by the root-stack tag.
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
-        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
+        resources: [ArtifactUpdaterLambda.anyDistributionArn],
         conditions: {
           StringEquals: rootStackResourceTagCondition(rootStackTagValue),
         },
@@ -124,24 +109,11 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   }
 
   private grantCloudFrontTagAccess(rootStackTagValue: string): void {
-    // TagResource constrained to distributions matching root-stack tag and allowing only artifact-version mutations.
-    // Prevents rewriting root-stack scope or injecting arbitrary tags.
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['cloudfront:TagResource'],
-        resources: [`arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
-          },
-        },
-      }),
-    );
+    this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, rootStackTagValue);
   }
 
+  /** ListDistributions is read-only enumeration and cannot be scoped. */
   private grantCloudFrontListAccess(): void {
-    // CloudFront distribution listing: read-only enumeration, unscopable by AWS
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['cloudfront:ListDistributions'],
@@ -164,5 +136,24 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       principal: this.grantPrincipal,
       action: 'lambda:InvokeFunction',
     });
+  }
+
+  /**
+   * Tag writes are limited to the artifact-version key, so the role cannot rewrite the root-stack tag
+   * that scopes its other grants or inject tags another policy trusts.
+   */
+  private grantArtifactVersionTagging(action: string, resourceArn: string, rootStackTagValue: string): void {
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: [action],
+        resources: [resourceArn],
+        conditions: {
+          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
+          },
+        },
+      }),
+    );
   }
 }

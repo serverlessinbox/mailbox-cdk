@@ -3,16 +3,14 @@ import { Aws, Duration, Fn, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
-import { MailboxArtifactResolverFactory, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver, PinnedArtifactResolver, RegistryLocation, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
+import { MailboxArtifactResolverFactory, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
 import { loadMailboxArtifactVersions } from '../../mailbox-artifact-versions';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
 import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
 import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { TrackedUpdateTriggers } from './tracked-update-triggers';
 
 /**
  * How the artifact updater follows new releases.
@@ -83,8 +81,6 @@ export interface AutoUpdaterProps {
  * construct in `MailboxProps.adminApiAddonProviders` to expose that.
  */
 export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider, iam.IGrantable {
-  private readonly updater: ArtifactUpdaterLambda;
-
   /**
    * The IAM principal of the updater Lambda's role. The updater writes to resources it does not
    * create, such as a UI bucket; grant this principal on the target resource itself, scoped to
@@ -103,51 +99,40 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
    */
   public readonly location: RegistryLocation;
 
-  private readonly distTag: string;
-  private readonly bucketBase: string;
-  private readonly pinned: PinnedArtifactResolver;
-  private readonly isTracking: cdk.CfnCondition;
-  private readonly deployEndTrigger: cdk.CustomResource;
+  private readonly pinned: IArtifactResolver;
+  private readonly updaterFunction: lambda.IFunction;
+  private readonly trackedTriggers: TrackedUpdateTriggers;
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
-    this.distTag = props.distTag ?? 'stable';
-    const pinnedResolver = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    this.pinned = pinnedResolver;
-    this.location = pinnedResolver.location;
-    this.bucketBase = this.location.bucketBase;
+    this.pinned = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
+    this.location = this.pinned.location;
 
-    const granularity = props.granularity ?? 'minor';
+    // cast: the prop is a string so that a CloudFormation parameter token is accepted.
+    const granularity = (props.granularity ?? 'minor') as Granularity;
 
-    // IsTracking is false when granularity is 'pinned': the deploy-end CR and the EventBridge
-    // rule are then not created, while the updater Lambda stays.
-    this.isTracking = new cdk.CfnCondition(this, 'IsTracking', {
+    // False for 'pinned': the tracked triggers are then not created, while the updater Lambda stays.
+    const isTracking = new cdk.CfnCondition(this, 'IsTracking', {
       expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
     });
 
     // The updater Lambda exists under 'pinned' too, so it stays invocable from the admin API.
     const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: this.pinned,
-      artifactBucketBase: this.bucketBase,
-      distTag: this.distTag,
+      artifactBucketBase: this.location.bucketBase,
+      distTag: props.distTag ?? 'stable',
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
     });
-    this.updater = updater;
+    this.updaterFunction = updater;
     this.grantPrincipal = updater.grantPrincipal;
+    this.excludeFromAutoUpdate(updater);
 
-    // Excludes the updater from its own tag scan (auto-update-type none).
-    Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
-
-    const trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {
+    this.trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {
       updater,
-      isTracking: this.isTracking,
+      isTracking,
       updateInterval: props.updateInterval ?? Duration.hours(6),
     });
-
-    this.deployEndTrigger = trackedTriggers.deployEndCr;
-
-    cdk.Aspects.of(trackedTriggers).add(new GateOnConditionAspect(this.isTracking));
   }
 
   /**
@@ -199,7 +184,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
    * @param _ctx Unused: the addon needs nothing from the shared context.
    */
   createAdminApiAddons(_scope: Construct, _ctx: AdminApiAddonContext): IAdminApiAddon[] {
-    return [new ArtifactUpdaterAddon({ updaterFunction: this.updater })];
+    return [new ArtifactUpdaterAddon(this.updaterFunction)];
   }
 
   /**
@@ -212,42 +197,10 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
    * @param dependency The construct whose deployment must complete before the trigger fires.
    */
   addDeployEndDependency(dependency: IConstruct): void {
-    this.deployEndTrigger.node.addDependency(dependency);
+    this.trackedTriggers.waitFor(dependency);
   }
-}
 
-/**
- * Child construct: holds the deploy-end CR and EventBridge rule, both gated on IsTracking.
- * The Aspect applies only to this subtree, keeping the updater Lambda (always-on) outside the gate.
- */
-class TrackedUpdateTriggers extends Construct {
-  readonly deployEndCr: cdk.CustomResource;
-
-  constructor(scope: Construct, id: string, props: {
-    updater: lambda.IFunction;
-    isTracking: cdk.CfnCondition;
-    updateInterval: Duration;
-  }) {
-    super(scope, id);
-
-    // Deploy-end CR: CloudFormation invokes the updater Lambda directly through the service
-    // token, and the handler routes on the event shape.
-    const deployEndCr = new cdk.CustomResource(this, 'deploy-end-cr', {
-      serviceToken: props.updater.functionArn,
-      serviceTimeout: cdk.Duration.seconds(600),
-      resourceType: 'Custom::DeployEndTrigger',
-      properties: {
-        // CloudFormation re-invokes a custom resource only when its properties change; the nonce
-        // changes on every synth so the trigger fires on every deploy.
-        Nonce: Date.now().toString(),
-      },
-    });
-    this.deployEndCr = deployEndCr;
-
-    // Scheduled trigger.
-    new events.Rule(this, 'scheduled-update-rule', {
-      schedule: events.Schedule.rate(props.updateInterval),
-      targets: [new targets.LambdaFunction(props.updater)],
-    });
+  private excludeFromAutoUpdate(updater: lambda.IFunction): void {
+    Tags.of(updater).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
   }
 }
