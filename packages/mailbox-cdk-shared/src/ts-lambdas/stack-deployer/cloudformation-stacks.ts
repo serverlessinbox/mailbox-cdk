@@ -11,7 +11,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import { CaughtError } from '../shared/caught-error';
-import type { Region } from './deployer-identifiers';
+import type { Region } from '../shared/aws-identifiers';
 import type { OperationInput } from './stack-deployment';
 import { StackStatus } from './stack-status';
 

@@ -1,14 +1,14 @@
 import * as t from 'typanion';
+import { isRegion } from '../shared/aws-identifiers';
+import type { Unbranded } from '../shared/branded';
 import {
   isLogicalResourceId,
-  isRegion,
   isRequestId,
   isResponseUrl,
   isStackId,
   isStackName,
-  isTemplateUrl,
-  type Unbranded,
-} from './deployer-identifiers';
+} from '../shared/custom-resource-identifiers';
+import { isTemplateUrl } from './deployer-identifiers';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);
 

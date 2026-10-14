@@ -1,4 +1,4 @@
-import { toPhysicalResourceId, type PhysicalResourceId } from './deployer-identifiers';
+import { toPhysicalResourceId, type PhysicalResourceId } from '../shared/custom-resource-identifiers';
 import type { CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from './stack-deployment';
 
 // CloudFormation caps the size of a response reason; this leaves headroom.

@@ -9,8 +9,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
 import { CloudFormationStacks } from '../cloudformation-stacks';
-import { toRegion } from '../deployer-identifiers';
-import { defaultLevelLogger, operation, silenceConsole, stack, STACK_NAME } from './stack-deployer-helpers';
+import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack, STACK_NAME, US_EAST_1 } from './stack-deployer-helpers';
 
 // A status the SDK's enum does not list, as CloudFormation could send it: the wire is JSON, so the fixture is too.
 function cancelledEventFromWire(): StackEvent {
@@ -38,7 +37,7 @@ describe('CloudFormationStacks', () => {
         regions.push(region);
         return new CloudFormationClient({ region });
       },
-      toRegion('eu-west-1'),
+      EU_WEST_1,
       defaultLevelLogger(),
     );
   });
@@ -84,7 +83,7 @@ describe('CloudFormationStacks', () => {
     it('calls CloudFormation in the region of the operation', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_COMPLETE')] });
 
-      await stacks.describe(operation({ region: toRegion('us-east-1') }));
+      await stacks.describe(operation({ region: US_EAST_1 }));
 
       expect(regions).toEqual(['us-east-1']);
     });

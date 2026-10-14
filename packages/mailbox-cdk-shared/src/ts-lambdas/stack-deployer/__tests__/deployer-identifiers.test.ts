@@ -1,11 +1,10 @@
 import * as t from 'typanion';
 import {
-  isStackName,
+  isTemplateUrl,
   toExecutionArn,
-  toStackName,
   toStateMachineArn,
   type ExecutionArn,
-  type StackName,
+  type StateMachineArn,
 } from '../deployer-identifiers';
 
 /**
@@ -21,20 +20,20 @@ describe('deployer identifiers', () => {
     return arn;
   }
 
-  function describeStack(name: StackName): string {
-    return name;
+  function describeStateMachine(arn: StateMachineArn): string {
+    return arn;
   }
 
-  it('does not accept a stack name where an execution ARN is expected, nor the other way round', () => {
-    // @ts-expect-error a StackName is not an ExecutionArn
-    describeExecution(toStackName('mail-data'));
-    // @ts-expect-error an ExecutionArn is not a StackName
-    describeStack(toExecutionArn(EXECUTION_ARN));
+  it('does not accept a state machine ARN where an execution ARN is expected, nor the other way round', () => {
+    // @ts-expect-error a StateMachineArn is not an ExecutionArn
+    describeExecution(toStateMachineArn(STATE_MACHINE_ARN));
+    // @ts-expect-error an ExecutionArn is not a StateMachineArn
+    describeStateMachine(toExecutionArn(EXECUTION_ARN));
   });
 
   it('does not accept a plain string where a kind is expected', () => {
-    // @ts-expect-error a plain string is not a StackName
-    describeStack('mail-data');
+    // @ts-expect-error a plain string is not a StateMachineArn
+    describeStateMachine(STATE_MACHINE_ARN);
   });
 
   describe('toStateMachineArn', () => {
@@ -63,8 +62,8 @@ describe('deployer identifiers', () => {
 
   describe('a validator', () => {
     it('accepts a string and reports a value that is not one', () => {
-      expect(isStackName('mail-data')).toBe(true);
-      expect(t.as(42, isStackName, { errors: true }).errors).toEqual(['.: Expected a string (got 42)']);
+      expect(isTemplateUrl('https://example.com/template.json')).toBe(true);
+      expect(t.as(42, isTemplateUrl, { errors: true }).errors).toEqual(['.: Expected a string (got 42)']);
     });
   });
 });

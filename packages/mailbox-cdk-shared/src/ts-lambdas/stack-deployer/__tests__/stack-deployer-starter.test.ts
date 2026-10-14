@@ -2,7 +2,7 @@ import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws
 import { mockClient } from 'aws-sdk-client-mock';
 import { ExpectedFailure } from '../../shared/expected-failure';
 import { CfnResponder } from '../cfn-responder';
-import { toStackId, toStateMachineArn, type StackId, type StateMachineArn } from '../deployer-identifiers';
+import { toStateMachineArn, type StateMachineArn } from '../deployer-identifiers';
 import { StackDeployerStarter } from '../stack-deployer-starter';
 import { StackOperationFailure } from '../stack-operation-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
@@ -12,9 +12,11 @@ import {
   defaultLevelLogger,
   deployerRequest,
   fakeCfnEndpoint,
+  MALFORMED_STACK_ID,
   replyTarget,
   silenceConsole,
   stackDeployerProperties,
+  stackIdOf,
   STATE_MACHINE_ARN,
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
@@ -22,10 +24,6 @@ import {
 const ALREADY_EXISTS = { name: 'ExecutionAlreadyExists', message: 'Execution already exists' };
 const ACCESS_DENIED = { name: 'AccessDeniedException', message: 'not allowed' };
 const EXISTING_EXECUTION_ARN = 'arn:aws:states:us-east-1:123456789012:execution:MailboxDataDeployer-abc123:request-123';
-
-function stackIdOfRootStack(rootStackName: string): StackId {
-  return toStackId(`arn:aws:cloudformation:us-east-1:123456789012:stack/${rootStackName}/guid`);
-}
 
 /**
  * Pins how the starter turns a CloudFormation request into a Step Functions execution, and what it does when
@@ -117,7 +115,7 @@ describe('StackDeployerStarter', () => {
 
   describe('the root stack name', () => {
     it('rejects a Create whose root stack name is longer than 24 characters, and starts nothing', async () => {
-      const request = cfnRequest({ StackId: stackIdOfRootStack('this-is-a-very-long-names') });
+      const request = cfnRequest({ StackId: stackIdOf('this-is-a-very-long-names') });
 
       const failure = await failureOf(starterFor().start(request, replyTarget()));
 
@@ -131,19 +129,19 @@ describe('StackDeployerStarter', () => {
     });
 
     it('accepts a Create whose root stack name has exactly 24 characters', async () => {
-      await starterFor().start(cfnRequest({ StackId: stackIdOfRootStack('exactly-twenty-four-char') }), replyTarget());
+      await starterFor().start(cfnRequest({ StackId: stackIdOf('exactly-twenty-four-char') }), replyTarget());
 
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });
 
     it('does not check a stack id that is not split into a stack name', async () => {
-      await starterFor().start(cfnRequest({ StackId: toStackId('not-a-stack-arn') }), replyTarget());
+      await starterFor().start(cfnRequest({ StackId: MALFORMED_STACK_ID }), replyTarget());
 
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });
 
     it.each(['Update', 'Delete'] as const)('does not reject a %s, which keeps working with the name it has', async (requestType) => {
-      await starterFor().start(cfnRequest({ RequestType: requestType, StackId: stackIdOfRootStack('this-is-a-very-long-names') }), replyTarget());
+      await starterFor().start(cfnRequest({ RequestType: requestType, StackId: stackIdOf('this-is-a-very-long-names') }), replyTarget());
 
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });

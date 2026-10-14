@@ -10,7 +10,6 @@ import {
 import { mockClient } from 'aws-sdk-client-mock';
 import { CfnResponder } from '../cfn-responder';
 import { CloudFormationStacks } from '../cloudformation-stacks';
-import { toRegion } from '../deployer-identifiers';
 import { StackDeployerWorker } from '../stack-deployer-worker';
 import { StackOperationFailure } from '../stack-operation-failure';
 import {
@@ -24,6 +23,7 @@ import {
   silenceConsole,
   stack,
   STACK_NAME,
+  US_EAST_1,
   type ConsoleSpies,
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
@@ -61,7 +61,7 @@ describe('StackDeployerWorker', () => {
 
   function workerForStacks(): StackDeployerWorker {
     const logger = defaultLevelLogger();
-    const stacks = new CloudFormationStacks((region) => new CloudFormationClient({ region }), toRegion('us-east-1'), logger);
+    const stacks = new CloudFormationStacks((region) => new CloudFormationClient({ region }), US_EAST_1, logger);
     return new StackDeployerWorker(stacks, new CfnResponder(), logger);
   }
 

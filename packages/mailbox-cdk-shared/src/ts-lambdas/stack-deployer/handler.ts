@@ -8,7 +8,7 @@ import { withSmokeTest } from '../shared/with-smoke-test';
 import { CfnResponder } from './cfn-responder';
 import { CloudFormationStacks } from './cloudformation-stacks';
 import { loadStarter, loadWorker } from './config';
-import { toRegion, type Region } from './deployer-identifiers';
+import { toRegion, type Region } from '../shared/aws-identifiers';
 import { StackDeployerStarter } from './stack-deployer-starter';
 import { StackDeployerWorker } from './stack-deployer-worker';
 import { StackDeploymentEventReader } from './stack-deployment-event-reader';

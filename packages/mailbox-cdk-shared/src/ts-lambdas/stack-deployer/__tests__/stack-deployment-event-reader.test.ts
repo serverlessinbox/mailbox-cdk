@@ -1,7 +1,15 @@
 import { ExpectedFailure } from '../../shared/expected-failure';
-import { toRegion, toStackName } from '../deployer-identifiers';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
-import { cfnRequest, DEPLOYER_RESOURCE_PROPERTIES, deployerRequest, operation, sfnEvent, stackDeployerProperties } from './stack-deployer-helpers';
+import {
+  cfnRequest,
+  DEPLOYER_RESOURCE_PROPERTIES,
+  deployerRequest,
+  operation,
+  OTHER_STACK_NAME,
+  sfnEvent,
+  stackDeployerProperties,
+  US_EAST_1,
+} from './stack-deployer-helpers';
 
 /**
  * Pins what the deployer Lambdas accept as input. The properties and the workflow input come from the CDK
@@ -37,7 +45,7 @@ describe('StackDeploymentEventReader', () => {
     });
 
     it('does not judge the properties, so a request that cannot be run can still be answered', () => {
-      const request = reader.readCfnRequest(cfnRequest({}, { stackName: toStackName('only-a-name') }));
+      const request = reader.readCfnRequest(cfnRequest({}, { stackName: OTHER_STACK_NAME }));
 
       expect(request.ResourceProperties.stackName).toBe('only-a-name');
     });
@@ -49,7 +57,7 @@ describe('StackDeploymentEventReader', () => {
         ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:starter',
         parameters: { nameBase: 'mail', skipped: undefined },
         tags: { 'serverless-inbox:root-stack': 'root' },
-        region: toRegion('us-east-1'),
+        region: US_EAST_1,
       });
 
       expect(reader.readProperties(properties, 'Create')).toEqual(properties);

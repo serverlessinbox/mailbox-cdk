@@ -2,6 +2,7 @@ import * as t from 'typanion';
 import type { Stack } from '@aws-sdk/client-cloudformation';
 import { LoggerBuffer } from '../../shared/logger-buffer';
 import type { CfnReplyTarget } from '../cfn-responder';
+import { toRegion } from '../../shared/aws-identifiers';
 import {
   toLogicalResourceId,
   toPhysicalResourceId,
@@ -9,18 +10,30 @@ import {
   toResponseUrl,
   toStackId,
   toStackName,
-  toStateMachineArn,
-  toTemplateUrl,
-} from '../deployer-identifiers';
+  type StackId,
+} from '../../shared/custom-resource-identifiers';
+import { toStateMachineArn, toTemplateUrl } from '../deployer-identifiers';
 import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack-deployment';
 
 export const RESPONSE_URL = toResponseUrl('https://example.com/cfn-response');
 export const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid');
 export const STATE_MACHINE_ARN = toStateMachineArn('arn:aws:states:us-east-1:123456789012:stateMachine:MailboxDataDeployer-abc123');
 export const STACK_NAME = toStackName('test-data-stack');
+export const OTHER_STACK_NAME = toStackName('only-a-name');
 export const REQUEST_ID = toRequestId('request-123');
 export const LOGICAL_RESOURCE_ID = toLogicalResourceId('MailboxDeployer');
 export const LOG_STREAM_NAME = '/aws/lambda/test';
+export const US_EAST_1 = toRegion('us-east-1');
+export const EU_WEST_1 = toRegion('eu-west-1');
+export const US_WEST_2 = toRegion('us-west-2');
+
+/** A stack id whose stack name is not a name CloudFormation would give, because it is not an ARN. */
+export const MALFORMED_STACK_ID = toStackId('not-a-stack-arn');
+
+/** The id CloudFormation gives to the stack with the given name. */
+export function stackIdOf(stackName: string): StackId {
+  return toStackId(`arn:aws:cloudformation:us-east-1:123456789012:stack/${stackName}/guid`);
+}
 
 const isCfnAnswerBody = t.isObject({
   Status: t.isEnum(['SUCCESS', 'FAILED'] as const),
