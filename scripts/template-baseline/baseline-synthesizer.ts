@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxCognitoDataStack } from '../../packages/mailbox-cognito/src/cognito/mailbox-cognito-data-stack';
-import { MailboxUserPool } from '../../packages/mailbox-cognito/src/auth/mailbox-user-pool';
+import { DynamicClientRegistrationMode, MailboxUserPool } from '../../packages/mailbox-cognito/src/auth/mailbox-user-pool';
 import { StackUpdateAddonProvider } from '../../packages/mailbox/src/addons/stack-update/stack-update-addon';
 import { SupportAddonProvider } from '../../packages/mailbox/src/addons/support/support-addon-provider';
 import { SupportMode } from '../../packages/mailbox/src/addons/support/support-addon';
@@ -70,7 +70,9 @@ export class BaselineSynthesizer {
     const authProvider = new MailboxUserPool(stack, 'user-pool', {
       domain: { kind: 'cognito', cognitoDomainPrefix: 'baseline-auth' },
       enableJmapOAuthDiscovery: true,
+      dynamicClientRegistration: DynamicClientRegistrationMode.ENABLED,
     });
+    authProvider.addBootstrapUser({ username: 'baseline-admin', groups: ['admin'] });
     new Mailbox(stack, 'mailbox', {
       authProvider,
       hostedZoneId: 'Z1234567890ABC',
