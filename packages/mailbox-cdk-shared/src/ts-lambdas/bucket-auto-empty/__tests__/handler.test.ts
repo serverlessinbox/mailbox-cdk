@@ -62,6 +62,7 @@ describe('bucket-auto-empty handler', () => {
     event: FakeCfnEvent | SmokeTestProbe,
     environment: Record<string, string>,
     arrange: (fakes: Fakes) => void = () => undefined,
+    remainingMs: number = 300_000,
   ) {
     jest.resetModules();
     process.env = { ...originalEnv, ...environment };
@@ -94,7 +95,7 @@ describe('bucket-auto-empty handler', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result = await handler(event, fakeLambdaContext());
+    const result = await handler(event, fakeLambdaContext(remainingMs));
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
@@ -143,6 +144,51 @@ describe('bucket-auto-empty handler', () => {
     expect(response).toMatchObject({ Status: 'SUCCESS', Data: { deleted: '2' } });
     expect(fakes.s3.commandCalls(fakes.s3Sdk.DeleteObjectsCommand)).toHaveLength(1);
     expect(console.debug).not.toHaveBeenCalled();
+  });
+
+  it('answers a Delete SUCCESS with nothing deleted when the bucket no longer exists', async () => {
+    const { response } = await invoke(
+      fakeDeleteEvent({ bucketName: 'gone-bucket' }),
+      GOOD_ENVIRONMENT,
+      (arranged) =>
+        arranged.s3.on(arranged.s3Sdk.ListObjectVersionsCommand).rejects(
+          new arranged.s3Sdk.NoSuchBucket({ message: 'The specified bucket does not exist', $metadata: {} }),
+        ),
+    );
+
+    expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: PHYSICAL_RESOURCE_ID, Data: { deleted: '0' } });
+  });
+
+  it('answers a Delete SUCCESS with nothing deleted when the bucket is already empty', async () => {
+    const { response, fakes } = await invoke(
+      fakeDeleteEvent({ bucketName: 'my-bucket' }),
+      GOOD_ENVIRONMENT,
+      (arranged) => bucketHolds(arranged, []),
+    );
+
+    expect(response).toMatchObject({ Status: 'SUCCESS', Data: { deleted: '0' } });
+    expect(fakes.s3.commandCalls(fakes.s3Sdk.DeleteObjectsCommand)).toHaveLength(0);
+  });
+
+  it('answers a Delete FAILED saying the bucket cannot be checked when it names no bucket', async () => {
+    const { response, fakes } = await invoke(fakeDeleteEvent({}), GOOD_ENVIRONMENT);
+
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('Cannot check the bucket');
+    expect(fakes.s3.calls()).toHaveLength(0);
+  });
+
+  it('answers a Delete FAILED with the reason, and sends the answer, when the invocation is nearly out of time', async () => {
+    const { response, fakes } = await invoke(
+      fakeDeleteEvent({ bucketName: 'my-bucket' }),
+      GOOD_ENVIRONMENT,
+      (arranged) => bucketHolds(arranged, ['a.txt']),
+      30_000,
+    );
+
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('was not fully emptied before the Lambda deadline (0 items deleted so far)');
+    expect(fakes.s3.calls()).toHaveLength(0);
   });
 
   it('emits the manual-finalize hint under the configured service name', async () => {

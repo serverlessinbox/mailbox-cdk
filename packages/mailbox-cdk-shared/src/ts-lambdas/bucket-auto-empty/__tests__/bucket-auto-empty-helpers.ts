@@ -10,9 +10,9 @@ export const PHYSICAL_RESOURCE_ID = `bucket-auto-empty:${STACK_ID}:${LOGICAL_RES
  * The Lambda context the handler tests pass in. `wrapHandler` reads `getRemainingTimeInMillis` from it
  * and builds the CloudWatch link of a FAILED response from the log group and stream.
  */
-export function fakeLambdaContext(): HandlerContext {
+export function fakeLambdaContext(remainingMs: number = 300_000): HandlerContext {
   return {
-    getRemainingTimeInMillis: () => 300000,
+    getRemainingTimeInMillis: () => remainingMs,
     functionName: 'test-function',
     functionVersion: '$LATEST',
     invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test-function',
@@ -63,7 +63,7 @@ function fakeCfnEventBase(resourceProperties: Record<string, unknown>): FakeCfnE
     LogicalResourceId: LOGICAL_RESOURCE_ID,
     ResourceType: 'Custom::BucketAutoEmpty',
     ServiceToken: serviceToken,
-    ResourceProperties: { ...resourceProperties, ServiceToken: serviceToken },
+    ResourceProperties: { ...resourceProperties, ServiceToken: serviceToken, ServiceTimeout: '900' },
   };
 }
 

@@ -3,7 +3,17 @@
  * `bucketName` is not a string, and must tolerate the extra keys CloudFormation adds, such as `ServiceToken`.
  */
 
-import { isBucketAutoEmptyResourceProperties } from '../resource-properties';
+import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from '../resource-properties';
+
+describe('isBucketAutoEmptyDeletionProperties', () => {
+  it('accepts a bucketName beside the keys CloudFormation adds', () => {
+    expect(isBucketAutoEmptyDeletionProperties({ bucketName: 'my-bucket', ServiceToken: 'arn:aws:lambda:x', ServiceTimeout: '900' })).toBe(true);
+  });
+
+  it.each([[{}], [{ bucketName: 123 }]])('rejects properties without a string bucketName: %j', (properties) => {
+    expect(isBucketAutoEmptyDeletionProperties(properties)).toBe(false);
+  });
+});
 
 describe('isBucketAutoEmptyResourceProperties', () => {
   it('accepts a bucketName string', () => {

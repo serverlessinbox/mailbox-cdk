@@ -17,7 +17,7 @@ const { config, error: configError } = env.tryLoad(load);
 const bucketEmptier = new BucketEmptier(new S3Client({}));
 const cloudFormation = new CloudFormationClient({});
 
-export const handler = withSmokeTest(wrapHandler(async (event) => {
+export const handler = withSmokeTest(wrapHandler(async (event, context) => {
   const request: CustomResourceRequest = event;
 
   if (configError) {
@@ -31,7 +31,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
   const failedRequestAnswerer = new FailedRequestAnswerer(cloudFormation, logger);
 
   try {
-    return await requestHandler.handle(request);
+    return await requestHandler.handle(request, context);
   } catch (failure) {
     if (!(failure instanceof ExpectedFailure)) {
       logger.flush();

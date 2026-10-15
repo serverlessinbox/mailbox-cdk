@@ -1,11 +1,9 @@
+import { CaughtError } from '../shared/caught-error';
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
-import type { BucketEmptier } from './bucket-emptier';
-import {
-  isBucketAutoEmptyResourceProperties,
-  type BucketAutoEmptyResourceProperties,
-} from './resource-properties';
+import type { BucketEmptier, InvocationDeadline } from './bucket-emptier';
+import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from './resource-properties';
 
 /** The answer sent to CloudFormation for a request that succeeded. */
 export interface BucketAutoEmptyResponse {
@@ -16,7 +14,8 @@ export interface BucketAutoEmptyResponse {
 /**
  * Answers the custom-resource requests of one bucket-auto-empty invocation: empties the bucket on Delete
  * and does nothing on Create and Update. A request it rejects on purpose is thrown as an
- * `ExpectedFailure`; any other error comes from a failed call and is unexpected.
+ * `ExpectedFailure`; any other error comes from a failed call and is unexpected. A Delete whose bucket no
+ * longer exists is answered as done, because there is nothing left to empty.
  */
 export class BucketAutoEmptyRequestHandler {
   private readonly bucketEmptier: BucketEmptier;
@@ -27,10 +26,15 @@ export class BucketAutoEmptyRequestHandler {
     this.logger = logger;
   }
 
-  async handle(request: CustomResourceRequest): Promise<BucketAutoEmptyResponse> {
+  async handle(request: CustomResourceRequest, deadline: InvocationDeadline): Promise<BucketAutoEmptyResponse> {
     this.logger.debug('CustomResource event received', { requestType: request.RequestType });
 
-    const properties = this.readProperties(request);
+    // A Delete needs only the bucket name; no other property can fail it.
+    if (request.RequestType === 'Delete') {
+      return this.emptyBucketOnDelete(request, deadline);
+    }
+
+    this.rejectInvalidProperties(request);
 
     // Emptying only happens on Delete; Create and Update are no-ops.
     if (request.RequestType === 'Create' || request.RequestType === 'Update') {
@@ -38,35 +42,54 @@ export class BucketAutoEmptyRequestHandler {
       return this.answerDeleted(this.derivePhysicalResourceId(request), 0);
     }
 
-    if (request.RequestType === 'Delete') {
-      return this.emptyBucketOnDelete(request, properties);
-    }
-
     throw new ExpectedFailure(`Unknown RequestType: ${request.RequestType}`);
   }
 
-  private readProperties(request: CustomResourceRequest): BucketAutoEmptyResourceProperties {
+  private rejectInvalidProperties(request: CustomResourceRequest): void {
     const properties = request.ResourceProperties ?? {};
     if (!isBucketAutoEmptyResourceProperties(properties)) {
       throw new ExpectedFailure('Invalid ResourceProperties: bucketName must be a string when present');
     }
-    return properties;
+  }
+
+  // Without a usable bucket name the bucket cannot be checked, so the Delete fails rather than guessing it is empty.
+  private readBucketNameForDelete(request: CustomResourceRequest): string {
+    const properties = request.ResourceProperties ?? {};
+    const bucketName = isBucketAutoEmptyDeletionProperties(properties) ? properties.bucketName.trim() : '';
+    if (!bucketName) {
+      throw new ExpectedFailure('Cannot check the bucket: bucketName is missing, blank or not a string');
+    }
+    return bucketName;
   }
 
   private async emptyBucketOnDelete(
     request: CustomResourceRequest,
-    properties: BucketAutoEmptyResourceProperties,
+    deadline: InvocationDeadline,
   ): Promise<BucketAutoEmptyResponse> {
-    const bucketName = (properties.bucketName ?? '').trim();
-    if (!bucketName) {
-      throw new ExpectedFailure('Missing required property: bucketName');
-    }
+    const bucketName = this.readBucketNameForDelete(request);
+    const physicalResourceId = request.PhysicalResourceId || this.derivePhysicalResourceId(request);
 
     this.logger.debug('Emptying bucket', { bucketName });
-    const deleted = await this.bucketEmptier.empty(bucketName);
-    this.logger.info('Bucket emptied', { bucketName, deleted });
+    try {
+      const deleted = await this.bucketEmptier.empty(bucketName, deadline);
+      this.logger.info('Bucket emptied', { bucketName, deleted });
+      return this.answerDeleted(physicalResourceId, deleted);
+    } catch (failure) {
+      return this.answerEmptyingFailure(physicalResourceId, bucketName, failure);
+    }
+  }
 
-    return this.answerDeleted(request.PhysicalResourceId || this.derivePhysicalResourceId(request), deleted);
+  // A bucket that is already gone needs no emptying, and failing the Delete would leave the stack in DELETE_FAILED.
+  private answerEmptyingFailure(
+    physicalResourceId: string,
+    bucketName: string,
+    failure: unknown,
+  ): BucketAutoEmptyResponse {
+    if (!new CaughtError(failure).is('NoSuchBucket')) {
+      throw failure;
+    }
+    this.logger.warn('Bucket no longer exists; nothing to empty', { bucketName });
+    return this.answerDeleted(physicalResourceId, 0);
   }
 
   private derivePhysicalResourceId(request: CustomResourceRequest): string {
