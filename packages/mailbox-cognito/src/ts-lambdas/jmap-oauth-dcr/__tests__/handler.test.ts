@@ -10,7 +10,7 @@ import {
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
-import { SmokeTestProbe, withSmokeTest, env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SmokeTestProbe, withSmokeTest, env, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { load } from '../config';
 
 import { createHandler } from '../handler';
@@ -90,7 +90,7 @@ describe('jmap-oauth-dcr handler', () => {
     // Create handler with mocked clients for this test
     const lambdaClient = new LambdaClient({});
     const cognitoClient = new CognitoIdentityProviderClient({});
-    const identityProvisioner = new IdentityProvisionerClient('identity-provisioner-fn', lambdaClient);
+    const identityProvisioner = new IdentityProvisionerClient(toFunctionName('identity-provisioner-fn'), lambdaClient);
     const cognitoManager = new CognitoUserPoolClientManager(cognitoClient);
 
     handler = createHandler({
@@ -319,7 +319,7 @@ describe('jmap-oauth-dcr handler — smoke test wrapper', () => {
     // Create handler with mocked clients, wrapped with smoke test
     const lambdaClient = new LambdaClient({});
     const cognitoClient = new CognitoIdentityProviderClient({});
-    const identityProvisioner = new IdentityProvisionerClient('identity-provisioner-fn', lambdaClient);
+    const identityProvisioner = new IdentityProvisionerClient(toFunctionName('identity-provisioner-fn'), lambdaClient);
     const cognitoManager = new CognitoUserPoolClientManager(cognitoClient);
 
     const rawHandler = createHandler({

@@ -1,6 +1,8 @@
 import * as t from 'typanion';
+import { isAccountId, isTenantId, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { GroupName, UserSubject, Username } from './cognito-identifiers';
+import { isClientId, type ClientId, type GroupName, type UserSubject, type Username } from './cognito-identifiers';
+import { isPrincipalId, type EmailAddress, type RedirectUri } from './identity-identifiers';
 
 /**
  * The invoke contract of the `identity-provisioner` Lambda: one request per `kind` it answers, and the response
@@ -16,18 +18,19 @@ export interface ResolveTenantRequest {
 /** Asks whether a dynamic client registration may proceed, or is a duplicate or over the cap. */
 export interface DcrCheckRequest {
   readonly kind: 'DCR_CHECK';
-  readonly tenantId: string;
-  readonly redirectUris: string[];
+  readonly tenantId: TenantId;
+  readonly redirectUris: RedirectUri[];
   readonly clientName: string;
 }
 
 /** Records a dynamic client registration that was created in the user pool. */
 export interface DcrPersistRequest {
   readonly kind: 'DCR_PERSIST';
-  readonly tenantId: string;
-  readonly clientId: string;
-  readonly redirectUris: string[];
+  readonly tenantId: TenantId;
+  readonly clientId: ClientId;
+  readonly redirectUris: RedirectUri[];
   readonly clientName: string;
+  /** The granted scopes, separated by spaces. */
   readonly scope: string;
 }
 
@@ -35,12 +38,12 @@ export interface DcrPersistRequest {
 export interface ProvisionUserRequest {
   readonly kind: 'PROVISION_USER';
   /** Absent, never defaulted, when the authorizer did not supply a tenant. */
-  readonly tenantId?: string;
+  readonly tenantId?: TenantId;
   readonly provider: 'cognito';
   /** Cognito's immutable `sub`, never the username: a username can be deleted and recreated under a new `sub`. */
   readonly subject: UserSubject;
   readonly username: Username;
-  readonly email?: string;
+  readonly email?: EmailAddress;
   readonly groups: readonly GroupName[];
   readonly isAdmin: boolean;
 }
@@ -57,16 +60,16 @@ export type DcrPersistParams = Omit<DcrPersistRequest, 'kind'>;
 /** What a caller supplies for a `PROVISION_USER` request. */
 export type ProvisionUserParams = Omit<ProvisionUserRequest, 'kind' | 'provider'>;
 
-export const isResolveTenantResponse = t.isObject({ tenantId: t.isString() });
+export const isResolveTenantResponse = t.isObject({ tenantId: isTenantId });
 /** The tenant the request belongs to. */
 export type ResolveTenantResponse = t.InferType<typeof isResolveTenantResponse>;
 
 export const isDcrCheckResponse = t.isObject({
   status: t.isEnum(['proceed', 'dedup_hit', 'cap_exceeded'] as const),
-  clientId: t.isOptional(t.isString()),
+  clientId: t.isOptional(isClientId),
   scope: t.isOptional(t.isString()),
 });
-/** Whether the registration may proceed; a duplicate carries the client it duplicates. */
+/** Whether the registration may proceed; a duplicate carries the client it duplicates and the scopes it was granted, separated by spaces. */
 export type DcrCheckResponse = t.InferType<typeof isDcrCheckResponse>;
 
 export const isDcrPersistResponse = t.isObject({
@@ -76,8 +79,8 @@ export const isDcrPersistResponse = t.isObject({
 export type DcrPersistResponse = t.InferType<typeof isDcrPersistResponse>;
 
 export const isProvisionUserResponse = t.isObject({
-  principalId: t.isString(),
-  primaryAccountId: t.isString(),
+  principalId: isPrincipalId,
+  primaryAccountId: isAccountId,
   isNewUser: t.isBoolean(),
 });
 /** The mailbox principal and account the user was provisioned with. */

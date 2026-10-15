@@ -2,7 +2,9 @@ import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { LoggerBuffer, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { CognitoUserPoolClientManager } from './cognito-client';
 import { ClientRegistrationErrorResponse, ClientRegistrationRequest, ClientRegistrationResponse, isClientRegistrationRequest } from './dcr.validation';
+import { toClientId, type ClientId } from '../shared/cognito-identifiers';
 import { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
+import { toRedirectUri } from '../shared/identity-identifiers';
 import { resolvePoolId } from './pool-resolver';
 import { validateRedirectUris } from './redirect-uri';
 
@@ -149,9 +151,11 @@ async function processRegistration(
   // select a tenant.
   const { tenantId } = await deps.identityProvisioner.resolveTenant();
 
+  const redirectUris = body.redirect_uris.map(toRedirectUri);
+
   const checkResult = await deps.identityProvisioner.dcrCheck({
     tenantId,
-    redirectUris: body.redirect_uris,
+    redirectUris,
     clientName,
   });
 
@@ -168,10 +172,10 @@ async function processRegistration(
   const poolId = resolvePoolId(tenantId, deps.userPoolId);
   const cognitoScopes = resolveCognitoScopes(body.scope);
 
-  let clientId: string;
+  let clientId: ClientId;
   try {
     const created = await deps.cognito.createClient(poolId, clientName, body.redirect_uris, cognitoScopes);
-    clientId = created.clientId;
+    clientId = toClientId(created.clientId);
   } catch (err) {
     // Log the scopes too — the first live failure of this call was an empty AllowedOAuthScopes and
     // the log said nothing about what had been requested, so the cause was invisible from here.
@@ -198,7 +202,7 @@ async function processRegistration(
     const persistResult = await deps.identityProvisioner.dcrPersist({
       tenantId,
       clientId,
-      redirectUris: body.redirect_uris,
+      redirectUris,
       clientName,
       scope: grantedScope,
     });

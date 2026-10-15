@@ -1,4 +1,5 @@
 import { InvokeCommand, type InvokeCommandOutput, type LambdaClient } from '@aws-sdk/client-lambda';
+import type { FunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   isDcrCheckResponse,
@@ -24,7 +25,7 @@ type ResponseValidator<Response> = (value: unknown, state?: { errors?: string[] 
  */
 export class IdentityProvisionerClient {
   constructor(
-    private readonly functionName: string,
+    private readonly functionName: FunctionName,
     private readonly lambda: LambdaClient,
   ) {}
 

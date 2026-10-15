@@ -14,12 +14,12 @@
  * before any request — including its cap-counter side effect — is ever processed.
  */
 
-import { env, parseLogLevelStrict, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env, parseLogLevelStrict, toFunctionName, type FunctionName, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 export interface JmapOAuthDcrConfig {
   readonly logLevel: LogLevel;
   readonly serviceName: string;
-  readonly identityProvisionerFunctionName: string;
+  readonly identityProvisionerFunctionName: FunctionName;
   readonly userPoolId: string;
 }
 
@@ -27,7 +27,7 @@ export function load(l: env.Loader): JmapOAuthDcrConfig {
   return {
     logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
     serviceName: l.optional('SERVICE_NAME', ''),
-    identityProvisionerFunctionName: l.mandatory('IDENTITY_PROVISIONER_FUNCTION_NAME'),
+    identityProvisionerFunctionName: env.mandatoryAs(l, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
     userPoolId: l.mandatory('USER_POOL_ID'),
   };
 }

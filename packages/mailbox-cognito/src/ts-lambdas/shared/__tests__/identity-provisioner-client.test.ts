@@ -10,8 +10,14 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 
-import { toGroupName, toUserSubject, toUsername } from '../cognito-identifiers';
+import { toFunctionName, toTenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import { toClientId, toGroupName, toUserSubject, toUsername } from '../cognito-identifiers';
+import { toEmailAddress, toRedirectUri } from '../identity-identifiers';
 import { IdentityProvisionerClient } from '../identity-provisioner-client';
+
+const TENANT_ID = toTenantId('t1');
+const REDIRECT_URIS = [toRedirectUri('http://127.0.0.1/cb')];
 
 /**
  * The real AWS SDK v3 `InvokeCommandOutput.Payload` type is `Uint8ArrayBlobAdapter`
@@ -29,7 +35,7 @@ function payloadOf(response: unknown): Uint8Array & { transformToString(encoding
 
 describe('IdentityProvisionerClient', () => {
   const lambdaMock = mockClient(LambdaClient);
-  const client = new IdentityProvisionerClient('fn-name', new LambdaClient({}));
+  const client = new IdentityProvisionerClient(toFunctionName('fn-name'), new LambdaClient({}));
 
   function sentEnvelope(): unknown {
     const input = lambdaMock.commandCalls(InvokeCommand)[0].args[0].input;
@@ -53,7 +59,7 @@ describe('IdentityProvisionerClient', () => {
   it('dcrCheck sends the exact DCR_CHECK envelope and parses the response', async () => {
     lambdaMock.on(InvokeCommand).resolves({ Payload: payloadOf({ status: 'proceed' }) });
 
-    const result = await client.dcrCheck({ tenantId: 't1', redirectUris: ['http://127.0.0.1/cb'], clientName: 'My App' });
+    const result = await client.dcrCheck({ tenantId: TENANT_ID, redirectUris: REDIRECT_URIS, clientName: 'My App' });
 
     expect(result).toEqual({ status: 'proceed' });
     expect(sentEnvelope()).toEqual({
@@ -68,9 +74,9 @@ describe('IdentityProvisionerClient', () => {
     lambdaMock.on(InvokeCommand).resolves({ Payload: payloadOf({ status: 'success' }) });
 
     const result = await client.dcrPersist({
-      tenantId: 't1',
-      clientId: 'client-1',
-      redirectUris: ['http://127.0.0.1/cb'],
+      tenantId: TENANT_ID,
+      clientId: toClientId('client-1'),
+      redirectUris: REDIRECT_URIS,
       clientName: 'My App',
       scope: 'openid email',
     });
@@ -90,10 +96,10 @@ describe('IdentityProvisionerClient', () => {
     lambdaMock.on(InvokeCommand).resolves({ Payload: payloadOf({ principalId: 'p1', primaryAccountId: 'a1', isNewUser: true }) });
 
     const result = await client.provisionUser({
-      tenantId: 't1',
+      tenantId: TENANT_ID,
       subject: toUserSubject('cognito-sub-abc'),
       username: toUsername('newuser'),
-      email: 'newuser@example.com',
+      email: toEmailAddress('newuser@example.com'),
       groups: [toGroupName('user')],
       isAdmin: false,
     });
