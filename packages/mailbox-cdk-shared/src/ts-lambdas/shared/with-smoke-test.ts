@@ -1,39 +1,20 @@
-/**
- * Lambda smoke test wrapper: verifies init health without reaching the real handler.
- *
- * Wraps any handler (event-based or custom-resource) to intercept probe payloads
- * with `{ serverlessInboxSmokeTest: true }` and respond healthily without invoking
- * the wrapped handler. Real traffic and CloudFormation events pass through.
- *
- * For custom-resource handlers (which use wrapHandler from aws-custom-resources),
- * withSmokeTest MUST wrap the wrapHandler-wrapped function to ensure probes never
- * reach wrapHandler's assumptions about RequestType/ResponseURL:
- *
- *   export const handler = withSmokeTest(wrapHandler(async (event) => { ... }));
- *
- * For regular event handlers, withSmokeTest simply wraps the handler:
- *
- *   export const handler = withSmokeTest(async (event) => { ... });
- *
- * Optional checks can be registered to validate initialization state (e.g., config);
- * they are run against every probe and must all pass for the probe to succeed:
- *
- *   const configCheck = () => { validateConfig(); };
- *   export const handler = withSmokeTest(asyncHandler, configCheck);
- */
+import * as t from 'typanion';
 
 /**
- * A smoke-test check function: returns void or a promise that resolves to void.
- * Throw to indicate failure; returning means check passed.
+ * A smoke-test check: throws to fail the probe, returns to pass it.
  */
 export type Check = () => Promise<void> | void;
 
 /**
- * Smoke test probe payload (always single-property JSON).
+ * The only payload of a probe. The schema rejects any other key, so a real event that happens to carry the flag
+ * beside its own fields is real traffic.
  */
-export interface SmokeTestProbe {
-  serverlessInboxSmokeTest?: true;
-}
+const isSmokeTestProbeShape = t.isObject({ serverlessInboxSmokeTest: t.isLiteral(true) });
+
+/**
+ * Smoke test probe payload.
+ */
+export type SmokeTestProbe = Partial<t.InferType<typeof isSmokeTestProbeShape>>;
 
 /**
  * Smoke test response payload.
@@ -43,50 +24,53 @@ export interface SmokeTestResponse {
 }
 
 /**
- * Type guard: detects a smoke test probe payload.
- *
- * - Parses `event` as JSON first if it's a string.
- * - Requires ONLY the `serverlessInboxSmokeTest: true` flag and nothing else,
- *   to minimize false positives: a real event that happens to carry this flag
- *   alongside RequestType/method/etc. is treated as real traffic, not a probe.
+ * Lets a deployed function say whether its code and its configuration still fit together, without doing any real
+ * work: it recognises a probe and answers it from the registered checks. It never reaches the wrapped handler, so it
+ * reports only on initialisation health, not on how the handler behaves.
  */
-function isSmokeTestProbe(event: unknown): event is SmokeTestProbe {
-  let probe: SmokeTestProbe | null = null;
-  if (typeof event === 'object' && event !== null) {
-    probe = event as SmokeTestProbe;
-  } else if (typeof event === 'string') {
+class SmokeTestSeam {
+  private readonly checks: readonly Check[];
+
+  constructor(checks: readonly Check[]) {
+    this.checks = checks;
+  }
+
+  /** True for the probe object itself or for JSON text of it; any other event, including text that is not JSON, is real traffic. */
+  public isProbe(event: unknown): boolean {
+    const payload = typeof event === 'string' ? this.parseJson(event) : event;
+    return isSmokeTestProbeShape(payload);
+  }
+
+  public async answer(): Promise<SmokeTestResponse> {
+    return { serverlessInboxSmokeTestOk: await this.allChecksPass() };
+  }
+
+  private parseJson(text: string): unknown {
     try {
-      probe = JSON.parse(event) as SmokeTestProbe;
+      return JSON.parse(text);
     } catch {
-      probe = null;
+      return undefined;
     }
   }
-  return probe !== null && probe.serverlessInboxSmokeTest === true && Object.keys(probe).length === 1;
+
+  /** Runs the checks in order and stops at the first one that throws. */
+  private async allChecksPass(): Promise<boolean> {
+    for (const check of this.checks) {
+      try {
+        await check();
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 /**
- * Wraps a Lambda handler to intercept smoke test probes.
+ * Wraps a Lambda handler so that a probe is answered without reaching it.
  *
- * @param handler The underlying Lambda handler (any shape: async function, CloudFormationCustomResourceHandler, etc.)
- * @param checks Optional variadic check functions to run against probes.
- *               Each check is called during probe interception; if any throws, the probe fails.
- *               Checks are not called for real traffic.
- * @returns A wrapped handler that intercepts probes and delegates real traffic to the original handler.
- *          The returned handler accepts the original handler's event type OR a SmokeTestProbe,
- *          and returns either the handler's result OR a SmokeTestResponse.
- *
- * For event-based handlers:
- *   - Probe: runs all checks; returns `{ serverlessInboxSmokeTestOk: true }` if all pass,
- *     or `{ serverlessInboxSmokeTestOk: false }` if any check throws
- *   - Real event: delegates to handler unchanged
- *
- * For custom-resource handlers:
- *   - Probe (no RequestType/ResponseURL): runs all checks; returns success/failure response
- *   - CFN event (has RequestType/ResponseURL): delegates to handler unchanged
- *
- * The handler's own error handling is unchanged — no special behavior on errors.
- * If the handler throws (or its returned promise rejects) during a real
- * invocation, the error propagates normally as a rejected promise.
+ * A probe runs every check and answers `{ serverlessInboxSmokeTestOk: true }` when all pass, or `false` when one
+ * throws. Every other event is passed to the handler unchanged, and an error the handler throws propagates.
  */
 export function withSmokeTest<TEvent, TContext, TResult>(
   handler: (event: TEvent, context: TContext, ...rest: never[]) => Promise<TResult> | void,
@@ -95,37 +79,21 @@ export function withSmokeTest<TEvent, TContext, TResult>(
   event: TEvent | SmokeTestProbe | string,
   context?: TContext,
 ) => Promise<TResult | SmokeTestResponse> {
+  const seam = new SmokeTestSeam(checks);
+
   // Node.js Lambda runtimes reject a handler declared with a third formal
   // parameter at Init, before any invocation — the function returned here
   // must declare exactly two (event, context).
   return async (event, context) => {
-    if (isSmokeTestProbe(event)) {
-      // Run all checks in order; if any throw, the probe fails.
-      let ok = true;
-      for (const check of checks) {
-        try {
-          await check();
-        } catch {
-          ok = false;
-          break;
-        }
-      }
-
-      const response: SmokeTestResponse = {
-        serverlessInboxSmokeTestOk: ok,
-      };
-      return response;
+    if (seam.isProbe(event)) {
+      return seam.answer();
     }
 
-    // cast (event): a string that failed JSON parsing above is real traffic
-    // in the handler's own event shape, not further narrowable structurally.
-    // cast (context): optional here so callers whose handler ignores context
-    // can omit it; handlers that use context are always invoked by the real
-    // Lambda runtime with one present.
-    // cast (result): aws-lambda's Handler type permits a legacy callback-style
-    // (void) return alongside the Promise; every handler in this codebase is
-    // async, so this always resolves to TResult at runtime.
-    const result = (await handler(event as TEvent, context as TContext)) as TResult;
-    return result;
+    // cast (event): a string that is not a probe is real traffic in the handler's own event shape.
+    // cast (context): optional here so callers whose handler ignores context can omit it; the Lambda runtime
+    // always passes one to a handler that uses it.
+    // cast (result): aws-lambda's Handler type permits a legacy callback-style (void) return beside the Promise,
+    // and every handler in this codebase is async.
+    return (await handler(event as TEvent, context as TContext)) as TResult;
   };
 }

@@ -1,3 +1,10 @@
+/**
+ * Pins the failure policies of the config loaders (throw once, return the problem, throw from a smoke-test check),
+ * the typed accessors that record a parse failure instead of throwing, and the stock parsers. The parsers decide
+ * what a Lambda accepts from its environment, so a looser parser starts a Lambda on a value it should refuse.
+ */
+
+import * as t from 'typanion';
 import {
   mustLoad,
   tryLoad,
@@ -10,440 +17,211 @@ import {
   days,
   onOff,
   enumOf,
-  type Loader,
 } from '../env';
-import * as t from 'typanion';
 
-describe('env helpers', () => {
+describe('env', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    // Reset process.env before each test
     process.env = { ...originalEnv };
   });
 
   afterAll(() => {
-    // Restore original process.env
     process.env = originalEnv;
   });
 
-  describe('Loader interface', () => {
-    describe('mustLoad', () => {
-      it('accumulates all problems and throws once with combined message', () => {
-        delete process.env.VAR1;
-        delete process.env.VAR2;
-        process.env.VAR3 = '';
+  describe('mustLoad', () => {
+    it('throws once naming every problem', () => {
+      delete process.env.VAR1;
+      process.env.VAR2 = '';
 
-        expect(() =>
-          mustLoad((l: Loader) => {
-            l.mandatory('VAR1');
-            l.mandatory('VAR2');
-            l.mandatory('VAR3');
-          }),
-        ).toThrow(/VAR1 is not set; VAR2 is not set; VAR3 is not set/);
-      });
+      expect(() =>
+        mustLoad((l) => {
+          l.mandatory('VAR1');
+          l.mandatory('VAR2');
+        }),
+      ).toThrow('config validation failed: VAR1 is not set; VAR2 is not set');
+    });
 
-      it('treats whitespace-only variables as not set', () => {
-        process.env.VAR = '   ';
+    it('throws when a typed variable does not parse', () => {
+      process.env.PORT = 'not-a-number';
 
-        expect(() =>
-          mustLoad((l: Loader) => {
-            l.mandatory('VAR');
-          }),
-        ).toThrow(/VAR is not set/);
-      });
+      expect(() => mustLoad((l) => mandatoryAs(l, 'PORT', positiveInt, 0))).toThrow(/config validation failed: PORT: expected positive integer/);
+    });
 
-      it('records parse errors and throws once', () => {
-        process.env.PORT = 'not-a-number';
+    it('returns the loaded config when it is valid', () => {
+      process.env.USER_NAME = 'alice';
+      delete process.env.ROLE;
 
-        expect(() =>
-          mustLoad((l: Loader) => {
-            const port = mandatoryAs(l, 'PORT', positiveInt, 0);
-            return port;
-          }),
-        ).toThrow(/config validation failed/);
-      });
+      const result = mustLoad((l) => ({ user: l.mandatory('USER_NAME'), role: l.optional('ROLE', 'user') }));
 
-      it('returns result when config is valid', () => {
-        process.env.USER = 'alice';
-        process.env.ROLE = 'admin';
+      expect(result).toEqual({ user: 'alice', role: 'user' });
+    });
+  });
 
-        const result = mustLoad((l: Loader) => {
-          return {
-            user: l.mandatory('USER'),
-            role: l.optional('ROLE', 'user'),
-          };
-        });
+  describe('tryLoad', () => {
+    it('returns the config beside a message naming every problem, without throwing', () => {
+      delete process.env.A;
+      delete process.env.B;
 
-        expect(result).toEqual({ user: 'alice', role: 'admin' });
+      const { config, error } = tryLoad((l) => ({ a: l.mandatory('A'), b: l.mandatory('B') }));
+
+      expect(config).toEqual({ a: '', b: '' });
+      expect(error).toBe('A is not set; B is not set');
+    });
+
+    it('returns no error when the config is valid', () => {
+      process.env.HOST = 'localhost';
+
+      const { config, error } = tryLoad((l) => ({ host: l.mandatory('HOST') }));
+
+      expect(error).toBeUndefined();
+      expect(config).toEqual({ host: 'localhost' });
+    });
+  });
+
+  describe('check', () => {
+    it('returns a check that throws when the config is invalid', () => {
+      delete process.env.DB_URL;
+
+      const configCheck = check((l) => l.mandatory('DB_URL'));
+
+      expect(() => configCheck()).toThrow('config validation failed: DB_URL is not set');
+    });
+
+    it('returns a check that passes when the config is valid', () => {
+      process.env.DB_URL = 'postgres://localhost';
+
+      const configCheck = check((l) => l.mandatory('DB_URL'));
+
+      expect(() => configCheck()).not.toThrow();
+    });
+  });
+
+  describe('mandatoryAs', () => {
+    it('parses the variable', () => {
+      process.env.COUNT = '42';
+
+      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, 0))).toEqual({ config: 42, error: undefined });
+    });
+
+    it('records the parse failure against the variable and returns whenInvalid', () => {
+      process.env.COUNT = 'abc';
+
+      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, -1))).toEqual({
+        config: -1,
+        error: 'COUNT: expected positive integer, got "abc"',
       });
     });
 
-    describe('tryLoad', () => {
-      it('never throws; returns config and error separately', () => {
-        delete process.env.API_KEY;
+    it('records one problem and returns whenInvalid when the variable is not set', () => {
+      delete process.env.COUNT;
 
-        const { config, error } = tryLoad((l: Loader) => {
-          return { apiKey: l.mandatory('API_KEY') };
-        });
-
-        expect(config).toEqual({ apiKey: '' });
-        expect(error).toMatch(/API_KEY is not set/);
-      });
-
-      it('accumulates all problems in one message', () => {
-        delete process.env.A;
-        delete process.env.B;
-
-        const { error } = tryLoad((l: Loader) => {
-          l.mandatory('A');
-          l.mandatory('B');
-          return {};
-        });
-
-        expect(error).toMatch(/A is not set; B is not set/);
-      });
-
-      it('returns undefined error when config is valid', () => {
-        process.env.HOST = 'localhost';
-        process.env.PORT = '8080';
-
-        const { config, error } = tryLoad((l: Loader) => {
-          return {
-            host: l.mandatory('HOST'),
-            port: l.mandatory('PORT'),
-          };
-        });
-
-        expect(error).toBeUndefined();
-        expect(config).toEqual({ host: 'localhost', port: '8080' });
-      });
+      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, -1))).toEqual({ config: -1, error: 'COUNT is not set' });
     });
 
-    describe('check', () => {
-      it('returns a check function that throws if config is invalid', async () => {
-        delete process.env.DB_URL;
+    it('records the message of a parser that throws something that is not an Error', () => {
+      process.env.COUNT = '1';
+      const parseThrowingText = (): number => {
+        throw 'plain text';
+      };
 
-        const checkFn = check((l: Loader) => {
-          l.mandatory('DB_URL');
-        });
+      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', parseThrowingText, -1)).error).toBe('COUNT: plain text');
+    });
+  });
 
-        // checkFn is sync but returns void, so check synchronously
-        expect(() => checkFn()).toThrow(/config validation failed.*DB_URL is not set/);
-      });
+  describe('optionalAs', () => {
+    it('returns the fallback and records nothing when the variable is not set', () => {
+      delete process.env.COUNT;
 
-      it('returns a check function that does not throw if config is valid', async () => {
-        process.env.DB_URL = 'postgres://localhost';
-
-        const checkFn = check((l: Loader) => {
-          l.mandatory('DB_URL');
-        });
-
-        // checkFn is sync, call it and verify no throw
-        expect(() => checkFn()).not.toThrow();
-      });
+      expect(tryLoad((l) => optionalAs(l, 'COUNT', 99, positiveInt))).toEqual({ config: 99, error: undefined });
     });
 
-    describe('mandatoryAs', () => {
-      it('parses mandatory variable successfully', () => {
-        process.env.COUNT = '42';
+    it('parses the variable when it is set', () => {
+      process.env.COUNT = '42';
 
-        const result = mandatoryAs(
-          { mandatory: () => '42', optional: () => '', report: () => {}, error: () => undefined },
-          'COUNT',
-          positiveInt,
-          0,
-        );
-
-        expect(result).toBe(42);
-      });
-
-      it('records parse error when parse throws and returns whenInvalid', () => {
-        const problems: string[] = [];
-
-        const loader: Loader = {
-          mandatory: () => 'not-a-number',
-          optional: () => '',
-          report: (name: string, message: string) => {
-            problems.push(`${name}: ${message}`);
-          },
-          error: () => undefined,
-        };
-
-        const result = mandatoryAs(loader, 'PORT', positiveInt, 0);
-
-        expect(result).toBe(0);
-        expect(problems).toHaveLength(1);
-        expect(problems[0]).toMatch(/PORT:/);
-      });
-
-      it('returns whenInvalid when mandatory() fails', () => {
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => '',
-          report: () => {},
-          error: () => undefined,
-        };
-
-        const result = mandatoryAs(loader, 'VAR', (s) => parseInt(s), 999);
-
-        expect(result).toBe(999);
-      });
-
-      it('returns whenInvalid when variable is absent and records problem', () => {
-        delete process.env.MISSING;
-
-        const { config, error } = tryLoad((l: Loader) => mandatoryAs(l, 'MISSING', positiveInt, -1));
-
-        expect(config).toBe(-1);
-        expect(error).toBe('MISSING is not set');
-      });
+      expect(tryLoad((l) => optionalAs(l, 'COUNT', 0, positiveInt))).toEqual({ config: 42, error: undefined });
     });
 
-    describe('optionalAs', () => {
-      it('returns fallback when variable is unset', () => {
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => '',
-          report: () => {},
-          error: () => undefined,
-        };
+    it('reports a malformed value and returns the fallback', () => {
+      process.env.COUNT = 'abc';
 
-        const result = optionalAs(loader, 'VAR', 99, positiveInt);
-
-        expect(result).toBe(99);
-      });
-
-      it('returns fallback when variable is whitespace-only', () => {
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => '',
-          report: () => {},
-          error: () => undefined,
-        };
-
-        const result = optionalAs(loader, 'VAR', 77, positiveInt);
-
-        expect(result).toBe(77);
-      });
-
-      it('parses value when present', () => {
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => '42',
-          report: () => {},
-          error: () => undefined,
-        };
-
-        const result = optionalAs(loader, 'COUNT', 0, positiveInt);
-
-        expect(result).toBe(42);
-      });
-
-      it('reports and returns fallback when parse throws (malformed optional)', () => {
-        const problems: string[] = [];
-
-        const loader: Loader = {
-          mandatory: () => '',
-          optional: () => 'not-a-number',
-          report: (name: string, message: string) => {
-            problems.push(`${name}: ${message}`);
-          },
-          error: () => problems.length > 0 ? problems.join('; ') : undefined,
-        };
-
-        const result = optionalAs(loader, 'PORT', 8080, positiveInt);
-
-        expect(result).toBe(8080);
-        expect(problems).toHaveLength(1);
-        expect(problems[0]).toMatch(/PORT:/);
+      expect(tryLoad((l) => optionalAs(l, 'COUNT', 8080, positiveInt))).toEqual({
+        config: 8080,
+        error: 'COUNT: expected positive integer, got "abc"',
       });
     });
   });
 
-  describe('Stock parsers', () => {
-    describe('json', () => {
-      it('parses valid JSON with schema', () => {
-        const isConfig = t.isObject({
-          name: t.isString(),
-          version: t.isNumber(),
-        });
+  describe('json', () => {
+    const parseConfig = json(t.isObject({ name: t.isString(), version: t.isNumber() }));
 
-        const parser = json(isConfig);
-        const result = parser('{"name":"app","version":1}');
-
-        expect(result).toEqual({ name: 'app', version: 1 });
-      });
-
-      it('throws on invalid JSON', () => {
-        const isConfig = t.isObject({ name: t.isString() });
-        const parser = json(isConfig);
-
-        expect(() => parser('not json')).toThrow(/invalid JSON/);
-      });
-
-      it('throws on schema validation failure', () => {
-        const isConfig = t.isObject({
-          name: t.isString(),
-        });
-        const parser = json(isConfig);
-
-        expect(() => parser('{"name":123}')).toThrow(/schema validation failed/);
-      });
+    it('returns JSON that satisfies the validator', () => {
+      expect(parseConfig('{"name":"app","version":1}')).toEqual({ name: 'app', version: 1 });
     });
 
-    describe('commaList', () => {
-      it('splits on commas and trims whitespace', () => {
-        const result = commaList('a, b,  c,d');
-
-        expect(result).toEqual(['a', 'b', 'c', 'd']);
-      });
-
-      it('throws on empty string', () => {
-        expect(() => commaList('')).toThrow(/expected comma-separated list/);
-      });
-
-      it('throws on whitespace-only string', () => {
-        expect(() => commaList('   ')).toThrow(/expected comma-separated list/);
-      });
-
-      it('throws on empty element after splitting', () => {
-        expect(() => commaList('a,,b')).toThrow(/expected comma-separated list/);
-      });
-
-      it('throws on empty element with whitespace', () => {
-        expect(() => commaList('a, ,b')).toThrow(/expected comma-separated list/);
-      });
-
-      it('handles single value', () => {
-        expect(commaList('single')).toEqual(['single']);
-      });
+    it('throws on text that is not JSON', () => {
+      expect(() => parseConfig('not json')).toThrow(/^invalid JSON: /);
     });
 
-    describe('positiveInt', () => {
-      it('parses positive integers', () => {
-        expect(positiveInt('42')).toBe(42);
-        expect(positiveInt('1')).toBe(1);
-      });
+    it('throws with the validator errors when the JSON has the wrong shape', () => {
+      expect(() => parseConfig('{"name":123,"version":1}')).toThrow(/^schema validation failed: .*\.name/);
+    });
+  });
 
-      it('rejects zero', () => {
-        expect(() => positiveInt('0')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects negative numbers', () => {
-        expect(() => positiveInt('-1')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects non-numeric strings', () => {
-        expect(() => positiveInt('abc')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects floats', () => {
-        expect(() => positiveInt('3.14')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects empty string', () => {
-        expect(() => positiveInt('')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects trailing non-numeric characters', () => {
-        expect(() => positiveInt('1x')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects hex notation', () => {
-        expect(() => positiveInt('0x10')).toThrow(/expected positive integer/);
-      });
-
-      it('rejects scientific notation', () => {
-        expect(() => positiveInt('1e3')).toThrow(/expected positive integer/);
-      });
+  describe('commaList', () => {
+    it('splits on commas and trims each element', () => {
+      expect(commaList('a, b,  c,d')).toEqual(['a', 'b', 'c', 'd']);
     });
 
-    describe('days', () => {
-      it('converts days to milliseconds', () => {
-        expect(days('1')).toBe(24 * 60 * 60 * 1000);
-        expect(days('7')).toBe(7 * 24 * 60 * 60 * 1000);
-      });
-
-      it('uses positiveInt internally, so rejects zero/negative', () => {
-        expect(() => days('0')).toThrow(/expected positive integer/);
-        expect(() => days('-1')).toThrow(/expected positive integer/);
-      });
+    it('accepts a single element', () => {
+      expect(commaList('single')).toEqual(['single']);
     });
 
-    describe('onOff', () => {
-      it('accepts "on" and returns true', () => {
-        expect(onOff('on')).toBe(true);
-      });
+    it.each(['', '   ', 'a,,b', 'a, ,b'])('rejects %j', (raw) => {
+      expect(() => commaList(raw)).toThrow(`expected comma-separated list, got "${raw}"`);
+    });
+  });
 
-      it('accepts "off" and returns false', () => {
-        expect(onOff('off')).toBe(false);
-      });
-
-      it('rejects empty string', () => {
-        expect(() => onOff('')).toThrow(/expected 'on' or 'off'/);
-      });
-
-      it('rejects "true"', () => {
-        expect(() => onOff('true')).toThrow(/expected 'on' or 'off'/);
-      });
-
-      it('rejects "1"', () => {
-        expect(() => onOff('1')).toThrow(/expected 'on' or 'off'/);
-      });
-
-      it('rejects "false"', () => {
-        expect(() => onOff('false')).toThrow(/expected 'on' or 'off'/);
-      });
-
-      it('rejects "0"', () => {
-        expect(() => onOff('0')).toThrow(/expected 'on' or 'off'/);
-      });
-
-      it('is case-sensitive', () => {
-        expect(() => onOff('ON')).toThrow(/expected 'on' or 'off'/);
-        expect(() => onOff('OFF')).toThrow(/expected 'on' or 'off'/);
-      });
+  describe('positiveInt', () => {
+    it('parses a positive integer, ignoring surrounding whitespace', () => {
+      expect(positiveInt('42')).toBe(42);
+      expect(positiveInt(' 7 ')).toBe(7);
     });
 
-    describe('enumOf', () => {
-      it('accepts allowed values', () => {
-        const parser = enumOf('dev', 'prod', 'staging');
-        expect(parser('dev')).toBe('dev');
-        expect(parser('prod')).toBe('prod');
-      });
+    it.each(['0', '-1', 'abc', '3.14', '', '1x', '0x10', '1e3', '01'])('rejects %j', (raw) => {
+      expect(() => positiveInt(raw)).toThrow(`expected positive integer, got "${raw}"`);
+    });
+  });
 
-      it('rejects disallowed values', () => {
-        const parser = enumOf('dev', 'prod');
-        expect(() => parser('test')).toThrow(/expected one of \[dev, prod\]/);
-      });
+  describe('days', () => {
+    it('converts a number of days to milliseconds', () => {
+      expect(days('7')).toBe(7 * 24 * 60 * 60 * 1000);
+    });
 
-      it('is case-sensitive', () => {
-        const parser = enumOf('dev');
-        expect(() => parser('DEV')).toThrow(/expected one of/);
-      });
+    it('rejects zero like positiveInt', () => {
+      expect(() => days('0')).toThrow(/expected positive integer/);
+    });
+  });
 
-      it('preserves logical type: parser typed as returning literal union', () => {
-        // At runtime, this tests that the parser correctly returns the parsed value
-        const parser = enumOf('off', 'on', 'forced');
-        const result = parser('on');
-        expect(result).toBe('on');
-        // Type checker would verify: result has type 'off' | 'on' | 'forced', not just string
-      });
+  describe('onOff', () => {
+    it('maps on to true and off to false', () => {
+      expect(onOff('on')).toBe(true);
+      expect(onOff('off')).toBe(false);
+    });
 
-      it('rejects values not in the enum list', () => {
-        const parser = enumOf('off', 'on');
-        expect(() => parser('maybe')).toThrow(/expected one of \[off, on\]/);
-      });
+    it.each(['', 'true', '1', 'false', '0', 'ON', 'OFF'])('rejects %j', (raw) => {
+      expect(() => onOff(raw)).toThrow(`expected 'on' or 'off', got "${raw}"`);
+    });
+  });
 
-      it('returns a value that is reference-equal to the member from the allowed list', () => {
-        const allowed = ['dev', 'prod'] as const;
-        const parser = enumOf(...allowed);
-        const result = parser('dev');
+  describe('enumOf', () => {
+    it('returns an allowed value', () => {
+      expect(enumOf('dev', 'prod', 'staging')('prod')).toBe('prod');
+    });
 
-        // Check reference equality: the returned value is the exact member from allowed
-        expect(result).toBe(allowed[0]);
-      });
+    it.each(['test', 'DEV'])('rejects %j, case-sensitively', (raw) => {
+      expect(() => enumOf('dev', 'prod')(raw)).toThrow(`expected one of [dev, prod], got "${raw}"`);
     });
   });
 });

@@ -1,8 +1,40 @@
 import {
   CloudFormationClient,
   DescribeStacksCommand,
+  type StackStatus,
 } from '@aws-sdk/client-cloudformation';
-import { LoggerBuffer } from './logger-buffer';
+import { CaughtError } from './caught-error';
+import type { LoggerBuffer } from './logger-buffer';
+
+/**
+ * Reads the status of the stack a custom resource belongs to, because a custom resource must answer CloudFormation
+ * differently while its stack rolls back or is deleted. A status that cannot be read is reported as undefined, so
+ * each question treats it as "not in the state I am looking for" and carries on with its normal handling.
+ */
+class ParentStackStatusReader {
+  private readonly client: CloudFormationClient;
+  private readonly logger: LoggerBuffer | undefined;
+
+  constructor(client: CloudFormationClient, logger: LoggerBuffer | undefined) {
+    this.client = client;
+    this.logger = logger;
+  }
+
+  /** The stack's status; undefined when the stack is not returned or the lookup fails (not found, access denied, ...). */
+  public async read(stackId: string): Promise<StackStatus | undefined> {
+    try {
+      const response = await this.client.send(new DescribeStacksCommand({ StackName: stackId }));
+      return response.Stacks?.[0]?.StackStatus;
+    } catch (failure) {
+      return this.warnUnreadable(failure);
+    }
+  }
+
+  private warnUnreadable(failure: unknown): undefined {
+    this.logger?.warn(`Failed to check parent stack status: ${new CaughtError(failure).message ?? String(failure)}`);
+    return undefined;
+  }
+}
 
 /**
  * Detects whether the parent CloudFormation stack is currently rolling back.
@@ -11,19 +43,14 @@ import { LoggerBuffer } from './logger-buffer';
  * and expects SUCCESS responses. Answering FAILED during rollback leaves the stack in
  * UPDATE_ROLLBACK_FAILED, which is undeletable without manual intervention.
  *
- * This detector enables handlers to suppress errors and return SUCCESS when rolling back,
- * allowing the rollback to proceed cleanly.
- *
- * The client parameter is primarily for testing; at runtime a client is created automatically.
- * The logger parameter lets the calling handler capture this detector's trace in its own
- * buffered logger instead of writing unconditionally to the console.
+ * A status that cannot be read counts as not rolling back. The failure is logged at warn level on the given logger.
  */
 export async function isParentStackRollingBack(
   stackId: string,
   cfnClient?: CloudFormationClient,
   logger?: LoggerBuffer,
 ): Promise<boolean> {
-  const status = await readParentStackStatus(stackId, cfnClient || new CloudFormationClient(), logger);
+  const status = await new ParentStackStatusReader(cfnClient ?? new CloudFormationClient(), logger).read(stackId);
   return status === 'UPDATE_ROLLBACK_IN_PROGRESS';
 }
 
@@ -34,37 +61,12 @@ export async function isParentStackRollingBack(
  * stays alive; only a Delete during stack deletion means the whole stack is going away. When the
  * status cannot be read this reports false, so the caller skips destructive work: skipping leaves
  * orphans that can be reclaimed later, while acting wrongly destroys live resources.
- *
- * The client and logger parameters behave as in {@link isParentStackRollingBack}.
  */
 export async function isParentStackBeingDeleted(
   stackId: string,
   cfnClient?: CloudFormationClient,
   logger?: LoggerBuffer,
 ): Promise<boolean> {
-  const status = await readParentStackStatus(stackId, cfnClient || new CloudFormationClient(), logger);
+  const status = await new ParentStackStatusReader(cfnClient ?? new CloudFormationClient(), logger).read(stackId);
   return status === 'DELETE_IN_PROGRESS';
-}
-
-/**
- * Reads the parent stack's status. Returns undefined when the stack is not returned or the lookup
- * fails (not found, permission denied, ...), so each caller treats an unknown status as "not in the
- * state I am looking for" and proceeds with its normal handling. The failure is logged at warn level
- * so it is visible in the trace if that gets flushed.
- */
-async function readParentStackStatus(
-  stackId: string,
-  client: CloudFormationClient,
-  logger?: LoggerBuffer,
-): Promise<string | undefined> {
-  try {
-    const response = await client.send(
-      new DescribeStacksCommand({ StackName: stackId }),
-    );
-    return response.Stacks?.[0]?.StackStatus;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger?.warn(`Failed to check parent stack status: ${message}`);
-    return undefined;
-  }
 }
