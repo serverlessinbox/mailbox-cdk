@@ -1,7 +1,6 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
@@ -10,7 +9,7 @@ import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
 } from '../../ts-lambdas/resource-sweeper/removal';
-import { targetField, withTargetPresenceGuard } from './removal';
+import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {
@@ -21,8 +20,6 @@ export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSw
    */
   readonly gracePeriod?: Duration;
 }
-
-const DEFAULT_GRACE_PERIOD = Duration.minutes(15);
 
 /**
  * Registers the stack-failure detector's rule, function and role as ONE removal — grouped
@@ -35,6 +32,10 @@ const DEFAULT_GRACE_PERIOD = Duration.minutes(15);
  * (iam:DeleteRole/DeleteRolePolicy don't support `aws:ResourceTag` at all).
  */
 export class StackFailureDetectorRemoval extends Construct implements IResourceRemoval<'detector'> {
+  private static readonly defaultGracePeriod = Duration.minutes(15);
+  private static readonly anyRuleArn = `arn:aws:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`;
+  private static readonly anyRegionalFunctionArn = `arn:aws:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`;
+
   readonly id = 'detector';
   private readonly targets: StackFailureDetectorSweepTargets;
   private readonly gracePeriod: Duration;
@@ -42,50 +43,21 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   constructor(scope: Construct, id: string, props: StackFailureDetectorRemovalProps) {
     super(scope, id);
     this.targets = props;
-    this.gracePeriod = props.gracePeriod ?? DEFAULT_GRACE_PERIOD;
+    this.gracePeriod = props.gracePeriod ?? StackFailureDetectorRemoval.defaultGracePeriod;
   }
 
-  grantStatements(): iam.PolicyStatement[] {
+  public grantStatements(): iam.PolicyStatement[] {
     return [
-      // EventBridge rule operations. Rules support aws:ResourceTag on both read and delete actions
-      // (verified against the IAM service reference's rule-on-default-event-bus resource type), so
-      // this is a wildcard scoped by ownership tag, not a per-target ARN: rules here are auto-named.
-      new iam.PolicyStatement({
-        actions: ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
-        resources: [`arn:aws:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`],
-      }),
-      new iam.PolicyStatement({
-        actions: ['events:RemoveTargets', 'events:DeleteRule'],
-        resources: [`arn:aws:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`],
-        conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
-      }),
-      // Detector Lambda function operations — the stack's OWN region (not us-east-1): the
-      // stack-failure detector is a regular regional Lambda, not Lambda@Edge.
-      new iam.PolicyStatement({
-        actions: ['lambda:GetFunction'],
-        resources: [`arn:aws:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`],
-      }),
-      new iam.PolicyStatement({
-        actions: ['lambda:DeleteFunction'],
-        resources: [`arn:aws:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
-      }),
-      // Detector IAM role operations. iam:DeleteRole/DeleteRolePolicy don't support
-      // aws:ResourceTag at all (verified against the IAM service reference: their only
-      // ActionConditionKeys entry is iam:PermissionsBoundary) — scoped instead to this removal's
-      // own role ARN, a real token from the CDK object passed in.
-      new iam.PolicyStatement({
-        actions: ['iam:ListRoleTags'],
-        resources: [this.targets.role.roleArn],
-      }),
-      new iam.PolicyStatement({
-        actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
-        resources: [this.targets.role.roleArn],
-      }),
+      this.grantRuleInspection(),
+      this.grantRuleDeletion(),
+      this.grantDetectorFunctionInspection(),
+      this.grantDetectorFunctionDeletion(),
+      this.grantDetectorRoleInspection(),
+      this.grantDetectorRoleDeletion(),
     ];
   }
 
-  crProperties(): StackFailureDetectorRemovalTarget {
+  public crProperties(): StackFailureDetectorRemovalTarget {
     return {
       ruleArn: this.targets.rule.ruleArn,
       ruleTargetId: this.targets.ruleTargetId,
@@ -95,8 +67,8 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     };
   }
 
-  buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const workerInput: StackFailureDetectorWorkerInput = {
+  public buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
+    const payload: StackFailureDetectorWorkerInput = {
       removalType: 'detector',
       ruleArn: targetField(this.id, 'ruleArn'),
       ruleTargetId: targetField(this.id, 'ruleTargetId'),
@@ -106,29 +78,63 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       rootStackName: Stack.of(this).stackName,
     };
 
-    const graceWait = new sfn.Wait(this, 'DetectorGraceWait', {
-      time: sfn.WaitTime.duration(this.gracePeriod),
+    const retryLoop = buildWorkerRetryLoop(this, 'Detector', {
+      worker,
+      payload,
+      retryInterval,
+      onSuccess,
+      failureCause: 'Detector removal failed',
+      gracePeriod: this.gracePeriod,
     });
 
-    const invoke = new tasks.LambdaInvoke(this, 'DetectorInvoke', {
-      lambdaFunction: worker,
-      payloadResponseOnly: true,
-      resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({ ...workerInput }),
-      retryOnServiceExceptions: true,
+    return withTargetPresenceGuard(this, 'DetectorHasTarget', this.id, retryLoop, onSuccess);
+  }
+
+  /** Rules are auto-named, so there is no per-rule ARN to scope a read to; it carries no condition. */
+  private grantRuleInspection(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
+      resources: [StackFailureDetectorRemoval.anyRuleArn],
     });
+  }
 
-    const wait = new sfn.Wait(this, 'DetectorWaitRetry', { time: sfn.WaitTime.duration(retryInterval) });
+  /** Rules are auto-named and support `aws:ResourceTag` on delete actions, so the root-stack tag is the scope. */
+  private grantRuleDeletion(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['events:RemoveTargets', 'events:DeleteRule'],
+      resources: [StackFailureDetectorRemoval.anyRuleArn],
+      conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
+    });
+  }
 
-    const choice = new sfn.Choice(this, 'DetectorStatusChoice')
-      .when(sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'), onSuccess)
-      .when(sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'), wait)
-      .otherwise(new sfn.Fail(this, 'DetectorFailed', { error: 'WorkerFailed', cause: 'Detector removal failed' }));
+  /** The detector is a regular regional function, not Lambda@Edge, so the scope is the stack's own region. */
+  private grantDetectorFunctionInspection(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['lambda:GetFunction'],
+      resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
+    });
+  }
 
-    graceWait.next(invoke);
-    invoke.next(choice);
-    wait.next(invoke);
+  private grantDetectorFunctionDeletion(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['lambda:DeleteFunction'],
+      resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
+      conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
+    });
+  }
 
-    return withTargetPresenceGuard(this, 'DetectorHasTarget', this.id, graceWait, onSuccess);
+  /** Scoped to the role's own ARN: `iam:DeleteRole` and `iam:DeleteRolePolicy` take no `aws:ResourceTag` condition. */
+  private grantDetectorRoleInspection(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['iam:ListRoleTags'],
+      resources: [this.targets.role.roleArn],
+    });
+  }
+
+  private grantDetectorRoleDeletion(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
+      resources: [this.targets.role.roleArn],
+    });
   }
 }

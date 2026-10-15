@@ -1,10 +1,14 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
+import { ArnFormat, Aws, Fn, Stack } from 'aws-cdk-lib';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { SweeperWorkflow } from './sweeper-workflow';
+import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
+import { retainOnUpdateOrDelete } from '../../utils/cfn-resource';
 import type { IResourceRemoval } from './removal';
-import { Fn, Stack, Aws, Duration, RemovalPolicy, ArnFormat } from 'aws-cdk-lib';
+import { SweeperExecutionGrants } from './sweeper-execution-grants';
+import { SweeperPolicyNames } from './sweeper-names';
+import { SweeperWorkflow } from './sweeper-workflow';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;
@@ -14,6 +18,13 @@ export interface SweeperInfraProps {
    * `IResourceRemoval`.
    */
   readonly removals: IResourceRemoval[];
+}
+
+/** The deterministic physical names of the sweeper's state machine and roles. */
+interface SweeperResourceNames {
+  readonly stateMachine: string;
+  readonly executionRole: string;
+  readonly workerRole: string;
 }
 
 /**
@@ -30,56 +41,96 @@ export interface SweeperInfraProps {
  * destroy+redeploy, so RETAIN'd role stubs never collide.
  */
 export class SweeperInfra extends Construct {
-  readonly starter: ResourceSweeperStarterLambda;
-  readonly worker: ResourceSweeperWorkerLambda;
-  readonly workflow: SweeperWorkflow;
-  readonly executionRole: iam.Role;
+  readonly starter: IFunction;
 
   constructor(scope: Construct, id: string, props: SweeperInfraProps) {
     super(scope, id);
 
-    const stack = Stack.of(this);
+    const names = this.resourceNames();
+    const executionRoleArn = this.roleArn(names.executionRole);
+    const workerRoleArn = this.roleArn(names.workerRole);
+    const stateMachineArn = this.stateMachineArnOf(names.stateMachine);
 
-    // Derive stack GUID for uniqueness — fixed for a stack's lifetime, differs after destroy+redeploy.
+    const executionRole = this.createExecutionRole(names.executionRole);
+    const workerRole = this.createWorkerRole(names.workerRole);
+
+    // Worker Lambda (RETAIN'd — invoked by the state machine after the stack is deleted)
+    const worker = new ResourceSweeperWorkerLambda(this, 'worker', {
+      artifactResolver: props.artifactResolver,
+      role: workerRole,
+    });
+    retainOnUpdateOrDelete(worker);
+
+    const executionGrants = new SweeperExecutionGrants({
+      workerFunctionArn: worker.functionArn,
+      workerRoleArn,
+      stateMachineArn,
+      executionRoleArn,
+    });
+    this.attachExecutionPolicy(executionRole, executionGrants);
+    this.applyExecutionPermissionsBoundary(executionRole, executionGrants);
+
+    const workflow = new SweeperWorkflow(this, 'workflow', {
+      executionRole,
+      workerRoleArn,
+      workerRoleName: names.workerRole,
+      worker,
+      stateMachineName: names.stateMachine,
+      stateMachineArn,
+      removals: props.removals,
+    });
+    workflow.markForRetention();
+
+    // Starter Lambda (NOT retained — CFN deletes normally)
+    this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
+      artifactResolver: props.artifactResolver,
+      stateMachineArn,
+    });
+
+    this.attachWorkerPolicy(workerRole, worker, props.removals);
+
+    workflow.grantStartExecution(this.starter);
+    workflow.grantExecutionReaping(this.starter);
+  }
+
+  /**
+   * The names are deterministic so ARNs can be plain strings. They carry the id of the group the
+   * sweeper sits in, so moving it to another group changes them and the retained resources of the old
+   * position never collide with the new ones, and the stack's GUID, which differs after destroy+redeploy.
+   */
+  private resourceNames(): SweeperResourceNames {
     const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    const parentGroupId = this.node.scope?.node.id ?? 'default';
 
-    // Derive parent group id (e.g., 'ops', 'edge') to make names unique per construct position.
-    // This ensures the construct can move between groups without same-stack name collisions.
-    const parentGroupId = (this.node.scope as any)?.node?.id ?? 'default';
+    return {
+      stateMachine: Fn.join('', ['mailbox-sweeper-', parentGroupId, '-', stackGuid]),
+      executionRole: Fn.join('', ['mailbox-sweeper-exec-', parentGroupId, '-', stackGuid]),
+      workerRole: Fn.join('', ['mailbox-sweeper-worker-', parentGroupId, '-', stackGuid]),
+    };
+  }
 
-    // State machine name (group + GUID-suffixed, ensures uniqueness when construct moves)
-    const smName = Fn.join('', ['mailbox-sweeper-', parentGroupId, '-', stackGuid]);
-
-    // Deterministic GUID-suffixed role names — required so ARNs can be constructed as plain strings
-    // (no GetAtt), breaking all self-referential circular CloudFormation dependency edges.
-    // Group id ensures names change when construct moves (edge→ops), preventing same-stack collisions.
-    const execRoleName = Fn.join('', ['mailbox-sweeper-exec-', parentGroupId, '-', stackGuid]);
-    const workerRoleName = Fn.join('', ['mailbox-sweeper-worker-', parentGroupId, '-', stackGuid]);
-
-    // Pre-built ARN strings using formatArn — no GetAtt tokens, no CFN dependency edges.
-    const execRoleArn = stack.formatArn({
+  private roleArn(roleName: string): string {
+    return Stack.of(this).formatArn({
       service: 'iam',
       region: '',
       resource: 'role',
-      resourceName: execRoleName,
+      resourceName: roleName,
     });
-    const workerRoleArn = stack.formatArn({
-      service: 'iam',
-      region: '',
-      resource: 'role',
-      resourceName: workerRoleName,
-    });
-    const smArn = stack.formatArn({
+  }
+
+  private stateMachineArnOf(stateMachineName: string): string {
+    return Stack.of(this).formatArn({
       service: 'states',
       region: Aws.REGION,
       resource: 'stateMachine',
-      resourceName: smName,
+      resourceName: stateMachineName,
       arnFormat: ArnFormat.COLON_RESOURCE_NAME,
     });
+  }
 
-    // SFN execution role — deterministic GUID-suffixed name so its ARN can be built without GetAtt.
-    this.executionRole = new iam.Role(this, 'execution-role', {
-      roleName: execRoleName,
+  private createExecutionRole(roleName: string): iam.Role {
+    const role = new iam.Role(this, 'execution-role', {
+      roleName,
       assumedBy: new iam.ServicePrincipal('states.amazonaws.com', {
         conditions: {
           StringEquals: {
@@ -88,167 +139,54 @@ export class SweeperInfra extends Construct {
         },
       }),
     });
-    (this.executionRole.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    retainOnUpdateOrDelete(role);
+    return role;
+  }
 
-    // Worker IAM role — pre-created with a deterministic GUID-suffixed name so its ARN can be
-    // built without GetAtt and passed to both the Lambda and the workflow without creating cycles.
-    const workerRole = new iam.Role(this, 'worker-role', {
-      roleName: workerRoleName,
+  private createWorkerRole(roleName: string): iam.Role {
+    const role = new iam.Role(this, 'worker-role', {
+      roleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
-    (workerRole.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    retainOnUpdateOrDelete(role);
+    return role;
+  }
 
-    // Worker Lambda (RETAIN'd — invoked by SFN Branch B post-stack-delete)
-    this.worker = new ResourceSweeperWorkerLambda(this, 'worker', {
-      artifactResolver: props.artifactResolver,
-      role: workerRole,
-    });
-    (this.worker.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-
-    // Execution role: consolidated inline policy for SFN + self-cleanup operations ONLY.
-    // The worker role owns the deletions; this role only invokes the worker and self-cleans.
-    // Self-referential ARNs (worker role, own role) use pre-built formatArn strings — no GetAtt.
+  /** The policy sits on a RETAIN'd role and is needed while the stack is torn down, so it is retained too; the self-cleanup tail deletes it. */
+  private attachExecutionPolicy(executionRole: iam.IRole, grants: SweeperExecutionGrants): void {
     const executionPolicy = new iam.Policy(this, 'execution-policy', {
-      policyName: 'sweeper-execution-policy',
-      statements: [
-        // Invoke worker Lambda (worker owns deletion logic)
-        new iam.PolicyStatement({
-          actions: ['lambda:InvokeFunction'],
-          resources: [this.worker.functionArn],
-        }),
-        // Delete worker Lambda (self-cleanup)
-        new iam.PolicyStatement({
-          actions: ['lambda:DeleteFunction'],
-          resources: [this.worker.functionArn],
-        }),
-        // Delete worker role policy + role (self-cleanup) — uses formatArn string, not roleArn token (no GetAtt edge)
-        new iam.PolicyStatement({
-          actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
-          resources: [workerRoleArn],
-        }),
-        // Delete state machine — smArn is already a formatArn string (no GetAtt)
-        new iam.PolicyStatement({
-          actions: ['states:DeleteStateMachine'],
-          resources: [smArn],
-        }),
-        // Strip own role policy — uses formatArn string, not executionRole.roleArn token (no GetAtt edge)
-        new iam.PolicyStatement({
-          actions: ['iam:DeleteRolePolicy'],
-          resources: [execRoleArn],
-        }),
-        // Self-cleanup guard: re-check the state machine's own presence in the template before
-        // acting. Aws.STACK_ID is an exact stack ARN pseudo-parameter — no GetAtt, no cycle risk.
-        new iam.PolicyStatement({
-          actions: ['cloudformation:DescribeStackResource'],
-          resources: [Aws.STACK_ID],
-        }),
-      ],
+      policyName: SweeperPolicyNames.executionPolicy,
+      statements: grants.statements(),
     });
-    executionPolicy.attachToRole(this.executionRole);
-    // Grant policy is attached to a RETAIN'd role and is needed by the sweeper execution that runs during/after stack teardown, so it must be retained too; the self-clean tail (`iam:DeleteRolePolicy`) removes it at the right time.
-    (executionPolicy.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    executionPolicy.attachToRole(executionRole);
+    retainOnUpdateOrDelete(executionPolicy);
+  }
 
-    // Permissions boundary: restrict execution role to invoke + self-cleanup only.
-    // Self-referential ARNs use formatArn strings — no GetAtt edges (breaks the boundary→role cycle).
+  /**
+   * The boundary is a ceiling, built from the same grants as the inline policy. The role is RETAIN'd
+   * and cannot be deleted, so its attached boundary must be retained too, or CloudFormation cannot
+   * delete it and the teardown fails with a 409.
+   */
+  private applyExecutionPermissionsBoundary(executionRole: iam.IRole, grants: SweeperExecutionGrants): void {
     const boundaryPolicy = new iam.ManagedPolicy(this, 'execution-role-boundary', {
-      statements: [
-        new iam.PolicyStatement({
-          actions: ['lambda:InvokeFunction'],
-          resources: [this.worker.functionArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['lambda:DeleteFunction'],
-          resources: [this.worker.functionArn],
-        }),
-        // Worker role — formatArn string, not workerRole.roleArn token
-        new iam.PolicyStatement({
-          actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
-          resources: [workerRoleArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['states:DeleteStateMachine'],
-          resources: [smArn],
-        }),
-        // Own execution role — formatArn string, not executionRole.roleArn token
-        new iam.PolicyStatement({
-          actions: ['iam:DeleteRolePolicy'],
-          resources: [execRoleArn],
-        }),
-        // Boundary is a ceiling — mirrors the execution-policy grant above, or the guard denies.
-        new iam.PolicyStatement({
-          actions: ['cloudformation:DescribeStackResource'],
-          resources: [Aws.STACK_ID],
-        }),
-      ],
+      statements: grants.statements(),
     });
-    iam.PermissionsBoundary.of(this.executionRole).apply(boundaryPolicy);
-    // Exec-role stub is RETAIN'd and cannot be deleted, so its attached permissions-boundary policy must be retained too — otherwise CFN can't delete it (attached to the stub) and teardown fails with a 409.
-    (boundaryPolicy.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    iam.PermissionsBoundary.of(executionRole).apply(boundaryPolicy);
+    retainOnUpdateOrDelete(boundaryPolicy);
+  }
 
-    // State machine workflow — pass pre-built ARN strings and role names so SweeperWorkflow never needs GetAtt tokens.
-    this.workflow = new SweeperWorkflow(this, 'workflow', {
-      executionRole: this.executionRole,
-      executionRoleArn: execRoleArn,
-      executionRoleName: execRoleName,
-      workerRole,
-      workerRoleArn,
-      workerRoleName,
-      worker: this.worker,
-      workerLambdaArn: this.worker.functionArn,
-      workerRolePolicyName: 'sweeper-worker-policy',
-      rolePolicyName: 'sweeper-execution-policy',
-      retryInterval: Duration.minutes(5),
-      timeout: Duration.hours(4),
-      stateMachineName: smName,
-      stateMachineArn: smArn,
-      removals: props.removals,
-    });
-    this.workflow.markForRetention();
-
-    // Starter Lambda (NOT retained — CFN deletes normally)
-    this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
-      artifactResolver: props.artifactResolver,
-      stateMachineArn: smArn,
-    });
-
-    // Worker role: single consolidated inline policy for every registered removal's grants
-    // (`IResourceRemoval.grantStatements()`), plus CloudWatch Logs. This construct has no knowledge
-    // of what any individual removal actually grants — it just concatenates them.
+  /**
+   * One inline policy for every registered removal's grants (`IResourceRemoval.grantStatements()`),
+   * then the worker's log grants. It sits on a RETAIN'd role and is needed while the stack is torn
+   * down, so it is retained too; the self-cleanup tail deletes it.
+   */
+  private attachWorkerPolicy(workerRole: iam.IRole, worker: ResourceSweeperWorkerLambda, removals: IResourceRemoval[]): void {
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
-      policyName: 'sweeper-worker-policy',
-      statements: [
-        ...props.removals.flatMap((removal) => removal.grantStatements()),
-        // CloudWatch Logs operations (replicates AWSLambdaBasicExecutionRole) — not tied to any
-        // removal's own resources, so granted here rather than by a removal implementation.
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogGroup'],
-          resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
-        }),
-        // Write-only, same effective scope as AWSLambdaBasicExecutionRole. Cannot be pinned to the
-        // worker's own group: its name is CFN-generated and this role is built before the lambda,
-        // without GetAtt.
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          resources: [
-            `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
-            `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,
-          ],
-        }),
-      ],
+      policyName: SweeperPolicyNames.workerPolicy,
+      statements: removals.flatMap((removal) => removal.grantStatements()),
     });
+    worker.grantLogWriting(workerPolicy);
     workerPolicy.attachToRole(workerRole);
-    // Grant policy is attached to a RETAIN'd role and is needed by the sweeper execution that runs during/after stack teardown, so it must be retained too; the self-clean tail (`iam:DeleteRolePolicy`) removes it at the right time.
-    (workerPolicy.node.defaultChild as any)
-      ?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-
-    // Starter can invoke the state machine, and reaps any stale RUNNING execution before starting
-    // a new one — the workflow owns both grants (smArn is its own formatArn string, no GetAtt edge).
-    this.workflow.grantStartExecution(this.starter);
-    this.workflow.grantExecutionReaping(this.starter);
+    retainOnUpdateOrDelete(workerPolicy);
   }
 }

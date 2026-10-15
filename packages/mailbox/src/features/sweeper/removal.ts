@@ -1,9 +1,10 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import type { RemovalId, RemovalTargets } from '../../ts-lambdas/resource-sweeper/removal';
+import type { RemovalId, RemovalTargets, WorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
 
 /**
  * Contract for registering a resource type with the sweeper. An implementation owns its own target
@@ -45,29 +46,73 @@ export interface IResourceRemoval<TId extends RemovalId = RemovalId> {
   buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State;
 }
 
+/** The worker invocation of one removal and the loop that repeats it until the worker is done. */
+export interface WorkerRetryLoopProps {
+  readonly worker: IFunction;
+  /** The worker payload; its string fields are state-machine references to the execution input. */
+  readonly payload: WorkerInput;
+  readonly retryInterval: Duration;
+  /** Where the loop continues when the worker reports SUCCESS. */
+  readonly onSuccess: sfn.IChainable;
+  /** The cause the terminal Fail state reports when the worker reports anything but SUCCESS or RETRY. */
+  readonly failureCause: string;
+  /** Waited once before the first invocation, not between retries. */
+  readonly gracePeriod?: Duration;
+}
+
 /**
- * Shared helper: a state-machine reference to one field of a removal's target in the execution
- * input. The field names are those of the removal's own target type, so a rename there breaks the
- * compile here.
+ * A state-machine reference to one field of a removal's target in the execution input. The field
+ * names are those of the removal's own target type, so a rename there breaks the compile here.
  */
 export function targetField<TId extends RemovalId>(removalId: TId, field: keyof RemovalTargets[TId] & string): string {
   return sfn.JsonPath.stringAt(`$.toSweep.${removalId}.${field}`);
 }
 
 /**
- * Shared helper: wraps `entry` (this removal's own wait/invoke chain) in a Choice that only enters it
- * when `$.toSweep.<id>` is present in the execution input, otherwise skipping straight to `onSuccess`.
- * A plain function, not a base class — every removal calls this from its own `buildChain` but owns the
- * rest of its chain (and its own field names under `$.toSweep.<id>`) independently.
+ * Wraps `entry` (a removal's own wait/invoke chain) in a Choice that only enters it when
+ * `$.toSweep.<id>` is present in the execution input, otherwise skipping straight to `onSuccess`.
  */
 export function withTargetPresenceGuard(
   scope: Construct,
   id: string,
-  removalId: string,
+  removalId: RemovalId,
   entry: sfn.IChainable,
   onSuccess: sfn.IChainable,
 ): sfn.State {
   return new sfn.Choice(scope, id)
     .when(sfn.Condition.isPresent(`$.toSweep.${removalId}`), entry)
     .otherwise(onSuccess);
+}
+
+/**
+ * Invokes the worker, waits `retryInterval` and invokes it again while it reports RETRY, continues to
+ * `onSuccess` on SUCCESS and fails on anything else. Its states are named `<idPrefix>Invoke`,
+ * `<idPrefix>WaitRetry`, `<idPrefix>StatusChoice` and `<idPrefix>Failed`, plus `<idPrefix>GraceWait`
+ * when a grace period is given. Returns the loop's entry: the grace wait, else the invoke state.
+ */
+export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: WorkerRetryLoopProps): sfn.State {
+  const graceWait = props.gracePeriod === undefined
+    ? undefined
+    : new sfn.Wait(scope, `${idPrefix}GraceWait`, { time: sfn.WaitTime.duration(props.gracePeriod) });
+
+  const invoke = new tasks.LambdaInvoke(scope, `${idPrefix}Invoke`, {
+    lambdaFunction: props.worker,
+    payloadResponseOnly: true,
+    resultPath: '$.workerResult',
+    payload: sfn.TaskInput.fromObject({ ...props.payload }),
+    retryOnServiceExceptions: true,
+  });
+
+  const wait = new sfn.Wait(scope, `${idPrefix}WaitRetry`, { time: sfn.WaitTime.duration(props.retryInterval) });
+
+  const choice = new sfn.Choice(scope, `${idPrefix}StatusChoice`)
+    .when(sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'), props.onSuccess)
+    .when(sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'), wait)
+    .otherwise(new sfn.Fail(scope, `${idPrefix}Failed`, { error: 'WorkerFailed', cause: props.failureCause }));
+
+  graceWait?.next(invoke);
+  invoke.next(choice);
+  wait.next(invoke);
+
+  return graceWait ?? invoke;
 }

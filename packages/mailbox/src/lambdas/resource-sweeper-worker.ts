@@ -1,19 +1,19 @@
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Duration } from 'aws-cdk-lib';
+import { Aws, Duration } from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { type IRole } from 'aws-cdk-lib/aws-iam';
 
 export interface ResourceSweeperWorkerLambdaProps {
   artifactResolver: IArtifactResolver;
 
   /** IAM role for the worker Lambda */
-  role: IRole;
+  role: iam.IRole;
 }
 
 /**
  * Resource Sweeper Worker Lambda wrapper.
- * Handles actual deletion of edge Lambda functions (invoked by state machine).
+ * Deletes the resources of one removal target per invocation and reports whether the target is gone.
  */
 export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ResourceSweeperWorkerLambdaProps) {
@@ -27,6 +27,32 @@ export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
       timeout: Duration.minutes(3),
       memorySize: 256,
       role: props.role,
+    });
+  }
+
+  /**
+   * Adds the log grants to a policy the caller attaches to the worker's role. The role exists before
+   * this function does and its log group name is generated, so the grants cannot name the group.
+   */
+  public grantLogWriting(policy: iam.Policy): void {
+    policy.addStatements(this.grantLogGroupCreation(), this.grantLogStreamWriting());
+  }
+
+  private grantLogGroupCreation(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['logs:CreateLogGroup'],
+      resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
+    });
+  }
+
+  /** Write-only, with the same effective scope as AWSLambdaBasicExecutionRole. */
+  private grantLogStreamWriting(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: [
+        `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
+        `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,
+      ],
     });
   }
 }

@@ -19,13 +19,16 @@ export interface DeferredRemovalProps {
 }
 
 /**
- * DeferredRemoval wraps a CfnCustomResource that triggers the sweeper on stack Delete or Update.
+ * DeferredRemoval wraps a `Custom::DeferredRemoval` custom resource that triggers the sweeper on stack Delete or Update.
  *
  * `ResourceProperties` is a per-removal-type keyed map (`{ [removal.id]: removal.crProperties() }`) —
  * one opaque entry per registered removal. On Update, CloudFormation also sends the previous map as
  * `OldResourceProperties`.
  */
 export class DeferredRemoval extends Construct {
+  /** Bounds how long CloudFormation waits for the starter's answer, instead of the one-hour default. */
+  private static readonly serviceTimeout = cdk.Duration.minutes(2);
+
   constructor(scope: Construct, id: string, props: DeferredRemovalProps) {
     super(scope, id);
 
@@ -36,15 +39,13 @@ export class DeferredRemoval extends Construct {
 
     const cr = new cdk.CustomResource(this, 'resource', {
       serviceToken: props.sweeperStarter.functionArn,
-      serviceTimeout: cdk.Duration.minutes(2), // 2× Lambda timeout ceiling (60s); starter responds in ~1-2s via wrapHandler, so 120s fails fast without cutting off legitimate invocations
+      serviceTimeout: DeferredRemoval.serviceTimeout,
       resourceType: 'Custom::DeferredRemoval',
       properties: { ...properties },
     });
 
-    // Explicit dependency: ensure the custom resource is deleted BEFORE its provider Lambda.
-    // Because the serviceToken is a plain string (formatArn, to avoid circular dependencies),
-    // CDK cannot infer the CR→provider dependency automatically. Without this, CloudFormation
-    // deletes them concurrently, causing the provider role to die first and the Delete to fail.
+    // Depends on everything in the starter's construct, not only the function the service token resolves to,
+    // so CloudFormation deletes this resource before the starter's role and policy.
     cr.node.addDependency(props.sweeperStarter);
   }
 

@@ -1,13 +1,12 @@
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
 import type { CertRemovalTarget, CertWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
-import { targetField, withTargetPresenceGuard } from './removal';
+import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
 
 export interface CertificateRemovalProps {
@@ -19,6 +18,8 @@ export interface CertificateRemovalProps {
  * Registers an ACM certificate for deferred removal.
  */
 export class CertificateRemoval extends Construct implements IResourceRemoval<'cert'> {
+  private static readonly anyCertificateArn = `arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`;
+
   readonly id = 'cert';
   private readonly certificateArn: string;
 
@@ -27,51 +28,46 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
     this.certificateArn = props.certificate.certificateArn;
   }
 
-  grantStatements(): iam.PolicyStatement[] {
-    return [
-      new iam.PolicyStatement({
-        actions: ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
-        resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-      }),
-      new iam.PolicyStatement({
-        actions: ['acm:DeleteCertificate'],
-        resources: [`arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
-        },
-      }),
-    ];
+  public grantStatements(): iam.PolicyStatement[] {
+    return [this.grantCertificateInspection(), this.grantCertificateDeletion()];
   }
 
-  crProperties(): CertRemovalTarget {
+  public crProperties(): CertRemovalTarget {
     return { certArn: this.certificateArn };
   }
 
-  buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const workerInput: CertWorkerInput = {
+  public buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
+    const payload: CertWorkerInput = {
       removalType: 'cert',
       certArn: targetField(this.id, 'certArn'),
       rootStackName: Stack.of(this).stackName,
     };
 
-    const invoke = new tasks.LambdaInvoke(this, 'CertInvoke', {
-      lambdaFunction: worker,
-      payloadResponseOnly: true,
-      resultPath: '$.workerResult',
-      payload: sfn.TaskInput.fromObject({ ...workerInput }),
-      retryOnServiceExceptions: true,
+    const retryLoop = buildWorkerRetryLoop(this, 'Cert', {
+      worker,
+      payload,
+      retryInterval,
+      onSuccess,
+      failureCause: 'Certificate removal failed',
     });
 
-    const wait = new sfn.Wait(this, 'CertWaitRetry', { time: sfn.WaitTime.duration(retryInterval) });
+    return withTargetPresenceGuard(this, 'CertHasTarget', this.id, retryLoop, onSuccess);
+  }
 
-    const choice = new sfn.Choice(this, 'CertStatusChoice')
-      .when(sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'), onSuccess)
-      .when(sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'), wait)
-      .otherwise(new sfn.Fail(this, 'CertFailed', { error: 'WorkerFailed', cause: 'Certificate removal failed' }));
+  private grantCertificateInspection(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
+      resources: [CertificateRemoval.anyCertificateArn],
+    });
+  }
 
-    invoke.next(choice);
-    wait.next(invoke);
-
-    return withTargetPresenceGuard(this, 'CertHasTarget', this.id, invoke, onSuccess);
+  private grantCertificateDeletion(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions: ['acm:DeleteCertificate'],
+      resources: [CertificateRemoval.anyCertificateArn],
+      conditions: {
+        StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
+      },
+    });
   }
 }
