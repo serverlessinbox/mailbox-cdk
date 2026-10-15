@@ -34,4 +34,5 @@ export function toPrincipalId(raw: string): PrincipalId {
   return raw as PrincipalId;
 }
 
+export const isRedirectUri = isBrandedString(toRedirectUri);
 export const isPrincipalId = isBrandedString(toPrincipalId);

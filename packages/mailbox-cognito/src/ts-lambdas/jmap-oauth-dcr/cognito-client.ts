@@ -4,24 +4,21 @@ import {
   DeleteUserPoolClientCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
+import { toClientId, type ClientId, type UserPoolId } from '../shared/cognito-identifiers';
+import type { RedirectUri, Scope } from '../shared/identity-identifiers';
+
 /**
- * Cognito SDK calls for Dynamic Client Registration. Kept entirely in this TS Lambda — never in
- * `identity-provisioner`, which must stay provider-agnostic.
+ * The Cognito calls of Dynamic Client Registration. They live in this Lambda and not in `identity-provisioner`,
+ * which stays provider-agnostic.
  *
- * `offline_access` is never passed in `scopes`: it is excluded from the Cognito-bound scope list
- * before this is called — Cognito refresh-token issuance for
- * `authorization_code` is controlled by `ExplicitAuthFlows`, not by an `AllowedOAuthScopes` entry,
- * and `offline_access` is not itself a valid Cognito OAuth scope value.
+ * `offline_access` is never among the scopes passed in: Cognito issues refresh tokens for `authorization_code`
+ * through `ExplicitAuthFlows`, and `offline_access` is not a Cognito OAuth scope.
  */
-
-export interface CreatedUserPoolClient {
-  readonly clientId: string;
-}
-
 export class CognitoUserPoolClientManager {
   constructor(private readonly cognito: CognitoIdentityProviderClient) {}
 
-  async createClient(userPoolId: string, clientName: string, redirectUris: string[], scopes: string[]): Promise<CreatedUserPoolClient> {
+  /** Creates a public (no secret) client for the authorization code flow, and returns its id. */
+  public async createClient(userPoolId: UserPoolId, clientName: string, redirectUris: RedirectUri[], scopes: Scope[]): Promise<ClientId> {
     const result = await this.cognito.send(
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
@@ -41,10 +38,10 @@ export class CognitoUserPoolClientManager {
       throw new Error('CreateUserPoolClient did not return a ClientId');
     }
 
-    return { clientId };
+    return toClientId(clientId);
   }
 
-  async deleteClient(userPoolId: string, clientId: string): Promise<void> {
+  public async deleteClient(userPoolId: UserPoolId, clientId: ClientId): Promise<void> {
     await this.cognito.send(new DeleteUserPoolClientCommand({ UserPoolId: userPoolId, ClientId: clientId }));
   }
 }

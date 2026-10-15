@@ -1,12 +1,15 @@
+import type { TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import type { UserPoolId } from '../shared/cognito-identifiers';
+
 /**
- * Resolves the Cognito user pool a dynamically-registered client is created against.
- *
- * White-label hedge: the pool is resolved through this seam rather than
- * read inline from the environment everywhere it's needed, so a future per-tenant pool mapping
- * only changes this one function. Today's deployment has exactly one pool, injected by the CDK
- * construct (`JmapOAuthDcrLambda`) as `USER_POOL_ID` (validated once at cold start by
- * `config.ts`) — `tenantId` is accepted but not yet used.
+ * Resolves the Cognito user pool in which the dynamically registered clients of a tenant are created. The
+ * tenant is the key a per-tenant pool mapping would use; the deployment has one pool, so every tenant resolves to it.
  */
-export function resolvePoolId(_tenantId: string, userPoolId: string): string {
-  return userPoolId;
+export class PoolResolver {
+  constructor(private readonly userPoolId: UserPoolId) {}
+
+  public resolve(_tenantId: TenantId): UserPoolId {
+    return this.userPoolId;
+  }
 }

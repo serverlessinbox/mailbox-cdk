@@ -1,33 +1,39 @@
+import {
+  env,
+  loadLogLevel,
+  toFunctionName,
+  type BaseConfig,
+  type FunctionName,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import { toUserPoolId, type UserPoolId } from '../shared/cognito-identifiers';
+
 /**
- * Cold-start environment validation for `jmap-oauth-dcr`.
- *
- * Every env var this Lambda needs is read and validated exactly once, at module load (cold
- * start) — before the container serves its first request. Both mandatory CDK-supplied vars have
- * no safe fallback, so a missing *or empty* value throws here rather than being read lazily deep
- * in the request path.
- *
- * This matters beyond tidiness: the per-tenant DCR registration cap counter is incremented on
- * every dedup-miss request and is never decremented. Previously `USER_POOL_ID`
- * was read (and could throw) *after* that increment, so a misconfigured deployment burned a
- * tenant's 20-per-24h slot on every request and stayed broken for the rest of the period even
- * after the config was fixed. Failing at cold start instead fails the container immediately,
- * before any request — including its cap-counter side effect — is ever processed.
+ * The environment variables this Lambda reads besides the ones every Lambda has. Neither has a safe default: a
+ * Lambda without them would count a registration against the tenant's cap before it failed.
  */
+export type JmapOAuthDcrEnvironment = {
+  readonly USER_POOL_ID: string;
+  readonly IDENTITY_PROVISIONER_FUNCTION_NAME: string;
+};
 
-import { env, parseLogLevelStrict, toFunctionName, type FunctionName, type LogLevel } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-
-export interface JmapOAuthDcrConfig {
-  readonly logLevel: LogLevel;
-  readonly serviceName: string;
+/** The environment of the DCR Lambda: the base configuration plus the variables of `JmapOAuthDcrEnvironment`. */
+export interface Config extends BaseConfig {
+  readonly userPoolId: UserPoolId;
   readonly identityProvisionerFunctionName: FunctionName;
-  readonly userPoolId: string;
 }
 
-export function load(l: env.Loader): JmapOAuthDcrConfig {
+const Variable: { readonly [Name in keyof JmapOAuthDcrEnvironment]-?: Name } = {
+  USER_POOL_ID: 'USER_POOL_ID',
+  IDENTITY_PROVISIONER_FUNCTION_NAME: 'IDENTITY_PROVISIONER_FUNCTION_NAME',
+};
+
+/** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
+export function load(l: env.Loader): Config {
   return {
-    logLevel: env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict),
+    logLevel: loadLogLevel(l),
     serviceName: l.optional('SERVICE_NAME', ''),
-    identityProvisionerFunctionName: env.mandatoryAs(l, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
-    userPoolId: l.mandatory('USER_POOL_ID'),
+    userPoolId: env.mandatoryAs(l, Variable.USER_POOL_ID, toUserPoolId, toUserPoolId('')),
+    identityProvisionerFunctionName: env.mandatoryAs(l, Variable.IDENTITY_PROVISIONER_FUNCTION_NAME, toFunctionName, toFunctionName('')),
   };
 }
