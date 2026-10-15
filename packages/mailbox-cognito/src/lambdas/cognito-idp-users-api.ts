@@ -6,7 +6,6 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import type { ICognitoIdpUsersPoolConfig } from '../api/cognito-idp-users-addon';
-import type { IdpUsersApiEnvironment } from '../ts-lambdas/cognito-idp-users-api/config';
 
 /** What `CognitoIdpUsersApiLambda` needs to resolve its code and to reach the pool, queue and Lambda it works with. */
 export interface CognitoIdpUsersApiLambdaProps {
@@ -41,21 +40,17 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(15),
       memorySize: 256,
-      environment: CognitoIdpUsersApiLambda.environmentOf(props),
+      environment: {
+        USER_POOL_ID: props.userPoolId,
+        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
+        ...(props.adminGroups === undefined ? {} : { ADMIN_GROUPS: JSON.stringify(props.adminGroups) }),
+        ...(props.userGroups === undefined ? {} : { USER_GROUPS: JSON.stringify(props.userGroups) }),
+      },
     });
 
     props.pool.grantAdminAccess(this);
     props.auditEventsQueue.grantSend(this);
     props.identityProvisioner.grantInvoke(this);
-  }
-
-  private static environmentOf(props: CognitoIdpUsersApiLambdaProps): IdpUsersApiEnvironment {
-    return {
-      USER_POOL_ID: props.userPoolId,
-      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-      IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
-      ...(props.adminGroups === undefined ? {} : { ADMIN_GROUPS: JSON.stringify(props.adminGroups) }),
-      ...(props.userGroups === undefined ? {} : { USER_GROUPS: JSON.stringify(props.userGroups) }),
-    };
   }
 }

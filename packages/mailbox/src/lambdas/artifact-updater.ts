@@ -4,7 +4,6 @@ import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import type { Granularity } from '../artifacts/resolvers/auto-updater';
-import { ArtifactUpdaterEnvNames, type ArtifactUpdaterEnvName } from '../ts-lambdas/artifact-updater/env-names';
 
 export interface ArtifactUpdaterLambdaProps {
   artifactResolver: IArtifactResolver;
@@ -31,7 +30,13 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       packageName: 'mailbox-cdk',
       timeout: Duration.minutes(5),
       memorySize: 256,
-      environment: ArtifactUpdaterLambda.environmentOf(props),
+      environment: {
+        ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
+        DIST_TAG: props.distTag,
+        GRANULARITY: props.granularity,
+        PROJECT: ArtifactUpdaterLambda.project,
+        ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
+      },
     });
 
     // No grant on UI buckets: S3 object writes cannot be scoped by tag, so a bucket's own ARN is the only scope.
@@ -44,16 +49,6 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantCloudFrontListAccess();
     this.grantArtifactReleaseAccess(props.artifactBucketBase);
     this.grantSelfInvoke();
-  }
-
-  private static environmentOf(props: ArtifactUpdaterLambdaProps): Record<ArtifactUpdaterEnvName, string> {
-    return {
-      [ArtifactUpdaterEnvNames.artifactBucketBase]: props.artifactBucketBase,
-      [ArtifactUpdaterEnvNames.distTag]: props.distTag,
-      [ArtifactUpdaterEnvNames.granularity]: props.granularity,
-      [ArtifactUpdaterEnvNames.project]: ArtifactUpdaterLambda.project,
-      [ArtifactUpdaterEnvNames.rootStackTagValue]: props.rootStackTagValue,
-    };
   }
 
   /** GetResources is read-only enumeration and cannot be scoped. */

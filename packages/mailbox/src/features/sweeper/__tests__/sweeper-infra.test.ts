@@ -13,7 +13,6 @@ import { Construct } from 'constructs';
 import { actionsOf, renderLiteralText, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { SweeperInfra } from '../sweeper-infra';
 import { SweeperPolicyNames } from '../sweeper-names';
-import { ResourceSweeperEnvNames } from '../../../ts-lambdas/resource-sweeper/env-names';
 import { newArtifactResolver, newRemovals, newTestStack, resolveStatements } from './sweeper-helpers';
 
 const RETAINED = { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' };
@@ -110,7 +109,7 @@ describe('SweeperInfra', () => {
         (resource) => resource.Properties.Handler === 'index.starterHandler',
       );
 
-      expect(starter!.Properties.Environment.Variables[ResourceSweeperEnvNames.stateMachineArn]).toEqual(resourcesOf(deletion!)[0]);
+      expect(starter!.Properties.Environment.Variables.MAILBOX_SWEEPER_STATE_MACHINE_ARN).toEqual(resourcesOf(deletion!)[0]);
     });
   });
 });

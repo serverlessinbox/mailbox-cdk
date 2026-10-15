@@ -1,5 +1,4 @@
 import { env, loadBaseConfig, toRegion, type BaseConfig, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ArtifactUpdaterEnvNames } from './env-names';
 
 const GRANULARITIES = ['major', 'minor'] as const;
 
@@ -25,10 +24,10 @@ export function load(l: env.Loader): Config {
     ...loadBaseConfig(l),
     region: toRegion(l.mandatory('AWS_REGION')),
     functionName: l.mandatory('AWS_LAMBDA_FUNCTION_NAME'),
-    project: l.mandatory(ArtifactUpdaterEnvNames.project),
-    distTag: l.mandatory(ArtifactUpdaterEnvNames.distTag),
-    granularity: env.mandatoryAs(l, ArtifactUpdaterEnvNames.granularity, env.enumOf(...GRANULARITIES), 'major'),
-    artifactBucketBase: l.mandatory(ArtifactUpdaterEnvNames.artifactBucketBase),
-    rootStackTagValue: l.mandatory(ArtifactUpdaterEnvNames.rootStackTagValue),
+    project: l.mandatory('PROJECT'),
+    distTag: l.mandatory('DIST_TAG'),
+    granularity: env.mandatoryAs(l, 'GRANULARITY', env.enumOf(...GRANULARITIES), 'major'),
+    artifactBucketBase: l.mandatory('ARTIFACT_BUCKET_BASE'),
+    rootStackTagValue: l.mandatory('ROOT_STACK_TAG_VALUE'),
   };
 }

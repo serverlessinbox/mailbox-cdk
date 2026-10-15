@@ -6,7 +6,6 @@ import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import type { JmapOAuthDcrEnvironment } from '../ts-lambdas/jmap-oauth-dcr/config';
 
 /** What `JmapOAuthDcrLambda` needs to resolve its code and to reach the user pool and the Lambda it works with. */
 export interface JmapOAuthDcrLambdaProps {
@@ -41,7 +40,10 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
       packageName: COGNITO_ARTIFACT_PACKAGE,
       timeout: Duration.seconds(30),
       memorySize: 256,
-      environment: JmapOAuthDcrLambda.environmentOf(props),
+      environment: {
+        USER_POOL_ID: props.userPoolId,
+        IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
+      },
     });
 
 
@@ -54,12 +56,5 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
         resources: [props.userPoolArn],
       }),
     );
-  }
-
-  private static environmentOf(props: JmapOAuthDcrLambdaProps): JmapOAuthDcrEnvironment {
-    return {
-      USER_POOL_ID: props.userPoolId,
-      IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
-    };
   }
 }

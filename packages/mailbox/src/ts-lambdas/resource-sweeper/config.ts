@@ -1,5 +1,4 @@
 import { env, loadBaseConfig, type BaseConfig } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ResourceSweeperEnvNames } from './env-names';
 
 /** Config of the starter Lambda, read from its own environment. */
 export interface StarterConfig extends BaseConfig {
@@ -12,7 +11,7 @@ export type WorkerConfig = BaseConfig;
 export function loadStarter(l: env.Loader): StarterConfig {
   return {
     ...loadBaseConfig(l),
-    sweeperStateMachineArn: l.mandatory(ResourceSweeperEnvNames.stateMachineArn),
+    sweeperStateMachineArn: l.mandatory('MAILBOX_SWEEPER_STATE_MACHINE_ARN'),
   };
 }
 

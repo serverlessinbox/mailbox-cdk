@@ -3,7 +3,6 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Aws, Duration } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { ResourceSweeperEnvNames, type ResourceSweeperEnvName } from '../ts-lambdas/resource-sweeper/env-names';
 
 export interface ResourceSweeperStarterLambdaProps {
   artifactResolver: IArtifactResolver;
@@ -27,16 +26,12 @@ export class ResourceSweeperStarterLambda extends TypeScriptLambda {
       handler: 'index.starterHandler',
       timeout: Duration.minutes(1),
       memorySize: 256,
-      environment: ResourceSweeperStarterLambda.environmentOf(props),
+      environment: {
+        MAILBOX_SWEEPER_STATE_MACHINE_ARN: props.stateMachineArn,
+      },
     });
 
     this.grantDescribeOwnStack();
-  }
-
-  private static environmentOf(props: ResourceSweeperStarterLambdaProps): Record<ResourceSweeperEnvName, string> {
-    return {
-      [ResourceSweeperEnvNames.stateMachineArn]: props.stateMachineArn,
-    };
   }
 
   private grantDescribeOwnStack(): void {
