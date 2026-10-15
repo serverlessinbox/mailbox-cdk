@@ -1,42 +1,53 @@
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { SendMessageCommand, type SQSClient } from '@aws-sdk/client-sqs';
 
 import type { AuditEvent } from '@serverlessinbox/mailbox-admin-api';
+import { toTenantId, type QueueUrl, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-export interface AuditEmitter {
-  emit(evt: AuditEvent): Promise<void>;
-}
+/** The message the audit writer reads from the audit events queue: an audit event that always names its tenant and actor. */
+type AuditWriterMessage = Omit<AuditEvent, 'tenantId' | 'actor'> & {
+  readonly tenantId: TenantId;
+  readonly actor: unknown;
+};
 
-export class SqsAuditEmitter implements AuditEmitter {
-  private readonly queueUrl: string;
-  private readonly sqs: SQSClient;
+const UNKNOWN_TENANT = toTenantId('unknown');
+const SYSTEM_ACTOR = { actorType: 'system', actorId: 'admin-api', username: 'admin-api' };
 
-  constructor(queueUrl: string, opts?: { sqs?: SQSClient }) {
-    this.queueUrl = queueUrl;
-    this.sqs = opts?.sqs ?? new SQSClient({});
-  }
+/** Sends the audit events of admin API requests to the audit events queue. */
+export class SqsAuditEmitter {
+  constructor(
+    private readonly queueUrl: QueueUrl,
+    private readonly sqs: SQSClient,
+  ) {}
 
-  emit = async (evt: AuditEvent): Promise<void> => {
-    const body = this.toAuditWriterBody(evt);
-    const messageBody = JSON.stringify(body, (key, value) => {
-      if (key === '$typeName') return undefined;
-      return typeof value === 'bigint' ? value.toString() : value;
-    });
+  /** An event without a tenant is attributed to the tenant `unknown`, and one without an actor to the system actor. */
+  public async emit(event: AuditEvent): Promise<void> {
+    const messageBody = this.serialize(this.toAuditWriterMessage(event));
 
     await this.sqs.send(new SendMessageCommand({ QueueUrl: this.queueUrl, MessageBody: messageBody }));
-  };
+  }
 
-  private toAuditWriterBody(evt: AuditEvent): Record<string, unknown> {
+  private toAuditWriterMessage(event: AuditEvent): AuditWriterMessage {
     return {
-      tenantId: evt.tenantId ?? 'unknown',
-      entityType: evt.entityType,
-      entityId: evt.entityId,
-      entityName: evt.entityName,
-      action: evt.action,
-      status: evt.status,
-      errorMsg: evt.errorMsg,
-      actor: evt.actor ?? { actorType: 'system', actorId: 'admin-api', username: 'admin-api' },
-      changes: evt.changes,
-      metadata: evt.metadata,
+      tenantId: event.tenantId === undefined ? UNKNOWN_TENANT : toTenantId(event.tenantId),
+      entityType: event.entityType,
+      entityId: event.entityId,
+      entityName: event.entityName,
+      action: event.action,
+      status: event.status,
+      errorMsg: event.errorMsg,
+      actor: event.actor ?? SYSTEM_ACTOR,
+      changes: event.changes,
+      metadata: event.metadata,
     };
+  }
+
+  // Omits the protobuf `$typeName` and writes a bigint as a string, because JSON.stringify throws on a bigint.
+  private serialize(message: AuditWriterMessage): string {
+    return JSON.stringify(message, (key, value) => {
+      if (key === '$typeName') {
+        return undefined;
+      }
+      return typeof value === 'bigint' ? value.toString() : value;
+    });
   }
 }
