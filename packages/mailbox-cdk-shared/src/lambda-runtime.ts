@@ -14,7 +14,7 @@ export { answerRequestWithBadConfig } from './ts-lambdas/shared/bad-config-answe
 export type { CustomResourceAnswer, CustomResourceRequest } from './ts-lambdas/shared/custom-resource-request';
 export { CaughtError } from './ts-lambdas/shared/caught-error';
 export { parseArn, type ParsedArn } from './ts-lambdas/shared/arn';
-export type { Branded, Unbranded } from './ts-lambdas/shared/branded';
+export { isBrandedString, type Branded, type Unbranded } from './ts-lambdas/shared/branded';
 export {
   toStackName,
   toStackId,
@@ -34,6 +34,26 @@ export {
   type PhysicalResourceId,
   type ResponseUrl,
 } from './ts-lambdas/shared/custom-resource-identifiers';
-export { toRegion, toTableName, isRegion, type Region, type TableName } from './ts-lambdas/shared/aws-identifiers';
+export {
+  toRegion,
+  toTableName,
+  toFunctionName,
+  toQueueUrl,
+  isRegion,
+  type Region,
+  type TableName,
+  type FunctionName,
+  type QueueUrl,
+} from './ts-lambdas/shared/aws-identifiers';
+export {
+  toTenantId,
+  toAccountId,
+  toIssuer,
+  isTenantId,
+  isAccountId,
+  type TenantId,
+  type AccountId,
+  type Issuer,
+} from './ts-lambdas/shared/auth-identifiers';
 export { ServerlessInboxTagKeys } from './ts-lambdas/shared/tag-keys';
 export { isParentStackRollingBack, isParentStackBeingDeleted } from './ts-lambdas/shared/stack-rollback-detector';

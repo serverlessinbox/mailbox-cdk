@@ -1,8 +1,8 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { webcrypto } from 'crypto';
 import * as t from 'typanion';
-import type { TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAudience, toIssuer, type Audience, type Issuer } from './auth-identifiers';
+import { toIssuer, type Issuer, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAudience, type Audience } from './auth-identifiers';
 import type { VerifiedJwt } from './auth-tokens';
 
 const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;

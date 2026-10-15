@@ -1,7 +1,7 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import * as crypto from 'crypto';
-import type { TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAccountId, toAudience, toIssuer, toTenantId } from './auth-identifiers';
+import { toAccountId, toIssuer, toTenantId, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAudience } from './auth-identifiers';
 import type { HmacTokenPayload } from './auth-tokens';
 
 const HMAC_KEYS_TTL_MS = 30 * 60 * 1000;

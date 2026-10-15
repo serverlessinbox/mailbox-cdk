@@ -1,4 +1,5 @@
-import type { AccountId, Audience, Issuer, TenantId } from './auth-identifiers';
+import type { AccountId, Issuer, TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { Audience } from './auth-identifiers';
 
 /** What the authorizer takes from a JWT whose signature and time claims verified. */
 export interface VerifiedJwt {

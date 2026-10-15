@@ -1,5 +1,4 @@
-import { CaughtError, type LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAccountId, type AccountId, type TenantId } from './auth-identifiers';
+import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { HmacTokenPayload, VerifiedJwt } from './auth-tokens';
 import { BlobIdFormat } from './blob-id-format';
 import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId } from './blob-id';

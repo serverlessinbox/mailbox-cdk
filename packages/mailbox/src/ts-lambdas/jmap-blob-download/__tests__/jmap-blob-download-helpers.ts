@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
-import { toRegion, toTableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAccountId, toAudience, toIssuer, toTenantId } from '../auth-identifiers';
+import { toAccountId, toIssuer, toRegion, toTableName, toTenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toAudience } from '../auth-identifiers';
 import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobId } from '../blob-id';
 import { readOriginRequest, type CloudFrontRequest } from '../cloudfront-event';
 
