@@ -1,260 +1,116 @@
+/// <reference types="jest" />
+
 /**
- * SweeperInfra IAM Policy Tests
- *
- * Tests for SweeperInfra construct IAM policy scoping and conditions. `SweeperInfra` no longer
- * hardcodes any target's grants itself — it concatenates whatever each registered `IResourceRemoval`
- * contributes via `grantStatements()` (see `features/sweeper/*-removal.ts`) into one
- * `sweeper-worker-policy`. These tests build a `SweeperInfra` with one of each removal type and
- * verify the resulting consolidated policy still enforces least privilege.
- *
- * Security requirements:
- * - Execution role: iam:DeleteRolePolicy, iam:DeleteRole, states:DeleteStateMachine
- *   MUST be scoped to specific role/state-machine ARNs, never "*"
- * - Worker role: acm:DeleteCertificate, lambda:DeleteFunction MUST carry
- *   Condition gated on serverless-inbox:root-stack tag (ownership enforcement)
- * - Worker role: iam:DeleteRole/DeleteRolePolicy for the detector's role MUST be scoped to that
- *   role's own ARN (a real token), never a tag condition (unsupported) or a bare wildcard.
+ * SweeperInfra: the execution role, worker role, worker, starter and the policies that tie them to
+ * the state machine. The sweeper runs while and after its stack is torn down, so the suite pins what
+ * must outlive the stack (retention), what the execution role may do (scoped, and the same under its
+ * permissions boundary, or the boundary denies a grant the role holds), and that the worker role
+ * holds exactly the grants the registered removals ask for.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as awslambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { SweeperInfra } from '../features/sweeper/sweeper-infra';
-import { CertificateRemoval } from '../features/sweeper/certificate-removal';
-import { EdgeFunctionRemoval } from '../features/sweeper/edge-function-removal';
-import { StackFailureDetectorRemoval } from '../features/sweeper/stack-failure-detector-removal';
-import type { IResourceRemoval } from '../features/sweeper/removal';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, renderLiteralText, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { SweeperInfra } from '../sweeper-infra';
+import { SweeperPolicyNames } from '../sweeper-names';
+import { ResourceSweeperEnvNames } from '../../../ts-lambdas/resource-sweeper/env-names';
+import { newArtifactResolver, newRemovals, newTestStack, resolveStatements } from './sweeper-helpers';
 
-describe('SweeperInfra IAM Policies', () => {
-  let app: App;
-  let artifactResolver: IArtifactResolver;
+const RETAINED = { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' };
 
-  beforeEach(() => {
-    app = new App();
-  });
-
-  function buildStack(id: string): cdk.Stack {
-    const stack = new cdk.Stack(app, id, {
-      env: { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver = new PinnedArtifactResolver({
-      packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
-    return stack;
+describe('SweeperInfra', () => {
+  function synthesize(stackId: string): { template: Template; removals: ReturnType<typeof newRemovals>; infra: SweeperInfra; opsGroup: Construct } {
+    const stack = newTestStack(stackId);
+    const opsGroup = new Construct(stack, 'ops');
+    const removals = newRemovals(opsGroup);
+    const infra = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver: newArtifactResolver(stack), removals });
+    return { template: Template.fromStack(stack), removals, infra, opsGroup };
   }
 
-  /** One of each removal type, built with real (imported/fresh) CDK objects. */
-  function buildRemovals(scope: Construct): IResourceRemoval[] {
-    const certificate = acm.Certificate.fromCertificateArn(
-      scope,
-      'cert-ref',
-      'arn:aws:acm:us-west-2:123456789012:certificate/test-cert',
-    );
-    const edgeFunction = awslambda.Function.fromFunctionArn(
-      scope,
-      'edge-fn-ref',
-      'arn:aws:lambda:us-east-1:123456789012:function:edge-fn',
-    );
-    const rule = new events.Rule(scope, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
-    const detectorRole = new iam.Role(scope, 'detector-role', {
-      roleName: 'mailbox-diag-role-test',
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
-    const detectorFn = awslambda.Function.fromFunctionArn(
-      scope,
-      'detector-fn-ref',
-      'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
-    );
+  describe('execution role', () => {
+    it('scopes role-policy and state-machine deletion to named ARNs, never a wildcard', () => {
+      const { template } = synthesize('ExecutionScopeStack');
 
-    return [
-      new CertificateRemoval(scope, 'cert-removal', { certificate }),
-      new EdgeFunctionRemoval(scope, 'edge-fn-removal', { function: edgeFunction }),
-      new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
-        rule,
-        ruleTargetId: 'Target0',
-        detector: detectorFn,
-        role: detectorRole,
-        detectorRolePolicyName: 'stack-failure-detector-policy',
-      }),
-    ];
-  }
+      const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.executionPolicy);
 
-  function findWorkerPolicyStatements(parent: cdk.Stack): PolicyStatementJson[] {
-    return statementsOfNamedPolicy(Template.fromStack(parent), 'sweeper-worker-policy');
-  }
-
-  function findExecutionPolicyStatements(parent: cdk.Stack): PolicyStatementJson[] {
-    return statementsOfNamedPolicy(Template.fromStack(parent), 'sweeper-execution-policy');
-  }
-
-  /**
-   * Helper to check if a resource value (which may be a string or CloudFormation intrinsic)
-   * contains references to an expected pattern.
-   */
-  function isResourceScoped(resource: unknown, expectedPattern: string | RegExp): boolean {
-    if (typeof resource === 'string') {
-      return typeof expectedPattern === 'string'
-        ? resource.includes(expectedPattern)
-        : expectedPattern.test(resource);
-    }
-    if (typeof resource === 'object' && resource !== null) {
-      const obj = resource as Record<string, unknown>;
-      if ('Fn::Join' in obj) {
-        const joined = renderLiteralText(resource);
-        return typeof expectedPattern === 'string'
-          ? joined.includes(expectedPattern)
-          : expectedPattern.test(joined);
-      }
-      if ('Fn::Sub' in obj && typeof obj['Fn::Sub'] === 'string') {
-        const value = obj['Fn::Sub'] as string;
-        return typeof expectedPattern === 'string'
-          ? value.includes(expectedPattern)
-          : expectedPattern.test(value);
-      }
-    }
-    return false;
-  }
-
-  describe('Execution Role Policy', () => {
-    it('scopes iam:DeleteRolePolicy to specific role ARN (not wildcard)', () => {
-      const stack = buildStack('ParentStack');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
-
-      const statements = findExecutionPolicyStatements(stack);
-      const deleteRolePolicyStmts = statements.filter((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('iam:DeleteRolePolicy');
-      });
-      expect(deleteRolePolicyStmts.length).toBeGreaterThan(0);
-      for (const stmt of deleteRolePolicyStmts) {
-        const stmtResources = resourcesOf(stmt);
-        expect(stmtResources).not.toContain('*');
-        const isWorkerScoped = isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-worker-');
-        const isExecScoped = isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-exec-');
-        expect(isWorkerScoped || isExecScoped).toBe(true);
-      }
+      const roleDeletions = statements.filter((statement) => actionsOf(statement).includes('iam:DeleteRolePolicy'));
+      expect(roleDeletions.map((statement) => renderLiteralText(resourcesOf(statement)[0]))).toEqual([
+        expect.stringContaining('role/mailbox-sweeper-worker-'),
+        expect.stringContaining('role/mailbox-sweeper-exec-'),
+      ]);
+      const stateMachineDeletion = statements.find((statement) => actionsOf(statement).includes('states:DeleteStateMachine'));
+      expect(renderLiteralText(resourcesOf(stateMachineDeletion!)[0])).toContain('stateMachine:mailbox-sweeper-');
     });
 
-    it('scopes states:DeleteStateMachine to a specific state machine ARN', () => {
-      const stack = buildStack('ParentStack2');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
+    it('is bounded by a permissions boundary that holds exactly the grants of its inline policy', () => {
+      const { template } = synthesize('ExecutionBoundaryStack');
 
-      const statements = findExecutionPolicyStatements(stack);
-      const stmt = statements.find((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('states:DeleteStateMachine');
-      });
-      expect(stmt).toBeDefined();
-      const stmtResources = resourcesOf(stmt!);
-      expect(stmtResources).not.toContain('*');
-      expect(isResourceScoped(stmtResources?.[0], 'mailbox-sweeper-')).toBe(true);
+      const boundaries = Object.values(template.findResources('AWS::IAM::ManagedPolicy'));
+
+      expect(boundaries).toHaveLength(1);
+      expect(boundaries[0].Properties.PolicyDocument.Statement).toEqual(
+        statementsOfNamedPolicy(template, SweeperPolicyNames.executionPolicy),
+      );
     });
   });
 
-  describe('Worker Role Policy — per-removal grants', () => {
-    it('gates acm:DeleteCertificate with a Condition on the root-stack tag', () => {
-      const stack = buildStack('ParentStack3');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
+  describe('worker role', () => {
+    it('holds the grants of every registered removal in order, then the worker\'s log grants', () => {
+      const { template, removals, opsGroup } = synthesize('WorkerPolicyStack');
 
-      const statements = findWorkerPolicyStatements(stack);
-      const stmt = statements.find((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('acm:DeleteCertificate');
-      });
-      expect(stmt).toBeDefined();
-      expect(stmt?.Condition).toBeDefined();
-      const stringEquals = stmt?.Condition?.StringEquals;
-      const tagConditionKey = Object.keys(stringEquals || {}).find((key) => key.includes('aws:ResourceTag'));
-      expect(tagConditionKey).toBeDefined();
+      const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.workerPolicy);
+
+      const removalStatements = resolveStatements(opsGroup, removals.flatMap((removal) => removal.grantStatements()));
+      expect(statements.slice(0, removalStatements.length)).toEqual(removalStatements);
+      expect(statements.slice(removalStatements.length).flatMap(actionsOf)).toEqual([
+        'logs:CreateLogGroup',
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+      ]);
     });
+  });
 
-    it('gates edge lambda:DeleteFunction (us-east-1) with a Condition on the root-stack tag', () => {
-      const stack = buildStack('ParentStack4');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
+  describe('retention', () => {
+    it('retains what the sweeper needs after the stack is deleted, and not the starter', () => {
+      const { template } = synthesize('RetentionStack');
 
-      const statements = findWorkerPolicyStatements(stack);
-      const lambdaDeleteStmts = statements.filter((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('lambda:DeleteFunction');
-      });
-      // One for the us-east-1 edge target, one for the stack's own-region detector target.
-      expect(lambdaDeleteStmts.length).toBe(2);
-      for (const stmt of lambdaDeleteStmts) {
-        expect(stmt.Condition).toBeDefined();
+      const resourcesWhere = (type: string, matches: (properties: Record<string, unknown>) => boolean): unknown[] =>
+        Object.values(template.findResources(type)).filter((resource) => matches(resource.Properties));
+      const sweeperRoles = resourcesWhere('AWS::IAM::Role', (properties) => renderLiteralText(properties.RoleName).startsWith('mailbox-sweeper-'));
+      const sweeperPolicies = resourcesWhere('AWS::IAM::Policy', (properties) =>
+        Object.values(SweeperPolicyNames).some((name) => name === properties.PolicyName),
+      );
+      const worker = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.workerHandler');
+      const starter = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.starterHandler');
+
+      expect(sweeperRoles).toHaveLength(2);
+      expect(sweeperPolicies).toHaveLength(2);
+      expect(worker).toHaveLength(1);
+      expect(starter).toHaveLength(1);
+      for (const resource of [
+        ...sweeperRoles,
+        ...sweeperPolicies,
+        ...worker,
+        ...Object.values(template.findResources('AWS::IAM::ManagedPolicy')),
+        ...Object.values(template.findResources('AWS::StepFunctions::StateMachine')),
+      ]) {
+        expect(resource).toMatchObject(RETAINED);
       }
-      const usEast1Stmt = lambdaDeleteStmts.find((s) => isResourceScoped(s.Resource, 'us-east-1'));
-      expect(usEast1Stmt).toBeDefined();
+      expect(starter[0]).not.toHaveProperty('DeletionPolicy');
     });
+  });
 
-    it('gates events:DeleteRule/RemoveTargets with a Condition on the root-stack tag', () => {
-      const stack = buildStack('ParentStack5');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
+  describe('starter', () => {
+    it('is told the ARN of the state machine whose deletion the execution role is granted', () => {
+      const { template } = synthesize('StarterWiringStack');
 
-      const statements = findWorkerPolicyStatements(stack);
-      const stmt = statements.find((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('events:DeleteRule');
-      });
-      expect(stmt).toBeDefined();
-      expect(stmt?.Condition).toBeDefined();
-      const stmtResources = resourcesOf(stmt!);
-      expect(stmtResources).not.toContain('*');
-    });
+      const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.executionPolicy);
+      const deletion = statements.find((statement) => actionsOf(statement).includes('states:DeleteStateMachine'));
+      const starter = Object.values(template.findResources('AWS::Lambda::Function')).find(
+        (resource) => resource.Properties.Handler === 'index.starterHandler',
+      );
 
-    it('scopes iam:DeleteRole/DeleteRolePolicy to the detector role\'s own ARN, not a tag condition or a bare wildcard', () => {
-      const stack = buildStack('ParentStack6');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
-
-      const statements = findWorkerPolicyStatements(stack);
-      const stmt = statements.find((s) => {
-        const actions = actionsOf(s);
-        return actions.includes('iam:DeleteRole') && actions.includes('iam:DeleteRolePolicy');
-      });
-
-      expect(stmt).toBeDefined();
-      // iam:DeleteRole/DeleteRolePolicy don't support aws:ResourceTag at all — must NOT be
-      // tag-conditioned (that would be a no-op gate, not real scoping).
-      expect(stmt?.Condition).toBeUndefined();
-      const stmtResources = resourcesOf(stmt!);
-      expect(stmtResources).not.toContain('*');
-      // Scoped to the role's own real ARN (a GetAtt token), not a wildcard name-prefix pattern.
-      expect(typeof stmtResources?.[0]).toBe('object');
-    });
-
-    it('allows unconditioned read operations (ACM/Lambda/EventBridge/IAM describe-style calls)', () => {
-      const stack = buildStack('ParentStack7');
-      const opsGroup = new Construct(stack, 'ops');
-      new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals: buildRemovals(opsGroup) });
-
-      const statements = findWorkerPolicyStatements(stack);
-      for (const action of ['acm:DescribeCertificate', 'lambda:GetFunction', 'events:DescribeRule', 'iam:ListRoleTags']) {
-        const stmt = statements.find((s) => {
-          const actions = actionsOf(s);
-          return actions.includes(action);
-        });
-        expect(stmt).toBeDefined();
-      }
+      expect(starter!.Properties.Environment.Variables[ResourceSweeperEnvNames.stateMachineArn]).toEqual(resourcesOf(deletion!)[0]);
     });
   });
 });

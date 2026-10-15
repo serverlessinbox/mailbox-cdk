@@ -1,197 +1,175 @@
+/// <reference types="jest" />
+
 /**
- * Coverage for the self-cleanup tail's presence guard (see `features/sweeper/sweeper-workflow.ts`,
- * `createSelfCleanupChain`): a `DescribeStackResource` call on the state machine's own logical id,
- * re-evaluated immediately before `SelfCleanupDeleteWorker` fires, so an ordinary deploy where every
- * removal simply had nothing to do does not delete resources CloudFormation still owns. Also covers
- * the matching IAM grants added for the guard (`cloudformation:DescribeStackResource`, scoped to
- * `Aws.STACK_ID`) on both the SFN execution role's policy and its permissions boundary.
+ * SweeperWorkflow: the state machine that runs every registered removal and then deletes the
+ * sweeper itself. Deleting the sweeper while CloudFormation still owns the state machine would leave
+ * a live stack without its sweeper, so the self-cleanup tail is entered only after a presence check
+ * on the state machine's own logical id; the deletions are ordered so each can be skipped when its
+ * target is already gone, and the last one cannot be followed by a state that runs against a deleted machine.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as awslambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import {
-  actionsOf,
-  renderLiteralText,
-  resourcesOf,
-  statementsOfDocument,
-  statementsOfNamedPolicy,
-} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { SweeperInfra } from '../features/sweeper/sweeper-infra';
-import { CertificateRemoval } from '../features/sweeper/certificate-removal';
-import { EdgeFunctionRemoval } from '../features/sweeper/edge-function-removal';
-import { StackFailureDetectorRemoval } from '../features/sweeper/stack-failure-detector-removal';
-import type { IResourceRemoval } from '../features/sweeper/removal';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Construct } from 'constructs';
+import { actionsOf, renderLiteralText, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { SweeperWorkflow } from '../sweeper-workflow';
+import type { SweeperWorkflowProps } from '../sweeper-workflow';
+import { newRemovals, newTestStack, newWorkerFunction, stateBodyOf } from './sweeper-helpers';
 
-describe('SweeperWorkflow self-cleanup guard', () => {
-  let app: App;
-  let artifactResolver: IArtifactResolver;
-  let stack: cdk.Stack;
-  let template: Template;
-  let def: string;
+const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper-machine';
 
-  beforeAll(() => {
-    app = new App();
-    stack = new cdk.Stack(app, 'SelfCleanupGuardStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver = new PinnedArtifactResolver({
-      packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
-
-    const opsGroup = new Construct(stack, 'ops');
-
-    const certificate = acm.Certificate.fromCertificateArn(
-      opsGroup,
-      'cert-ref',
-      'arn:aws:acm:us-west-2:123456789012:certificate/test-cert',
-    );
-    const edgeFunction = awslambda.Function.fromFunctionArn(
-      opsGroup,
-      'edge-fn-ref',
-      'arn:aws:lambda:us-east-1:123456789012:function:edge-fn',
-    );
-    const rule = new events.Rule(opsGroup, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
-    const detectorRole = new iam.Role(opsGroup, 'detector-role', {
-      roleName: 'mailbox-diag-role-test',
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
-    const detectorFn = awslambda.Function.fromFunctionArn(
-      opsGroup,
-      'detector-fn-ref',
-      'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
-    );
-    const removals: IResourceRemoval[] = [
-      new CertificateRemoval(opsGroup, 'cert-removal', { certificate }),
-      new EdgeFunctionRemoval(opsGroup, 'edge-fn-removal', { function: edgeFunction }),
-      new StackFailureDetectorRemoval(opsGroup, 'stack-failure-detector-removal', {
-        rule,
-        ruleTargetId: 'Target0',
-        detector: detectorFn,
-        role: detectorRole,
-        detectorRolePolicyName: 'stack-failure-detector-policy',
-      }),
-    ];
-
-    new SweeperInfra(opsGroup, 'sweeper', { artifactResolver, removals });
-
-    template = Template.fromStack(stack);
-    const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    const [, sm] = Object.entries(machines)[0];
-    def = renderLiteralText((sm as any).Properties.DefinitionString);
-  });
-
-  /**
-   * Extracts a state's own JSON body from the "States" map by key, via brace counting — not a
-   * substring window. A plain `indexOf` on the state's name would as often land on a *reference* to
-   * it (another state's `"Next": "SelfCleanupDescribeOwnResource"`) as on its actual definition, and
-   * a fixed-size window breaks on a Choice state's nested `Choices` array. This finds the literal
-   * `"<name>":{` key occurrence and returns exactly the matching `{...}` value.
-   */
-  function stateBody(stateName: string): string {
-    const marker = `"${stateName}":{`;
-    const idx = def.indexOf(marker);
-    expect(idx).toBeGreaterThanOrEqual(0);
-    const start = idx + marker.length - 1;
-    let depth = 0;
-    let i = start;
-    for (; i < def.length; i++) {
-      if (def[i] === '{') depth++;
-      else if (def[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          i++;
-          break;
-        }
-      }
-    }
-    return def.slice(start, i);
+describe('SweeperWorkflow', () => {
+  interface Synthesized {
+    readonly template: Template;
+    readonly definition: string;
+    readonly stateMachineLogicalId: string;
   }
 
-  it('the guard states exist and precede SelfCleanupDeleteWorker', () => {
-    const describeIdx = def.indexOf('"SelfCleanupDescribeOwnResource":{');
-    const guardIdx = def.indexOf('"SelfCleanupGuard":{');
-    const deleteWorkerIdx = def.indexOf('"SelfCleanupDeleteWorker":{');
-    expect(describeIdx).toBeGreaterThanOrEqual(0);
-    expect(guardIdx).toBeGreaterThanOrEqual(0);
-    expect(deleteWorkerIdx).toBeGreaterThanOrEqual(0);
-    expect(describeIdx).toBeLessThan(deleteWorkerIdx);
-    expect(guardIdx).toBeLessThan(deleteWorkerIdx);
+  function synthesize(stackId: string, overrides: Partial<SweeperWorkflowProps> = {}): Synthesized {
+    const stack = newTestStack(stackId);
+    const group = new Construct(stack, 'ops');
+    const workflow = new SweeperWorkflow(stack, 'workflow', {
+      executionRole: new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
+      workerRoleArn: 'arn:aws:iam::123456789012:role/worker-role',
+      workerRoleName: 'worker-role',
+      worker: newWorkerFunction(stack),
+      stateMachineName: 'sweeper-machine',
+      stateMachineArn: STATE_MACHINE_ARN,
+      removals: newRemovals(group),
+      ...overrides,
+    });
+    const grantee = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    workflow.grantStartExecution(grantee);
+    workflow.grantExecutionReaping(grantee);
+    workflow.markForRetention();
+
+    const template = Template.fromStack(stack);
+    const [[stateMachineLogicalId, machine]] = Object.entries(template.findResources('AWS::StepFunctions::StateMachine'));
+    return { template, definition: renderLiteralText(machine.Properties.DefinitionString), stateMachineLogicalId };
+  }
+
+  it('refuses to be built without a removal, because its definition would have nothing to sweep', () => {
+    expect(() => synthesize('NoRemovalStack', { removals: [] })).toThrow('SweeperWorkflow requires at least one registered removal');
   });
 
-  it('the describe call targets DescribeStackResource, on the state machine\'s own logical id', () => {
-    const block = stateBody('SelfCleanupDescribeOwnResource');
-    expect(block).toContain('aws-sdk:cloudformation:describeStackResource');
-    expect(block).toContain('"StackName"');
-    // The Lazy-resolved logical id of the SweeperWorkflow's own `StateMachine` construct — proves
-    // the guard queries the state machine's own resource, not a hardcoded/wrong logical id.
-    expect(block).toMatch(/"LogicalResourceId":"\w*StateMachine\w*"/);
+  describe('definition', () => {
+    it('runs the removals in the order given, then the self-cleanup tail', () => {
+      const { definition } = synthesize('OrderStack');
+
+      expect(definition).toContain('"StartAt":"CertHasTarget"');
+      expect(stateBodyOf(definition, 'CertHasTarget')).toContain('"Default":"EdgeFnHasTarget"');
+      expect(stateBodyOf(definition, 'EdgeFnHasTarget')).toContain('"Default":"DetectorHasTarget"');
+      expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Default":"SelfCleanupDescribeOwnResource"');
+    });
+
+    it('waits 5 minutes between retries and times out after 4 hours by default', () => {
+      const { definition } = synthesize('DefaultsStack');
+
+      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Seconds":300');
+      expect(definition).toContain('"TimeoutSeconds":14400');
+    });
+
+    it('waits the retry interval it is given', () => {
+      const { definition } = synthesize('RetryIntervalStack', { retryInterval: Duration.minutes(1) });
+
+      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Seconds":60');
+    });
   });
 
-  it('resource still present (no error) reaches Succeed without deleting', () => {
-    const describeBlock = stateBody('SelfCleanupDescribeOwnResource');
-    // Normal (non-error) transition goes straight to the guard, never to SelfCleanupDeleteWorker.
-    expect(describeBlock).toContain('"Next":"SelfCleanupGuard"');
+  describe('self-cleanup guard', () => {
+    it('describes the state machine\'s own resource in the stack, by its own logical id', () => {
+      const { definition, stateMachineLogicalId } = synthesize('GuardDescribeStack');
 
-    const guardBlock = stateBody('SelfCleanupGuard');
-    // The Choice's default branch (resource present / no notFound flag set) goes to Succeed.
-    expect(guardBlock).toContain('"Default":"Succeed"');
-    // Succeed itself carries no delete action — it's a distinct, terminal state.
-    expect(def).toContain('"Succeed":{"Type":"Succeed"');
+      const describeOwn = stateBodyOf(definition, 'SelfCleanupDescribeOwnResource');
+
+      expect(describeOwn).toContain('aws-sdk:cloudformation:describeStackResource');
+      expect(describeOwn).toContain(`"LogicalResourceId":"${stateMachineLogicalId}"`);
+      expect(describeOwn).toContain('"Next":"SelfCleanupGuard"');
+    });
+
+    it('ends in Succeed without deleting anything when the resource is still in the template', () => {
+      const { definition } = synthesize('GuardPresentStack');
+
+      expect(stateBodyOf(definition, 'SelfCleanupGuard')).toContain('"Default":"Succeed"');
+      expect(definition).toContain('"Succeed":{"Type":"Succeed"');
+    });
+
+    it('starts the deletions when the describe call answers ValidationError, which CloudFormation raises for a removed logical id', () => {
+      const { definition } = synthesize('GuardAbsentStack');
+
+      expect(stateBodyOf(definition, 'SelfCleanupDescribeOwnResource')).toContain('cloudformation.ValidationError');
+      expect(stateBodyOf(definition, 'SelfCleanupCaptureNotFound')).toContain('"notFound":true');
+      expect(stateBodyOf(definition, 'SelfCleanupCaptureNotFound')).toContain('"Next":"SelfCleanupGuard"');
+      const guard = stateBodyOf(definition, 'SelfCleanupGuard');
+      expect(guard).toContain('"Variable":"$.selfCheck.notFound"');
+      expect(guard).toContain('"Next":"SelfCleanupDeleteWorker"');
+    });
   });
 
-  it('resource absent (ValidationError) proceeds to self-cleanup', () => {
-    const describeBlock = stateBody('SelfCleanupDescribeOwnResource');
-    expect(describeBlock).toContain('cloudformation.ValidationError');
-    expect(describeBlock).toContain('"SelfCleanupCaptureNotFound"');
+  describe('self-cleanup deletions', () => {
+    it('deletes the worker, its role policy and role, then the state machine, skipping what is already gone', () => {
+      const { definition } = synthesize('DeletionsStack');
 
-    const captureBlock = stateBody('SelfCleanupCaptureNotFound');
-    expect(captureBlock).toContain('"Next":"SelfCleanupGuard"');
-    expect(captureBlock).toContain('"notFound":true');
+      const deleteWorker = stateBodyOf(definition, 'SelfCleanupDeleteWorker');
+      expect(deleteWorker).toContain('"Next":"SelfCleanupDeleteWorkerRolePolicy"');
+      expect(deleteWorker).toContain('lambda.ResourceNotFoundException');
 
-    const guardBlock = stateBody('SelfCleanupGuard');
-    expect(guardBlock).toContain('"IsPresent":true');
-    expect(guardBlock).toContain('$.selfCheck.notFound');
-    expect(guardBlock).toContain('"Next":"SelfCleanupDeleteWorker"');
+      const deleteRolePolicy = stateBodyOf(definition, 'SelfCleanupDeleteWorkerRolePolicy');
+      expect(deleteRolePolicy).toContain('"RoleName":"worker-role"');
+      expect(deleteRolePolicy).toContain('"PolicyName":"sweeper-worker-policy"');
+      expect(deleteRolePolicy).toContain('"Next":"SelfCleanupDeleteWorkerRole"');
+      expect(deleteRolePolicy).toContain('iam.NoSuchEntityException');
+
+      const deleteRole = stateBodyOf(definition, 'SelfCleanupDeleteWorkerRole');
+      expect(deleteRole).toContain('"Next":"SelfCleanupDeleteStateMachine"');
+      expect(deleteRole).toContain('iam.DeleteConflictException');
+    });
+
+    it('ends with the deletion of the state machine, which no state follows and whose failure still succeeds', () => {
+      const { definition } = synthesize('TerminalDeletionStack');
+
+      const deleteStateMachine = stateBodyOf(definition, 'SelfCleanupDeleteStateMachine');
+
+      expect(deleteStateMachine).toContain(`"StateMachineArn":"${STATE_MACHINE_ARN}"`);
+      expect(deleteStateMachine).toContain('"ErrorEquals":["States.ALL"]');
+      expect(deleteStateMachine).toContain('"Next":"Succeed"');
+      expect(deleteStateMachine).not.toMatch(/"Next":"(?!Succeed)/);
+      expect(deleteStateMachine).toContain('"End":true');
+    });
   });
 
-  it('grants cloudformation:DescribeStackResource, scoped to the stack ARN, on the execution policy', () => {
-    const stmt = statementsOfNamedPolicy(template, 'sweeper-execution-policy').find((s) =>
-      actionsOf(s).includes('cloudformation:DescribeStackResource'),
-    );
-    expect(stmt).toBeDefined();
-    const resources = resourcesOf(stmt!);
-    expect(resources).not.toContain('*');
-    // Aws.STACK_ID renders as {"Ref":"AWS::StackId"} — an exact stack ARN pseudo-parameter.
-    expect(resources[0]).toEqual({ Ref: 'AWS::StackId' });
+  describe('grants', () => {
+    it('lets the grantee start executions of this state machine only', () => {
+      const { template } = synthesize('StartExecutionStack');
+
+      const statements = Object.values(template.findResources('AWS::IAM::Policy'))
+        .flatMap((policy) => statementsOfDocument(policy.Properties.PolicyDocument))
+        .filter((statement) => actionsOf(statement).includes('states:StartExecution'));
+
+      expect(statements).toEqual([{ Action: 'states:StartExecution', Effect: 'Allow', Resource: STATE_MACHINE_ARN }]);
+    });
+
+    it('lets the grantee list and stop executions of this state machine only', () => {
+      const { template } = synthesize('ReapingStack');
+
+      const statements = Object.values(template.findResources('AWS::IAM::Policy'))
+        .flatMap((policy) => statementsOfDocument(policy.Properties.PolicyDocument))
+        .filter((statement) => actionsOf(statement).includes('states:StopExecution'));
+
+      expect(statements).toEqual([
+        { Action: ['states:ListExecutions', 'states:StopExecution'], Effect: 'Allow', Resource: STATE_MACHINE_ARN },
+      ]);
+    });
   });
 
-  it('grants cloudformation:DescribeStackResource, scoped to the stack ARN, on the permissions boundary too', () => {
-    const managedPolicies = template.findResources('AWS::IAM::ManagedPolicy');
-    const boundaryStatements = Object.values(managedPolicies)
-      .map((p) => statementsOfDocument(p.Properties?.PolicyDocument))
-      .find((statements) => statements.some((s) => actionsOf(s).includes('cloudformation:DescribeStackResource')));
-    expect(boundaryStatements).toBeDefined();
+  describe('retention', () => {
+    it('keeps the state machine when the stack is deleted, so the sweep can finish after it', () => {
+      const { template } = synthesize('RetentionStack');
 
-    const stmt = boundaryStatements!.find((s) => actionsOf(s).includes('cloudformation:DescribeStackResource'));
-    const resources = resourcesOf(stmt!);
-    expect(resources).not.toContain('*');
-    expect(resources[0]).toEqual({ Ref: 'AWS::StackId' });
+      const [machine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
 
-    // A boundary is a ceiling: the executing role also needs this grant in its own policy, checked
-    // in the sibling test above — this only proves the boundary doesn't deny it.
+      expect(machine).toMatchObject({ DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' });
+    });
   });
 });

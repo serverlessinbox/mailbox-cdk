@@ -7,8 +7,9 @@
  * stack-failure detector) its own IAM statements as a self-contained plugin. This guard asserts
  * that no removal's PolicyStatement is constructed outside the sweeper feature directory.
  *
- * Implementation approach: source-tree scan using ast-grep to locate all `new PolicyStatement`
- * instantiations outside `features/sweeper/` and verify none are removal-related.
+ * Implementation approach: a regular-expression scan of the source text of every file outside
+ * `features/sweeper/` for a class implementing `IResourceRemoval`, or a `grantStatements()` method
+ * next to a `PolicyStatement`.
  *
  * Blind spot accepted: if a removal were to construct statements dynamically (e.g., in a factory
  * function in a helper), this scan would miss it. The mitigation is code review: removal types
@@ -30,7 +31,9 @@ describe('Sweeper removal boundary guard', () => {
 
     for (const file of sourceFiles) {
       // Skip sweeper directory files (they're allowed)
-      if (file.startsWith(sweeperDir)) continue;
+      if (file.startsWith(sweeperDir)) {
+        continue;
+      }
 
       const content = fs.readFileSync(file, 'utf-8');
 
@@ -65,7 +68,9 @@ function scanDirForTypeScriptFiles(dir: string): string[] {
   const files: string[] = [];
 
   function scan(current: string): void {
-    if (!fs.existsSync(current)) return;
+    if (!fs.existsSync(current)) {
+      return;
+    }
 
     const entries = fs.readdirSync(current, { withFileTypes: true });
     for (const entry of entries) {

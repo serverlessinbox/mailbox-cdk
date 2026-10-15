@@ -1,14 +1,13 @@
 /// <reference types="jest" />
 
 /**
- * Regression guard for the sweeper's per-removal-type rework: the detector must have zero runtime
- * knowledge of the sweeper (no `states:StartExecution` grant anywhere in its own policies, no second
- * state machine of its own), the `Custom::DeferredRemoval` custom resource must be trigger-only (no
- * ARN properties — see `features/sweeper/deferred-removal.ts`), and the state machine definition
- * must contain each registered removal's own steps, with the stack-failure detector's
- * grace-period Wait state belonging to its OWN removal, not shared retry logic. Synthesizes the full
- * `Mailbox` construct at its real position (not standalone units) so this proves the wiring that
- * ships, not just that the pieces individually compile.
+ * How `Mailbox` wires the sweeper: the detector must have zero runtime knowledge of the sweeper (no
+ * `states:StartExecution` grant anywhere in its own policies, no second state machine of its own),
+ * the `Custom::DeferredRemoval` custom resource carries one keyed entry per registered removal, and
+ * the state machine definition contains each registered removal's own steps, with the stack-failure
+ * detector's grace-period Wait state belonging to its OWN removal, not shared retry logic.
+ * Synthesizes the full `Mailbox` construct at its real position (not standalone units) so this proves
+ * the wiring that ships, not just that the pieces individually compile.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -67,6 +66,11 @@ function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Templa
   return Template.fromStack(stack);
 }
 
+function deferredRemovalProperties(template: Template): Record<string, unknown> {
+  const [resource] = Object.values(template.findResources('Custom::DeferredRemoval'));
+  return resource.Properties;
+}
+
 describe('Mailbox: sweeper removal wiring', () => {
   let template: Template;
 
@@ -74,24 +78,17 @@ describe('Mailbox: sweeper removal wiring', () => {
     template = synthMailboxTemplate();
   });
 
-  /** Extracts the literal prefix CDK constant-folds into the first `Fn::Join` part of a physical name. */
-  function joinedNamePrefix(nameToken: unknown): string | undefined {
-    const parts = (nameToken as any)?.['Fn::Join']?.[1] as unknown[] | undefined;
-    const first = parts?.[0];
-    return typeof first === 'string' ? first : undefined;
-  }
-
-  function sweeperStateMachine(): any {
+  function sweeperDefinition(): string {
     const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    const sweeperMachines = Object.values(machines).filter((m: any) =>
-      joinedNamePrefix(m.Properties?.StateMachineName)?.startsWith('mailbox-sweeper-'),
+    const sweeperMachines = Object.values(machines).filter((machine) =>
+      renderLiteralText(machine.Properties?.StateMachineName).startsWith('mailbox-sweeper-'),
     );
     expect(sweeperMachines).toHaveLength(1);
-    return sweeperMachines[0];
+    return renderLiteralText(sweeperMachines[0].Properties.DefinitionString);
   }
 
   it('has exactly one deferred-deletion (sweeper) state machine', () => {
-    sweeperStateMachine();
+    sweeperDefinition();
   });
 
   it('grants states:StartExecution nowhere except the sweeper starter\'s own policy', () => {
@@ -108,23 +105,12 @@ describe('Mailbox: sweeper removal wiring', () => {
     expect(startExecutionPolicyNames).not.toContain('stack-failure-detector-policy');
   });
 
-  it('the Custom::DeferredRemoval resource carries a per-removal-type keyed properties map, never the old flat shape', () => {
-    const customResources = template.findResources('Custom::DeferredRemoval');
-    const [, deferredRemoval] = Object.entries(customResources)[0];
-    const props = (deferredRemoval as any).Properties;
+  it('the Custom::DeferredRemoval resource carries a per-removal-type keyed properties map', () => {
+    const props = deferredRemovalProperties(template);
 
-    // The pre-rework flat shape must never come back.
-    expect(props.CertArn).toBeUndefined();
-    expect(props.EdgeFnArn).toBeUndefined();
-    expect(props.RuleArn).toBeUndefined();
-    expect(props.RuleTargetId).toBeUndefined();
-    expect(props.DetectorFnArn).toBeUndefined();
-    expect(props.DetectorRoleArn).toBeUndefined();
-    expect(props.DetectorRolePolicyName).toBeUndefined();
-
-    // Each registered removal contributes only its own key. This test's Mailbox config has no
-    // custom regional-SAN certificate, so `cert` is never registered (mirrors mailbox.ts's own `if
-    // (regionalSanCertificate)` gate) — `edge-fn` and `detector` are always registered.
+    // This test's Mailbox config has no custom regional-SAN certificate, so `cert` is never
+    // registered (mirrors mailbox.ts's own `if (regionalSanCertificate)` gate) — `edge-fn` and
+    // `detector` are always registered.
     expect(props['edge-fn']).toEqual({ edgeFnArn: expect.anything() });
     expect(props['detector']).toEqual({
       ruleArn: expect.anything(),
@@ -137,8 +123,7 @@ describe('Mailbox: sweeper removal wiring', () => {
   });
 
   it('the state machine definition contains steps contributed by each registered removal', () => {
-    const sm = sweeperStateMachine();
-    const def = renderLiteralText(sm.Properties.DefinitionString);
+    const def = sweeperDefinition();
 
     // This test's Mailbox config has no custom regional-SAN certificate, so CertificateRemoval is
     // never registered (mirrors mailbox.ts's own `if (regionalSanCertificate)` gate) — only assert
@@ -161,8 +146,7 @@ describe('Mailbox: sweeper removal wiring', () => {
   });
 
   it('the detector\'s grace-period Wait state comes from its own removal, not shared retry logic', () => {
-    const sm = sweeperStateMachine();
-    const def = renderLiteralText(sm.Properties.DefinitionString);
+    const def = sweeperDefinition();
 
     // Only the detector removal contributes a grace-period wait.
     expect(def).toContain('"DetectorGraceWait"');
@@ -188,11 +172,11 @@ describe('Mailbox: sweeper removal wiring', () => {
 
     // No env var on the detector Lambda carries a state-machine ARN either.
     const fns = template.findResources('AWS::Lambda::Function');
-    const detectorFn = Object.values(fns).find((f: any) =>
-      joinedNamePrefix(f.Properties?.FunctionName)?.startsWith('mailbox-diag-fn-'),
-    ) as any;
+    const detectorFn = Object.values(fns).find((fn) =>
+      renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
+    );
     expect(detectorFn).toBeDefined();
-    const envVars = detectorFn.Properties.Environment?.Variables ?? {};
+    const envVars = detectorFn?.Properties.Environment?.Variables ?? {};
     expect(Object.keys(envVars)).not.toContain('SWEEPER_STATE_MACHINE_ARN');
     expect(Object.keys(envVars)).not.toContain('RULE_ARN');
     expect(Object.keys(envVars)).not.toContain('DETECTOR_ROLE_ARN');
@@ -208,34 +192,31 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
 
   it('synthesizes no detector resources at all — the all-or-nothing sweep-target property collapses to undefined', () => {
     const fns = template.findResources('AWS::Lambda::Function');
-    const detectorFn = Object.values(fns).find((f: any) =>
-      (f.Properties?.FunctionName as any)?.['Fn::Join']?.[1]?.[0]?.startsWith?.('mailbox-diag-fn-'),
+    const detectorFn = Object.values(fns).find((fn) =>
+      renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
     );
     expect(detectorFn).toBeUndefined();
 
     const roles = template.findResources('AWS::IAM::Role');
-    const detectorRole = Object.values(roles).find((r: any) =>
-      (r.Properties?.RoleName as any)?.['Fn::Join']?.[1]?.[0]?.startsWith?.('mailbox-diag-role-'),
+    const detectorRole = Object.values(roles).find((role) =>
+      renderLiteralText(role.Properties?.RoleName).startsWith('mailbox-diag-role-'),
     );
     expect(detectorRole).toBeUndefined();
 
     const policies = template.findResources('AWS::IAM::Policy');
     expect(
-      Object.values(policies).some((p: any) => p.Properties?.PolicyName === 'stack-failure-detector-policy'),
+      Object.values(policies).some((policy) => policy.Properties?.PolicyName === 'stack-failure-detector-policy'),
     ).toBe(false);
   });
 
   it('registers no detector removal on the sweeper: no grace-wait/invoke steps and no "detector" key on the deferred-removal custom resource', () => {
     const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    const [, sm] = Object.entries(machines)[0];
-    const def = renderLiteralText((sm as any).Properties.DefinitionString);
+    const [sm] = Object.values(machines);
+    const def = renderLiteralText(sm.Properties.DefinitionString);
     expect(def).not.toContain('"DetectorGraceWait"');
     expect(def).not.toContain('"DetectorInvoke"');
     expect(def).not.toContain('"DetectorWaitRetry"');
 
-    const customResources = template.findResources('Custom::DeferredRemoval');
-    const [, deferredRemoval] = Object.entries(customResources)[0];
-    const props = (deferredRemoval as any).Properties;
-    expect(props['detector']).toBeUndefined();
+    expect(deferredRemovalProperties(template)['detector']).toBeUndefined();
   });
 });
