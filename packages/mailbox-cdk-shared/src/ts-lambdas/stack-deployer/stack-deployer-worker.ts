@@ -9,11 +9,9 @@ import { StackStatus } from './stack-status';
 import { WorkerResult, type RetryCounts } from './worker-result';
 
 // Polling stops so the worker answers CloudFormation before the 60 minute service timeout of the custom
-// resource; at a check interval of 20 seconds, 135 attempts take about 45 minutes.
+// resource, on every path including the retries of a DELETE_FAILED stack. The check at attempt N follows
+// N + 1 waits of 20 seconds, so the last check runs about 45 minutes in.
 const MAX_POLL_ATTEMPTS = 135;
-
-// At a check interval of 20 seconds, 180 retries of a DELETE_FAILED stack take about 60 minutes.
-const MAX_DELETE_RETRIES = 180;
 
 const MAX_KMS_CREATE_RETRIES = 3;
 
@@ -117,8 +115,9 @@ export class StackDeployerWorker {
 
     const status = new StackStatus(stack.StackStatus);
 
-    if (status.isDeleteFailed()) {
-      return this.retryDeletion(op, stack, retries);
+    // Once the attempts run out a DELETE_FAILED stack falls through to the terminal-failure answer below.
+    if (status.isDeleteFailed() && attempt < MAX_POLL_ATTEMPTS) {
+      return this.retryDeletion(op, stack, retries, attempt);
     }
 
     if (status.isTerminalFailure()) {
@@ -143,10 +142,11 @@ export class StackDeployerWorker {
     return WorkerResult.pollAgain(retries);
   }
 
-  private async retryDeletion(op: OperationInput, stack: Stack, retries: RetryCounts): Promise<WorkerResult> {
+  private async retryDeletion(op: OperationInput, stack: Stack, retries: RetryCounts, attempt: number): Promise<WorkerResult> {
     this.logger.info('Stack delete failed (DELETE_FAILED); retrying delete', {
       deleteRetryCount: retries.deleteRetryCount,
-      maxDeleteRetries: MAX_DELETE_RETRIES,
+      attempt,
+      MAX_POLL_ATTEMPTS,
       reason: stack.StackStatusReason ?? 'unknown',
     });
     try {

@@ -408,6 +408,33 @@ describe('StackDeployerWorker', () => {
       expect(endpoint.answers()).toEqual([]);
     });
 
+    it('answers SUCCESS with the status reason at the 135th attempt instead of deleting again when the stack is still DELETE_FAILED', async () => {
+      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('DELETE_FAILED', { StackStatusReason: 'replica cleanup pending' })] });
+
+      const result = await check({ attempt: 135, deleteRetryCount: 134 });
+
+      expect(result).toEqual({ done: true, deleteRetryCount: 134, createRetryCount: 0 });
+      expect(cfn.commandCalls(DeleteStackCommand)).toHaveLength(0);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: 'replica cleanup pending' })]);
+    });
+
+    it('answers CloudFormation once, within the poll cap, when the stack never leaves DELETE_FAILED', async () => {
+      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('DELETE_FAILED')] });
+
+      // Drives the worker the way the workflow does: one check per attempt, the attempt counted after each.
+      let attempt = 0;
+      let result = await check({ attempt });
+      while (!result.done) {
+        attempt += 1;
+        expect(attempt).toBeLessThanOrEqual(135);
+        result = await check({ attempt, deleteRetryCount: result.deleteRetryCount });
+      }
+
+      expect(attempt).toBe(135);
+      expect(cfn.commandCalls(DeleteStackCommand)).toHaveLength(135);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS' })]);
+    });
+
     it('answers SUCCESS with the status reason and the recent events when the delete ended in a failed state', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { StackStatusReason: 'Delete rolled back' })] });
       cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [failedEvent('Bucket not empty')] });
