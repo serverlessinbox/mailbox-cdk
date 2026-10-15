@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
-import { HttpApi, HttpMethod, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpApi, HttpMethod, HttpRoute, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
@@ -11,6 +11,26 @@ import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH = '/oauth/register';
+const REGISTRATION_ROUTE_KEY = `POST ${REGISTRATION_PATH}`;
+
+const OPENID_CONFIGURATION_PATH = '/.well-known/openid-configuration';
+const OPENID_CONFIGURATION_ROUTE_KEY = `GET ${OPENID_CONFIGURATION_PATH}`;
+
+/**
+ * The throttling of one route, in the form CloudFormation reads. The keys are PascalCase because the L1 `CfnStage`
+ * passes `routeSettings` through unmapped: camelCase keys fail the deploy with `Unrecognized field
+ * "throttlingBurstLimit" ... not marked as ignorable`.
+ */
+interface RouteThrottle {
+  readonly ThrottlingBurstLimit: number;
+  readonly ThrottlingRateLimit: number;
+}
+
+/** The throttling of each route of a stage, by route key. A value is a token when the route is gated on a condition. */
+type RouteSettings = Record<string, RouteThrottle | cdk.IResolvable>;
+
+const DISCOVERY_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 };
+const REGISTRATION_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 };
 
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
@@ -51,7 +71,6 @@ export interface JmapOAuthAddonProps {
  * with-`registration_endpoint` and without-`registration_endpoint` variant of the same document,
  * keyed off the same condition. When DCR is fully disabled, the body is the plain
  * without-`registration_endpoint` document — no `Fn::If`.
- * RFC 9728 oauth-protected-resource is now owned and served by jmap-api core (not this addon).
  */
 export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   private readonly bucket: IBucket;
@@ -62,28 +81,15 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     super(scope, id);
 
     const mode = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
+    this.requireValidMode(mode);
 
-    // A literal typo (or an invalid string cast through the enum) must fail loudly at synth; an
-    // unresolved CFN-parameter token must pass through untouched (its value is only known at
-    // deploy time).
-    if (!cdk.Token.isUnresolved(mode) && !Object.values(DynamicClientRegistrationMode).includes(mode)) {
-      throw new Error(`dynamicClientRegistration must be 'enabled' or 'disabled', got '${mode}'`);
-    }
-
-    // A literal DISABLED is the only value that turns DCR fully off at synth — a token string
-    // never literally equals 'disabled', so both ENABLED and any token fall into the gated path.
-    const dcrFullyDisabled = mode === DynamicClientRegistrationMode.DISABLED;
-
-    if (!dcrFullyDisabled) {
-      // Drives both the gated DCR subtree (Lambda/role/policy/route/integration/permission) and
-      // the discovery document's registration_endpoint field. A literal or a CFN-parameter token
-      // is resolved here, once, via a CfnCondition — see GateOnConditionAspect above.
+    // Only a literal DISABLED turns DCR off at synth: a token never equals 'disabled', so ENABLED and any token take the gated path.
+    if (mode !== DynamicClientRegistrationMode.DISABLED) {
       this.registrationEnabled = new cdk.CfnCondition(this, 'IsDcrEnabled', {
         expression: cdk.Fn.conditionEquals(mode, DynamicClientRegistrationMode.ENABLED),
       });
 
-      // Constructed unconditionally: the DCR Lambda must exist in the template for the condition
-      // to gate it. Its whole subtree (function, role, inline policy, log group) is gated below.
+      // Constructed unconditionally: the Lambda must exist in the template for the condition to gate it.
       this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
         artifactResolver: props.artifactResolver,
         identityProvisioner: props.identityProvisioner,
@@ -93,13 +99,46 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       cdk.Aspects.of(this.dcrLambda).add(new GateOnConditionAspect(this.registrationEnabled));
     }
 
-    // Use the shared public-static-assets bucket (singleton, centrally managed)
-    const bucket = PublicStaticAssetsBucket.getOrCreate(this, props.artifactResolver);
+    this.bucket = PublicStaticAssetsBucket.getOrCreate(this, props.artifactResolver);
 
-    // Build the openid-configuration document as synth-time JSON. A single builder keeps the
-    // document's shape defined exactly once; only the presence of registration_endpoint varies
-    // between the two branches selected by Fn::If below.
-    const buildOpenidConfigurationDoc = (withRegistration: boolean) => ({
+    // A serialized body cannot take a conditional key, so a gated document is two complete bodies selected by Fn::If.
+    const openidConfigurationBody = this.registrationEnabled
+      ? cdk.Fn.conditionIf(
+          this.registrationEnabled.logicalId,
+          this.openidConfigurationBody(props, true),
+          this.openidConfigurationBody(props, false),
+        ).toString()
+      : this.openidConfigurationBody(props, false);
+
+    StaticContentDeployer.getOrCreate(this, props.artifactResolver).deploy(this, 'openid-config', {
+      targetBucket: this.bucket,
+      source: StaticContentSource.data(
+        '.well-known/openid-configuration',
+        openidConfigurationBody,
+        { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
+      ),
+    });
+  }
+
+  public addRoutes(api: HttpApi): void {
+    const stage = this.defaultStageOf(api);
+    const existingSettings: RouteSettings = { ...stage.routeSettings };
+
+    const discoverySettings = this.addDiscoveryRoute(api, stage);
+    const registrationSettings = this.addRegistrationRoute(api, stage);
+
+    stage.routeSettings = { ...existingSettings, ...discoverySettings, ...registrationSettings };
+  }
+
+  // A literal that is not a mode fails at synth; an unresolved CFN-parameter token passes, as its value is known only at deploy time.
+  private requireValidMode(mode: DynamicClientRegistrationMode): void {
+    if (!cdk.Token.isUnresolved(mode) && !Object.values(DynamicClientRegistrationMode).includes(mode)) {
+      throw new Error(`dynamicClientRegistration must be 'enabled' or 'disabled', got '${mode}'`);
+    }
+  }
+
+  private openidConfigurationBody(props: JmapOAuthAddonProps, withRegistration: boolean): string {
+    return JSON.stringify({
       issuer: props.pool.issuer,
       authorization_endpoint: props.pool.authorizationEndpoint,
       token_endpoint: props.pool.tokenEndpoint,
@@ -119,100 +158,61 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       request_parameter_supported: false,
       request_uri_parameter_supported: false,
     });
-
-    // When DCR is gated (enabled literal or token): two complete serialized bodies (built from the
-    // one shape above), selected at deploy time by the same condition that gates the DCR
-    // resources — a single JSON key can't be conditionally inserted into an already-serialized
-    // body, so the whole body is Fn::If-selected instead. When DCR is fully disabled at synth, skip
-    // the conditional machinery entirely and emit the plain without-registration document.
-    const openidConfigurationDocBody = this.registrationEnabled
-      ? cdk.Fn.conditionIf(
-          this.registrationEnabled.logicalId,
-          JSON.stringify(buildOpenidConfigurationDoc(true)),
-          JSON.stringify(buildOpenidConfigurationDoc(false)),
-        ).toString()
-      : JSON.stringify(buildOpenidConfigurationDoc(false));
-
-    // Deploy openid-configuration document to the shared bucket using StaticContentDeployer
-    const deployer = StaticContentDeployer.getOrCreate(this, props.artifactResolver);
-
-    deployer.deploy(this, 'openid-config', {
-      targetBucket: bucket,
-      source: StaticContentSource.data(
-        '.well-known/openid-configuration',
-        openidConfigurationDocBody,
-        { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
-      ),
-    });
-
-    // Store for use in addRoutes
-    this.bucket = bucket;
   }
 
-  addRoutes(api: HttpApi): void {
-    // Static route for openid-configuration — direct S3 proxy, zero Lambda invocation
-    const openidIntegration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}/.well-known/openid-configuration`);
-
-    const openidRoutes = api.addRoutes({
-      path: '/.well-known/openid-configuration',
+  /** Mounts the discovery document as a direct S3 proxy, with no Lambda invocation. */
+  private addDiscoveryRoute(api: HttpApi, stage: CfnStage): RouteSettings {
+    const integration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}${OPENID_CONFIGURATION_PATH}`);
+    const routes = api.addRoutes({
+      path: OPENID_CONFIGURATION_PATH,
       methods: [HttpMethod.GET],
-      integration: openidIntegration,
+      integration,
     });
+    routes.forEach((route) => this.makeStageDependOn(stage, route));
 
-    // Apply per-route throttling via the L1 CfnStage (merge with any existing settings)
-    const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
+    return { [OPENID_CONFIGURATION_ROUTE_KEY]: DISCOVERY_THROTTLE };
+  }
 
-    // A RouteSettings entry is rejected by API Gateway unless the route it keys already exists, and
-    // CloudFormation will otherwise update the Stage before creating the Route:
-    //   "Unable to find Route by key POST /oauth/register within the provided RouteSettings"
-    // So every route named in routeSettings below must be an explicit CFN dependency of the Stage.
-    const dependOnRoute = (route: { node: { defaultChild: unknown } }): void => {
-      cfnStage.addDependency(route.node.defaultChild as cdk.CfnResource);
-    };
-    openidRoutes.forEach(dependOnRoute);
-    const existingSettings = cfnStage.routeSettings as Record<string, any> || {};
-    const routeSettings: Record<string, any> = { ...existingSettings };
-
-    // Keys MUST be PascalCase. This map is assigned straight onto the L1 CfnStage, which passes it
-    // through unmapped, so CloudFormation sees exactly what is written here. camelCase fails the
-    // deploy with `Unrecognized field "throttlingBurstLimit" ... not marked as ignorable`.
-    // Do not "correct" these to camelCase to match CDK's TS property style.
-
-    // GET well-known route: generous burst/rate (cached, cheap operation)
-    routeSettings['GET /.well-known/openid-configuration'] = {
-      ThrottlingBurstLimit: 20,
-      ThrottlingRateLimit: 10,
-    };
-
-    // POST /oauth/register — only mounted at all when DCR isn't fully disabled at synth (literal
-    // 'disabled' means dcrLambda/registrationEnabled are both undefined and this block is skipped
-    // entirely, producing a clean template with no dead conditional machinery). When mounted
-    // (enabled literal or token), no authorizer — unauthenticated bootstrap endpoint (RFC 7591).
-    // CfnRoute, CfnIntegration and the apigateway invoke CfnPermission are all synthesized as
-    // children of the HttpRoute construct returned by addRoutes() (verified against aws-cdk-lib's
-    // HttpRoute/HttpRouteIntegration/HttpLambdaIntegration sources), so gating that construct's
-    // subtree gates all three.
-    if (this.dcrLambda && this.registrationEnabled) {
-      const registrationEnabled = this.registrationEnabled;
-      const dcrIntegration = new HttpLambdaIntegration('dcr-integration', this.dcrLambda);
-      const dcrRoutes = api.addRoutes({
-        path: REGISTRATION_PATH,
-        methods: [HttpMethod.POST],
-        integration: dcrIntegration,
-      });
-      dcrRoutes.forEach((route) => cdk.Aspects.of(route).add(new GateOnConditionAspect(registrationEnabled)));
-      dcrRoutes.forEach(dependOnRoute);
-
-      // RouteSettings is a property map on the always-present CfnStage, not a separate resource,
-      // so it can't carry its own Condition — omit the entry entirely when disabled via Fn::If +
-      // NoValue.
-      routeSettings[`POST ${REGISTRATION_PATH}`] = cdk.Fn.conditionIf(
-        registrationEnabled.logicalId,
-        { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 },
-        cdk.Aws.NO_VALUE,
-      );
+  /**
+   * Mounts the registration route, unauthenticated as RFC 7591 bootstrap requires, when DCR is not off at synth.
+   * The route's `CfnRoute`, `CfnIntegration` and invoke `CfnPermission` are all children of the `HttpRoute`, so
+   * gating the route gates all three. Route settings are a property of the always-present stage and cannot carry
+   * a `Condition`, so the entry is selected with `Fn::If` and `NoValue`.
+   */
+  private addRegistrationRoute(api: HttpApi, stage: CfnStage): RouteSettings {
+    if (!this.dcrLambda || !this.registrationEnabled) {
+      return {};
     }
 
-    cfnStage.routeSettings = routeSettings;
+    const registrationEnabled = this.registrationEnabled;
+    const routes = api.addRoutes({
+      path: REGISTRATION_PATH,
+      methods: [HttpMethod.POST],
+      integration: new HttpLambdaIntegration('dcr-integration', this.dcrLambda),
+    });
+    routes.forEach((route) => cdk.Aspects.of(route).add(new GateOnConditionAspect(registrationEnabled)));
+    routes.forEach((route) => this.makeStageDependOn(stage, route));
+
+    return {
+      [REGISTRATION_ROUTE_KEY]: cdk.Fn.conditionIf(registrationEnabled.logicalId, REGISTRATION_THROTTLE, cdk.Aws.NO_VALUE),
+    };
+  }
+
+  // API Gateway rejects a route setting whose route does not exist yet ("Unable to find Route by key POST /oauth/register
+  // within the provided RouteSettings"), and CloudFormation updates the stage before it creates the route unless the stage depends on it.
+  private makeStageDependOn(stage: CfnStage, route: HttpRoute): void {
+    const routeResource = route.node.defaultChild;
+    if (!(routeResource instanceof cdk.CfnResource)) {
+      throw new Error(`The route ${route.node.path} has no CloudFormation resource for the stage to depend on`);
+    }
+    stage.addDependency(routeResource);
+  }
+
+  private defaultStageOf(api: HttpApi): CfnStage {
+    const stage = api.defaultStage?.node.defaultChild;
+    if (!(stage instanceof CfnStage)) {
+      throw new Error('The HTTP API has no default stage to carry the route settings');
+    }
+    return stage;
   }
 }

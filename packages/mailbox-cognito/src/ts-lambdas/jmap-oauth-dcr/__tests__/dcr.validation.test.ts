@@ -1,5 +1,11 @@
 /// <reference types="jest" />
 
+/**
+ * Pins which registration requests are accepted. RFC 7591 §2 requires an authorization server to ignore metadata
+ * it does not understand, so an extension field must not reject a request; and a request without a redirect URI
+ * would register a public client that cannot complete the authorization code flow.
+ */
+
 import { isClientRegistrationRequest } from '../dcr.validation';
 
 describe('isClientRegistrationRequest', () => {
@@ -30,6 +36,13 @@ describe('isClientRegistrationRequest', () => {
 
   it('rejects a request where redirect_uris is not an array of strings', () => {
     expect(isClientRegistrationRequest({ redirect_uris: [123] })).toBe(false);
+  });
+
+  it('rejects a request whose accepted metadata field has the wrong type, naming the field', () => {
+    const errors: string[] = [];
+
+    expect(isClientRegistrationRequest({ redirect_uris: ['http://127.0.0.1/cb'], token_endpoint_auth_method: 42 }, { errors })).toBe(false);
+    expect(errors.join('; ')).toContain('.token_endpoint_auth_method');
   });
 
   it('ignores an unrecognized extension field rather than rejecting (RFC 7591 §2)', () => {
