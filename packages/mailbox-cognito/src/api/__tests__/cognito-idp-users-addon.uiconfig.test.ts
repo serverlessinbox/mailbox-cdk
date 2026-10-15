@@ -8,7 +8,7 @@
  */
 
 import { App, Stack, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { CognitoIdpUsersAdminApiAddon } from '../api/cognito-idp-users-addon';
+import { CognitoIdpUsersAdminApiAddon } from '../cognito-idp-users-addon';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -110,6 +110,22 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       expect(config?.idp?.users?.basePath).toBe(customPath);
       // Verify provider config is preserved
       expect(config?.idp?.someProviderFeature).toBe('enabled');
+    });
+
+    it('should keep the top-level keys of the provider uiConfig and let the addon win where both define idp.users', () => {
+      const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-precedence', {
+        artifactResolver,
+        auditEventsQueue,
+        identityProvisioner: mockIdentityProvisioner,
+        pool: mockPoolConfig,
+        basePath: '/mine',
+        uiConfig: { branding: { name: 'Acme' }, idp: { users: { basePath: '/theirs', provider: 'other' } } },
+      });
+
+      expect(addon.uiConfig).toEqual({
+        branding: { name: 'Acme' },
+        idp: { users: { provider: 'cognito', basePath: '/mine', features: { setPassword: true } } },
+      });
     });
   });
 });

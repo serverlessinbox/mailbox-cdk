@@ -9,51 +9,87 @@ import { IAdminApiAddon, type IAuditEventsQueue, type IIdentityProvisioner } fro
 import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
+/**
+ * The Cognito groups that mark admins and regular users for the users API. Pass the names of the groups you
+ * created in your user pool for these two roles; names are compared case-insensitively.
+ */
 export interface CognitoIdpUsersAuthorizationConfig {
+  /**
+   * The names of the Cognito groups whose members are admins. A user created through the API into one of these
+   * groups is flagged as an admin when its mailbox is provisioned, so an empty list creates no admins.
+   */
   readonly adminGroups: string[];
+
+  /**
+   * The names of the Cognito groups whose members are regular users. The API reads them to decide which
+   * callers carry the user role.
+   */
   readonly userGroups: string[];
 }
 
+/**
+ * What the users API needs from a Cognito user pool: which pool it is, the permission to administer the users
+ * in it, and optionally which groups mark admins and users.
+ */
 export interface ICognitoIdpUsersPoolConfig {
+  /** The id of the user pool whose users the API lists, creates, enables, disables and deletes. */
   readonly userPoolId: string;
+
+  /**
+   * Grants the users API Lambda the permissions to administer users in this pool. It is called once, with the
+   * Lambda; without the grant the Lambda's calls to Cognito are denied.
+   */
   grantAdminAccess(fn: IFunction): void;
+
+  /**
+   * Returns the groups that mark admins and users. Leave it out when your pool defines no such groups: the API
+   * is then configured with no group names.
+   */
   fetchAuthorizationConfig?(): CognitoIdpUsersAuthorizationConfig;
 }
 
+/** What `CognitoIdpUsersAdminApiAddon` needs to mount the users API and create the Lambda behind it. */
 export interface CognitoIdpUsersAdminApiAddonProps {
-  /** Artifact resolver — provided by MailboxUserPool, not created independently. */
+  /** Resolves the code artifact of the users API Lambda. */
   readonly artifactResolver: IArtifactResolver;
 
-  /** Audit events queue used by the existing audit-writer lambda. */
+  /** The queue the users API Lambda sends its audit events to. */
   readonly auditEventsQueue: IAuditEventsQueue;
 
-  /** Handle to the shared `identity-provisioner` Lambda, threaded through to the addon's own
-   *  Lambda so it can pre-provision a mailbox principal at user-creation time. */
+  /** The `identity-provisioner` Lambda the users API Lambda invokes to pre-provision a mailbox principal when it creates a user. */
   readonly identityProvisioner: IIdentityProvisioner;
 
-  /** Cognito pool integration (used for pool id + granting permissions). */
+  /** The user pool to manage: its id and the grant of administrative access to the Lambda. */
   readonly pool: ICognitoIdpUsersPoolConfig;
 
-  /** Optional base path; defaults to `/idp-users`. */
+  /** The path the API is mounted under; defaults to `/idp-users`. */
   readonly basePath?: string;
 
-  /** Optional UI config to be merged into admin-ui config.json. */
+  /** UI config merged into the admin UI config; the `idp.users` fragment of this addon takes precedence. */
   readonly uiConfig?: Record<string, unknown>;
 }
+
+/** The `idp.users` fragment of the admin UI config: where the users API is mounted and what it supports. */
+type IdpUsersUiConfig = {
+  readonly idp: {
+    readonly users: {
+      readonly provider: 'cognito';
+      readonly basePath: string;
+      readonly features: { readonly setPassword: boolean };
+    };
+  };
+};
+
+const DEFAULT_BASE_PATH = '/idp-users';
 
 /**
  * Mounts a Cognito-specific IdP user management API under the main Admin API.
  *
- * Routes: `${basePath}/{proxy+}` (ANY)
- *
- * The actual handler logic lives in a provider-owned Lambda (TypeScript/Node.js, artifact-based).
+ * Routes: `${basePath}/{proxy+}` (POST)
  */
 export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApiAddon {
   public readonly basePath: string;
   public uiConfig?: Record<string, unknown>;
-
-  /** @internal */
-  private readonly lambdaConstruct: CognitoIdpUsersApiLambda;
 
   /** The underlying Lambda function. */
   public readonly lambdaFunction: IFunction;
@@ -61,55 +97,38 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
   constructor(scope: Construct, id: string, props: CognitoIdpUsersAdminApiAddonProps) {
     super(scope, id);
 
-    this.basePath = props.basePath ?? '/idp-users';
-    // Build this addon's derived users config with the actual basePath it resolved
-    const derivedUsersConfig = {
-      idp: {
-        users: {
-          provider: 'cognito' as const,
-          basePath: this.basePath,
-          features: {
-            setPassword: true,
-          },
-        },
-      },
-    };
+    this.basePath = props.basePath ?? DEFAULT_BASE_PATH;
+    this.uiConfig = this.mergeUiConfig(props.uiConfig);
 
-    // Deep-merge with the provided uiConfig (if any), giving this addon's users fragment priority
-    if (props.uiConfig) {
-      // Merge at the idp level: preserve any top-level keys from props.uiConfig,
-      // and merge its idp config with our derived users config
-      const providerIdpConfig = (props.uiConfig.idp as Record<string, unknown>) ?? {};
-      this.uiConfig = {
-        ...props.uiConfig,
-        idp: {
-          ...providerIdpConfig,
-          ...derivedUsersConfig.idp,
-        },
-      };
-    } else {
-      this.uiConfig = derivedUsersConfig;
-    }
-
-    const authz = props.pool.fetchAuthorizationConfig?.();
-    this.lambdaConstruct = new CognitoIdpUsersApiLambda(this, 'idp-users', {
+    const authorization = props.pool.fetchAuthorizationConfig?.();
+    this.lambdaFunction = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
       auditEventsQueue: props.auditEventsQueue,
       identityProvisioner: props.identityProvisioner,
       pool: props.pool,
-      adminGroups: authz ? JSON.stringify(authz.adminGroups ?? []) : undefined,
-      userGroups: authz ? JSON.stringify(authz.userGroups ?? []) : undefined,
+      adminGroups: authorization ? (authorization.adminGroups ?? []) : undefined,
+      userGroups: authorization ? (authorization.userGroups ?? []) : undefined,
     });
-    this.lambdaFunction = this.lambdaConstruct;
   }
 
-  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
+  public addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
       path: `${this.basePath}/{proxy+}`,
       methods: [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('cognito-idp-users', this.lambdaConstruct),
+      integration: new HttpLambdaIntegration('cognito-idp-users', this.lambdaFunction),
       authorizer,
     });
+  }
+
+  /** The `idp.users` fragment of this addon wins over the same keys of `providerUiConfig`, which is otherwise kept as given. */
+  private mergeUiConfig(providerUiConfig: Record<string, unknown> | undefined): IdpUsersUiConfig | Record<string, unknown> {
+    const usersUiConfig: IdpUsersUiConfig = {
+      idp: { users: { provider: 'cognito', basePath: this.basePath, features: { setPassword: true } } },
+    };
+    if (!providerUiConfig) {
+      return usersUiConfig;
+    }
+    return { ...providerUiConfig, idp: Object.assign({}, providerUiConfig.idp, usersUiConfig.idp) };
   }
 }

@@ -1,0 +1,93 @@
+/// <reference types="jest" />
+
+/**
+ * Pins what the IdP users addon gives the admin API and its Lambda: the route behind the authorizer, and the
+ * groups of the user pool handed to the Lambda. The route decides what the API exposes and under which path, and
+ * the groups decide how the Lambda reads the roles of a caller. The UI config the addon publishes is tested beside it.
+ */
+
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
+import { CognitoIdpUsersAdminApiAddon, type CognitoIdpUsersAuthorizationConfig, type ICognitoIdpUsersPoolConfig } from '../cognito-idp-users-addon';
+
+const USER_POOL_ID = 'us-west-2_abcdefgh';
+
+describe('CognitoIdpUsersAdminApiAddon', () => {
+  const auditEventsQueue: IAuditEventsQueue = {
+    queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+    queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
+    grantSend: () => {},
+  };
+  const identityProvisioner: IIdentityProvisioner = {
+    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionName: 'identity-provisioner',
+    grantInvoke: () => {},
+  };
+
+  function synthesize(options: { authorization?: CognitoIdpUsersAuthorizationConfig; basePath?: string }): Template {
+    const stack = new Stack(new App(), 'TestStack', {
+      env: { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const artifactResolver = new PinnedArtifactResolver({
+      packages: { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
+    const pool: ICognitoIdpUsersPoolConfig = {
+      userPoolId: USER_POOL_ID,
+      grantAdminAccess: () => {},
+      ...(options.authorization ? { fetchAuthorizationConfig: () => options.authorization! } : {}),
+    };
+
+    const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon', { artifactResolver, auditEventsQueue, identityProvisioner, pool, basePath: options.basePath });
+
+    const authorizerFunction = new LambdaFunction(stack, 'authorizer-stub', {
+      runtime: Runtime.NODEJS_24_X,
+      handler: 'index.handler',
+      code: Code.fromInline('exports.handler = async () => {};'),
+    });
+    addon.addRoutes(new HttpApi(stack, 'api'), new HttpLambdaAuthorizer('authorizer', authorizerFunction, { responseTypes: [HttpLambdaResponseType.SIMPLE] }));
+    return Template.fromStack(stack);
+  }
+
+  function environmentOfUsersApiLambda(template: Template): Record<string, unknown> {
+    const [usersApiLambda] = Object.values(
+      template.findResources('AWS::Lambda::Function', { Properties: { Environment: { Variables: { USER_POOL_ID: USER_POOL_ID } } } }),
+    );
+    return usersApiLambda.Properties.Environment.Variables;
+  }
+
+  it('hands the Lambda the groups of the user pool as JSON arrays', () => {
+    const template = synthesize({ authorization: { adminGroups: ['admin'], userGroups: ['user', 'viewer'] } });
+
+    expect(environmentOfUsersApiLambda(template)).toMatchObject({ ADMIN_GROUPS: '["admin"]', USER_GROUPS: '["user","viewer"]' });
+  });
+
+  it('hands the Lambda no group variables when the user pool offers no authorization config', () => {
+    const environment = environmentOfUsersApiLambda(synthesize({}));
+
+    expect(environment).not.toHaveProperty('ADMIN_GROUPS');
+    expect(environment).not.toHaveProperty('USER_GROUPS');
+  });
+
+  it.each([
+    { basePath: undefined, routeKey: 'POST /idp-users/{proxy+}' },
+    { basePath: '/custom/idp-api/v2', routeKey: 'POST /custom/idp-api/v2/{proxy+}' },
+  ])('routes $routeKey through the authorizer to the Lambda', ({ basePath, routeKey }) => {
+    const template = synthesize({ basePath });
+
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
+      RouteKey: routeKey,
+      AuthorizationType: 'CUSTOM',
+      AuthorizerId: Match.anyValue(),
+      Target: Match.anyValue(),
+    });
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 1);
+  });
+});

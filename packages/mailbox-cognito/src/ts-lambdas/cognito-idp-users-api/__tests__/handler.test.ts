@@ -1,59 +1,62 @@
 /// <reference types="jest" />
 
 /**
- * Smoke test for cognito-idp-users-api handler.
+ * Pins the entry wiring of the IdP users API Lambda: an incomplete environment stops the cold start, the health
+ * probe reflects the environment it is asked in, and a real event reaches the admin API. Without the first, the
+ * Lambda starts and fails every request; without the second, the auto-updater would keep code that cannot run.
  *
- * Environment variables are validated at module load time, so they must be set
- * before importing the handler. This test suite sets the required vars before import.
+ * The environment is read when the handler module loads, so it is set before the module is imported.
  */
 
-// Set up environment variables before importing the handler
-process.env.USER_POOL_ID = 'pool-1';
-process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
-process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
-process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
-process.env.USER_GROUPS = JSON.stringify(['user']);
+const MANDATORY_VARIABLES = ['USER_POOL_ID', 'AUDIT_EVENTS_QUEUE_URL', 'IDENTITY_PROVISIONER_FUNCTION_NAME'];
 
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import { mockClient } from 'aws-sdk-client-mock';
-import { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { handler } from '../index';
+function setValidEnvironment(): void {
+  process.env.USER_POOL_ID = 'pool-1';
+  process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
+  process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
+  process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
+  process.env.USER_GROUPS = JSON.stringify(['user']);
+}
 
-describe('CognitoIdpUsersApi handler — smoke test wrapper', () => {
-  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+setValidEnvironment();
 
-  beforeEach(() => {
-    cognitoMock.reset();
+import type { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { handler } from '../handler';
+
+describe('IdP users API handler', () => {
+  afterEach(() => {
+    setValidEnvironment();
   });
 
-  it('responds to smoke test probe without invoking the real handler', async () => {
-    const probeEvent: SmokeTestProbe = { serverlessInboxSmokeTest: true };
-    const result = await handler(probeEvent);
+  it('answers a health probe as healthy when the environment is complete', async () => {
+    const probe: SmokeTestProbe = { serverlessInboxSmokeTest: true };
 
-    expect(result).toEqual({ serverlessInboxSmokeTestOk: true });
+    expect(await handler(probe)).toEqual({ serverlessInboxSmokeTestOk: true });
   });
 
-  it('invalid LOG_LEVEL fails the cold start: importing index throws naming LOG_LEVEL', async () => {
-    // index.ts calls env.mustLoad(load) at module scope, which throws at import time
-    // if LOG_LEVEL is not one of the valid log levels ('debug', 'info', 'warn', 'error').
-    const savedEnv = { ...process.env };
+  it('answers a health probe as unhealthy when a variable of the environment is gone', async () => {
+    delete process.env.USER_POOL_ID;
+    const probe: SmokeTestProbe = { serverlessInboxSmokeTest: true };
 
+    expect(await handler(probe)).toEqual({ serverlessInboxSmokeTestOk: false });
+  });
+
+  it('hands a real event to the admin API', async () => {
+    const result = await handler({ requestContext: { http: { method: 'GET' } } });
+
+    expect(result).toMatchObject({ statusCode: 405 });
+  });
+
+  it.each(MANDATORY_VARIABLES)('stops the cold start, naming %s, when it is missing', (variable) => {
+    const saved = { ...process.env };
     try {
       jest.isolateModules(() => {
-        process.env.USER_POOL_ID = 'pool-1';
-        process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
-        process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
-        process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
-        process.env.USER_GROUPS = JSON.stringify(['user']);
-        process.env.LOG_LEVEL = 'verbose'; // Invalid log level
+        delete process.env[variable];
 
-        // Require-based import for ESM/CJS compatibility
-        expect(() => {
-          require('../index');
-        }).toThrow(/LOG_LEVEL/);
+        expect(() => require('../handler')).toThrow(variable);
       });
     } finally {
-      process.env = savedEnv;
+      process.env = saved;
     }
   });
 });
