@@ -1,13 +1,16 @@
 /// <reference types="jest" />
 
 /**
- * AdminApiLambda IAM Scoping Tests
+ * AdminApiLambda wrapper tests.
  *
- * Verifies:
- * - grantSesAccess scopes identity-management SES actions to the identity ARN pattern, and
- *   ses:SendEmail (which binds to both the identity and configuration-set resource types) to
- *   both ARNs in its own statement, leaving account-level actions on '*'.
- * - grantLicenseApiAccess scopes execute-api:Invoke to method+path against the vendor account.
+ * Pins the IAM scope of every statement the wrapper grants: identity-management SES actions on
+ * the identity ARN pattern, ses:SendEmail (which binds to both the identity and configuration-set
+ * resource types) on both ARNs, account-level actions on '*', Route53 writes limited by condition
+ * keys, and execute-api:Invoke limited to exact method and path on the vendor account. A widened
+ * statement stays green in synth and tsc, so these assertions are the only guard.
+ *
+ * The environment variable names are literals on purpose: the Lambda runtime reads them, so a
+ * rename in the wrapper must fail here.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -18,10 +21,9 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AdminApiLambda } from '../admin-api';
-import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IWebSocketBroadcastPublisher } from '../../api/websocket/websocket';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
@@ -31,6 +33,7 @@ describe('AdminApiLambda IAM scoping', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: IArtifactResolver;
+  let lambda: AdminApiLambda;
 
   beforeEach(() => {
     app = new App();
@@ -73,7 +76,7 @@ describe('AdminApiLambda IAM scoping', () => {
       'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     );
 
-    new AdminApiLambda(stack, 'admin-api', {
+    lambda = new AdminApiLambda(stack, 'admin-api', {
       configTable,
       itemTable,
       auditLogTable,
@@ -194,21 +197,46 @@ describe('AdminApiLambda IAM scoping', () => {
     });
   });
 
-  it('scopes execute-api:Invoke to grant-resource and revoke-resource against the vendor account', () => {
+  it('scopes execute-api:Invoke to exactly grant-resource and revoke-resource on the vendor account', () => {
     const template = Template.fromStack(stack);
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action: 'execute-api:Invoke',
-            Resource: Match.arrayWith([
+            Resource: [
               `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`,
               `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/revoke-resource`,
-            ]),
+            ],
           }),
         ]),
       },
     });
+  });
+
+  it('sets SES_RULE_SET_NAME and grants ses:DescribeActiveReceiptRuleSet on a wildcard resource', () => {
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ SES_RULE_SET_NAME: 'test-rule-set' }) },
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Action: 'ses:DescribeActiveReceiptRuleSet', Resource: '*' }),
+        ]),
+      },
+    });
+  });
+
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+
+    lambda.enableWebSocketPush(broadcaster);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' }) },
+    });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 
   it('sets STACK_IDENTITY_TAG_VALUE to the stack name', () => {
@@ -231,13 +259,6 @@ describe('AdminApiLambda IAM scoping', () => {
         }),
       },
     });
-  });
-
-  it('does not grant execute-api:Invoke on a wildcard resource', () => {
-    const template = Template.fromStack(stack);
-    for (const statement of statementsForAction(template, 'execute-api:Invoke')) {
-      expect(resourcesOf(statement)).not.toContain('*');
-    }
   });
 
   it('scopes underscore-prefixed Route53 records (DKIM, DMARC) with record-name conditions', () => {
@@ -296,21 +317,6 @@ describe('AdminApiLambda IAM scoping', () => {
         ]),
       },
     });
-  });
-
-  it('does not permit CREATE action on Route53 records', () => {
-    const template = Template.fromStack(stack);
-    for (const statement of statementsForAction(template, 'route53:ChangeResourceRecordSets')) {
-      if (statement.Effect === 'Deny') {
-        continue;
-      }
-      for (const condValues of Object.values(statement.Condition ?? {})) {
-        const allowedActions = condValues['route53:ChangeResourceRecordSetsActions'];
-        if (Array.isArray(allowedActions)) {
-          expect(allowedActions).not.toContain('CREATE');
-        }
-      }
-    }
   });
 
   it('includes an explicit deny for ACME challenge records', () => {

@@ -11,28 +11,33 @@ import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import type { IIdentityProvisioner } from './identity-provisioner';
 
 export interface AdminApiLambdaProps {
-  configTable: IDataTable;
-  itemTable: IDataTable;
-  auditLogTable: IDataTable;
-  changelogTable: IDataTable;
-  mailFeedbackTable: IDataTable;
-  blobStore: IDataBlobStore;
-  emailSubmissionQueue: IEmailSendingQueue;
-  auditEventsQueue: IAuditEventsQueue;
-  artifactResolver: IArtifactResolver;
-  identityProvisioner: IIdentityProvisioner;
-  /** Name of the SES receipt rule set. Required for setup-flow SES readiness checks. */
-  sesRuleSetName: string;
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly auditLogTable: IDataTable;
+  readonly changelogTable: IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly blobStore: IDataBlobStore;
+  readonly emailSubmissionQueue: IEmailSendingQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly artifactResolver: IArtifactResolver;
+  readonly identityProvisioner: IIdentityProvisioner;
+  /** Name of the SES receipt rule set. */
+  readonly sesRuleSetName: string;
   /** SES configuration set name for outbound email tracking. */
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
-  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
+  /** AWS account IDs hosting the vendor service API. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];
-  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
+  /** IAM tag key identifying this stack's resources. Set as STACK_IDENTITY_TAG_KEY and used in the ses:TagResource condition. */
   readonly stackIdentityTagKey: string;
 }
 
+/**
+ * The admin-api Lambda and its role. The role holds every grant the admin API needs, as named
+ * grant methods. The websocket push variable is not part of construction; `enableWebSocketPush`
+ * sets it together with its invoke grant.
+ */
 export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
@@ -55,17 +60,22 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
         STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+        SES_RULE_SET_NAME: props.sesRuleSetName,
       },
     });
 
-    // Grant permissions BEFORE the Lambda is used by API Gateway
     this.grantStatusAccess();
-    this.grantSesAccess(props.sesConfigSetName, props.stackIdentityTagKey);
-    this.grantRoute53Access();
+    this.grantSesIdentityManagement();
+    this.grantSesIdentityStackTagging(props.stackIdentityTagKey);
+    this.grantSesSending(props.sesConfigSetName);
+    this.grantSesAccountReads();
+    this.grantDkimAndDmarcRecordWrites();
+    this.grantApexRecordWrites();
+    this.grantHostedZoneRecordListing();
+    this.grantHostedZoneLookup();
+    this.denyAcmeChallengeRecordWrites();
     this.grantServiceQuotasAccess();
     this.grantLicenseApiAccess(props.vendorAccountIds);
-
-    this.addEnvironment('SES_RULE_SET_NAME', props.sesRuleSetName);
     this.grantSesReceivingAccess();
 
     props.auditLogTable.grantRead(this);
@@ -77,42 +87,44 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
     props.auditEventsQueue.grantSend(this);
 
-    // Needed for standard JMAP email storage + submission enqueue
     props.blobStore.grantEmailBlobWrite(this);
     props.emailSubmissionQueue.grantSend(this);
 
-    // Grant the User provisioning function to be invoked
     props.identityProvisioner.grantInvoke(this);
   }
 
-  private grantStatusAccess() {
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: [
-        "lambda:GetAccountSettings",
-        "sts:GetCallerIdentity",
-      ],
-      resources: ["*"],
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
+  }
+
+  private grantStatusAccess(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['lambda:GetAccountSettings', 'sts:GetCallerIdentity'],
+      resources: ['*'],
     }));
   }
 
-  private grantSesAccess(sesConfigSetName: string, stackIdentityTagKey: string) {
-    // Identity-bound actions scoped to the identity ARN pattern.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+  private grantSesIdentityManagement(): void {
+    this.addToRolePolicy(new PolicyStatement({
       actions: [
-        "ses:CreateEmailIdentity",
-        "ses:GetEmailIdentity",
-        "ses:DeleteEmailIdentity",
-        "ses:PutEmailIdentityDkimSigningAttributes",
+        'ses:CreateEmailIdentity',
+        'ses:GetEmailIdentity',
+        'ses:DeleteEmailIdentity',
+        'ses:PutEmailIdentityDkimSigningAttributes',
       ],
       resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
     }));
+  }
+
+  private grantSesIdentityStackTagging(stackIdentityTagKey: string): void {
     // CreateEmailIdentity is called with a Tags parameter (the Go provisioner stamps the
     // stack-identity tag on create), which AWS co-authorizes against ses:TagResource. The
     // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
     // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
     // aws:TagKeys so this role can't ride along to write an unrelated tag key.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["ses:TagResource"],
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['ses:TagResource'],
       resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
       conditions: {
         StringEquals: {
@@ -123,112 +135,118 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         },
       },
     }));
+  }
+
+  private grantSesSending(sesConfigSetName: string): void {
     // SendEmail authorizes against the configuration-set resource as well as the identity
     // resource (it does not bind only to `identity`), so both ARNs must be granted.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["ses:SendEmail"],
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['ses:SendEmail'],
       resources: [
         `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
         `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
       ],
     }));
-    // Account-level actions — no resource binding, stay '*'.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: [
-        "ses:GetAccount",
-        "ses:GetSendStatistics",
-        "ses:ListEmailIdentities",
-      ],
-      resources: ["*"],
+  }
+
+  /** Account-level actions have no resource binding, so they stay on `*`. */
+  private grantSesAccountReads(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['ses:GetAccount', 'ses:GetSendStatistics', 'ses:ListEmailIdentities'],
+      resources: ['*'],
     }));
   }
 
-  private grantRoute53Access() {
-    // Scoping is enforced entirely by condition keys; the hostedzone/* resource ARN is
-    // semantically equivalent to * for this action.
-    //
-    // The apex statement constrains record type and action but deliberately not record name.
-    // Domains are added after bootstrap, so the set of zones and apex names is open; adding a
-    // name condition there would break multi-domain support.
-
-    // Underscore-prefixed records: DKIM and DMARC
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["route53:ChangeResourceRecordSets"],
-      resources: ["arn:aws:route53:::hostedzone/*"],
+  /**
+   * Scoping on the Route53 record grants is enforced entirely by condition keys; the
+   * hostedzone/* resource ARN is semantically equivalent to * for this action.
+   */
+  private grantDkimAndDmarcRecordWrites(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['route53:ChangeResourceRecordSets'],
+      resources: ['arn:aws:route53:::hostedzone/*'],
       conditions: {
-        "ForAllValues:StringLike": {
-          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["*._domainkey.*", "_dmarc.*"],
+        'ForAllValues:StringLike': {
+          'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
         },
-        "ForAllValues:StringEquals": {
-          "route53:ChangeResourceRecordSetsRecordTypes": ["CNAME", "TXT"],
-          "route53:ChangeResourceRecordSetsActions": ["UPSERT", "DELETE"],
+        'ForAllValues:StringEquals': {
+          'route53:ChangeResourceRecordSetsRecordTypes': ['CNAME', 'TXT'],
+          'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
         },
-        "Null": {
-          "route53:ChangeResourceRecordSetsNormalizedRecordNames": false,
-          "route53:ChangeResourceRecordSetsRecordTypes": false,
-          "route53:ChangeResourceRecordSetsActions": false,
+        Null: {
+          'route53:ChangeResourceRecordSetsNormalizedRecordNames': false,
+          'route53:ChangeResourceRecordSetsRecordTypes': false,
+          'route53:ChangeResourceRecordSetsActions': false,
         },
       },
     }));
+  }
 
-    // Apex records: MX and SPF (no name prefix condition, as the apex is the customer's domain)
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["route53:ChangeResourceRecordSets"],
-      resources: ["arn:aws:route53:::hostedzone/*"],
+  /**
+   * Constrains record type and action but deliberately not record name: domains are added after
+   * bootstrap, so the set of zones and apex names is open, and a name condition would break
+   * multi-domain support.
+   */
+  private grantApexRecordWrites(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['route53:ChangeResourceRecordSets'],
+      resources: ['arn:aws:route53:::hostedzone/*'],
       conditions: {
-        "ForAllValues:StringEquals": {
-          "route53:ChangeResourceRecordSetsRecordTypes": ["MX", "TXT"],
-          "route53:ChangeResourceRecordSetsActions": ["UPSERT", "DELETE"],
+        'ForAllValues:StringEquals': {
+          'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
+          'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
         },
-        "Null": {
-          "route53:ChangeResourceRecordSetsRecordTypes": false,
-          "route53:ChangeResourceRecordSetsActions": false,
+        Null: {
+          'route53:ChangeResourceRecordSetsRecordTypes': false,
+          'route53:ChangeResourceRecordSetsActions': false,
         },
       },
     }));
+  }
 
-    // Read-only access: listing records
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["route53:ListResourceRecordSets"],
-      resources: ["arn:aws:route53:::hostedzone/*"],
+  private grantHostedZoneRecordListing(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['route53:ListResourceRecordSets'],
+      resources: ['arn:aws:route53:::hostedzone/*'],
     }));
+  }
 
-    // Account-level read: listing hosted zones (no resource ARN binding available)
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["route53:ListHostedZonesByName"],
-      resources: ["*"],
+  /** Listing hosted zones has no resource ARN binding. */
+  private grantHostedZoneLookup(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['route53:ListHostedZonesByName'],
+      resources: ['*'],
     }));
+  }
 
-    // Deny ACME challenge writes across all zones (prevents certificate issuance for arbitrary domains)
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
+  /** Prevents certificate issuance for arbitrary domains by denying ACME challenge writes in every zone. */
+  private denyAcmeChallengeRecordWrites(): void {
+    this.addToRolePolicy(new PolicyStatement({
       effect: Effect.DENY,
-      actions: ["route53:ChangeResourceRecordSets"],
-      resources: ["*"],
+      actions: ['route53:ChangeResourceRecordSets'],
+      resources: ['*'],
       conditions: {
-        "ForAnyValue:StringLike": {
-          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["_acme-challenge.*"],
+        'ForAnyValue:StringLike': {
+          'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['_acme-challenge.*'],
         },
       },
     }));
   }
 
-  private grantServiceQuotasAccess() {
-    // Account-level actions — no resource binding, stay '*'.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: [
-        "servicequotas:ListServiceQuotas",
-        "servicequotas:RequestServiceQuotaIncrease",
-      ],
-      resources: ["*"],
+  /** Account-level actions have no resource binding, so they stay on `*`. */
+  private grantServiceQuotasAccess(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['servicequotas:ListServiceQuotas', 'servicequotas:RequestServiceQuotaIncrease'],
+      resources: ['*'],
     }));
   }
 
-  private grantLicenseApiAccess(vendorAccountIds: string[]) {
+  private grantLicenseApiAccess(vendorAccountIds: string[]): void {
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["execute-api:Invoke"],
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
@@ -236,16 +254,11 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     }));
   }
 
-  private grantSesReceivingAccess() {
-    // Account-level action — no resource binding, stays '*'.
-    this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ["ses:DescribeActiveReceiptRuleSet"],
-      resources: ["*"],
+  /** Account-level action with no resource binding, so it stays on `*`. */
+  private grantSesReceivingAccess(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['ses:DescribeActiveReceiptRuleSet'],
+      resources: ['*'],
     }));
-  }
-
-  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
   }
 }
