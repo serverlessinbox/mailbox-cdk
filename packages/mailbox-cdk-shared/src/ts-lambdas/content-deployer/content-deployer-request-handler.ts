@@ -44,15 +44,15 @@ export class ContentDeployerRequestHandler {
   }
 
   async handle(request: CustomResourceRequest, logGroupName: string): Promise<ContentDeployerResponse> {
-    const properties = this.readProperties(request);
-    const targetBucket = this.readTargetBucket(properties);
-
     // Deleting a deployment keeps its objects: when a resource is replaced, CloudFormation deletes the old
     // one after the new one has written, and cleaning up here would wipe what the new one just wrote.
+    // The properties are not read, so a Delete cannot fail on them.
     if (request.RequestType === 'Delete') {
       return this.answerDeleted(request);
     }
 
+    const properties = this.readProperties(request);
+    const targetBucket = this.readTargetBucket(properties);
     const objectsWritten = await this.deploySources(properties.sources ?? [], targetBucket);
     const cacheInvalidated = await this.invalidateCache(request, properties, logGroupName);
 

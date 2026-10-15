@@ -2,6 +2,8 @@ import { wrapHandler } from 'aws-custom-resources';
 import { Route53Client } from '@aws-sdk/client-route-53';
 import { withSmokeTest } from '../shared/with-smoke-test';
 import { emitManualFinalize } from '../shared/manual-finalize';
+import { answerRequestWithBadConfig } from '../shared/bad-config-answer';
+import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import * as env from '../shared/env';
 import { load } from './config';
 import { StackHelpersResolver } from './stack-helpers-resolver';
@@ -10,8 +12,10 @@ const { config, error: configError } = env.tryLoad(load);
 const resolver = new StackHelpersResolver(new Route53Client({}));
 
 export const handler = withSmokeTest(wrapHandler(async (event) => {
+  const request: CustomResourceRequest = event;
+
   if (configError) {
-    throw new Error(configError);
+    return answerRequestWithBadConfig(request, configError);
   }
 
   emitManualFinalize(event, { service: config.serviceName });

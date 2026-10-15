@@ -187,6 +187,18 @@ describe('ContentDeployerRequestHandler', () => {
     });
 
     it.each([
+      ['properties that are not valid', { targetBucket: 123, sources: 'not-an-array' }],
+      ['sources without a targetBucket', { sources: [dataSource()] }],
+    ])('answers a Delete with %s like any other Delete, without reading them', async (_case, properties) => {
+      const response = await requestHandler.handle(fakeDeleteEvent(properties), LOG_GROUP_NAME);
+
+      expect(response).toEqual({
+        PhysicalResourceId: PHYSICAL_RESOURCE_ID,
+        Data: { deleted: '0', objectsWritten: '0', cacheInvalidated: '0' },
+      });
+    });
+
+    it.each([
       ['malformed sources', { targetBucket: 'my-bucket', sources: 'not-an-array' }],
       ['a targetBucket that is not a string', { targetBucket: 123, sources: [] }],
     ])('rejects %s as an expected failure', async (_case, properties) => {

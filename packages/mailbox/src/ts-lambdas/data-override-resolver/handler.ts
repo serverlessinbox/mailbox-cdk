@@ -1,5 +1,13 @@
 import { wrapHandler } from 'aws-custom-resources';
-import { withSmokeTest, emitManualFinalize, env, ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import {
+  answerRequestWithBadConfig,
+  withSmokeTest,
+  emitManualFinalize,
+  env,
+  ExpectedFailure,
+  LoggerBuffer,
+  type CustomResourceRequest,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { load } from './config';
 import { TableOverrideResolver } from './table-override-resolver';
@@ -10,10 +18,15 @@ const { config, error: configError } = env.tryLoad(load);
 /**
  * CloudFormation custom-resource handler: answers Create and Update with the effective table ARN of
  * every data table role, and Delete with an empty answer. Config is loaded with `tryLoad` so a bad
- * config is answered as FAILED instead of killing the process before a response is sent.
+ * config is answered (FAILED for Create and Update, SUCCESS for Delete) instead of killing the process
+ * before a response is sent.
  */
 export const handler = withSmokeTest(wrapHandler(async (event) => {
-  if (configError) throw new Error(configError);
+  const request: CustomResourceRequest = event;
+
+  if (configError) {
+    return answerRequestWithBadConfig(request, configError);
+  }
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 

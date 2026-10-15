@@ -27,16 +27,16 @@ export class BootstrapUserRequestHandler {
   }
 
   /**
-   * Throws an `ExpectedFailure` when the resource properties are not valid. The password is generated here, once,
-   * unless the properties supply one; it is reported only when it was applied to a newly created user.
+   * A Delete is answered without reading its properties. A Create or Update throws an `ExpectedFailure` when the
+   * resource properties are not valid. The password is generated here, once, unless the properties supply one; it
+   * is reported only when it was applied to a newly created user.
    */
   public async handle(request: CustomResourceRequest): Promise<BootstrapUserAnswer> {
-    const properties = this.readProperties(request);
-
     if (request.RequestType === 'Delete') {
       return BootstrapUserAnswers.withPasswordMarker();
     }
 
+    const properties = this.readProperties(request);
     const temporaryPassword = properties.temporaryPassword ?? generateSecurePassword();
     const user = this.toBootstrapUser(properties, temporaryPassword);
 

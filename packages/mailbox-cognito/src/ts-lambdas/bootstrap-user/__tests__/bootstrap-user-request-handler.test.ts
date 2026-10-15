@@ -91,6 +91,12 @@ describe('BootstrapUserRequestHandler', () => {
       expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
     });
 
+    it('Delete answers the marker although its properties are not valid', async () => {
+      const answer = await requestHandler.handle(request('Delete', { ServiceToken: 'x' }));
+
+      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+    });
+
     it('adds the user to its groups and skips an empty group name', async () => {
       await requestHandler.handle(request('Create', templateProperties({ groups: ['admin', '', 'user'] })));
 

@@ -94,6 +94,16 @@ describe('stack-helpers handler', () => {
     expect(hostedZoneLookups).toHaveLength(0);
   });
 
+  it('answers SUCCESS to Delete with the physical id CloudFormation sent when the configuration is bad', async () => {
+    const { response, hostedZoneLookups } = await invoke(
+      fakeDeleteEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: '' },
+    );
+
+    expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'physical-id' });
+    expect(hostedZoneLookups).toHaveLength(0);
+  });
+
   it('answers SUCCESS to Delete without looking anything up', async () => {
     const { response, hostedZoneLookups } = await invoke(
       fakeDeleteEvent({ HostedZoneId: 'Z123' }),
