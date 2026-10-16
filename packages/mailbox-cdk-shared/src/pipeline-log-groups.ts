@@ -18,6 +18,20 @@ const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
 };
 
 /**
+ * Removal policy, settable per pipeline. The infra group is RETAIN on every operation: the stack-failure
+ * detector writes to it and reads it as its upload payload, and it must still exist when the detector
+ * runs after a failed first create, which RETAIN_ON_UPDATE_OR_DELETE does not preserve.
+ */
+const PIPELINE_REMOVAL_POLICY: Record<Pipeline, cdk.RemovalPolicy> = {
+  infra: cdk.RemovalPolicy.RETAIN,
+  'mail-in': cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  'mail-out': cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  jmap: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  admin: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  audit: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+};
+
+/**
  * The CloudWatch log group for a pipeline — provides narrow grant methods for specific access patterns.
  * Extends `logs.LogGroup` so consumers can pass it directly as a CDK Lambda's logGroup property.
  */
@@ -68,7 +82,7 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
     const logGroup = new PipelineLogGroup(shared, childId, {
       logGroupName: Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', guidPrefix]),
       retention: PIPELINE_RETENTION[pipeline],
-      removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+      removalPolicy: PIPELINE_REMOVAL_POLICY[pipeline],
     });
 
     return logGroup;

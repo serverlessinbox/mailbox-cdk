@@ -10,19 +10,19 @@ import { PipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectorLambda } from '../../lambdas';
 
 /**
- * Applies RETAIN_ON_UPDATE_OR_DELETE to a construct's underlying CFN resource. Throws at synth
- * rather than silently skipping retention — this feature's whole purpose is that its own resources
- * survive the rollback they report on, so a resource that can't be retained must fail loudly, not
- * quietly deploy without the protection it exists to provide.
+ * Applies RETAIN to a construct's underlying CFN resource, so it is kept on update, on delete and when
+ * its creating operation is rolled back. RETAIN_ON_UPDATE_OR_DELETE is not used: CloudFormation deletes
+ * those resources when a create rolls back, and the detector reports that rollback, so it must still
+ * exist afterwards. Throws at synth when the construct has no CFN resource to retain.
  */
-function retainOnUpdateOrDelete(construct: IConstruct, description: string): void {
+function retainOnEveryOperation(construct: IConstruct, description: string): void {
   const defaultChild = construct.node.defaultChild;
   if (!(defaultChild instanceof CfnResource)) {
     throw new Error(
       `${description}: expected defaultChild to be a CfnResource, got ${defaultChild?.constructor?.name ?? String(defaultChild)}`,
     );
   }
-  defaultChild.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+  defaultChild.applyRemovalPolicy(RemovalPolicy.RETAIN);
 }
 
 export interface StackFailureDetectionInfraProps {
@@ -72,7 +72,7 @@ export class StackFailureDetectionInfra extends Construct {
       roleName: detectorRoleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
-    retainOnUpdateOrDelete(detectorRole, 'detector-role');
+    retainOnEveryOperation(detectorRole, 'detector-role');
 
     // Reused below for the grant, so the env var and the grant ARN can never
     // come from two independent lookups.
@@ -84,7 +84,7 @@ export class StackFailureDetectionInfra extends Construct {
       functionName: detectorFunctionName,
       infraLogGroupName: infraLogGroup.logGroupName,
     });
-    retainOnUpdateOrDelete(detector, 'detector');
+    retainOnEveryOperation(detector, 'detector');
 
     // `CloudFormation Stack Status Change` is a different detail-type from `CloudFormation Resource
     // Status Change` despite overlapping status spellings — do not conflate the two.
@@ -109,7 +109,11 @@ export class StackFailureDetectionInfra extends Construct {
       },
     });
     rule.addTarget(new targets.LambdaFunction(detector));
-    retainOnUpdateOrDelete(rule, 'rule');
+    retainOnEveryOperation(rule, 'rule');
+    // The invoke permission that addTarget creates is a child of the rule, not a construct held here.
+    for (const permission of rule.node.findAll().filter((c): c is lambda.CfnPermission => c instanceof lambda.CfnPermission)) {
+      permission.applyRemovalPolicy(RemovalPolicy.RETAIN);
+    }
 
     // CreateLogStream/PutLogEvents is needed here because the explicit `role:` passed to the Lambda
     // skips the AWSLambdaBasicExecutionRole managed-policy attachment `Function` would otherwise add.
@@ -129,7 +133,7 @@ export class StackFailureDetectionInfra extends Construct {
 
     // Grant FilterLogEvents access for recovery/troubleshooting
     infraLogGroup.grantFilterEvents(detectorRole);
-    (detectorPolicy.node.defaultChild as any)?.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    retainOnEveryOperation(detectorPolicy, 'detector-policy');
 
     this.detector = detector;
     this.rule = rule;

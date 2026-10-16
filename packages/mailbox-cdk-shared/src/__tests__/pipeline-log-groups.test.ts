@@ -56,6 +56,24 @@ describe('PipelineLogGroup', () => {
     });
   });
 
+  it('the infra group is retained on every operation, including a create rollback', () => {
+    const stack = newStack();
+    PipelineLogGroup.getOrCreate(stack, 'infra');
+
+    const groups = Object.values(Template.fromStack(stack).findResources('AWS::Logs::LogGroup'));
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
+  });
+
+  it('other pipeline groups keep RETAIN_ON_UPDATE_OR_DELETE, which a create rollback deletes', () => {
+    const stack = newStack();
+    PipelineLogGroup.getOrCreate(stack, 'jmap');
+
+    const groups = Object.values(Template.fromStack(stack).findResources('AWS::Logs::LogGroup'));
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ DeletionPolicy: 'RetainExceptOnCreate' });
+  });
+
   it('grantFilterEvents grants logs:FilterLogEvents scoped to the log group ARN', () => {
     const stack = new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
     const logGroup = PipelineLogGroup.getOrCreate(stack, 'jmap');

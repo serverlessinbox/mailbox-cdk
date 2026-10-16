@@ -17,6 +17,10 @@
  * reason was breaking a construction-order cycle created by the detector's own RULE_ARN env var, and
  * that env var — along with all sweeper knowledge in the detector — is gone; the sweeper reads the
  * rule's real (auto-named) ARN from outside instead, an ordinary forward reference.
+ *
+ * The second half pins the removal policy: every resource the detector needs after a create rollback
+ * (role, function, detector policy, rule, its invoke permission, infra pipeline log group) renders
+ * `DeletionPolicy: Retain` and `UpdateReplacePolicy: Retain` in the synthesized template.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -94,26 +98,30 @@ function findByNamePrefix(resources: unknown[], propertyName: string, prefix: st
   return match;
 }
 
+function synthesizeDetectionTemplate(): Template {
+  const app = new App();
+  const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
+    env: { account: '111122223333', region: 'us-east-1' },
+    synthesizer: new BootstraplessSynthesizer(),
+  });
+  const artifactResolver = createTestArtifactResolver(stack);
+
+  // Same construct id as the real deploy site (`mailbox.ts`: `new StackFailureDetection(groups.ops,
+  // 'stack-failure-detection', ...)`) — `parentGroupId` is this id, so this reproduces the real
+  // 23-char value that pushed the pre-fix names over their limits.
+  new StackFailureDetection(stack, 'stack-failure-detection', {
+    mode: SendStackFailuresMode.ENABLED,
+    artifactResolver,
+  });
+
+  return Template.fromStack(stack);
+}
+
 describe('StackFailureDetectionInfra — physical name length', () => {
   let template: Template;
 
   beforeEach(() => {
-    const app = new App();
-    const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
-      env: { account: '111122223333', region: 'us-east-1' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const artifactResolver = createTestArtifactResolver(stack);
-
-    // Same construct id as the real deploy site (`mailbox.ts`: `new StackFailureDetection(groups.ops,
-    // 'stack-failure-detection', ...)`) — `parentGroupId` is this id, so this reproduces the real
-    // 23-char value that pushed the pre-fix names over their limits.
-    new StackFailureDetection(stack, 'stack-failure-detection', {
-      mode: SendStackFailuresMode.ENABLED,
-      artifactResolver,
-    });
-
-    template = Template.fromStack(stack);
+    template = synthesizeDetectionTemplate();
   });
 
   it('the detector function name fits the Lambda function-name limit (64 chars)', () => {
@@ -142,5 +150,64 @@ describe('StackFailureDetectionInfra — physical name length', () => {
     const rules = Object.values(template.findResources('AWS::Events::Rule'));
     expect(rules).toHaveLength(1);
     expect((rules[0] as any).Properties.Name).toBeUndefined();
+  });
+});
+
+/** The parts of a synthesized CFN resource these retention assertions read. */
+interface SynthesizedResource {
+  readonly DeletionPolicy?: string;
+  readonly UpdateReplacePolicy?: string;
+  readonly Properties: { readonly PolicyName?: string; readonly LogGroupName?: unknown };
+}
+
+function resourcesOfType(template: Template, type: string): SynthesizedResource[] {
+  // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
+  return Object.values(template.findResources(type)) as SynthesizedResource[];
+}
+
+describe('StackFailureDetectionInfra — retention on every operation', () => {
+  let template: Template;
+
+  beforeEach(() => {
+    template = synthesizeDetectionTemplate();
+  });
+
+  it('the detector role, function and detector policy are retained', () => {
+    const roles = resourcesOfType(template, 'AWS::IAM::Role');
+    const fns = resourcesOfType(template, 'AWS::Lambda::Function');
+    const policies = resourcesOfType(template, 'AWS::IAM::Policy').filter(
+      (p) => p.Properties.PolicyName === 'stack-failure-detector-policy',
+    );
+
+    expect(policies).toHaveLength(1);
+    expect(findByNamePrefix(roles, 'RoleName', 'mailbox-diag-role-')).toMatchObject({
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    expect(findByNamePrefix(fns, 'FunctionName', 'mailbox-diag-fn-')).toMatchObject({
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    expect(policies[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
+  });
+
+  it('the rule and its invoke permission are retained', () => {
+    const rules = resourcesOfType(template, 'AWS::Events::Rule');
+    const permissions = resourcesOfType(template, 'AWS::Lambda::Permission');
+
+    expect(rules).toHaveLength(1);
+    expect(permissions.length).toBeGreaterThan(0);
+    for (const resource of [...rules, ...permissions]) {
+      expect(resource).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
+    }
+  });
+
+  it('the infra pipeline log group is retained', () => {
+    const groups = resourcesOfType(template, 'AWS::Logs::LogGroup').filter((g) =>
+      JSON.stringify(g.Properties.LogGroupName).includes('infra'),
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
   });
 });
