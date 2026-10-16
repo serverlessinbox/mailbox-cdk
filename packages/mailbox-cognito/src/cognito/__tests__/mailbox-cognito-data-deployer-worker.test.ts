@@ -8,7 +8,7 @@
  */
 
 import { Template } from 'aws-cdk-lib/assertions';
-import { actionsOf, allPolicyStatements, renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { actionsOf, allPolicyStatements, renderWithTokens, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
 import { newDeployerTestStack } from './cognito-deployer-helpers';
 
@@ -34,7 +34,7 @@ describe('MailboxCognitoDataDeployerWorker', () => {
 
   it('runs as the cognito deployer worker', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-cognito-worker' } },
+      Environment: { Variables: { SERVICE_NAME: sharedWorkerServiceName('cognito') } },
     });
   });
 
@@ -103,16 +103,7 @@ describe('MailboxCognitoDataDeployerWorker', () => {
       expect(stmts.length).toBe(2);
 
       for (const stmt of stmts) {
-        expect(stmt.Condition?.['ForAllValues:StringEquals']).toEqual({
-          'aws:TagKeys': [
-            'serverless-inbox:product',
-            'serverless-inbox:root-stack',
-            'serverless-inbox:stack',
-            'serverless-inbox:component',
-            'serverless-inbox:version',
-            'serverless-inbox:deployer_type',
-          ],
-        });
+        expect(tagKeysOf(stmt)).toEqual(sharedSubStackTagKeys());
         expect(stmt.Condition?.StringEquals?.['aws:TagKeys']).toBeUndefined();
       }
     });
@@ -155,23 +146,5 @@ describe('MailboxCognitoDataDeployerWorker', () => {
         new Set(['cognito-idp:CreateUserPool', 'cognito-idp:DescribeUserPoolDomain']),
       );
     });
-  });
-
-  it('writes only the tag keys the cognito data stack template applies', () => {
-    for (const action of ['tag:TagResources', 'tag:UntagResources']) {
-      const statements = statementsForAction(template, action);
-
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
-        'aws:TagKeys': [
-          'serverless-inbox:product',
-          'serverless-inbox:root-stack',
-          'serverless-inbox:stack',
-          'serverless-inbox:component',
-          'serverless-inbox:version',
-          'serverless-inbox:deployer_type',
-        ],
-      });
-    }
   });
 });

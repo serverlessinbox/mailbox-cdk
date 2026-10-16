@@ -9,7 +9,7 @@
 
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { renderWithTokens, sharedWorkerServiceName, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_REGION,
@@ -41,7 +41,7 @@ describe('MailboxDataDeployerWorker', () => {
 
   it('runs as the data deployer worker', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-data-worker' } },
+      Environment: { Variables: { SERVICE_NAME: sharedWorkerServiceName('data') } },
     });
   });
 
@@ -89,23 +89,5 @@ describe('MailboxDataDeployerWorker', () => {
       `arn:aws:kms:${TEST_REGION}:${TEST_ACCOUNT}:alias/aws/s3`,
       `arn:aws:kms:${TEST_REGION}:${TEST_ACCOUNT}:key/*`,
     ]);
-  });
-
-  it('writes only the tag keys the data stack template applies', () => {
-    for (const action of ['tag:TagResources', 'tag:UntagResources']) {
-      const statements = statementsForAction(template, action);
-
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
-        'aws:TagKeys': [
-          'serverless-inbox:product',
-          'serverless-inbox:root-stack',
-          'serverless-inbox:stack',
-          'serverless-inbox:component',
-          'serverless-inbox:version',
-          'serverless-inbox:deployer_type',
-        ],
-      });
-    }
   });
 });

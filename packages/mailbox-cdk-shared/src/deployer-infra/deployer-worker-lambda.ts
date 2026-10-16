@@ -40,6 +40,8 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
       ServerlessInboxTagKeys.component,
       ServerlessInboxTagKeys.version,
       ServerlessInboxTagKeys.deployerType,
+      ServerlessInboxTagKeys.name,
+      ServerlessInboxTagKeys.description,
     ];
   }
 

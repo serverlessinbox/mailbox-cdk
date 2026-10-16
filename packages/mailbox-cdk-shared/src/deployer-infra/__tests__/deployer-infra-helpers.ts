@@ -2,6 +2,9 @@ import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
+import * as t from 'typanion';
+import { DeployerStarterLambda } from '../deployer-starter-lambda';
+import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { renderWithTokens } from '../../cdk-test-support';
@@ -54,6 +57,34 @@ export function newWorkerStandIn(scope: Construct, id: string): lambda.IFunction
     handler: 'index.handler',
     code: lambda.Code.fromInline('exports.handler = async () => ({});'),
   });
+}
+
+const isStarterFunction = t.isPartial({
+  Properties: t.isPartial({
+    Environment: t.isPartial({ Variables: t.isPartial({ SERVICE_NAME: t.isString() }) }),
+  }),
+});
+
+/**
+ * The `SERVICE_NAME` the deployer starter gives itself for `deployedStackName`. A test of a construct that
+ * only passes `deployedStackName` on compares against this instead of repeating the starter's composition.
+ */
+export function starterServiceName(deployedStackName: string): string {
+  const { stack, artifactResolver } = newDeployerTestStack();
+  const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+    handler: newWorkerStandIn(stack, 'worker'),
+    stateMachineName: 'probe-machine',
+  });
+  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName });
+
+  const starters = Object.values(
+    Template.fromStack(stack).findResources('AWS::Lambda::Function', { Properties: { Handler: 'index.starterHandler' } }),
+  );
+  const errors: string[] = [];
+  if (starters.length !== 1 || !isStarterFunction(starters[0], { errors })) {
+    throw new Error(`Expected one starter Lambda with a SERVICE_NAME, found ${starters.length}: ${errors.join('; ')}`);
+  }
+  return starters[0].Properties.Environment.Variables.SERVICE_NAME;
 }
 
 export function stateMachineDefinition(template: Template): DefinitionJson {

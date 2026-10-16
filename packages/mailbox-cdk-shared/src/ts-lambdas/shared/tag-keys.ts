@@ -4,6 +4,8 @@ const TAG_PREFIX = 'serverless-inbox:' as const;
 
 export const ServerlessInboxTagKeys = {
   product: `${TAG_PREFIX}product`,
+  /** The AWS-conventional resource name tag. Unprefixed, unlike the other keys. */
+  name: 'Name',
   /** Main (root) stack name — shared across all stacks in a deployment for cross-stack correlation. */
   rootStack: `${TAG_PREFIX}root-stack`,
   /** This stack's own name (AWS::StackName). */

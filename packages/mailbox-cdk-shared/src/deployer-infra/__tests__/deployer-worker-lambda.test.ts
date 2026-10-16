@@ -10,7 +10,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DeployerWorkerLambda } from '../deployer-worker-lambda';
-import { statementsForAction } from '../../cdk-test-support';
+import { statementsForAction, tagKeysOf } from '../../cdk-test-support';
 import { newDeployerTestStack } from './deployer-infra-helpers';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
@@ -44,6 +44,8 @@ const BASE_TAG_KEYS = [
   'serverless-inbox:component',
   'serverless-inbox:version',
   'serverless-inbox:deployer_type',
+  'Name',
+  'serverless-inbox:description',
 ];
 
 function synthProbe(apply: (worker: ProbeWorker) => void): Template {
@@ -132,12 +134,13 @@ describe('DeployerWorkerLambda', () => {
     });
 
     it('allows the additional tag keys after the sub-stack ones', () => {
-      const template = synthProbe((worker) => worker.applyTaggingApi(['serverless-inbox:edge']));
+      const withoutAdditional = synthProbe((worker) => worker.applyTaggingApi());
+      const withAdditional = synthProbe((worker) => worker.applyTaggingApi(['serverless-inbox:edge']));
 
-      const statements = statementsForAction(template, 'tag:TagResources');
-      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
-        'aws:TagKeys': [...BASE_TAG_KEYS, 'serverless-inbox:edge'],
-      });
+      expect(tagKeysOf(statementsForAction(withAdditional, 'tag:TagResources')[0])).toEqual([
+        ...tagKeysOf(statementsForAction(withoutAdditional, 'tag:TagResources')[0]),
+        'serverless-inbox:edge',
+      ]);
     });
 
     it('compares tag keys with ForAllValues, because aws:TagKeys is multivalued and a plain StringEquals denies every tag write', () => {

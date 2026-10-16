@@ -227,7 +227,7 @@ export class MailboxResourceDescriptions implements cdk.IAspect {
     // braces are outside the AWS tag charset) + universal description tag — written directly to the
     // resource's TagManager, never via cdk.Tags.of(...) (that spawns a sub-aspect → loop guard).
     if (cdk.TagManager.isTaggable(node)) {
-      node.tags.setTag('Name', sanitizeTagValue(stripDefaultChildSegment(tail)));
+      node.tags.setTag(ServerlessInboxTagKeys.name, sanitizeTagValue(stripDefaultChildSegment(tail)));
       node.tags.setTag(ServerlessInboxTagKeys.description, descriptionTagValue);
     }
 

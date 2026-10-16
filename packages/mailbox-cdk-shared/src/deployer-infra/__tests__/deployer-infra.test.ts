@@ -13,7 +13,7 @@ import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { StackDeployerProperties } from '../../ts-lambdas/stack-deployer/stack-deployment';
 import { DeployerInfra } from '../deployer-infra';
-import { newDeployerTestStack, newWorkerStandIn, stateMachineLogicalId } from './deployer-infra-helpers';
+import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 
 const DEPLOYMENT: StackDeployerProperties = {
   stackName: 'sub-stack',
@@ -64,7 +64,7 @@ describe('DeployerInfra', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Handler: 'index.starterHandler',
-      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-cognito-starter' } },
+      Environment: { Variables: { SERVICE_NAME: starterServiceName('cognito') } },
     });
   });
 

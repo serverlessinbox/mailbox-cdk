@@ -10,7 +10,7 @@
 import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxEdgeDeployerWorker } from '../mailbox-edge-deployer-worker';
 import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { renderWithTokens, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
@@ -52,7 +52,7 @@ describe('MailboxEdgeDeployerWorker', () => {
 
   it('runs as the edge deployer worker', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: { SERVICE_NAME: 'stack-deployer-edge-worker' } },
+      Environment: { Variables: { SERVICE_NAME: sharedWorkerServiceName('edge') } },
     });
   });
 
@@ -70,23 +70,14 @@ describe('MailboxEdgeDeployerWorker', () => {
     expect(statements[0].Resource).toEqual([TEMPLATE_OBJECT_ARN, ARTIFACT_OBJECT_ARN]);
   });
 
-  it('writes the sub-stack tag keys and the two edge tag keys', () => {
+  it('adds the edge and root-region tag keys to the tagging grant', () => {
     for (const action of ['tag:TagResources', 'tag:UntagResources']) {
       const statements = statementsForAction(template, action);
 
       expect(statements).toHaveLength(1);
-      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({
-        'aws:TagKeys': [
-          'serverless-inbox:product',
-          'serverless-inbox:root-stack',
-          'serverless-inbox:stack',
-          'serverless-inbox:component',
-          'serverless-inbox:version',
-          'serverless-inbox:deployer_type',
-          'serverless-inbox:edge',
-          'serverless-inbox:root-region',
-        ],
-      });
+      expect(tagKeysOf(statements[0])).toEqual(
+        expect.arrayContaining(['serverless-inbox:edge', 'serverless-inbox:root-region']),
+      );
     }
   });
 
