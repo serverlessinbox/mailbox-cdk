@@ -4,6 +4,18 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.5...v0.2.6) (Fri Oct 16 2026)
+
+### fix
+
+* **shared** custom-resource Lambdas answer before their deadline and empty buckets fully ([4907275](https://github.com/serverlessinbox/mailbox-cdk/commit/490727501beb3c55fb3397a108380f57aba43477))
+
+* **shared** the stack-deployer answers every CloudFormation request exactly once ([82222b4](https://github.com/serverlessinbox/mailbox-cdk/commit/82222b48266d56a8c470de53378deabd73ef4aae))
+
+* **shared** the stack-deployer's inputs mean what they say ([204c80e](https://github.com/serverlessinbox/mailbox-cdk/commit/204c80e48e9e6e75d3b5c0327faf82ad3026be78))
+
+* **shared** the stack-deployer answers a failed Update SUCCESS while the parent rolls back ([2363690](https://github.com/serverlessinbox/mailbox-cdk/commit/23636906fe570ce353450c3a03547016559905a0))
+
 ## [0.2.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.4...v0.2.5) (Fri Oct 16 2026)
 
 ### fix
