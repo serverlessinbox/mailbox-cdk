@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.5...v0.2.6) (Fri Oct 16 2026)
+
+### feat
+
+* Added an explicit issue in the cognito deployer to test failure sending ([49edcb0](https://github.com/serverlessinbox/mailbox-cdk/commit/49edcb03ee408ec90083851f3839b5b48c0a850d))
+
 ## [0.2.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.4...v0.2.5) (Fri Oct 16 2026)
 
 ### fix
