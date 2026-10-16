@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.4](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.3...v0.2.4) (Fri Oct 16 2026)
+
+### chore
+
+* stop tracking the generated .jsii assemblies ([6d10c3a](https://github.com/serverlessinbox/mailbox-cdk/commit/6d10c3a83ce61f5cacfe8d013984fa01cacf3b52))
+
 ## [0.2.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.2...v0.2.3) (Fri Oct 16 2026)
 
 ### refactor
