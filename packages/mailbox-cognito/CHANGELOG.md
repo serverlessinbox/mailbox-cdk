@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.7...v0.2.8) (Fri Oct 16 2026)
+
+### revert
+
+* restore the cognito deployer's TagResource grant ([6fa8dd6](https://github.com/serverlessinbox/mailbox-cdk/commit/6fa8dd69cfe0685958356bd8e669bbaef2484a8c))
+
 ## [0.2.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.6...v0.2.7) (Fri Oct 16 2026)
 
 
