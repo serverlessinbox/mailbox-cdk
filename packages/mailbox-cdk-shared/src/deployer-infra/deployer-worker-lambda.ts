@@ -2,6 +2,7 @@ import { Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { ServerlessInboxTagKeys } from '../serverless-inbox-tags';
+import { parentStackStatusReadStatement } from './parent-stack-status-read';
 import { TypeScriptLambda } from '../ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
@@ -49,6 +50,8 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
       ServerlessInboxTagKeys.name,
       ServerlessInboxTagKeys.description,
     ];
+
+    this.grantReadParentStackStatus();
   }
 
   /** Manages the given stack; `readsTemplate` also lets the role read the stack's deployed template. */
@@ -119,5 +122,10 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
         'aws:TagKeys': [...this.subStackTagKeys, ...additionalTagKeys, CLOUDFORMATION_TAG_KEY_PATTERN],
       },
     };
+  }
+
+  /** Lets the worker ask whether the parent stack is rolling back before it answers a failed Update. */
+  private grantReadParentStackStatus(): void {
+    this.addToRolePolicy(parentStackStatusReadStatement());
   }
 }

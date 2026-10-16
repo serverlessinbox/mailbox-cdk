@@ -6,6 +6,8 @@ import {
   isDeletionProperties,
   isPhysicalIdOfRequest,
   isPhysicalIdOfStep,
+  isRegionOfRequest,
+  isRegionOfStep,
   isRequestTypeOfRequest,
   isRequestTypeOfStep,
   isSfnInvokeEvent,
@@ -76,6 +78,7 @@ export class StackDeploymentEventReader {
       physicalResourceId: isPhysicalIdOfRequest(event) ? event.PhysicalResourceId : undefined,
       requestType: isRequestTypeOfRequest(event) ? event.RequestType : undefined,
       stackName: isStackNameOfRequest(event) ? event.ResourceProperties.stackName : undefined,
+      region: isRegionOfRequest(event) ? event.ResourceProperties.region : undefined,
     };
   }
 
@@ -95,6 +98,7 @@ export class StackDeploymentEventReader {
       physicalResourceId: isPhysicalIdOfStep(event) ? event.cfn.PhysicalResourceId : undefined,
       requestType: isRequestTypeOfStep(event) ? event.op.requestType : undefined,
       stackName: isStackNameOfStep(event) ? event.op.stackName : undefined,
+      region: isRegionOfStep(event) ? event.op.region : undefined,
     };
   }
 

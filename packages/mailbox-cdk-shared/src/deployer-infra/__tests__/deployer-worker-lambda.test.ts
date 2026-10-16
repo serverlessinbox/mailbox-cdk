@@ -10,7 +10,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DeployerWorkerLambda } from '../deployer-worker-lambda';
-import { statementsForAction, tagKeysOf } from '../../cdk-test-support';
+import { statementsForAction, statementsForResource, tagKeysOf } from '../../cdk-test-support';
 import { newDeployerTestStack } from './deployer-infra-helpers';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
@@ -64,6 +64,15 @@ describe('DeployerWorkerLambda', () => {
       MemorySize: 512,
       Environment: { Variables: { SERVICE_NAME: 'stack-deployer-data-worker' } },
     });
+  });
+
+  it('is allowed to read the status of the stack it is deployed as, apart from the stacks it manages', () => {
+    const template = synthProbe((worker) => worker.applyStackLifecycle(STACK_ARN));
+
+    const parentStatements = statementsForResource(template, { Ref: 'AWS::StackId' });
+    expect(parentStatements).toHaveLength(1);
+    expect(parentStatements[0].Action).toBe('cloudformation:DescribeStacks');
+    expect(statementsForAction(template, 'cloudformation:DescribeStacks')).toHaveLength(2);
   });
 
   describe('grantStackLifecycle', () => {

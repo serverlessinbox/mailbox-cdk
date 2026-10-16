@@ -67,6 +67,27 @@ export class CloudFormationStacks {
     }
   }
 
+  /** The outputs of a stack as the data of an answer to CloudFormation: those with both a key and a value. */
+  outputsOf(stack: Stack): Record<string, string> {
+    const outputs: Record<string, string> = {};
+    for (const output of stack.Outputs ?? []) {
+      if (output.OutputKey && output.OutputValue !== undefined) {
+        outputs[output.OutputKey] = output.OutputValue;
+      }
+    }
+    return outputs;
+  }
+
+  /** The outputs the stack of the operation has now; undefined when the stack does not exist or cannot be read. */
+  async currentOutputs(op: OperationInput): Promise<Record<string, string> | undefined> {
+    try {
+      const stack = await this.describe(op);
+      return stack ? this.outputsOf(stack) : undefined;
+    } catch (failure) {
+      return this.warnOutputsUnreadable(op, failure);
+    }
+  }
+
   /**
    * Creates the stack, or updates it when it exists. A stack in a state CloudFormation can no longer update
    * is deleted and created again. An update that changes nothing is not a failure.
@@ -112,6 +133,11 @@ export class CloudFormationStacks {
 
   private clientFor(op: OperationInput): CloudFormationClient {
     return this.clientForRegion(op.region ?? this.defaultRegion);
+  }
+
+  private warnOutputsUnreadable(op: OperationInput, failure: unknown): undefined {
+    this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: new CaughtError(failure).message ?? String(failure) });
+    return undefined;
   }
 
   private missingStackOrRethrow(failure: unknown): undefined {

@@ -8,6 +8,7 @@ import type { OperationInput, SfnInvokeEvent } from './stack-deployment';
 import { isSwitchedOn } from './stack-flag';
 import { StackOperationFailure } from './stack-operation-failure';
 import { StackStatus } from './stack-status';
+import type { UpdateRollbackAnswers } from './update-rollback-answerer';
 import { WorkerResult, type RetryCounts } from './worker-result';
 
 // Polling stops so the worker answers CloudFormation before the 60 minute service timeout of the custom
@@ -23,16 +24,19 @@ const CHECK_FAILED_STEP = 'Stack deployer check failed (DescribeStacks)';
 /**
  * Carries out one invocation of the Step Functions workflow that deploys, updates or deletes a stack: it
  * starts the stack operation, or checks how far it got and answers CloudFormation once it is over. Whether
- * to keep polling is returned to the workflow as a WorkerResult.
+ * to keep polling is returned to the workflow as a WorkerResult. An Update it would answer FAILED is first
+ * offered to the rollback answerer.
  */
 export class StackDeployerWorker implements StackFailureAnswerer {
   private readonly stacks: CloudFormationStacks;
   private readonly responder: CfnResponder;
+  private readonly rollback: UpdateRollbackAnswers;
   private readonly logger: LoggerBuffer;
 
-  constructor(stacks: CloudFormationStacks, responder: CfnResponder, logger: LoggerBuffer) {
+  constructor(stacks: CloudFormationStacks, responder: CfnResponder, rollback: UpdateRollbackAnswers, logger: LoggerBuffer) {
     this.stacks = stacks;
     this.responder = responder;
+    this.rollback = rollback;
     this.logger = logger;
   }
 
@@ -63,6 +67,10 @@ export class StackDeployerWorker implements StackFailureAnswerer {
   /** Answers CloudFormation that the stack operation failed, with the recent stack events as detail, and ends the workflow. */
   async answerFailure(op: OperationInput, failure: StackOperationFailure, target: CfnReplyTarget): Promise<WorkerResult> {
     this.logger.error('Stack deployer failed', { errorMessage: failure.message });
+
+    if (await this.rollback.answerSuccess(op, target, failure.message)) {
+      return WorkerResult.finished();
+    }
 
     const failures = await this.stacks.describeRecentFailures(op);
     await this.responder.answerFailure(target, op.requestType, `${failure.message}${this.eventsDetail(failures)}`);
@@ -167,7 +175,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
   private async checkDeployment(op: OperationInput, stack: Stack | undefined, attempt: number, retries: RetryCounts, target: CfnReplyTarget): Promise<WorkerResult> {
     if (!stack) {
       this.logger.error('Stack does not exist', { stackName: op.stackName });
-      await this.responder.fail(target, `Stack ${op.stackName} does not exist`);
+      await this.answerFailed(op, target, `Stack ${op.stackName} does not exist`);
       return WorkerResult.finished(retries);
     }
 
@@ -185,7 +193,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
     // A stack being torn down can never satisfy a create or an update, and polling it would not end.
     if (status.isDeleting()) {
-      await this.responder.fail(target, `Stack ${op.stackName} is being deleted (status ${status.value}); cannot deploy into a deleting stack.${detail}`);
+      await this.answerFailed(op, target, `Stack ${op.stackName} is being deleted (status ${status.value}); cannot deploy into a deleting stack.${detail}`);
       return WorkerResult.finished(retries);
     }
 
@@ -206,7 +214,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
     if (status.isTerminalFailure()) {
       const reason = stack.StackStatusReason ?? `Stack failed with status ${status.value}`;
-      await this.responder.fail(target, `${reason}${detail}`);
+      await this.answerFailed(op, target, `${reason}${detail}`);
       return WorkerResult.finished(retries);
     }
 
@@ -216,7 +224,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
     // The cap answers before the workflow's own timeout does, so CloudFormation is told why.
     if (attempt >= MAX_POLL_ATTEMPTS) {
-      await this.responder.fail(target, `Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status.value})`);
+      await this.answerFailed(op, target, `Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status.value})`);
       return WorkerResult.finished(retries);
     }
 
@@ -238,7 +246,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
   }
 
   private async answerSuccess(op: OperationInput, stack: Stack, retries: RetryCounts, target: CfnReplyTarget): Promise<WorkerResult> {
-    const outputs = this.outputsOf(stack);
+    const outputs = this.stacks.outputsOf(stack);
     this.logger.info('Stack reached terminal success state', {
       stackName: op.stackName,
       outputCount: Object.keys(outputs).length,
@@ -247,14 +255,11 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     return WorkerResult.finished(retries);
   }
 
-  private outputsOf(stack: Stack): Record<string, string> {
-    const outputs: Record<string, string> = {};
-    for (const output of stack.Outputs ?? []) {
-      if (output.OutputKey && output.OutputValue !== undefined) {
-        outputs[output.OutputKey] = output.OutputValue;
-      }
+  private async answerFailed(op: OperationInput, target: CfnReplyTarget, reason: string): Promise<void> {
+    if (await this.rollback.answerSuccess(op, target, reason)) {
+      return;
     }
-    return outputs;
+    await this.responder.fail(target, reason);
   }
 
   // A failed delete retry is not an answer: the next check sees the stack's state and tries again.

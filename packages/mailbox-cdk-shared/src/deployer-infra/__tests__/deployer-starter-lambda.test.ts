@@ -51,4 +51,13 @@ describe('DeployerStarterLambda', () => {
     expect(statementsForAction(template, 'states:StartExecution')).toHaveLength(1);
     expect(statementsForAction(template, 'states:DescribeExecution')).toHaveLength(1);
   });
+
+  it('is allowed to read the status of the stack it is deployed as, and of no other stack', () => {
+    const { template } = synthStarter();
+
+    const statements = statementsForAction(template, 'cloudformation:DescribeStacks');
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Action).toBe('cloudformation:DescribeStacks');
+    expect(statements[0].Resource).toEqual({ Ref: 'AWS::StackId' });
+  });
 });

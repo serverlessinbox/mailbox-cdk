@@ -13,6 +13,7 @@ import { FailureAnswerer } from './failure-answerer';
 import { StackDeployerStarter } from './stack-deployer-starter';
 import { StackDeployerWorker } from './stack-deployer-worker';
 import { StackDeploymentEventReader } from './stack-deployment-event-reader';
+import { UpdateRollbackAnswerer } from './update-rollback-answerer';
 import type { WorkerResult } from './worker-result';
 
 /** The part of the Lambda context both handlers read: the log stream that a response to CloudFormation points to. */
@@ -28,7 +29,12 @@ const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorke
 const stepFunctions = new SFNClient({});
 const responder = new CfnResponder((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
 const events = new StackDeploymentEventReader();
-const failureAnswerer = new FailureAnswerer(events, responder);
+
+// A function with no usable config has no logger or region to read a stack with, so it answers a failure without the rollback answerer.
+const unconfiguredFailureAnswerer = new FailureAnswerer(events, responder, undefined);
+
+// The parent stack of the custom resource lives in the region the function runs in.
+const parentStackCloudFormation = new CloudFormationClient({});
 
 // A stack operation names the region its stack lives in, so the CloudFormation clients are built per region on first use.
 const cloudFormationClients = new Map<Region, CloudFormationClient>();
@@ -43,12 +49,15 @@ const cloudFormationIn = (region: Region): CloudFormationClient => {
 
 export const starterHandler = withSmokeTest(async (event: unknown, context: InvocationContext): Promise<void> => {
   if (starterConfigError) {
-    console.error('stack-deployer-starter configuration error', { error: starterConfigError });    await failureAnswerer.answerCfnRequest(event, new ExpectedFailure(`Configuration error: ${starterConfigError}`), context.logStreamName);
+    console.error('stack-deployer-starter configuration error', { error: starterConfigError });
+    await unconfiguredFailureAnswerer.answerCfnRequest(event, new ExpectedFailure(`Configuration error: ${starterConfigError}`), context.logStreamName);
     return;
   }
 
   const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
   const starter = new StackDeployerStarter(starterConfig.stateMachineArn, stepFunctions, events, responder, logger);
+  const stacks = new CloudFormationStacks(cloudFormationIn, starterConfig.region, logger);
+  const failureAnswerer = new FailureAnswerer(events, responder, new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger));
 
   try {
     const request = events.readCfnRequest(event);
@@ -72,12 +81,15 @@ export const starterHandler = withSmokeTest(async (event: unknown, context: Invo
 
 export const workerHandler = withSmokeTest(async (event: unknown, context: InvocationContext): Promise<WorkerResult> => {
   if (workerConfigError) {
-    console.error('stack-deployer-worker configuration error', { error: workerConfigError });    return failureAnswerer.answerSfnInput(event, new ExpectedFailure(`Configuration error: ${workerConfigError}`), context.logStreamName);
+    console.error('stack-deployer-worker configuration error', { error: workerConfigError });
+    return unconfiguredFailureAnswerer.answerSfnInput(event, new ExpectedFailure(`Configuration error: ${workerConfigError}`), context.logStreamName);
   }
 
   const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
   const stacks = new CloudFormationStacks(cloudFormationIn, workerConfig.region, logger);
-  const worker = new StackDeployerWorker(stacks, responder, logger);
+  const rollback = new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger);
+  const worker = new StackDeployerWorker(stacks, responder, rollback, logger);
+  const failureAnswerer = new FailureAnswerer(events, responder, rollback);
 
   try {
     const invoke = events.readSfnInvokeEvent(event);

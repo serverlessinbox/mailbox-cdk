@@ -14,6 +14,7 @@ import {
 } from '../../shared/custom-resource-identifiers';
 import { toStateMachineArn, toTemplateUrl } from '../deployer-identifiers';
 import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack-deployment';
+import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
 
 export const RESPONSE_URL = toResponseUrl('https://example.com/cfn-response');
 export const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid');
@@ -87,6 +88,11 @@ export function silenceConsole(): ConsoleSpies {
     error: jest.spyOn(console, 'error').mockImplementation(() => undefined),
     log: jest.spyOn(console, 'log').mockImplementation(() => undefined),
   };
+}
+
+/** A rollback answerer that suppresses every failure it is offered (`true`) or none (`false`), and records what it is offered. */
+export function rollbackAnswering(suppresses: boolean): jest.Mocked<UpdateRollbackAnswers> {
+  return { answerSuccess: jest.fn<Promise<boolean>, Parameters<UpdateRollbackAnswers['answerSuccess']>>(async () => suppresses) };
 }
 
 /** A pause that returns at once, for a responder whose retries a test does not wait for. */

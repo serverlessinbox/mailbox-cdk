@@ -1,0 +1,74 @@
+import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import type { Region } from '../shared/aws-identifiers';
+import type { StackName } from '../shared/custom-resource-identifiers';
+import type { LoggerBuffer } from '../shared/logger-buffer';
+import { isParentStackRollingBack } from '../shared/stack-rollback-detector';
+import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
+import type { OperationInput, RequestType } from './stack-deployment';
+
+/** The request that failed, as far as it could be read. */
+export interface FailedRequest {
+  readonly requestType: RequestType | undefined;
+  readonly stackName: StackName | undefined;
+  readonly region?: Region | undefined;
+}
+
+/** Answers an Update that failed while the parent stack rolls back, so that the failure does not strand the rollback. */
+export interface UpdateRollbackAnswers {
+  /** Answers SUCCESS and returns true when the failure of this request is suppressed; false leaves the failure to the caller. */
+  answerSuccess(request: FailedRequest, target: CfnReplyTarget, failureReason: string): Promise<boolean>;
+}
+
+/** Reads the outputs a stack has now. */
+export interface SubStackOutputs {
+  currentOutputs(operation: OperationInput): Promise<Record<string, string> | undefined>;
+}
+
+/**
+ * Suppresses the failure of an Update that CloudFormation re-sends with the old properties while the parent stack
+ * rolls back: a FAILED answer to it ends the rollback in UPDATE_ROLLBACK_FAILED. The answer is SUCCESS with the
+ * physical id CloudFormation sent and the outputs the sub-stack has now, the same data a successful Update
+ * answers with. Every other request, and an Update the outputs of which cannot be read, is left to fail.
+ */
+export class UpdateRollbackAnswerer implements UpdateRollbackAnswers {
+  private readonly parentStack: CloudFormationClient;
+  private readonly subStacks: SubStackOutputs;
+  private readonly responder: CfnResponder;
+  private readonly logger: LoggerBuffer;
+
+  constructor(parentStack: CloudFormationClient, subStacks: SubStackOutputs, responder: CfnResponder, logger: LoggerBuffer) {
+    this.parentStack = parentStack;
+    this.subStacks = subStacks;
+    this.responder = responder;
+    this.logger = logger;
+  }
+
+  async answerSuccess(request: FailedRequest, target: CfnReplyTarget, failureReason: string): Promise<boolean> {
+    if (request.requestType !== 'Update') {
+      return false;
+    }
+
+    if (!(await isParentStackRollingBack(target.cfn.StackId, this.parentStack, this.logger))) {
+      return false;
+    }
+
+    const outputs = await this.readOutputs(request);
+
+    // The parent consumes the attributes of this resource, so an answer without the outputs is never given.
+    if (!outputs) {
+      this.logger.error('An Update failed while the parent stack rolls back, and the outputs of the stack cannot be read', { reason: failureReason });
+      return false;
+    }
+
+    this.logger.error('Answering SUCCESS to an Update that failed while the parent stack rolls back', { reason: failureReason });
+    await this.responder.succeed(target, { reason: `Answered SUCCESS because the parent stack is rolling back. The Update failed: ${failureReason}`, data: outputs });
+    return true;
+  }
+
+  private async readOutputs(request: FailedRequest): Promise<Record<string, string> | undefined> {
+    if (request.stackName === undefined) {
+      return undefined;
+    }
+    return this.subStacks.currentOutputs({ requestType: 'Update', stackName: request.stackName, region: request.region });
+  }
+}

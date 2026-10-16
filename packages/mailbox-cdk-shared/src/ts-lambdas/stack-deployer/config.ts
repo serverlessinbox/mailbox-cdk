@@ -18,11 +18,13 @@ export interface WorkerConfig extends BaseConfig {
 }
 
 /**
- * The environment of the stack-deployer starter function: the shared base plus the state machine it starts.
- * The worker never starts the state machine, so its config does not include this variable.
+ * The environment of the stack-deployer starter function: the shared base plus the state machine it starts
+ * and the region it runs in, where an operation that names no region reads its stack. The worker never starts
+ * the state machine, so its config does not include that variable.
  */
 export interface StarterConfig extends BaseConfig {
   readonly stateMachineArn: StateMachineArn;
+  readonly region: Region;
 }
 
 export function loadWorker(l: env.Loader): WorkerConfig {
@@ -36,5 +38,6 @@ export function loadStarter(l: env.Loader): StarterConfig {
   return {
     ...loadBaseConfig(l),
     stateMachineArn: env.mandatoryAs(l, 'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN', toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
+    region: env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
   };
 }

@@ -13,6 +13,7 @@ import { CfnResponder } from '../cfn-responder';
 import { CloudFormationStacks } from '../cloudformation-stacks';
 import { StackDeployerWorker } from '../stack-deployer-worker';
 import { StackOperationFailure } from '../stack-operation-failure';
+import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
 import {
   awsError,
   defaultLevelLogger,
@@ -21,6 +22,7 @@ import {
   noPause,
   operation,
   replyTarget,
+  rollbackAnswering,
   sfnEvent,
   silenceConsole,
   stack,
@@ -61,10 +63,12 @@ describe('StackDeployerWorker', () => {
   let endpoint: FakeCfnEndpoint;
   let consoleSpies: ConsoleSpies;
 
-  function workerForStacks(): StackDeployerWorker {
+  const notRollingBack: UpdateRollbackAnswers = { answerSuccess: async () => false };
+
+  function workerForStacks(rollback: UpdateRollbackAnswers = notRollingBack): StackDeployerWorker {
     const logger = defaultLevelLogger();
     const stacks = new CloudFormationStacks((region) => new CloudFormationClient({ region }), US_EAST_1, logger);
-    return new StackDeployerWorker(stacks, new CfnResponder(noPause), logger);
+    return new StackDeployerWorker(stacks, new CfnResponder(noPause), rollback, logger);
   }
 
   beforeEach(() => {
@@ -147,7 +151,7 @@ describe('StackDeployerWorker', () => {
 
     it('answers SUCCESS with the stack outputs and ends the workflow when the stack is complete', async () => {
       cfn.on(DescribeStacksCommand).resolves({
-        Stacks: [stack('CREATE_COMPLETE', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items' }, { OutputKey: 'Unset' }, { OutputValue: 'orphan' }] })],
+        Stacks: [stack('CREATE_COMPLETE', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items' }] })],
       });
 
       const result = await check();
@@ -477,6 +481,40 @@ describe('StackDeployerWorker', () => {
       cfn.on(DescribeStacksCommand).rejects({ name: 'AccessDenied', message: 'cannot describe' });
 
       await expect(check()).rejects.toThrow('Stack deployer check failed (DescribeStacks): AccessDenied: cannot describe');
+    });
+  });
+
+  describe('an Update that would be answered FAILED', () => {
+    const rolledBack = () => rollbackAnswering(true);
+    const update = operation({ requestType: 'Update' });
+    const target = replyTarget();
+
+    it.each([
+      ['the stack does not exist', { Stacks: [] }, 0, `Stack ${STACK_NAME} does not exist`],
+      ['the stack is being deleted', { Stacks: [stack('DELETE_IN_PROGRESS')] }, 0, expect.stringContaining('is being deleted')],
+      ['the stack ended in a failed state', { Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { StackStatusReason: 'rolled back' })] }, 0, expect.stringContaining('rolled back')],
+      ['the stack is still in progress at the last attempt', { Stacks: [stack('UPDATE_IN_PROGRESS')] }, 135, expect.stringContaining('did not reach a terminal state')],
+    ])('is offered to the rollback answerer, and left unanswered when that answers it, when %s', async (_description, described, attempt, reason) => {
+      cfn.on(DescribeStacksCommand).resolves(described);
+      const rollback = rolledBack();
+
+      const result = await workerForStacks(rollback).handle(sfnEvent({ op: update, attempt }), target);
+
+      expect(result.done).toBe(true);
+      expect(rollback.answerSuccess).toHaveBeenCalledWith(update, target, reason);
+      expect(endpoint.answers()).toEqual([]);
+    });
+
+    it('is offered to the rollback answerer with the failure of a StackOperationFailure, and left unanswered when that answers it', async () => {
+      const rollback = rolledBack();
+      const failure = new StackOperationFailure('Stack deployer start failed', awsError('AccessDenied', 'cannot update'));
+
+      const result = await workerForStacks(rollback).answerFailure(update, failure, target);
+
+      expect(result).toEqual({ done: true });
+      expect(rollback.answerSuccess).toHaveBeenCalledWith(update, target, failure.message);
+      expect(endpoint.answers()).toEqual([]);
+      expect(cfn.commandCalls(DescribeStackEventsCommand)).toHaveLength(0);
     });
   });
 

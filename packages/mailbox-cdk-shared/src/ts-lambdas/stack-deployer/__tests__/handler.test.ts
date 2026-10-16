@@ -2,6 +2,7 @@ import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
 import type * as SfnSdk from '@aws-sdk/client-sfn';
 import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
 import type * as HandlerModule from '../handler';
+import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
 import {
   cfnRequest,
   fakeCfnEndpoint,
@@ -10,6 +11,7 @@ import {
   sfnEvent,
   silenceConsole,
   stack,
+  STACK_ID,
   stackIdOf,
   STATE_MACHINE_ARN,
   US_WEST_2,
@@ -63,8 +65,14 @@ describe('stack-deployer handlers', () => {
     return loaded;
   }
 
-  const starterEnvironment = { SERVICE_NAME: 'stack-deployer-data-starter', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: STATE_MACHINE_ARN, LOG_LEVEL: undefined };
+  const starterEnvironment = { SERVICE_NAME: 'stack-deployer-data-starter', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: STATE_MACHINE_ARN, LOG_LEVEL: undefined };
   const workerEnvironment = { SERVICE_NAME: 'stack-deployer-data-worker', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
+
+  /** CloudFormation as it is while the parent stack rolls back: the parent says so, and the stack of the operation has outputs. */
+  const rollingBackParent = async (input: { StackName?: string }) =>
+    input.StackName === STACK_ID
+      ? { Stacks: [stack('UPDATE_ROLLBACK_IN_PROGRESS')], StackEvents: [] }
+      : { Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items-old' }] })], StackEvents: [] };
 
   beforeEach(() => {
     consoleSpies = silenceConsole();
@@ -191,6 +199,20 @@ describe('stack-deployer handlers', () => {
         expect.objectContaining({ Status: 'FAILED', Reason: 'Failed to start Step Functions execution: AccessDeniedException: not allowed' }),
       ]);
       expect(consoleSpies.debug).toHaveBeenCalledWith('Starting Step Functions execution', expect.objectContaining({ executionName: 'request-123' }));
+    });
+
+    it('answers an Update SUCCESS with the outputs of the stack when the execution cannot be started while the parent stack rolls back', async () => {
+      const { handlers, sfn, cloudFormation } = loadHandlers(starterEnvironment);
+      sfn.callsFake(async () => {
+        throw Object.assign(new Error(ACCESS_DENIED.message), { name: ACCESS_DENIED.name });
+      });
+      cloudFormation.callsFake(rollingBackParent);
+
+      await handlers.starterHandler(cfnRequest({ RequestType: 'Update', PhysicalResourceId: toPhysicalResourceId('sent-by-cloudformation') }), CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'SUCCESS', PhysicalResourceId: 'sent-by-cloudformation', Data: { TableName: 'items-old' } }),
+      ]);
     });
 
     it('answers a Delete SUCCESS when the execution cannot be started', async () => {
@@ -357,6 +379,29 @@ describe('stack-deployer handlers', () => {
       expect(await outcome).toHaveProperty('message', 'Failed to PUT CloudFormation response (HTTP 500): rejected (attempts: 4)');
       expect(fetchSpy).toHaveBeenCalledTimes(4);
       expect(consoleSpies.info).toHaveBeenCalledWith('Stack deployer op', expect.objectContaining({ mode: 'check' }));
+    });
+
+    it('answers an Update SUCCESS with the outputs of the stack when its stack ended in a failed state while the parent stack rolls back', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(rollingBackParent);
+
+      const result = await handlers.workerHandler(sfnEvent({ op: operation({ requestType: 'Update' }), cfn: { ...sfnEvent().cfn, PhysicalResourceId: toPhysicalResourceId('sent-by-cloudformation') } }), CONTEXT);
+
+      expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'SUCCESS', PhysicalResourceId: 'sent-by-cloudformation', Data: { TableName: 'items-old' } }),
+      ]);
+    });
+
+    it('answers an Update SUCCESS with the outputs of the stack when its input cannot be read in full while the parent stack rolls back', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+      cloudFormation.callsFake(rollingBackParent);
+      const unreadable = { ...sfnEvent({ op: operation({ requestType: 'Update' }) }), mode: 'abort' };
+
+      const result = await handlers.workerHandler(unreadable, CONTEXT);
+
+      expect(result).toEqual({ done: true });
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Data: { TableName: 'items-old' } })]);
     });
 
     it('answers a Delete SUCCESS when a stack call fails', async () => {

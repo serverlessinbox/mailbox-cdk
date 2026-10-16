@@ -218,6 +218,14 @@ describe('StackDeploymentEventReader', () => {
       });
     });
 
+    it('gives the region the properties name, and none when it is wrong', () => {
+      const named = cfnRequest({}, stackDeployerProperties({ region: US_EAST_1 }));
+      const wrong = { ...cfnRequest(), ResourceProperties: { stackName: STACK_NAME, region: 7 } };
+
+      expect(reader.readAnswerableCfnRequest(named)).toMatchObject({ region: US_EAST_1 });
+      expect(reader.readAnswerableCfnRequest(wrong)).toMatchObject({ stackName: STACK_NAME, region: undefined });
+    });
+
     it('still gives the response target when the physical id is wrong', () => {
       const event = { ...cfnRequest(), PhysicalResourceId: 7 };
 
@@ -243,6 +251,13 @@ describe('StackDeploymentEventReader', () => {
       const event = { cfn: sfnEvent().cfn, mode: 'abort', op: 'none' };
 
       expect(reader.readAnswerableSfnInput(event)).toEqual({ cfn: sfnEvent().cfn, requestType: undefined, stackName: undefined });
+    });
+
+    it('gives the region the operation names, and none when it is wrong', () => {
+      const wrong = { cfn: sfnEvent().cfn, mode: 'check', op: { ...operation(), region: 7 } };
+
+      expect(reader.readAnswerableSfnInput(sfnEvent({ op: operation({ region: US_EAST_1 }) }))).toMatchObject({ region: US_EAST_1 });
+      expect(reader.readAnswerableSfnInput(wrong)).toMatchObject({ stackName: STACK_NAME, region: undefined });
     });
 
     it('gives the physical id of the envelope, and still the response target when it is wrong', () => {

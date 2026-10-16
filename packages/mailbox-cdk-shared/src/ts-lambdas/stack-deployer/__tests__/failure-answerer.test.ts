@@ -5,6 +5,7 @@ import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer'
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
 import { StackOperationFailure } from '../stack-operation-failure';
 import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
+import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
 import { WorkerResult } from '../worker-result';
 import {
   awsError,
@@ -13,9 +14,13 @@ import {
   LOG_STREAM_NAME,
   noPause,
   operation,
+  rollbackAnswering,
   sfnEvent,
   silenceConsole,
+  STACK_ID,
   STACK_NAME,
+  stackDeployerProperties,
+  US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
@@ -27,7 +32,7 @@ import {
  * and an answer that could not be delivered must not be answered a second time.
  */
 describe('FailureAnswerer', () => {
-  const answerer = new FailureAnswerer(new StackDeploymentEventReader(), new CfnResponder(noPause));
+  const answerer = new FailureAnswerer(new StackDeploymentEventReader(), new CfnResponder(noPause), undefined);
   let endpoint: FakeCfnEndpoint;
   let consoleSpies: ConsoleSpies;
 
@@ -97,6 +102,50 @@ describe('FailureAnswerer', () => {
       await expect(answerer.answerCfnRequest(cfnRequest(), failure, LOG_STREAM_NAME)).rejects.toBe(failure);
 
       expect(endpoint.answers()).toEqual([]);
+    });
+  });
+
+  describe('an Update that would be answered FAILED', () => {
+    const rolledBack = () => rollbackAnswering(true);
+    const notRolledBack = () => rollbackAnswering(false);
+    const answererWith = (rollback: UpdateRollbackAnswers) => new FailureAnswerer(new StackDeploymentEventReader(), new CfnResponder(noPause), rollback);
+    const update = sfnEvent({ op: operation({ requestType: 'Update', region: US_WEST_2 }) });
+
+    it('is offered to the rollback answerer as far as the request can be read, and left unanswered when that answers it', async () => {
+      const rollback = rolledBack();
+      const request = cfnRequest({ RequestType: 'Update' }, stackDeployerProperties({ region: US_WEST_2 }));
+
+      await answererWith(rollback).answerCfnRequest(request, awsError('Boom', 'it broke'), LOG_STREAM_NAME);
+
+      expect(rollback.answerSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 }),
+        { cfn: expect.objectContaining({ StackId: STACK_ID }), physicalResourceId: STACK_NAME, logStreamName: LOG_STREAM_NAME },
+        'Unexpected error: Boom: it broke',
+      );
+      expect(endpoint.answers()).toEqual([]);
+    });
+
+    it('is offered to the rollback answerer when a workflow input fails with anything but a StackOperationFailure, and the workflow ends unanswered when that answers it', async () => {
+      const rollback = rolledBack();
+
+      const result = await answererWith(rollback).answerSfnInput(update, awsError('Boom', 'it broke'), LOG_STREAM_NAME);
+
+      expect(result).toEqual({ done: true });
+      expect(rollback.answerSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 }),
+        expect.objectContaining({ physicalResourceId: STACK_NAME }),
+        'Unexpected error: Boom: it broke',
+      );
+      expect(endpoint.answers()).toEqual([]);
+    });
+
+    it('is answered FAILED as before when the rollback answerer leaves it', async () => {
+      const rollback = notRolledBack();
+
+      await answererWith(rollback).answerCfnRequest(cfnRequest({ RequestType: 'Update' }), awsError('Boom', 'it broke'), LOG_STREAM_NAME);
+
+      expect(rollback.answerSuccess).toHaveBeenCalledTimes(1);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: 'Unexpected error: Boom: it broke' })]);
     });
   });
 

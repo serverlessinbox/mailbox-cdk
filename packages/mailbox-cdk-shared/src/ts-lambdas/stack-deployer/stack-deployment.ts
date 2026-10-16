@@ -1,5 +1,5 @@
 import * as t from 'typanion';
-import { isRegion } from '../shared/aws-identifiers';
+import { isRegion, type Region } from '../shared/aws-identifiers';
 import type { Unbranded } from '../shared/branded';
 import {
   isLogicalResourceId,
@@ -104,16 +104,20 @@ export const isTargetOfStep = t.isPartial({ cfn: isCfnTarget });
 export const isPhysicalIdOfStep = t.isPartial({ cfn: t.isPartial({ PhysicalResourceId: isPhysicalResourceId }) });
 export const isRequestTypeOfStep = t.isPartial({ op: t.isPartial({ requestType: isRequestType }) });
 export const isStackNameOfStep = t.isPartial({ op: t.isPartial({ stackName: isStackName }) });
+export const isRegionOfRequest = t.isPartial({ ResourceProperties: t.isPartial({ region: isRegion }) });
+export const isRegionOfStep = t.isPartial({ op: t.isPartial({ region: isRegion }) });
 
 /**
  * What an event that could not be read in full still gives to answer it: where to PUT, and the physical id,
- * request type and stack name when they are readable. An event without a response target cannot be answered.
+ * request type, stack name and region of the stack when they are readable. An event without a response
+ * target cannot be answered.
  */
 export interface AnswerableEvent {
   readonly cfn: CfnEnvelope;
   readonly physicalResourceId: PhysicalResourceId | undefined;
   readonly requestType: RequestType | undefined;
   readonly stackName: StackName | undefined;
+  readonly region?: Region | undefined;
 }
 
 /** The input of the state machine execution that deploys one stack: how to answer CloudFormation and what to do. */

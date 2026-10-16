@@ -2,9 +2,10 @@ import { CaughtError } from '../shared/caught-error';
 import { ExpectedFailure } from '../shared/expected-failure';
 import { AnswerDeliveryFailure } from './answer-delivery-failure';
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
-import type { OperationInput } from './stack-deployment';
+import type { AnswerableEvent, OperationInput } from './stack-deployment';
 import type { StackDeploymentEventReader } from './stack-deployment-event-reader';
 import { StackOperationFailure } from './stack-operation-failure';
+import type { UpdateRollbackAnswers } from './update-rollback-answerer';
 import { WorkerResult } from './worker-result';
 
 /** Answers CloudFormation for a stack operation that failed, with the detail only the stack operation can add. */
@@ -17,15 +18,18 @@ export interface StackFailureAnswerer {
  * however much of the event could be read: a Delete is answered SUCCESS, any other request FAILED, with the
  * failure as the reason. The one request that cannot be answered is an event with no usable response
  * target; that throws, after writing a line that says so. A failure to deliver an answer is never answered
- * again; it is thrown as it is.
+ * again; it is thrown as it is. An Update is first offered to the rollback answerer, which is absent when the
+ * function has no usable configuration to build it from.
  */
 export class FailureAnswerer {
   private readonly events: StackDeploymentEventReader;
   private readonly responder: CfnResponder;
+  private readonly rollback: UpdateRollbackAnswers | undefined;
 
-  constructor(events: StackDeploymentEventReader, responder: CfnResponder) {
+  constructor(events: StackDeploymentEventReader, responder: CfnResponder, rollback: UpdateRollbackAnswers | undefined) {
     this.events = events;
     this.responder = responder;
+    this.rollback = rollback;
   }
 
   /** Answers the CloudFormation request the starter received. */
@@ -36,7 +40,7 @@ export class FailureAnswerer {
     if (!answerable) {
       throw this.unanswerable(failure);
     }
-    await this.responder.answerFailure(this.responder.targetForAnswerable(answerable, logStreamName), answerable.requestType, this.reasonOf(failure));
+    await this.answerReadable(answerable, failure, logStreamName);
   }
 
   /**
@@ -55,8 +59,18 @@ export class FailureAnswerer {
     if (!answerable) {
       throw this.unanswerable(failure);
     }
-    await this.responder.answerFailure(this.responder.targetForAnswerable(answerable, logStreamName), answerable.requestType, this.reasonOf(failure));
+    await this.answerReadable(answerable, failure, logStreamName);
     return WorkerResult.finished();
+  }
+
+  private async answerReadable(answerable: AnswerableEvent, failure: unknown, logStreamName: string | undefined): Promise<void> {
+    const target = this.responder.targetForAnswerable(answerable, logStreamName);
+    const reason = this.reasonOf(failure);
+
+    if (await this.rollback?.answerSuccess(answerable, target, reason)) {
+      return;
+    }
+    await this.responder.answerFailure(target, answerable.requestType, reason);
   }
 
   private rejectUndeliverable(failure: unknown): void {

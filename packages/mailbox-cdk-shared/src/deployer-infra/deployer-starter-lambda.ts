@@ -2,6 +2,7 @@ import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from '../ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { parentStackStatusReadStatement } from './parent-stack-status-read';
 import type { IPollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
 
 export interface DeployerStarterLambdaProps {
@@ -32,5 +33,11 @@ export class DeployerStarterLambda extends TypeScriptLambda {
     });
 
     props.workflow.grantStartAndDescribeExecutions(this);
+    this.grantReadParentStackStatus();
+  }
+
+  /** Lets the starter ask whether the parent stack is rolling back before it answers a failed Update. */
+  private grantReadParentStackStatus(): void {
+    this.addToRolePolicy(parentStackStatusReadStatement());
   }
 }

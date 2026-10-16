@@ -79,6 +79,44 @@ describe('CloudFormationStacks', () => {
     });
   });
 
+  describe('outputsOf', () => {
+    it('gives the outputs that have both a key and a value', () => {
+      const described = stack('CREATE_COMPLETE', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items' }, { OutputKey: 'Unset' }, { OutputValue: 'orphan' }] });
+
+      expect(stacks.outputsOf(described)).toStrictEqual({ TableName: 'items' });
+    });
+
+    it('gives no outputs for a stack that has none', () => {
+      expect(stacks.outputsOf(stack('CREATE_COMPLETE'))).toStrictEqual({});
+    });
+  });
+
+  describe('currentOutputs', () => {
+    it('gives the outputs the stack of the operation has now', async () => {
+      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items' }] })] });
+
+      await expect(stacks.currentOutputs(operation())).resolves.toEqual({ TableName: 'items' });
+    });
+
+    it('gives nothing for a stack that does not exist', async () => {
+      cfn.on(DescribeStacksCommand).rejects({ name: 'ValidationError', message: `Stack with id ${STACK_NAME} does not exist` });
+
+      await expect(stacks.currentOutputs(operation())).resolves.toBeUndefined();
+    });
+
+    it('gives nothing, and logs a warning, when the stack cannot be read', async () => {
+      const consoleSpies = silenceConsole();
+      cfn.on(DescribeStacksCommand).rejects({ name: 'AccessDenied', message: 'cannot describe' });
+      const logger = defaultLevelLogger();
+      const reading = new CloudFormationStacks((region) => new CloudFormationClient({ region }), EU_WEST_1, logger);
+
+      await expect(reading.currentOutputs(operation())).resolves.toBeUndefined();
+
+      logger.flush();
+      expect(consoleSpies.warn).toHaveBeenCalledWith(`Failed to read the outputs of stack ${STACK_NAME}`, expect.objectContaining({ error: 'cannot describe' }));
+    });
+  });
+
   describe('region', () => {
     it('calls CloudFormation in the region of the operation', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_COMPLETE')] });
