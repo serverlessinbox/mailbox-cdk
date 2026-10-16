@@ -1,11 +1,8 @@
-import { env, loadLogLevel, type BaseConfig } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { loadBaseConfig, type BaseConfig, type env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-/** Config of the data override resolver Lambda, whose service name is optional. */
+/** The environment the data override resolver Lambda reads: the shared base only. */
 export type Config = BaseConfig;
 
 export function load(l: env.Loader): Config {
-  return {
-    logLevel: loadLogLevel(l),
-    serviceName: l.optional('SERVICE_NAME', ''),
-  };
+  return loadBaseConfig(l);
 }

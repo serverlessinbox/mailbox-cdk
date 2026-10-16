@@ -38,9 +38,17 @@ describe('DataOverrideResolverLambda', () => {
     const statements = allPolicyStatements(Template.fromStack(stack));
 
     expect(statements).toEqual([
-      { Action: 'dynamodb:DescribeTable', Effect: 'Allow', Resource: expect.anything() },
+      {
+        Action: 'dynamodb:DescribeTable',
+        Effect: 'Allow',
+        Resource: {
+          'Fn::Join': [
+            '',
+            ['arn:', { Ref: 'AWS::Partition' }, ':dynamodb:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':table/*'],
+          ],
+        },
+      },
     ]);
-    expect(JSON.stringify(statements[0].Resource)).toMatch(/:dynamodb:.*:table\/\*/);
   });
 
   it('fails to synthesize naming the package the resolver holds no pin for', () => {

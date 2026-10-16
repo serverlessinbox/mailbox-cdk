@@ -32,13 +32,7 @@ export class DataOverrideResolverLambda extends TypeScriptLambda {
     this.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['dynamodb:DescribeTable'],
-        resources: [
-          cdk.Stack.of(this).formatArn({
-            service: 'dynamodb',
-            resource: 'table',
-            resourceName: '*',
-          }),
-        ],
+        resources: [`arn:${cdk.Aws.PARTITION}:dynamodb:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:table/*`],
       })
     );
   }

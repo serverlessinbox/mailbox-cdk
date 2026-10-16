@@ -4,13 +4,18 @@
  * Pins what the data deployer hands CloudFormation and its worker. The custom resource's properties are
  * what the stack-deployer Lambda reads to create the data stack: a wrong key or value deploys the
  * wrong stack, leaves its resources untagged for the root stack's tag-scoped grants, or lets a delete
- * remove the tables.
+ * remove the tables. It also pins how the deployer's outputs reach the data stack ref: the override
+ * resolver is fed the data stack's table ARNs, and the table and blob store handles consumers receive
+ * resolve to the resolver's answers and the data stack's blob store output. A handle wired to the
+ * wrong output grants the mailbox access to the wrong resource.
  */
 
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { MailboxDataDeployer } from '../mailbox-data-deployer';
 import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { TableRole } from '../../ts-lambdas/data-override-resolver/resource-properties';
+import { renderWithTokens, resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_ARTIFACT_VERSION,
@@ -19,7 +24,9 @@ import {
 } from '../../__tests__/deployer-test-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxDataDeployer';
+const RESOLVER_RESOURCE_TYPE = 'Custom::MailboxDataOverrideResolver';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };
+const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 interface SynthesizedDeployer {
   readonly template: Template;
@@ -40,6 +47,25 @@ function synthDeployer(props: Partial<MailboxDataDeployerProps> = {}): Synthesiz
     templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
     templateObjectArn: stack.resolve(artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json')),
   };
+}
+
+function synthGrantedDeployer(grant: (deployer: MailboxDataDeployer, grantee: iam.IGrantable) => void): SynthesizedDeployer {
+  const { stack, artifactResolver } = newDeployerTestStack();
+  const deployer = new MailboxDataDeployer(stack, 'data-deployer', {
+    artifactResolver,
+    nameBase: 'test-name-base',
+    deployerType: 'cdk',
+  });
+  grant(deployer, new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }));
+  return {
+    template: Template.fromStack(stack),
+    templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
+    templateObjectArn: stack.resolve(artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json')),
+  };
+}
+
+function logicalIdOf(template: Template, resourceType: string): string {
+  return Object.keys(template.findResources(resourceType))[0];
 }
 
 describe('MailboxDataDeployer', () => {
@@ -126,9 +152,35 @@ describe('MailboxDataDeployer', () => {
   it('resolves table overrides only after the data stack is deployed', () => {
     const { template } = synthDeployer();
 
-    const deployer = Object.keys(template.findResources(DEPLOYER_RESOURCE_TYPE))[0];
-    template.hasResource('Custom::MailboxDataOverrideResolver', {
+    const deployer = logicalIdOf(template, DEPLOYER_RESOURCE_TYPE);
+    template.hasResource(RESOLVER_RESOURCE_TYPE, {
       DependsOn: Match.arrayWith([deployer]),
+    });
+  });
+
+  describe('data stack ref', () => {
+    it.each(TABLE_ROLES)('hands the override resolver the data stack output for the %s as its incoming ARN', (role) => {
+      const { template } = synthDeployer();
+
+      template.hasResourceProperties(RESOLVER_RESOURCE_TYPE, {
+        [`${role}IncomingArn`]: { 'Fn::GetAtt': [logicalIdOf(template, DEPLOYER_RESOURCE_TYPE), `${role}Arn`] },
+      });
+    });
+
+    it.each(TABLE_ROLES)('points the %s handle at the ARN the override resolver answers with', (role) => {
+      const { template } = synthGrantedDeployer((deployer, grantee) => deployer[role].grantRead(grantee));
+
+      const [statement] = statementsForAction(template, 'dynamodb:GetItem');
+      expect(resourcesOf(statement)[0]).toEqual({ 'Fn::GetAtt': [logicalIdOf(template, RESOLVER_RESOURCE_TYPE), `${role}Arn`] });
+    });
+
+    it('points the blob store handle at the data stack output for the blob store', () => {
+      const { template } = synthGrantedDeployer((deployer, grantee) => deployer.blobStore.grantUploadBlobReadWriteDelete(grantee));
+
+      const [statement] = statementsForAction(template, 's3:PutObject');
+      expect(statement.Resource).toEqual({
+        'Fn::Join': ['', [{ 'Fn::GetAtt': [logicalIdOf(template, DEPLOYER_RESOURCE_TYPE), 'blobStoreArn'] }, '/uploads/*']],
+      });
     });
   });
 });

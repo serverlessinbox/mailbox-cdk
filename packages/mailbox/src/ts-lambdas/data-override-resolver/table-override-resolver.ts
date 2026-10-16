@@ -1,5 +1,13 @@
 import { DescribeTableCommand, ResourceNotFoundException, type DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { ExpectedFailure, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import {
+  CaughtError,
+  ExpectedFailure,
+  parseArn,
+  toTableName,
+  type LoggerBuffer,
+  type ParsedArn,
+  type TableName,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { isResourceProperties, type ResourceProperties, type TableRole } from './resource-properties';
 
 /** The effective table ARN of each role, under the attribute name `<role>Arn` the custom resource answers CloudFormation with. */
@@ -65,7 +73,7 @@ export class TableOverrideResolver {
 
   private async loadOverrideTableStatus(role: TableRole, overrideArn: string): Promise<string | undefined> {
     try {
-      const response = await this.dynamodb.send(new DescribeTableCommand({ TableName: this.tableNameOf(overrideArn) }));
+      const response = await this.dynamodb.send(new DescribeTableCommand({ TableName: this.tableNameOf(role, overrideArn) }));
       return response.Table?.TableStatus;
     } catch (thrown) {
       throw this.describeFailure(role, overrideArn, thrown);
@@ -79,11 +87,25 @@ export class TableOverrideResolver {
     return thrown;
   }
 
-  private tableNameOf(tableArn: string): string {
-    const match = tableArn.match(/table\/([^/]+)$/);
-    if (!match) {
-      throw new ExpectedFailure(`Invalid table ARN: ${tableArn}`);
+  private tableNameOf(role: TableRole, tableArn: string): TableName {
+    const parsed = this.parseTableArn(role, tableArn);
+
+    // A table ARN is `table/{name}`; an index, stream or other service's ARN names something DescribeTable cannot describe.
+    if (parsed.service !== 'dynamodb' || parsed.resource !== `table/${parsed.resourceName}`) {
+      throw new ExpectedFailure(`${role}: override ${tableArn} is not a DynamoDB table ARN`);
     }
-    return match[1];
+    return toTableName(parsed.resourceName);
+  }
+
+  private parseTableArn(role: TableRole, tableArn: string): ParsedArn {
+    try {
+      return parseArn(tableArn);
+    } catch (thrown) {
+      throw this.malformedTableArn(role, thrown);
+    }
+  }
+
+  private malformedTableArn(role: TableRole, thrown: unknown): ExpectedFailure {
+    return new ExpectedFailure(`${role}: override is malformed: ${new CaughtError(thrown).message ?? String(thrown)}`);
   }
 }

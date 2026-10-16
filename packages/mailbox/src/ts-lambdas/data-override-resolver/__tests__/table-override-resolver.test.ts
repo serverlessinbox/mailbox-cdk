@@ -97,11 +97,23 @@ describe('TableOverrideResolver', () => {
       await expect(resolver.resolve(PROPERTIES_WITH_ITEM_OVERRIDE)).rejects.toThrow('(status: unknown)');
     });
 
-    it('rejects with an ExpectedFailure, without calling DynamoDB, when the override is not a table ARN', async () => {
+    it('rejects with an ExpectedFailure naming the role, without calling DynamoDB, when the override is not an ARN', async () => {
       const rejection = resolver.resolve({ ...PROPERTIES_WITHOUT_OVERRIDES, itemTableOverrideArn: 'not-an-arn' });
 
       await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
-      await expect(rejection).rejects.toThrow('Invalid table ARN: not-an-arn');
+      await expect(rejection).rejects.toThrow('itemTable: override is malformed: Invalid ARN "not-an-arn"');
+      expect(dynamodbMock.calls()).toHaveLength(0);
+    });
+
+    it.each([
+      ['another service', 'arn:aws:sqs:eu-west-1:123456789012:table/override-item'],
+      ['a table index', `${OVERRIDE_ITEM_ARN}/index/by-date`],
+      ['a table stream', `${OVERRIDE_ITEM_ARN}/stream/2026-01-01T00:00:00.000`],
+    ])('rejects with an ExpectedFailure, without calling DynamoDB, when the override is the ARN of %s', async (_kind, overrideArn) => {
+      const rejection = resolver.resolve({ ...PROPERTIES_WITHOUT_OVERRIDES, itemTableOverrideArn: overrideArn });
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toThrow(`itemTable: override ${overrideArn} is not a DynamoDB table ARN`);
       expect(dynamodbMock.calls()).toHaveLength(0);
     });
 
