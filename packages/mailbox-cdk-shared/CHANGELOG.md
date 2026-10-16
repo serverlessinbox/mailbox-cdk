@@ -4,6 +4,36 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.1...v0.2.2) (Tue Oct 13 2026)
+
+### chore
+
+* build Lambda zips into dist/lambdas and drop the retired ui-deployer bundle ([ba87f5d](https://github.com/serverlessinbox/mailbox-cdk/commit/ba87f5d3dab090bdd2f874e9d72e7034fd6c790d))
+
+* **shared** require SERVICE_NAME, remove backward-compat reads ([95a7518](https://github.com/serverlessinbox/mailbox-cdk/commit/95a7518cec93a4fab71cb49893adabdc9736924f))
+
+### refactor
+
+* **shared** move naming helpers into src/naming ([d1b006c](https://github.com/serverlessinbox/mailbox-cdk/commit/d1b006cea3b43b9498cc789541f36ee17739aa5e))
+
+* **shared** restructure the stack-helpers Lambda to the code skills, with a typed payload ([e10c110](https://github.com/serverlessinbox/mailbox-cdk/commit/e10c110e7906fe1dc699b2c08f2524220aeb2546))
+
+* **shared** restructure the bucket-auto-empty Lambda to the code skills, with a typed payload ([30398b3](https://github.com/serverlessinbox/mailbox-cdk/commit/30398b396042ae75165765ba156893cea0052fcc))
+
+* **shared** restructure the content-deployer Lambda to the code skills and share the custom-resource request, failure answers and base config across the cleaned Lambdas ([a903927](https://github.com/serverlessinbox/mailbox-cdk/commit/a903927e8194e51fc14217f012fe3bc108370b0a))
+
+### fix
+
+* **sweeper** sweep on Delete only while the stack is being deleted ([01ad53a](https://github.com/serverlessinbox/mailbox-cdk/commit/01ad53a4d568f277de63df1fbd8d2736f8e73c4d))
+
+### feat
+
+* **shared** complete ARN parser and ExpectedFailure in the Lambda runtime ([15b050b](https://github.com/serverlessinbox/mailbox-cdk/commit/15b050ba6299275dc283d24b1396619d4e12a084))
+
+### docs
+
+* **mailbox** trim resource-sweeper and sweeper comments to what the code does not say ([1aea716](https://github.com/serverlessinbox/mailbox-cdk/commit/1aea71670c7211df417cfaadafedab51b8e07850))
+
 ## [0.2.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.0...v0.2.1) (Mon Oct 12 2026)
 
 ### chore

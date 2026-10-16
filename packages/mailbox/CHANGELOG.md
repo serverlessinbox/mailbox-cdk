@@ -4,6 +4,32 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.1...v0.2.2) (Tue Oct 13 2026)
+
+### chore
+
+* remove internal plan references and the CI account ID from source and tests ([152d065](https://github.com/serverlessinbox/mailbox-cdk/commit/152d0658a2e41623f325a41b327d09a3264def1f))
+
+* build Lambda zips into dist/lambdas and drop the retired ui-deployer bundle ([ba87f5d](https://github.com/serverlessinbox/mailbox-cdk/commit/ba87f5d3dab090bdd2f874e9d72e7034fd6c790d))
+
+* **mailbox** require SERVICE_NAME, drop the sweeper's old property-shape shim ([de5cadb](https://github.com/serverlessinbox/mailbox-cdk/commit/de5cadb566db2db2846578dac5a304a895c6f592))
+
+### fix
+
+* **sweeper** sweep on Delete only while the stack is being deleted ([01ad53a](https://github.com/serverlessinbox/mailbox-cdk/commit/01ad53a4d568f277de63df1fbd8d2736f8e73c4d))
+
+### refactor
+
+* **mailbox** restructure the resource-sweeper Lambda to the code skills, with typed removal payloads ([eb9762e](https://github.com/serverlessinbox/mailbox-cdk/commit/eb9762e2621a5f161ee476694a9f37243d1099fb))
+
+* **mailbox** restructure the data-override-resolver Lambda to the code skills, with a typed payload ([5491468](https://github.com/serverlessinbox/mailbox-cdk/commit/549146888b7e195ed698e0444123109d47a02834))
+
+* **shared** restructure the content-deployer Lambda to the code skills and share the custom-resource request, failure answers and base config across the cleaned Lambdas ([a903927](https://github.com/serverlessinbox/mailbox-cdk/commit/a903927e8194e51fc14217f012fe3bc108370b0a))
+
+### docs
+
+* **mailbox** trim resource-sweeper and sweeper comments to what the code does not say ([1aea716](https://github.com/serverlessinbox/mailbox-cdk/commit/1aea71670c7211df417cfaadafedab51b8e07850))
+
 ## [0.2.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.0...v0.2.1) (Mon Oct 12 2026)
 
 ### chore
