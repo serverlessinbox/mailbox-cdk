@@ -1,10 +1,38 @@
 import * as env from '../../shared/env';
-import { loadStarter } from '../config';
+import { loadStarter, loadWorker } from '../config';
 
 /**
- * Pins the one variable the starter config adds to the shared base: the state machine the starter runs. The
- * worker config adds nothing to the base and has no test.
+ * Pins the variable each config adds to the shared base: the state machine the starter runs, and the region
+ * the worker runs in, which the runtime injects. A missing region must be reported, because a worker that
+ * guessed one would run stack operations in a region the stack does not live in.
  */
+describe('stack-deployer worker config', () => {
+  beforeEach(() => {
+    delete process.env.AWS_REGION;
+    process.env.SERVICE_NAME = 'deployer-service';
+  });
+
+  afterEach(() => {
+    delete process.env.AWS_REGION;
+    delete process.env.SERVICE_NAME;
+  });
+
+  it('reads the region beside the shared base', () => {
+    process.env.AWS_REGION = 'eu-west-1';
+
+    const result = env.tryLoad(loadWorker);
+
+    expect(result.error).toBeUndefined();
+    expect(result.config).toEqual({ logLevel: 'error', serviceName: 'deployer-service', region: 'eu-west-1' });
+  });
+
+  it('reports the region as missing when it is not set', () => {
+    const result = env.tryLoad(loadWorker);
+
+    expect(result.error).toBe('AWS_REGION is not set');
+  });
+});
+
 describe('stack-deployer starter config', () => {
   beforeEach(() => {
     delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;

@@ -13,6 +13,7 @@ import type { LoggerBuffer } from '../shared/logger-buffer';
 import { CaughtError } from '../shared/caught-error';
 import type { Region } from '../shared/aws-identifiers';
 import type { OperationInput } from './stack-deployment';
+import { isSwitchedOn } from './stack-flag';
 import { StackStatus } from './stack-status';
 
 const STACK_CAPABILITIES: Capability[] = ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'];
@@ -189,7 +190,7 @@ export class CloudFormationStacks {
         Parameters: this.parameters(op),
         Tags: this.tags(op),
         Capabilities: STACK_CAPABILITIES,
-        EnableTerminationProtection: op.terminationProtection === true || op.terminationProtection === 'true',
+        EnableTerminationProtection: isSwitchedOn(op.terminationProtection),
       }),
     );
   }

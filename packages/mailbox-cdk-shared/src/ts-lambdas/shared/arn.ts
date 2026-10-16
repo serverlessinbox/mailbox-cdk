@@ -63,6 +63,20 @@ export function parseArn(arn: string): ParsedArn {
   return { partition, service, region, account, resource, resourceType, resourceId, resourceName, qualifier };
 }
 
+/** The parts an ARN is written from; `resource` is the whole resource part, such as `execution:name:id`. */
+export interface ArnParts {
+  readonly partition: string;
+  readonly service: string;
+  readonly region: string;
+  readonly account: string;
+  readonly resource: string;
+}
+
+/** Writes `arn:partition:service:region:account:resource`; the inverse of `parseArn` for the parts it returns. */
+export function formatArn(parts: ArnParts): string {
+  return ['arn', parts.partition, parts.service, parts.region, parts.account, parts.resource].join(':');
+}
+
 /** The breakdown of an ARN's resource part: the fields of `ParsedArn` that depend on its separator form. */
 type ResourceParts = Pick<ParsedArn, 'resourceType' | 'resourceId' | 'qualifier'>;
 

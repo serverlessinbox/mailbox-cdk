@@ -1,5 +1,7 @@
 import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient } from '@aws-sdk/client-sfn';
+import { formatArn, parseArn, type ParsedArn } from '../shared/arn';
 import { CaughtError } from '../shared/caught-error';
+import type { StackId } from '../shared/custom-resource-identifiers';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
@@ -72,19 +74,34 @@ export class StackDeployerStarter {
       return;
     }
 
-    // A stack id is `arn:…:stack/{name}/{guid}`; one that does not split that way is not checked.
-    const stackIdParts = request.StackId.split('/');
-    if (stackIdParts.length < 2) {
-      return;
-    }
-
-    const rootStackName = stackIdParts[1];
+    const rootStackName = this.rootStackNameOf(request.StackId);
     if (rootStackName.length > MAX_ROOT_STACK_NAME_LENGTH) {
       throw new ExpectedFailure(
         `Root stack name "${rootStackName}" exceeds maximum length of ${MAX_ROOT_STACK_NAME_LENGTH} characters (got ${rootStackName.length}). ` +
         'CloudFormation truncates auto-generated resource names to 64 characters, which can break name-based IAM lookups. Please use a shorter stack name.',
       );
     }
+  }
+
+  // A stack id is `arn:{partition}:cloudformation:{region}:{account}:stack/{name}/{guid}`; anything else is rejected.
+  private rootStackNameOf(stackId: StackId): string {
+    const parsed = this.parseStackId(stackId);
+    if (parsed.service !== 'cloudformation' || parsed.resourceType !== 'stack') {
+      throw new ExpectedFailure(`StackId "${stackId}" is not a CloudFormation stack ARN`);
+    }
+    return parsed.resourceId.split('/')[0];
+  }
+
+  private parseStackId(stackId: StackId): ParsedArn {
+    try {
+      return parseArn(stackId);
+    } catch (failure) {
+      throw this.malformedStackId(failure);
+    }
+  }
+
+  private malformedStackId(failure: unknown): ExpectedFailure {
+    return new ExpectedFailure(`StackId is malformed: ${new CaughtError(failure).message ?? String(failure)}`);
   }
 
   private rejectSlashStateMachineArn(): void {
@@ -226,9 +243,10 @@ export class StackDeployerStarter {
     return caught.is('ExecutionAlreadyExists') || caught.messageIncludes('ExecutionAlreadyExists');
   }
 
-  // State machine ARNs and execution ARNs differ in the resource type only: `…:stateMachine:{name}` and `…:execution:{name}:{executionName}`.
+  // An execution lives in the account and region of its state machine, as `execution:{state machine name}:{execution name}`.
   private executionArn(executionName: ExecutionName): ExecutionArn {
-    return toExecutionArn(`${this.stateMachineArn.replace(':stateMachine:', ':execution:')}:${executionName}`);
+    const stateMachine = parseArn(this.stateMachineArn);
+    return toExecutionArn(formatArn({ ...stateMachine, resource: `execution:${stateMachine.resourceId}:${executionName}` }));
   }
 
   private startFailure(requestType: RequestType, failure: unknown): StackOperationFailure {

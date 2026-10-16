@@ -2,10 +2,25 @@
  * Coverage for `parseArn`: every ARN part comes out, for each separator form of the resource part
  * (`id`, `type/id`, `type:id`, `type:id:qualifier`), and a malformed ARN is rejected with an error that
  * names the ARN and the problem. Callers delete or look up resources by the parsed id, so a part
- * returned from the wrong position would act on a different resource than the ARN names.
+ * returned from the wrong position would act on a different resource than the ARN names. `formatArn` writes
+ * the parts back in the order `parseArn` reads them, so an ARN built from parts names the resource intended.
  */
 
-import { parseArn } from '../arn';
+import { formatArn, parseArn } from '../arn';
+
+describe('formatArn', () => {
+  it('joins the parts in ARN order, keeping the colons inside the resource part', () => {
+    const arn = formatArn({ partition: 'aws', service: 'states', region: 'us-east-1', account: '123456789012', resource: 'execution:deployer:run-1' });
+
+    expect(arn).toBe('arn:aws:states:us-east-1:123456789012:execution:deployer:run-1');
+  });
+
+  it('writes the parts parseArn returns back into the ARN they came from, empty region and account included', () => {
+    const arn = 'arn:aws:iam::123456789012:role/division/detector-role';
+
+    expect(formatArn(parseArn(arn))).toBe(arn);
+  });
+});
 
 describe('parseArn', () => {
   it('parses a bare resource id, with empty region and account as S3 ARNs have them', () => {

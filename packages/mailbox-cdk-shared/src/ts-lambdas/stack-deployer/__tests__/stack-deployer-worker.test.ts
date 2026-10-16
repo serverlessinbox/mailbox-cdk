@@ -109,12 +109,21 @@ describe('StackDeployerWorker', () => {
       expect(cfn.commandCalls(DeleteStackCommand)[0].args[0].input).toEqual({ StackName: STACK_NAME });
     });
 
-    it('leaves the stack of a Delete in place, answers SUCCESS and ends the workflow when the stack is preserved on delete', async () => {
-      const result = await start(deletionOf({ preserveOnDelete: true }));
+    it.each([true, 'true'] as const)('leaves the stack of a Delete in place, answers SUCCESS and ends the workflow when preserveOnDelete is %j', async (preserveOnDelete) => {
+      const result = await start(deletionOf({ preserveOnDelete }));
 
       expect(result).toEqual({ done: true });
       expect(cfn.calls()).toHaveLength(0);
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', PhysicalResourceId: STACK_NAME, Data: {} })]);
+    });
+
+    it.each([false, 'false'] as const)('deletes the stack of a Delete when preserveOnDelete is %j', async (preserveOnDelete) => {
+      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_COMPLETE')] });
+
+      const result = await start(deletionOf({ preserveOnDelete }));
+
+      expect(result).toEqual({ done: false });
+      expect(cfn.commandCalls(DeleteStackCommand)).toHaveLength(1);
     });
 
     it('throws the delivery failure as it is, not a StackOperationFailure, when the preserved-on-delete answer cannot be delivered', async () => {

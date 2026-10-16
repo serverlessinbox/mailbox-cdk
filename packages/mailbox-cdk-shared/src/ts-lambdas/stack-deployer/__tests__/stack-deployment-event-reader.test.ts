@@ -68,7 +68,7 @@ describe('StackDeploymentEventReader', () => {
       expect(reader.readProperties(properties, 'Create')).toEqual(properties);
     });
 
-    it('keeps a flag as it arrived, so the string false stays set', () => {
+    it('keeps a flag as it arrived, the text false included', () => {
       const read = reader.readProperties({ ...stackDeployerProperties(), preserveOnDelete: 'false', terminationProtection: 'true' }, 'Create');
 
       expect(read.preserveOnDelete).toBe('false');
@@ -79,8 +79,24 @@ describe('StackDeploymentEventReader', () => {
       expect(() => reader.readProperties({ ...stackDeployerProperties(), terminationProtection: 'sometimes' }, 'Create')).toThrow(/terminationProtection/);
     });
 
-    it('reads properties without a template URL, which a Delete does not need', () => {
-      expect(reader.readProperties({ stackName: 'only-a-name' }, 'Create').stackName).toBe('only-a-name');
+    it('rejects a preserveOnDelete that is neither a boolean nor true or false', () => {
+      expect(() => reader.readProperties({ ...stackDeployerProperties(), preserveOnDelete: 'sometimes' }, 'Create')).toThrow(/preserveOnDelete/);
+    });
+
+    it('reads properties without a template URL for a Delete, which does not need one', () => {
+      expect(reader.readProperties({ stackName: 'only-a-name' }, 'Delete').stackName).toBe('only-a-name');
+    });
+
+    it.each(['Create', 'Update'] as const)('rejects a %s without a template URL as an ExpectedFailure naming it', (requestType) => {
+      let thrown: unknown;
+      try {
+        reader.readProperties({ stackName: 'only-a-name' }, requestType);
+      } catch (failure) {
+        thrown = failure;
+      }
+
+      expect(thrown).toBeInstanceOf(ExpectedFailure);
+      expect(thrown).toHaveProperty('message', `Invalid ResourceProperties: templateUrl is required for a ${requestType}`);
     });
 
     it('rejects a create whose properties are not valid as an ExpectedFailure naming the field', () => {
@@ -109,6 +125,18 @@ describe('StackDeploymentEventReader', () => {
       const invalid = { ...stackDeployerProperties(), region: 'us-east-1', preserveOnDelete: 'true', parameters: { count: 3 }, unknown: 'x' };
 
       expect(reader.readProperties(invalid, 'Delete')).toEqual({ stackName: 'test-data-stack', region: 'us-east-1', preserveOnDelete: 'true' });
+    });
+
+    it('rejects a Delete whose preserveOnDelete is not a switch, since it cannot tell whether the stack is to be kept', () => {
+      let thrown: unknown;
+      try {
+        reader.readProperties({ ...stackDeployerProperties(), preserveOnDelete: 'sometimes' }, 'Delete');
+      } catch (failure) {
+        thrown = failure;
+      }
+
+      expect(thrown).toBeInstanceOf(ExpectedFailure);
+      expect(thrown).toHaveProperty('message', expect.stringMatching(/Invalid ResourceProperties.*\.preserveOnDelete/));
     });
 
     it('rejects a Delete that has no stack name, since there is no stack to delete', () => {

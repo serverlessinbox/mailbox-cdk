@@ -8,7 +8,7 @@ import { withSmokeTest } from '../shared/with-smoke-test';
 import { CfnResponder } from './cfn-responder';
 import { CloudFormationStacks } from './cloudformation-stacks';
 import { loadStarter, loadWorker } from './config';
-import { toRegion, type Region } from '../shared/aws-identifiers';
+import type { Region } from '../shared/aws-identifiers';
 import { FailureAnswerer } from './failure-answerer';
 import { StackDeployerStarter } from './stack-deployer-starter';
 import { StackDeployerWorker } from './stack-deployer-worker';
@@ -25,8 +25,7 @@ interface InvocationContext {
 const { config: starterConfig, error: starterConfigError } = env.tryLoad(loadStarter);
 const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorker);
 
-const awsRegion = process.env.AWS_REGION;
-const stepFunctions = new SFNClient({ region: awsRegion });
+const stepFunctions = new SFNClient({});
 const responder = new CfnResponder((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
 const events = new StackDeploymentEventReader();
 const failureAnswerer = new FailureAnswerer(events, responder);
@@ -77,7 +76,7 @@ export const workerHandler = withSmokeTest(async (event: unknown, context: Invoc
   }
 
   const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
-  const stacks = new CloudFormationStacks(cloudFormationIn, toRegion(awsRegion ?? 'us-east-1'), logger);
+  const stacks = new CloudFormationStacks(cloudFormationIn, workerConfig.region, logger);
   const worker = new StackDeployerWorker(stacks, responder, logger);
 
   try {

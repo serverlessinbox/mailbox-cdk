@@ -5,6 +5,7 @@ import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 import type { CloudFormationStacks } from './cloudformation-stacks';
 import type { StackFailureAnswerer } from './failure-answerer';
 import type { OperationInput, SfnInvokeEvent } from './stack-deployment';
+import { isSwitchedOn } from './stack-flag';
 import { StackOperationFailure } from './stack-operation-failure';
 import { StackStatus } from './stack-status';
 import { WorkerResult, type RetryCounts } from './worker-result';
@@ -70,7 +71,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
   private async startOperation(op: OperationInput, target: CfnReplyTarget): Promise<WorkerResult> {
     // preserveOnDelete leaves the stack in place and answers SUCCESS.
-    if (op.requestType === 'Delete' && op.preserveOnDelete) {
+    if (op.requestType === 'Delete' && isSwitchedOn(op.preserveOnDelete)) {
       await this.responder.succeed(target);
       return WorkerResult.finished();
     }

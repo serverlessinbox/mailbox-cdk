@@ -64,7 +64,7 @@ describe('stack-deployer handlers', () => {
   }
 
   const starterEnvironment = { SERVICE_NAME: 'stack-deployer-data-starter', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: STATE_MACHINE_ARN, LOG_LEVEL: undefined };
-  const workerEnvironment = { SERVICE_NAME: 'stack-deployer-data-worker', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
+  const workerEnvironment = { SERVICE_NAME: 'stack-deployer-data-worker', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
 
   beforeEach(() => {
     consoleSpies = silenceConsole();
@@ -279,13 +279,13 @@ describe('stack-deployer handlers', () => {
         await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('eu-west-1');
       });
 
-      it('is built for us-east-1 when the function reports no region and the operation names none', async () => {
+      it('is never built when the function reports no region: the operation is answered as a configuration error', async () => {
         const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: undefined });
-        cloudFormation.callsFake(inProgress);
 
         await handlers.workerHandler(sfnEvent(), CONTEXT);
 
-        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('us-east-1');
+        expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: 'Configuration error: AWS_REGION is not set' })]);
+        expect(cloudFormation.calls()).toHaveLength(0);
       });
 
       it('is built once per region and reused by later operations', async () => {

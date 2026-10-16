@@ -38,11 +38,12 @@ export class StackDeploymentEventReader {
   /**
    * Reads the properties of a request that can be answered. Invalid properties throw an ExpectedFailure, the
    * reason the request is answered with, except for a Delete: it proceeds on the properties it needs when
-   * those are valid, so that a stack is still deleted.
+   * those are valid, so that a stack is still deleted. A Create or an Update without a templateUrl is invalid.
    */
   readProperties(properties: unknown, requestType: RequestType): BrandedStackDeployerProperties {
     const read = t.as(properties, isStackDeployerProperties, { errors: true });
     if (!read.errors) {
+      this.requireTemplateUrl(read.value, requestType);
       return read.value;
     }
     if (requestType === 'Delete') {
@@ -95,6 +96,12 @@ export class StackDeploymentEventReader {
       requestType: isRequestTypeOfStep(event) ? event.op.requestType : undefined,
       stackName: isStackNameOfStep(event) ? event.op.stackName : undefined,
     };
+  }
+
+  private requireTemplateUrl(properties: BrandedStackDeployerProperties, requestType: RequestType): void {
+    if (requestType !== 'Delete' && properties.templateUrl === undefined) {
+      throw new ExpectedFailure(`Invalid ResourceProperties: templateUrl is required for a ${requestType}`);
+    }
   }
 
   private readDeletionProperties(properties: unknown, fullErrors: string[]): BrandedStackDeployerProperties {

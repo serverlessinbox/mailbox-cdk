@@ -7,6 +7,7 @@ import { StackDeployerStarter } from '../stack-deployer-starter';
 import { StackOperationFailure } from '../stack-operation-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
 import {
+  BUCKET_ARN_AS_STACK_ID,
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
   defaultLevelLogger,
@@ -104,6 +105,16 @@ describe('StackDeployerStarter', () => {
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
     });
 
+    it('rejects a Delete whose preserveOnDelete is not a switch as an ExpectedFailure, and starts nothing that could delete the stack', async () => {
+      const unreadable = { ...stackDeployerProperties(), preserveOnDelete: 'sometimes' };
+
+      const failure = await failureOf(starterFor().start(cfnRequest({ RequestType: 'Delete' }, unreadable), replyTarget()));
+
+      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toHaveProperty('message', expect.stringContaining('preserveOnDelete'));
+      expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
+    });
+
     it('starts a Delete with the properties it needs when the others are not valid', async () => {
       const invalid = { ...stackDeployerProperties(), preserveOnDelete: 'true', parameters: { count: 3 } };
 
@@ -135,10 +146,20 @@ describe('StackDeployerStarter', () => {
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });
 
-    it('does not check a stack id that is not split into a stack name', async () => {
-      await starterFor().start(cfnRequest({ StackId: MALFORMED_STACK_ID }), replyTarget());
+    it('rejects a Create whose stack id is not an ARN as an ExpectedFailure, and starts nothing', async () => {
+      const failure = await failureOf(starterFor().start(cfnRequest({ StackId: MALFORMED_STACK_ID }), replyTarget()));
 
-      expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
+      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toHaveProperty('message', 'StackId is malformed: Invalid ARN "not-a-stack-arn": expected arn:partition:service:region:account:resource');
+      expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
+    });
+
+    it('rejects a Create whose stack id is the ARN of something other than a CloudFormation stack, and starts nothing', async () => {
+      const failure = await failureOf(starterFor().start(cfnRequest({ StackId: BUCKET_ARN_AS_STACK_ID }), replyTarget()));
+
+      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toHaveProperty('message', 'StackId "arn:aws:s3:::mail-bucket" is not a CloudFormation stack ARN');
+      expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
     });
 
     it.each(['Update', 'Delete'] as const)('does not reject a %s, which keeps working with the name it has', async (requestType) => {

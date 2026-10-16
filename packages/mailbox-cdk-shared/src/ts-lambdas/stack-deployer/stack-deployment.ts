@@ -12,6 +12,7 @@ import {
   type StackName,
 } from '../shared/custom-resource-identifiers';
 import { isTemplateUrl } from './deployer-identifiers';
+import { isStackFlag } from './stack-flag';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);
 
@@ -20,35 +21,34 @@ export type RequestType = t.InferType<typeof isRequestType>;
 
 const isStringMap = t.isRecord(t.isOptional(t.isString()));
 
-// Property values may arrive as strings, so a flag is read in either form and keeps the value it arrived with.
-const isFlag = t.isOneOf([t.isBoolean(), t.isString()]);
-const isTerminationProtection = t.isOneOf([t.isBoolean(), t.isEnum(['true', 'false'] as const)]);
-
 const stackDeployerPropertyFields = {
   ServiceToken: t.isOptional(t.isString()),
   stackName: isStackName,
-  /** Absent only when the stack is being deleted; a create or update without one is refused by CloudFormation. */
+  /** Absent only when the stack is being deleted; a create or update without one is rejected before any CloudFormation call. */
   templateUrl: t.isOptional(isTemplateUrl),
   /** CloudFormation stack parameters; an undefined or empty value is not passed on. */
   parameters: t.isOptional(isStringMap),
   /** Tags applied to the AWS::CloudFormation::Stack itself and propagated by CloudFormation to its resources. */
   tags: t.isOptional(isStringMap),
-  terminationProtection: t.isOptional(isTerminationProtection),
+  terminationProtection: t.isOptional(isStackFlag),
   /** Region of the CloudFormation API calls; the Lambda's own region when absent. */
   region: t.isOptional(isRegion),
-  /** When set, a Delete skips DeleteStack and is answered SUCCESS, leaving the stack and its retained resources. Any non-empty string, `'false'` included, counts as set. */
-  preserveOnDelete: t.isOptional(isFlag),
+  /** When on, a Delete skips DeleteStack and is answered SUCCESS, leaving the stack and its retained resources. */
+  preserveOnDelete: t.isOptional(isStackFlag),
 };
 
 // The resources set properties beside the ones listed here (`ServiceTimeout` in the template, `ServiceToken`),
 // so a key that is not listed is accepted and kept.
 export const isStackDeployerProperties = t.isPartial(stackDeployerPropertyFields);
 
-/** The properties a Delete needs; it proceeds on these alone when the others are not valid. */
+/**
+ * The properties a Delete needs; it proceeds on these alone when the others are not valid. A preserveOnDelete
+ * that is not a switch is among them: a Delete that cannot tell whether to keep the stack does not delete it.
+ */
 export const isDeletionProperties = t.isPartial({
   stackName: isStackName,
   region: t.isOptional(isRegion),
-  preserveOnDelete: t.isOptional(isFlag),
+  preserveOnDelete: t.isOptional(isStackFlag),
 });
 
 /** The properties of the custom resource that deploys one CloudFormation stack, with the identifiers as the Lambda reads them. */

@@ -30,6 +30,9 @@ export const US_WEST_2 = toRegion('us-west-2');
 /** A stack id whose stack name is not a name CloudFormation would give, because it is not an ARN. */
 export const MALFORMED_STACK_ID = toStackId('not-a-stack-arn');
 
+/** A stack id that is an ARN, but of a bucket and not of a CloudFormation stack. */
+export const BUCKET_ARN_AS_STACK_ID = toStackId('arn:aws:s3:::mail-bucket');
+
 /** The id CloudFormation gives to the stack with the given name. */
 export function stackIdOf(stackName: string): StackId {
   return toStackId(`arn:aws:cloudformation:us-east-1:123456789012:stack/${stackName}/guid`);
