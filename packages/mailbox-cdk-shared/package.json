@@ -50,7 +50,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepack": "yarn prepare-manifest build && yarn bundle",
-    "postpack": "yarn clean",
     "bundle": "task bundle",
     "publish:dev": "task publish:dev",
     "test": "tsc -p tsconfig.test.json && jest",

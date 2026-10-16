@@ -1853,9 +1853,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jwpkg/gitversion@npm:^1.4.0-pack-order.2":
-  version: 1.4.0-pack-order.2
-  resolution: "@jwpkg/gitversion@npm:1.4.0-pack-order.2"
+"@jwpkg/gitversion@npm:^1.4.0-pack-order.3":
+  version: 1.4.0-pack-order.3
+  resolution: "@jwpkg/gitversion@npm:1.4.0-pack-order.3"
   dependencies:
     "@yarnpkg/cli": "npm:^4.1.0"
     "@yarnpkg/core": "npm:^4.0.3"
@@ -1874,7 +1874,7 @@ __metadata:
     typanion: "npm:^3.14.0"
   bin:
     gitversion: bin/index.js
-  checksum: 10c0/d171efb2dcffef4768879aaf5cc0c0d2a9d9916f2ad4efc1438029ba898a8e746f957394eda4f7d3648eefd1eef100b17dd9c0d4cdd9e69166f6c74b43a79933
+  checksum: 10c0/9c1c377e254ac00b39fd724671a9d959a46df2314134111ca11cf7b6ba6954a9d06742b4d107dd32da8059ed84fc8f7829986a211b8138574fb3f873e4370b41
   languageName: node
   linkType: hard
 
@@ -1966,17 +1966,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@serverlessinbox/artifact-registry-gitversion@npm:^0.3.0":
-  version: 0.3.0
-  resolution: "@serverlessinbox/artifact-registry-gitversion@npm:0.3.0"
+"@serverlessinbox/artifact-registry-gitversion@npm:^0.3.4":
+  version: 0.3.4
+  resolution: "@serverlessinbox/artifact-registry-gitversion@npm:0.3.4"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3"
-    "@serverlessinbox/artifact-registry": "npm:^0.3.0"
+    "@serverlessinbox/artifact-registry": "npm:^0.3.4"
     semver: "npm:^7.8.1"
     typanion: "npm:^3.14.0"
   peerDependencies:
-    "@jwpkg/gitversion": ^1.4.0-pack-order.2
-  checksum: 10c0/577398dce432624239b7549a9cb17faa0a322584a2cd76820e546566406bd971a99ca1e2ae957d270d0107006a75108dfabde018a9b65da7273efe121753cd47
+    "@jwpkg/gitversion": ^1.4.0-pack-order.3
+  checksum: 10c0/c174c426a684597278fbb604d101e255351f995c5dfd3479b18549925df7edbbc4bd03039041c357188d25ca6defb1522337fcca3e05993c0c769c75615aef5c
   languageName: node
   linkType: hard
 
@@ -1993,6 +1993,22 @@ __metadata:
   bin:
     artifact-registry: dist/cli-entry.js
   checksum: 10c0/94234b1d5bddbf8be584509bc6ef70aeb9f47a12a656e10b77b90cdac6ef7661fcba41f1501e2ae8834a63560748788e93193ffe622110af2d7fa0c3e124eeaf
+  languageName: node
+  linkType: hard
+
+"@serverlessinbox/artifact-registry@npm:^0.3.4":
+  version: 0.3.4
+  resolution: "@serverlessinbox/artifact-registry@npm:0.3.4"
+  dependencies:
+    "@aws-sdk/client-s3": "npm:^3"
+    clipanion: "npm:^3.2.1"
+    esbuild: "npm:^0.27.1"
+    fflate: "npm:^0.8.3"
+    semver: "npm:^7.8.1"
+    typanion: "npm:^3.14.0"
+  bin:
+    artifact-registry: dist/cli-entry.js
+  checksum: 10c0/a48f7f58f97fe942c9b977656fd6747a731d914e66ce957a794b797eea15b37ac7ea829967254100fdfefc2cd433eb6ee7574a093f269c77df76831e4d01327c
   languageName: node
   linkType: hard
 
@@ -7102,10 +7118,10 @@ __metadata:
   resolution: "mailbox-cdk@workspace:."
   dependencies:
     "@aws-sdk/client-s3": "npm:^3.1132.0"
-    "@jwpkg/gitversion": "npm:^1.4.0-pack-order.2"
+    "@jwpkg/gitversion": "npm:^1.4.0-pack-order.3"
     "@serverlessinbox/artifact-registry": "npm:^0.3.0"
     "@serverlessinbox/artifact-registry-cdk": "npm:^0.3.0"
-    "@serverlessinbox/artifact-registry-gitversion": "npm:^0.3.0"
+    "@serverlessinbox/artifact-registry-gitversion": "npm:^0.3.4"
     "@types/jest": "npm:^29.0.0"
     "@types/node": "npm:^24.10.1"
     aws-cdk-lib: "npm:^2.261.0"

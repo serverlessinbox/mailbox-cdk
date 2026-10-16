@@ -17,7 +17,6 @@
     "build:edge-stack": "task build:edge-stack",
     "build:data-stack": "task build:data-stack",
     "prepack": "yarn prepare-manifest build && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii",
-    "postpack": "yarn clean",
     "lint": "eslint .",
     "test": "tsc -p tsconfig.test.json && jest",
     "clean": "rm -rf dist lib *.tsbuildinfo",

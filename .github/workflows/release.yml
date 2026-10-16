@@ -45,21 +45,6 @@ jobs:
         run: yarn resolve-artifacts --output "$RUNNER_TEMP/mailbox-external-pins.json"
       - name: Bake artifact versions
         run: yarn bake-artifact-versions --mailbox-pins "$RUNNER_TEMP/mailbox-external-pins.json"
-      - name: Build edge stack
-        run: yarn workspace @serverlessinbox/mailbox build:edge-stack
-      - name: Build data stack
-        run: yarn workspace @serverlessinbox/mailbox build:data-stack
-      - name: Build cognito data stack template
-        run: yarn workspace @serverlessinbox/mailbox-cognito build:cognito-data-stack
-      - name: Bundle mailbox lambdas
-        working-directory: packages/mailbox
-        run: task bundle
-      - name: Bundle cognito lambdas
-        working-directory: packages/mailbox-cognito
-        run: task bundle
-      - name: Bundle mailbox-cdk-shared lambdas
-        working-directory: packages/mailbox-cdk-shared
-        run: task bundle
       - run: yarn gitversion pack
       - name: Start npm stub registry
         run: |
