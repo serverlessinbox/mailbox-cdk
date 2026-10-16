@@ -4,6 +4,16 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.8...v0.2.9) (Fri Oct 16 2026)
+
+### ci
+
+* build once in prepack and stage S3 artifacts on gitversion's postPack event ([e5fe7d8](https://github.com/serverlessinbox/mailbox-cdk/commit/e5fe7d837796cd62f73dc72f076087cd1fc796cc))
+
+### fix
+
+* **mailbox** data-override-resolver reads its config, ARNs and grant the standard way ([038f7e3](https://github.com/serverlessinbox/mailbox-cdk/commit/038f7e3c2de8e6e66e21e0c78aca02c75aa83779))
+
 ## [0.2.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.7...v0.2.8) (Fri Oct 16 2026)
 
 ### fix
