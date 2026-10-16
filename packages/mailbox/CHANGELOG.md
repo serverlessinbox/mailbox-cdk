@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.6...v0.2.7) (Fri Oct 16 2026)
+
+### fix
+
+* Stack failure detection ([37a0e26](https://github.com/serverlessinbox/mailbox-cdk/commit/37a0e2617bfc36451591d6d2d627c14a7f3597ca))
+
 ## [0.2.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.5...v0.2.6) (Fri Oct 16 2026)
 
 
