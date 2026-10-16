@@ -16,6 +16,8 @@ export enum SendStackFailuresMode {
 export interface StackFailureDetectionProps {
   readonly mode: SendStackFailuresMode;
   readonly artifactResolver: IArtifactResolver;
+  /** AWS account IDs hosting the vendor license API, resolved by the caller. */
+  readonly vendorAccountIds: string[];
 }
 
 /**
@@ -51,6 +53,7 @@ export class StackFailureDetection extends Construct {
 
     const infra = new StackFailureDetectionInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
+      vendorAccountIds: props.vendorAccountIds,
     });
     this.sweepTargets = {
       rule: infra.rule,

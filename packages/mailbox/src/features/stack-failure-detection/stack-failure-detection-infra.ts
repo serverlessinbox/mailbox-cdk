@@ -27,6 +27,8 @@ function retainOnEveryOperation(construct: IConstruct, description: string): voi
 
 export interface StackFailureDetectionInfraProps {
   readonly artifactResolver: IArtifactResolver;
+  /** AWS account IDs hosting the vendor license API. Scopes the execute-api:Invoke grant on the detector. */
+  readonly vendorAccountIds: string[];
 }
 
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
@@ -138,6 +140,13 @@ export class StackFailureDetectionInfra extends Construct {
         new iam.PolicyStatement({
           actions: ['logs:FilterLogEvents'],
           resources: [infraLogGroup.logGroupArn],
+        }),
+        // Cross-account SigV4 calls to the vendor API need an identity-side allow in addition to its resource policy.
+        new iam.PolicyStatement({
+          actions: ['execute-api:Invoke'],
+          resources: props.vendorAccountIds.map(
+            (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/issue-stack-failure-upload`,
+          ),
         }),
       ],
     });

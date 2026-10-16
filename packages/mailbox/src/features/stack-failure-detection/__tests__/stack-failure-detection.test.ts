@@ -50,6 +50,7 @@ describe('StackFailureDetection', () => {
     new StackFailureDetection(stack, 'stack-failure-detection', {
       mode: SendStackFailuresMode.DISABLED,
       artifactResolver,
+      vendorAccountIds: ['444455556666'],
     });
 
     const template = Template.fromStack(stack);
@@ -68,6 +69,7 @@ describe('StackFailureDetection', () => {
     const diag = new StackFailureDetection(stack, 'stack-failure-detection', {
       mode: SendStackFailuresMode.DISABLED,
       artifactResolver,
+      vendorAccountIds: ['444455556666'],
     });
 
     expect(diag.sweepTargets).toBeUndefined();
@@ -84,6 +86,7 @@ describe('StackFailureDetection', () => {
       diag = new StackFailureDetection(stack, 'stack-failure-detection', {
         mode: SendStackFailuresMode.ENABLED,
         artifactResolver,
+        vendorAccountIds: ['444455556666'],
       });
 
       template = Template.fromStack(stack);

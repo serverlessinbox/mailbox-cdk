@@ -98,6 +98,8 @@ function findByNamePrefix(resources: unknown[], propertyName: string, prefix: st
   return match;
 }
 
+const VENDOR_ACCOUNT_ID = '444455556666';
+
 function synthesizeDetectionTemplate(): Template {
   const app = new App();
   const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
@@ -112,6 +114,7 @@ function synthesizeDetectionTemplate(): Template {
   new StackFailureDetection(stack, 'stack-failure-detection', {
     mode: SendStackFailuresMode.ENABLED,
     artifactResolver,
+    vendorAccountIds: [VENDOR_ACCOUNT_ID],
   });
 
   return Template.fromStack(stack);
@@ -209,5 +212,35 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
 
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
+  });
+});
+
+describe('StackFailureDetectionInfra — vendor license API access', () => {
+  interface PolicyStatementJson {
+    readonly Action: string | string[];
+    readonly Resource?: string | string[];
+  }
+
+  /** The synthesized IAM policy resource, as far as this suite reads it. */
+  interface SynthesizedPolicy {
+    readonly Properties: {
+      readonly PolicyName: string;
+      readonly PolicyDocument: { readonly Statement: PolicyStatementJson[] };
+    };
+  }
+
+  it('the detector policy grants execute-api:Invoke on the vendor issue-upload route only', () => {
+    const template = synthesizeDetectionTemplate();
+    // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
+    const policies = Object.values(template.findResources('AWS::IAM::Policy')) as SynthesizedPolicy[];
+
+    const detectorPolicy = policies.find((p) => p.Properties.PolicyName === 'stack-failure-detector-policy');
+    const invoke = detectorPolicy?.Properties.PolicyDocument.Statement.find((s) =>
+      [s.Action].flat().includes('execute-api:Invoke'),
+    );
+
+    expect([invoke?.Resource].flat()).toEqual([
+      `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/issue-stack-failure-upload`,
+    ]);
   });
 });

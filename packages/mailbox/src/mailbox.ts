@@ -812,6 +812,7 @@ export class Mailbox extends Construct {
     const stackFailureDetection = new StackFailureDetection(groups.ops, 'stack-failure-detection', {
       mode: props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
       artifactResolver,
+      vendorAccountIds,
     });
 
     // Extract the edge jmap-blob-download Lambda ARN (strip version qualifier).
