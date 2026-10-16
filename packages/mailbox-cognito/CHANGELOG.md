@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.4...v0.2.5) (Fri Oct 16 2026)
+
+### fix
+
+* **cdk** admit CloudFormation tag keys; keep detector grants in its named policy ([02ff44b](https://github.com/serverlessinbox/mailbox-cdk/commit/02ff44b91789b4a89fb1249dac2b9a7ba584c2e1))
+
 ## [0.2.4](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.3...v0.2.4) (Fri Oct 16 2026)
 
 ### chore
