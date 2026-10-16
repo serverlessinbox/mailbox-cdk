@@ -123,31 +123,35 @@ describe('DeployerWorkerLambda', () => {
       expect(statements[0].Condition).toBeUndefined();
     });
 
-    it('limits tag writes to the sub-stack tag keys', () => {
+    it('limits tag writes to the sub-stack tag keys plus the CloudFormation tag key pattern', () => {
       const template = synthProbe((worker) => worker.applyTaggingApi());
 
       for (const action of ['tag:TagResources', 'tag:UntagResources']) {
         const statements = statementsForAction(template, action);
         expect(statements).toHaveLength(1);
-        expect(statements[0].Condition?.['ForAllValues:StringEquals']).toEqual({ 'aws:TagKeys': BASE_TAG_KEYS });
+        expect(statements[0].Condition?.['ForAllValues:StringLike']).toEqual({
+          'aws:TagKeys': [...BASE_TAG_KEYS, 'aws:cloudformation:*'],
+        });
       }
     });
 
-    it('allows the additional tag keys after the sub-stack ones', () => {
-      const withoutAdditional = synthProbe((worker) => worker.applyTaggingApi());
+    it('allows the additional tag keys after the sub-stack ones and before the CloudFormation pattern', () => {
       const withAdditional = synthProbe((worker) => worker.applyTaggingApi(['serverless-inbox:edge']));
 
       expect(tagKeysOf(statementsForAction(withAdditional, 'tag:TagResources')[0])).toEqual([
-        ...tagKeysOf(statementsForAction(withoutAdditional, 'tag:TagResources')[0]),
+        ...BASE_TAG_KEYS,
         'serverless-inbox:edge',
+        'aws:cloudformation:*',
       ]);
     });
 
-    it('compares tag keys with ForAllValues, because aws:TagKeys is multivalued and a plain StringEquals denies every tag write', () => {
+    it('compares tag keys with ForAllValues:StringLike, because aws:TagKeys is multivalued and a plain StringEquals denies every tag write', () => {
       const template = synthProbe((worker) => worker.applyTaggingApi());
 
       const statements = statementsForAction(template, 'tag:TagResources');
       expect(statements[0].Condition?.StringEquals).toBeUndefined();
+      expect(statements[0].Condition?.['ForAllValues:StringEquals']).toBeUndefined();
+      expect(statements[0].Condition?.['ForAllValues:StringLike']).toBeDefined();
     });
   });
 });

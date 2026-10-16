@@ -85,8 +85,6 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   // aws:TagKeys is multivalued, so it needs ForAllValues: a plain StringEquals never matches and
   // silently denies every tag write.
   private grantUserPoolTagging(): void {
-    const legitimateTagKeys = [...this.subStackTagKeys];
-
     // On CREATE, CloudFormation sends the tags in the request against a still-untagged pool, so
     // aws:RequestTag matches and aws:ResourceTag cannot.
     this.addToRolePolicy(
@@ -96,9 +94,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         resources: ['*'],
         conditions: {
           StringEquals: rootStackRequestTagCondition(Aws.STACK_NAME),
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': legitimateTagKeys,
-          },
+          ...this.tagKeyCondition(),
         },
       }),
     );
@@ -112,9 +108,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         resources: ['*'],
         conditions: {
           StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': legitimateTagKeys,
-          },
+          ...this.tagKeyCondition(),
         },
       }),
     );

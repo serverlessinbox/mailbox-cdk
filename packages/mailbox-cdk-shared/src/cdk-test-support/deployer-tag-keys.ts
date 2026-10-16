@@ -17,21 +17,21 @@ class SharedTaggingWorker extends DeployerWorkerLambda {
 }
 
 /**
- * The tag keys a statement allows through `ForAllValues:StringEquals` on `aws:TagKeys`; a statement
+ * The tag-key patterns a statement allows through `ForAllValues:StringLike` on `aws:TagKeys`; a statement
  * without that constraint throws.
  */
 export function tagKeysOf(statement: PolicyStatementJson): string[] {
   const errors: string[] = [];
-  const constraint = statement.Condition?.['ForAllValues:StringEquals'];
+  const constraint = statement.Condition?.['ForAllValues:StringLike'];
   if (!isTagKeysConstraint(constraint, { errors })) {
-    throw new Error(`Statement has no ForAllValues:StringEquals constraint on aws:TagKeys: ${errors.join('; ')}`);
+    throw new Error(`Statement has no ForAllValues:StringLike constraint on aws:TagKeys: ${errors.join('; ')}`);
   }
   return constraint['aws:TagKeys'];
 }
 
 /**
- * The sub-stack tag keys the shared deployer worker allows writing, read from a worker that adds none.
- * A worker test compares against this instead of repeating the list, so the list is pinned only by the
+ * The `aws:TagKeys` patterns the shared deployer worker admits for tag writes, read from a worker that adds
+ * none. A worker test compares against this instead of repeating the list, so the list is pinned only by the
  * shared worker's own test.
  */
 export function sharedSubStackTagKeys(): string[] {

@@ -110,13 +110,19 @@ export class StackFailureDetectionInfra extends Construct {
     });
     rule.addTarget(new targets.LambdaFunction(detector));
     retainOnEveryOperation(rule, 'rule');
-    // The invoke permission that addTarget creates is a child of the rule, not a construct held here.
-    for (const permission of rule.node.findAll().filter((c): c is lambda.CfnPermission => c instanceof lambda.CfnPermission)) {
-      permission.applyRemovalPolicy(RemovalPolicy.RETAIN);
+    // addTarget creates the invoke permission under the rule with a generated id, so it is found by type
+    // within the rule's subtree; a missing permission is a synth-time error.
+    const invokePermission = rule.node
+      .findAll()
+      .find((c): c is lambda.CfnPermission => c instanceof lambda.CfnPermission);
+    if (!invokePermission) {
+      throw new Error('rule: expected addTarget to create an invoke permission under the rule');
     }
+    invokePermission.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-    // CreateLogStream/PutLogEvents is needed here because the explicit `role:` passed to the Lambda
-    // skips the AWSLambdaBasicExecutionRole managed-policy attachment `Function` would otherwise add.
+    // The log grants live on this policy rather than on the role through grant methods, so the role
+    // never gets an implicit DefaultPolicy. CreateLogStream/PutLogEvents is needed because the explicit
+    // `role:` passed to the Lambda skips the AWSLambdaBasicExecutionRole attachment `Function` would add.
     const detectorPolicy = new iam.Policy(this, 'detector-policy', {
       policyName: DETECTOR_POLICY_NAME,
       statements: [
@@ -124,15 +130,18 @@ export class StackFailureDetectionInfra extends Construct {
           actions: ['cloudformation:DescribeStackEvents', 'cloudformation:DescribeStacks'],
           resources: [Aws.STACK_ID],
         }),
+        new iam.PolicyStatement({
+          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+          resources: [infraLogGroup.logGroupArn],
+        }),
+        // FilterLogEvents is for recovery and troubleshooting.
+        new iam.PolicyStatement({
+          actions: ['logs:FilterLogEvents'],
+          resources: [infraLogGroup.logGroupArn],
+        }),
       ],
     });
     detectorPolicy.attachToRole(detectorRole);
-
-    // Grant log group write access (CreateLogStream/PutLogEvents) for Lambda exec role
-    infraLogGroup.grantWrite(detectorRole);
-
-    // Grant FilterLogEvents access for recovery/troubleshooting
-    infraLogGroup.grantFilterEvents(detectorRole);
     retainOnEveryOperation(detectorPolicy, 'detector-policy');
 
     this.detector = detector;

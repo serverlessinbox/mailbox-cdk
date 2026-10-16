@@ -98,7 +98,7 @@ describe('MailboxCognitoDataDeployerWorker', () => {
       expect(requestGated).not.toBe(resourceGated);
     });
 
-    it('constrains both TagResource statements with ForAllValues:StringEquals on aws:TagKeys (never plain StringEquals)', () => {
+    it('constrains both TagResource statements with ForAllValues:StringLike on aws:TagKeys (never plain StringEquals)', () => {
       const stmts = statementsForAction(template, 'cognito-idp:TagResource');
       expect(stmts.length).toBe(2);
 

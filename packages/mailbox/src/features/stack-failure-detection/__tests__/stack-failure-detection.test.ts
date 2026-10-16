@@ -142,6 +142,45 @@ describe('StackFailureDetection', () => {
       }
     });
 
+    it('attaches exactly one inline policy to the detector role, the detector policy and no CDK-generated DefaultPolicy', () => {
+      const roleIds = Object.keys(template.findResources('AWS::IAM::Role'));
+      const policyNamesOnRole = Object.values(template.findResources('AWS::IAM::Policy'))
+        .filter((policy) => policy.Properties.Roles.some((role: { Ref?: string }) => roleIds.includes(role.Ref ?? '')))
+        .map((policy) => policy.Properties.PolicyName);
+
+      expect(policyNamesOnRole).toEqual(['stack-failure-detector-policy']);
+    });
+
+    it('matches the sweeper contract: the inline policy name and the rule target Id are the sweep targets', () => {
+      const targets = diag.sweepTargets;
+      if (!targets) {
+        throw new Error('enabled detector must expose sweep targets');
+      }
+      const roleIds = Object.keys(template.findResources('AWS::IAM::Role'));
+      const policyNamesOnRole = Object.values(template.findResources('AWS::IAM::Policy'))
+        .filter((policy) => policy.Properties.Roles.some((role: { Ref?: string }) => roleIds.includes(role.Ref ?? '')))
+        .map((policy) => policy.Properties.PolicyName);
+      const ruleTargetIds = Object.values(template.findResources('AWS::Events::Rule')).flatMap((rule) =>
+        rule.Properties.Targets.map((target: { Id: string }) => target.Id),
+      );
+
+      expect(policyNamesOnRole).toEqual([targets.detectorRolePolicyName]);
+      expect(ruleTargetIds).toEqual([targets.ruleTargetId]);
+    });
+
+    it('renders DeletionPolicy Retain for every CFN resource under the detector construct, whatever its type', () => {
+      // Walks the construct tree rather than a list of types, so a resource added later (a policy, a log
+      // group, a permission) is covered without editing this test.
+      const stack = cdk.Stack.of(diag);
+      const resources = diag.node.findAll().filter((c): c is cdk.CfnResource => c instanceof cdk.CfnResource);
+      expect(resources.length).toBeGreaterThan(0);
+
+      for (const resource of resources) {
+        const logicalId = stack.resolve(resource.logicalId) as string;
+        expect(template.toJSON().Resources[logicalId].DeletionPolicy).toBe('Retain');
+      }
+    });
+
     it('the rule\'s auto-created invoke Permission is created (parented under the Rule, in the same gated scope)', () => {
       // The Rule's auto-created invoke Permission is parented under the Rule's construct node, not
       // the Lambda's, so it is swept into the same CfnCondition-gated scope as the Rule — verified

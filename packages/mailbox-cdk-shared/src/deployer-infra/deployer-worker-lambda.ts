@@ -5,6 +5,12 @@ import { ServerlessInboxTagKeys } from '../serverless-inbox-tags';
 import { TypeScriptLambda } from '../ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
+/**
+ * CloudFormation tags every resource it creates with its own keys and sends them in the same tag request as
+ * ours, so every `aws:TagKeys` condition a deployer worker writes must admit them alongside the sub-stack keys.
+ */
+const CLOUDFORMATION_TAG_KEY_PATTERN = 'aws:cloudformation:*';
+
 export interface DeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /** Composes into `SERVICE_NAME`, which keeps each deployer's function distinguishable while they share the 'stack-deployer' lambdaId. */
@@ -87,8 +93,8 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
 
   /**
    * GetResources is read-only enumeration and cannot be scoped. Tagging is limited to the sub-stack tag
-   * keys plus `additionalTagKeys`, so the role cannot rewrite the root-stack tag that scopes its own
-   * grants or inject tags another policy trusts.
+   * keys, the CloudFormation keys and `additionalTagKeys`, so the role cannot rewrite the root-stack tag that
+   * scopes its own grants or inject tags another policy trusts.
    */
   protected grantTaggingApi(additionalTagKeys: string[] = []): void {
     this.addToRolePolicy(
@@ -101,12 +107,17 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
       new PolicyStatement({
         actions: ['tag:TagResources', 'tag:UntagResources'],
         resources: ['*'],
-        conditions: {
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [...this.subStackTagKeys, ...additionalTagKeys],
-          },
-        },
+        conditions: this.tagKeyCondition(additionalTagKeys),
       })
     );
+  }
+
+  /** The `aws:TagKeys` condition every tag-write statement uses: the sub-stack keys, `additionalTagKeys`, and CloudFormation's own keys by pattern. */
+  protected tagKeyCondition(additionalTagKeys: string[] = []): Record<string, Record<string, string[]>> {
+    return {
+      'ForAllValues:StringLike': {
+        'aws:TagKeys': [...this.subStackTagKeys, ...additionalTagKeys, CLOUDFORMATION_TAG_KEY_PATTERN],
+      },
+    };
   }
 }
