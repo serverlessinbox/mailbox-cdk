@@ -54,3 +54,4 @@ export const isStackId = isBrandedString(toStackId);
 export const isLogicalResourceId = isBrandedString(toLogicalResourceId);
 export const isRequestId = isBrandedString(toRequestId);
 export const isResponseUrl = isBrandedString(toResponseUrl);
+export const isPhysicalResourceId = isBrandedString(toPhysicalResourceId);

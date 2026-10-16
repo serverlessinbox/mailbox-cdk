@@ -4,9 +4,14 @@ import {
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
   deployerRequest,
+  LOGICAL_RESOURCE_ID,
   operation,
   OTHER_STACK_NAME,
+  REQUEST_ID,
+  RESPONSE_URL,
   sfnEvent,
+  STACK_ID,
+  STACK_NAME,
   stackDeployerProperties,
   US_EAST_1,
 } from './stack-deployer-helpers';
@@ -160,6 +165,68 @@ describe('StackDeploymentEventReader', () => {
 
     it('throws for a counter that is not a number', () => {
       expect(() => reader.readSfnInvokeEvent({ ...sfnEvent(), attempt: 'many' })).toThrow(/\.attempt/);
+    });
+  });
+
+  describe('readAnswerableCfnRequest', () => {
+    it('gives the response target, request type and stack name of a request that is read in full', () => {
+      const answerable = reader.readAnswerableCfnRequest(cfnRequest({ RequestType: 'Delete' }));
+
+      expect(answerable).toEqual({
+        cfn: { ResponseURL: RESPONSE_URL, StackId: STACK_ID, RequestId: REQUEST_ID, LogicalResourceId: LOGICAL_RESOURCE_ID, ResourceType: 'Custom::MailboxDataDeployer' },
+        requestType: 'Delete',
+        stackName: STACK_NAME,
+      });
+    });
+
+    it('still gives the response target and the physical id when the request type and the stack name are wrong', () => {
+      const event = { ...cfnRequest(), PhysicalResourceId: 'sent-by-cloudformation', RequestType: 'Replace', ResourceProperties: { stackName: 7 } };
+
+      expect(reader.readAnswerableCfnRequest(event)).toMatchObject({
+        cfn: { ResponseURL: RESPONSE_URL },
+        physicalResourceId: 'sent-by-cloudformation',
+        requestType: undefined,
+        stackName: undefined,
+      });
+    });
+
+    it('still gives the response target when the physical id is wrong', () => {
+      const event = { ...cfnRequest(), PhysicalResourceId: 7 };
+
+      expect(reader.readAnswerableCfnRequest(event)).toMatchObject({ cfn: { ResponseURL: RESPONSE_URL }, physicalResourceId: undefined });
+    });
+
+    it.each([
+      ['without a response URL', { ...cfnRequest(), ResponseURL: undefined }],
+      ['that is not an object', 'not an event'],
+    ])('gives nothing for an event %s', (_description, event) => {
+      expect(reader.readAnswerableCfnRequest(event)).toBeUndefined();
+    });
+  });
+
+  describe('readAnswerableSfnInput', () => {
+    it('gives the response target, request type and stack name of a workflow input that is read in full', () => {
+      const answerable = reader.readAnswerableSfnInput(sfnEvent({ op: operation({ requestType: 'Delete' }) }));
+
+      expect(answerable).toEqual({ cfn: sfnEvent().cfn, requestType: 'Delete', stackName: STACK_NAME });
+    });
+
+    it('still gives the response target when the mode and the operation are wrong', () => {
+      const event = { cfn: sfnEvent().cfn, mode: 'abort', op: 'none' };
+
+      expect(reader.readAnswerableSfnInput(event)).toEqual({ cfn: sfnEvent().cfn, requestType: undefined, stackName: undefined });
+    });
+
+    it('gives the physical id of the envelope, and still the response target when it is wrong', () => {
+      const sent = { cfn: { ...sfnEvent().cfn, PhysicalResourceId: 'sent-by-cloudformation' }, op: 'none' };
+      const wrong = { cfn: { ...sfnEvent().cfn, PhysicalResourceId: 7 }, op: 'none' };
+
+      expect(reader.readAnswerableSfnInput(sent)).toMatchObject({ physicalResourceId: 'sent-by-cloudformation' });
+      expect(reader.readAnswerableSfnInput(wrong)).toMatchObject({ cfn: { ResponseURL: RESPONSE_URL }, physicalResourceId: undefined });
+    });
+
+    it('gives nothing for an input without a usable envelope', () => {
+      expect(reader.readAnswerableSfnInput({ mode: 'check', op: operation() })).toBeUndefined();
     });
   });
 });

@@ -92,11 +92,13 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     const incrementAttempt = this.incrementAttemptState();
     const done = new sfn.Succeed(this, 'Done');
 
+    // The counters are read from a check that is still polling; a done result may carry none.
     const checkChoice = new sfn.Choice(this, 'IsDone?')
       .when(this.isDone(CHECK_RESULT), done)
-      .otherwise(wait);
+      .otherwise(incrementAttempt);
 
-    wait.next(checkOp).next(incrementAttempt).next(checkChoice);
+    incrementAttempt.next(wait);
+    wait.next(checkOp).next(checkChoice);
 
     // A start that already finalized the operation (an early failure) ends the workflow.
     const startChoice = new sfn.Choice(this, 'StartedOk?')

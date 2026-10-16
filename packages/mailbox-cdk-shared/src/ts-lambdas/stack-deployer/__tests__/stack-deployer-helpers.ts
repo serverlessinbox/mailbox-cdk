@@ -86,6 +86,9 @@ export function silenceConsole(): ConsoleSpies {
   };
 }
 
+/** A pause that returns at once, for a responder whose retries a test does not wait for. */
+export const noPause = async (): Promise<void> => undefined;
+
 /** A logger at the default level, which buffers everything below `error`. */
 export function defaultLevelLogger(): LoggerBuffer {
   return new LoggerBuffer('stack-deployer', 'error');

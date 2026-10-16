@@ -1,12 +1,24 @@
+import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
+import { AnswerDeliveryFailure } from '../answer-delivery-failure';
 import { CfnResponder } from '../cfn-responder';
 import { cfnRequest, fakeCfnEndpoint, LOG_STREAM_NAME, replyTarget, RESPONSE_URL, sfnEvent, STACK_ID, STACK_NAME } from './stack-deployer-helpers';
 
 /**
  * Pins the answer CloudFormation receives. The deployer answers by PUT to the response URL itself, so a wrong
- * body, status or content-type is a custom resource that never completes or completes wrongly.
+ * body, status or content-type is a custom resource that never completes or completes wrongly, and a reason
+ * over the size CloudFormation accepts is an answer it rejects. A PUT that is not delivered must end the
+ * invocation loudly after a bounded number of attempts, never answer twice.
  */
 describe('CfnResponder', () => {
-  const responder = new CfnResponder();
+  let pauses: number[];
+  let responder: CfnResponder;
+
+  beforeEach(() => {
+    pauses = [];
+    responder = new CfnResponder(async (milliseconds) => {
+      pauses.push(milliseconds);
+    });
+  });
 
   afterEach(() => {
     jest.restoreAllMocks();
@@ -29,6 +41,15 @@ describe('CfnResponder', () => {
       });
     });
 
+    it('names the resource with the physical id CloudFormation sent, whatever the stack name', () => {
+      const request = cfnRequest({ RequestType: 'Update', PhysicalResourceId: toPhysicalResourceId('sent-by-cloudformation') });
+
+      const target = responder.targetForRequest(request, LOG_STREAM_NAME);
+
+      expect(target.physicalResourceId).toBe('sent-by-cloudformation');
+      expect(target.cfn.PhysicalResourceId).toBe('sent-by-cloudformation');
+    });
+
     it('names the resource MailboxStack when the request names no stack', () => {
       const request = cfnRequest({ ResourceProperties: {} });
 
@@ -45,6 +66,15 @@ describe('CfnResponder', () => {
         physicalResourceId: STACK_NAME,
         logStreamName: LOG_STREAM_NAME,
       });
+    });
+  });
+
+  describe('targetForStep physical id', () => {
+    it('keeps the physical id CloudFormation sent, whatever the stack of the operation', () => {
+      const event = sfnEvent();
+      const withId = { ...event, cfn: { ...event.cfn, PhysicalResourceId: toPhysicalResourceId('sent-by-cloudformation') } };
+
+      expect(responder.targetForStep(withId, LOG_STREAM_NAME).physicalResourceId).toBe('sent-by-cloudformation');
     });
   });
 
@@ -123,7 +153,7 @@ describe('CfnResponder', () => {
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: 'could not delete' })]);
     });
 
-    it.each(['Create', 'Update'] as const)('answers a %s FAILED with the reason', async (requestType) => {
+    it.each(['Create', 'Update', undefined] as const)('answers a %s request FAILED with the reason', async (requestType) => {
       const endpoint = fakeCfnEndpoint();
 
       await responder.answerFailure(replyTarget(), requestType, 'could not deploy');
@@ -132,43 +162,96 @@ describe('CfnResponder', () => {
     });
   });
 
-  describe('limitedReason', () => {
-    it('keeps a reason at the limit whole', () => {
-      const reason = 'x'.repeat(3500);
-
-      expect(responder.limitedReason(reason)).toBe(reason);
-    });
-
-    it('truncates a longer reason to the limit and marks it', () => {
-      const limited = responder.limitedReason('x'.repeat(3501));
-
-      expect(limited).toBe(`${'x'.repeat(3480)} …(truncated)`);
-      expect(limited.length).toBeLessThanOrEqual(3500);
-    });
-
-    it('is not applied by the answer itself, which sends the reason it is given', async () => {
+  describe('the reason of an answer', () => {
+    it('keeps a reason at the limit whole', async () => {
       const endpoint = fakeCfnEndpoint();
-      const reason = 'x'.repeat(4000);
+      const reason = 'x'.repeat(3500);
 
       await responder.fail(replyTarget(), reason);
 
       expect(endpoint.answers()[0].Reason).toBe(reason);
     });
+
+    it.each(['fail', 'succeed'] as const)('truncates a longer reason to the limit and marks it when the answer is a %s', async (answer) => {
+      const endpoint = fakeCfnEndpoint();
+      const reason = 'x'.repeat(3501);
+
+      if (answer === 'fail') {
+        await responder.fail(replyTarget(), reason);
+      } else {
+        await responder.succeed(replyTarget(), { reason });
+      }
+
+      const sent = endpoint.answers()[0].Reason ?? '';
+      expect(sent).toBe(`${'x'.repeat(3480)} …(truncated)`);
+      expect(sent.length).toBeLessThanOrEqual(3500);
+    });
+  });
+
+  describe('targetForAnswerable', () => {
+    it('addresses the answer with the envelope it was given and names the resource after the stack when it is known', () => {
+      const cfn = sfnEvent().cfn;
+
+      expect(responder.targetForAnswerable({ cfn, physicalResourceId: undefined, requestType: 'Create', stackName: STACK_NAME }, LOG_STREAM_NAME)).toEqual({
+        cfn,
+        physicalResourceId: STACK_NAME,
+        logStreamName: LOG_STREAM_NAME,
+      });
+    });
+
+    it('names the resource MailboxStack when the stack is not known', () => {
+      const target = responder.targetForAnswerable({ cfn: sfnEvent().cfn, physicalResourceId: undefined, requestType: undefined, stackName: undefined }, undefined);
+
+      expect(target.physicalResourceId).toBe('MailboxStack');
+    });
+
+    it('keeps the physical id CloudFormation sent over the stack name', () => {
+      const answerable = { cfn: sfnEvent().cfn, physicalResourceId: toPhysicalResourceId('sent-by-cloudformation'), requestType: 'Update', stackName: STACK_NAME } as const;
+
+      expect(responder.targetForAnswerable(answerable, undefined).physicalResourceId).toBe('sent-by-cloudformation');
+    });
   });
 
   describe('a response CloudFormation does not accept', () => {
-    it('throws with the HTTP status and the body it returned', async () => {
-      jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('signature expired', { status: 403 }));
+    it('throws the delivery failure with the HTTP status and the body, without trying again, when the rejection is final', async () => {
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('signature expired', { status: 403 }));
 
-      await expect(responder.fail(replyTarget(), 'x')).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 403): signature expired');
+      const failure = await responder.fail(replyTarget(), 'x').catch((thrown: unknown) => thrown);
+
+      expect(failure).toBeInstanceOf(AnswerDeliveryFailure);
+      expect(failure).toHaveProperty('message', 'Failed to PUT CloudFormation response (HTTP 403): signature expired (attempts: 1)');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
     it('throws with the HTTP status when the body cannot be read', async () => {
-      const unreadable = new Response('', { status: 500 });
+      const unreadable = new Response('', { status: 400 });
       jest.spyOn(unreadable, 'text').mockRejectedValue(new Error('stream closed'));
       jest.spyOn(globalThis, 'fetch').mockResolvedValue(unreadable);
 
-      await expect(responder.fail(replyTarget(), 'x')).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 500): ');
+      await expect(responder.fail(replyTarget(), 'x')).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 400):  (attempts: 1)');
+    });
+
+    it('tries a 5xx again after 250, 500 and 1000 ms and delivers the answer when a later attempt is accepted', async () => {
+      const fetchSpy = jest.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+        .mockResolvedValueOnce(new Response('busy', { status: 500 }))
+        .mockResolvedValueOnce(new Response('', { status: 200 }));
+
+      await responder.fail(replyTarget(), 'x');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(pauses).toEqual([250, 500]);
+    });
+
+    it('tries a network error again, and throws the delivery failure after four attempts', async () => {
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+
+      const failure = await responder.fail(replyTarget(), 'x').catch((thrown: unknown) => thrown);
+
+      expect(failure).toBeInstanceOf(AnswerDeliveryFailure);
+      expect(failure).toHaveProperty('message', 'Failed to PUT CloudFormation response: TypeError: fetch failed (attempts: 4)');
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(pauses).toEqual([250, 500, 1000]);
     });
   });
 });

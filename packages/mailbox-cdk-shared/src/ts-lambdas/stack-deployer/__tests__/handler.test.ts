@@ -72,6 +72,7 @@ describe('stack-deployer handlers', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
     process.env = { ...originalEnvironment };
   });
@@ -120,13 +121,32 @@ describe('stack-deployer handlers', () => {
       expect(consoleSpies.log).not.toHaveBeenCalled();
     });
 
-    it('throws for an event it cannot answer and sends no answer', async () => {
+    it('answers an event it cannot read, from the response target it still carries, and starts nothing', async () => {
       const { handlers, sfn } = loadHandlers(starterEnvironment);
 
-      await expect(handlers.starterHandler({ RequestType: 'Create' }, CONTEXT)).rejects.toThrow(/Invalid event/);
+      await handlers.starterHandler({ ...cfnRequest(), RequestType: 'Replace' }, CONTEXT);
+
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Unexpected error: Error: Invalid event') }),
+      ]);
+      expect(sfn.calls()).toHaveLength(0);
+    });
+
+    it('throws for an event with no response target, which no answer can reach', async () => {
+      const { handlers, sfn } = loadHandlers(starterEnvironment);
+
+      await expect(handlers.starterHandler({ RequestType: 'Create' }, CONTEXT)).rejects.toThrow(/CloudFormation was not answered/);
 
       expect(endpoint.answers()).toEqual([]);
       expect(sfn.calls()).toHaveLength(0);
+    });
+
+    it('answers a bad config on an event it cannot read, from the response target it still carries', async () => {
+      const { handlers } = loadHandlers({ ...starterEnvironment, MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined });
+
+      await handlers.starterHandler({ ...cfnRequest(), RequestType: 'Replace' }, CONTEXT);
+
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: 'Configuration error: MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set' })]);
     });
 
     it('answers FAILED with the reason of an expected failure and writes none of the buffered trace', async () => {
@@ -186,15 +206,18 @@ describe('stack-deployer handlers', () => {
       ]);
     });
 
-    it('writes the buffered trace and rethrows a failure it does not answer, with a single attempt to answer', async () => {
+    it('writes the buffered trace and throws the delivery failure, without answering a second time, when the answer cannot be delivered', async () => {
+      jest.useFakeTimers();
       const { handlers, sfn } = loadHandlers(starterEnvironment);
       sfn.callsFake(async () => {
         throw Object.assign(new Error(ALREADY_EXISTS.message), { name: ALREADY_EXISTS.name });
       });
-      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rejected', { status: 500 }));
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rejected', { status: 403 }));
 
-      await expect(handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT)).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 500): rejected');
+      const outcome = handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT).catch((thrown: unknown) => thrown);
+      await jest.advanceTimersByTimeAsync(5000);
 
+      expect(await outcome).toHaveProperty('message', 'Failed to PUT CloudFormation response (HTTP 403): rejected (attempts: 1)');
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(consoleSpies.debug).toHaveBeenCalledWith('Starting Step Functions execution', expect.objectContaining({ executionName: 'request-123' }));
     });
@@ -278,12 +301,33 @@ describe('stack-deployer handlers', () => {
       });
     });
 
-    it('throws for an input it cannot read and sends no answer', async () => {
+    it('answers an input it cannot read, from the response target it still carries, and ends the workflow', async () => {
+      const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
+
+      const result = await handlers.workerHandler({ cfn: sfnEvent().cfn, mode: 'check' }, CONTEXT);
+
+      expect(result).toEqual({ done: true });
+      expect(endpoint.answers()).toEqual([
+        expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Unexpected error: Error: Invalid event') }),
+      ]);
+      expect(cloudFormation.calls()).toHaveLength(0);
+    });
+
+    it('throws for an input with no response target, which no answer can reach', async () => {
       const { handlers } = loadHandlers(workerEnvironment);
 
-      await expect(handlers.workerHandler({ mode: 'check' }, CONTEXT)).rejects.toThrow(/Invalid event/);
+      await expect(handlers.workerHandler({ mode: 'check' }, CONTEXT)).rejects.toThrow(/CloudFormation was not answered/);
 
       expect(endpoint.answers()).toEqual([]);
+    });
+
+    it('answers a bad config on an input it cannot read, from the response target it still carries', async () => {
+      const { handlers } = loadHandlers({ ...workerEnvironment, SERVICE_NAME: undefined });
+
+      const result = await handlers.workerHandler({ cfn: sfnEvent().cfn, mode: 'check' }, CONTEXT);
+
+      expect(result).toEqual({ done: true });
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: 'Configuration error: SERVICE_NAME is not set' })]);
     });
 
     it('writes the buffered trace, answers FAILED and ends the workflow when a stack call fails', async () => {
@@ -301,14 +345,17 @@ describe('stack-deployer handlers', () => {
       expect(consoleSpies.info).toHaveBeenCalledWith('Stack deployer op', expect.objectContaining({ mode: 'check' }));
     });
 
-    it('writes the buffered trace and rethrows a failure it does not answer, with a single attempt to answer', async () => {
+    it('writes the buffered trace and throws the delivery failure, without answering a second time, when the answer cannot be delivered', async () => {
+      jest.useFakeTimers();
       const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
       cloudFormation.callsFake(async () => ({ Stacks: [stack('CREATE_COMPLETE')], StackEvents: [] }));
-      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rejected', { status: 500 }));
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('rejected', { status: 500 }));
 
-      await expect(handlers.workerHandler(sfnEvent(), CONTEXT)).rejects.toThrow('Failed to PUT CloudFormation response (HTTP 500): rejected');
+      const outcome = handlers.workerHandler(sfnEvent(), CONTEXT).catch((thrown: unknown) => thrown);
+      await jest.advanceTimersByTimeAsync(5000);
 
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(await outcome).toHaveProperty('message', 'Failed to PUT CloudFormation response (HTTP 500): rejected (attempts: 4)');
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
       expect(consoleSpies.info).toHaveBeenCalledWith('Stack deployer op', expect.objectContaining({ mode: 'check' }));
     });
 

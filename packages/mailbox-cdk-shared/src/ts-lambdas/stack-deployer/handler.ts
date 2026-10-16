@@ -9,11 +9,11 @@ import { CfnResponder } from './cfn-responder';
 import { CloudFormationStacks } from './cloudformation-stacks';
 import { loadStarter, loadWorker } from './config';
 import { toRegion, type Region } from '../shared/aws-identifiers';
+import { FailureAnswerer } from './failure-answerer';
 import { StackDeployerStarter } from './stack-deployer-starter';
 import { StackDeployerWorker } from './stack-deployer-worker';
 import { StackDeploymentEventReader } from './stack-deployment-event-reader';
-import { StackOperationFailure } from './stack-operation-failure';
-import { WorkerResult } from './worker-result';
+import type { WorkerResult } from './worker-result';
 
 /** The part of the Lambda context both handlers read: the log stream that a response to CloudFormation points to. */
 interface InvocationContext {
@@ -27,8 +27,9 @@ const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorke
 
 const awsRegion = process.env.AWS_REGION;
 const stepFunctions = new SFNClient({ region: awsRegion });
-const responder = new CfnResponder();
+const responder = new CfnResponder((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
 const events = new StackDeploymentEventReader();
+const failureAnswerer = new FailureAnswerer(events, responder);
 
 // A stack operation names the region its stack lives in, so the CloudFormation clients are built per region on first use.
 const cloudFormationClients = new Map<Region, CloudFormationClient>();
@@ -42,51 +43,37 @@ const cloudFormationIn = (region: Region): CloudFormationClient => {
 };
 
 export const starterHandler = withSmokeTest(async (event: unknown, context: InvocationContext): Promise<void> => {
-  const request = events.readCfnRequest(event);
-  console.info('stack-deployer-starter dispatch', {
-    requestType: request.RequestType,
-    logicalResourceId: request.LogicalResourceId,
-  });
-  const target = responder.targetForRequest(request, context.logStreamName);
-
   if (starterConfigError) {
-    await responder.answerFailure(target, request.RequestType, responder.limitedReason(`Configuration error: ${starterConfigError}`));
+    console.error('stack-deployer-starter configuration error', { error: starterConfigError });    await failureAnswerer.answerCfnRequest(event, new ExpectedFailure(`Configuration error: ${starterConfigError}`), context.logStreamName);
     return;
   }
-
-  // Break-glass details for releasing a resource whose handler hangs and never answers CloudFormation.
-  emitManualFinalize(request, { physicalResourceId: target.physicalResourceId });
 
   const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
   const starter = new StackDeployerStarter(starterConfig.stateMachineArn, stepFunctions, events, responder, logger);
 
   try {
+    const request = events.readCfnRequest(event);
+    console.info('stack-deployer-starter dispatch', {
+      requestType: request.RequestType,
+      logicalResourceId: request.LogicalResourceId,
+    });
+    const target = responder.targetForRequest(request, context.logStreamName);
+
+    // Break-glass details for releasing a resource whose handler hangs and never answers CloudFormation.
+    emitManualFinalize(request, { physicalResourceId: target.physicalResourceId });
+
     await starter.start(request, target);
-  } catch (failure) {
-    if (failure instanceof ExpectedFailure) {
-      await responder.answerFailure(target, request.RequestType, failure.message);
-      return;
+  } catch (thrown) {
+    if (!(thrown instanceof ExpectedFailure)) {
+      logger.flush();
     }
-    logger.flush();
-    if (failure instanceof StackOperationFailure) {
-      await responder.answerFailure(target, request.RequestType, responder.limitedReason(failure.message));
-      return;
-    }
-    throw failure;
+    await failureAnswerer.answerCfnRequest(event, thrown, context.logStreamName);
   }
 }, env.check(loadStarter));
 
 export const workerHandler = withSmokeTest(async (event: unknown, context: InvocationContext): Promise<WorkerResult> => {
-  const invoke = events.readSfnInvokeEvent(event);
-  console.info('stack-deployer-worker dispatch', {
-    mode: invoke.mode,
-    attempt: invoke.attempt,
-  });
-  const target = responder.targetForStep(invoke, context.logStreamName);
-
   if (workerConfigError) {
-    await responder.answerFailure(target, invoke.op.requestType, responder.limitedReason(`Configuration error: ${workerConfigError}`));
-    return WorkerResult.finished();
+    console.error('stack-deployer-worker configuration error', { error: workerConfigError });    return failureAnswerer.answerSfnInput(event, new ExpectedFailure(`Configuration error: ${workerConfigError}`), context.logStreamName);
   }
 
   const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
@@ -94,12 +81,16 @@ export const workerHandler = withSmokeTest(async (event: unknown, context: Invoc
   const worker = new StackDeployerWorker(stacks, responder, logger);
 
   try {
-    return await worker.handle(invoke, target);
-  } catch (failure) {
-    logger.flush();
-    if (failure instanceof StackOperationFailure) {
-      return worker.answerFailure(invoke.op, failure, target);
+    const invoke = events.readSfnInvokeEvent(event);
+    console.info('stack-deployer-worker dispatch', {
+      mode: invoke.mode,
+      attempt: invoke.attempt,
+    });
+    return await worker.handle(invoke, responder.targetForStep(invoke, context.logStreamName));
+  } catch (thrown) {
+    if (!(thrown instanceof ExpectedFailure)) {
+      logger.flush();
     }
-    throw failure;
+    return failureAnswerer.answerSfnInput(event, thrown, context.logStreamName, worker);
   }
 }, env.check(loadWorker));

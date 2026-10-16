@@ -22,8 +22,8 @@ type NameAttempt = 'started' | 'nameTaken' | 'failed';
 /**
  * Starts the Step Functions execution that deploys, updates or deletes a stack. It runs for a CloudFormation
  * custom-resource request and answers it only when no execution will: the worker of a started execution
- * answers CloudFormation when the stack operation ends. A request it cannot start an execution for throws.
- * The failures that are answered to CloudFormation are the ExpectedFailure and the StackOperationFailure.
+ * answers CloudFormation when the stack operation ends. A request it cannot start an execution for throws,
+ * an ExpectedFailure for a rejected request and a StackOperationFailure for a failed AWS call.
  */
 export class StackDeployerStarter {
   private readonly stateMachineArn: StateMachineArn;
@@ -165,7 +165,7 @@ export class StackDeployerStarter {
       return;
     }
     this.logger.error(`Could not start execution after ${LAST_EXECUTION_NAME_ATTEMPT} retries`);
-    throw new ExpectedFailure(this.responder.limitedReason(`Could not start execution after ${LAST_EXECUTION_NAME_ATTEMPT} retries: all suffixed names exhausted`));
+    throw new ExpectedFailure(`Could not start execution after ${LAST_EXECUTION_NAME_ATTEMPT} retries: all suffixed names exhausted`);
   }
 
   private async startAfterDescribeFailure(executionName: ExecutionName, input: WorkflowInput, describeFailure: unknown): Promise<void> {
@@ -176,7 +176,7 @@ export class StackDeployerStarter {
       return;
     }
     this.logger.error('All retries exhausted after DescribeExecution failure');
-    throw new ExpectedFailure(this.responder.limitedReason(`DescribeExecution failed and could not start retry: ${describeMessage}`));
+    throw new ExpectedFailure(`DescribeExecution failed and could not start retry: ${describeMessage}`);
   }
 
   private async startWithSuffixedNames(executionName: ExecutionName, input: WorkflowInput): Promise<boolean> {

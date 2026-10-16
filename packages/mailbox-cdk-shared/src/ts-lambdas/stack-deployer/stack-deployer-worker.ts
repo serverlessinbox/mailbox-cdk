@@ -3,6 +3,7 @@ import { CaughtError } from '../shared/caught-error';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 import type { CloudFormationStacks } from './cloudformation-stacks';
+import type { StackFailureAnswerer } from './failure-answerer';
 import type { OperationInput, SfnInvokeEvent } from './stack-deployment';
 import { StackOperationFailure } from './stack-operation-failure';
 import { StackStatus } from './stack-status';
@@ -23,7 +24,7 @@ const CHECK_FAILED_STEP = 'Stack deployer check failed (DescribeStacks)';
  * starts the stack operation, or checks how far it got and answers CloudFormation once it is over. Whether
  * to keep polling is returned to the workflow as a WorkerResult.
  */
-export class StackDeployerWorker {
+export class StackDeployerWorker implements StackFailureAnswerer {
   private readonly stacks: CloudFormationStacks;
   private readonly responder: CfnResponder;
   private readonly logger: LoggerBuffer;
@@ -39,6 +40,8 @@ export class StackDeployerWorker {
    * returns normally. A Delete is always answered SUCCESS, so that it never blocks the parent stack from
    * deleting or rolling back. An AWS call that fails to start the operation or to describe the stack throws a
    * StackOperationFailure, which is answered with `answerFailure`; any other failure throws as it is.
+   * Nothing it does answers CloudFormation twice: the one answer is sent after the AWS calls, outside the
+   * step that wraps them in a StackOperationFailure.
    */
   async handle(event: SfnInvokeEvent, target: CfnReplyTarget): Promise<WorkerResult> {
     this.logger.info('Stack deployer op', {
@@ -61,25 +64,28 @@ export class StackDeployerWorker {
     this.logger.error('Stack deployer failed', { errorMessage: failure.message });
 
     const failures = await this.stacks.describeRecentFailures(op);
-    await this.responder.answerFailure(target, op.requestType, this.responder.limitedReason(`${failure.message}${this.eventsDetail(failures)}`));
+    await this.responder.answerFailure(target, op.requestType, `${failure.message}${this.eventsDetail(failures)}`);
     return WorkerResult.finished();
   }
 
   private async startOperation(op: OperationInput, target: CfnReplyTarget): Promise<WorkerResult> {
+    // preserveOnDelete leaves the stack in place and answers SUCCESS.
+    if (op.requestType === 'Delete' && op.preserveOnDelete) {
+      await this.responder.succeed(target);
+      return WorkerResult.finished();
+    }
+
+    await this.startStackOperation(op);
+    return WorkerResult.pollAgain();
+  }
+
+  private async startStackOperation(op: OperationInput): Promise<void> {
     try {
-      if (op.requestType !== 'Delete') {
+      if (op.requestType === 'Delete') {
+        await this.stacks.deleteIfExists(op);
+      } else {
         await this.stacks.startOrUpdate(op);
-        return WorkerResult.pollAgain();
       }
-
-      // preserveOnDelete leaves the stack in place and answers SUCCESS.
-      if (op.preserveOnDelete) {
-        await this.responder.succeed(target);
-        return WorkerResult.finished();
-      }
-
-      await this.stacks.deleteIfExists(op);
-      return WorkerResult.pollAgain();
     } catch (failure) {
       throw new StackOperationFailure(START_FAILED_STEP, failure);
     }
@@ -123,7 +129,7 @@ export class StackDeployerWorker {
     if (status.isTerminalFailure()) {
       const failures = await this.stacks.describeRecentFailures(op);
       const reason = stack.StackStatusReason ?? `Stack delete failed with status ${status.value}`;
-      await this.responder.succeed(target, { reason: this.responder.limitedReason(`${reason}${this.eventsDetail(failures)}`) });
+      await this.responder.succeed(target, { reason: `${reason}${this.eventsDetail(failures)}` });
       return WorkerResult.finished(retries);
     }
 
@@ -178,7 +184,7 @@ export class StackDeployerWorker {
 
     // A stack being torn down can never satisfy a create or an update, and polling it would not end.
     if (status.isDeleting()) {
-      await this.responder.fail(target, this.responder.limitedReason(`Stack ${op.stackName} is being deleted (status ${status.value}); cannot deploy into a deleting stack.${detail}`));
+      await this.responder.fail(target, `Stack ${op.stackName} is being deleted (status ${status.value}); cannot deploy into a deleting stack.${detail}`);
       return WorkerResult.finished(retries);
     }
 
@@ -199,7 +205,7 @@ export class StackDeployerWorker {
 
     if (status.isTerminalFailure()) {
       const reason = stack.StackStatusReason ?? `Stack failed with status ${status.value}`;
-      await this.responder.fail(target, this.responder.limitedReason(`${reason}${detail}`));
+      await this.responder.fail(target, `${reason}${detail}`);
       return WorkerResult.finished(retries);
     }
 
@@ -209,7 +215,7 @@ export class StackDeployerWorker {
 
     // The cap answers before the workflow's own timeout does, so CloudFormation is told why.
     if (attempt >= MAX_POLL_ATTEMPTS) {
-      await this.responder.fail(target, this.responder.limitedReason(`Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status.value})`));
+      await this.responder.fail(target, `Stack ${op.stackName} did not reach a terminal state after ${attempt} attempts (last status ${status.value})`);
       return WorkerResult.finished(retries);
     }
 

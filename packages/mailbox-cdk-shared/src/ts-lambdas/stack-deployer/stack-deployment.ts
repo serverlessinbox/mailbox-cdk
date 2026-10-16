@@ -3,10 +3,13 @@ import { isRegion } from '../shared/aws-identifiers';
 import type { Unbranded } from '../shared/branded';
 import {
   isLogicalResourceId,
+  isPhysicalResourceId,
   isRequestId,
   isResponseUrl,
   isStackId,
   isStackName,
+  type PhysicalResourceId,
+  type StackName,
 } from '../shared/custom-resource-identifiers';
 import { isTemplateUrl } from './deployer-identifiers';
 
@@ -61,7 +64,7 @@ const isOperationInput = t.isPartial({ ...stackDeployerPropertyFields, requestTy
 /** One stack operation: the custom resource's properties plus the kind of request that asked for it. */
 export type OperationInput = t.InferType<typeof isOperationInput>;
 
-const cfnEnvelopeFields = {
+const cfnTargetFields = {
   ResponseURL: isResponseUrl,
   StackId: isStackId,
   RequestId: isRequestId,
@@ -69,7 +72,15 @@ const cfnEnvelopeFields = {
   ResourceType: t.isOptional(t.isString()),
 };
 
-const isCfnEnvelope = t.isPartial(cfnEnvelopeFields);
+/** Where to PUT an answer and which resource it concerns; the physical id is read apart from it. */
+export const isCfnTarget = t.isPartial(cfnTargetFields);
+
+/** The physical id CloudFormation sent with a request; every Update and Delete carries one, a Create none. */
+const physicalIdField = { PhysicalResourceId: t.isOptional(isPhysicalResourceId) };
+
+const cfnEnvelopeFields = { ...cfnTargetFields, ...physicalIdField };
+
+export const isCfnEnvelope = t.isPartial(cfnEnvelopeFields);
 
 /** What the worker needs to answer CloudFormation for a request: where to PUT and which resource it concerns. */
 export type CfnEnvelope = t.InferType<typeof isCfnEnvelope>;
@@ -84,6 +95,26 @@ export const isCfnRequest = t.isPartial({
 
 /** A CloudFormation custom-resource request, as far as it must be known to answer it. */
 export type CfnRequest = t.InferType<typeof isCfnRequest>;
+
+// Each field an answer can use is read on its own, so one that is wrong does not hide the others.
+export const isRequestTypeOfRequest = t.isPartial({ RequestType: isRequestType });
+export const isStackNameOfRequest = t.isPartial({ ResourceProperties: t.isPartial({ stackName: isStackName }) });
+export const isPhysicalIdOfRequest = t.isPartial({ PhysicalResourceId: isPhysicalResourceId });
+export const isTargetOfStep = t.isPartial({ cfn: isCfnTarget });
+export const isPhysicalIdOfStep = t.isPartial({ cfn: t.isPartial({ PhysicalResourceId: isPhysicalResourceId }) });
+export const isRequestTypeOfStep = t.isPartial({ op: t.isPartial({ requestType: isRequestType }) });
+export const isStackNameOfStep = t.isPartial({ op: t.isPartial({ stackName: isStackName }) });
+
+/**
+ * What an event that could not be read in full still gives to answer it: where to PUT, and the physical id,
+ * request type and stack name when they are readable. An event without a response target cannot be answered.
+ */
+export interface AnswerableEvent {
+  readonly cfn: CfnEnvelope;
+  readonly physicalResourceId: PhysicalResourceId | undefined;
+  readonly requestType: RequestType | undefined;
+  readonly stackName: StackName | undefined;
+}
 
 /** The input of the state machine execution that deploys one stack: how to answer CloudFormation and what to do. */
 export interface WorkflowInput {

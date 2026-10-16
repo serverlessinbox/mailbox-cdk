@@ -148,16 +148,16 @@ describe('PollingCfnDeployerWorkflow', () => {
       expect(definition.States['StartedOk?'].Default).toBe('WaitBeforeCheck');
     });
 
-    it('loops wait, check and attempt count until a check reports the operation done', () => {
+    it('reads the retry counters only after IsDone? found the check still polling, because a done result may carry none', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
       expect(definition.States.WaitBeforeCheck.Next).toBe('CheckStackOperation');
-      expect(definition.States.CheckStackOperation.Next).toBe('IncrementAttempt');
-      expect(definition.States.IncrementAttempt.Next).toBe('IsDone?');
+      expect(definition.States.CheckStackOperation.Next).toBe('IsDone?');
       expect(definition.States['IsDone?'].Choices).toEqual([
         { Variable: '$.check.done', BooleanEquals: true, Next: 'Done' },
       ]);
-      expect(definition.States['IsDone?'].Default).toBe('WaitBeforeCheck');
+      expect(definition.States['IsDone?'].Default).toBe('IncrementAttempt');
+      expect(definition.States.IncrementAttempt.Next).toBe('WaitBeforeCheck');
       expect(definition.States.Done.Type).toBe('Succeed');
     });
   });

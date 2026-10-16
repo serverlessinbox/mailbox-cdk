@@ -2,9 +2,18 @@ import * as t from 'typanion';
 import { ExpectedFailure } from '../shared/expected-failure';
 import {
   isCfnRequest,
+  isCfnTarget,
   isDeletionProperties,
+  isPhysicalIdOfRequest,
+  isPhysicalIdOfStep,
+  isRequestTypeOfRequest,
+  isRequestTypeOfStep,
   isSfnInvokeEvent,
   isStackDeployerProperties,
+  isStackNameOfRequest,
+  isStackNameOfStep,
+  isTargetOfStep,
+  type AnswerableEvent,
   type CfnRequest,
   type RequestType,
   type BrandedStackDeployerProperties,
@@ -17,7 +26,7 @@ import {
  * string stays a string.
  */
 export class StackDeploymentEventReader {
-  /** Reads a request far enough to answer it. A request that cannot be answered at all throws a plain error. */
+  /** Reads a request far enough to answer it. A request that is not that far readable throws a plain error. */
   readCfnRequest(event: unknown): CfnRequest {
     const read = t.as(event, isCfnRequest, { errors: true });
     if (read.errors) {
@@ -48,6 +57,44 @@ export class StackDeploymentEventReader {
       throw new Error(`Invalid event: expected a stack deployer workflow input: ${read.errors.join('; ')}`);
     }
     return read.value;
+  }
+
+  /** What a request that cannot be read in full still gives to answer it; undefined when it carries no usable response target. */
+  readAnswerableCfnRequest(event: unknown): AnswerableEvent | undefined {
+    if (!isCfnTarget(event)) {
+      return undefined;
+    }
+    return {
+      cfn: {
+        ResponseURL: event.ResponseURL,
+        StackId: event.StackId,
+        RequestId: event.RequestId,
+        LogicalResourceId: event.LogicalResourceId,
+        ResourceType: event.ResourceType,
+      },
+      physicalResourceId: isPhysicalIdOfRequest(event) ? event.PhysicalResourceId : undefined,
+      requestType: isRequestTypeOfRequest(event) ? event.RequestType : undefined,
+      stackName: isStackNameOfRequest(event) ? event.ResourceProperties.stackName : undefined,
+    };
+  }
+
+  /** What a workflow input that cannot be read in full still gives to answer it; undefined when it carries no usable response target. */
+  readAnswerableSfnInput(event: unknown): AnswerableEvent | undefined {
+    if (!isTargetOfStep(event)) {
+      return undefined;
+    }
+    return {
+      cfn: {
+        ResponseURL: event.cfn.ResponseURL,
+        StackId: event.cfn.StackId,
+        RequestId: event.cfn.RequestId,
+        LogicalResourceId: event.cfn.LogicalResourceId,
+        ResourceType: event.cfn.ResourceType,
+      },
+      physicalResourceId: isPhysicalIdOfStep(event) ? event.cfn.PhysicalResourceId : undefined,
+      requestType: isRequestTypeOfStep(event) ? event.op.requestType : undefined,
+      stackName: isStackNameOfStep(event) ? event.op.stackName : undefined,
+    };
   }
 
   private readDeletionProperties(properties: unknown, fullErrors: string[]): BrandedStackDeployerProperties {

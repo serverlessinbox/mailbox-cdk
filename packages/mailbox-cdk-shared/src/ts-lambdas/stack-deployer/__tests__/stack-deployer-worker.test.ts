@@ -8,6 +8,7 @@ import {
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
+import { AnswerDeliveryFailure } from '../answer-delivery-failure';
 import { CfnResponder } from '../cfn-responder';
 import { CloudFormationStacks } from '../cloudformation-stacks';
 import { StackDeployerWorker } from '../stack-deployer-worker';
@@ -17,6 +18,7 @@ import {
   defaultLevelLogger,
   fakeCfnEndpoint,
   LOG_STREAM_NAME,
+  noPause,
   operation,
   replyTarget,
   sfnEvent,
@@ -62,7 +64,7 @@ describe('StackDeployerWorker', () => {
   function workerForStacks(): StackDeployerWorker {
     const logger = defaultLevelLogger();
     const stacks = new CloudFormationStacks((region) => new CloudFormationClient({ region }), US_EAST_1, logger);
-    return new StackDeployerWorker(stacks, new CfnResponder(), logger);
+    return new StackDeployerWorker(stacks, new CfnResponder(noPause), logger);
   }
 
   beforeEach(() => {
@@ -113,6 +115,14 @@ describe('StackDeployerWorker', () => {
       expect(result).toEqual({ done: true });
       expect(cfn.calls()).toHaveLength(0);
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', PhysicalResourceId: STACK_NAME, Data: {} })]);
+    });
+
+    it('throws the delivery failure as it is, not a StackOperationFailure, when the preserved-on-delete answer cannot be delivered', async () => {
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('forbidden', { status: 403 }));
+
+      const failure = await start(deletionOf({ preserveOnDelete: true })).catch((thrown: unknown) => thrown);
+
+      expect(failure).toBeInstanceOf(AnswerDeliveryFailure);
     });
 
     it('throws a StackOperationFailure naming the start step when an AWS call fails', async () => {
@@ -171,15 +181,6 @@ describe('StackDeployerWorker', () => {
       ]);
     });
 
-    it('cuts the reason of a failed stack with a very long events list to the size CloudFormation accepts', async () => {
-      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_FAILED', { StackStatusReason: 'failed' })] });
-      cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [failedEvent('x'.repeat(4000))] });
-
-      await check();
-
-      expect(endpoint.answers()[0].Reason).toHaveLength(3493);
-    });
-
     it('names the status when a failed stack gives no reason', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('UPDATE_ROLLBACK_COMPLETE')] });
 
@@ -214,15 +215,6 @@ describe('StackDeployerWorker', () => {
         ]);
       },
     );
-
-    it('cuts the reason for a stack being deleted, with a very long events list, to the size CloudFormation accepts', async () => {
-      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('DELETE_IN_PROGRESS')] });
-      cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [failedEvent('x'.repeat(4000))] });
-
-      await check();
-
-      expect(endpoint.answers()[0].Reason).toHaveLength(3493);
-    });
 
     it('answers FAILED when the stack is still in progress at the 135th attempt', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('CREATE_IN_PROGRESS')] });
@@ -450,15 +442,6 @@ describe('StackDeployerWorker', () => {
       ]);
     });
 
-    it('cuts the reason of a delete that ended in a failed state, with a very long events list, to the size CloudFormation accepts', async () => {
-      cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { StackStatusReason: 'rolled back' })] });
-      cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [failedEvent('x'.repeat(4000))] });
-
-      await check();
-
-      expect(endpoint.answers()[0].Reason).toHaveLength(3493);
-    });
-
     it('names the status when a delete that ended in a failed state gives no reason', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('ROLLBACK_COMPLETE')] });
 
@@ -502,16 +485,6 @@ describe('StackDeployerWorker', () => {
           Reason: 'Stack deployer start failed: AccessDenied: cannot create Recent events: DynamoDBTable (AWS::DynamoDB::Table) CREATE_FAILED: Access Denied',
         }),
       ]);
-    });
-
-    it('cuts a reason with a very long events list to the size CloudFormation accepts', async () => {
-      cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [failedEvent('x'.repeat(4000))] });
-
-      await workerForStacks().answerFailure(operation(), new StackOperationFailure('Stack deployer start failed', awsError('E', 'm')), replyTarget());
-
-      const reason = endpoint.answers()[0].Reason ?? '';
-      expect(reason.length).toBe(3493);
-      expect(reason.endsWith(' …(truncated)')).toBe(true);
     });
 
     it('answers a Delete SUCCESS so the failure never blocks the parent stack', async () => {

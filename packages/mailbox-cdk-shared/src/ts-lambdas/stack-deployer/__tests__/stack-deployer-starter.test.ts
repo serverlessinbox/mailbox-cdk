@@ -13,6 +13,7 @@ import {
   deployerRequest,
   fakeCfnEndpoint,
   MALFORMED_STACK_ID,
+  noPause,
   replyTarget,
   silenceConsole,
   stackDeployerProperties,
@@ -36,7 +37,7 @@ describe('StackDeployerStarter', () => {
   let endpoint: FakeCfnEndpoint;
 
   function starterFor(stateMachineArn: StateMachineArn = STATE_MACHINE_ARN): StackDeployerStarter {
-    return new StackDeployerStarter(stateMachineArn, new SFNClient({}), new StackDeploymentEventReader(), new CfnResponder(), defaultLevelLogger());
+    return new StackDeployerStarter(stateMachineArn, new SFNClient({}), new StackDeploymentEventReader(), new CfnResponder(noPause), defaultLevelLogger());
   }
 
   async function failureOf(promise: Promise<unknown>): Promise<unknown> {
