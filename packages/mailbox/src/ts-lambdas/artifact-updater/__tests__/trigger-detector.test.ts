@@ -12,13 +12,19 @@ import { HttpTrigger } from '../http-trigger';
 import { ScheduledTrigger } from '../scheduled-trigger';
 import { TriggerDetector, type TriggerBuilder } from '../trigger-detector';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { badConfigCycle, deployEndTriggerEvent, fakeLambdaContext, httpApiEvent } from './updater-helpers';
+import {
+  badConfigCycle,
+  deployEndTriggerEvent,
+  fakeCloudFormationClient,
+  fakeLambdaContext,
+  httpApiEvent,
+} from './updater-helpers';
 
 describe('TriggerDetector', () => {
   const context = fakeLambdaContext();
   const cfnEvent = deployEndTriggerEvent('Create');
   const httpEvent = httpApiEvent('POST', '/artifact-updates/trigger');
-  const cfnTrigger = new CfnTrigger(cfnEvent, context, badConfigCycle, undefined, 'artifact-updater');
+  const cfnTrigger = new CfnTrigger(cfnEvent, context, badConfigCycle, fakeCloudFormationClient(), undefined, 'artifact-updater');
   const httpTrigger = new HttpTrigger(httpEvent, () => { throw new Error('unused'); }, 'fn', new LoggerBuffer(), undefined);
   const scheduledTrigger = new ScheduledTrigger(badConfigCycle);
 

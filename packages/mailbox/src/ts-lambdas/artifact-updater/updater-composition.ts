@@ -1,3 +1,4 @@
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
 import { LambdaClient } from '@aws-sdk/client-lambda';
@@ -40,10 +41,12 @@ export class UpdaterComposition implements TriggerBuilder {
   /** Loads the configuration and, when it loaded, builds the clients; a configuration that failed has no clients. */
   public static loadRuntime(): UpdaterRuntime {
     const { config, error } = env.tryLoad(load);
+    // The Lambda runtime sets the region, so the client exists even when the configuration failed to load.
+    const cloudFormation = new CloudFormationClient({});
     if (error !== undefined) {
-      return { config, clients: undefined, error };
+      return { config, cloudFormation, clients: undefined, error };
     }
-    return { config, clients: UpdaterComposition.buildUpdaterClients(config.region), error: undefined };
+    return { config, cloudFormation, clients: UpdaterComposition.buildUpdaterClients(config.region), error: undefined };
   }
 
   public cfnTrigger(event: CloudFormationCustomResourceEvent, context: Context): CfnTrigger {
@@ -51,6 +54,7 @@ export class UpdaterComposition implements TriggerBuilder {
       event,
       context,
       () => this.updateCycle(),
+      this.runtime.cloudFormation,
       this.runtime.error,
       this.runtime.config.serviceName,
     );
@@ -84,6 +88,7 @@ export class UpdaterComposition implements TriggerBuilder {
       new EdgeLambdaUpdater(
         clients.edge,
         clients.cloudFront,
+        config.rootStackTagValue,
         releases,
         functionCode,
         smokeTester,

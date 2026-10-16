@@ -46,8 +46,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantEdgeLambdaAccess(props.rootStackTagValue);
     this.grantCloudFrontManagementAccess(props.rootStackTagValue);
     this.grantCloudFrontTagAccess(props.rootStackTagValue);
-    this.grantCloudFrontListAccess();
     this.grantArtifactReleaseAccess(props.artifactBucketBase);
+    this.grantParentStackStatusRead();
     this.grantSelfInvoke();
   }
 
@@ -107,21 +107,21 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, rootStackTagValue);
   }
 
-  /** ListDistributions is read-only enumeration and cannot be scoped. */
-  private grantCloudFrontListAccess(): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['cloudfront:ListDistributions'],
-        resources: ['*'],
-      }),
-    );
-  }
-
   private grantArtifactReleaseAccess(artifactBucketBase: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: ['s3:GetObject'],
         resources: [`arn:aws:s3:::${artifactBucketBase}-*/${ArtifactUpdaterLambda.project}/packages/*/releases/*`],
+      }),
+    );
+  }
+
+  /** Reads the status of the stack this function belongs to, to answer the deploy-end trigger correctly while that stack rolls back. */
+  private grantParentStackStatusRead(): void {
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [Aws.STACK_ID],
       }),
     );
   }

@@ -1,13 +1,18 @@
 import { PublishVersionCommand } from '@aws-sdk/client-lambda';
 import {
   GetDistributionConfigCommand,
-  ListDistributionsCommand,
   UpdateDistributionCommand,
   type CloudFrontClient,
   type DistributionConfig,
   type LambdaFunctionAssociation,
 } from '@aws-sdk/client-cloudfront';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { GetResourcesCommand } from '@aws-sdk/client-resource-groups-tagging-api';
+import {
+  CaughtError,
+  parseArn,
+  ServerlessInboxTagKeys,
+  type LoggerBuffer,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { LambdaTarget } from './artifact-target';
 import type { FunctionSmokeTester, SmokeTestVerdict } from './function-smoke-tester';
 import type { LambdaCodeRollback } from './lambda-code-rollback';
@@ -37,6 +42,7 @@ interface DistributionOfFunction {
 export class EdgeLambdaUpdater {
   private readonly edge: RegionClients;
   private readonly cloudFront: CloudFrontClient;
+  private readonly rootStackTagValue: string;
   private readonly releases: ReleaseArtifacts;
   private readonly functionCode: LambdaFunctionCode;
   private readonly smokeTester: FunctionSmokeTester;
@@ -47,6 +53,7 @@ export class EdgeLambdaUpdater {
   constructor(
     edge: RegionClients,
     cloudFront: CloudFrontClient,
+    rootStackTagValue: string,
     releases: ReleaseArtifacts,
     functionCode: LambdaFunctionCode,
     smokeTester: FunctionSmokeTester,
@@ -56,6 +63,7 @@ export class EdgeLambdaUpdater {
   ) {
     this.edge = edge;
     this.cloudFront = cloudFront;
+    this.rootStackTagValue = rootStackTagValue;
     this.releases = releases;
     this.functionCode = functionCode;
     this.smokeTester = smokeTester;
@@ -174,26 +182,47 @@ export class EdgeLambdaUpdater {
     return `lambdas/${target.artifactName}.zip`;
   }
 
-  /** The first distribution that associates the function, whatever the version or event type of the association. */
+  /** The first distribution of this install that associates the function, whatever the version or event type of the association. */
   private async findDistributionOf(target: LambdaTarget): Promise<DistributionOfFunction> {
-    const listed = await this.cloudFront.send(new ListDistributionsCommand({}));
-
-    for (const summary of listed.DistributionList?.Items ?? []) {
-      if (!summary.Id || !summary.DomainName) {
-        continue;
-      }
-      if (this.lambdaAssociationsOf(summary).some((association) => this.isAssociationOf(target, association))) {
-        return this.readDistribution(target, summary.Id);
+    for (const distributionId of await this.findTaggedDistributionIds()) {
+      const distribution = await this.readDistribution(distributionId);
+      if (distribution && this.lambdaAssociationsOf(distribution.config).some((association) => this.isAssociationOf(target, association))) {
+        return distribution;
       }
     }
 
     throw this.noDistributionFound(target);
   }
 
-  private async readDistribution(target: LambdaTarget, distributionId: string): Promise<DistributionOfFunction> {
+  /** The ids of the distributions that carry the root stack tag of this install, looked up in the edge region. */
+  private async findTaggedDistributionIds(): Promise<string[]> {
+    const distributionIds: string[] = [];
+    let paginationToken: string | undefined;
+
+    do {
+      const page = await this.edge.tagging.send(
+        new GetResourcesCommand({
+          TagFilters: [{ Key: ServerlessInboxTagKeys.rootStack, Values: [this.rootStackTagValue] }],
+          ResourceTypeFilters: ['cloudfront:distribution'],
+          PaginationToken: paginationToken,
+        }),
+      );
+      for (const mapping of page.ResourceTagMappingList ?? []) {
+        if (mapping.ResourceARN) {
+          distributionIds.push(parseArn(mapping.ResourceARN).resourceId);
+        }
+      }
+      paginationToken = page.PaginationToken;
+    } while (paginationToken);
+
+    return distributionIds;
+  }
+
+  /** The distribution with its ETag, or undefined when CloudFront returns it without its configuration or ETag. */
+  private async readDistribution(distributionId: string): Promise<DistributionOfFunction | undefined> {
     const fetched = await this.cloudFront.send(new GetDistributionConfigCommand({ Id: distributionId }));
     if (!fetched.DistributionConfig || !fetched.ETag) {
-      throw this.noDistributionFound(target);
+      return undefined;
     }
     return { id: distributionId, config: fetched.DistributionConfig, etag: fetched.ETag };
   }

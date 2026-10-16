@@ -158,7 +158,6 @@ describe('ArtifactUpdaterLambda', () => {
           Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
         },
       ],
-      ['distribution listing, unscoped', { Action: 'cloudfront:ListDistributions', Effect: 'Allow', Resource: '*' }],
       [
         'release artifact download from the registry buckets',
         {
@@ -166,6 +165,10 @@ describe('ArtifactUpdaterLambda', () => {
           Effect: 'Allow',
           Resource: `arn:aws:s3:::${BUCKET_BASE}-*/serverlessinbox/packages/*/releases/*`,
         },
+      ],
+      [
+        'status reads of the stack the function belongs to',
+        { Action: 'cloudformation:DescribeStacks', Effect: 'Allow', Resource: { Ref: 'AWS::StackId' } },
       ],
     ];
 

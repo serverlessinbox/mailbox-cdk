@@ -78,6 +78,7 @@ describe('UpdateCycle', () => {
     const edgeUpdater = new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
+      testConfig.rootStackTagValue,
       releases,
       functionCode,
       smokeTester,
@@ -319,6 +320,36 @@ describe('UpdateCycle', () => {
         arn: LAMBDA_ARN,
         error: 'UpdateFunctionCode failed',
       });
+      expect(console.info).toHaveBeenCalledWith('artifact update cycle completed', { attempted: 2, failed: 1 });
+    });
+
+    it('fails the cycle when every resource it tried failed, after trying them all', async () => {
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          lambdaWithType('code'),
+          lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api'),
+        ],
+      });
+      const { cycle, codeUpdater } = newCycle();
+      jest
+        .mocked(codeUpdater.advanceIfStale)
+        .mockRejectedValueOnce(new Error('UpdateFunctionCode failed'))
+        .mockRejectedValueOnce(new Error('UpdateFunctionCode failed'));
+
+      await expect(cycle.run()).rejects.toThrow('all 2 resource updates failed');
+
+      expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(2);
+      expect(console.error).toHaveBeenCalledWith('artifact update cycle failed', { error: 'all 2 resource updates failed' });
+    });
+
+    it('does not count a resource no updater takes as an update that worked', async () => {
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [lambdaWithType('code'), lambdaWithType('ui', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api')],
+      });
+      const { cycle, codeUpdater } = newCycle();
+      jest.mocked(codeUpdater.advanceIfStale).mockRejectedValueOnce(new Error('UpdateFunctionCode failed'));
+
+      await expect(cycle.run()).rejects.toThrow('all 1 resource updates failed');
     });
 
     it('logs a resource whose ARN is not of the kind its type names, and still updates the others', async () => {

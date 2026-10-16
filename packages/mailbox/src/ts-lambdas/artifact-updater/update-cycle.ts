@@ -42,7 +42,8 @@ interface UpdatableResource {
 /**
  * One scan of the stack's tagged Lambda functions and CloudFront distributions in the deployment region and
  * the edge region, advancing each one that opted in to the update path its auto-update-type names. A resource
- * whose update fails is logged and does not stop the scan of the others.
+ * whose update fails is logged and does not stop the scan of the others; the cycle as a whole fails only when
+ * every resource it tried failed.
  */
 export class UpdateCycle {
   private readonly config: Config;
@@ -51,6 +52,8 @@ export class UpdateCycle {
   private readonly codeUpdater: LambdaCodeUpdater;
   private readonly edgeUpdater: EdgeLambdaUpdater;
   private readonly uiUpdater: UiBucketUpdater;
+  private updatesAttempted = 0;
+  private updatesFailed = 0;
 
   constructor(
     config: Config,
@@ -68,14 +71,17 @@ export class UpdateCycle {
     this.uiUpdater = uiUpdater;
   }
 
-  /** Throws when the scan itself fails; a failed update of one resource is logged and the scan goes on. */
+  /**
+   * Throws when the scan itself fails, or when every resource it tried to update failed. A failed update of
+   * one resource among others is logged and the scan goes on; a cycle with nothing to update succeeds.
+   */
   public async run(): Promise<void> {
     try {
       const scanTargets = this.beginCycle();
       for (const scan of scanTargets) {
         await this.scanRegion(scan);
       }
-      this.logger.info('artifact update cycle completed');
+      this.concludeCycle();
     } catch (thrown) {
       this.recordFailedCycle(thrown);
       throw thrown;
@@ -86,6 +92,8 @@ export class UpdateCycle {
     const { deployment, edge } = this.clients;
     // The deployment region is scanned once when it is the edge region.
     const scanTargets = edge === deployment ? [deployment] : [deployment, edge];
+    this.updatesAttempted = 0;
+    this.updatesFailed = 0;
 
     this.logger.info('artifact update cycle started', {
       rootStackTag: this.config.rootStackTagValue,
@@ -93,6 +101,17 @@ export class UpdateCycle {
       granularity: this.config.granularity,
     });
     return scanTargets;
+  }
+
+  private concludeCycle(): void {
+    const counts = { attempted: this.updatesAttempted, failed: this.updatesFailed };
+
+    // A cycle in which every update that was tried failed has achieved nothing, so its caller must see a failure.
+    if (counts.attempted > 0 && counts.failed === counts.attempted) {
+      throw new Error(`all ${counts.attempted} resource updates failed`);
+    }
+
+    this.logger.info('artifact update cycle completed', counts);
   }
 
   private async scanRegion(scan: RegionClients): Promise<void> {
@@ -125,8 +144,12 @@ export class UpdateCycle {
     }
 
     try {
-      await this.advance(scan, resource);
+      if (await this.advance(scan, resource)) {
+        this.updatesAttempted += 1;
+      }
     } catch (thrown) {
+      this.updatesAttempted += 1;
+      this.updatesFailed += 1;
       this.recordFailedResource(resource.arn, thrown);
     }
   }
@@ -173,56 +196,58 @@ export class UpdateCycle {
     };
   }
 
-  private async advance(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+  /** True when the resource was handed to an updater; false when it is of a kind or in a place no updater takes. */
+  private async advance(scan: RegionClients, resource: UpdatableResource): Promise<boolean> {
     if (resource.service === 'cloudfront') {
-      await this.advanceDistribution(resource);
-      return;
+      return this.advanceDistribution(resource);
     }
     if (resource.service === 'lambda') {
-      await this.advanceFunction(scan, resource);
-      return;
+      return this.advanceFunction(scan, resource);
     }
     this.logger.debug('unknown resource type', { arn: resource.arn, resourceType: resource.service });
+    return false;
   }
 
   /** Only a distribution in front of a UI bucket is updated. */
-  private async advanceDistribution(resource: UpdatableResource): Promise<void> {
+  private async advanceDistribution(resource: UpdatableResource): Promise<boolean> {
     if (resource.autoUpdateType !== 'ui') {
       this.logger.debug('unsupported auto-update-type for CloudFront distribution', {
         arn: resource.arn,
         type: resource.autoUpdateType,
       });
-      return;
+      return false;
     }
 
     if (!resource.bucketName) {
       this.logger.debug('UI distribution missing bucket-name tag', { arn: resource.arn });
-      return;
+      return false;
     }
 
     await this.uiUpdater.advanceIfStale(this.uiTarget(resource, resource.bucketName));
+    return true;
   }
 
-  private async advanceFunction(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+  private async advanceFunction(scan: RegionClients, resource: UpdatableResource): Promise<boolean> {
     switch (resource.autoUpdateType) {
       case 'code':
         await this.codeUpdater.advanceIfStale(scan, this.lambdaTarget(resource));
-        return;
+        return true;
       case 'edge':
-        await this.advanceEdgeFunction(scan, resource);
-        return;
+        return this.advanceEdgeFunction(scan, resource);
       default:
         this.logger.debug('unknown auto-update-type for lambda', { arn: resource.arn, type: resource.autoUpdateType });
+        return false;
     }
   }
 
   /** Lambda@Edge functions live in the edge region only. */
-  private async advanceEdgeFunction(scan: RegionClients, resource: UpdatableResource): Promise<void> {
+  private async advanceEdgeFunction(scan: RegionClients, resource: UpdatableResource): Promise<boolean> {
     if (scan.region !== EDGE_REGION) {
       this.logger.debug('skipping edge update in non-us-east-1 region', { arn: resource.arn, region: scan.region });
-      return;
+      return false;
     }
     await this.edgeUpdater.advanceIfStale(this.lambdaTarget(resource));
+    return true;
   }
 
   private lambdaTarget(resource: UpdatableResource): LambdaTarget {

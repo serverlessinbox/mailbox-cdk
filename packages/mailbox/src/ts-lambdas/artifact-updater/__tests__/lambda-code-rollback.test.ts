@@ -2,9 +2,9 @@
 
 /**
  * Pins the rollback both update paths share: the function's code is replaced with the deployed release and the
- * artifact version tag is never written. A rollback that Lambda rejects while settling must not throw, because
- * the caller has nothing left to do but report the verdict; it is logged at error so an operator sees that the
- * function may be left on code that failed its probe.
+ * artifact version tag is never written. A rollback that Lambda rejects while settling is thrown, so the update
+ * that needed it counts as failed and the cycle can tell that every resource it tried failed; it is also logged
+ * at error so an operator sees that the function may be left on code that failed its probe.
  */
 
 import { mockClient } from 'aws-sdk-client-mock';
@@ -70,12 +70,14 @@ describe('LambdaCodeRollback', () => {
     });
   });
 
-  it('logs and does not throw when the rollback does not settle', async () => {
+  it('logs and throws when the rollback does not settle', async () => {
     lambdaMock
       .on(GetFunctionConfigurationCommand)
       .resolves({ LastUpdateStatus: 'Failed', LastUpdateStatusReason: 'rollback rejected' });
 
-    await expect(newRollback().restore(lambda, target, stale, 'fail', deployedLocation)).resolves.toBeUndefined();
+    await expect(newRollback().restore(lambda, target, stale, 'fail', deployedLocation)).rejects.toThrow(
+      `Function code update failed for ${target.arn}: rollback rejected`,
+    );
 
     expect(console.error).toHaveBeenCalledWith('rollback settle-wait failed', {
       lambdaArn: target.arn,

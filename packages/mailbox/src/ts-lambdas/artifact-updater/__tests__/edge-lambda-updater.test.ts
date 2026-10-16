@@ -3,23 +3,24 @@
 /**
  * Pins the edge update path: new code is published as a version, that version is probed with the smoke test,
  * and only when it passes is every association of the function in its distribution pointed at it, with the ETag
- * of the configuration that was read, not the one of the list. A version that fails the probe or cannot be
- * probed never reaches the distribution, which would otherwise serve it to every viewer. A function that fails
- * midway must not be tagged with a version it does not run, and a code update that Lambda rejects because
- * another update is in progress is retried a limited number of times.
+ * of the configuration that was read. The distribution is found among those carrying the root stack tag of this
+ * install, never by listing the account, so a distribution of another install that associates the same function
+ * name is never repointed. A version that fails the probe or cannot be probed never reaches the distribution,
+ * which would otherwise serve it to every viewer. A function that fails midway must not be tagged with a version
+ * it does not run, and a code update that Lambda rejects because another update is in progress is retried a
+ * limited number of times.
  */
 
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetDistributionConfigCommand,
-  ListDistributionsCommand,
   UpdateDistributionCommand,
   CloudFrontClient,
   type DefaultCacheBehavior,
   type DistributionConfig,
-  type DistributionSummary,
   type LambdaFunctionAssociation,
 } from '@aws-sdk/client-cloudfront';
+import { GetResourcesCommand, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
 import {
   GetFunctionConfigurationCommand,
   InvokeCommand,
@@ -80,17 +81,8 @@ function behaviorsOf(defaults: LambdaFunctionAssociation[], additional: LambdaFu
   };
 }
 
-function distributionSummary(
-  id: string,
-  defaults: LambdaFunctionAssociation[],
-  additional: LambdaFunctionAssociation[] = [],
-  hasDomainName = true,
-): DistributionSummary {
-  return {
-    Id: id,
-    DomainName: hasDomainName ? `${id}.cloudfront.net` : undefined,
-    ...behaviorsOf(defaults, additional),
-  } as DistributionSummary;
+function distributionArn(id: string): string {
+  return `arn:aws:cloudfront::123456789012:distribution/${id}`;
 }
 
 function distributionConfig(defaults: LambdaFunctionAssociation[], additional: LambdaFunctionAssociation[] = []): DistributionConfig {
@@ -100,6 +92,7 @@ function distributionConfig(defaults: LambdaFunctionAssociation[], additional: L
 describe('EdgeLambdaUpdater', () => {
   const lambdaMock = mockClient(LambdaClient);
   const cloudFrontMock = mockClient(CloudFrontClient);
+  const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
   const clients = fakeUpdaterClients();
   const sleep = jest.fn(async () => undefined);
   const target = lambdaTarget({ arn: EDGE_ARN, packageName: 'edge-pkg', artifactName: 'edge-lambda' });
@@ -110,6 +103,7 @@ describe('EdgeLambdaUpdater', () => {
     return new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
+      testConfig.rootStackTagValue,
       new ReleaseArtifacts(clients.registryS3, testConfig, logger),
       functionCode,
       new FunctionSmokeTester(logger),
@@ -119,10 +113,14 @@ describe('EdgeLambdaUpdater', () => {
     );
   }
 
-  function distributionsListing(...summaries: DistributionSummary[]): void {
-    cloudFrontMock.on(ListDistributionsCommand).resolves({
-      DistributionList: { IsTruncated: false, Items: summaries, Marker: '', MaxItems: 100, Quantity: summaries.length },
+  function taggedDistributions(...ids: string[]): void {
+    taggingMock.on(GetResourcesCommand).resolves({
+      ResourceTagMappingList: ids.map((id) => ({ ResourceARN: distributionArn(id) })),
     });
+  }
+
+  function distributionConfigOf(id: string, config: DistributionConfig, etag = 'config-etag'): void {
+    cloudFrontMock.on(GetDistributionConfigCommand, { Id: id }).resolves({ DistributionConfig: config, ETag: etag });
   }
 
   function conflict(): ResourceConflictException {
@@ -133,6 +131,7 @@ describe('EdgeLambdaUpdater', () => {
     jest.clearAllMocks();
     lambdaMock.reset();
     cloudFrontMock.reset();
+    taggingMock.reset();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     deriveTrack.mockReturnValue('v1');
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
@@ -163,11 +162,8 @@ describe('EdgeLambdaUpdater', () => {
   });
 
   it('replaces the code, publishes a version, repoints the distribution with the ETag it read, and tags', async () => {
-    distributionsListing(distributionSummary('DIST123', [association(`${EDGE_ARN}:3`, 'origin-request')]));
-    cloudFrontMock.on(GetDistributionConfigCommand).resolves({
-      DistributionConfig: distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]),
-      ETag: 'config-etag',
-    });
+    taggedDistributions('DIST123');
+    distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
 
     const updated = await newUpdater().advanceIfStale(target);
 
@@ -191,12 +187,38 @@ describe('EdgeLambdaUpdater', () => {
     });
   });
 
+  it('looks for the distribution among those that carry the root stack tag of this install', async () => {
+    taggedDistributions('DIST123');
+    distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
+
+    await newUpdater().advanceIfStale(target);
+
+    expect(taggingMock.commandCalls(GetResourcesCommand)[0].args[0].input).toEqual({
+      TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+      ResourceTypeFilters: ['cloudfront:distribution'],
+      PaginationToken: undefined,
+    });
+  });
+
+  it('repoints the tagged distribution that associates the function, not another tagged one, and follows the pagination token', async () => {
+    taggingMock
+      .on(GetResourcesCommand)
+      .resolvesOnce({ ResourceTagMappingList: [{ ResourceARN: distributionArn('DIST_UI') }], PaginationToken: 'page-2' })
+      .resolvesOnce({ ResourceTagMappingList: [{ ResourceARN: distributionArn('DIST_BLOB') }] });
+    distributionConfigOf('DIST_UI', distributionConfig([association(`${OTHER_ARN}:1`, 'origin-request')]));
+    distributionConfigOf('DIST_BLOB', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
+
+    await newUpdater().advanceIfStale(target);
+
+    expect(taggingMock.commandCalls(GetResourcesCommand)[1].args[0].input.PaginationToken).toBe('page-2');
+    expect(cloudFrontMock.commandCalls(UpdateDistributionCommand).map((call) => call.args[0].input.Id)).toEqual(['DIST_BLOB']);
+  });
+
   describe.each([
     ['fails', () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')), 'fail'],
     ['cannot be run', () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')), 'unprobeable'],
   ])('when the smoke test of the published version %s', (_description, arrangeProbe, expectedVerdict) => {
     it('leaves the distribution on its version, puts the code back on the deployed release and writes no tag', async () => {
-      distributionsListing(distributionSummary('DIST123', [association(`${EDGE_ARN}:3`, 'origin-request')]));
       arrangeProbe();
 
       const updated = await newUpdater().advanceIfStale(target);
@@ -219,14 +241,14 @@ describe('EdgeLambdaUpdater', () => {
   });
 
   it('finds the distribution through a non-default cache behavior and repoints every association of the function', async () => {
-    distributionsListing(distributionSummary('DIST456', [], [association(`${EDGE_ARN}:3`, 'viewer-request')]));
-    cloudFrontMock.on(GetDistributionConfigCommand).resolves({
-      DistributionConfig: distributionConfig(
+    taggedDistributions('DIST456');
+    distributionConfigOf(
+      'DIST456',
+      distributionConfig(
         [association(`${EDGE_ARN}:3`, 'origin-request'), association(`${OTHER_ARN}:7`, 'origin-request')],
         [association(`${EDGE_ARN}:3`, 'viewer-request')],
       ),
-      ETag: 'config-etag',
-    });
+    );
 
     await newUpdater().advanceIfStale(target);
 
@@ -242,13 +264,11 @@ describe('EdgeLambdaUpdater', () => {
 
   describe('when no distribution can be repointed', () => {
     it.each([
-      ['no distribution uses the function', [distributionSummary('DIST_OTHER', [association(`${OTHER_ARN}:1`, 'origin-request')])]],
-      [
-        'the only distribution that uses it has no domain name',
-        [distributionSummary('DIST_NODOMAIN', [association(`${EDGE_ARN}:3`, 'origin-request')], [], false)],
-      ],
-    ])('rejects, logs and does not tag when %s', async (_description, summaries) => {
-      distributionsListing(...summaries);
+      ['no distribution carries the tag', [] as string[]],
+      ['no tagged distribution uses the function', ['DIST_OTHER']],
+    ])('rejects, logs and does not tag when %s', async (_description, taggedIds) => {
+      taggedDistributions(...taggedIds);
+      distributionConfigOf('DIST_OTHER', distributionConfig([association(`${OTHER_ARN}:1`, 'origin-request')]));
 
       await expect(newUpdater().advanceIfStale(target)).rejects.toThrow(
         `No CloudFront distribution found for edge lambda ${EDGE_ARN}`,
@@ -263,7 +283,7 @@ describe('EdgeLambdaUpdater', () => {
     });
 
     it('rejects when the distribution configuration comes back without an ETag', async () => {
-      distributionsListing(distributionSummary('DIST123', [association(`${EDGE_ARN}:3`, 'origin-request')]));
+      taggedDistributions('DIST123');
       cloudFrontMock.on(GetDistributionConfigCommand).resolves({
         DistributionConfig: distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]),
       });
@@ -286,11 +306,8 @@ describe('EdgeLambdaUpdater', () => {
 
   describe('when Lambda rejects the code update because another update is in progress', () => {
     beforeEach(() => {
-      distributionsListing(distributionSummary('DIST123', [association(`${EDGE_ARN}:3`, 'origin-request')]));
-      cloudFrontMock.on(GetDistributionConfigCommand).resolves({
-        DistributionConfig: distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]),
-        ETag: 'config-etag',
-      });
+      taggedDistributions('DIST123');
+      distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
     });
 
     it('retries after 3 and then 6 seconds and goes on when the third attempt succeeds', async () => {

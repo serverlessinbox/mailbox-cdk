@@ -20,7 +20,7 @@ export class LambdaCodeRollback {
 
   /**
    * Replaces the code with the deployed release at `deployedLocation`. A rollback that does not settle is
-   * logged at error and not thrown.
+   * logged at error and thrown, so the update that needed the rollback counts as failed.
    */
   public async restore(
     lambda: LambdaClient,
@@ -57,6 +57,7 @@ export class LambdaCodeRollback {
         error: new CaughtError(thrown).message,
         note: 'function may still be on failed code; manual intervention may be needed',
       });
+      throw thrown;
     }
   }
 }

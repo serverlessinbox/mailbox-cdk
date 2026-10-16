@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
 import { LambdaClient, type InvokeCommandOutput } from '@aws-sdk/client-lambda';
 import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
@@ -124,6 +125,7 @@ export function newUpdateCycle(): UpdateCycle {
     new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
+      testConfig.rootStackTagValue,
       releases,
       functionCode,
       smokeTester,
@@ -144,12 +146,17 @@ export const badConfigCycle: NewUpdateCycle = () => {
 
 /** What the entry point hands to the composition when the configuration loaded, with fake clients. */
 export function readyRuntime(): ReadyUpdater {
-  return { config: testConfig, clients: fakeUpdaterClients(), error: undefined };
+  return { config: testConfig, cloudFormation: fakeCloudFormationClient(), clients: fakeUpdaterClients(), error: undefined };
 }
 
-/** What the entry point hands to the composition when the configuration failed to load: no clients. */
+/** What the entry point hands to the composition when the configuration failed to load: no clients but CloudFormation's. */
 export function failedRuntime(): FailedUpdater {
-  return { config: testConfig, clients: undefined, error: BAD_CONFIG_ERROR };
+  return { config: testConfig, cloudFormation: fakeCloudFormationClient(), clients: undefined, error: BAD_CONFIG_ERROR };
+}
+
+/** A real SDK client, so a test can stub it with aws-sdk-client-mock. */
+export function fakeCloudFormationClient(): CloudFormationClient {
+  return new CloudFormationClient({ region: EDGE_REGION });
 }
 
 /**
