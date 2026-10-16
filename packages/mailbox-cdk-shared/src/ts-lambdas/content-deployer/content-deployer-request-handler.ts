@@ -3,6 +3,7 @@ import type { S3Client } from '@aws-sdk/client-s3';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import { ExpectedFailure } from '../shared/expected-failure';
+import { hasTimeLeft, type InvocationDeadline } from '../shared/invocation-deadline';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import { invalidateCloudFront } from '../shared/cloudfront-invalidation';
 import {
@@ -29,8 +30,8 @@ export interface ContentDeployerResponse {
 /**
  * Answers the custom-resource requests of one content-deployer invocation: Create and Update write each
  * source into the target bucket and then invalidate the CloudFront paths, Delete does nothing. A request it
- * rejects on purpose is thrown as an `ExpectedFailure`; any other error comes from a failed call and is
- * unexpected.
+ * rejects on purpose, or a deployment the invocation has too little time left to finish, is thrown as an
+ * `ExpectedFailure`; any other error comes from a failed call and is unexpected.
  */
 export class ContentDeployerRequestHandler {
   private readonly s3: S3Client;
@@ -43,7 +44,7 @@ export class ContentDeployerRequestHandler {
     this.logger = logger;
   }
 
-  async handle(request: CustomResourceRequest, logGroupName: string): Promise<ContentDeployerResponse> {
+  async handle(request: CustomResourceRequest, deadline: InvocationDeadline): Promise<ContentDeployerResponse> {
     // Deleting a deployment keeps its objects: when a resource is replaced, CloudFormation deletes the old
     // one after the new one has written, and cleaning up here would wipe what the new one just wrote.
     // The properties are not read, so a Delete cannot fail on them.
@@ -53,8 +54,8 @@ export class ContentDeployerRequestHandler {
 
     const properties = this.readProperties(request);
     const targetBucket = this.readTargetBucket(properties);
-    const objectsWritten = await this.deploySources(properties.sources ?? [], targetBucket);
-    const cacheInvalidated = await this.invalidateCache(request, properties, logGroupName);
+    const objectsWritten = await this.deploySources(properties.sources ?? [], targetBucket, deadline);
+    const cacheInvalidated = await this.invalidateCache(request, properties, deadline);
 
     return this.answerDeployed(request, objectsWritten, cacheInvalidated);
   }
@@ -78,12 +79,27 @@ export class ContentDeployerRequestHandler {
     return targetBucket;
   }
 
-  private async deploySources(sources: StaticContentSourceSpec[], targetBucket: string): Promise<number> {
+  private async deploySources(
+    sources: StaticContentSourceSpec[],
+    targetBucket: string,
+    deadline: InvocationDeadline,
+  ): Promise<number> {
     let objectsWritten = 0;
-    for (const source of sources) {
+    for (const [index, source] of sources.entries()) {
+      this.assertTimeLeft(
+        deadline,
+        `${index} of ${sources.length} sources were deployed; the remaining sources and the cache invalidation were not run`,
+      );
       objectsWritten += await this.deploySource(source, targetBucket);
     }
     return objectsWritten;
+  }
+
+  // An unanswered request keeps the stack waiting out the service timeout, so a deployment that cannot finish says so.
+  private assertTimeLeft(deadline: InvocationDeadline, unfinished: string): void {
+    if (!hasTimeLeft(deadline)) {
+      throw new ExpectedFailure(`Content was not fully deployed before the Lambda deadline: ${unfinished}`);
+    }
   }
 
   private deploySource(source: StaticContentSourceSpec, targetBucket: string): Promise<number> {
@@ -128,17 +144,14 @@ export class ContentDeployerRequestHandler {
   private async invalidateCache(
     request: CustomResourceRequest,
     properties: ContentDeployerResourceProperties,
-    logGroupName: string,
+    deadline: InvocationDeadline,
   ): Promise<boolean> {
+    this.assertTimeLeft(deadline, 'all sources were deployed; the cache invalidation was not run');
+
     const { invalidated } = await invalidateCloudFront(this.cloudFront, {
       distributionId: properties.distributionId,
       paths: properties.invalidationPaths,
-      callerReference: JSON.stringify({
-        pr: this.derivePhysicalResourceId(request),
-        n: properties.deploymentNonce ?? null,
-        r: request.RequestId,
-        lg: logGroupName,
-      }),
+      callerReference: request.RequestId,
     });
     return invalidated;
   }

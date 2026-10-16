@@ -32,7 +32,7 @@ export const handler = withSmokeTest(wrapHandler(async (event, context) => {
   const failedRequestAnswerer = new FailedRequestAnswerer(cloudFormation, logger);
 
   try {
-    return await requestHandler.handle(request, context.logGroupName);
+    return await requestHandler.handle(request, context);
   } catch (failure) {
     if (!(failure instanceof ExpectedFailure)) {
       logger.flush();

@@ -120,6 +120,64 @@ describe('BucketEmptier', () => {
     expect(batchSizes).toEqual([1000, 1000, 500]);
   });
 
+  describe('when S3 reports versions it did not delete', () => {
+    const TWO_VERSIONS = {
+      Versions: [
+        { Key: 'file1.txt', VersionId: 'v1' },
+        { Key: 'file2.txt', VersionId: 'v2' },
+      ],
+      IsTruncated: false,
+    };
+    const REFUSED_FILE2 = { Errors: [{ Key: 'file2.txt', VersionId: 'v2', Code: 'InternalError' }] };
+
+    it('retries only the refused versions and counts them as deleted once they go', async () => {
+      s3Mock.on(ListObjectVersionsCommand).resolves(TWO_VERSIONS);
+      s3Mock.on(DeleteObjectsCommand).resolvesOnce(REFUSED_FILE2).resolves({});
+
+      const deleted = await emptier.empty('flaky-bucket', PLENTY_OF_TIME);
+
+      expect(deleted).toBe(2);
+      const deleteCalls = s3Mock.commandCalls(DeleteObjectsCommand);
+      expect(deleteCalls.map((call) => call.args[0].input.Delete?.Objects)).toEqual([
+        [
+          { Key: 'file1.txt', VersionId: 'v1' },
+          { Key: 'file2.txt', VersionId: 'v2' },
+        ],
+        [{ Key: 'file2.txt', VersionId: 'v2' }],
+      ]);
+    });
+
+    it('fails with an ExpectedFailure naming the bucket and the count when S3 keeps refusing them', async () => {
+      s3Mock.on(ListObjectVersionsCommand).resolves(TWO_VERSIONS);
+      s3Mock.on(DeleteObjectsCommand).resolves(REFUSED_FILE2);
+
+      const failure: unknown = await emptier.empty('stuck-bucket', PLENTY_OF_TIME).catch((thrown: unknown) => thrown);
+
+      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toHaveProperty(
+        'message',
+        'Bucket stuck-bucket could not be emptied: 1 object versions were still not deleted after 3 attempts',
+      );
+      expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(3);
+    });
+
+    it('fails without retrying when the invocation is nearly out of time', async () => {
+      s3Mock.on(ListObjectVersionsCommand).resolves(TWO_VERSIONS);
+      s3Mock.on(DeleteObjectsCommand).resolves(REFUSED_FILE2);
+      const remainingTime = jest.fn<number, []>().mockReturnValueOnce(900_000).mockReturnValue(30_000);
+
+      const failure: unknown = await emptier
+        .empty('slow-bucket', { getRemainingTimeInMillis: remainingTime })
+        .catch((thrown: unknown) => thrown);
+
+      expect(failure).toHaveProperty(
+        'message',
+        'Bucket slow-bucket could not be emptied: 1 object versions were still not deleted after 1 attempts',
+      );
+      expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(1);
+    });
+  });
+
   it('stops with an ExpectedFailure naming what it deleted before listing the next page when the invocation is nearly out of time', async () => {
     s3Mock
       .on(ListObjectVersionsCommand)

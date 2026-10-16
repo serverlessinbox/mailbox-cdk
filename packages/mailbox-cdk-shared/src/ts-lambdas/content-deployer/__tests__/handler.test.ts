@@ -73,7 +73,6 @@ describe('content-deployer handler', () => {
     event: FakeCfnEvent | SmokeTestProbe,
     environment: Record<string, string>,
     arrange: (fakes: Fakes) => void = () => undefined,
-    logGroupName?: string,
   ) {
     jest.resetModules();
     process.env = { ...originalEnv, ...environment };
@@ -110,7 +109,7 @@ describe('content-deployer handler', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result = await handler(event, fakeLambdaContext(logGroupName));
+    const result = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
@@ -152,25 +151,6 @@ describe('content-deployer handler', () => {
     expect(fakes.s3.commandCalls(fakes.s3Sdk.PutObjectCommand)).toHaveLength(1);
     expect(console.debug).not.toHaveBeenCalled();
     expect(console.info).not.toHaveBeenCalled();
-  });
-
-  it('tells invalidations apart by the log group of the invocation', async () => {
-    async function callerReferenceInLogGroup(logGroupName: string): Promise<string | undefined> {
-      const { fakes } = await invoke(
-        fakeCreateEvent({ sources: [], distributionId: 'E123ABC', invalidationPaths: ['/*'] }),
-        GOOD_ENVIRONMENT,
-        (arranged) => arranged.cloudFront.on(arranged.cloudFrontSdk.CreateInvalidationCommand).resolves({}),
-        logGroupName,
-      );
-      const [invalidation] = fakes.cloudFront.commandCalls(fakes.cloudFrontSdk.CreateInvalidationCommand);
-      return invalidation.args[0].input.InvalidationBatch?.CallerReference;
-    }
-
-    const inFirstLogGroup = await callerReferenceInLogGroup('log-group-a');
-    const inSecondLogGroup = await callerReferenceInLogGroup('log-group-b');
-
-    expect(inFirstLogGroup).toEqual(expect.any(String));
-    expect(inFirstLogGroup).not.toEqual(inSecondLogGroup);
   });
 
   it('emits the trace at the configured log level as it happens', async () => {

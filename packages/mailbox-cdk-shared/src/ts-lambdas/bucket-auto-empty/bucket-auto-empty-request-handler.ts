@@ -2,7 +2,8 @@ import { CaughtError } from '../shared/caught-error';
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
-import type { BucketEmptier, InvocationDeadline } from './bucket-emptier';
+import type { InvocationDeadline } from '../shared/invocation-deadline';
+import type { BucketEmptier } from './bucket-emptier';
 import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from './resource-properties';
 
 /** The answer sent to CloudFormation for a request that succeeded. */

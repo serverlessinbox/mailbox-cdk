@@ -55,7 +55,7 @@ describe('StackHelpers', () => {
     it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
         ServiceToken: Match.objectLike({ 'Fn::GetAtt': Match.arrayWith(['Arn']) }),
-        ServiceTimeout: '120',
+        ServiceTimeout: '90',
         HostedZoneId: 'Z123',
         DataStackName: 'my-data-stack',
       });

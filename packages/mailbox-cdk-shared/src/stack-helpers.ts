@@ -82,7 +82,7 @@ export class StackHelpers extends Construct {
   ): cdk.CustomResource {
     return new cdk.CustomResource(scope, id, {
       serviceToken: this.fn.functionArn,
-      serviceTimeout: cdk.Duration.seconds(120),
+      serviceTimeout: cdk.Duration.seconds(90),
       resourceType: 'Custom::StackHelpers',
       properties,
     });

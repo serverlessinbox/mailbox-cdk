@@ -5,22 +5,21 @@ export type HandlerContext = Parameters<typeof handler>[1];
 export const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid';
 export const LOGICAL_RESOURCE_ID = 'TestResource';
 export const REQUEST_ID = 'request-123';
-export const LOG_GROUP_NAME = 'log-group';
 export const PHYSICAL_RESOURCE_ID = `content-assets:${STACK_ID}:${LOGICAL_RESOURCE_ID}`;
 
 /**
  * The Lambda context the handler tests pass in. `wrapHandler` reads `getRemainingTimeInMillis` from it
  * and builds the CloudWatch link of a FAILED response from the log group and stream.
  */
-export function fakeLambdaContext(logGroupName: string = LOG_GROUP_NAME): HandlerContext {
+export function fakeLambdaContext(remainingTimeMs: number = 300000): NonNullable<HandlerContext> {
   return {
-    getRemainingTimeInMillis: () => 300000,
+    getRemainingTimeInMillis: () => remainingTimeMs,
     functionName: 'test-function',
     functionVersion: '$LATEST',
     invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test-function',
     memoryLimitInMB: '1024',
     awsRequestId: 'request-id',
-    logGroupName,
+    logGroupName: 'log-group',
     logStreamName: 'log-stream',
     callbackWaitsForEmptyEventLoop: true,
     done: () => undefined,
