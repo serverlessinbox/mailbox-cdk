@@ -16,7 +16,7 @@
     "bake-artifact-versions": "ts-node --project tsconfig.scripts.json scripts/bake-artifact-versions/bake-artifact-versions.ts",
     "template-baseline": "ts-node --project tsconfig.scripts.json scripts/template-baseline/template-baseline.ts",
     "fetch-registry-record": "artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox/registry-record.json && artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox-cognito/registry-record.json",
-    "test:scripts": "jest --config jest.config.js",
+    "test:scripts": "tsc -p tsconfig.scripts.json --noEmit && jest --config jest.config.js",
     "test": "yarn test:scripts && yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
   },
   "devDependencies": {
