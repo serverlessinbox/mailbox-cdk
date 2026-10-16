@@ -3,6 +3,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import {
   DeployerWorkerLambda,
+  rootStackRequestTagCondition,
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -40,6 +41,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
     // Grants for the resources of the cognito data stack
     this.grantUserPoolCreation();
     this.grantUserPoolLifecycle();
+    this.grantUserPoolTagging();
     this.grantUserPoolDomainLifecycle();
     this.grantUserPoolDomainRead();
     this.grantResourceServerLifecycle();
@@ -75,6 +77,38 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         resources: ['*'],
         conditions: {
           StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
+        },
+      }),
+    );
+  }
+
+  // aws:TagKeys is multivalued, so it needs ForAllValues: a plain StringEquals never matches and
+  // silently denies every tag write.
+  private grantUserPoolTagging(): void {
+    // On CREATE, CloudFormation sends the tags in the request against a still-untagged pool, so
+    // aws:RequestTag matches and aws:ResourceTag cannot.
+    this.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['cognito-idp:TagResource'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: rootStackRequestTagCondition(Aws.STACK_NAME),
+          ...this.tagKeyCondition(),
+        },
+      }),
+    );
+    // On UPDATE, CloudFormation sends only the changed tags, so root-stack may be absent from the
+    // request, but the pool is already tagged and aws:ResourceTag matches. The two statements together
+    // cover both.
+    this.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['cognito-idp:TagResource'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
+          ...this.tagKeyCondition(),
         },
       }),
     );

@@ -8,11 +8,12 @@
  */
 
 import { Template } from 'aws-cdk-lib/assertions';
-import { actionsOf, allPolicyStatements, renderWithTokens, sharedWorkerServiceName, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { actionsOf, allPolicyStatements, renderWithTokens, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
 import { newDeployerTestStack } from './cognito-deployer-helpers';
 
 const ROOT_STACK_TAG_KEY = 'aws:ResourceTag/serverless-inbox:root-stack';
+const REQUEST_STACK_TAG_KEY = 'aws:RequestTag/serverless-inbox:root-stack';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
 
 function synthWorker(): Template {
@@ -82,6 +83,28 @@ describe('MailboxCognitoDataDeployerWorker', () => {
         const stmts = statementsForAction(template, action);
         expect(stmts.length).toBe(1);
         expect(stmts[0].Condition?.StringEquals?.[ROOT_STACK_TAG_KEY]).toBeDefined();
+      }
+    });
+
+    it('splits TagResource into a RequestTag-gated (create) and ResourceTag-gated (update) statement', () => {
+      const stmts = statementsForAction(template, 'cognito-idp:TagResource');
+      expect(stmts.length).toBe(2);
+
+      const requestGated = stmts.find((s) => s.Condition?.StringEquals?.[REQUEST_STACK_TAG_KEY] !== undefined);
+      const resourceGated = stmts.find((s) => s.Condition?.StringEquals?.[ROOT_STACK_TAG_KEY] !== undefined);
+
+      expect(requestGated).toBeDefined();
+      expect(resourceGated).toBeDefined();
+      expect(requestGated).not.toBe(resourceGated);
+    });
+
+    it('constrains both TagResource statements with ForAllValues:StringLike on aws:TagKeys (never plain StringEquals)', () => {
+      const stmts = statementsForAction(template, 'cognito-idp:TagResource');
+      expect(stmts.length).toBe(2);
+
+      for (const stmt of stmts) {
+        expect(tagKeysOf(stmt)).toEqual(sharedSubStackTagKeys());
+        expect(stmt.Condition?.StringEquals?.['aws:TagKeys']).toBeUndefined();
       }
     });
 
