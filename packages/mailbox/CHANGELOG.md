@@ -4,6 +4,54 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.2...v0.2.3) (Fri Oct 16 2026)
+
+### refactor
+
+* **shared** restructure the stack-deployer Lambda runtime to the code skills, with a typed payload and a shared CaughtError ([9c3a1b5](https://github.com/serverlessinbox/mailbox-cdk/commit/9c3a1b59815905927d9525e8556ea479689a1edd))
+
+* **cdk** restructure the stack-deployer constructs to the code skills, with shared worker grants and the runtime-owned payload type ([6b2b85b](https://github.com/serverlessinbox/mailbox-cdk/commit/6b2b85b76cb58b693831371c13b51b43dac3df0a))
+
+* **mailbox** give the artifact-updater its typed config, events, identifiers and tag keys ([8cbf08f](https://github.com/serverlessinbox/mailbox-cdk/commit/8cbf08f20a96ed039ac1326e651c8079f08504be))
+
+* **mailbox** give the artifact-updater one trigger interface with a single flush site, and enforce that every auto-updated Lambda answers the smoke-test probe ([8a0dfc2](https://github.com/serverlessinbox/mailbox-cdk/commit/8a0dfc250719b9b2680292dc82fce905ba0cfa04))
+
+* **mailbox** restructure the blob-authorizer Lambda@Edge to the code skills, answer the smoke-test probe, and share the Branded type ([e2991a8](https://github.com/serverlessinbox/mailbox-cdk/commit/e2991a87892dbdfdd6cf5b134010b16ae7d9e55d))
+
+* **mailbox** move the artifact-updater and blob-authorizer onto the shared identifiers and tag keys, and brand the blob-authorizer's auth identifiers ([634398d](https://github.com/serverlessinbox/mailbox-cdk/commit/634398d2ca4b84c8794c6980971bc95b52aedac2))
+
+* **mailbox** rename the blob-authorizer Lambda@Edge to jmap-blob-download, including its artifact, tags, edge-stack parameters and construct ids ([1c6e057](https://github.com/serverlessinbox/mailbox-cdk/commit/1c6e0572fa4c07879f923411c21db5b61a89c348))
+
+* **mailbox** split the artifact updater constructs; typed env-name contract ([96f3243](https://github.com/serverlessinbox/mailbox-cdk/commit/96f3243fdf155156facac6de8cb6140b396b264a))
+
+* **shared** TenantId, Issuer and AccountId move into the shared runtime beside the new FunctionName and QueueUrl brands; jmap-blob-download imports them ([83939ad](https://github.com/serverlessinbox/mailbox-cdk/commit/83939ad1bd03fc07afca45cefeb217649bffa45d))
+
+* **mailbox** sweeper constructs with named grants, one execution-grant list for policy and permissions boundary, a shared worker retry loop and typed name contracts ([2f16215](https://github.com/serverlessinbox/mailbox-cdk/commit/2f1621592d3456c7318b6265c2b78a86f36f19aa))
+
+* **mailbox** bootstrap and admin-api wrappers with named grants and their full environment inline in super(); the misplaced bootstrap test merges into the wrapper's test ([b44ab2a](https://github.com/serverlessinbox/mailbox-cdk/commit/b44ab2ae45f07846a2141e642c14035834e46f07))
+
+* Lambda wrappers write their environment inline in super() with literal names; the env-name constants and environment types go ([1554635](https://github.com/serverlessinbox/mailbox-cdk/commit/1554635d2c7b0e8873ce91b3d6b720bedc04b5d0))
+
+### test
+
+* **cdk** share the CDK test helpers through a cdk-test-support export of mailbox-cdk-shared ([5479a0a](https://github.com/serverlessinbox/mailbox-cdk/commit/5479a0abec6603db9094052510a4e0cdcb82487c))
+
+* one shared smoke-probe helper; mailbox-cognito enforces that its updater-managed Lambdas answer the probe ([8878aa7](https://github.com/serverlessinbox/mailbox-cdk/commit/8878aa76f64754f3236fc43b983df0fc416bc27b))
+
+* **mailbox** sweeper tests per unit — each removal, the retry loop, the shared execution grants, the workflow, both wrappers and the retain helper ([4bf7e64](https://github.com/serverlessinbox/mailbox-cdk/commit/4bf7e6460767474171677b89c0adc68612773379))
+
+### fix
+
+* **mailbox** keep updated Lambda code only when its smoke test passes, and split the artifact-updater's update operations into classes ([58fcf79](https://github.com/serverlessinbox/mailbox-cdk/commit/58fcf79fb7e372a8091d541b1eb9aace8bd7d00a))
+
+* **mailbox** probe a new edge function version before CloudFront serves it, and give the artifact-updater its edge, UI and cycle classes ([bdcb8a2](https://github.com/serverlessinbox/mailbox-cdk/commit/bdcb8a25c2a4cf8122012492b8b986323ce4faaa))
+
+* a custom-resource Delete answers SUCCESS on a config error or invalid properties (stack-helpers, data-override-resolver, content-deployer, bootstrap-user) ([e0ea119](https://github.com/serverlessinbox/mailbox-cdk/commit/e0ea119d3087ed53766108926ed9c4a23e7a55a5))
+
+* **cdk** retain stack-failure detector resources on create rollback ([37391d4](https://github.com/serverlessinbox/mailbox-cdk/commit/37391d4cadac200d2555000e52b04e90ad6bb829))
+
+* **shared** deployer workers may write the Name and description tags ([4c1d4ec](https://github.com/serverlessinbox/mailbox-cdk/commit/4c1d4ecc8b6ad2608d424bfeccd29195b1eb8561))
+
 ## [0.2.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.1...v0.2.2) (Tue Oct 13 2026)
 
 ### chore

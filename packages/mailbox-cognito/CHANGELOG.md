@@ -4,6 +4,42 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.2.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.2...v0.2.3) (Fri Oct 16 2026)
+
+### refactor
+
+* **cdk** restructure the stack-deployer constructs to the code skills, with shared worker grants and the runtime-owned payload type ([6b2b85b](https://github.com/serverlessinbox/mailbox-cdk/commit/6b2b85b76cb58b693831371c13b51b43dac3df0a))
+
+* **cognito** split the bootstrap-user Lambda into handler, request handler, answers and user ensurer, on the shared bad-config answer and branded identifiers ([072f18a](https://github.com/serverlessinbox/mailbox-cdk/commit/072f18a2f9e07f12a83430666e8f2d22306d97df))
+
+* **cognito** one identity-provisioner client and the Cognito brands shared within mailbox-cognito ([07b4534](https://github.com/serverlessinbox/mailbox-cdk/commit/07b453455a33d99986edb36cd47cb441ef212c23))
+
+* **cognito** split the idp-users-api Lambda into handler, admin API, service, mapper, validation and audit emitter; typed env contract and branded identifiers ([b568ebb](https://github.com/serverlessinbox/mailbox-cdk/commit/b568ebbfe36105411f62a823a6797c875d28e33b))
+
+* **cognito** brand the identity-provisioner contract and add the Cognito ClientId and identity brands; jmap-oauth-dcr follows ([b32d2f9](https://github.com/serverlessinbox/mailbox-cdk/commit/b32d2f95b0c38c8ae08d00212da5541968ec71b6))
+
+* **cognito** split the jmap-oauth-dcr Lambda into handler, client registration and answers; branded identifiers and a typed env contract ([8b6dea1](https://github.com/serverlessinbox/mailbox-cdk/commit/8b6dea1a4cd6f7ff64facad5776171f6895a4240))
+
+* Lambda wrappers write their environment inline in super() with literal names; the env-name constants and environment types go ([1554635](https://github.com/serverlessinbox/mailbox-cdk/commit/1554635d2c7b0e8873ce91b3d6b720bedc04b5d0))
+
+### test
+
+* **cdk** share the CDK test helpers through a cdk-test-support export of mailbox-cdk-shared ([5479a0a](https://github.com/serverlessinbox/mailbox-cdk/commit/5479a0abec6603db9094052510a4e0cdcb82487c))
+
+* one shared smoke-probe helper; mailbox-cognito enforces that its updater-managed Lambdas answer the probe ([8878aa7](https://github.com/serverlessinbox/mailbox-cdk/commit/8878aa76f64754f3236fc43b983df0fc416bc27b))
+
+* **cognito** bootstrap-user tests per unit with template-key fixtures; the user pool types its custom-resource properties with the runtime payload ([d91cb86](https://github.com/serverlessinbox/mailbox-cdk/commit/d91cb86c13c2cd8e8981393c8451dbe866041e27))
+
+* **cognito** idp-users-api tests per unit on aws-sdk-client-mock; the wrapper builds its typed environment and the addon documents its pool contract ([45eb866](https://github.com/serverlessinbox/mailbox-cdk/commit/45eb8660e9476da20515bdfa9b55d796b16de3c4))
+
+* **cognito** jmap-oauth-dcr tests per unit; the wrapper builds its typed environment and the OAuth addon drops its casts ([edd0d7a](https://github.com/serverlessinbox/mailbox-cdk/commit/edd0d7ab199862b20fbf927fe2c4fe09741290f5))
+
+### fix
+
+* a custom-resource Delete answers SUCCESS on a config error or invalid properties (stack-helpers, data-override-resolver, content-deployer, bootstrap-user) ([e0ea119](https://github.com/serverlessinbox/mailbox-cdk/commit/e0ea119d3087ed53766108926ed9c4a23e7a55a5))
+
+* **shared** deployer workers may write the Name and description tags ([4c1d4ec](https://github.com/serverlessinbox/mailbox-cdk/commit/4c1d4ecc8b6ad2608d424bfeccd29195b1eb8561))
+
 ## [0.2.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.1...v0.2.2) (Tue Oct 13 2026)
 
 ### chore
