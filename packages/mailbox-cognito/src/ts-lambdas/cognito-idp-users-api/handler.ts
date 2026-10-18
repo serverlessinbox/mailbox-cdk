@@ -18,7 +18,7 @@ const cognitoClient = new CognitoIdentityProviderClient({});
 const lambdaClient = new LambdaClient({});
 const sqsClient = new SQSClient({});
 
-const logger = new LoggerBuffer(undefined, config.logLevel);
+const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
 const idpUsersAdminApi = new IdpUsersAdminApi(
   new CognitoIdpUsersService(cognitoClient, config.userPoolId, {

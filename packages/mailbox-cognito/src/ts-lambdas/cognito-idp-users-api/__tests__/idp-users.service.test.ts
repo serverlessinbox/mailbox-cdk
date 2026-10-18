@@ -4,8 +4,9 @@
  * Pins what the user service asks of Cognito for each request, how it answers a Cognito failure, and what it
  * records on the audit context. The admin API turns the error class the service throws into the HTTP status,
  * so a failure classified as the wrong class answers the caller with the wrong status; the audit fields are all
- * the audit trail knows of a request. Creating a user also pre-provisions its mailbox principal, which must
- * never fail the creation.
+ * the audit trail knows of a request. Creating a user is all or nothing: a failure after Cognito created the user
+ * must delete it again, or the caller sees a failed request while an orphan user, possibly without a mailbox
+ * principal or a group, can sign in.
  */
 
 import {
@@ -69,6 +70,7 @@ describe('CognitoIdpUsersService', () => {
   const identityProvisioner = new IdentityProvisionerClient(toFunctionName('identity-provisioner'), new LambdaClient({}));
   const provisionUser = jest.spyOn(identityProvisioner, 'provisionUser');
   const logError = jest.spyOn(logger, 'error');
+  const logWarn = jest.spyOn(logger, 'warn');
   const flushLogs = jest.spyOn(logger, 'flush');
 
   function newService(adminGroups: GroupName[] = [toGroupName('admin')]): CognitoIdpUsersService {
@@ -85,6 +87,7 @@ describe('CognitoIdpUsersService', () => {
     cognitoMock.onAnyCommand().resolves({});
     provisionUser.mockReset().mockResolvedValue({ principalId: toPrincipalId('p1'), primaryAccountId: toAccountId('a1'), isNewUser: true });
     logError.mockReset().mockImplementation(() => undefined);
+    logWarn.mockReset().mockImplementation(() => undefined);
     flushLogs.mockClear();
   });
 
@@ -187,13 +190,93 @@ describe('CognitoIdpUsersService', () => {
       expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['staff', 'finance', 'user']);
     });
 
-    it('still creates the user when adding it to a group fails', async () => {
+    it('creates the user and warns about each group it could not join when it joined at least one group', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
-      cognitoMock.on(AdminAddUserToGroupCommand).rejects(cognitoError('ResourceNotFoundException', 'Group not found'));
+      cognitoMock.on(AdminAddUserToGroupCommand, { GroupName: 'staff' }).rejects(cognitoError('ResourceNotFoundException', 'Group not found'));
 
-      const response = await newService().createIdpUser(context(), request());
+      const response = await newService().createIdpUser(context(), request({ groups: ['staff', 'finance'] }));
 
       expect(response.user?.username).toBe('newuser');
+      expect(logWarn).toHaveBeenCalledTimes(1);
+      expect(logWarn).toHaveBeenCalledWith('idp_user_group_join_failed', { username: 'newuser', group: 'staff', error: 'ResourceNotFoundException: Group not found' });
+      expect(cognitoMock.commandCalls(AdminDeleteUserCommand)).toHaveLength(0);
+    });
+
+    it('fails with the first join failure, after warning about each group, when no group could be joined', async () => {
+      cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const firstFailure = cognitoError('ResourceNotFoundException', 'Group staff not found');
+      cognitoMock.on(AdminAddUserToGroupCommand, { GroupName: 'staff' }).rejects(firstFailure);
+      cognitoMock.on(AdminAddUserToGroupCommand, { GroupName: 'finance' }).rejects(cognitoError('ResourceNotFoundException', 'Group finance not found'));
+
+      const rejection = await newService().createIdpUser(context(), request({ groups: ['staff', 'finance'] })).catch((thrown: unknown) => thrown);
+
+      expect(rejection).toBe(firstFailure);
+      expect(logWarn.mock.calls.map(([, data]) => data?.group)).toEqual(['staff', 'finance']);
+      expect(cognitoMock.commandCalls(AdminDeleteUserCommand)).toHaveLength(1);
+    });
+
+    describe('when a step after the creation of the user fails', () => {
+      const serviceUnavailable = cognitoError('ServiceUnavailableException');
+
+      async function rejectionOfCreate(overrides: { enabled?: boolean } = {}): Promise<unknown> {
+        return newService().createIdpUser(context(), request(overrides)).then(
+          () => { throw new Error('expected the creation to reject'); },
+          (rejection: unknown) => rejection,
+        );
+      }
+
+      function expectUserDeletedOnce(): void {
+        const deletions = cognitoMock.commandCalls(AdminDeleteUserCommand);
+        expect(deletions).toHaveLength(1);
+        expect(deletions[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'newuser' });
+      }
+
+      it.each([
+        { step: 'making the password permanent', enabled: true, failStep: () => cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable) },
+        { step: 'disabling the user', enabled: false, failStep: () => cognitoMock.on(AdminDisableUserCommand).rejects(serviceUnavailable) },
+        { step: 'joining the groups', enabled: true, failStep: () => cognitoMock.on(AdminAddUserToGroupCommand).rejects(serviceUnavailable) },
+        { step: 'fetching the user', enabled: true, failStep: () => cognitoMock.on(AdminGetUserCommand).rejects(serviceUnavailable) },
+      ])('deletes the user and answers with the failure of $step', async ({ enabled, failStep }) => {
+        failStep();
+
+        expect(await rejectionOfCreate({ enabled })).toBe(serviceUnavailable);
+        expectUserDeletedOnce();
+      });
+
+      it('deletes the user and answers with the provisioning failure, which it logs', async () => {
+        cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+        const provisioningFailure = new Error('AccessDenied');
+        provisionUser.mockRejectedValueOnce(provisioningFailure);
+
+        expect(await rejectionOfCreate()).toBe(provisioningFailure);
+        expect(logError).toHaveBeenCalledWith('idp_user_provision_invoke_failed', { username: 'newuser', error: 'Error: AccessDenied' });
+        expect(flushLogs).not.toHaveBeenCalled();
+        expectUserDeletedOnce();
+      });
+
+      it('deletes the user and fails, without provisioning, when Cognito reports no sub', async () => {
+        cognitoReturnsUser({});
+
+        expect(await rejectionOfCreate()).toEqual(new Error('Cognito reported no sub for the created user'));
+        expect(provisionUser).not.toHaveBeenCalled();
+        expect(logError).toHaveBeenCalledWith('idp_user_provision_missing_sub', { username: 'newuser' });
+        expectUserDeletedOnce();
+      });
+
+      it('logs the failed deletion with the username and still answers with the original failure', async () => {
+        cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable);
+        cognitoMock.on(AdminDeleteUserCommand).rejects(cognitoError('InternalErrorException', 'Delete refused'));
+
+        expect(await rejectionOfCreate()).toBe(serviceUnavailable);
+        expect(logError).toHaveBeenCalledWith('idp_user_rollback_delete_failed', { username: 'newuser', error: 'InternalErrorException: Delete refused' });
+      });
+
+      it('does not delete a user it did not create when the creation itself fails', async () => {
+        cognitoMock.on(AdminCreateUserCommand).rejects(cognitoError('UsernameExistsException'));
+
+        expect(await rejectionOfCreate()).toBeInstanceOf(ConflictError);
+        expect(cognitoMock.commandCalls(AdminDeleteUserCommand)).toHaveLength(0);
+      });
     });
 
     it('reports the requested enabled state when Cognito reports none for the created user', async () => {
@@ -239,27 +322,6 @@ describe('CognitoIdpUsersService', () => {
       expect(provisionUser).toHaveBeenCalledWith(expect.objectContaining({ isAdmin: true }));
     });
 
-    it('still creates the user when provisioning fails, and logs the failure without flushing the log', async () => {
-      cognitoReturnsUser({ sub: 'cognito-sub-abc' });
-      provisionUser.mockRejectedValueOnce(new Error('AccessDenied'));
-
-      const response = await newService().createIdpUser(context(), request());
-
-      expect(response.user?.username).toBe('newuser');
-      expect(logError).toHaveBeenCalledWith('idp_user_provision_invoke_failed', { username: 'newuser', error: 'Error: AccessDenied' });
-      expect(flushLogs).not.toHaveBeenCalled();
-    });
-
-    it('still creates the user when Cognito reports no sub, and does not provision it', async () => {
-      cognitoReturnsUser({});
-
-      const response = await newService().createIdpUser(context(), request());
-
-      expect(response.user?.username).toBe('newuser');
-      expect(provisionUser).not.toHaveBeenCalled();
-      expect(logError).toHaveBeenCalledWith('idp_user_provision_missing_sub', { username: 'newuser' });
-      expect(flushLogs).not.toHaveBeenCalled();
-    });
   });
 
   describe('setIdpUserEnabled', () => {

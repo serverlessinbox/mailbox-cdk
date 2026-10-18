@@ -20,7 +20,7 @@ function setValidEnvironment(): void {
 
 setValidEnvironment();
 
-import type { SmokeTestProbe } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as lambdaRuntime from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { handler } from '../handler';
 
 describe('IdP users API handler', () => {
@@ -29,14 +29,14 @@ describe('IdP users API handler', () => {
   });
 
   it('answers a health probe as healthy when the environment is complete', async () => {
-    const probe: SmokeTestProbe = { serverlessInboxSmokeTest: true };
+    const probe: lambdaRuntime.SmokeTestProbe = { serverlessInboxSmokeTest: true };
 
     expect(await handler(probe)).toEqual({ serverlessInboxSmokeTestOk: true });
   });
 
   it('answers a health probe as unhealthy when a variable of the environment is gone', async () => {
     delete process.env.USER_POOL_ID;
-    const probe: SmokeTestProbe = { serverlessInboxSmokeTest: true };
+    const probe: lambdaRuntime.SmokeTestProbe = { serverlessInboxSmokeTest: true };
 
     expect(await handler(probe)).toEqual({ serverlessInboxSmokeTestOk: false });
   });
@@ -45,6 +45,24 @@ describe('IdP users API handler', () => {
     const result = await handler({ requestContext: { http: { method: 'GET' } } });
 
     expect(result).toMatchObject({ statusCode: 405 });
+  });
+
+  it('builds its logger with the configured service name and log level', () => {
+    const actualRuntime = jest.requireActual<typeof lambdaRuntime>('@serverlessinbox/mailbox-cdk-shared/lambda-runtime');
+    const loggerBuffer = jest.fn((...args: ConstructorParameters<typeof lambdaRuntime.LoggerBuffer>) => new actualRuntime.LoggerBuffer(...args));
+    const saved = { ...process.env };
+    try {
+      process.env.SERVICE_NAME = 'cognito-idp-users-api';
+      process.env.LOG_LEVEL = 'warn';
+      jest.isolateModules(() => {
+        jest.doMock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({ ...actualRuntime, LoggerBuffer: loggerBuffer }));
+        require('../handler');
+      });
+    } finally {
+      process.env = saved;
+    }
+
+    expect(loggerBuffer).toHaveBeenCalledWith('cognito-idp-users-api', 'warn');
   });
 
   it.each(MANDATORY_VARIABLES)('stops the cold start, naming %s, when it is missing', (variable) => {

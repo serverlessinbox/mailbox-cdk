@@ -97,6 +97,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     return create(GetIdpUserResponseSchema, { user: this.userMapper.fromFetchedUser(output, username) });
   }
 
+  /** A failure after the user was created deletes the user again and fails the request with that failure. */
   public async createIdpUser(ctx: IdpUsersContext, req: CreateIdpUserRequest): Promise<CreateIdpUserResponse> {
     const username = toUsername(req.username);
     const email = req.email === undefined ? undefined : toEmailAddress(req.email);
@@ -107,14 +108,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     ctx.audit.changes = [{ op: 'create', path: '/user', value: { username, email, enabled, groups: req.groups } }];
 
     await this.createUser(username, email, req.password);
-    await this.setPermanentPassword(username, req.password);
-    if (!enabled) {
-      await this.cognito.send(new AdminDisableUserCommand({ UserPoolId: this.userPoolId, Username: username }));
-    }
-    await this.addToGroups(username, groups);
-
-    const output = await this.fetchUser(username);
-    await this.provisionMailboxPrincipal(ctx, output, username, email, groups);
+    const output = await this.completeCreation(ctx, username, email, req.password, enabled, groups).catch((thrown: unknown) =>
+      this.rollBackCreation(username, thrown),
+    );
 
     return create(CreateIdpUserResponseSchema, { user: this.userMapper.fromFetchedUser(output, username, enabled) });
   }
@@ -225,20 +221,58 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       });
   }
 
+  private async completeCreation(
+    ctx: IdpUsersContext,
+    username: Username,
+    email: EmailAddress | undefined,
+    password: string,
+    enabled: boolean,
+    groups: GroupName[],
+  ): Promise<AdminGetUserCommandOutput> {
+    await this.setPermanentPassword(username, password);
+    if (!enabled) {
+      await this.disableUser(username);
+    }
+    await this.addToGroups(username, groups);
+
+    const output = await this.fetchUser(username);
+    await this.provisionMailboxPrincipal(ctx, output, username, email, groups);
+
+    return output;
+  }
+
+  /** Deleting the user is best effort: when it fails the failure is logged and `failure` is still the one thrown. */
+  private async rollBackCreation(username: Username, failure: unknown): Promise<never> {
+    await this.cognito.send(new AdminDeleteUserCommand({ UserPoolId: this.userPoolId, Username: username })).catch((deleteFailure: unknown) => {
+      this.logger.error('idp_user_rollback_delete_failed', { username, error: String(deleteFailure) });
+    });
+
+    throw failure;
+  }
+
+  private async disableUser(username: Username): Promise<void> {
+    await this.cognito.send(new AdminDisableUserCommand({ UserPoolId: this.userPoolId, Username: username }));
+  }
+
+  /** Joining only some of the groups succeeds; joining none of them throws the first failure. */
   private async addToGroups(username: Username, groups: GroupName[]): Promise<void> {
+    const failures: unknown[] = [];
+
     for (const group of groups) {
-      try {
-        await this.cognito.send(new AdminAddUserToGroupCommand({ UserPoolId: this.userPoolId, Username: username, GroupName: group }));
-      } catch {
-        // A failure to add the user to a group does not fail the creation of the user.
-      }
+      await this.cognito.send(new AdminAddUserToGroupCommand({ UserPoolId: this.userPoolId, Username: username, GroupName: group })).catch((thrown: unknown) => {
+        this.logger.warn('idp_user_group_join_failed', { username, group, error: String(thrown) });
+        failures.push(thrown);
+      });
+    }
+
+    if (failures.length > 0 && failures.length === groups.length) {
+      throw failures[0];
     }
   }
 
   /**
-   * Pre-provisions the mailbox principal in `identity-provisioner` at user-creation time. Any failure is
-   * logged and swallowed, so the creation still succeeds. The principal is keyed by Cognito's `sub`, never the
-   * username: a username can be deleted and recreated under a new `sub`.
+   * Pre-provisions the mailbox principal in `identity-provisioner` at user-creation time. The principal is
+   * keyed by Cognito's `sub`, never the username: a username can be deleted and recreated under a new `sub`.
    */
   private async provisionMailboxPrincipal(
     ctx: IdpUsersContext,
@@ -250,21 +284,22 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     const subject = this.subjectOf(createdUser);
     if (!subject) {
       this.logger.error('idp_user_provision_missing_sub', { username });
-      return;
+      throw new Error('Cognito reported no sub for the created user');
     }
 
-    try {
-      await this.identityProvisioner.provisionUser({
+    await this.identityProvisioner
+      .provisionUser({
         tenantId: this.tenantOf(ctx),
         subject,
         username,
         email,
         groups,
         isAdmin: groups.some((group) => this.isAdminGroup(group)),
+      })
+      .catch((thrown: unknown) => {
+        this.logger.error('idp_user_provision_invoke_failed', { username, error: String(thrown) });
+        throw thrown;
       });
-    } catch (thrown) {
-      this.logger.error('idp_user_provision_invoke_failed', { username, error: String(thrown) });
-    }
   }
 
   private tenantOf(ctx: IdpUsersContext): TenantId | undefined {
