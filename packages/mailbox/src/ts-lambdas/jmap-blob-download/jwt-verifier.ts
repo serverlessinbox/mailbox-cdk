@@ -1,5 +1,5 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { webcrypto } from 'crypto';
+import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from 'jose';
 import * as t from 'typanion';
 import { toIssuer, type Issuer, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { toAudience, type Audience } from './auth-identifiers';
@@ -7,29 +7,9 @@ import type { VerifiedJwt } from './auth-tokens';
 
 const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;
 export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
-type SupportedAlgorithm = t.InferType<typeof isSupportedAlgorithm>;
 
 const DEFAULT_ALLOWED_ALGORITHMS: readonly string[] = ['RS256'];
 const CLOCK_TOLERANCE_SECONDS = 300;
-
-/** How WebCrypto imports the verification key of an algorithm, and how it then verifies a signature. */
-interface AlgorithmParams {
-  readonly importAlgorithm: webcrypto.RsaHashedImportParams | webcrypto.EcKeyImportParams;
-  readonly verifyAlgorithm: string | webcrypto.EcdsaParams;
-}
-
-const ALGORITHM_PARAMS: Record<SupportedAlgorithm, AlgorithmParams> = {
-  RS256: { importAlgorithm: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, verifyAlgorithm: 'RSASSA-PKCS1-v1_5' },
-  RS384: { importAlgorithm: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384' }, verifyAlgorithm: 'RSASSA-PKCS1-v1_5' },
-  RS512: { importAlgorithm: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' }, verifyAlgorithm: 'RSASSA-PKCS1-v1_5' },
-  ES256: { importAlgorithm: { name: 'ECDSA', namedCurve: 'P-256' }, verifyAlgorithm: { name: 'ECDSA', hash: 'SHA-256' } },
-  ES384: { importAlgorithm: { name: 'ECDSA', namedCurve: 'P-384' }, verifyAlgorithm: { name: 'ECDSA', hash: 'SHA-384' } },
-};
-
-const isJwtHeader = t.isPartial({
-  alg: t.isString(),
-  kid: t.isOptional(t.isString()),
-});
 
 const isJwtPayload = t.isPartial({
   sub: t.isOptional(t.isString()),
@@ -40,10 +20,10 @@ const isJwtPayload = t.isPartial({
   nbf: t.isOptional(t.isNumber()),
 });
 
-// A JWKS is the issuer's published document (RFC 7517); a key lists every field WebCrypto may read when importing it.
+// A JWKS is the issuer's published document (RFC 7517); a key lists every field jose may read when matching it.
 const isJwk = t.isPartial({
   kid: t.isOptional(t.isString()),
-  kty: t.isOptional(t.isString()),
+  kty: t.isString(),
   use: t.isOptional(t.isString()),
   alg: t.isOptional(t.isString()),
   n: t.isOptional(t.isString()),
@@ -57,28 +37,19 @@ const isJwks = t.isPartial({
   keys: t.isArray(isJwk),
 });
 
-type JwtHeader = t.InferType<typeof isJwtHeader>;
 type JwtPayload = t.InferType<typeof isJwtPayload>;
-type Jwk = t.InferType<typeof isJwk>;
 type Jwks = t.InferType<typeof isJwks>;
-
-interface ParsedJwt {
-  readonly header: JwtHeader;
-  readonly payload: JwtPayload;
-  readonly signingInput: string;
-  readonly signature: Buffer;
-}
+type KeySet = ReturnType<typeof createLocalJWKSet>;
 
 /**
  * Verifies JWTs against the issuers' public keys held in the auth key store. It checks the signature and the
  * time claims only; which tenant or account the token speaks for comes from the HMAC session token, so no
- * identity provider or account lookup happens here. The JWKS of an issuer and the imported verification keys
- * are cached for the lifetime of the instance, which spans the warm invocations of one Lambda container.
+ * identity provider or account lookup happens here. The key set built from the JWKS of an issuer is cached for
+ * the lifetime of the instance, which spans the warm invocations of one Lambda container.
  */
 export class JwtVerifier {
   private readonly dynamodb: DynamoDBClient;
-  private readonly jwksByIssuer = new Map<Issuer, Jwks>();
-  private readonly verificationKeysByKid = new Map<string, webcrypto.CryptoKey>();
+  private readonly keySetsByIssuer = new Map<Issuer, KeySet>();
 
   constructor(dynamodb: DynamoDBClient) {
     this.dynamodb = dynamodb;
@@ -96,94 +67,53 @@ export class JwtVerifier {
     allowedAlgorithms: string[] | undefined,
   ): Promise<VerifiedJwt | null> {
     try {
-      const parsed = this.parse(token);
-      if (!parsed) {
-        return null;
-      }
-      const { header, payload, signingInput, signature } = parsed;
-
-      const issuer = this.normalizeIssuer(payload.iss ?? '');
-      if (!issuer || !header.kid) {
+      const unverifiedClaims = this.claimsOf(decodeJwt(token));
+      const issuer = this.normalizeIssuer(unverifiedClaims?.iss ?? '');
+      const header = decodeProtectedHeader(token);
+      const algorithms = this.supportedAlgorithmsOf(allowedAlgorithms);
+      if (!issuer || !header.kid || !header.alg || !algorithms.includes(header.alg)) {
         return null;
       }
 
-      if (!this.allowedAlgorithmsOrDefault(allowedAlgorithms).includes(header.alg)) {
-        return null;
-      }
-      if (!isSupportedAlgorithm(header.alg)) {
+      const keySet = await this.keySetOf(issuer, authKeyStoreTable);
+      const { payload } = await jwtVerify(token, keySet, {
+        clockTolerance: CLOCK_TOLERANCE_SECONDS,
+        algorithms,
+      });
+
+      const claims = this.claimsOf(payload);
+      if (!claims?.sub) {
         return null;
       }
 
-      const verificationKey = await this.verificationKey(header.kid, header.alg, authKeyStoreTable, issuer);
-      if (!(await this.signatureMatches(signingInput, signature, verificationKey, header.alg))) {
-        return null;
-      }
-
-      if (!this.timeClaimsAreCurrent(payload) || !payload.sub) {
-        return null;
-      }
-
-      return { sub: payload.sub, issuer, audience: this.audienceOf(payload) };
+      return { sub: claims.sub, issuer, audience: this.audienceOf(claims) };
     } catch {
       return null;
     }
   }
 
-  private parse(token: string): ParsedJwt | null {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    try {
-      const header: unknown = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-      const payload: unknown = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-      if (!isJwtHeader(header) || !isJwtPayload(payload)) {
-        return null;
-      }
-
-      return {
-        header,
-        payload,
-        signingInput: `${parts[0]}.${parts[1]}`,
-        signature: Buffer.from(parts[2], 'base64url'),
-      };
-    } catch {
-      return null;
-    }
+  private claimsOf(payload: unknown): JwtPayload | null {
+    return isJwtPayload(payload) ? payload : null;
   }
 
-  private allowedAlgorithmsOrDefault(allowedAlgorithms: string[] | undefined): readonly string[] {
-    return allowedAlgorithms && allowedAlgorithms.length > 0 ? allowedAlgorithms : DEFAULT_ALLOWED_ALGORITHMS;
+  private supportedAlgorithmsOf(allowedAlgorithms: string[] | undefined): string[] {
+    const allowed = allowedAlgorithms && allowedAlgorithms.length > 0 ? allowedAlgorithms : DEFAULT_ALLOWED_ALGORITHMS;
+    return allowed.filter((algorithm) => isSupportedAlgorithm(algorithm));
   }
 
   private normalizeIssuer(issuer: string): Issuer {
     return toIssuer(issuer.trim().replace(/\/+$/, ''));
   }
 
-  private async verificationKey(
-    kid: string,
-    algorithm: SupportedAlgorithm,
-    authKeyStoreTable: TableName,
-    issuer: Issuer,
-  ): Promise<webcrypto.CryptoKey> {
-    const jwks = await this.jwksOf(issuer, authKeyStoreTable);
-    const jwk = jwks.keys.find((key) => key.kid === kid);
-    if (!jwk) {
-      throw new Error(`Key with kid ${kid} not found in JWKS`);
-    }
-    return this.importVerificationKey(kid, jwk, algorithm);
-  }
-
-  private async jwksOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks> {
-    const cached = this.jwksByIssuer.get(issuer);
+  private async keySetOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<KeySet> {
+    const cached = this.keySetsByIssuer.get(issuer);
     if (cached) {
       return cached;
     }
 
-    const jwks = await this.loadJwks(issuer, authKeyStoreTable);
-    this.jwksByIssuer.set(issuer, jwks);
-    return jwks;
+    const keySet = createLocalJWKSet(await this.loadJwks(issuer, authKeyStoreTable));
+    this.keySetsByIssuer.set(issuer, keySet);
+    return keySet;
   }
 
   private async loadJwks(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks> {
@@ -210,59 +140,13 @@ export class JwtVerifier {
     return jwks;
   }
 
-  private async importVerificationKey(
-    kid: string,
-    jwk: Jwk,
-    algorithm: SupportedAlgorithm,
-  ): Promise<webcrypto.CryptoKey> {
-    const cached = this.verificationKeysByKid.get(kid);
-    if (cached) {
-      return cached;
-    }
-
-    const key = await webcrypto.subtle.importKey(
-      'jwk',
-      jwk,
-      ALGORITHM_PARAMS[algorithm].importAlgorithm,
-      false,
-      ['verify'],
-    );
-    this.verificationKeysByKid.set(kid, key);
-    return key;
-  }
-
-  private signatureMatches(
-    signingInput: string,
-    signature: Buffer,
-    key: webcrypto.CryptoKey,
-    algorithm: SupportedAlgorithm,
-  ): Promise<boolean> {
-    return webcrypto.subtle.verify(
-      ALGORITHM_PARAMS[algorithm].verifyAlgorithm,
-      key,
-      signature,
-      Buffer.from(signingInput),
-    );
-  }
-
-  private timeClaimsAreCurrent(payload: JwtPayload): boolean {
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    if (payload.exp !== undefined && nowSeconds > payload.exp + CLOCK_TOLERANCE_SECONDS) {
-      return false;
-    }
-    if (payload.nbf !== undefined && nowSeconds < payload.nbf - CLOCK_TOLERANCE_SECONDS) {
-      return false;
-    }
-    return true;
-  }
-
-  private audienceOf(payload: JwtPayload): Audience {
-    const clientId = payload.client_id?.trim();
+  private audienceOf(claims: JwtPayload): Audience {
+    const clientId = claims.client_id?.trim();
     if (clientId) {
       return toAudience(clientId);
     }
 
-    const audience = Array.isArray(payload.aud) ? payload.aud[0] : payload.aud;
+    const audience = Array.isArray(claims.aud) ? claims.aud[0] : claims.aud;
     return toAudience(audience || '');
   }
 }

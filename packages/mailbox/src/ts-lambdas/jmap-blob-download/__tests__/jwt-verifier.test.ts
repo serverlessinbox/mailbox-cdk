@@ -58,7 +58,9 @@ function jwtOf(options: JwtOptions = {}): string {
   const signWith = options.signWith ?? RSA_KEY;
   const signature = alg.startsWith('ES')
     ? crypto.sign(SIGNATURE_DIGEST[alg], Buffer.from(signingInput), { key: signWith.privateKey, dsaEncoding: 'ieee-p1363' })
-    : crypto.sign(SIGNATURE_DIGEST[alg] ?? 'sha256', Buffer.from(signingInput), signWith.privateKey);
+    : alg === 'PS256'
+      ? crypto.sign('sha256', Buffer.from(signingInput), { key: signWith.privateKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: 32 })
+      : crypto.sign(SIGNATURE_DIGEST[alg] ?? 'sha256', Buffer.from(signingInput), signWith.privateKey);
   return `${signingInput}.${signature.toString('base64url')}`;
 }
 
@@ -136,6 +138,10 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf({ payload: { client_id: '   ', aud: 'api' } }))).resolves.toMatchObject({ audience: 'api' });
     });
 
+    it('is reported, not checked: a token for any other audience is accepted', async () => {
+      await expect(verify(jwtOf({ payload: { client_id: 'some-other-client', aud: 'some-other-api' } }))).resolves.toMatchObject({ audience: 'some-other-client' });
+    });
+
     it('is empty when the token names neither a client id nor an aud', async () => {
       await expect(verify(jwtOf({ payload: { client_id: undefined } }))).resolves.toMatchObject({ audience: '' });
     });
@@ -160,6 +166,33 @@ describe('JwtVerifier', () => {
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(0);
     });
 
+    it('rejects every token without reading the key store when none of the allowed algorithms is supported', async () => {
+      await expect(verify(jwtOf(), ['HS256'])).resolves.toBeNull();
+      expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(0);
+    });
+
+    it('rejects a token claiming one issuer but signed with the key of another issuer that uses the same kid', async () => {
+      const issuerB = 'https://other.example.com/pool';
+      issuerPublishes([{ ...OTHER_RSA_KEY.jwk, kid: KID }], issuerB);
+
+      await expect(verify(jwtOf())).resolves.toMatchObject({ issuer: ISSUER });
+      await expect(verify(jwtOf({ payload: { iss: issuerB } }))).resolves.toBeNull();
+    });
+
+    it('rejects a token with a critical header parameter it does not understand', async () => {
+      await expect(verify(jwtOf({ header: { crit: ['x-unknown'], 'x-unknown': 1 } }))).resolves.toBeNull();
+    });
+
+    it('rejects a token whose iat is not a number', async () => {
+      await expect(verify(jwtOf({ payload: { iat: 'yesterday' } }))).resolves.toBeNull();
+    });
+
+    it('rejects every token when the issuer published a key without a key type, even one signed by a valid key', async () => {
+      issuerPublishes([{ ...RSA_KEY.jwk, kid: KID }, { kid: 'broken' }]);
+
+      await expect(verify(jwtOf())).resolves.toBeNull();
+    });
+
     it('allows RS256 and nothing else when the allowed list is empty', async () => {
       await expect(verify(jwtOf(), [])).resolves.toMatchObject({ sub: 'user-1' });
 
@@ -173,6 +206,10 @@ describe('JwtVerifier', () => {
 
     it('rejects an allowed algorithm the verifier cannot verify', async () => {
       await expect(verify(jwtOf({ alg: 'HS256' }), ['HS256'])).resolves.toBeNull();
+    });
+
+    it('rejects a validly signed algorithm outside the supported set even when the distribution allows it', async () => {
+      await expect(verify(jwtOf({ alg: 'PS256' }), ['PS256'])).resolves.toBeNull();
     });
 
     it('rejects a token with the alg none', async () => {
@@ -192,6 +229,13 @@ describe('JwtVerifier', () => {
 
     it('rejects a token without an issuer', async () => {
       await expect(verify(jwtOf({ payload: { iss: undefined } }))).resolves.toBeNull();
+    });
+
+    it('rejects a token signed with a key that only another issuer published', async () => {
+      const otherIssuer = 'https://other.example.com/pool';
+      issuerPublishes([{ ...OTHER_RSA_KEY.jwk, kid: KID }], otherIssuer);
+
+      await expect(verify(jwtOf({ payload: { iss: otherIssuer } }))).resolves.toBeNull();
     });
 
     it('rejects a token whose issuer has no published keys', async () => {
@@ -238,6 +282,8 @@ describe('JwtVerifier', () => {
       ['a header that is not JSON', `bm90LWpzb24.${Buffer.from('{}').toString('base64url')}.c2ln`],
       ['a payload that is not JSON', `${Buffer.from('{"alg":"RS256"}').toString('base64url')}.bm90LWpzb24.c2ln`],
       ['a header without an alg', `${Buffer.from('{"kid":"kid-1"}').toString('base64url')}.${Buffer.from('{}').toString('base64url')}.c2ln`],
+      ['segments that are not base64url', '!!!.@@@.###'],
+      ['a signature that is not base64url', `${jwtOf().split('.').slice(0, 2).join('.')}.***`],
       ['an empty string', ''],
     ])('rejects a token with %s', async (_name, token) => {
       await expect(verify(token)).resolves.toBeNull();

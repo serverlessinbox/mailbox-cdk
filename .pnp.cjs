@@ -2216,6 +2216,10 @@ const RAW_RUNTIME_STATE =
       "npm:0.16.0"\
     ],\
     [\
+      "jose",\
+      "npm:5.10.0"\
+    ],\
+    [\
       "js-tokens",\
       "npm:4.0.0"\
     ],\
@@ -5944,6 +5948,7 @@ const RAW_RUNTIME_STATE =
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:29.7.0"],\
+          ["jose", "npm:5.10.0"],\
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
@@ -5999,6 +6004,7 @@ const RAW_RUNTIME_STATE =
           ["esbuild", "npm:0.27.1"],\
           ["eslint", "npm:8.57.1"],\
           ["jest", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:29.7.0"],\
+          ["jose", "npm:5.10.0"],\
           ["jsii", "npm:5.9.44"],\
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
@@ -11937,6 +11943,15 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/jmespath-npm-0.16.0-d47535c65a-10c0.zip/node_modules/jmespath/",\
         "packageDependencies": [\
           ["jmespath", "npm:0.16.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["jose", [\
+      ["npm:5.10.0", {\
+        "packageLocation": "../../../../../.yarn/berry/cache/jose-npm-5.10.0-4ce825ae05-10c0.zip/node_modules/jose/",\
+        "packageDependencies": [\
+          ["jose", "npm:5.10.0"]\
         ],\
         "linkType": "HARD"\
       }]\
