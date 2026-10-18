@@ -24,12 +24,13 @@ interface CachedHmacKeys {
 /**
  * Verifies the HMAC-signed values the Go services issue: the session token that names the accounts a bearer
  * may read, and the per-blob MAC of an email blob id. Both are signed with the same auth key store entry, tried
- * with the current key and then the previous one. The keys are cached for the lifetime of the instance, which
- * spans the warm invocations of one Lambda container, and are re-read after thirty minutes.
+ * with the current key and then the previous one. The keys are cached per auth key store table for the lifetime
+ * of the instance, which spans the warm invocations of one Lambda container, and each table's keys are re-read
+ * thirty minutes after they were read.
  */
 export class HmacVerifier {
   private readonly dynamodb: DynamoDBClient;
-  private cachedKeys: CachedHmacKeys | null = null;
+  private readonly cachedKeysByTable = new Map<TableName, CachedHmacKeys>();
 
   constructor(dynamodb: DynamoDBClient) {
     this.dynamodb = dynamodb;
@@ -74,13 +75,14 @@ export class HmacVerifier {
 
   private async hmacKeys(authKeyStoreTable: TableName): Promise<HmacKeys | null> {
     const now = Date.now();
-    if (this.cachedKeys && now - this.cachedKeys.fetchedAt < HMAC_KEYS_TTL_MS) {
-      return this.cachedKeys.keys;
+    const cached = this.cachedKeysByTable.get(authKeyStoreTable);
+    if (cached && now - cached.fetchedAt < HMAC_KEYS_TTL_MS) {
+      return cached.keys;
     }
 
     const keys = await this.loadHmacKeys(authKeyStoreTable);
     if (keys !== null) {
-      this.cachedKeys = { keys, fetchedAt: now };
+      this.cachedKeysByTable.set(authKeyStoreTable, { keys, fetchedAt: now });
     }
     return keys;
   }

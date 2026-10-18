@@ -5,6 +5,7 @@ import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobI
 import { readOriginRequest, type CloudFrontRequest } from '../cloudfront-event';
 
 export const AUTH_KEY_STORE_TABLE = toTableName('auth-key-store');
+export const OTHER_AUTH_KEY_STORE_TABLE = toTableName('other-auth-key-store');
 export const EU_CENTRAL_1 = toRegion('eu-central-1');
 export const EU_WEST_1 = toRegion('eu-west-1');
 export const US_EAST_1 = toRegion('us-east-1');

@@ -8,7 +8,13 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { HmacVerifier } from '../hmac-verifier';
-import { AUTH_KEY_STORE_TABLE, blobMacSignedBy, sessionTokenOverPayload, sessionTokenSignedBy } from './jmap-blob-download-helpers';
+import {
+  AUTH_KEY_STORE_TABLE,
+  blobMacSignedBy,
+  OTHER_AUTH_KEY_STORE_TABLE,
+  sessionTokenOverPayload,
+  sessionTokenSignedBy,
+} from './jmap-blob-download-helpers';
 
 const CURRENT_KEY = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');
@@ -218,6 +224,34 @@ describe('HmacVerifier', () => {
       await verifier.verifyBlobMac(MAC_PAYLOAD, blobMacSignedBy(OTHER_KEY, 'tenant-1', 'account-1', 'email-1'), AUTH_KEY_STORE_TABLE);
 
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(2);
+    });
+
+    it('keeps the keys of each auth key store table apart', async () => {
+      dynamodb.on(GetItemCommand, { TableName: AUTH_KEY_STORE_TABLE }).resolves({ Item: { current: { S: CURRENT_KEY.toString('hex') } } });
+      dynamodb.on(GetItemCommand, { TableName: OTHER_AUTH_KEY_STORE_TABLE }).resolves({ Item: { current: { S: OTHER_KEY.toString('hex') } } });
+      const mac = blobMacSignedBy(CURRENT_KEY, 'tenant-1', 'account-1', 'email-1');
+
+      await expect(verifier.verifyBlobMac(MAC_PAYLOAD, mac, AUTH_KEY_STORE_TABLE)).resolves.toBe(true);
+      await expect(verifier.verifyBlobMac(MAC_PAYLOAD, mac, OTHER_AUTH_KEY_STORE_TABLE)).resolves.toBe(false);
+      await expect(verifier.verifyBlobMac(MAC_PAYLOAD, mac, AUTH_KEY_STORE_TABLE)).resolves.toBe(true);
+    });
+
+    it('re-reads the keys of each table thirty minutes after that table was read', async () => {
+      const startedAt = Date.now();
+      const clock = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
+      storeHoldsKeys(CURRENT_KEY);
+      await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', AUTH_KEY_STORE_TABLE);
+
+      clock.mockReturnValue(startedAt + 20 * 60 * 1000);
+      await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', OTHER_AUTH_KEY_STORE_TABLE);
+      expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(2);
+
+      clock.mockReturnValue(startedAt + 30 * 60 * 1000);
+      await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', AUTH_KEY_STORE_TABLE);
+      await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', OTHER_AUTH_KEY_STORE_TABLE);
+
+      const readTables = dynamodb.commandCalls(GetItemCommand).map((call) => call.args[0].input.TableName);
+      expect(readTables).toEqual([AUTH_KEY_STORE_TABLE, OTHER_AUTH_KEY_STORE_TABLE, AUTH_KEY_STORE_TABLE]);
     });
 
     it('does not cache a missing key, so keys that appear later are used', async () => {

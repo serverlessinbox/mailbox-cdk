@@ -76,12 +76,13 @@ export class BlobDownloadAuthorizer {
   private readConfig(request: CloudFrontRequest): Config {
     this.logger.debug('Starting blob authorization');
 
-    const config = extractConfig(request);
-    if (!config) {
-      this.logger.error('Configuration error: missing config');
-      throw new BlobRequestRejected(500, 'Configuration error');
+    const reading = extractConfig(request);
+    if ('problem' in reading) {
+      const answer = `Configuration error: ${reading.problem}`;
+      this.logger.error(answer);
+      throw new BlobRequestRejected(500, answer);
     }
-    return config;
+    return reading.config;
   }
 
   private readDownloadParams(query: URLSearchParams): DownloadParams {

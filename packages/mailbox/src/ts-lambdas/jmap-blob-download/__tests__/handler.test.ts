@@ -47,7 +47,7 @@ describe('handler', () => {
   });
 
   it('answers a refused request with its status and does not flush', async () => {
-    await expect(handler(downloadEvent(null))).resolves.toMatchObject({ status: '500', statusDescription: 'Configuration error' });
+    await expect(handler(downloadEvent(null))).resolves.toMatchObject({ status: '500', statusDescription: 'Configuration error: the custom origin headers of the S3 origin are missing' });
     expect(flush).not.toHaveBeenCalled();
   });
 
@@ -73,7 +73,7 @@ describe('handler', () => {
       throw new Error('socket hang up');
     });
 
-    await expect(handler(downloadEvent({ 'x-auth-key-store-table': 'auth-key-store' }))).resolves.toMatchObject({
+    await expect(handler(downloadEvent({ 'x-auth-key-store-table': 'auth-key-store', 'x-region': 'eu-west-1' }))).resolves.toMatchObject({
       status: '500',
       statusDescription: 'Internal server error',
     });

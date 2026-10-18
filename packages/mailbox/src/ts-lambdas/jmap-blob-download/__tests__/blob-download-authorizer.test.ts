@@ -116,10 +116,12 @@ describe('BlobDownloadAuthorizer', () => {
   });
 
   describe('configuration', () => {
-    it('rejects with a 500 and writes an error when the request carries no configuration', async () => {
-      await expectRejected(downloadRequest({ request: { customHeaders: null } }), 500, 'Configuration error');
+    it('rejects with a 500 that names the broken header and writes the same text as an error', async () => {
+      const request = downloadRequest({ request: { customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE } } });
 
-      expect(consoleError).toHaveBeenCalledWith('Configuration error: missing config');
+      await expectRejected(request, 500, 'Configuration error: header x-region is missing or empty');
+
+      expect(consoleError).toHaveBeenCalledWith('Configuration error: header x-region is missing or empty');
     });
 
     it('takes the verifiers of the region the configuration names', async () => {
@@ -188,7 +190,7 @@ describe('BlobDownloadAuthorizer', () => {
       const request = downloadRequest({
         request: {
           authorization: 'Bearer the-jwt',
-          customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-jwt-algorithms': 'RS256,ES256' },
+          customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1', 'x-jwt-algorithms': 'RS256,ES256' },
         },
       });
 

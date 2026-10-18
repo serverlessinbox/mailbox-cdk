@@ -6,7 +6,7 @@ import { toAudience, type Audience } from './auth-identifiers';
 import type { VerifiedJwt } from './auth-tokens';
 
 const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;
-const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
+export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
 type SupportedAlgorithm = t.InferType<typeof isSupportedAlgorithm>;
 
 const DEFAULT_ALLOWED_ALGORITHMS: readonly string[] = ['RS256'];

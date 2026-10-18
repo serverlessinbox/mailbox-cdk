@@ -10,24 +10,28 @@ export interface Verifiers {
 }
 
 /**
- * Builds the verifiers once, in the region of the first request, and serves every later request of the
- * container from them, so the keys they cache survive across invocations. Lambda@Edge has no environment, so
- * the region first arrives with a request; a request that names another region is still served by the
- * verifiers of the first.
+ * Builds the verifiers of a region, with a DynamoDB client of that region, the first time a request names the
+ * region, and serves every later request for it from the same verifiers, so the keys they cache survive across
+ * invocations. Lambda@Edge has no environment, so a region first arrives with a request; each region a
+ * container is asked for has verifiers of its own.
  */
 export class RegionBoundVerifiers {
   private readonly createDynamoDBClient: (region: Region) => DynamoDBClient;
-  private verifiers: Verifiers | undefined;
+  private readonly verifiersByRegion = new Map<Region, Verifiers>();
 
   constructor(createDynamoDBClient: (region: Region) => DynamoDBClient) {
     this.createDynamoDBClient = createDynamoDBClient;
   }
 
   public get(region: Region): Verifiers {
-    if (!this.verifiers) {
-      const dynamodb = this.createDynamoDBClient(region);
-      this.verifiers = { jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) };
+    const existing = this.verifiersByRegion.get(region);
+    if (existing) {
+      return existing;
     }
-    return this.verifiers;
+
+    const dynamodb = this.createDynamoDBClient(region);
+    const created: Verifiers = { jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) };
+    this.verifiersByRegion.set(region, created);
+    return created;
   }
 }

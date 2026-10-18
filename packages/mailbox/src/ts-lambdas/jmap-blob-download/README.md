@@ -30,8 +30,8 @@ flowchart TD
 - `BlobDownloadAuthorizer` makes the decisions and throws a `BlobRequestRejected` for each denial.
 - `JwtVerifier` verifies a JWT's signature and time claims against the issuer's JWKS in the auth key store.
 - `HmacVerifier` verifies the session token and the per-blob MAC against the HMAC keys in the auth key store.
-- `RegionBoundVerifiers` builds the DynamoDB client and both verifiers once, in the region of the first
-  request, so their key caches live as long as the container.
+- `RegionBoundVerifiers` builds the DynamoDB client and both verifiers once per region, when a request first
+  names the region, so their key caches live as long as the container.
 
 ## Request
 
@@ -69,7 +69,7 @@ sequenceDiagram
 
 | Check | Status | Answer |
 |---|---|---|
-| No origin headers, or no table | 500 | Configuration error |
+| No origin headers, or a missing or invalid `x-auth-key-store-table`, `x-region` or `x-jwt-algorithms` | 500 | Configuration error: names the header |
 | `accountId` or `blobId` missing | 400 | Missing required parameters: accountId and blobId |
 | Blob id not base64url, or of no known form | 400 | Invalid blobId format |
 | No `Bearer` token | 401 | Missing or invalid Authorization header |
@@ -95,8 +95,11 @@ Custom origin headers on the S3 origin, set by the CDN construct:
 | Header | Meaning |
 |---|---|
 | `x-auth-key-store-table` | Name of the auth key store DynamoDB table (required) |
-| `x-region` | Region of that table; `us-east-1` when absent |
-| `x-jwt-algorithms` | Comma-separated JWT algorithms to accept; `RS256` when absent. Supported: RS256, RS384, RS512, ES256, ES384 |
+| `x-region` | Region of that table (required); an AWS region code such as `eu-west-1` |
+| `x-jwt-algorithms` | Comma-separated JWT algorithms to accept; `RS256` when absent. Supported: RS256, RS384, RS512, ES256, ES384; any other entry is a configuration error |
+
+A missing or invalid header is answered with a 500 whose message names the header, and the same text is
+written to the log.
 
 ## Smoke test
 
