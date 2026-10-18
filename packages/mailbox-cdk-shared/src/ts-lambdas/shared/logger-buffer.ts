@@ -10,13 +10,6 @@ export interface LogEntry {
   data?: LogData;
 }
 
-/** How many entries the buffer holds and how often the error and update counters were hit. */
-export interface LoggerStats {
-  entries: number;
-  updates: number;
-  errors: number;
-}
-
 /** The levels from lowest to highest priority. */
 const LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
 
@@ -47,8 +40,6 @@ export function parseLogLevelStrict(raw: string): LogLevel {
  */
 export class LoggerBuffer {
   private entries: LogEntry[] = [];
-  private updateCount = 0;
-  private errorCount = 0;
   private readonly service: string | undefined;
   private readonly emitLevel: LogLevel;
 
@@ -69,19 +60,8 @@ export class LoggerBuffer {
     this.log('warn', message, data);
   }
 
-  /** Writes the error at once and counts it for `shouldFlush`, although it is never held in the buffer. */
   public error(message: string, data?: LogData): void {
     this.log('error', message, data);
-    this.errorCount++;
-  }
-
-  public recordUpdate(): void {
-    this.updateCount++;
-  }
-
-  /** True once an update was recorded or an error was logged, even though a logged error is not in the buffer. */
-  public shouldFlush(): boolean {
-    return this.updateCount > 0 || this.errorCount > 0;
   }
 
   /** Writes the held entries and empties the buffer; entries already written at once are not written again. */
@@ -90,14 +70,6 @@ export class LoggerBuffer {
       this.emitEntry(entry);
     }
     this.entries = [];
-  }
-
-  public stats(): LoggerStats {
-    return {
-      entries: this.entries.length,
-      updates: this.updateCount,
-      errors: this.errorCount,
-    };
   }
 
   private log(level: LogLevel, message: string, data?: LogData): void {

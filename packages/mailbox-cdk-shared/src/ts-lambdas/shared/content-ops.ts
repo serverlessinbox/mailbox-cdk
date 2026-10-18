@@ -180,7 +180,7 @@ function normalizeRelativeKey(input: string): string {
   const withoutLeading = trimmed.replace(/^\/+/, '');
   const normalized = pathPosix.normalize(withoutLeading);
 
-  if (!normalized || normalized === '.' || normalized.startsWith('..') || normalized.includes(':')) {
+  if (normalized === '.' || normalized.startsWith('..') || normalized.includes(':')) {
     throw new Error(`Invalid relative key: ${input}`);
   }
 

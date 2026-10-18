@@ -53,6 +53,38 @@ describe('SweeperInfra', () => {
     });
   });
 
+  describe('execution role policies', () => {
+    it('has only the named execution policy attached, so the boundary cannot cut a statement it holds', () => {
+      const { template } = synthesize('ExecutionOnlyPolicyStack');
+
+      const [executionRoleLogicalId] = Object.entries(template.findResources('AWS::IAM::Role'))
+        .filter(([, role]) => renderLiteralText(role.Properties.RoleName).startsWith('mailbox-sweeper-exec-'))
+        .map(([logicalId]) => logicalId);
+      const attachedPolicies = Object.values(template.findResources('AWS::IAM::Policy')).filter((policy) =>
+        policy.Properties.Roles.some((role: { Ref: string }) => role.Ref === executionRoleLogicalId),
+      );
+      const [boundary] = Object.values(template.findResources('AWS::IAM::ManagedPolicy'));
+
+      expect(attachedPolicies.map((policy) => policy.Properties.PolicyName)).toEqual([SweeperPolicyNames.executionPolicy]);
+      expect(boundary.Properties.PolicyDocument.Statement).toEqual(
+        expect.arrayContaining(attachedPolicies.flatMap((policy) => policy.Properties.PolicyDocument.Statement)),
+      );
+    });
+  });
+
+  describe('state machine', () => {
+    it('depends on the named execution policy, so no execution starts before the role holds its grants', () => {
+      const { template } = synthesize('StateMachineOrderStack');
+
+      const [executionPolicyLogicalId] = Object.entries(template.findResources('AWS::IAM::Policy'))
+        .filter(([, policy]) => policy.Properties.PolicyName === SweeperPolicyNames.executionPolicy)
+        .map(([logicalId]) => logicalId);
+      const [stateMachine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+
+      expect(stateMachine.DependsOn).toContain(executionPolicyLogicalId);
+    });
+  });
+
   describe('worker role', () => {
     it('holds the grants of every registered removal in order, then the worker\'s log grants', () => {
       const { template, removals, opsGroup } = synthesize('WorkerPolicyStack');

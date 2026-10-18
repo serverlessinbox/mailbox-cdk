@@ -64,7 +64,6 @@ describe('LoggerBuffer', () => {
       logger.error('error message');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('error message');
-      expect(logger.stats().entries).toBe(0);
     });
 
     it('buffers warn, info and debug without writing them', () => {
@@ -76,7 +75,6 @@ describe('LoggerBuffer', () => {
       expect(consoleDebugSpy).not.toHaveBeenCalled();
       expect(consoleInfoSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).not.toHaveBeenCalled();
-      expect(logger.stats().entries).toBe(3);
     });
 
     it('writes the buffered entries on flush and empties the buffer', () => {
@@ -90,7 +88,6 @@ describe('LoggerBuffer', () => {
       expect(consoleDebugSpy).toHaveBeenCalledWith('debug message');
       expect(consoleInfoSpy).toHaveBeenCalledWith('info message');
       expect(consoleWarnSpy).toHaveBeenCalledWith('warn message');
-      expect(logger.stats().entries).toBe(0);
     });
 
     it('does not write an error a second time on flush', () => {
@@ -125,7 +122,6 @@ describe('LoggerBuffer', () => {
       expect(consoleInfoSpy).toHaveBeenCalledTimes(1);
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(logger.stats().entries).toBe(0);
     });
   });
 
@@ -136,7 +132,6 @@ describe('LoggerBuffer', () => {
       logger.info('info message');
       logger.warn('warn message');
       logger.error('error message');
-      expect(logger.stats().entries).toBe(2);
 
       logger.flush();
 
@@ -147,26 +142,6 @@ describe('LoggerBuffer', () => {
     });
   });
 
-  describe('counters', () => {
-    it('counts a logged error for shouldFlush although the error is not buffered', () => {
-      const logger = new LoggerBuffer(undefined, 'error');
-      expect(logger.shouldFlush()).toBe(false);
-
-      logger.error('something went wrong');
-
-      expect(logger.shouldFlush()).toBe(true);
-      expect(logger.stats()).toEqual({ entries: 0, updates: 0, errors: 1 });
-    });
-
-    it('counts a recorded update for shouldFlush', () => {
-      const logger = new LoggerBuffer(undefined, 'error');
-
-      logger.recordUpdate();
-
-      expect(logger.shouldFlush()).toBe(true);
-      expect(logger.stats()).toEqual({ entries: 0, updates: 1, errors: 0 });
-    });
-  });
 });
 
 describe('parseLogLevelStrict', () => {

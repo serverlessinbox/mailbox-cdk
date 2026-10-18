@@ -67,11 +67,12 @@ export class SweeperInfra extends Construct {
       stateMachineArn,
       executionRoleArn,
     });
-    this.attachExecutionPolicy(executionRole, executionGrants);
+    const executionPolicy = this.attachExecutionPolicy(executionRole, executionGrants);
     this.applyExecutionPermissionsBoundary(executionRole, executionGrants);
 
     const workflow = new SweeperWorkflow(this, 'workflow', {
-      executionRole,
+      // The state machine's tasks add their statements to the role they run as, and so would create a second policy on this role.
+      executionRole: executionRole.withoutPolicyUpdates(),
       workerRoleArn,
       workerRoleName: names.workerRole,
       worker,
@@ -79,6 +80,8 @@ export class SweeperInfra extends Construct {
       stateMachineArn,
       removals: props.removals,
     });
+    // The starter may start an execution during the deploy, which must not run before the role holds its grants.
+    workflow.node.addDependency(executionPolicy);
     workflow.markForRetention();
 
     // Starter Lambda (NOT retained — CFN deletes normally)
@@ -153,13 +156,14 @@ export class SweeperInfra extends Construct {
   }
 
   /** The policy sits on a RETAIN'd role and is needed while the stack is torn down, so it is retained too; the self-cleanup tail deletes it. */
-  private attachExecutionPolicy(executionRole: iam.IRole, grants: SweeperExecutionGrants): void {
+  private attachExecutionPolicy(executionRole: iam.IRole, grants: SweeperExecutionGrants): iam.Policy {
     const executionPolicy = new iam.Policy(this, 'execution-policy', {
       policyName: SweeperPolicyNames.executionPolicy,
       statements: grants.statements(),
     });
     executionPolicy.attachToRole(executionRole);
     retainOnUpdateOrDelete(executionPolicy);
+    return executionPolicy;
   }
 
   /**
