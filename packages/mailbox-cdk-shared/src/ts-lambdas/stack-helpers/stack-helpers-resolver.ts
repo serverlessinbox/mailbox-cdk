@@ -1,5 +1,7 @@
 import { GetHostedZoneCommand, type Route53Client } from '@aws-sdk/client-route-53';
 import { sanitizeStackName } from '../../naming/sanitize-name';
+import { ExpectedFailure } from '../shared/expected-failure';
+import type { LoggerBuffer } from '../shared/logger-buffer';
 import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';
 
 const MAX_S3_SAFE_STACK_NAME_LENGTH = 40;
@@ -29,12 +31,14 @@ export type StackHelpersData = {
  */
 export class StackHelpersResolver {
   private readonly route53: Route53Client;
+  private readonly logger: LoggerBuffer;
 
-  constructor(route53: Route53Client) {
+  constructor(route53: Route53Client, logger: LoggerBuffer) {
     this.route53 = route53;
+    this.logger = logger;
   }
 
-  /** Rejects properties of the wrong shape; a Route 53 failure reaches the caller unchanged. */
+  /** Rejects properties of the wrong shape with an `ExpectedFailure`; a Route 53 failure reaches the caller unchanged. */
   async resolve(resourceProperties: unknown): Promise<StackHelpersData> {
     const properties = this.parseProperties(resourceProperties);
 
@@ -49,7 +53,7 @@ export class StackHelpersResolver {
   private parseProperties(resourceProperties: unknown): StackHelpersResourceProperties {
     const errors: string[] = [];
     if (!isStackHelpersResourceProperties(resourceProperties, { errors })) {
-      throw new Error(`Invalid ResourceProperties: ${errors.join('; ')}`);
+      throw new ExpectedFailure(`Invalid ResourceProperties: ${errors.join('; ')}`);
     }
     return resourceProperties;
   }
@@ -59,6 +63,7 @@ export class StackHelpersResolver {
       return '';
     }
 
+    this.logger.debug('stack_helpers_looking_up_hosted_zone', { hostedZoneId });
     const response = await this.route53.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
     return (response.HostedZone?.Name ?? '').replace(TRAILING_DOT, '');
   }

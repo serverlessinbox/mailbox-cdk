@@ -3,12 +3,14 @@
 /**
  * Pins what the stack-helpers handler file decides: a bad configuration is answered to CloudFormation
  * as FAILED (never a crash that leaves the resource waiting for its service timeout), Delete does no
- * lookup, and a Create hands its resource properties to the resolver and returns the result as the
- * resource's attributes. The response is read from the request the handler sends to the ResponseURL.
+ * lookup, a Create hands its resource properties to the resolver and returns the result as the
+ * resource's attributes, and the buffered trace is flushed when the lookup fails unexpectedly. The
+ * response is read from the request the handler sends to the ResponseURL.
  */
 
 import { Writable } from 'stream';
 import { mockClient } from 'aws-sdk-client-mock';
+import type { AwsClientStub } from 'aws-sdk-client-mock';
 import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext } from './cfn-helpers';
 import type { FakeCfnEvent } from './cfn-helpers';
 import type * as Https from 'https';
@@ -32,6 +34,7 @@ describe('stack-helpers handler', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(console, 'debug').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -43,17 +46,23 @@ describe('stack-helpers handler', () => {
    * Loads the handler fresh under the given environment, with Route 53 faked and the CloudFormation
    * response captured, then invokes it with the event.
    */
-  async function invoke(event: FakeCfnEvent | SmokeTestProbe, environment: Record<string, string>) {
+  async function invoke(
+    event: FakeCfnEvent | SmokeTestProbe,
+    environment: Record<string, string>,
+    arrange: (route53Mock: AwsClientStub<Route53Sdk.Route53Client>, sdk: typeof Route53Sdk) => void = () => undefined,
+  ) {
     jest.resetModules();
     process.env = { ...originalEnv, ...environment };
 
     // Required after resetModules so the faked client class is the one the handler constructs.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { GetHostedZoneCommand, Route53Client } = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
+    const route53Sdk = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
+    const { GetHostedZoneCommand, Route53Client } = route53Sdk;
     const route53Mock = mockClient(Route53Client);
     route53Mock.on(GetHostedZoneCommand).resolves({
       HostedZone: { Id: '/hostedzone/Z123', Name: 'example.com.', CallerReference: 'ref' },
     });
+    arrange(route53Mock, route53Sdk);
 
     let responseJson = '';
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -124,6 +133,21 @@ describe('stack-helpers handler', () => {
     expect(response).toMatchObject({
       Status: 'SUCCESS',
       Data: { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },
+    });
+  });
+
+  it('answers FAILED and flushes the buffered trace when the Route 53 lookup fails unexpectedly', async () => {
+    const { response } = await invoke(
+      fakeCreateEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: 'stack-helpers' },
+      (route53Mock, sdk) => route53Mock.on(sdk.GetHostedZoneCommand).rejects(new Error('AccessDenied')),
+    );
+
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('AccessDenied');
+    expect(console.debug).toHaveBeenCalledWith('stack_helpers_looking_up_hosted_zone', {
+      hostedZoneId: 'Z123',
+      service: 'stack-helpers',
     });
   });
 

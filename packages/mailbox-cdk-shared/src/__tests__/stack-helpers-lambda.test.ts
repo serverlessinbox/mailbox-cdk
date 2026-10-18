@@ -2,8 +2,8 @@
 
 /**
  * Pins the deployed shape of the stack-helpers Lambda: it runs the stack-helpers bundle and may call
- * Route 53 GetHostedZone, the only AWS call its handler makes. Without that grant every lookup fails
- * at deploy time with AccessDenied, which no synth-time check reports.
+ * Route 53 GetHostedZone, the only AWS call its handler makes, and nothing else of Route 53. Without
+ * the grant every lookup fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
 import { Match, Template } from 'aws-cdk-lib/assertions';
@@ -21,17 +21,13 @@ describe('StackHelpersLambda', () => {
     });
   });
 
-  it('may read hosted zones', () => {
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Effect: 'Allow',
-            Action: Match.arrayWith(['route53:GetHostedZone']),
-            Resource: '*',
-          }),
-        ]),
-      },
-    });
+  it('may only get hosted zones, and may not list them', () => {
+    const route53Statements = Object.values(template.findResources('AWS::IAM::Policy'))
+      .flatMap((policy) => policy.Properties.PolicyDocument.Statement)
+      .filter((statement: { Action: string | string[] }) => JSON.stringify(statement.Action).includes('route53:'));
+
+    expect(route53Statements).toEqual([
+      { Effect: 'Allow', Action: 'route53:GetHostedZone', Resource: '*' },
+    ]);
   });
 });

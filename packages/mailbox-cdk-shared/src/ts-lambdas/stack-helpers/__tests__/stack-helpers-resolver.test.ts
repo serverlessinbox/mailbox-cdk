@@ -10,12 +10,14 @@
 
 import { GetHostedZoneCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { mockClient } from 'aws-sdk-client-mock';
+import { ExpectedFailure } from '../../shared/expected-failure';
+import { LoggerBuffer } from '../../shared/logger-buffer';
 import type { StackHelpersResourceProperties } from '../resource-properties';
 import { StackHelpersResolver } from '../stack-helpers-resolver';
 
 describe('StackHelpersResolver', () => {
   const route53Mock = mockClient(Route53Client);
-  const resolver = new StackHelpersResolver(new Route53Client({}));
+  const resolver = new StackHelpersResolver(new Route53Client({}), new LoggerBuffer());
 
   function hostedZoneNamed(name: string | undefined) {
     return { HostedZone: { Id: '/hostedzone/Z123', Name: name, CallerReference: 'ref' } };
@@ -136,6 +138,10 @@ describe('StackHelpersResolver', () => {
 
     it('are rejected when the resource properties are missing altogether', async () => {
       await expect(resolver.resolve(undefined)).rejects.toThrow('Invalid ResourceProperties');
+    });
+
+    it('are rejected as an expected failure, which the handler answers without flushing the trace', async () => {
+      await expect(resolver.resolve({ HostedZoneId: 5 })).rejects.toBeInstanceOf(ExpectedFailure);
     });
   });
 });

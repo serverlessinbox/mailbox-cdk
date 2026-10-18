@@ -25,10 +25,8 @@ export class StackHelpersLambda extends TypeScriptLambda {
   }
 
   private grantRoute53HostedZoneRead(): void {
-    // Route53 exposes no condition keys on any resource type, and hosted zones are
-    // customer-arbitrary at runtime — no ARN/tag scoping is possible here.
     this.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['route53:GetHostedZone', 'route53:ListHostedZones'],
+      actions: ['route53:GetHostedZone'],
       resources: ['*'],
     }));
   }
