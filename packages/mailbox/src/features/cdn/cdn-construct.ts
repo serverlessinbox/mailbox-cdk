@@ -9,24 +9,40 @@ import type { IDataTable } from '../../data/data-tables';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 
+/** What the CDN needs: the blob bucket it fronts, the Lambda@Edge authorizer, and the configuration it hands that authorizer. */
 export interface CdnProps {
   readonly blobStore: IBucket;
   readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly userPoolIssuer: string;
+
+  /** Origins allowed to download cross-origin. Unset or empty adds no CORS response headers policy. */
   readonly allowedOrigins?: string[];
+
+  /** JWT algorithms the authorizer accepts. Unset or empty means RS256 only. */
   readonly jwtAlgorithms?: string[];
 
   /** Pre-deployed Lambda@Edge version (us-east-1). */
   readonly jmapBlobDownloadVersion: lambda.IVersion;
 
-  /** Optional custom domain name for the CDN distribution (e.g., cdn.example.com). */
+  /** Custom domain name for the distribution (e.g., cdn.example.com). Applies only together with `certificate`. */
   readonly domainName?: string;
 
-  /** Optional us-east-1 ACM certificate for the custom domain name. */
+  /** us-east-1 ACM certificate for `domainName`. Applies only together with `domainName`. */
   readonly certificate?: acm.ICertificate;
 }
 
+/** A custom domain with the certificate that covers it. */
+interface CustomDomain {
+  readonly name: string;
+  readonly certificate: acm.ICertificate;
+}
+
+/**
+ * CloudFront distribution in front of the email blob bucket, with a Lambda@Edge authorizer at origin-request.
+ * The authorizer cannot read environment variables, so this construct hands it its configuration as custom
+ * headers on the S3 origin. Not responsible for the bucket's own policy: the bucket is imported here as an `IBucket`.
+ */
 export class Cdn extends Construct {
   public readonly distribution: cloudfront.Distribution;
   public readonly host: string;
@@ -35,63 +51,35 @@ export class Cdn extends Construct {
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
 
-    const responseHeadersPolicy = props.allowedOrigins && props.allowedOrigins.length > 0
-      ? new cloudfront.ResponseHeadersPolicy(this, 'blob-response-headers-policy', {
-        comment: 'CORS policy for email blob downloads',
-        corsBehavior: {
-          accessControlAllowOrigins: props.allowedOrigins,
-          accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
-          accessControlAllowHeaders: ['Authorization', 'Content-Type'],
-          accessControlAllowCredentials: true,
-          accessControlMaxAge: cdk.Duration.hours(1),
-          originOverride: true,
-        },
-      })
-      : undefined;
+    const customDomain = this.customDomainOf(props);
 
-    // Create custom origin with configuration headers
-    // (Lambda@Edge doesn't support environment variables)
-    // Use OAC (Origin Access Control) instead of the deprecated OAI (S3Origin).
-    // The blob-store bucket lives in a separate MailboxDataStack and is imported here as
-    // an IBucket; CDK's grantRead on an imported bucket is a no-op for the bucket resource
-    // policy. The s3:GetObject grant for cloudfront.amazonaws.com is therefore placed
-    // directly on the owned BlobStore bucket (see resources/blob-store.ts).
-    const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(props.blobStore, {
-      customHeaders: {
-        'x-config-table': props.configTable.tableName,
-        'x-auth-key-store-table': props.authKeyStoreTable.tableName,
-        'x-region': cdk.Stack.of(this).region,
-        // Configurable allowlist for JWT verification (Edge has no env vars)
-        'x-jwt-algorithms': (props.jwtAlgorithms && props.jwtAlgorithms.length > 0) ? props.jwtAlgorithms.join(',') : 'RS256',
-        // Policy-driven auth (audiences + required group) for JMAP downloads
-        'x-auth-policy-name': 'JMAP_API',
-      },
-    });
+    this.distribution = this.createDistribution(props, customDomain);
+    cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    // CloudFront distribution with Lambda@Edge authorization
-    this.distribution = new cloudfront.Distribution(this, 'blob-distribution', {
+    this.host = `https://${customDomain ? customDomain.name : this.distribution.distributionDomainName}`;
+    this.distributionId = this.distribution.distributionId;
+  }
+
+  private customDomainOf(props: CdnProps): CustomDomain | undefined {
+    if (!props.domainName || !props.certificate) {
+      return undefined;
+    }
+    return { name: props.domainName, certificate: props.certificate };
+  }
+
+  private createDistribution(props: CdnProps, customDomain: CustomDomain | undefined): cloudfront.Distribution {
+    return new cloudfront.Distribution(this, 'blob-distribution', {
       comment: 'CDN for email blob downloads with Lambda@Edge auth',
-      domainNames: props.domainName && props.certificate ? [props.domainName] : undefined,
-      certificate: props.domainName && props.certificate ? props.certificate : undefined,
+      domainNames: customDomain ? [customDomain.name] : undefined,
+      certificate: customDomain?.certificate,
       defaultBehavior: {
-        origin: s3Origin,
+        origin: this.createBlobOrigin(props),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
         compress: true,
-        cachePolicy: new cloudfront.CachePolicy(this, 'blob-cache-policy', {
-          comment: 'Cache policy for email blobs with auth',
-          defaultTtl: cdk.Duration.hours(24),
-          maxTtl: cdk.Duration.days(365),
-          minTtl: cdk.Duration.seconds(0),
-          headerBehavior: cloudfront.CacheHeaderBehavior.allowList('Authorization'),
-          queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
-          cookieBehavior: cloudfront.CacheCookieBehavior.none(),
-          enableAcceptEncodingGzip: true,
-          enableAcceptEncodingBrotli: true,
-        }),
-        responseHeadersPolicy,
-        // Lambda@Edge runs at viewer-request (before cache lookup)
+        cachePolicy: this.createCachePolicy(),
+        responseHeadersPolicy: this.createResponseHeadersPolicy(props.allowedOrigins),
         edgeLambdas: [
           {
             functionVersion: props.jmapBlobDownloadVersion,
@@ -99,12 +87,59 @@ export class Cdn extends Construct {
           },
         ],
       },
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // US, Canada, Europe
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
     });
+  }
 
-    cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
+  /**
+   * The bucket origin through Origin Access Control, carrying the authorizer's configuration as custom headers
+   * (Lambda@Edge supports no environment variables). The bucket is an imported `IBucket`, so CDK's `grantRead`
+   * adds nothing to the bucket's resource policy.
+   */
+  private createBlobOrigin(props: CdnProps): cloudfront.IOrigin {
+    return origins.S3BucketOrigin.withOriginAccessControl(props.blobStore, {
+      customHeaders: {
+        'x-config-table': props.configTable.tableName,
+        'x-auth-key-store-table': props.authKeyStoreTable.tableName,
+        'x-region': cdk.Stack.of(this).region,
+        'x-jwt-algorithms': this.jwtAlgorithmsHeader(props.jwtAlgorithms),
+        'x-auth-policy-name': 'JMAP_API',
+      },
+    });
+  }
 
-    this.host = `https://${props.domainName && props.certificate ? props.domainName : this.distribution.distributionDomainName}`;
-    this.distributionId = this.distribution.distributionId;
+  private jwtAlgorithmsHeader(jwtAlgorithms: string[] | undefined): string {
+    return jwtAlgorithms && jwtAlgorithms.length > 0 ? jwtAlgorithms.join(',') : 'RS256';
+  }
+
+  private createCachePolicy(): cloudfront.CachePolicy {
+    return new cloudfront.CachePolicy(this, 'blob-cache-policy', {
+      comment: 'Cache policy for email blobs with auth',
+      defaultTtl: cdk.Duration.hours(24),
+      maxTtl: cdk.Duration.days(365),
+      minTtl: cdk.Duration.seconds(0),
+      headerBehavior: cloudfront.CacheHeaderBehavior.allowList('Authorization'),
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
+  }
+
+  private createResponseHeadersPolicy(allowedOrigins: string[] | undefined): cloudfront.ResponseHeadersPolicy | undefined {
+    if (!allowedOrigins || allowedOrigins.length === 0) {
+      return undefined;
+    }
+    return new cloudfront.ResponseHeadersPolicy(this, 'blob-response-headers-policy', {
+      comment: 'CORS policy for email blob downloads',
+      corsBehavior: {
+        accessControlAllowOrigins: allowedOrigins,
+        accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
+        accessControlAllowHeaders: ['Authorization', 'Content-Type'],
+        accessControlAllowCredentials: true,
+        accessControlMaxAge: cdk.Duration.hours(1),
+        originOverride: true,
+      },
+    });
   }
 }

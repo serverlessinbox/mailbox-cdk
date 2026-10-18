@@ -1,4 +1,4 @@
-// CDK context keys (centralized — see context-keys.ts for the shipped-key rename hazard)
+// CDK context keys
 export {
   ARTIFACTS_CONTEXT_KEY,
   ARTIFACT_VERSIONS_CONTEXT_KEY,
@@ -17,17 +17,17 @@ export type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry
 // CDK aspects & patterns
 export { GateOnConditionAspect } from './gate-on-condition-aspect';
 
-// Vendor account resolution (cross-cutting; consumed by mailbox's composition roots)
+// Vendor account resolution
 export { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from './vendor-account';
 
-// Deployer type resolution (cross-cutting; consumed by mailbox's composition roots)
+// Deployer type resolution
 export { resolveDeployerType } from './deployer-type';
 export type { ServerlessInboxDeployerType } from './deployer-type';
 
-// Development mode (cross-cutting; consumed by mailbox and mailbox-cognito)
+// Development mode
 export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjectsInDevelopment } from './development-mode';
 
-// Lambda constructs & artifact tagging (used by mailbox, mailbox-cognito, and other sub-stack packages)
+// Lambda constructs & artifact tagging
 export { TypeScriptLambda } from './ts-lambda';
 export type { TypeScriptLambdaProps } from './ts-lambda';
 export { GoLambda } from './go-lambda';
@@ -35,7 +35,7 @@ export type { GoLambda2Props } from './go-lambda';
 export { applyArtifactTags } from './apply-artifact-tags';
 export type { AutoUpdateType } from './apply-artifact-tags';
 
-// Serverless Inbox tagging (moved from mailbox to shared to allow shared-group.ts to use it)
+// Serverless Inbox tagging
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
@@ -53,35 +53,34 @@ export type {
   ServerlessInboxSubStackTagOptions,
 } from './serverless-inbox-tags';
 
-// Static content deployer (used for UI bundles, well-known docs, etc.)
+// Static content deployer
 export { StaticContentDeployer } from './content-deployer';
 export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './content-deployer';
 export { StaticContentSource } from './static-content-source';
 export type { IStaticContentSource, StaticContentWriteOptions, StaticContentZipOptions } from './static-content-source';
 export type { StaticContentSourceSpec } from './ts-lambdas/content-deployer/resource-properties';
 
-// Bucket auto-empty (removes all objects & versions on stack deletion, enabling RemovalPolicy.DESTROY)
+// Bucket auto-empty
 export { BucketAutoEmpty } from './bucket-auto-empty';
 
-// Public static assets bucket (singleton shared bucket for discovery docs, config, etc.)
+// Public static assets bucket
 export { PublicStaticAssetsBucket } from './public-static-assets-bucket';
 
-// Named bucket utility (creates S3 buckets with stack-derived names)
+// Named bucket
 export { StackNamedBucket } from './named-bucket';
 export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
 
-// Sanitize stack name utility (for AWS resource naming)
+// Stack name sanitizing
 export { sanitizeStackName } from './naming/sanitize-name';
 
-// Shared group utility (for singleton constructs at stack root)
+// Shared group
 export { getOrCreateSharedGroup } from './shared-group';
 
-// Stack helpers — domain name / S3-safe stack name derivation singleton (shared by mailbox and
-// mailbox-cognito, which each attach their own custom resource to the one Lambda)
+// Stack helpers
 export { StackHelpers } from './stack-helpers';
 export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './stack-helpers';
 
-// Stack name-base registry (for coordinating S3-safe names across constructs)
+// Stack name-base registry
 export { setStackNameBase, getStackNameBase } from './naming/stack-name-base-registry';
 
 // Pipeline taxonomy & shared per-pipeline log groups
@@ -89,14 +88,14 @@ export type { Pipeline } from './pipelines';
 export { PipelineLogGroup } from './pipeline-log-groups';
 export type { IPipelineLogGroup } from './pipeline-log-groups';
 
-// Table & Queue constructs (used by mailbox and mailbox-cognito)
+// Table & Queue constructs
 export { BaseTable } from './base-table';
 export { BaseQueue } from './base-queue';
 export type { BaseQueueProps } from './base-queue';
 export { StackNamedTable } from './named-table';
 export type { INamedTable, StackNamedTableProps } from './named-table';
 
-// Resource naming utilities
+// Resource naming
 export { makePhysicalName, slugifyLabel } from './naming/resource-names';
 export type { PhysicalNameOptions } from './naming/resource-names';
 
@@ -116,8 +115,7 @@ export { S3Actions, grantObjectActions, grantListBucket } from './s3-grants';
 // SSM Parameter Store least-privilege action set & parameter grant helper
 export { SsmActions, grantParameterActions } from './ssm-grants';
 
-// Sub-stack deployer scaffolding (worker/starter Lambdas + polling Step Functions workflow),
-// shared by mailbox's data/edge deployers and mailbox-cognito's data deployer.
+// Sub-stack deployer scaffolding: worker and starter Lambdas and the polling Step Functions workflow
 export { DeployerInfra, DeployerWorkerLambda, DeployerStarterLambda, PollingCfnDeployerWorkflow } from './deployer-infra';
 export type {
   DeployerInfraProps,
