@@ -142,7 +142,7 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
       );
       return {
         BootstrapUserRequestHandler: class {
-          constructor(_userEnsurer: unknown, private readonly logger: LoggerBuffer) {}
+          constructor(_userEnsurer: unknown, _cloudFormation: unknown, private readonly logger: LoggerBuffer) {}
 
           async handle(): Promise<never> {
             this.logger.debug('buffered_before_rejection');

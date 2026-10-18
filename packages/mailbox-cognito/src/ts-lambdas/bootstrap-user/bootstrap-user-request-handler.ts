@@ -2,6 +2,8 @@ import {
   ExpectedFailure,
   isParentStackRollingBack,
   toPhysicalResourceId,
+  toStackId,
+  type CloudFormationClient,
   type CustomResourceRequest,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -19,10 +21,12 @@ const DEFAULT_USERNAME = 'admin';
  */
 export class BootstrapUserRequestHandler {
   private readonly userEnsurer: UserEnsurer;
+  private readonly cloudFormation: CloudFormationClient;
   private readonly logger: LoggerBuffer;
 
-  constructor(userEnsurer: UserEnsurer, logger: LoggerBuffer) {
+  constructor(userEnsurer: UserEnsurer, cloudFormation: CloudFormationClient, logger: LoggerBuffer) {
     this.userEnsurer = userEnsurer;
+    this.cloudFormation = cloudFormation;
     this.logger = logger;
   }
 
@@ -102,6 +106,6 @@ export class BootstrapUserRequestHandler {
     if (request.RequestType !== 'Update') {
       return false;
     }
-    return isParentStackRollingBack(request.StackId, undefined, this.logger);
+    return isParentStackRollingBack(toStackId(request.StackId), this.cloudFormation, this.logger);
   }
 }

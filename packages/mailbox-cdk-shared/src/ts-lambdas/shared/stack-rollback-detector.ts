@@ -1,9 +1,10 @@
 import {
-  CloudFormationClient,
   DescribeStacksCommand,
+  type CloudFormationClient,
   type StackStatus,
 } from '@aws-sdk/client-cloudformation';
 import { CaughtError } from './caught-error';
+import type { StackId } from './custom-resource-identifiers';
 import type { LoggerBuffer } from './logger-buffer';
 
 /**
@@ -21,7 +22,7 @@ class ParentStackStatusReader {
   }
 
   /** The stack's status; undefined when the stack is not returned or the lookup fails (not found, access denied, ...). */
-  public async read(stackId: string): Promise<StackStatus | undefined> {
+  public async read(stackId: StackId): Promise<StackStatus | undefined> {
     try {
       const response = await this.client.send(new DescribeStacksCommand({ StackName: stackId }));
       return response.Stacks?.[0]?.StackStatus;
@@ -46,11 +47,11 @@ class ParentStackStatusReader {
  * A status that cannot be read counts as not rolling back. The failure is logged at warn level on the given logger.
  */
 export async function isParentStackRollingBack(
-  stackId: string,
-  cfnClient?: CloudFormationClient,
+  stackId: StackId,
+  cfnClient: CloudFormationClient,
   logger?: LoggerBuffer,
 ): Promise<boolean> {
-  const status = await new ParentStackStatusReader(cfnClient ?? new CloudFormationClient(), logger).read(stackId);
+  const status = await new ParentStackStatusReader(cfnClient, logger).read(stackId);
   return status === 'UPDATE_ROLLBACK_IN_PROGRESS';
 }
 
@@ -63,10 +64,10 @@ export async function isParentStackRollingBack(
  * orphans that can be reclaimed later, while acting wrongly destroys live resources.
  */
 export async function isParentStackBeingDeleted(
-  stackId: string,
-  cfnClient?: CloudFormationClient,
+  stackId: StackId,
+  cfnClient: CloudFormationClient,
   logger?: LoggerBuffer,
 ): Promise<boolean> {
-  const status = await new ParentStackStatusReader(cfnClient ?? new CloudFormationClient(), logger).read(stackId);
+  const status = await new ParentStackStatusReader(cfnClient, logger).read(stackId);
   return status === 'DELETE_IN_PROGRESS';
 }

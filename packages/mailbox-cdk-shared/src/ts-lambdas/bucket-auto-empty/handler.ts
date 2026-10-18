@@ -4,6 +4,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { withSmokeTest } from '../shared/with-smoke-test';
 import { emitManualFinalize } from '../shared/manual-finalize';
 import { answerRequestWithBadConfig } from '../shared/bad-config-answer';
+import { toStackId } from '../shared/custom-resource-identifiers';
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
 import * as env from '../shared/env';
 import { ExpectedFailure } from '../shared/expected-failure';
@@ -24,7 +25,7 @@ export const handler = withSmokeTest(wrapHandler(async (event, context) => {
     return answerRequestWithBadConfig(request, configError);
   }
 
-  emitManualFinalize(event, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
   const requestHandler = new BucketAutoEmptyRequestHandler(bucketEmptier, logger);

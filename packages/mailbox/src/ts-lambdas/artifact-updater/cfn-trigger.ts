@@ -5,6 +5,7 @@ import {
   answerRequestWithBadConfig,
   emitManualFinalize,
   isParentStackRollingBack,
+  toStackId,
   type CustomResourceAnswer,
   type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -53,7 +54,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     const answerCloudFormation = wrapHandler(async (event) => {
       const request: CustomResourceRequest = event;
 
-      emitManualFinalize(event, { service: this.serviceName });
+      emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: this.serviceName });
       return this.answerRequest(request, cycleFailures);
     });
     await answerCloudFormation(this.event, this.context, () => undefined);
@@ -90,7 +91,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
    * straight to the console.
    */
   private async answerBadConfig(request: CustomResourceRequest, configError: string): Promise<CustomResourceAnswer> {
-    if (request.RequestType === 'Update' && (await isParentStackRollingBack(request.StackId, this.cloudFormation))) {
+    if (request.RequestType === 'Update' && (await isParentStackRollingBack(toStackId(request.StackId), this.cloudFormation))) {
       console.error('Configuration error on Update during parent stack rollback; responding SUCCESS', { error: configError });
       return { PhysicalResourceId: request.PhysicalResourceId };
     }

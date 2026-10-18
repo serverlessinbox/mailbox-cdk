@@ -1,3 +1,5 @@
+import type { StackId } from './custom-resource-identifiers';
+
 /**
  * The custom-resource properties of a request. Only `stackName` is read; the rest are open because every custom
  * resource declares its own.
@@ -12,7 +14,7 @@ export interface ManualFinalizeResourceProperties {
  */
 export interface ManualFinalizeEvent {
   ResponseURL?: string;
-  StackId?: string;
+  StackId?: StackId;
   RequestId?: string;
   LogicalResourceId?: string;
   RequestType?: string;

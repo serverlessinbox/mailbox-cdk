@@ -4,12 +4,13 @@
  * A changed line format breaks the operator's grep, and a wrong body leaves the resource hung.
  */
 
+import { toStackId } from '../custom-resource-identifiers';
 import { emitManualFinalize } from '../manual-finalize';
 
 describe('emitManualFinalize', () => {
   const cfnEvent = {
     ResponseURL: 'https://example.com/response',
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid',
+    StackId: toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid'),
     RequestId: 'request-1',
     LogicalResourceId: 'MyResource',
     RequestType: 'Delete',

@@ -6,6 +6,7 @@ import {
   env,
   ExpectedFailure,
   LoggerBuffer,
+  toStackId,
   type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -30,7 +31,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
-  emitManualFinalize(event, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
   try {
     if (event.RequestType === 'Delete') {

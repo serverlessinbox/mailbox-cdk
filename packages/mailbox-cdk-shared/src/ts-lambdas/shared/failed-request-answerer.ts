@@ -1,4 +1,5 @@
 import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import { toStackId } from './custom-resource-identifiers';
 import type { CustomResourceAnswer, CustomResourceRequest } from './custom-resource-request';
 import type { LoggerBuffer } from './logger-buffer';
 import { isParentStackRollingBack } from './stack-rollback-detector';
@@ -29,7 +30,7 @@ export class FailedRequestAnswerer {
       return undefined;
     }
 
-    const rollingBack = await isParentStackRollingBack(request.StackId, this.cloudFormation, this.logger);
+    const rollingBack = await isParentStackRollingBack(toStackId(request.StackId), this.cloudFormation, this.logger);
     if (!rollingBack) {
       return undefined;
     }

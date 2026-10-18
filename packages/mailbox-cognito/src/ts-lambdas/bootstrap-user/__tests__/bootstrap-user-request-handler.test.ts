@@ -14,16 +14,14 @@ import {
   CognitoIdentityProviderClient,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { ExpectedFailure, isParentStackRollingBack, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { createCloudFormationClient, ExpectedFailure, isParentStackRollingBack, LoggerBuffer, toStackId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { BootstrapUserRequestHandler } from '../bootstrap-user-request-handler';
 import { UserEnsurer } from '../ensure-user';
 import { PASSWORD_SET_AT_INSTALL_TIME } from '../password';
-import { PHYSICAL_RESOURCE_ID, request, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
+import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 
-// mailbox-cognito has no dependency on @aws-sdk/client-cloudformation (the boundary
-// isParentStackRollingBack itself talks to), so — unlike the mailbox-cdk-shared
-// handler suites, which mock CloudFormationClient directly — this suite mocks the
-// helper function itself and lets everything else run for real.
+// The stack-status lookup belongs to isParentStackRollingBack and is pinned by its own tests, so this suite
+// mocks that function and lets everything else run for real.
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   isParentStackRollingBack: jest.fn(),
@@ -35,6 +33,8 @@ const SUPPLIED_PASSWORD = 'Supplied1Password';
 
 describe('BootstrapUserRequestHandler', () => {
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  const cloudFormation = createCloudFormationClient();
+  const logger = new LoggerBuffer('test-service', 'error');
   let requestHandler: BootstrapUserRequestHandler;
 
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('BootstrapUserRequestHandler', () => {
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
     mockIsParentStackRollingBack.mockReset();
-    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({})), new LoggerBuffer('test-service', 'error'));
+    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({})), cloudFormation, logger);
   });
 
   describe('handle', () => {
@@ -121,6 +121,14 @@ describe('BootstrapUserRequestHandler', () => {
       const answer = await requestHandler.answerFailure(request('Update'), failure);
 
       expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+    });
+
+    it('asks about the stack of the request through the CloudFormation client it was given', async () => {
+      mockIsParentStackRollingBack.mockResolvedValue(true);
+
+      await requestHandler.answerFailure(request('Update'), failure);
+
+      expect(mockIsParentStackRollingBack).toHaveBeenCalledWith(toStackId(STACK_ID), cloudFormation, logger);
     });
 
     it('throws the failure of an Update when the parent stack is not rolling back', async () => {

@@ -56,4 +56,5 @@ export {
   type Issuer,
 } from './ts-lambdas/shared/auth-identifiers';
 export { ServerlessInboxTagKeys } from './ts-lambdas/shared/tag-keys';
+export { createCloudFormationClient, type CloudFormationClient } from './ts-lambdas/shared/cloudformation-client';
 export { isParentStackRollingBack, isParentStackBeingDeleted } from './ts-lambdas/shared/stack-rollback-detector';

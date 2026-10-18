@@ -7,9 +7,10 @@
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
 import { isParentStackBeingDeleted, isParentStackRollingBack } from '../stack-rollback-detector';
+import { toStackId } from '../custom-resource-identifiers';
 import { LoggerBuffer } from '../logger-buffer';
 
-const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid';
+const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid');
 
 describe('parent stack detectors', () => {
   const cfnMock = mockClient(CloudFormationClient);

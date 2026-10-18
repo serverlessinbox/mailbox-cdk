@@ -2,10 +2,12 @@ import { wrapHandler } from 'aws-custom-resources';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import {
   answerRequestWithBadConfig,
+  createCloudFormationClient,
   emitManualFinalize,
   env,
   ExpectedFailure,
   LoggerBuffer,
+  toStackId,
   withSmokeTest,
   type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -16,6 +18,7 @@ import { UserEnsurer } from './ensure-user';
 
 const { config, error: configError } = env.tryLoad(load);
 const cognito = new CognitoIdentityProviderClient({});
+const cloudFormation = createCloudFormationClient();
 
 export const handler = withSmokeTest(wrapHandler(async (event) => {
   const request: CustomResourceRequest = event;
@@ -25,10 +28,10 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     return BootstrapUserAnswers.withPasswordMarker(badConfigAnswer.PhysicalResourceId);
   }
 
-  emitManualFinalize(event, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
-  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito), logger);
+  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito), cloudFormation, logger);
 
   try {
     return await requestHandler.handle(request);
