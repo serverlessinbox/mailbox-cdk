@@ -7,7 +7,7 @@ import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
-import type { BlobDownloadOriginHeaders } from '../../ts-lambdas/jmap-blob-download/config';
+import type { BlobDownloadOriginHeaders } from '../../ts-lambdas/jmap-blob-download/origin-headers';
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
 export interface CdnCustomDomain {

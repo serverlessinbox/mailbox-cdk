@@ -4,11 +4,7 @@ import * as t from 'typanion';
 import { toIssuer, type Issuer, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { toAudience, type Audience } from './auth-identifiers';
 import type { VerifiedJwt } from './auth-tokens';
-
-const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;
-
-/** A JWT signature algorithm the verifier accepts. */
-export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
+import { SUPPORTED_ALGORITHMS } from './origin-headers';
 
 export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
 
