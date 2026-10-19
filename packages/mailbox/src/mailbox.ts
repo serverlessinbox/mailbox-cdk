@@ -13,7 +13,7 @@ import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { IdentityProvisionerLambda } from './lambdas';
 import { AuditWriting } from './features/audit-writing/audit-writing';
-import { MailboxArtifactResolverFactory, PipelineLogGroup, applyServerlessInboxBaseTags, applyServerlessInboxComponentTag, ServerlessInboxTagKeys, resolveVendorAccountIds, resolveDeployerType, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
+import { PipelineLogGroup, applyServerlessInboxComponentTag, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Bootstrap } from './features/bootstrap/bootstrap';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
@@ -21,12 +21,11 @@ import type { IResourceRemoval } from './features/sweeper';
 import { StackFailureDetection, SendStackFailuresMode } from './features/stack-failure-detection';
 import { LicenseRefresh } from './features/license-refresh/license-refresh';
 import { Fn } from 'aws-cdk-lib';
-import { MailboxDns, MailboxDomains } from './domains';
+import { MailboxDns } from './domains';
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as awslambda from 'aws-cdk-lib/aws-lambda';
 import { MailboxEdgeDeployer } from './edge';
-import * as route53 from 'aws-cdk-lib/aws-route53';
 import { AdminUi } from './ui/admin-ui';
 import { WebmailUi } from './ui/webmail-ui';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -39,8 +38,8 @@ import { MailboxDataDeployer } from './data';
 import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
 import { MailboxResourceDescriptions } from './utils/resource-descriptions';
 import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import { loadMailboxRegistryRecord } from './mailbox-registry-record';
-import { loadMailboxArtifactVersions } from './mailbox-artifact-versions';
+import { MailboxContext } from './mailbox-context';
+import { MailboxAddressing } from './core/domains/mailbox-addressing';
 import type { MailboxProps } from './mailbox-props';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients } from './mailbox-outputs';
 
@@ -84,26 +83,9 @@ export class Mailbox extends Construct {
 
     const authProvider: IMailboxAuthProvider = props.authProvider;
 
-    const deployerType = resolveDeployerType(this);
-
-    // Resolved once here, as the composition root, and threaded down as a prop.
-    const vendorAccountIds = resolveVendorAccountIds(this);
-    const stackIdentityTagKey = ServerlessInboxTagKeys.rootStack;
-
-    // One resolver, threaded to every sub-construct. Default is pinned from the package's baked
-    // versions, overridden by CDK context.
-    const artifactResolver: IArtifactResolver = props.artifactResolver
-      ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    const stackVersion = artifactResolver.getVersion('mailbox-cdk');
-
-    // Tags everything under this construct so cost and usage can be sliced per deployment.
-    // Uses AWS::StackName so this also works when deployed via pure CloudFormation.
-    applyServerlessInboxBaseTags(this, {
-      // This is the main stack, so it is its own root-stack (base helper also tags `stack`).
-      rootStack: Aws.STACK_NAME,
-      version: stackVersion,
-      product: 'mailbox',
-    });
+    // Resolved once here, as the composition root, and threaded down as props.
+    const context = MailboxContext.resolve(this, props);
+    const { artifactResolver, stackVersion, deployerType, vendorAccountIds, stackIdentityTagKey, encryptionPlan } = context;
 
     // --- Group nodes (8 intermediate constructs for construct-tree grouping) ---
     const groups = {
@@ -145,31 +127,13 @@ export class Mailbox extends Construct {
     const domainName: string = derivedDomainName;
     const nameBase: string = derivedS3SafeDataStackName;
 
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', {
-      hostedZoneId: props.hostedZoneId ?? '',
-      zoneName: domainName,
-    });
-
-    const subdomainNamespaceCondition = props.subdomainNamespace !== undefined
-      ? new cdk.CfnCondition(this, 'HasSubdomainNamespace', {
-          expression: cdk.Fn.conditionNot(
-            cdk.Fn.conditionEquals(props.subdomainNamespace, ''),
-          ),
-        })
-      : undefined;
     const enableAdminUi = props.enableAdminUi ?? true;
     const enableWebmailUi = props.enableWebmailUi ?? true;
 
-    const mailboxDomains = new MailboxDomains({ domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains, prefixConditionName: subdomainNamespaceCondition?.logicalId });
+    const addressing = MailboxAddressing.resolve(this, props, domainName, { adminUi: enableAdminUi, webmailUi: enableWebmailUi });
+    const { zone: hostedZone, domains: mailboxDomains, edgePrefix } = addressing;
+    this.urls = addressing.urls;
 
-    this.urls = {
-      ...(enableAdminUi ? { adminUi: `https://${mailboxDomains.admin}` } : {}),
-      ...(enableWebmailUi ? { webmailUi: `https://${mailboxDomains.webmail}` } : {}),
-      jmapApi:  `https://${mailboxDomains.jmap}`,
-      adminApi: `https://${mailboxDomains.api}`,
-    };
-
-    const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
     this.emailQueueProps = encryptionPlan.queues;
 
     // Retained data resources come from the auto-deployed data stack. Every field on `dataRef` is
@@ -196,18 +160,6 @@ export class Mailbox extends Construct {
       issuers: [authProvider.issuer],
       artifactResolver,
     });
-
-    // Translate bare subdomainNamespace to dot-wrapped format for edge stack.
-    // Edge stack expects: "." for no namespace, or ".{label}." for a namespace.
-    const edgePrefix: string = subdomainNamespaceCondition
-      ? (cdk.Fn.conditionIf(
-          subdomainNamespaceCondition.logicalId,
-          cdk.Fn.join('', ['.', props.subdomainNamespace ?? '', '.']),
-          '.',
-        ) as unknown as string)
-      : mailboxDomains.prefix
-        ? `.${mailboxDomains.prefix}.`
-        : '.';
 
     const edgeStack = new MailboxEdgeDeployer(groups.edge, 'stack-deployer', {
       domainName,
