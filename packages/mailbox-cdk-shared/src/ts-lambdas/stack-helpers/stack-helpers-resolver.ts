@@ -25,8 +25,8 @@ export type StackHelpersData = {
   readonly domainName: string;
   readonly s3SafeDataStackName: string;
   readonly cognitoDomainPrefix: string;
-  /** A number in `[0, Range)`; empty when the properties carry no `Range`. */
-  readonly seededNumber: string;
+  /** A number in `[0, Range)`; absent when the properties carry no `Range`. */
+  readonly seededNumber?: string;
 };
 
 /**
@@ -50,9 +50,12 @@ export class StackHelpersResolver {
     const s3SafeDataStackName = this.sanitizeDataStackName(properties.DataStackName ?? '');
     const prefixFallback = properties.Fallback || s3SafeDataStackName;
     const cognitoDomainPrefix = this.deriveCognitoDomainPrefix(domainName, prefixFallback);
-    const seededNumber = this.deriveSeededNumber(stackId, properties.Salt ?? '', properties.Range);
+    const data = { domainName, s3SafeDataStackName, cognitoDomainPrefix };
+    if (properties.Range === undefined) {
+      return data;
+    }
 
-    return { domainName, s3SafeDataStackName, cognitoDomainPrefix, seededNumber };
+    return { ...data, seededNumber: this.deriveSeededNumber(stackId, properties.Salt ?? '', properties.Range) };
   }
 
   private parseProperties(resourceProperties: unknown): StackHelpersResourceProperties {
@@ -104,11 +107,7 @@ export class StackHelpersResolver {
    * The stack id never changes during the life of a stack, so a stack keeps its number across
    * updates; the salt gives each purpose its own number within one stack.
    */
-  private deriveSeededNumber(stackId: StackId, salt: string, range: string | undefined): string {
-    if (range === undefined) {
-      return '';
-    }
-
+  private deriveSeededNumber(stackId: StackId, salt: string, range: string): string {
     const digest = createHash('sha256').update(`${stackId}:${salt}`).digest();
     return String(digest.readUInt32BE(0) % Number(range));
   }

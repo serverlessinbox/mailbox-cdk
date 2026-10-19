@@ -179,10 +179,16 @@ describe('StackHelpersResolver', () => {
       expect(data.seededNumber).toBe('0');
     });
 
-    it('is empty when the properties carry no Range', async () => {
+    it('is absent when the properties carry no Range', async () => {
       const data = await resolveFor({ Salt: 'any' });
 
-      expect(data.seededNumber).toBe('');
+      expect(data).not.toHaveProperty('seededNumber');
+    });
+
+    it('is present when the properties carry a Range', async () => {
+      const data = await resolveFor({ Salt: 'any', Range: '24' });
+
+      expect(data).toHaveProperty('seededNumber', expect.stringMatching(/^\d+$/));
     });
 
     it.each(['0', '-5', '2.5', 'ten', '', '010'])('rejects the Range "%s"', async (range) => {
