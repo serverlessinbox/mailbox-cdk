@@ -11,11 +11,11 @@ import {
   IMailboxAuthProviderBase,
   GenerateClientParams,
   JMAP_SCOPE_DESCRIPTIONS,
-  OAUTH_CLIENT_ADMIN_UI,
-  OAUTH_CLIENT_JMAP_UI,
+  AUTH_POLICY_ADMIN_API,
+  AUTH_POLICY_JMAP_API,
   Permission,
-  ProvisionAdminUiClientParams,
-  ProvisionJmapUiClientParams,
+  ProvisionAdminApiClientParams,
+  ProvisionJmapApiClientParams,
 } from '@serverlessinbox/mailbox';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
@@ -170,8 +170,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   public readonly policies: MailboxAuthPolicies;
 
-  private readonly adminUiClients = new Map<string, AuthClientConfig>();
-  private readonly jmapUiClients = new Map<string, AuthClientConfig>();
+  private readonly adminApiClients = new Map<string, AuthClientConfig>();
+  private readonly jmapApiClients = new Map<string, AuthClientConfig>();
   private readonly headlessClients = new Map<string, AuthClientConfig>();
   private readonly artifacts: IArtifactResolver;
   private bootstrapUserCount = 0;
@@ -381,10 +381,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     return client;
   }
 
-  provisionAdminUiClient(config: ProvisionAdminUiClientParams): AuthClientConfig {
+  provisionAdminApiClient(config: ProvisionAdminApiClientParams): AuthClientConfig {
 
-    const resolvedName = `${OAUTH_CLIENT_ADMIN_UI}_${config.name}`;
-    const existing = this.adminUiClients.get(resolvedName);
+    const resolvedName = `${AUTH_POLICY_ADMIN_API}_${config.name}`;
+    const existing = this.adminApiClients.get(resolvedName);
     if (existing) {
       return existing;
     }
@@ -399,14 +399,14 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     });
 
     this.addAudience(this.policies.adminApi, client.clientId);
-    this.adminUiClients.set(resolvedName, client);
+    this.adminApiClients.set(resolvedName, client);
     return client;
   }
 
-  provisionJmapUiClient(config: ProvisionJmapUiClientParams): AuthClientConfig {
+  provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig {
 
-    const resolvedName = `${OAUTH_CLIENT_JMAP_UI}_${config.name}`;
-    const existing = this.jmapUiClients.get(resolvedName);
+    const resolvedName = `${AUTH_POLICY_JMAP_API}_${config.name}`;
+    const existing = this.jmapApiClients.get(resolvedName);
     if (existing) {
       return existing;
     }
@@ -421,7 +421,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     });
 
     this.addAudience(this.policies.jmapApi, client.clientId);
-    this.jmapUiClients.set(resolvedName, client);
+    this.jmapApiClients.set(resolvedName, client);
     return client;
   }
 

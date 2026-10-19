@@ -28,8 +28,8 @@ export interface IdentityProvisionerLambdaProps {
   changelogTable: IDataTable;
   auditEventsQueue: IAuditEventsQueue;
   artifactResolver: IArtifactResolver;
-  /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. */
-  readonly adminUIURL: string;
+  /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. Absent when no Admin UI is deployed. */
+  readonly adminUIURL?: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */
   readonly blobStore: IDataBlobStore;
   /** SQS queue for email submissions (used by the submission service). */
@@ -55,7 +55,7 @@ export class IdentityProvisionerLambda extends GoLambda implements IIdentityProv
         ITEM_TABLE_NAME: props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        ADMIN_UI_URL: props.adminUIURL,
+        ...(props.adminUIURL ? { ADMIN_UI_URL: props.adminUIURL } : {}),
         BLOB_STORAGE_NAME: props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME: props.sesConfigSetName,

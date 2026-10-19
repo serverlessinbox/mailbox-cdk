@@ -13,10 +13,6 @@ import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-sto
 import type { IIdentityProvisioner } from './identity-provisioner';
 
 export type JmapOAuthHandlerConfig = {
-  issuer: string;
-  tokenEndpoint: string;
-  authorizationEndpoint: string;
-  clientId: string;
   scopeMap: IMailboxAuthProviderBase['scopeMap'];
 };
 
@@ -61,10 +57,6 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         OAUTH_HANDLER_CONFIG: JSON.stringify({
-          issuer: props.oauthHandlerConfig.issuer,
-          tokenEndpoint: props.oauthHandlerConfig.tokenEndpoint,
-          authorizationEndpoint: props.oauthHandlerConfig.authorizationEndpoint,
-          clientId: props.oauthHandlerConfig.clientId,
           // Go expects map[string][]string; Permission[] is string[] at runtime.
           scopeMap: props.oauthHandlerConfig.scopeMap,
         }),

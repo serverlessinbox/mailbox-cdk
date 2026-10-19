@@ -69,8 +69,8 @@ function createMockAuthProvider(): IMailboxAuthProvider {
     usePkce: false,
     scopeMap: { 'mail.read': [Permission.MAIL_READ], 'mail.write': [Permission.MAIL_WRITE] },
     policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
-    provisionAdminUiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapUiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
+    provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
+    provisionJmapApiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
     createAdminApiAddons: () => [],
   };
 }

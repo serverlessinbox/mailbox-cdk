@@ -1,4 +1,4 @@
-import { Construct } from 'constructs';
+import { Construct, DependencyGroup } from 'constructs';
 import { AuthKeyStore } from './features/auth-key-store/auth-key-store';
 import { Cdn, type CdnCustomDomain } from './features/cdn/cdn-construct';
 import { TantivySearch } from './search';
@@ -9,9 +9,6 @@ import { WebSocketPush } from './api/websocket/websocket';
 import { McpApi } from './api/mcp/mcp-api';
 import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext } from './api';
 import { SesRules } from './email/receiving/ses-rules';
-import {
-  AuthClientConfig,
-} from './auth/types';
 import type { IMailboxAuthProvider } from './auth/types';
 import { EmailProcessorLambda } from './lambdas/email-processor';
 import { IdentityProvisionerLambda } from './lambdas';
@@ -74,7 +71,7 @@ export class Mailbox extends Construct {
    * The OAuth clients this Mailbox created for its UIs. A client is present only when its UI is
    * enabled.
    */
-  public readonly oauthClients: MailboxOAuthClients = {};
+  public readonly oauthClients: MailboxOAuthClients;
 
   /** The public URLs of the endpoints this Mailbox serves. */
   public readonly urls: MailboxUrls;
@@ -166,8 +163,8 @@ export class Mailbox extends Construct {
     const mailboxDomains = new MailboxDomains({ domainName, prefix: props.subdomainNamespace, subdomainOverrides: props.overrides?.subdomains, prefixConditionName: subdomainNamespaceCondition?.logicalId });
 
     this.urls = {
-      adminUi:  `https://${mailboxDomains.admin}`,
-      webmail:  `https://${mailboxDomains.webmail}`,
+      ...(enableAdminUi ? { adminUi: `https://${mailboxDomains.admin}` } : {}),
+      ...(enableWebmailUi ? { webmailUi: `https://${mailboxDomains.webmail}` } : {}),
       jmapApi:  `https://${mailboxDomains.jmap}`,
       adminApi: `https://${mailboxDomains.api}`,
     };
@@ -281,11 +278,14 @@ export class Mailbox extends Construct {
     const adminUiOrigins: string[] = [];
     const webmailUiOrigins: string[] = [];
 
-    let adminUiRedirectUri: string | undefined;
-    let webmailUiRedirectUri: string | undefined;
+    let adminUi: AdminUi | undefined;
+    let webmailUi: WebmailUi | undefined;
 
     let adminUiCnameTarget: string | undefined;
     let webmailUiCnameTarget: string | undefined;
+
+    // The webmail token exchange waits on this group; the bootstrap resource joins it once built.
+    const oauthClientsProvisioned = new DependencyGroup();
 
     const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
       itemTable,
@@ -379,7 +379,7 @@ export class Mailbox extends Construct {
         }
       }
 
-      const adminUi = new AdminUi(groups.ui, 'admin-ui', {
+      adminUi = new AdminUi(groups.ui, 'admin-ui', {
         domainName: mailboxDomains.admin,
         certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
         configTable: this.configTable,
@@ -393,9 +393,6 @@ export class Mailbox extends Construct {
         artifactResolver,
       });
 
-      (this.oauthClients as { adminUi?: AuthClientConfig }).adminUi = adminUi.oauthClient;
-      adminUiRedirectUri = adminUi.oauthRedirectUri;
-
       adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
       adminUiCnameTarget = adminUi.distribution.distributionDomainName;
 
@@ -403,7 +400,7 @@ export class Mailbox extends Construct {
     }
 
     if (enableWebmailUi) {
-      const webmailUi = new WebmailUi(groups.ui, 'webmail-ui', {
+      webmailUi = new WebmailUi(groups.ui, 'webmail-ui', {
         domainName: mailboxDomains.webmail,
         certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
         configTable: this.configTable,
@@ -412,16 +409,19 @@ export class Mailbox extends Construct {
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
         uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
         artifactResolver,
+        dependsOn: [oauthClientsProvisioned],
       });
-
-      (this.oauthClients as { jmapUi?: AuthClientConfig }).jmapUi = webmailUi.oauthClient;
-      webmailUiRedirectUri = webmailUi.oauthRedirectUri;
 
       webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
       webmailUiCnameTarget = webmailUi.distribution.distributionDomainName;
 
       grantUiContentDeployIfGrantable(webmailUi, artifactResolver);
     }
+
+    this.oauthClients = {
+      ...(adminUi ? { adminUi: adminUi.oauthClient } : {}),
+      ...(webmailUi ? { webmailUi: webmailUi.oauthClient } : {}),
+    };
 
     const extraOrigins = props.extraAllowedOrigins ?? [];
     const allowedOriginsForAdminApi = [...adminUiOrigins, ...extraOrigins];
@@ -489,31 +489,30 @@ export class Mailbox extends Construct {
           requireAllScopes: authProvider.policies.jmapApi.requireAllScopes,
         },
       },
-      oauthClients: (this.oauthClients.adminUi || this.oauthClients.jmapUi)
+      oauthClients: (adminUi || webmailUi)
         ? {
-          adminUi: this.oauthClients.adminUi
+          adminUi: adminUi
             ? {
               flow: 'authorization_code',
-              clientId: this.oauthClients.adminUi.clientId,
-              clientSecret: this.oauthClients.adminUi.clientSecret,
-              scopes: ['openid', 'email', 'profile', ...this.oauthClients.adminUi.requestScopeList],
-              redirectUri: adminUiRedirectUri ?? '/',
+              clientId: adminUi.oauthClient.clientId,
+              clientSecret: adminUi.oauthClient.clientSecret,
+              scopes: ['openid', 'email', 'profile', ...adminUi.oauthClient.requestScopeList],
+              redirectUri: adminUi.oauthRedirectUri,
             }
             : undefined,
-          jmapUi: this.oauthClients.jmapUi
+          webmailUi: webmailUi
             ? {
               flow: 'authorization_code',
-              clientId: this.oauthClients.jmapUi.clientId,
-              clientSecret: this.oauthClients.jmapUi.clientSecret,
-              scopes: ['openid', 'email', 'profile', ...this.oauthClients.jmapUi.requestScopeList],
-              redirectUri: webmailUiRedirectUri ?? '/',
+              clientId: webmailUi.oauthClient.clientId,
+              clientSecret: webmailUi.oauthClient.clientSecret,
+              scopes: ['openid', 'email', 'profile', ...webmailUi.oauthClient.requestScopeList],
+              redirectUri: webmailUi.oauthRedirectUri,
             }
             : undefined,
         }
         : undefined,
     });
-    // bootstrap is declared but only used for its side-effects; suppress unused-locals check.
-    void bootstrap;
+    oauthClientsProvisioned.add(bootstrap.oauthClientsProvisioned);
 
     // Stack-failure detector: watches the root stack's own terminal `CloudFormation Stack
     // Status Change` events. A terminal stack status is emitted only after the whole operation
@@ -597,16 +596,6 @@ export class Mailbox extends Construct {
     // tantivySearch is used for side-effects only at this level.
     void tantivySearch;
 
-    // JMAP must always advertise the JMAP_UI OAuth client in its session response.
-    // That client is provisioned when the Webmail UI is enabled.
-    const jmapOAuthClientId = this.oauthClients.jmapUi?.clientId;
-    if (!jmapOAuthClientId) {
-      throw new Error(
-        'JMAP API requires the JMAP_UI OAuth client (for session OAuth2 metadata). ' +
-        'Enable the Webmail UI, or adjust the auth provider to provision JMAP_UI independently.',
-      );
-    }
-
     this.jmapApi = new JMapApi(groups.apis, 'jmap-api', {
       configTable,
       itemTable,
@@ -620,8 +609,6 @@ export class Mailbox extends Construct {
       artifactResolver,
       authProvider,
       identityProvisioner,
-
-      oauthClientId: jmapOAuthClientId,
 
       domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
       certificate: jmapCertificate,

@@ -1,5 +1,5 @@
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
-import { Construct } from "constructs";
+import { Construct, IDependable } from "constructs";
 import { IdpTokenExchangeLambda } from "../../lambdas";
 import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -10,7 +10,6 @@ import {
   AuthPolicyName,
   OAuthClientName,
   AUTH_POLICY_ADMIN_API,
-  OAUTH_CLIENT_ADMIN_UI,
 } from "../../auth/types";
 import { Aws } from 'aws-cdk-lib';
 
@@ -27,7 +26,10 @@ export interface IdpTokenExchangeApiProps {
   /**
    * Name of OAUTH_CLIENT record to use (e.g. ADMIN_UI).
    */
-  oauthClientName?: OAuthClientName;
+  oauthClientName: OAuthClientName;
+
+  /** Resources that must be deployed before the token-exchange function is created or updated. */
+  dependsOn?: IDependable[];
 
   /** SERVICE_NAME for the underlying IdpTokenExchangeLambda; distinguishes callers of this API. */
   serviceName: string;
@@ -51,11 +53,12 @@ export class IdpTokenExchangeApi extends Construct {
       configTable: props.configTable,
       auditEventsQueue: props.auditEventsQueue,
       authPolicyName: props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
-      oauthClientName: props.oauthClientName ?? OAUTH_CLIENT_ADMIN_UI,
+      oauthClientName: props.oauthClientName,
       artifactResolver: props.artifactResolver,
       serviceName: props.serviceName,
       pipeline: props.pipeline,
     });
+    apiHandlerLambda.node.addDependency(...(props.dependsOn ?? []));
 
     this.api.addRoutes({
       path: '/auth/{proxy+}',

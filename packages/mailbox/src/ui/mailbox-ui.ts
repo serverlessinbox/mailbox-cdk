@@ -1,4 +1,4 @@
-import { Construct } from 'constructs';
+import { Construct, IDependable } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Fn, RemovalPolicy, Tags } from 'aws-cdk-lib';
@@ -65,6 +65,9 @@ export interface MailboxUiProps {
   tokenExchangeServiceName: string;
 
   readonly tokenExchangePipeline: Pipeline;
+
+  /** Resources that must be deployed before the token-exchange function is created or updated. */
+  readonly tokenExchangeDependsOn?: IDependable[];
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
   uiBundle?: UiBundleSource;
@@ -175,6 +178,7 @@ export class MailboxUi extends Construct {
       props.oauthClientName,
       props.tokenExchangeServiceName,
       props.tokenExchangePipeline,
+      props.tokenExchangeDependsOn,
     );
 
     if (props.uiBundle || props.uiConfig) {
@@ -257,6 +261,7 @@ export class MailboxUi extends Construct {
     oauthClientName: OAuthClientName,
     tokenExchangeServiceName: string,
     tokenExchangePipeline: Pipeline,
+    tokenExchangeDependsOn: IDependable[] | undefined,
   ): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver,
@@ -264,6 +269,7 @@ export class MailboxUi extends Construct {
       auditEventsQueue,
       authPolicyName,
       oauthClientName,
+      dependsOn: tokenExchangeDependsOn,
       serviceName: tokenExchangeServiceName,
       pipeline: tokenExchangePipeline,
     });

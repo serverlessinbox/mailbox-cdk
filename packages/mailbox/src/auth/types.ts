@@ -12,11 +12,11 @@ export const AUTH_POLICY_JMAP_API = 'JMAP_API' as const;
 export type AuthPolicyName = typeof AUTH_POLICY_ADMIN_API | typeof AUTH_POLICY_JMAP_API;
 
 export const OAUTH_CLIENT_ADMIN_UI = 'ADMIN_UI' as const;
-export const OAUTH_CLIENT_JMAP_UI = 'JMAP_UI' as const;
+export const OAUTH_CLIENT_WEBMAIL_UI = 'WEBMAIL_UI' as const;
 
 export type OAuthClientName =
   | typeof OAUTH_CLIENT_ADMIN_UI
-  | typeof OAUTH_CLIENT_JMAP_UI;
+  | typeof OAUTH_CLIENT_WEBMAIL_UI;
 
 export type AuthMethod = 'header' | 'form';
 
@@ -80,7 +80,7 @@ export type OAuthClientConfig = OAuthAuthorizationCodeClientConfig | OAuthClient
 
 export interface OAuthClientsConfig {
   readonly adminUi?: OAuthAuthorizationCodeClientConfig;
-  readonly jmapUi?: OAuthAuthorizationCodeClientConfig;
+  readonly webmailUi?: OAuthAuthorizationCodeClientConfig;
 }
 
 // ---- Provider/construct-level auth config (replaces IAuthConfig.ts) ----
@@ -110,15 +110,15 @@ export interface AuthClientConfig extends OAuthClientCredentials {
   readonly groups: string[];
 }
 
-/** Parameters for provisioning the Admin UI OAuth client. */
-export interface ProvisionAdminUiClientParams {
+/** Parameters for provisioning an OAuth client that may call the Admin API. */
+export interface ProvisionAdminApiClientParams {
   readonly name: string;
   readonly callbackUrls: string[];
   readonly logoutUrls: string[];
 }
 
-/** Parameters for provisioning the JMAP UI OAuth client. */
-export interface ProvisionJmapUiClientParams {
+/** Parameters for provisioning an OAuth client that may call the JMAP API. */
+export interface ProvisionJmapApiClientParams {
   readonly name: string;
   readonly callbackUrls: string[];
   readonly logoutUrls: string[];
@@ -144,11 +144,11 @@ export interface IMailboxAuthProviderBase {
   /** Policy configuration consumed by authorizers (audiences + optional group requirement). */
   readonly policies: MailboxAuthPolicies;
 
-  /** Provision the OAuth client used by the Admin UI (authorization_code). */
-  provisionAdminUiClient(config: ProvisionAdminUiClientParams): AuthClientConfig;
+  /** Provision an OAuth client (authorization_code) that may call the Admin API; `config.name` names the app that uses it. */
+  provisionAdminApiClient(config: ProvisionAdminApiClientParams): AuthClientConfig;
 
-  /** Provision the OAuth client used by the Webmail/JMAP UI (authorization_code). */
-  provisionJmapUiClient(config: ProvisionJmapUiClientParams): AuthClientConfig;
+  /** Provision an OAuth client (authorization_code) that may call the JMAP API; `config.name` names the app that uses it. */
+  provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig;
 }
 
 

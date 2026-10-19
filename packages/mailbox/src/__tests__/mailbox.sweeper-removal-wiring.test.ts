@@ -34,8 +34,8 @@ function createMockAuthProvider(): IMailboxAuthProvider {
       adminApi: { audiences: ['admin-api'] },
       jmapApi: { audiences: ['jmap-api'] },
     },
-    provisionAdminUiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapUiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
+    provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
+    provisionJmapApiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
     createAdminApiAddons: () => [],
   };
 }

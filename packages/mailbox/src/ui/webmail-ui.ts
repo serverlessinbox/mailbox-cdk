@@ -1,9 +1,9 @@
-import { Construct } from 'constructs';
+import { Construct, IDependable } from 'constructs';
 import type { IDataTable } from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_JMAP_UI } from "../auth/types";
+import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from "../auth/types";
 import { Permission } from '../auth/jmap-scopes';
 import { MailboxUi, UiBundleSource } from './mailbox-ui';
 
@@ -38,6 +38,9 @@ export interface WebmailUiProps {
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
   readonly artifactResolver: IArtifactResolver;
+
+  /** Resources that must be deployed before the token-exchange function switches to the `WEBMAIL_UI` client row. */
+  readonly dependsOn?: IDependable[];
 }
 
 export class WebmailUi extends MailboxUi {
@@ -54,7 +57,8 @@ export class WebmailUi extends MailboxUi {
       configTable: props.configTable,
       auditEventsQueue: props.auditEventsQueue,
       authPolicyName: AUTH_POLICY_JMAP_API,
-      oauthClientName: OAUTH_CLIENT_JMAP_UI,
+      oauthClientName: OAUTH_CLIENT_WEBMAIL_UI,
+      tokenExchangeDependsOn: props.dependsOn,
       uiBundle: props.uiBundle,
       uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
       artifactResolver: props.artifactResolver,
@@ -62,8 +66,8 @@ export class WebmailUi extends MailboxUi {
 
     const uiHost = this.distributionDomainName;
     const allPermissions = Object.values(Permission);
-    this.oauthClient = props.authProvider.provisionJmapUiClient({
-      name: 'integrated',
+    this.oauthClient = props.authProvider.provisionJmapApiClient({
+      name: 'webmail-ui',
       permissions: allPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],

@@ -8,10 +8,10 @@ import type { AuthClientConfig } from './auth/types';
  * (admin.<namespace>.<domain>).
  */
 export interface MailboxUrls {
-  /** URL of the Admin UI: `https://admin.<domainName>`. */
-  readonly adminUi: string;
-  /** URL of the Webmail UI: `https://webmail.<domainName>`. */
-  readonly webmail: string;
+  /** URL of the Admin UI: `https://admin.<domainName>`. Present only when `MailboxProps.enableAdminUi` is not false. */
+  readonly adminUi?: string;
+  /** URL of the Webmail UI: `https://webmail.<domainName>`. Present only when `MailboxProps.enableWebmailUi` is not false. */
+  readonly webmailUi?: string;
   /** URL of the JMAP API: `https://jmap.<domainName>`. */
   readonly jmapApi: string;
   /** URL of the Admin API: `https://api.<domainName>`. */
@@ -43,6 +43,6 @@ export interface MailboxCertificates {
 export interface MailboxOAuthClients {
   /** The Admin UI's OAuth client; present only when `MailboxProps.enableAdminUi` is not false. */
   readonly adminUi?: AuthClientConfig;
-  /** The Webmail UI's OAuth client, used by the JMAP API's session metadata. */
-  readonly jmapUi?: AuthClientConfig;
+  /** The Webmail UI's OAuth client; present only when `MailboxProps.enableWebmailUi` is not false. */
+  readonly webmailUi?: AuthClientConfig;
 }

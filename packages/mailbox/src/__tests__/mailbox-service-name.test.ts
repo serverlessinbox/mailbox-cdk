@@ -41,12 +41,12 @@ function createMockAuthProvider(): IMailboxAuthProvider {
         audiences: ['jmap-api'],
       },
     },
-    provisionAdminUiClient: () => ({
+    provisionAdminApiClient: () => ({
       clientId: 'test-admin-ui',
       requestScopeList: [],
       groups: [],
     }),
-    provisionJmapUiClient: () => ({
+    provisionJmapApiClient: () => ({
       clientId: 'test-jmap-ui',
       requestScopeList: [],
       groups: [],

@@ -26,7 +26,7 @@ export {
   AUTH_POLICY_ADMIN_API,
   AUTH_POLICY_JMAP_API,
   OAUTH_CLIENT_ADMIN_UI,
-  OAUTH_CLIENT_JMAP_UI,
+  OAUTH_CLIENT_WEBMAIL_UI,
 } from './auth/types';
 export type {
   AuthPolicyName,
@@ -44,8 +44,8 @@ export type {
   OAuthClientsConfig,
   GenerateClientParams,
   AuthClientConfig,
-  ProvisionAdminUiClientParams,
-  ProvisionJmapUiClientParams,
+  ProvisionAdminApiClientParams,
+  ProvisionJmapApiClientParams,
   IMailboxAuthProviderBase,
   MailboxRole,
   MailboxAuthorizationConfig,

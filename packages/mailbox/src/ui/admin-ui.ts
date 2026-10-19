@@ -99,8 +99,8 @@ export class AdminUi extends MailboxUi {
     });
 
     const uiHost = this.distributionDomainName;
-    this.oauthClient = props.authProvider.provisionAdminUiClient({
-      name: 'integrated',
+    this.oauthClient = props.authProvider.provisionAdminApiClient({
+      name: 'admin-ui',
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls: [`https://${uiHost}/`],
     });

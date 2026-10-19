@@ -36,9 +36,6 @@ export interface JMapApiProps {
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;
 
-  /** OAuth clientId to advertise in the JMAP session response (must be JMAP_UI). */
-  readonly oauthClientId: string;
-
   readonly cdnHost: string;
   readonly allowedOrigins?: string[];
 
@@ -157,10 +154,6 @@ export class JMapApi extends Construct {
       identityProvisioner: props.identityProvisioner,
       vendorAccountIds: props.vendorAccountIds,
       oauthHandlerConfig: {
-        issuer: props.authProvider.issuer,
-        tokenEndpoint: props.authProvider.tokenEndpoint,
-        authorizationEndpoint: props.authProvider.authorizationEndpoint,
-        clientId: props.oauthClientId,
         scopeMap: props.authProvider.scopeMap,
       } satisfies JmapOAuthHandlerConfig,
       oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,

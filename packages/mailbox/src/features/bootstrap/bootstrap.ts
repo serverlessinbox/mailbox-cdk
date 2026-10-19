@@ -1,7 +1,7 @@
 import { CustomResource, Duration } from 'aws-cdk-lib';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
-import { Construct } from 'constructs';
+import { Construct, IDependable } from 'constructs';
 import type { IDataTable } from '../../data/data-tables';
 import { BootstrapLambda } from '../../lambdas';
 import type { SesReceivingMode } from '../../core/email/ses-receiving-mode';
@@ -47,6 +47,9 @@ export class Bootstrap extends Construct {
   /** The Lambda function backing the bootstrap custom resource. */
   readonly handler: BootstrapLambda;
 
+  /** Satisfied once the bootstrap custom resource has written the OAuth client rows to the config table. */
+  readonly oauthClientsProvisioned: IDependable;
+
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
 
@@ -72,7 +75,7 @@ export class Bootstrap extends Construct {
     });
     this.handler = handler;
 
-    new CustomResource(this, id, {
+    const bootstrapResource = new CustomResource(this, id, {
       serviceToken: handler.functionArn,
       serviceTimeout: Duration.minutes(10), // caps CFN's default multi-hour wait
       properties: {
@@ -89,12 +92,13 @@ export class Bootstrap extends Construct {
         oauthClients: props.oauthClients
           ? {
             adminUi: props.oauthClients.adminUi ? toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
-            jmapUi: props.oauthClients.jmapUi ? toRequestOAuthClient(props.oauthClients.jmapUi) : undefined,
+            webmailUi: props.oauthClients.webmailUi ? toRequestOAuthClient(props.oauthClients.webmailUi) : undefined,
           }
           : undefined,
         hostedZoneId: props.hostedZone?.hostedZoneId,
       },
     });
+    this.oauthClientsProvisioned = bootstrapResource;
   }
 }
 

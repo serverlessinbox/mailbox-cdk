@@ -12,6 +12,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Permission } from '@serverlessinbox/mailbox';
 import { MailboxUserPool } from '../mailbox-user-pool';
 
 describe('MailboxUserPool without an injected artifactResolver', () => {
@@ -42,6 +43,53 @@ describe('MailboxUserPool without an injected artifactResolver', () => {
 
     template.hasResourceProperties('AWS::Lambda::Function', {
       Code: { S3Key: Match.stringLikeRegexp('mailbox-cdk-shared/.*/lambdas/stack-deployer\\.zip') },
+    });
+  });
+});
+
+describe('MailboxUserPool UI client provisioning', () => {
+  function createUserPool(): { pool: MailboxUserPool; stack: cdk.Stack } {
+    const stack = new cdk.Stack(new App(), 'TestStack', {
+      env: { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const artifactResolver = new PinnedArtifactResolver({
+      packages: {
+        'mailbox-cognito': { zone: ArtifactZone.REGIONAL, version: '0.0.1-test' },
+        'mailbox-cdk-shared': { zone: ArtifactZone.REGIONAL, version: '0.0.1-test' },
+      },
+      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
+    const pool = new MailboxUserPool(stack, 'user-pool', {
+      domain: { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
+      artifactResolver,
+    });
+    return { pool, stack };
+  }
+
+  it('names an Admin-API client after its kind and app: ADMIN_API_admin-ui', () => {
+    const { pool, stack } = createUserPool();
+
+    pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: ['https://a.example.com/cb'], logoutUrls: ['https://a.example.com/'] });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'mailbox-client-admin-api-admin-ui',
+    });
+  });
+
+  it('names a JMAP-API client after its kind and app: JMAP_API_webmail-ui', () => {
+    const { pool, stack } = createUserPool();
+
+    pool.provisionJmapApiClient({
+      name: 'webmail-ui',
+      permissions: [Permission.MAIL_READ],
+      callbackUrls: ['https://w.example.com/cb'],
+      logoutUrls: ['https://w.example.com/'],
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'mailbox-client-jmap-api-webmail-ui',
     });
   });
 });

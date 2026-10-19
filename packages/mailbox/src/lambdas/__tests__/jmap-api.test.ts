@@ -1,10 +1,11 @@
 /// <reference types="jest" />
 
 /**
- * ApiHandlerLambda (jmap-api) auth-key-store grant tests (grant-concept unit A).
+ * ApiHandlerLambda (jmap-api) auth-key-store grant and OAuth config tests.
  *
  * Verifies ApiHandlerLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
- * table (and nothing broader, e.g. no Scan/PartiQL), and that the table-name env var is present.
+ * table (and nothing broader, e.g. no Scan/PartiQL), that the table-name env var is present, and
+ * that OAUTH_HANDLER_CONFIG carries the scope map the Go handler reads and no other field.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -24,6 +25,7 @@ import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queu
 import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
 import { DataTable } from '../../data/data-tables';
 import { DataBlobStore } from '../../data/data-blob-store';
+import { Permission } from '../../auth/jmap-scopes';
 
 describe('ApiHandlerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -79,11 +81,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       artifactResolver,
       identityProvisioner: identityProvisionerFunction,
       oauthHandlerConfig: {
-        issuer: 'https://issuer.example.com',
-        tokenEndpoint: 'https://issuer.example.com/token',
-        authorizationEndpoint: 'https://issuer.example.com/authorize',
-        clientId: 'test-client',
-        scopeMap: {},
+        scopeMap: { 'mail.read': [Permission.MAIL_READ] },
       },
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
     });
@@ -133,6 +131,16 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       Environment: {
         Variables: Match.objectLike({
           AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
+        }),
+      },
+    });
+  });
+
+  it('sets OAUTH_HANDLER_CONFIG to the scope map and nothing else, the only field the Go handler uses', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          OAUTH_HANDLER_CONFIG: JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ] } }),
         }),
       },
     });

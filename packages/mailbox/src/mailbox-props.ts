@@ -189,8 +189,8 @@ export interface MailboxProps {
 
   /**
    * Whether to create the Webmail UI: the CloudFront distribution, its token-exchange API and its
-   * OAuth client. Disabling it makes synthesis fail, because the JMAP API requires the JMAP UI
-   * OAuth client that the Webmail UI provisions.
+   * OAuth client. When false, there is no Webmail UI OAuth client and no Webmail UI origin in
+   * the CORS allow-lists. The JMAP API does not depend on the Webmail UI and is created either way.
    *
    * @default true
    */
