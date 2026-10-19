@@ -31,7 +31,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
   emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
-  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito), cloudFormation, logger);
+  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), cloudFormation, logger);
 
   try {
     return await requestHandler.handle(request);

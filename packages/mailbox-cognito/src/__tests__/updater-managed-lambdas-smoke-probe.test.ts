@@ -26,7 +26,8 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
-import { DynamicClientRegistrationMode, MailboxUserPool } from '../auth/mailbox-user-pool';
+import { MailboxUserPool } from '../auth/mailbox-user-pool';
+import { DynamicClientRegistrationMode } from '../auth/dynamic-client-registration-mode';
 
 const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'ts-lambdas')];
 

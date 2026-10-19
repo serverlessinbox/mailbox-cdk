@@ -25,21 +25,12 @@ import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-
 
 import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
 import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
+import { DynamicClientRegistrationMode } from './dynamic-client-registration-mode';
 
 import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
 import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
 import type { BootstrapUserProperties } from '../ts-lambdas/bootstrap-user/properties';
 import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
-
-/**
- * Dynamic Client Registration (RFC 7591) mode for the JMAP OAuth discovery addon.
- * Co-located here (rather than a separate types module) because `MailboxUserPoolProps` is the
- * prop's canonical, jsii-exported home; `JmapOAuthAddonProps` mirrors the same enum.
- */
-export enum DynamicClientRegistrationMode {
-  ENABLED = 'enabled',
-  DISABLED = 'disabled',
-}
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.

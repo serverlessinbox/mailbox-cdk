@@ -14,6 +14,7 @@ import {
   NotAuthorizedException,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { toGroupName, toUserPoolId, toUsername } from '../../shared/cognito-identifiers';
 import { UserEnsurer, type BootstrapUser } from '../ensure-user';
 
@@ -30,12 +31,16 @@ function bootstrapUser(overrides: Partial<BootstrapUser> = {}): BootstrapUser {
 describe('UserEnsurer', () => {
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
   let userEnsurer: UserEnsurer;
+  let logger: LoggerBuffer;
+  let errorLog: jest.SpyInstance;
 
   beforeEach(() => {
     cognitoMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
-    userEnsurer = new UserEnsurer(new CognitoIdentityProviderClient({}));
+    logger = new LoggerBuffer('test-service', 'error');
+    errorLog = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+    userEnsurer = new UserEnsurer(new CognitoIdentityProviderClient({}), logger);
   });
 
   it('creates the user with a suppressed invitation and the given password, and reports it as created', async () => {
@@ -78,5 +83,14 @@ describe('UserEnsurer', () => {
 
     expect(userWasCreated).toBe(true);
     expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['missing', 'user']);
+  });
+
+  it('logs a failed group join at error level, with the group name and the error, and still succeeds', async () => {
+    cognitoMock.on(AdminAddUserToGroupCommand, { GroupName: 'missing' }).rejects(new Error('no such group'));
+
+    await expect(userEnsurer.ensure(bootstrapUser({ groups: [toGroupName('missing'), toGroupName('user')] }))).resolves.toBe(true);
+
+    expect(errorLog).toHaveBeenCalledTimes(1);
+    expect(errorLog).toHaveBeenCalledWith('bootstrap_user_group_join_failed', { groupName: 'missing', error: 'no such group' });
   });
 });

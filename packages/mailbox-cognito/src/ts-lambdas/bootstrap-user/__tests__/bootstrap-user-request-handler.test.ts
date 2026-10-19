@@ -42,7 +42,7 @@ describe('BootstrapUserRequestHandler', () => {
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
     mockIsParentStackRollingBack.mockReset();
-    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({})), cloudFormation, logger);
+    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({}), logger), cloudFormation, logger);
   });
 
   describe('handle', () => {

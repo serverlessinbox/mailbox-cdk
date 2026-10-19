@@ -27,7 +27,8 @@ import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-sha
 import { renderLiteralText } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { loadMailboxCognitoRegistryRecord } from '../../mailbox-cognito-registry-record';
 import { loadMailboxCognitoArtifactVersions } from '../../mailbox-cognito-artifact-versions';
-import { MailboxUserPool, DynamicClientRegistrationMode } from '../../auth/mailbox-user-pool';
+import { MailboxUserPool } from '../../auth/mailbox-user-pool';
+import { DynamicClientRegistrationMode } from '../../auth/dynamic-client-registration-mode';
 import { JmapOAuthAddon } from '../jmap-oauth-addon';
 
 const API_BASE_URL = 'https://api.example.com';

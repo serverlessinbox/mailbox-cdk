@@ -226,8 +226,9 @@ export class ClientRegistration {
     return RegistrationAnswers.rejected(400, 'invalid_redirect_uri', 'One or more redirect_uris are not permitted');
   }
 
+  // The cap is the tenant's own limit, not a fault in the request, so the operator must see it: a warn would be buffered and never written.
   private rejectCapExceeded(tenantId: TenantId): APIGatewayProxyStructuredResultV2 {
-    this.logger.warn('jmap_oauth_dcr_rejected', { reason: 'cap_exceeded', tenantId });
+    this.logger.error('jmap_oauth_dcr_rejected', { reason: 'cap_exceeded', tenantId });
     return RegistrationAnswers.rejected(429, 'invalid_client_metadata', 'Registration cap exceeded for this tenant');
   }
 }

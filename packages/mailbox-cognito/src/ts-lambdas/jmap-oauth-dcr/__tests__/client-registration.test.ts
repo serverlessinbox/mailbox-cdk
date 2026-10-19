@@ -176,7 +176,8 @@ describe('ClientRegistration', () => {
       expect(answer.statusCode).toBe(429);
       expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata' });
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
-      expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', { reason: 'cap_exceeded', tenantId: 'tenant-1' });
+      expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', { reason: 'cap_exceeded', tenantId: 'tenant-1' });
+      expect(warnLog).not.toHaveBeenCalled();
     });
   });
 
@@ -191,6 +192,7 @@ describe('ClientRegistration', () => {
       expect(answer.statusCode).toBe(400);
       expect(bodyOf(answer)).toMatchObject({ error: 'invalid_redirect_uri' });
       expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', { reason: 'invalid_redirect_uri' });
+      expect(errorLog).not.toHaveBeenCalled();
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
     });
@@ -200,6 +202,8 @@ describe('ClientRegistration', () => {
 
       expect(answer.statusCode).toBe(400);
       expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata', error_description: expect.stringContaining('redirect_uris') });
+      expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', expect.objectContaining({ reason: 'schema_validation' }));
+      expect(errorLog).not.toHaveBeenCalled();
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     });
 
@@ -208,6 +212,8 @@ describe('ClientRegistration', () => {
 
       expect(answer.statusCode).toBe(400);
       expect(bodyOf(answer)).toEqual({ error: 'invalid_client_metadata', error_description: 'Request body is not valid JSON' });
+      expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', { reason: 'invalid_json' });
+      expect(errorLog).not.toHaveBeenCalled();
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     });
 
@@ -260,6 +266,7 @@ describe('ClientRegistration', () => {
       expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)).toHaveLength(1);
       expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)[0].args[0].input).toEqual({ UserPoolId: 'pool-1', ClientId: 'new-client-id' });
       expect(sentRequests(lambdaMock)).toHaveLength(3);
+      expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_persist_error', expect.objectContaining({ tenantId: 'tenant-1', clientId: 'new-client-id' }));
     });
 
     it('deletes the client and answers 409 invalid_client_metadata when another registration won the race', async () => {
@@ -271,6 +278,8 @@ describe('ClientRegistration', () => {
       expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata' });
       expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)).toHaveLength(1);
       expect(sentRequests(lambdaMock)).toHaveLength(3);
+      expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_persist_conflict', { tenantId: 'tenant-1', clientId: 'new-client-id', status: 'conflict' });
+      expect(errorLog).not.toHaveBeenCalled();
     });
 
     it('logs a client it cannot delete and still answers the rejection', async () => {

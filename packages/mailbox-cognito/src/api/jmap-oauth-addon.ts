@@ -2,11 +2,12 @@ import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import { HttpApi, HttpMethod, HttpRoute, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { IJmapApiAddon, IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { MailboxUserPool, DynamicClientRegistrationMode } from '../auth/mailbox-user-pool';
+import { DynamicClientRegistrationMode } from '../auth/dynamic-client-registration-mode';
 import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
@@ -32,9 +33,18 @@ type RouteSettings = Record<string, RouteThrottle | cdk.IResolvable>;
 const DISCOVERY_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 };
 const REGISTRATION_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 };
 
+/** What the addon needs from the Cognito user pool providing OAuth: its identity and its OAuth endpoints. */
+export interface JmapOAuthPool {
+  readonly userPool: IUserPool;
+  readonly userPoolId: string;
+  readonly issuer: string;
+  readonly authorizationEndpoint: string;
+  readonly tokenEndpoint: string;
+}
+
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
-  readonly pool: MailboxUserPool;
+  readonly pool: JmapOAuthPool;
   /** Artifact resolver for provisioning Lambda functions. */
   readonly artifactResolver: IArtifactResolver;
   /** Base URL of the JMAP API (where well-known docs are mounted). */

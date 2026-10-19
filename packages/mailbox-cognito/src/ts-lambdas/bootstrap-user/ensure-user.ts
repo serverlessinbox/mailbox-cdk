@@ -3,7 +3,7 @@ import {
   AdminCreateUserCommand,
   type CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { CaughtError } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { GroupName, UserPoolId, Username } from '../shared/cognito-identifiers';
 
 /** A user that must exist in a user pool, the groups it belongs to, and the password it is created with. */
@@ -22,14 +22,17 @@ const USERNAME_EXISTS = 'UsernameExistsException';
  */
 export class UserEnsurer {
   private readonly cognito: CognitoIdentityProviderClient;
+  private readonly logger: LoggerBuffer;
 
-  constructor(cognito: CognitoIdentityProviderClient) {
+  constructor(cognito: CognitoIdentityProviderClient, logger: LoggerBuffer) {
     this.cognito = cognito;
+    this.logger = logger;
   }
 
   /**
    * Creates the user, or leaves an existing one unchanged, and adds it to its groups. A group that cannot be
-   * joined does not fail the call. Resolves to true when the user was newly created, false when it already existed.
+   * joined is logged with its name and the error and does not fail the call, so a missing group never fails the
+   * stack. Resolves to true when the user was newly created, false when it already existed.
    */
   public async ensure(user: BootstrapUser): Promise<boolean> {
     const userWasCreated = await this.createUser(user);
@@ -74,8 +77,11 @@ export class UserEnsurer {
           GroupName: groupName,
         }),
       );
-    } catch {
-      // A group that is missing or misconfigured must not fail the stack.
+    } catch (failure) {
+      this.logger.error('bootstrap_user_group_join_failed', {
+        groupName,
+        error: failure instanceof Error ? failure.message : String(failure),
+      });
     }
   }
 }
