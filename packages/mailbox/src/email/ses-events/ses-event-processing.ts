@@ -2,15 +2,15 @@ import { Construct } from 'constructs';
 import { SESEventProcessorLambda } from '../../lambdas';
 import type { IDataTable } from '../../data/data-tables';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
-import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { makePhysicalName, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataBlobStore } from '../../data/data-blob-store';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 import { SesEventTopic, type ISesEventTopic } from './ses-event-topic';
 import { SesEventQueue, type ISesEventQueue } from './ses-event-queue';
 
+/** Props of {@link SESEventProcessing}. */
 export interface SESEventProcessingProps {
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
@@ -25,45 +25,37 @@ export interface SESEventProcessingProps {
 }
 
 /**
- * SES Event Processing Infrastructure
- * 
- * Handles SES events (bounce, complaint, delivery, send, reject) through:
- * - SNS topic for SES notifications
- * - SQS queue to consume SNS notifications
- * - Lambda to process SES events
- * - SES Configuration Set for event routing
+ * SES event processing: an SES configuration set publishing bounce, complaint, delivery, send,
+ * reject and delivery-delay events to an SNS topic, a queue subscribed to that topic, and the
+ * Lambda that consumes the queue.
  */
 export class SESEventProcessing extends Construct {
   /** Read-only identity of the SES-notifications SNS topic; no grant surface (see `ISesEventTopic`). */
   public readonly sesEventTopic: ISesEventTopic;
   /** Consume handle to the SES-notifications queue; grant methods only, no raw SQS object. */
   public readonly sesEventQueue: ISesEventQueue;
-  private readonly sesEventProcessorLambda: IWebSocketPushTarget;
   public readonly sesConfigSetName: string;
+  private readonly sesEventProcessorLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
     super(scope, id);
 
-    // SNS topic for SES notifications (bounce, complaint, delivery, send, reject)
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
     this.sesEventTopic = sesEventTopic;
 
-    // SQS queue to consume SNS notifications. SNS -> SQS does NOT work with SQS queues encrypted
-    // using the AWS-managed KMS key (alias/aws/sqs), because SNS can't be granted permission to use
-    // that key — `SesEventQueue` defaults to unencrypted unless a customer-managed CMK is supplied.
+    // SNS cannot be granted use of the AWS-managed SQS key (alias/aws/sqs), so a queue encrypted
+    // with it never receives the topic's messages.
     const sesEventQueue = new SesEventQueue(this, 'ses-event-queue', {
       topic: sesEventTopic,
       queueProps: props.queueProps,
     });
     this.sesEventQueue = sesEventQueue;
 
-    // SES Configuration Set for bounce/complaint/delivery notifications
     const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {
       name: makePhysicalName(this, 'ses-config', { maxLength: 64 }),
     });
     this.sesConfigSetName = cfnConfigSet.ref;
 
-    // Add SNS event destination for SES notifications (bounce, complaint, delivery, send, reject)
     new CfnConfigurationSetEventDestination(this, 'ses-notification-destination', {
       configurationSetName: this.sesConfigSetName,
       eventDestination: {
@@ -78,15 +70,11 @@ export class SESEventProcessing extends Construct {
           'send',
           'reject',
           'DELIVERY_DELAY',
-          // Uncomment below if you want to track opens and clicks
-          // 'open',
-          // 'click',
         ],
       },
     });
 
-    // SES Event Processor Lambda - processes SES notifications from SQS
-    const sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
+    this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
       itemTable: props.itemTable,
       changelogTable: props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
@@ -96,8 +84,6 @@ export class SESEventProcessing extends Construct {
       sesEventQueue,
       artifactResolver: props.artifactResolver,
     });
-
-    this.sesEventProcessorLambda = sesEventProcessorLambda;
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {

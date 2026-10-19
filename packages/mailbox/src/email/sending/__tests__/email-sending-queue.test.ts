@@ -1,3 +1,8 @@
+/**
+ * EmailSendingQueue pins the two grant surfaces (send-only for producers, consume for the single
+ * consumer) and the visibility timeout. Widening a grant would hand producers consume access;
+ * shortening the timeout would redeliver submissions that are still being processed.
+ */
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
@@ -23,7 +28,6 @@ describe('EmailSendingQueue', () => {
     sut.grantSend(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -32,7 +36,7 @@ describe('EmailSendingQueue', () => {
           Match.objectEquals({
             Action: 'sqs:SendMessage',
             Effect: 'Allow',
-            Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
+            Resource: stack.resolve(sut.queueArn),
           }),
         ]),
       },
@@ -49,7 +53,6 @@ describe('EmailSendingQueue', () => {
     sut.grantConsume(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -58,23 +61,22 @@ describe('EmailSendingQueue', () => {
           Match.objectEquals({
             Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
             Effect: 'Allow',
-            Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
+            Resource: stack.resolve(sut.queueArn),
           }),
         ]),
       },
     });
   });
 
-  it('queue visibility timeout is 6 minutes to exceed function timeout (5m) plus batching window (15s)', () => {
+  it('sets the visibility timeout to 6 minutes on the main queue, not only its dead-letter queue', () => {
     const stack = createStack();
     new EmailSendingQueue(stack, 'email-sending-queue');
 
     const template = Template.fromStack(stack);
 
-    // Visibility timeout must be 6 minutes (360 seconds) to safely exceed the email-sender Lambda's
-    // 5-minute timeout plus 15-second batching window, preventing message duplication.
     template.hasResourceProperties('AWS::SQS::Queue', {
       VisibilityTimeout: 360,
+      RedrivePolicy: Match.anyValue(),
     });
   });
 });

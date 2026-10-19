@@ -1,8 +1,9 @@
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
 
+/** Props of {@link EmailSendingQueue}. */
 export interface EmailSendingQueueProps {
   /** Optional default props applied to the queue and its DLQ (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -10,9 +11,8 @@ export interface EmailSendingQueueProps {
 
 /**
  * Send-only access to the email-submissions queue, without exposing the underlying SQS queue
- * construct. The admin/JMAP APIs and the identity provisioner depend on this interface to enqueue a
- * submission and to build their own `EMAIL_SUBMISSION_QUEUE_URL` environment variable — they never
- * need to consume from this queue.
+ * construct. A holder can enqueue a submission and build its own `EMAIL_SUBMISSION_QUEUE_URL`
+ * environment variable from `queueUrl`; it cannot consume from the queue.
  */
 export interface IEmailSendingQueue {
   /** The queue's URL, for a sender's `EMAIL_SUBMISSION_QUEUE_URL` environment variable. */
@@ -24,39 +24,33 @@ export interface IEmailSendingQueue {
   grantSend(grantee: IGrantable): void;
 }
 
-/**
- * Internal (non-exported) extension of {@link IEmailSendingQueue} adding consume access. Reserved
- * for the single `email-sender` Lambda that drains this queue; every other holder only ever sends
- * to it and should depend on {@link IEmailSendingQueue} instead.
- */
+/** {@link IEmailSendingQueue} extended with consume access, for the queue's single consumer. */
 export interface IEmailSendingQueueConsumer extends IEmailSendingQueue {
   grantConsume(grantee: IGrantable): void;
 }
 
 /**
- * SQS queue carrying email submissions from the admin/JMAP APIs and identity provisioner to the
- * `email-sender` consumer, which sends them via SES. Backed by a dead-letter queue for submissions
- * that fail after 5 receives.
+ * SQS queue carrying email submissions to the consumer that sends them via SES, backed by a
+ * dead-letter queue for submissions that exceed the maximum receive count.
  *
- * Visibility timeout is set to 6 minutes, which exceeds the consumer's Lambda timeout (5 minutes)
- * plus its SQS event source batching window (15 seconds) by a safe margin.
+ * The visibility timeout must exceed the consumer's function timeout plus its event source batching
+ * window, otherwise a message still being processed becomes visible and is delivered again.
  *
  * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
  *
- * Not responsible for wiring the consumer's event source mapping — `EmailSending` owns that.
+ * Not responsible for wiring the consumer's event source mapping.
  */
 export class EmailSendingQueue extends Construct implements IEmailSendingQueueConsumer {
-  public readonly queue: BaseQueue;
-  public readonly dlq: BaseQueue;
   public readonly queueUrl: string;
   public readonly queueArn: string;
+  private readonly queue: BaseQueue;
 
   constructor(scope: Construct, id: string, props: EmailSendingQueueProps = {}) {
     super(scope, id);
 
     const queueProps = props.queueProps ?? {};
 
-    this.dlq = new BaseQueue(this, 'email-submissions-dlq', {
+    const dlq = new BaseQueue(this, 'email-submissions-dlq', {
       ...queueProps,
       retentionPeriod: Duration.days(14),
     });
@@ -65,7 +59,7 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {
-        queue: this.dlq,
+        queue: dlq,
         maxReceiveCount: 5,
       },
     });

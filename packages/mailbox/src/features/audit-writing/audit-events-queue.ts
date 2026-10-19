@@ -1,8 +1,9 @@
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
+import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
 
+/** Props of {@link AuditEventsQueue}. */
 export interface AuditEventsQueueProps {
   /** Optional default props applied to the queue and its DLQ (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -10,12 +11,8 @@ export interface AuditEventsQueueProps {
 
 /**
  * Send-only access to the audit-events queue, without exposing the underlying SQS queue
- * construct. Any Lambda that emits an audit event (admin-api, jmap-api, the identity provisioner,
- * the support and stack-update addons, and more) depends on this interface to enqueue a message
- * and to build its own `AUDIT_EVENTS_QUEUE_URL` environment variable — it never needs to consume
- * from this queue.
- *
- * Pass the `AuditEventsQueue` instance `AuditWriting` creates; there is no other implementation.
+ * construct. A Lambda that emits an audit event depends on this interface to enqueue a message and
+ * to build its own `AUDIT_EVENTS_QUEUE_URL` environment variable; it cannot consume from the queue.
  */
 export interface IAuditEventsQueue {
   /**
@@ -35,39 +32,33 @@ export interface IAuditEventsQueue {
   grantSend(grantee: IGrantable): void;
 }
 
-/**
- * Internal (non-exported) extension of {@link IAuditEventsQueue} adding consume access. Reserved
- * for the single `audit-writer` Lambda that drains this queue; every other holder only ever sends
- * to it and should depend on {@link IAuditEventsQueue} instead.
- */
+/** {@link IAuditEventsQueue} extended with consume access, for the queue's single consumer. */
 export interface IAuditEventsQueueConsumer extends IAuditEventsQueue {
   grantConsume(grantee: IGrantable): void;
 }
 
 /**
- * SQS queue carrying audit events (account/tenant activity) from every Lambda that writes an audit
- * record to the single `audit-writer` consumer, backed by a dead-letter queue for messages that
- * fail processing after 5 receives.
+ * SQS queue carrying audit events (account/tenant activity) to the single consumer that writes
+ * them, backed by a dead-letter queue for messages that exceed the maximum receive count.
  *
- * Visibility timeout is set to 5 minutes, which exceeds the consumer's Lambda timeout (2 minutes)
- * plus its SQS event source batching window (30 seconds) by a safe margin.
+ * The visibility timeout must exceed the consumer's function timeout plus its event source batching
+ * window, otherwise a message still being processed becomes visible and is delivered again.
  *
  * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
  *
- * Not responsible for wiring the consumer's event source mapping — `AuditWriting` owns that.
+ * Not responsible for wiring the consumer's event source mapping.
  */
 export class AuditEventsQueue extends Construct implements IAuditEventsQueueConsumer {
-  public readonly queue: BaseQueue;
-  public readonly dlq: BaseQueue;
   public readonly queueUrl: string;
   public readonly queueArn: string;
+  private readonly queue: BaseQueue;
 
   constructor(scope: Construct, id: string, props: AuditEventsQueueProps = {}) {
     super(scope, id);
 
     const queueProps = props.queueProps ?? {};
 
-    this.dlq = new BaseQueue(this, 'audit-events-dlq', {
+    const dlq = new BaseQueue(this, 'audit-events-dlq', {
       ...queueProps,
       retentionPeriod: Duration.days(14),
     });
@@ -76,7 +67,7 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
       ...queueProps,
       visibilityTimeout: Duration.minutes(5),
       deadLetterQueue: {
-        queue: this.dlq,
+        queue: dlq,
         maxReceiveCount: 5,
       },
     });
