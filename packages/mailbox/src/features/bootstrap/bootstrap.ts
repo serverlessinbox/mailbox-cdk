@@ -72,7 +72,6 @@ export class Bootstrap extends Construct {
       serviceToken: this.handler.functionArn,
       serviceTimeout: Duration.minutes(10),
       properties: {
-        bootstrapNonce: Date.now().toString(),
         ensureServiceQuotasPrereqs: true,
         tenantName: props.tenantName ?? 'default-tenant',
         defaultLocalPart: props.defaultLocalPart ?? '{username}',

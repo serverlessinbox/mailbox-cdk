@@ -94,6 +94,28 @@ describe('StackHelpers', () => {
     });
   });
 
+  describe('resolveDailySchedule', () => {
+    const { stack: scheduleStack, resolver: scheduleResolver } = createStackWithResolver();
+    const schedule = StackHelpers.getOrCreate(scheduleStack, scheduleResolver).resolveDailySchedule(
+      new Construct(scheduleStack, 'Caller'),
+      'schedule',
+    );
+    const template = Template.fromStack(scheduleStack);
+
+    it('attaches a Custom::StackHelpers resource that sends no properties of its own', () => {
+      const [resource] = Object.values(template.findResources('Custom::StackHelpers'));
+
+      expect(Object.keys(resource.Properties).sort()).toEqual(['ServiceTimeout', 'ServiceToken']);
+    });
+
+    it('returns the dailyScheduleHour and dailyScheduleMinute attributes of that resource', () => {
+      const logicalId = logicalIdOfOnlyCustomResource(template);
+
+      expect(scheduleStack.resolve(schedule.hour)).toEqual({ 'Fn::GetAtt': [logicalId, 'dailyScheduleHour'] });
+      expect(scheduleStack.resolve(schedule.minute)).toEqual({ 'Fn::GetAtt': [logicalId, 'dailyScheduleMinute'] });
+    });
+  });
+
   it('gives every resolver call its own resource while the Lambda stays shared', () => {
     const helpers = StackHelpers.getOrCreate(stack, resolver);
     const callerScope = new Construct(stack, 'CallerScope');

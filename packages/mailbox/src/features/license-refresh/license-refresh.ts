@@ -2,6 +2,7 @@ import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../../data/data-tables';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
@@ -37,12 +38,10 @@ export class LicenseRefresh extends Construct {
 
     this.licenseFunction = handler;
 
-    // Randomized daily refresh time — computed once at synth, unique per deployment
-    // to avoid thundering herd across all customer stacks.
-    const hour = Math.floor(Math.random() * 24);
-    const minute = Math.floor(Math.random() * 60);
+    // The time differs per install so that customer stacks do not all refresh at once.
+    const dailySchedule = StackHelpers.getOrCreate(this, props.artifactResolver).resolveDailySchedule(this, 'schedule');
     new Rule(this, 'rule', {
-      schedule: Schedule.cron({ hour: String(hour), minute: String(minute) }),
+      schedule: Schedule.cron({ hour: dailySchedule.hour, minute: dailySchedule.minute }),
       targets: [new LambdaFunction(handler)],
     });
 

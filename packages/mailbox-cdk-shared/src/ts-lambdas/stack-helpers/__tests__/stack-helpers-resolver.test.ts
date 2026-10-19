@@ -10,6 +10,8 @@
 
 import { GetHostedZoneCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { mockClient } from 'aws-sdk-client-mock';
+import { toStackId } from '../../shared/custom-resource-identifiers';
+import type { StackId } from '../../shared/custom-resource-identifiers';
 import { ExpectedFailure } from '../../shared/expected-failure';
 import { LoggerBuffer } from '../../shared/logger-buffer';
 import type { StackHelpersResourceProperties } from '../resource-properties';
@@ -18,6 +20,11 @@ import { StackHelpersResolver } from '../stack-helpers-resolver';
 describe('StackHelpersResolver', () => {
   const route53Mock = mockClient(Route53Client);
   const resolver = new StackHelpersResolver(new Route53Client({}), new LoggerBuffer());
+  const stackId = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000001');
+
+  function resolveFor(properties: unknown, forStackId: StackId = stackId) {
+    return resolver.resolve(properties, forStackId);
+  }
 
   function hostedZoneNamed(name: string | undefined) {
     return { HostedZone: { Id: '/hostedzone/Z123', Name: name, CallerReference: 'ref' } };
@@ -25,7 +32,7 @@ describe('StackHelpersResolver', () => {
 
   async function cognitoPrefixForDomain(domainName: string, extraProperties: StackHelpersResourceProperties = {}) {
     route53Mock.on(GetHostedZoneCommand).resolves(hostedZoneNamed(`${domainName}.`));
-    const data = await resolver.resolve({ HostedZoneId: 'Z123', ...extraProperties });
+    const data = await resolveFor({ HostedZoneId: 'Z123', ...extraProperties });
     return data.cognitoDomainPrefix;
   }
 
@@ -37,14 +44,14 @@ describe('StackHelpersResolver', () => {
     it('is the name of the hosted zone without its trailing dot', async () => {
       route53Mock.on(GetHostedZoneCommand).resolves(hostedZoneNamed('mail.example.com.'));
 
-      const data = await resolver.resolve({ ServiceToken: 'arn:token', HostedZoneId: 'Z123', DataStackName: 'stack' });
+      const data = await resolveFor({ ServiceToken: 'arn:token', HostedZoneId: 'Z123', DataStackName: 'stack' });
 
       expect(data.domainName).toBe('mail.example.com');
       expect(route53Mock.commandCalls(GetHostedZoneCommand)[0].args[0].input).toEqual({ Id: 'Z123' });
     });
 
     it('is empty and skips Route 53 when no hosted zone is given', async () => {
-      const data = await resolver.resolve({ HostedZoneId: '', DataStackName: 'stack' });
+      const data = await resolveFor({ HostedZoneId: '', DataStackName: 'stack' });
 
       expect(data.domainName).toBe('');
       expect(route53Mock.commandCalls(GetHostedZoneCommand)).toHaveLength(0);
@@ -53,7 +60,7 @@ describe('StackHelpersResolver', () => {
     it('is empty when the hosted zone has no name', async () => {
       route53Mock.on(GetHostedZoneCommand).resolves(hostedZoneNamed(undefined));
 
-      const data = await resolver.resolve({ HostedZoneId: 'Z123', DataStackName: 'stack' });
+      const data = await resolveFor({ HostedZoneId: 'Z123', DataStackName: 'stack' });
 
       expect(data.domainName).toBe('');
     });
@@ -61,19 +68,19 @@ describe('StackHelpersResolver', () => {
     it('lets a Route 53 failure reach the caller', async () => {
       route53Mock.on(GetHostedZoneCommand).rejects(new Error('NoSuchHostedZone'));
 
-      await expect(resolver.resolve({ HostedZoneId: 'Z123' })).rejects.toThrow('NoSuchHostedZone');
+      await expect(resolveFor({ HostedZoneId: 'Z123' })).rejects.toThrow('NoSuchHostedZone');
     });
   });
 
   describe('S3-safe data stack name', () => {
     it('is lowercased with every disallowed character turned into a single hyphen', async () => {
-      const data = await resolver.resolve({ DataStackName: 'My_Data.Stack!!Name' });
+      const data = await resolveFor({ DataStackName: 'My_Data.Stack!!Name' });
 
       expect(data.s3SafeDataStackName).toBe('my-data-stack-name');
     });
 
     it('is cut to 40 characters', async () => {
-      const data = await resolver.resolve({ DataStackName: 'a'.repeat(50) });
+      const data = await resolveFor({ DataStackName: 'a'.repeat(50) });
 
       expect(data.s3SafeDataStackName).toBe('a'.repeat(40));
     });
@@ -110,7 +117,7 @@ describe('StackHelpersResolver', () => {
     });
 
     it('is used when there is no domain name, and is derived like one', async () => {
-      const data = await resolver.resolve({ Fallback: 'AWS-Backup' });
+      const data = await resolveFor({ Fallback: 'AWS-Backup' });
 
       expect(data.cognitoDomainPrefix).toBe('backup');
     });
@@ -119,29 +126,60 @@ describe('StackHelpersResolver', () => {
       ['empty', { Fallback: '' }],
       ['absent', {}],
     ])('is the S3-safe data stack name when Fallback is %s', async (_name, fallback) => {
-      const data = await resolver.resolve({ DataStackName: 'My_Data_Stack', ...fallback });
+      const data = await resolveFor({ DataStackName: 'My_Data_Stack', ...fallback });
 
       expect(data.cognitoDomainPrefix).toBe('my-data-stack');
     });
 
     it('is "installer" when nothing yields a prefix', async () => {
-      const data = await resolver.resolve({});
+      const data = await resolveFor({});
 
-      expect(data).toEqual({ domainName: '', s3SafeDataStackName: '', cognitoDomainPrefix: 'installer' });
+      expect(data).toMatchObject({ domainName: '', s3SafeDataStackName: '', cognitoDomainPrefix: 'installer' });
+    });
+  });
+
+  describe('daily schedule', () => {
+    const otherStackId = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000002');
+
+    it('is the same for the same stack id', async () => {
+      const first = await resolveFor({});
+      const second = await resolveFor({});
+
+      expect([first.dailyScheduleHour, first.dailyScheduleMinute])
+        .toEqual([second.dailyScheduleHour, second.dailyScheduleMinute]);
+    });
+
+    it('differs between stack ids', async () => {
+      const first = await resolveFor({}, stackId);
+      const other = await resolveFor({}, otherStackId);
+
+      expect([first.dailyScheduleHour, first.dailyScheduleMinute])
+        .not.toEqual([other.dailyScheduleHour, other.dailyScheduleMinute]);
+    });
+
+    it('is an hour from 0 to 23 and a minute from 0 to 59, as plain digits', async () => {
+      const stackIds = Array.from({ length: 200 }, (_, index) => toStackId(`arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/${index}`));
+
+      const schedules = await Promise.all(stackIds.map((id) => resolveFor({}, id)));
+
+      for (const { dailyScheduleHour, dailyScheduleMinute } of schedules) {
+        expect(dailyScheduleHour).toMatch(/^([0-9]|1[0-9]|2[0-3])$/);
+        expect(dailyScheduleMinute).toMatch(/^([0-9]|[1-5][0-9])$/);
+      }
     });
   });
 
   describe('invalid properties', () => {
     it('are rejected naming the property that has the wrong type', async () => {
-      await expect(resolver.resolve({ HostedZoneId: 5 })).rejects.toThrow(/Invalid ResourceProperties.*HostedZoneId/);
+      await expect(resolveFor({ HostedZoneId: 5 })).rejects.toThrow(/Invalid ResourceProperties.*HostedZoneId/);
     });
 
     it('are rejected when the resource properties are missing altogether', async () => {
-      await expect(resolver.resolve(undefined)).rejects.toThrow('Invalid ResourceProperties');
+      await expect(resolveFor(undefined)).rejects.toThrow('Invalid ResourceProperties');
     });
 
     it('are rejected as an expected failure, which the handler answers without flushing the trace', async () => {
-      await expect(resolver.resolve({ HostedZoneId: 5 })).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(resolveFor({ HostedZoneId: 5 })).rejects.toBeInstanceOf(ExpectedFailure);
     });
   });
 });

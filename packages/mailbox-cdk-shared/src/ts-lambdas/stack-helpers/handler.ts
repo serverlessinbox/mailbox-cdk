@@ -32,7 +32,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
   const resolver = new StackHelpersResolver(route53, logger);
 
   try {
-    return { Data: await resolver.resolve(event.ResourceProperties) };
+    return { Data: await resolver.resolve(event.ResourceProperties, toStackId(event.StackId)) };
   } catch (failure) {
     if (!(failure instanceof ExpectedFailure)) {
       logger.flush();

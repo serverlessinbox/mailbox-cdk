@@ -9,7 +9,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
+import { Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -30,7 +30,10 @@ describe('LicenseRefresh', () => {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
       })),
       artifactResolver: new PinnedArtifactResolver({
-        packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+        packages: {
+          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        },
         location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
@@ -40,9 +43,19 @@ describe('LicenseRefresh', () => {
     template = Template.fromStack(stack);
   });
 
-  it('refreshes once a day, at a minute and hour inside the day', () => {
+  it('refreshes once a day, at the hour and minute resolved for this install', () => {
+    const [stackHelpersId] = Object.keys(template.findResources('Custom::StackHelpers'));
+
     template.hasResourceProperties('AWS::Events::Rule', {
-      ScheduleExpression: Match.stringLikeRegexp('^cron\\((\\d|[1-5]\\d) (\\d|1\\d|2[0-3]) \\* \\* \\? \\*\\)$'),
+      ScheduleExpression: {
+        'Fn::Join': ['', [
+          'cron(',
+          { 'Fn::GetAtt': [stackHelpersId, 'dailyScheduleMinute'] },
+          ' ',
+          { 'Fn::GetAtt': [stackHelpersId, 'dailyScheduleHour'] },
+          ' * * ? *)',
+        ]],
+      },
     });
   });
 

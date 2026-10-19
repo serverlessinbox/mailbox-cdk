@@ -1,5 +1,7 @@
+import { createHash } from 'crypto';
 import { GetHostedZoneCommand, type Route53Client } from '@aws-sdk/client-route-53';
 import { sanitizeStackName } from '../../naming/sanitize-name';
+import type { StackId } from '../shared/custom-resource-identifiers';
 import { ExpectedFailure } from '../shared/expected-failure';
 import type { LoggerBuffer } from '../shared/logger-buffer';
 import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';
@@ -14,6 +16,8 @@ const EDGE_HYPHENS = /^-+|-+$/g;
 const TRAILING_HYPHENS = /-+$/;
 const MAX_COGNITO_PREFIX_LENGTH = 63;
 const LAST_RESORT_COGNITO_PREFIX = 'installer';
+const HOURS_PER_DAY = 24;
+const MINUTES_PER_HOUR = 60;
 
 /**
  * The attributes of a `Custom::StackHelpers` resource. A type alias, not an interface: `wrapHandler`
@@ -23,7 +27,12 @@ export type StackHelpersData = {
   readonly domainName: string;
   readonly s3SafeDataStackName: string;
   readonly cognitoDomainPrefix: string;
+  readonly dailyScheduleHour: string;
+  readonly dailyScheduleMinute: string;
 };
+
+/** The time of day, in UTC, derived for one stack. */
+type DailySchedule = Pick<StackHelpersData, 'dailyScheduleHour' | 'dailyScheduleMinute'>;
 
 /**
  * Derives the attributes of a `Custom::StackHelpers` resource from its properties. Delete handling
@@ -39,15 +48,16 @@ export class StackHelpersResolver {
   }
 
   /** Rejects properties of the wrong shape with an `ExpectedFailure`; a Route 53 failure reaches the caller unchanged. */
-  async resolve(resourceProperties: unknown): Promise<StackHelpersData> {
+  async resolve(resourceProperties: unknown, stackId: StackId): Promise<StackHelpersData> {
     const properties = this.parseProperties(resourceProperties);
 
     const domainName = await this.lookUpDomainName(properties.HostedZoneId ?? '');
     const s3SafeDataStackName = this.sanitizeDataStackName(properties.DataStackName ?? '');
     const prefixFallback = properties.Fallback || s3SafeDataStackName;
     const cognitoDomainPrefix = this.deriveCognitoDomainPrefix(domainName, prefixFallback);
+    const dailySchedule = this.deriveDailySchedule(stackId);
 
-    return { domainName, s3SafeDataStackName, cognitoDomainPrefix };
+    return { domainName, s3SafeDataStackName, cognitoDomainPrefix, ...dailySchedule };
   }
 
   private parseProperties(resourceProperties: unknown): StackHelpersResourceProperties {
@@ -93,5 +103,14 @@ export class StackHelpersResolver {
       .replace(EDGE_HYPHENS, '')
       .slice(0, MAX_COGNITO_PREFIX_LENGTH)
       .replace(TRAILING_HYPHENS, '');
+  }
+
+  /** The stack id never changes during the life of a stack, so a stack keeps its time across updates. */
+  private deriveDailySchedule(stackId: StackId): DailySchedule {
+    const digest = createHash('sha256').update(stackId).digest();
+    return {
+      dailyScheduleHour: String(digest.readUInt32BE(0) % HOURS_PER_DAY),
+      dailyScheduleMinute: String(digest.readUInt32BE(4) % MINUTES_PER_HOUR),
+    };
   }
 }

@@ -24,6 +24,14 @@ export interface StackHelpersMailboxData {
 }
 
 /**
+ * A time of day in UTC as cron field values, each a deploy-time CloudFormation token.
+ */
+export interface StackHelpersDailySchedule {
+  readonly hour: string;
+  readonly minute: string;
+}
+
+/**
  * Singleton construct for domain name and S3-safe stack name derivation.
  * One shared lookup/sanitization Lambda per Stack, with multiple consumers
  * each attaching their own CfnCustomResource.
@@ -73,6 +81,18 @@ export class StackHelpers extends Construct {
       Fallback: cdk.Aws.STACK_NAME,
     });
     return cr.getAttString('cognitoDomainPrefix');
+  }
+
+  /**
+   * Attaches the caller's own custom resource under `scope`. The time differs between installs and
+   * stays the same across updates of one stack.
+   */
+  resolveDailySchedule(scope: Construct, id: string): StackHelpersDailySchedule {
+    const cr = this.attach(scope, id, {});
+    return {
+      hour: cr.getAttString('dailyScheduleHour'),
+      minute: cr.getAttString('dailyScheduleMinute'),
+    };
   }
 
   private attach(
