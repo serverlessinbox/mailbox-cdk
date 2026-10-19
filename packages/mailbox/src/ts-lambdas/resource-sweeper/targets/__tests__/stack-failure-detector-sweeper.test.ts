@@ -22,7 +22,7 @@ import {
 } from '@aws-sdk/client-iam';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { StackFailureDetectorRemovalInput } from '../../removal';
-import { StackOwnership } from '../../stack-ownership';
+import { RootStackMembership } from '../../root-stack-membership';
 import { StackFailureDetectorSweeper } from '../stack-failure-detector-sweeper';
 
 const eventsMock = mockClient(EventBridgeClient);
@@ -30,7 +30,7 @@ const lambdaMock = mockClient(LambdaClient);
 const iamMock = mockClient(IAMClient);
 
 const ROOT_STACK_NAME = 'test-stack';
-const OWNER_TAG_KEY = 'serverless-inbox:root-stack';
+const ROOT_STACK_TAG_KEY = 'serverless-inbox:root-stack';
 
 const INPUT: StackFailureDetectorRemovalInput = {
   ruleArn: 'arn:aws:events:us-west-2:123456789012:rule/mailbox-diag-rule-abc123',
@@ -39,6 +39,7 @@ const INPUT: StackFailureDetectorRemovalInput = {
   detectorRoleArn: 'arn:aws:iam::123456789012:role/mailbox-diag-role-abc123',
   detectorRolePolicyName: 'stack-failure-detector-policy',
   rootStackName: ROOT_STACK_NAME,
+  rootStackId: 'guid-1',
 };
 
 function sweep(input: StackFailureDetectorRemovalInput = INPUT) {
@@ -48,19 +49,19 @@ function sweep(input: StackFailureDetectorRemovalInput = INPUT) {
     new EventBridgeClient(region),
     new LambdaClient(region),
     new IAMClient(region),
-    new StackOwnership(logger),
+    new RootStackMembership(logger),
     logger,
   );
   return sweeper.sweep(input);
 }
 
 function mockAllStepsSucceeding(): void {
-  eventsMock.on(ListTagsForResourceCommand).resolves({ Tags: [{ Key: OWNER_TAG_KEY, Value: ROOT_STACK_NAME }] });
+  eventsMock.on(ListTagsForResourceCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG_KEY, Value: ROOT_STACK_NAME }] });
   eventsMock.on(RemoveTargetsCommand).resolves({});
   eventsMock.on(DeleteRuleCommand).resolves({});
-  lambdaMock.on(GetFunctionCommand).resolves({ Tags: { [OWNER_TAG_KEY]: ROOT_STACK_NAME } });
+  lambdaMock.on(GetFunctionCommand).resolves({ Tags: { [ROOT_STACK_TAG_KEY]: ROOT_STACK_NAME } });
   lambdaMock.on(DeleteFunctionCommand).resolves({});
-  iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: OWNER_TAG_KEY, Value: ROOT_STACK_NAME }] });
+  iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG_KEY, Value: ROOT_STACK_NAME }] });
   iamMock.on(DeleteRolePolicyCommand).resolves({});
   iamMock.on(DeleteRoleCommand).resolves({});
 }
@@ -121,24 +122,24 @@ describe('StackFailureDetectorSweeper', () => {
     expect(await sweep()).toEqual({ target: 'detector', status: 'done' });
   });
 
-  it('fails immediately on rule ownership mismatch without touching the function or role', async () => {
-    eventsMock.on(ListTagsForResourceCommand).resolves({ Tags: [{ Key: OWNER_TAG_KEY, Value: 'someone-elses-stack' }] });
+  it('fails immediately on rule root stack mismatch without touching the function or role', async () => {
+    eventsMock.on(ListTagsForResourceCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG_KEY, Value: 'someone-elses-stack' }] });
 
     const result = await sweep();
 
     expect(result).toEqual({
       target: 'detector',
       status: 'failed',
-      reason: 'Ownership mismatch (expected test-stack, got someone-elses-stack)',
+      reason: 'Root stack mismatch (expected test-stack / guid-1, got someone-elses-stack / undefined)',
     });
     expect(eventsMock.commandCalls(DeleteRuleCommand)).toHaveLength(0);
     expect(lambdaMock.commandCalls(GetFunctionCommand)).toHaveLength(0);
     expect(iamMock.commandCalls(ListRoleTagsCommand)).toHaveLength(0);
   });
 
-  it('stops at the function step on a function ownership mismatch, without attempting the role', async () => {
+  it('stops at the function step on a function root stack mismatch, without attempting the role', async () => {
     mockAllStepsSucceeding();
-    lambdaMock.on(GetFunctionCommand).resolves({ Tags: { [OWNER_TAG_KEY]: 'someone-elses-stack' } });
+    lambdaMock.on(GetFunctionCommand).resolves({ Tags: { [ROOT_STACK_TAG_KEY]: 'someone-elses-stack' } });
 
     const result = await sweep();
 
@@ -147,9 +148,9 @@ describe('StackFailureDetectorSweeper', () => {
     expect(iamMock.commandCalls(ListRoleTagsCommand)).toHaveLength(0);
   });
 
-  it('stops at the role step on a role ownership mismatch, without deleting the role', async () => {
+  it('stops at the role step on a role root stack mismatch, without deleting the role', async () => {
     mockAllStepsSucceeding();
-    iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: OWNER_TAG_KEY, Value: 'someone-elses-stack' }] });
+    iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG_KEY, Value: 'someone-elses-stack' }] });
 
     const result = await sweep();
 

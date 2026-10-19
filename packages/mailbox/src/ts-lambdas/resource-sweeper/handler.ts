@@ -9,7 +9,7 @@ import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 import { IAMClient } from '@aws-sdk/client-iam';
 import { loadStarter, loadWorker } from './config';
 import type { WorkerInput, WorkerOutput } from './removal';
-import { StackOwnership } from './stack-ownership';
+import { RootStackMembership } from './root-stack-membership';
 import { SweepStarter } from './sweep-starter';
 import { SweepTargetPlanner } from './sweep-target-planner';
 import { SweepWorker } from './sweep-worker';
@@ -49,12 +49,12 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
   }
 
   const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
-  const stackOwnership = new StackOwnership(logger);
+  const rootStackMembership = new RootStackMembership(logger);
   const sweepWorker = new SweepWorker(
     logger,
-    new CertSweeper(acmClient, stackOwnership, logger),
-    new EdgeFunctionSweeper(lambdaClientEdge, stackOwnership, logger),
-    new StackFailureDetectorSweeper(eventBridgeClient, lambdaClient, iamClient, stackOwnership, logger),
+    new CertSweeper(acmClient, rootStackMembership, logger),
+    new EdgeFunctionSweeper(lambdaClientEdge, rootStackMembership, logger),
+    new StackFailureDetectorSweeper(eventBridgeClient, lambdaClient, iamClient, rootStackMembership, logger),
   );
 
   try {

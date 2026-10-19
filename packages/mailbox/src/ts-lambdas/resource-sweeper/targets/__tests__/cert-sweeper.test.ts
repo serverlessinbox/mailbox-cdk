@@ -1,7 +1,7 @@
 /**
- * Coverage for `CertSweeper`: the ownership check via ListTagsForCertificate comes first and gates
+ * Coverage for `CertSweeper`: the root stack check via ListTagsForCertificate comes first and gates
  * every delete, InUseBy -> retry, empty InUseBy -> delete, ResourceNotFoundException -> already done,
- * any other error -> failed. Loosening the ownership gate would let a sweep delete a certificate
+ * any other error -> failed. Loosening the root stack gate would let a sweep delete a certificate
  * belonging to another stack.
  */
 
@@ -14,21 +14,21 @@ import {
 } from '@aws-sdk/client-acm';
 import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CertRemovalInput } from '../../removal';
-import { StackOwnership } from '../../stack-ownership';
+import { RootStackMembership } from '../../root-stack-membership';
 import { CertSweeper } from '../cert-sweeper';
 
 const acmMock = mockClient(ACMClient);
 const ROOT_STACK_NAME = 'test-stack';
 const CERT_ARN = 'arn:aws:acm:us-west-2:123456789012:certificate/abc-123';
 
-const INPUT: CertRemovalInput = { certArn: CERT_ARN, rootStackName: ROOT_STACK_NAME };
+const INPUT: CertRemovalInput = { certArn: CERT_ARN, rootStackName: ROOT_STACK_NAME, rootStackId: 'guid-1' };
 
 function sweep() {
   const logger = new LoggerBuffer();
-  return new CertSweeper(new ACMClient({ region: 'us-west-2' }), new StackOwnership(logger), logger).sweep(INPUT);
+  return new CertSweeper(new ACMClient({ region: 'us-west-2' }), new RootStackMembership(logger), logger).sweep(INPUT);
 }
 
-function ownedByThisStack(): void {
+function taggedWithThisRootStack(): void {
   acmMock.on(ListTagsForCertificateCommand).resolves({
     Tags: [{ Key: 'serverless-inbox:root-stack', Value: ROOT_STACK_NAME }],
   });
@@ -44,8 +44,8 @@ afterEach(() => {
 });
 
 describe('CertSweeper', () => {
-  it('deletes the certificate and reports done when not in use and ownership matches', async () => {
-    ownedByThisStack();
+  it('deletes the certificate and reports done when not in use and it belongs to the root stack', async () => {
+    taggedWithThisRootStack();
     acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
     acmMock.on(DeleteCertificateCommand).resolves({});
 
@@ -56,7 +56,7 @@ describe('CertSweeper', () => {
   });
 
   it('retries, naming what uses it, while the certificate is still in use', async () => {
-    ownedByThisStack();
+    taggedWithThisRootStack();
     acmMock.on(DescribeCertificateCommand).resolves({
       Certificate: { InUseBy: ['arn:aws:cloudfront::123456789012:distribution/ABC'] },
     });
@@ -79,7 +79,7 @@ describe('CertSweeper', () => {
     expect(await sweep()).toEqual({ target: 'cert', status: 'done' });
   });
 
-  it('fails on ownership mismatch without checking use or attempting any delete', async () => {
+  it('fails on root stack mismatch without checking use or attempting any delete', async () => {
     acmMock.on(ListTagsForCertificateCommand).resolves({
       Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'someone-elses-stack' }],
     });
@@ -87,7 +87,7 @@ describe('CertSweeper', () => {
     const result = await sweep();
 
     expect(result.status).toBe('failed');
-    expect(result.reason).toBe('Ownership mismatch (expected test-stack, got someone-elses-stack)');
+    expect(result.reason).toBe('Root stack mismatch (expected test-stack / guid-1, got someone-elses-stack / undefined)');
     expect(acmMock.commandCalls(DescribeCertificateCommand)).toHaveLength(0);
     expect(acmMock.commandCalls(DeleteCertificateCommand)).toHaveLength(0);
   });

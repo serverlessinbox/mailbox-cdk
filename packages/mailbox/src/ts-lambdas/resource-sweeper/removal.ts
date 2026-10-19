@@ -33,24 +33,24 @@ export interface RemovalTargets {
 /** The id of a removal type. */
 export type RemovalId = keyof RemovalTargets;
 
-/** The ACM certificate to sweep, and the root stack that must own it. */
-export interface CertRemovalInput extends CertRemovalTarget {
+/** The root stack whose resources are swept, by the name tagged `root-stack` and the guid tagged `root-stack-id`. */
+export interface RootStack {
   readonly rootStackName: string;
+  readonly rootStackId: string;
 }
 
-/** The Lambda@Edge function to sweep, and the root stack that must own it. */
-export interface EdgeFunctionRemovalInput extends EdgeFunctionRemovalTarget {
-  readonly rootStackName: string;
-}
+/** The ACM certificate to sweep, and the root stack it must belong to. */
+export interface CertRemovalInput extends CertRemovalTarget, RootStack {}
+
+/** The Lambda@Edge function to sweep, and the root stack it must belong to. */
+export interface EdgeFunctionRemovalInput extends EdgeFunctionRemovalTarget, RootStack {}
 
 /**
- * The stack-failure detector's rule, function and role, and the root stack that must own them.
+ * The stack-failure detector's rule, function and role, and the root stack they must belong to.
  * The grace period before they become deletable is a Wait step of the state machine, so a sweep of
  * this input assumes the grace period has already elapsed.
  */
-export interface StackFailureDetectorRemovalInput extends StackFailureDetectorRemovalTarget {
-  readonly rootStackName: string;
-}
+export interface StackFailureDetectorRemovalInput extends StackFailureDetectorRemovalTarget, RootStack {}
 
 /** The worker payload of a certificate removal. */
 export interface CertWorkerInput extends CertRemovalInput {
@@ -77,7 +77,7 @@ export type WorkerInput = CertWorkerInput | EdgeFunctionWorkerInput | StackFailu
  * Outcome of one sweep as the worker Lambda reports it.
  * - SUCCESS: the target is confirmed gone.
  * - RETRY: the target is not yet deletable.
- * - FAILED: hard error or ownership mismatch.
+ * - FAILED: hard error or root stack mismatch.
  */
 export interface WorkerOutput {
   status: 'SUCCESS' | 'RETRY' | 'FAILED';

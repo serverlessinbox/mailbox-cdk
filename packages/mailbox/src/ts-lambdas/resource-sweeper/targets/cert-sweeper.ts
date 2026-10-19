@@ -6,38 +6,38 @@ import {
 } from '@aws-sdk/client-acm';
 import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CertRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { StackOwnership } from '../stack-ownership';
+import { RootStackMembership } from '../root-stack-membership';
 import { TargetResults } from '../target-results';
 
 /**
- * Sweeps the ACM certificate named by `CertRemovalInput.certArn`: deletes it once it is owned by
- * the root stack and no longer in use.
+ * Sweeps the ACM certificate named by `CertRemovalInput.certArn`: deletes it once it belongs to
+ * the root stack and is no longer in use.
  */
 export class CertSweeper implements TargetSweeper<CertRemovalInput> {
   private readonly results = new TargetResults('cert');
 
   constructor(
     private readonly acmClient: ACMClient,
-    private readonly ownership: StackOwnership,
+    private readonly rootStackMembership: RootStackMembership,
     private readonly logger: LoggerBuffer,
   ) {}
 
   /**
-   * Deletes the certificate when the root stack owns it and nothing uses it. Resolves to `done` once
+   * Deletes the certificate when it belongs to the root stack and nothing uses it. Resolves to `done` once
    * the certificate is gone (deleted now, or already absent), `retry` while something still uses it,
-   * and `failed` on an ownership mismatch or any other error. Never rejects.
+   * and `failed` on a root stack mismatch or any other error. Never rejects.
    */
   public async sweep(input: CertRemovalInput): Promise<TargetResult> {
     try {
-      return await this.deleteWhenOwnedAndUnused(input);
+      return await this.deleteWhenInRootStackAndUnused(input);
     } catch (thrown) {
       return this.resultOfFailure(thrown);
     }
   }
 
-  private async deleteWhenOwnedAndUnused(input: CertRemovalInput): Promise<TargetResult> {
-    const mismatch = await this.findOwnershipMismatch(input);
-    // Never delete what another stack owns. A mismatch is final, so it is not retried.
+  private async deleteWhenInRootStackAndUnused(input: CertRemovalInput): Promise<TargetResult> {
+    const mismatch = await this.findRootStackMismatch(input);
+    // Never delete what belongs to another stack. A mismatch is final, so it is not retried.
     if (mismatch) {
       return this.results.failed(mismatch);
     }
@@ -52,14 +52,14 @@ export class CertSweeper implements TargetSweeper<CertRemovalInput> {
     return this.results.done();
   }
 
-  private async findOwnershipMismatch(input: CertRemovalInput): Promise<string | undefined> {
-    this.logger.debug('Verifying ACM cert ownership');
+  private async findRootStackMismatch(input: CertRemovalInput): Promise<string | undefined> {
+    this.logger.debug('Verifying ACM cert belongs to the root stack');
     const tagsResp = await this.acmClient.send(new ListTagsForCertificateCommand({ CertificateArn: input.certArn }));
-    return this.ownership.mismatchInTagList(input.rootStackName, 'ACM cert', tagsResp.Tags);
+    return this.rootStackMembership.mismatchInTagList(input, 'ACM cert', tagsResp.Tags);
   }
 
   private async findUsers(input: CertRemovalInput): Promise<string[]> {
-    this.logger.debug('ACM cert ownership verified; checking InUseBy');
+    this.logger.debug('ACM cert belongs to the root stack; checking InUseBy');
     const descResp = await this.acmClient.send(new DescribeCertificateCommand({ CertificateArn: input.certArn }));
     return descResp.Certificate?.InUseBy ?? [];
   }
