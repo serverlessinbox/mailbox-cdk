@@ -78,31 +78,27 @@ const ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS = [
   'ses:ListEmailIdentities',
 ];
 
-/**
- * Support tier descriptor.
- * Drives tier-specific role creation, policies, trust conditions, and env var naming.
- */
+const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
+
+/** Construct id of a support tier's role; it is also the key the tier's role ARN is exposed under. */
+export type SupportTierId = 'support-diag' | 'support-config-read';
+
+/** One support access tier: the role it gets, the trust tag that gates it and the actions it may use. */
 interface SupportTier {
-  /** Construct ID for the role — must match existing values exactly for template stability */
-  readonly constructId: string;
+  /** Determines the role's logical ID, so changing it replaces the role. */
+  readonly constructId: SupportTierId;
   /** Role name slug used in Fn::join construction */
   readonly roleNameSlug: string;
   /** IAM tag key used in trust policy condition */
   readonly tagKey: string;
-  /** Inline policy name */
   readonly inlinePolicyName: string;
-  /** IAM actions for this tier */
   readonly actions: string[];
   /** Environment variable name for the role ARN */
   readonly envVarName: string;
-  /** Role description */
   readonly description: string;
 }
 
-/**
- * Registry of support tiers.
- * Order is significant: matches current template (diag before config-read).
- */
+/** The support tiers. Order is significant: roles are created, and environment entries built, in this order. */
 const SUPPORT_TIERS: SupportTier[] = [
   {
     constructId: 'support-diag',
@@ -124,34 +120,20 @@ const SUPPORT_TIERS: SupportTier[] = [
   },
 ];
 
-/**
- * Props for SupportRolesInfra.
- */
+/** Inputs of the support IAM roles. */
 export interface SupportRolesInfraProps {
   /** Vendor AWS account IDs permitted to assume the support hop role, already resolved by the caller. */
   readonly vendorAccountIds: string[];
 }
 
 /**
- * Support IAM roles infrastructure.
+ * The IAM roles that give the vendor support account read-only access to this deployment: one hop role
+ * and one role per support tier (`SUPPORT_TIERS`).
  *
- * Creates three roles:
- *
- * 1. support-hop: Intermediate role with static trust to vendor support account.
- *    - Trust policy names vendor account (static, in template, customer-readable)
- *    - Single permission: sts:AssumeRole on the two support roles
- *    - Tagged at runtime by support-api for case/window toggles
- *    - Cannot be modified by the lambda beyond tag writes
- *
- * 2. support-diag: Observability access (CloudWatch, Lambda, Step Functions, DynamoDB, SQS).
- *    - Trust policy: static, names hop role with ExternalId and CurrentTime conditions (tag variables)
- *    - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
- *    - Tier-specific inline policy permanently attached (static, immutable from lambda)
- *
- * 3. support-config-read: Read-only config access.
- *    - Trust policy: static, names hop role with ExternalId and CurrentTime conditions (tag variables)
- *    - MaxSessionDuration: 3600 (1 hour, AWS documented minimum for safe session control)
- *    - Tier-specific inline policy permanently attached (static, immutable from lambda)
+ * - The hop role trusts the root of each vendor account. Its only permission is `sts:AssumeRole` on the
+ *   tier roles.
+ * - Each tier role trusts only the hop role, and only for sessions whose tier tag carries the case
+ *   external ID. Its inline policy is attached permanently, with a one-hour maximum session.
  */
 export class SupportRolesInfra extends Construct {
   readonly supportHopRoleArn: string;
@@ -160,51 +142,46 @@ export class SupportRolesInfra extends Construct {
   constructor(scope: Construct, id: string, props: SupportRolesInfraProps) {
     super(scope, id);
 
-    const stack = Stack.of(this);
-
-    // Derive stack GUID for uniqueness — fixed for a stack's lifetime, differs after destroy+redeploy.
-    // Use only the first 8-character segment (UUID format: 8-4-4-4-12) to stay within the 64-char IAM role-name limit.
+    // Fixed for a stack's lifetime, differs after destroy+redeploy. Only the first 8-character segment
+    // (UUID format: 8-4-4-4-12) is used, to stay within the 64-char IAM role-name limit.
     const fullStackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
     const stackGuidSegment = Fn.select(0, Fn.split('-', fullStackGuid));
 
-    // Deterministic hop role name with stack GUID segment for uniqueness.
-    // Dropping parentGroupId keeps the name length fixed and independent of construct position.
+    // The name carries no parent group id, so its length is fixed and independent of construct position.
     const supportHopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
 
-    // Pre-built hop role ARN using formatArn — required for trust-writer policy scoping.
-    this.supportHopRoleArn = stack.formatArn({
+    // Role ARNs are formatted from the names rather than read from the roles: the roles reference these
+    // ARNs in their own policies, and a GetAtt would make that a dependency cycle.
+    this.supportHopRoleArn = this.formatRoleArn(supportHopRoleName);
+    this.tierArns = {};
+    for (const tier of SUPPORT_TIERS) {
+      this.tierArns[tier.constructId] = this.formatRoleArn(this.tierRoleName(stackGuidSegment, tier));
+    }
+
+    const hopRole = this.createHopRole(supportHopRoleName, props.vendorAccountIds);
+    for (const tier of SUPPORT_TIERS) {
+      this.createTierRole(tier, this.tierRoleName(stackGuidSegment, tier), hopRole);
+    }
+  }
+
+  private tierRoleName(stackGuidSegment: string, tier: SupportTier): string {
+    return Fn.join('', ['support-', stackGuidSegment, `-${tier.roleNameSlug}`]);
+  }
+
+  private formatRoleArn(roleName: string): string {
+    return Stack.of(this).formatArn({
       service: 'iam',
       region: '',
       resource: 'role',
-      resourceName: supportHopRoleName,
+      resourceName: roleName,
     });
+  }
 
-    // Build tier role ARNs indexed by tier name for consumer access
-    this.tierArns = {};
-    const tierRoleNames: Record<string, string> = {};
-
-    for (const tier of SUPPORT_TIERS) {
-      const roleName = Fn.join('', ['support-', stackGuidSegment, `-${tier.roleNameSlug}`]);
-      tierRoleNames[tier.constructId] = roleName;
-      this.tierArns[tier.constructId] = stack.formatArn({
-        service: 'iam',
-        region: '',
-        resource: 'role',
-        resourceName: roleName,
-      });
-    }
-
-    // Vendor account IDs are resolved once at the composition root and passed in already-validated.
-    const vendorAccounts = props.vendorAccountIds;
-
-    // support-hop role: Intermediate hop for vendor support account trust.
-    // Static trust to vendor prod account. Only permission: sts:AssumeRole on the two support roles.
-    // Tagged at runtime by support-api (serverless-inbox:support:diag, serverless-inbox:support:config-read keys).
-    // Cannot be modified by the lambda beyond tag writes.
+  private createHopRole(roleName: string, vendorAccountIds: string[]): iam.Role {
     const hopRole = new iam.Role(this, 'support-hop', {
-      roleName: supportHopRoleName,
+      roleName,
       assumedBy: new iam.ServicePrincipal('sts.amazonaws.com'),
-      maxSessionDuration: Duration.seconds(3600),
+      maxSessionDuration: SUPPORT_ROLE_MAX_SESSION_DURATION,
       inlinePolicies: {
         'support-hop-assume': new iam.PolicyDocument({
           statements: [this.buildHopRoleAssumeStatement()],
@@ -213,12 +190,11 @@ export class SupportRolesInfra extends Construct {
       description: 'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
     });
 
-    // Override the trust policy with vendor account root principals
-    // For a single account, use the simple ARN format.
-    // For multiple accounts, use the principal list format which is more explicit.
-    const hopCfnRole = hopRole.node.defaultChild as iam.CfnRole;
-    const vendorPrincipals = vendorAccounts.map(accountId => `arn:aws:iam::${accountId}:root`);
-
+    const hopCfnRole = hopRole.node.defaultChild;
+    if (!(hopCfnRole instanceof iam.CfnRole)) {
+      throw new Error('support-hop: expected defaultChild to be an iam.CfnRole');
+    }
+    const vendorPrincipals = vendorAccountIds.map((accountId) => `arn:aws:iam::${accountId}:root`);
     hopCfnRole.assumeRolePolicyDocument = {
       Version: '2012-10-17',
       Statement: [
@@ -232,71 +208,55 @@ export class SupportRolesInfra extends Construct {
       ],
     };
 
-    // Create support roles from tier registry, iterating in order for template stability.
-    for (const tier of SUPPORT_TIERS) {
-      // Categorize actions: enumeration/account-level stay on resources: ['*'];
-      // resource-naming actions are scoped by serverless-inbox:root-stack tag condition.
-      const tagScopedActions = tier.actions.filter(a => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
-      const enumerationActions = tier.actions.filter(a => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+    return hopRole;
+  }
 
-      // Construct tag-scoped statement (resource-naming actions only)
-      const statements: iam.PolicyStatement[] = [];
-
-      const tagScopedStatement = this.buildTagScopedStatement(tagScopedActions);
-      if (tagScopedStatement) {
-        statements.push(tagScopedStatement);
-      }
-
-      // Enumeration/account-level statement stays on resources: ['*'] (cannot bind tag conditions)
-      const enumerationStatement = this.buildEnumerationStatement(enumerationActions);
-      if (enumerationStatement) {
-        statements.push(enumerationStatement);
-      }
-
-      // Tier 1 specific: separate statement for edge log group log-read actions.
-      // These groups are service-created by CloudFront in each replica region and are untagged,
-      // so they cannot be reached by tag conditions. Grant log-read actions on the edge group ARN only.
-      if (tier.constructId === 'support-diag') {
-        statements.push(this.buildEdgeLogGroupStatement(stack));
-      }
-
-      // CloudFormation stack reads, scoped to this stack and its nested stacks by ARN.
-      // A tag condition cannot work here: a stack does not carry its own tags, so
-      // aws:ResourceTag never matches the stack resource itself.
-      statements.push(this.buildCloudFormationReadStatement());
-
-      // Create inline policy for this tier
-      const policyDoc = new iam.PolicyDocument({
-        statements,
-      });
-
-      // Create the role with tier-specific configuration
-      const supportRole = new iam.Role(this, tier.constructId, {
-        roleName: tierRoleNames[tier.constructId],
-        assumedBy: new iam.PrincipalWithConditions(
-          new iam.ArnPrincipal(this.supportHopRoleArn),
-          {
-            StringLike: {
-              // Delimiter is '/' not '|': IAM tag values reject '|' (not in [\p{L}\p{Z}\p{N}_.:/=+\-@]).
-              // Nanoid IDs use alphabet A-Za-z0-9_- so '/' never appears in case IDs, making it a safe separator.
-              [`aws:PrincipalTag/${tier.tagKey}`]: '*/${sts:ExternalId}/*',
-            },
-          }
-        ),
-        maxSessionDuration: Duration.seconds(3600),
-        inlinePolicies: {
-          [tier.inlinePolicyName]: policyDoc,
+  private createTierRole(tier: SupportTier, roleName: string, hopRole: iam.Role): void {
+    const supportRole = new iam.Role(this, tier.constructId, {
+      roleName,
+      assumedBy: new iam.PrincipalWithConditions(new iam.ArnPrincipal(this.supportHopRoleArn), {
+        StringLike: {
+          // Delimiter is '/' not '|': IAM tag values reject '|' (not in [\p{L}\p{Z}\p{N}_.:/=+\-@]).
+          // Nanoid IDs use alphabet A-Za-z0-9_- so '/' never appears in case IDs, making it a safe separator.
+          [`aws:PrincipalTag/${tier.tagKey}`]: '*/${sts:ExternalId}/*',
         },
-        description: tier.description,
-      });
+      }),
+      maxSessionDuration: SUPPORT_ROLE_MAX_SESSION_DURATION,
+      inlinePolicies: {
+        [tier.inlinePolicyName]: new iam.PolicyDocument({ statements: this.buildTierStatements(tier) }),
+      },
+      description: tier.description,
+    });
 
-      // Make the hop role's creation explicit as a hard dependency.
-      // Rationale: IAM validates principals in trust policies at creation time; the support role trusts the hop role,
-      // so the hop role must exist first. IAM does NOT validate resource ARNs in identity policies, so the hop role
-      // (which names the two support role ARNs in its inline policy) can be created before the support roles. Thus
-      // the dependency is strictly one-way: hop role first, then support roles.
-      supportRole.node.addDependency(hopRole);
+    // IAM validates principals in trust policies at creation time, so the hop role the tier role trusts
+    // must exist first. IAM does not validate resource ARNs in identity policies, so the hop role can
+    // name the tier role ARNs in its inline policy before the tier roles exist.
+    supportRole.node.addDependency(hopRole);
+  }
+
+  private buildTierStatements(tier: SupportTier): iam.PolicyStatement[] {
+    const tagScopedActions = tier.actions.filter((a) => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+    const enumerationActions = tier.actions.filter((a) => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+
+    const statements: iam.PolicyStatement[] = [];
+
+    const tagScopedStatement = this.buildTagScopedStatement(tagScopedActions);
+    if (tagScopedStatement) {
+      statements.push(tagScopedStatement);
     }
+
+    const enumerationStatement = this.buildEnumerationStatement(enumerationActions);
+    if (enumerationStatement) {
+      statements.push(enumerationStatement);
+    }
+
+    if (tier.constructId === 'support-diag') {
+      statements.push(this.buildEdgeLogGroupStatement(Stack.of(this)));
+    }
+
+    statements.push(this.buildCloudFormationReadStatement());
+
+    return statements;
   }
 
   private buildHopRoleAssumeStatement(): iam.PolicyStatement {
@@ -307,6 +267,7 @@ export class SupportRolesInfra extends Construct {
     });
   }
 
+  /** Resource-naming actions, scoped by the root-stack tag condition. */
   private buildTagScopedStatement(actions: string[]): iam.PolicyStatement | undefined {
     if (actions.length === 0) {
       return undefined;
@@ -321,6 +282,7 @@ export class SupportRolesInfra extends Construct {
     });
   }
 
+  /** Enumeration and account-level actions declare no resource type, so a tag condition cannot bind to them. */
   private buildEnumerationStatement(actions: string[]): iam.PolicyStatement | undefined {
     if (actions.length === 0) {
       return undefined;
@@ -332,10 +294,12 @@ export class SupportRolesInfra extends Construct {
     });
   }
 
+  /**
+   * CloudFront creates the edge log group itself in every replica region, untagged, so a tag condition
+   * cannot reach it. The ARN is built from the same intrinsics as the pipeline log group names so the
+   * name matches exactly.
+   */
   private buildEdgeLogGroupStatement(stack: Stack): iam.PolicyStatement {
-    // Build the exact edge log group ARN for tier 1 — CloudFront service-creates this group
-    // in every replica region, untagged and inaccessible by tag conditions.
-    // Use the same intrinsics as pipeline-log-groups.ts to ensure exact name match.
     const edgeLogGroupArn = Fn.join('', [
       'arn:aws:logs:*:',
       stack.account,
@@ -360,6 +324,10 @@ export class SupportRolesInfra extends Construct {
     });
   }
 
+  /**
+   * Scoped to this stack and its nested stacks by ARN. A tag condition cannot work here: a stack does
+   * not carry its own tags, so `aws:ResourceTag` never matches the stack resource itself.
+   */
   private buildCloudFormationReadStatement(): iam.PolicyStatement {
     return new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -370,6 +338,8 @@ export class SupportRolesInfra extends Construct {
         // The console renders its resource tree from the CDK metadata inside the
         // template body, so viewing it requires reading the template itself.
         'cloudformation:GetTemplate',
+        // The console renders its resource tree from the CDK metadata inside the
+        // template body, so viewing it requires reading the template itself.
         'cloudformation:GetTemplateSummary',
       ],
       resources: [
@@ -380,16 +350,13 @@ export class SupportRolesInfra extends Construct {
   }
 }
 
-/**
- * Get the list of tier tag keys (for consumers that need them).
- * Exposed for IAM grant scoping in lambdas.
- */
+/** The IAM tag key of every support tier, in registry order. */
 export function getSupportTierTagKeys(): string[] {
-  return SUPPORT_TIERS.map(tier => tier.tagKey);
+  return SUPPORT_TIERS.map((tier) => tier.tagKey);
 }
 
-function tagKeyForTier(constructId: string): string {
-  const tier = SUPPORT_TIERS.find(t => t.constructId === constructId);
+function tagKeyForTier(constructId: SupportTierId): string {
+  const tier = SUPPORT_TIERS.find((t) => t.constructId === constructId);
   if (!tier) {
     throw new Error(`Unknown support tier constructId: ${constructId}`);
   }
@@ -403,12 +370,9 @@ export const SUPPORT_DIAG_TAG_KEY = tagKeyForTier('support-diag');
 export const SUPPORT_CONFIG_READ_TAG_KEY = tagKeyForTier('support-config-read');
 
 /**
- * Build environment variables for support role tiers.
- * Maps tier environment variable names to their ARNs from the tierRoleArns map.
- * Order is fixed to match the registry order (diag, then config-read) for CloudFormation stability.
+ * Maps each tier's environment variable name to its role ARN, in registry order.
  *
  * @param tierRoleArns A map of tier constructId to role ARN, typically from SupportRolesInfra.tierArns
- * @returns An object with SUPPORT_DIAG_ROLE_ARN and SUPPORT_CONFIG_READ_ROLE_ARN
  */
 export function buildSupportTierEnvironment(tierRoleArns: Record<string, string>): Record<string, string> {
   const env: Record<string, string> = {};
