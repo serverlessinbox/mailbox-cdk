@@ -115,7 +115,7 @@ describe('MailboxCognitoDataDeployer', () => {
 
       const statements = statementsForAction(template, 'cloudformation:CreateStack');
       expect(statements).toHaveLength(1);
-      expect(renderWithTokens(statements[0].Resource)).toBe('arn:aws:cloudformation:<token>:<token>:stack/<token>-cognito/*');
+      expect(renderWithTokens(statements[0].Resource)).toBe('arn:<token>:cloudformation:<token>:<token>:stack/<token>-cognito/*');
     });
 
     it('reads the cognito data stack template it deploys', () => {

@@ -12,13 +12,15 @@ import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
 import { statementsForAction } from '../../cdk-test-support';
 import { newDeployerTestStack, newWorkerStandIn } from './deployer-infra-helpers';
 
+const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:us-east-1:123456789012:stack/deployed-edge/*';
+
 function synthStarter() {
   const { stack, artifactResolver } = newDeployerTestStack();
   const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });
-  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName: 'edge' });
+  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName: 'edge', deployedStackArn: DEPLOYED_STACK_ARN });
   return { stack, workflow, template: Template.fromStack(stack) };
 }
 
@@ -52,12 +54,14 @@ describe('DeployerStarterLambda', () => {
     expect(statementsForAction(template, 'states:DescribeExecution')).toHaveLength(1);
   });
 
-  it('is allowed to read the status of the stack it is deployed as, and of no other stack', () => {
+  it('is allowed to read the status of the stack it is deployed as and of the deployed stack, and of no other stack', () => {
     const { template } = synthStarter();
 
-    const statements = statementsForAction(template, 'cloudformation:DescribeStacks');
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Action).toBe('cloudformation:DescribeStacks');
-    expect(statements[0].Resource).toEqual({ Ref: 'AWS::StackId' });
+    const resources = statementsForAction(template, 'cloudformation:DescribeStacks').map((statement) => {
+      expect(statement.Action).toBe('cloudformation:DescribeStacks');
+      return statement.Resource;
+    });
+    expect(resources).toHaveLength(2);
+    expect(resources).toEqual(expect.arrayContaining([{ Ref: 'AWS::StackId' }, DEPLOYED_STACK_ARN]));
   });
 });

@@ -1,4 +1,5 @@
 import { Duration } from 'aws-cdk-lib';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { TypeScriptLambda } from '../ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -10,6 +11,8 @@ export interface DeployerStarterLambdaProps {
   readonly workflow: IPollingCfnDeployerWorkflow;
   /** Composes into `SERVICE_NAME`, which keeps each deployer's function distinguishable while they share the 'stack-deployer' lambdaId. */
   readonly deployedStackName: string;
+  /** ARN pattern of the stack this deployer deploys; the only stack besides the parent that the starter may read. */
+  readonly deployedStackArn: string;
 }
 
 /**
@@ -34,10 +37,21 @@ export class DeployerStarterLambda extends TypeScriptLambda {
 
     props.workflow.grantStartAndDescribeExecutions(this);
     this.grantReadParentStackStatus();
+    this.grantDeployedStackRead(props.deployedStackArn);
   }
 
   /** Lets the starter ask whether the parent stack is rolling back before it answers a failed Update. */
   private grantReadParentStackStatus(): void {
     this.addToRolePolicy(parentStackStatusReadStatement());
+  }
+
+  /** Lets the starter read the outputs of the deployed stack when it answers a failed Update during a parent rollback. */
+  private grantDeployedStackRead(deployedStackArn: string): void {
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cloudformation:DescribeStacks'],
+        resources: [deployedStackArn],
+      }),
+    );
   }
 }

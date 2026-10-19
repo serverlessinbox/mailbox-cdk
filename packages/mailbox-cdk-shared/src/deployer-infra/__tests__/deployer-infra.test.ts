@@ -36,6 +36,7 @@ function newInfra(): SynthesizedInfra {
     artifactResolver,
     stateMachineNamePrefix: 'test-deployer-',
     deployedStackName: 'cognito',
+    deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/sub-stack/*',
     createWorker,
   });
   return { stack, createWorker, infra };

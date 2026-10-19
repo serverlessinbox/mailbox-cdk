@@ -8,19 +8,21 @@
  */
 
 import { Template } from 'aws-cdk-lib/assertions';
-import { actionsOf, allPolicyStatements, renderWithTokens, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { actionsOf, allPolicyStatements, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
 import { newDeployerTestStack } from './cognito-deployer-helpers';
 
 const ROOT_STACK_TAG_KEY = 'aws:ResourceTag/serverless-inbox:root-stack';
 const REQUEST_STACK_TAG_KEY = 'aws:RequestTag/serverless-inbox:root-stack';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
+const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
 
 function synthWorker(): Template {
   const { stack, artifactResolver } = newDeployerTestStack();
   new MailboxCognitoDataDeployerWorker(stack, 'worker', {
     artifactResolver,
     templateObjectArn: TEMPLATE_OBJECT_ARN,
+    deployedStackArn: DEPLOYED_STACK_ARN,
   });
   return Template.fromStack(stack);
 }
@@ -44,9 +46,7 @@ describe('MailboxCognitoDataDeployerWorker', () => {
 
       expect(statements).toHaveLength(1);
       expect(statements[0].Action).toContain('cloudformation:GetTemplate');
-      expect(renderWithTokens(statements[0].Resource)).toBe(
-        'arn:aws:cloudformation:<token>:<token>:stack/<token>-cognito/*',
-      );
+      expect(statements[0].Resource).toBe(DEPLOYED_STACK_ARN);
     });
 
     it('validates templates, which acts on a template URL rather than a stack', () => {

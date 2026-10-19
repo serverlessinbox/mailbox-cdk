@@ -86,6 +86,7 @@ export class MailboxEdgeDeployer extends Construct {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
       deployedStackName: 'edge',
+      deployedStackArn: edgeStackArn,
       createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorker(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,

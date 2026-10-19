@@ -265,6 +265,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       new MailboxCognitoDataDeployerWorker(testStack, 'worker', {
         artifactResolver,
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
+        deployedStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',
       });
 
       const template = Template.fromStack(testStack);

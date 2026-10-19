@@ -19,6 +19,9 @@ export interface DeployerInfraProps {
   /** The name of the stack this deployer deploys, e.g. 'data'. Composes into the starter's `SERVICE_NAME`. */
   readonly deployedStackName: string;
 
+  /** ARN pattern of the stack this deployer deploys, e.g. `arn:...:stack/<name>/*`. */
+  readonly deployedStackArn: string;
+
   /**
    * Builds this deployer's worker Lambda. Called at the fixed id `'worker'`, so every deployer's
    * worker keeps the same construct path (and logical ID) whichever worker subclass it builds. The
@@ -50,6 +53,7 @@ export class DeployerInfra extends Construct {
       artifactResolver: props.artifactResolver,
       workflow: this.workflow,
       deployedStackName: props.deployedStackName,
+      deployedStackArn: props.deployedStackArn,
     });
     this.starterArn = starter.functionArn;
   }

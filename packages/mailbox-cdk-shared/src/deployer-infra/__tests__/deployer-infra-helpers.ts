@@ -75,7 +75,7 @@ export function starterServiceName(deployedStackName: string): string {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'probe-machine',
   });
-  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName });
+  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*' });
 
   const starters = Object.values(
     Template.fromStack(stack).findResources('AWS::Lambda::Function', { Properties: { Handler: 'index.starterHandler' } }),

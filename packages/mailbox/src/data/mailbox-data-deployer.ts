@@ -62,6 +62,7 @@ export class MailboxDataDeployer extends Construct {
       artifactResolver: props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
       deployedStackName: 'data',
+      deployedStackArn: dataStackArn,
       createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorker(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,

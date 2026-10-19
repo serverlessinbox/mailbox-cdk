@@ -7,12 +7,13 @@ import {
   rootStackResourceTagCondition,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { cognitoDataStackName } from './mailbox-cognito-data-stack-name';
 
 export interface MailboxCognitoDataDeployerWorkerProps {
   readonly artifactResolver: IArtifactResolver;
   /** S3 object ARN for the cognito data stack CloudFormation template. */
   readonly templateObjectArn: string;
+  /** ARN pattern of the cognito data stack the worker manages. */
+  readonly deployedStackArn: string;
 }
 
 /**
@@ -30,10 +31,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
     });
 
     // Grants inherited from the shared deployer worker
-    this.grantStackLifecycle(
-      `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${cognitoDataStackName()}/*`,
-      true,
-    );
+    this.grantStackLifecycle(props.deployedStackArn, true);
     this.grantTemplateValidation();
     this.grantArtifactRead([props.templateObjectArn]);
     this.grantTaggingApi();

@@ -1,4 +1,4 @@
-import { Aws } from 'aws-cdk-lib';
+import { Aws, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
@@ -44,19 +44,29 @@ export class MailboxCognitoDataDeployer extends Construct {
     super(scope, id);
 
     const artifacts = props.artifactResolver;
+    const stackName = cognitoDataStackName();
+    const cognitoDataStackArn = Stack.of(this).formatArn({
+      service: 'cloudformation',
+      partition: Aws.PARTITION,
+      region: Aws.REGION,
+      account: Aws.ACCOUNT_ID,
+      resource: 'stack',
+      resourceName: `${stackName}/*`,
+    });
 
     const deployerInfra = new DeployerInfra(this, 'infra', {
       artifactResolver: artifacts,
       stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
       deployedStackName: 'cognito',
+      deployedStackArn: cognitoDataStackArn,
       createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorker(workerScope, workerId, {
         artifactResolver: artifacts,
         templateObjectArn: artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json'),
+        deployedStackArn: cognitoDataStackArn,
       }),
     });
 
     const productVersion = artifacts.getVersion('mailbox-cognito');
-    const stackName = cognitoDataStackName();
 
     const resource = deployerInfra.deployStack(this, 'Custom::MailboxCognitoDataDeployer', {
       region: Aws.REGION,
