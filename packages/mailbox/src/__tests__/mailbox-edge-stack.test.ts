@@ -19,6 +19,7 @@ import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
 import { MailboxEdgeDeployerWorker } from '../edge/mailbox-edge-deployer-worker';
 import {
   CloudFormationResource,
+  CloudFormationTag,
   KNOWN_WILDCARDS,
   getTagValue,
   isResourceOfType,
@@ -64,6 +65,29 @@ describe('MailboxEdgeStack Template Synthesis', () => {
 
       // Regression check: edge stack should have at least 2 taggable resources (Lambda, Role, etc.)
       expect(taggedResourceCount).toBeGreaterThan(0);
+    });
+
+    it('edge stack: declares a mandatory rootStackId parameter and tags its resources with it', () => {
+      const app = new App();
+      const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
+        env: { account: '123456789012', region: 'us-east-1' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
+      expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
+      expect(parameters.rootStackId.Default).toBeUndefined();
+
+      const resources = Object.values(template.toJSON().Resources as Record<string, CloudFormationResource>);
+      const tagged = resources.filter(
+        (r) => (isResourceOfType(r, 'AWS::Lambda::Function') || isResourceOfType(r, 'AWS::IAM::Role')) && Array.isArray(r.Properties?.Tags),
+      );
+      expect(tagged.length).toBeGreaterThan(0);
+      for (const resource of tagged) {
+        const tag = (resource.Properties?.Tags as CloudFormationTag[]).find((t) => t.Key === 'serverless-inbox:root-stack-id');
+        expect(tag ? getTagValue(tag) : undefined).toEqual({ Ref: 'rootStackId' });
+      }
     });
   });
 

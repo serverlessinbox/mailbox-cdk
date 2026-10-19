@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
 import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
 import { cognitoDataStackName } from './mailbox-cognito-data-stack-name';
-import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
@@ -76,6 +76,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       parameters: this.templateParameters(props, productVersion),
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
+        rootStackId: StackIdentity.guid,
         stack: stackName,
         version: productVersion,
       }),
@@ -94,6 +95,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       mfaMode: props.mfaMode ?? 'OPTIONAL',
       passwordMinLength: String(props.passwordMinLength ?? 8),
       rootStack: Aws.STACK_NAME,
+      rootStackId: StackIdentity.guid,
       productVersion,
       deployerType: props.deployerType,
       ...(props.customDomain !== undefined

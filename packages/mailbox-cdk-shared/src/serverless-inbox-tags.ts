@@ -1,6 +1,7 @@
 import { Aws, Tags } from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
 import { ServerlessInboxTagKeys } from './ts-lambdas/shared/tag-keys';
+import { StackIdentity } from './naming/stack-identity';
 import { resolveDeployerType } from './deployer-type';
 import type { ServerlessInboxDeployerType } from './deployer-type';
 
@@ -45,12 +46,14 @@ function applyServerlessInboxTags(
   scope: IConstruct,
   options: ApplyServerlessInboxTagsOptions,
   deployerType: ServerlessInboxDeployerType,
+  rootStackId: string,
 ): void {
   const product = (options.product ?? 'mailbox').trim() || 'mailbox';
 
   Tags.of(scope).add(ServerlessInboxTagKeys.product, product);
   // Correlation scheme: root-stack is the shared main stack name; stack is this stack's own name.
   Tags.of(scope).add(ServerlessInboxTagKeys.rootStack, options.rootStack);
+  Tags.of(scope).add(ServerlessInboxTagKeys.rootStackId, rootStackId);
   Tags.of(scope).add(ServerlessInboxTagKeys.stack, Aws.STACK_NAME);
 
   if (options.version) {
@@ -72,21 +75,24 @@ export function applyServerlessInboxBaseTags(
   scope: IConstruct,
   options: ApplyServerlessInboxTagsOptions,
 ): void {
-  applyServerlessInboxTags(scope, options, resolveDeployerType(scope));
+  applyServerlessInboxTags(scope, options, resolveDeployerType(scope), StackIdentity.guid);
 }
 
 /**
  * Internal-only variant for sub-stack templates synthesized standalone (their own `new App()`,
  * no CDK context) — `resolveDeployerType` would silently resolve to the 'cdk' fallback there, so
- * the caller passes the value it already has from its own CfnParameter instead. Not re-exported
+ * the caller passes the value it already has from its own CfnParameter instead. A sub-stack is
+ * not the root stack, so the caller also passes the root stack's id it received as a parameter
+ * (`rootStackId`), never its own. Not re-exported
  * from packages/mailbox/src/index.ts — never reaches the published surface.
  */
 export function applyServerlessInboxBaseTagsWithDeployerType(
   scope: IConstruct,
   options: ApplyServerlessInboxTagsOptions,
   deployerType: ServerlessInboxDeployerType,
+  rootStackId: string,
 ): void {
-  applyServerlessInboxTags(scope, options, deployerType);
+  applyServerlessInboxTags(scope, options, deployerType, rootStackId);
 }
 
 export function applyServerlessInboxComponentTag(scope: IConstruct, component: ServerlessInboxComponent): void {
@@ -96,6 +102,8 @@ export function applyServerlessInboxComponentTag(scope: IConstruct, component: S
 export interface ServerlessInboxSubStackTagOptions {
   /** Root (main) stack name shared across the deployment. */
   readonly rootStack: string;
+  /** Root (main) stack's unique id, the guid of its stack id. */
+  readonly rootStackId: string;
   /** This sub-stack's own CloudFormation stack name. */
   readonly stack: string;
   /** Product version (e.g. '1.2.3' or 'channel:dev'). */
@@ -115,6 +123,7 @@ export function serverlessInboxSubStackTags(
   const tags: Record<string, string> = {
     [ServerlessInboxTagKeys.product]: (options.product ?? 'mailbox').trim() || 'mailbox',
     [ServerlessInboxTagKeys.rootStack]: options.rootStack,
+    [ServerlessInboxTagKeys.rootStackId]: options.rootStackId,
     [ServerlessInboxTagKeys.stack]: options.stack,
   };
   if (options.version) {

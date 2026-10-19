@@ -8,6 +8,11 @@ export const ServerlessInboxTagKeys = {
   name: 'Name',
   /** Main (root) stack name — shared across all stacks in a deployment for cross-stack correlation. */
   rootStack: `${TAG_PREFIX}root-stack`,
+  /**
+   * The root stack's unique id (the guid at the end of its stack id ARN). Unlike the root stack's
+   * name, it is never reused by a later stack, so it identifies which stack owns a resource.
+   */
+  rootStackId: `${TAG_PREFIX}root-stack-id`,
   /** This stack's own name (AWS::StackName). */
   stack: `${TAG_PREFIX}stack`,
   component: `${TAG_PREFIX}component`,

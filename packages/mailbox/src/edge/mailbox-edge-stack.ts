@@ -36,6 +36,12 @@ export class MailboxEdgeStack extends cdk.Stack {
     });
     rootStackParam.overrideLogicalId('rootStack');
 
+    const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
+      type: 'String',
+      description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
+    });
+    rootStackIdParam.overrideLogicalId('rootStackId');
+
     const rootRegionParam = new cdk.CfnParameter(this, 'root-region', {
       type: 'String',
       description: 'Root (main) AWS region (regional stack region that created this edge stack)',
@@ -64,7 +70,7 @@ export class MailboxEdgeStack extends cdk.Stack {
       // the base helper tags this edge stack's own name as `stack` (AWS::StackName).
       rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
-    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType);
+    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
     applyServerlessInboxComponentTag(this, 'edge');
     applyServerlessInboxEdgeTags(this, {
       rootRegion: rootRegionParam.valueAsString,

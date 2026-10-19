@@ -78,6 +78,23 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Should have at least UserPool and UserPoolDomain
       expect(cognitoResourceCount).toBeGreaterThanOrEqual(2);
     });
+
+    it('cognito-data stack: declares a mandatory rootStackId parameter and tags the user pool with it', () => {
+      const app = new App();
+      const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
+      expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
+      expect(parameters.rootStackId.Default).toBeUndefined();
+
+      template.hasResourceProperties('AWS::Cognito::UserPool', {
+        UserPoolTags: { 'serverless-inbox:root-stack-id': { Ref: 'rootStackId' } },
+      });
+    });
   });
 
   /**

@@ -23,6 +23,7 @@ import {
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxEdgeDeployer';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };
+const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 const EDGE_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, '-edge']] };
 const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^edgedeployerresource/);
 const ITEM_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
@@ -94,6 +95,15 @@ describe('MailboxEdgeDeployer', () => {
           'serverless-inbox:stack': EDGE_STACK_NAME,
           'serverless-inbox:version': '1.2.3',
         },
+      });
+    });
+
+    it('passes the deploying stack’s guid as the root stack id parameter and sub-stack tag', () => {
+      const { template } = synthDeployer();
+
+      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
+        parameters: Match.objectLike({ rootStackId: STACK_GUID }),
+        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
       });
     });
 

@@ -17,6 +17,7 @@ import { TEST_ARTIFACT_VERSION, newDeployerTestStack } from './cognito-deployer-
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxCognitoDataDeployer';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };
+const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 const COGNITO_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
 const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^deployerresource/);
 
@@ -48,6 +49,15 @@ describe('MailboxCognitoDataDeployer', () => {
         templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json')),
         region: { Ref: 'AWS::Region' },
         preserveOnDelete: true,
+      });
+    });
+
+    it('passes the deploying stack’s guid as the root stack id parameter and sub-stack tag', () => {
+      const { template } = synthDeployer();
+
+      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
+        parameters: Match.objectLike({ rootStackId: STACK_GUID }),
+        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
       });
     });
 

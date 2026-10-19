@@ -6,7 +6,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
 import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
 
@@ -108,6 +108,7 @@ export class MailboxEdgeDeployer extends Construct {
       parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
+        rootStackId: StackIdentity.guid,
         stack: edgeStackName,
         version: props.productVersion,
       }),
@@ -172,6 +173,7 @@ export class MailboxEdgeDeployer extends Construct {
       authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
       logGroupName: props.logGroupName,
       rootStack: Aws.STACK_NAME,
+      rootStackId: StackIdentity.guid,
       rootRegion: Stack.of(this).region,
       productVersion: props.productVersion,
       deployerType: props.deployerType,

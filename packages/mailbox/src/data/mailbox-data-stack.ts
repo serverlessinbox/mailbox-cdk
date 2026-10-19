@@ -53,6 +53,12 @@ export class MailboxDataStack extends cdk.Stack {
     });
     rootStackParam.overrideLogicalId('rootStack');
 
+    const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
+      type: 'String',
+      description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
+    });
+    rootStackIdParam.overrideLogicalId('rootStackId');
+
     const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
       type: 'String',
       description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
@@ -75,7 +81,7 @@ export class MailboxDataStack extends cdk.Stack {
       product: 'mailbox',
       rootStack: rootStackParam.valueAsString,
       version: productVersionParam.valueAsString,
-    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType);
+    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
     applyServerlessInboxComponentTag(this, 'data');
 
     // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack

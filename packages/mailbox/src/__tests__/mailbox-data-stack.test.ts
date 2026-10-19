@@ -18,6 +18,7 @@ import { MailboxDataStack } from '../data/mailbox-data-stack';
 import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import {
   CloudFormationResource,
+  CloudFormationTag,
   KNOWN_WILDCARDS,
   getTagValue,
   isResourceOfType,
@@ -60,6 +61,29 @@ describe('MailboxDataStack Template Synthesis', () => {
 
       // Data stack should have multiple DynamoDB tables and S3 buckets
       expect(taggedResourceCount).toBeGreaterThan(2);
+    });
+
+    it('data stack: declares a mandatory rootStackId parameter and tags its tables and buckets with it', () => {
+      const app = new App();
+      const stack = new MailboxDataStack(app, 'TestMailboxData', {
+        env: { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      const template = Template.fromStack(stack);
+      const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
+      expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
+      expect(parameters.rootStackId.Default).toBeUndefined();
+
+      const resources = Object.values(template.toJSON().Resources as Record<string, CloudFormationResource>);
+      const tagged = resources.filter(
+        (r) => (isResourceOfType(r, 'AWS::DynamoDB::Table') || isResourceOfType(r, 'AWS::S3::Bucket')) && Array.isArray(r.Properties?.Tags),
+      );
+      expect(tagged.length).toBeGreaterThan(2);
+      for (const resource of tagged) {
+        const tag = (resource.Properties?.Tags as CloudFormationTag[]).find((t) => t.Key === 'serverless-inbox:root-stack-id');
+        expect(tag ? getTagValue(tag) : undefined).toEqual({ Ref: 'rootStackId' });
+      }
     });
   });
 

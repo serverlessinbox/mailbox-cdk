@@ -26,6 +26,7 @@ import {
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxDataDeployer';
 const RESOLVER_RESOURCE_TYPE = 'Custom::MailboxDataOverrideResolver';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };
+const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 interface SynthesizedDeployer {
@@ -97,6 +98,15 @@ describe('MailboxDataDeployer', () => {
       const { template } = synthDeployer({ dataStackName: 'given-data' });
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, { stackName: 'given-data' });
+    });
+
+    it('passes the deploying stack’s guid as the root stack id parameter and sub-stack tag', () => {
+      const { template } = synthDeployer();
+
+      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
+        parameters: Match.objectLike({ rootStackId: STACK_GUID }),
+        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
+      });
     });
 
     it('tags the stack with the root stack, its own name and the product version', () => {

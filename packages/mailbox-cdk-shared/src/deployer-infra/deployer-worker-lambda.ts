@@ -43,6 +43,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
     this.subStackTagKeys = [
       ServerlessInboxTagKeys.product,
       ServerlessInboxTagKeys.rootStack,
+      ServerlessInboxTagKeys.rootStackId,
       ServerlessInboxTagKeys.stack,
       ServerlessInboxTagKeys.component,
       ServerlessInboxTagKeys.version,

@@ -40,6 +40,7 @@ const STACK_ARN = 'arn:aws:cloudformation:us-west-2:123456789012:stack/probe/*';
 const BASE_TAG_KEYS = [
   'serverless-inbox:product',
   'serverless-inbox:root-stack',
+  'serverless-inbox:root-stack-id',
   'serverless-inbox:stack',
   'serverless-inbox:component',
   'serverless-inbox:version',

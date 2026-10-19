@@ -3,7 +3,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import { MailboxDataDeployerWorker } from './mailbox-data-deployer-worker';
 import { MailboxDataStackRef } from './mailbox-data-stack-ref';
 import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
@@ -82,11 +82,13 @@ export class MailboxDataDeployer extends Construct {
       parameters: {
         nameBase: props.nameBase,
         rootStack: Aws.STACK_NAME,
+        rootStackId: StackIdentity.guid,
         productVersion,
         deployerType: props.deployerType,
       },
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
+        rootStackId: StackIdentity.guid,
         stack: dataStackName,
         version: productVersion,
       }),
