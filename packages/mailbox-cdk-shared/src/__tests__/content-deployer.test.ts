@@ -10,7 +10,7 @@
  */
 
 import { Construct } from 'constructs';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, Fn, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
@@ -256,6 +256,40 @@ describe('StaticContentDeployer', () => {
 
       expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
       expect(JSON.stringify(after)).not.toContain('dark');
+    });
+
+    describe('a data source body with tokens', () => {
+      // Each call mints new tokens, so every synth numbers its placeholders differently.
+      const deployBody = (literal: string) =>
+        deployUi(
+          StaticContentSource.data(
+            'config.json',
+            `{"theme":"${literal}","pool":"${Fn.importValue('pool-id')}","bucket":"${Fn.ref('UiBucket')}"}`,
+          ),
+        );
+
+      it('gives the same nonce across synths of the same body', () => {
+        const first = synthInvalidationProperties(deployBody('light'));
+        const second = synthInvalidationProperties(deployBody('light'));
+
+        expect(second.deploymentNonce).toEqual(first.deploymentNonce);
+      });
+
+      it('renders each token as a CloudFormation intrinsic, not as placeholder text', () => {
+        const nonce = synthInvalidationProperties(deployBody('light')).deploymentNonce;
+
+        expect(JSON.stringify(nonce)).not.toContain('Token[');
+        expect(nonce).toEqual({
+          'Fn::Join': ['', [expect.stringMatching(/^data:config\.json:[0-9a-f]{64}:/), { 'Fn::ImportValue': 'pool-id' }, ':', { Ref: 'UiBucket' }]],
+        });
+      });
+
+      it('changes when a literal of the body changes', () => {
+        const before = synthInvalidationProperties(deployBody('light'));
+        const after = synthInvalidationProperties(deployBody('dark'));
+
+        expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
+      });
     });
 
     it('ignores the deployments of other scopes', () => {

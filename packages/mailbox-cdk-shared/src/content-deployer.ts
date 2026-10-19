@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Construct, type IDependable } from 'constructs';
-import { Aws, Duration, CustomResource, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, CustomResource, Stack, Token, Tokenization } from 'aws-cdk-lib';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -31,6 +31,8 @@ interface TrackedDeployment {
   readonly resource: IDependable;
   readonly identity: string;
 }
+
+const TOKEN_PLACEHOLDER = '<token>';
 
 /**
  * The one content-deployer Lambda of a stack, and the factory of the custom resources it serves:
@@ -175,14 +177,28 @@ export class StaticContentDeployer extends TypeScriptLambda {
 
   /**
    * Identifies a deployed source by its content: two deploys of the same content have the same identity.
-   * A zip source is identified by its bucket, key and version; a data source by a hash of its body, so a
-   * large body is not copied into the invalidation resource's properties.
+   * A zip source is identified by its bucket, key and version; a data source by a hash of its literal text
+   * followed by the tokens of its body, so a large body is not copied into the invalidation resource's
+   * properties.
    */
   private sourceIdentity(spec: StaticContentSourceSpec): string {
     if (spec.kind === 'zip') {
       return `zip:${spec.sourceBucket}:${spec.sourceKey}:${spec.sourceVersionId ?? ''}`;
     }
-    return `data:${spec.key}:${createHash('sha256').update(spec.body).digest('hex')}`;
+    return this.dataSourceIdentity(spec.key, spec.body);
+  }
+
+  /**
+   * A token's placeholder text differs between synths, so the hash covers the body with every token
+   * replaced by one fixed placeholder. The tokens follow the hash as tokens, which CloudFormation resolves
+   * at deploy time: the identity changes when a referenced value changes, and not otherwise.
+   */
+  private dataSourceIdentity(key: string, body: string): string {
+    const fragments = Tokenization.reverseString(body);
+    const maskedBody = fragments.mapTokens({ mapToken: () => TOKEN_PLACEHOLDER }).join({ join: (left, right) => `${left}${right}` });
+    const digest = createHash('sha256').update(maskedBody).digest('hex');
+    const tokens = fragments.tokens.map((token) => Token.asString(token));
+    return ['data', key, digest, ...tokens].join(':');
   }
 
   private deploymentNonce(deployments: TrackedDeployment[]): string | undefined {
