@@ -4,6 +4,20 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.3.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.9...v0.3.0) (Mon Oct 19 2026)
+
+### refactor
+
+* **shared** the parent-stack detector takes its CloudFormation client and a StackId ([f3c12ce](https://github.com/serverlessinbox/mailbox-cdk/commit/f3c12ce79025498124748f110881d0f1a219d403))
+
+### fix
+
+* **cognito** idp-users-api never leaves a half-created user ([364d11a](https://github.com/serverlessinbox/mailbox-cdk/commit/364d11afe5fc3eab185db23e0e3a41adc4b2d141))
+
+### feat
+
+* **mailbox** OAuth clients are named by API kind and app; both UIs are optional ([326a0eb](https://github.com/serverlessinbox/mailbox-cdk/commit/326a0eb329cbc403281291152f8e74adf68d8fb1))
+
 ## [0.2.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.8...v0.2.9) (Fri Oct 16 2026)
 
 ### ci
