@@ -93,6 +93,7 @@ export class MailboxEdgeDeployer extends Construct {
         edgeStackName,
         edgeStackArn,
         rootStack: Aws.STACK_NAME,
+        rootStackId: StackIdentity.guid,
         templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
         artifactObjectArns: [
           props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),

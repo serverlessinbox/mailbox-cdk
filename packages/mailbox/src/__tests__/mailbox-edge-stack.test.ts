@@ -361,6 +361,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         edgeStackName: 'test-root-edge',
         edgeStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge/*',
         rootStack: 'test-root',
+        rootStackId: 'test-guid',
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
         artifactObjectArns: ['arn:aws:s3:::bucket/lambdas/jmap-blob-download.zip'],
         hostedZoneId: 'Z123456',

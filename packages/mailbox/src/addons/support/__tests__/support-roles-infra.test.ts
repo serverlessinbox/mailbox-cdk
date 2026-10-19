@@ -162,11 +162,19 @@ describe('SupportRolesInfra', () => {
       expect([...diag].filter((action) => !configRead.has(action))).toEqual([]);
     });
 
-    it('scope resource-naming actions by the root-stack tag and leave enumeration actions unconditioned', () => {
+    it('scope resource-naming actions by the root-stack tags, by id and by name for a resource without an id tag, and leave enumeration actions unconditioned', () => {
       const { template } = synthesize(['111111111111']);
       const { role } = roleWithPolicy(template, CONFIG_READ_POLICY);
 
-      expect(statementGranting(role, 'lambda:GetFunctionConfiguration').Condition).toBeDefined();
+      const owned = statementsOf(role).filter((s) => [s.Action].flat().includes('lambda:GetFunctionConfiguration'));
+      expect(owned.map((s) => Object.keys(s.Condition as object))).toEqual([['StringEquals'], ['StringEquals', 'Null']]);
+      expect(Object.keys((owned[0].Condition as { StringEquals: object }).StringEquals)).toEqual([
+        'aws:ResourceTag/serverless-inbox:root-stack-id',
+      ]);
+      expect(Object.keys((owned[1].Condition as { StringEquals: object }).StringEquals)).toEqual([
+        'aws:ResourceTag/serverless-inbox:root-stack',
+      ]);
+      expect((owned[1].Condition as { Null: object }).Null).toEqual({ 'aws:ResourceTag/serverless-inbox:root-stack-id': 'true' });
       expect(statementGranting(role, 'lambda:ListFunctions').Condition).toBeUndefined();
       expect(statementGranting(role, 'lambda:ListFunctions').Resource).toBe('*');
     });

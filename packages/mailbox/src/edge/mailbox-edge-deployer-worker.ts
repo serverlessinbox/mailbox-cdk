@@ -4,9 +4,10 @@ import { Construct } from 'constructs';
 import {
   DeployerWorkerLambda,
   ServerlessInboxTagKeys,
-  rootStackRequestTagCondition,
-  rootStackResourceTagCondition,
+  rootStackRequestTagConditions,
+  rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
 export interface MailboxEdgeDeployerWorkerProps {
@@ -16,6 +17,8 @@ export interface MailboxEdgeDeployerWorkerProps {
   readonly edgeStackName: string;
   readonly edgeStackArn: string;
   readonly rootStack: string;
+  /** The guid of the root stack, tagged as `serverless-inbox:root-stack-id`. */
+  readonly rootStackId: string;
   readonly templateObjectArn: string;
   /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
   readonly artifactObjectArns: string[];
@@ -36,7 +39,8 @@ export interface MailboxEdgeDeployerWorkerProps {
  *
  * Scoping strategy: CFN-generated physical NAMES for Lambda functions are truncated to 64 chars for
  * long stack names, so name-prefix ARN patterns break. Lambda mutations carry a tag-condition fallback
- * keyed on the `serverless-inbox:root-stack` tag that the edge template applies to the function.
+ * keyed on the `serverless-inbox:root-stack-id` tag that the edge template applies to the function, with
+ * the `root-stack` name as the fallback for a function that has no id tag.
  *
  * The edge template contains no CloudWatch Log Groups, so this worker needs NO logs permissions.
  */
@@ -53,8 +57,9 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     this.grantTaggingApi([ServerlessInboxTagKeys.edge, ServerlessInboxTagKeys.rootRegion]);
 
     // Grants for the resources of the edge stack
-    this.grantCertificateLifecycle(props.stack, props.rootStack);
-    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, props.rootStack);
+    const owner: RootStack = { name: props.rootStack, id: props.rootStackId };
+    this.grantCertificateLifecycle(props.stack, owner);
+    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, owner);
     this.grantExecutionRolePassage(props.jmapBlobDownloadRoleArn);
     this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
 
@@ -78,7 +83,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * - RemoveTagsFromCertificate is gated by aws:ResourceTag so only already-owned certs can be untagged.
    * - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
    */
-  private grantCertificateLifecycle(stack: Stack, rootStack: string): void {
+  private grantCertificateLifecycle(stack: Stack, owner: RootStack): void {
     const certificateArnPrefix = stack.formatArn({
       service: 'acm',
       region: 'us-east-1',
@@ -102,46 +107,38 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         resources: [certificateArnPrefix],
       })
     );
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'acm:AddTagsToCertificate',
-        ],
-        resources: [certificateArnPrefix],
-        conditions: {
-          StringEquals: rootStackRequestTagCondition(rootStack),
-        },
-      })
-    );
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['acm:AddTagsToCertificate'],
-        resources: [certificateArnPrefix],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStack),
-        },
-      })
-    );
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'acm:RemoveTagsFromCertificate',
-        ],
-        resources: [certificateArnPrefix],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStack),
-        },
-      })
-    );
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['acm:DeleteCertificate'],
-        resources: [certificateArnPrefix],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStack),
-        },
-      })
-    );
+    for (const conditions of rootStackRequestTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['acm:AddTagsToCertificate'],
+          resources: [certificateArnPrefix],
+          conditions,
+        })
+      );
+    }
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['acm:AddTagsToCertificate'],
+          resources: [certificateArnPrefix],
+          conditions,
+        })
+      );
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['acm:RemoveTagsFromCertificate'],
+          resources: [certificateArnPrefix],
+          conditions,
+        })
+      );
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['acm:DeleteCertificate'],
+          resources: [certificateArnPrefix],
+          conditions,
+        })
+      );
+    }
   }
 
   /**
@@ -156,7 +153,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
    * aws:TagKeys.
    */
-  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, rootStack: string): void {
+  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, owner: RootStack): void {
     const edgeLambdaActions = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
@@ -192,24 +189,24 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         },
       })
     );
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [
-          'lambda:DeleteFunction',
-          'lambda:UpdateFunctionCode',
-          'lambda:UpdateFunctionConfiguration',
-          'lambda:GetFunction',
-          'lambda:ListVersionsByFunction',
-          'lambda:PublishVersion',
-          'lambda:TagResource',
-          'lambda:UntagResource',
-        ],
-        resources: ['*'],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStack),
-        },
-      })
-    );
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: [
+            'lambda:DeleteFunction',
+            'lambda:UpdateFunctionCode',
+            'lambda:UpdateFunctionConfiguration',
+            'lambda:GetFunction',
+            'lambda:ListVersionsByFunction',
+            'lambda:PublishVersion',
+            'lambda:TagResource',
+            'lambda:UntagResource',
+          ],
+          resources: ['*'],
+          conditions,
+        })
+      );
+    }
   }
 
   /** Gated to the Lambda services, so the role cannot be passed to any other service. */

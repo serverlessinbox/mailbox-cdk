@@ -22,6 +22,22 @@ const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/edge-template
 const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
 const ROOT_STACK_TAG = 'serverless-inbox:root-stack';
+const ROOT_STACK_ID_TAG = 'serverless-inbox:root-stack-id';
+
+/** The two statements that admit an owned resource: tagged with the id, or without an id tag and tagged with the name. */
+function ownedByResourceTag(): unknown[] {
+  return [
+    { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_ID_TAG}`]: 'test-guid' } },
+    { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' }, Null: { [`aws:ResourceTag/${ROOT_STACK_ID_TAG}`]: 'true' } },
+  ];
+}
+
+function ownedByRequestTag(): unknown[] {
+  return [
+    { StringEquals: { [`aws:RequestTag/${ROOT_STACK_ID_TAG}`]: 'test-guid' } },
+    { StringEquals: { [`aws:RequestTag/${ROOT_STACK_TAG}`]: 'test-stack' }, Null: { [`aws:RequestTag/${ROOT_STACK_ID_TAG}`]: 'true' } },
+  ];
+}
 
 function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Template {
   const { stack, artifactResolver } = newDeployerTestStack();
@@ -31,6 +47,7 @@ function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Templ
     edgeStackName: 'test-stack-edge',
     edgeStackArn: EDGE_STACK_ARN,
     rootStack: 'test-stack',
+    rootStackId: 'test-guid',
     templateObjectArn: TEMPLATE_OBJECT_ARN,
     artifactObjectArns: [ARTIFACT_OBJECT_ARN],
     jmapBlobDownloadRoleArn: JMAP_BLOB_DOWNLOAD_ROLE_ARN,
@@ -92,23 +109,17 @@ describe('MailboxEdgeDeployerWorker', () => {
       expect(resourceOf(template, 'acm:RequestCertificate')).toBe(CERTIFICATE_ARNS);
     });
 
-    it('adds tags on create when the request carries the root-stack tag, and on update when the certificate already has it', () => {
+    it('adds tags on create when the request carries an owner tag, and on update when the certificate already has one', () => {
       const statements = statementsForAction(template, 'acm:AddTagsToCertificate');
 
-      expect(statements.map((statement) => statement.Condition)).toEqual([
-        { StringEquals: { [`aws:RequestTag/${ROOT_STACK_TAG}`]: 'test-stack' } },
-        { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' } },
-      ]);
+      expect(statements.map((statement) => statement.Condition)).toEqual([...ownedByRequestTag(), ...ownedByResourceTag()]);
     });
 
-    it('removes tags from and deletes only certificates carrying the root-stack tag', () => {
+    it('removes tags from and deletes only certificates the root stack owns, by id or by name when untagged with an id', () => {
       for (const action of ['acm:RemoveTagsFromCertificate', 'acm:DeleteCertificate']) {
         const statements = statementsForAction(template, action);
 
-        expect(statements).toHaveLength(1);
-        expect(statements[0].Condition).toEqual({
-          StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' },
-        });
+        expect(statements.map((statement) => statement.Condition)).toEqual(ownedByResourceTag());
       }
     });
   });
@@ -125,14 +136,12 @@ describe('MailboxEdgeDeployerWorker', () => {
       expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge-*' } });
     });
 
-    it('also manages existing functions that carry the root-stack tag, which survives name truncation', () => {
+    it('also manages existing functions the root stack owns, which survives name truncation', () => {
       const statements = statementsForAction(template, 'lambda:DeleteFunction');
 
-      expect(statements).toHaveLength(3);
-      expect(statements[2].Resource).toBe('*');
-      expect(statements[2].Condition).toEqual({
-        StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' },
-      });
+      expect(statements).toHaveLength(4);
+      expect(statements.slice(2).map((statement) => statement.Resource)).toEqual(['*', '*']);
+      expect(statements.slice(2).map((statement) => statement.Condition)).toEqual(ownedByResourceTag());
     });
   });
 

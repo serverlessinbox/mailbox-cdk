@@ -1,7 +1,8 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
-import { rootStackResourceTagCondition, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
@@ -239,10 +240,7 @@ export class SupportRolesInfra extends Construct {
 
     const statements: iam.PolicyStatement[] = [];
 
-    const tagScopedStatement = this.buildTagScopedStatement(tagScopedActions);
-    if (tagScopedStatement) {
-      statements.push(tagScopedStatement);
-    }
+    statements.push(...this.buildTagScopedStatements(tagScopedActions));
 
     const enumerationStatement = this.buildEnumerationStatement(enumerationActions);
     if (enumerationStatement) {
@@ -266,19 +264,21 @@ export class SupportRolesInfra extends Construct {
     });
   }
 
-  /** Resource-naming actions, scoped by the root-stack tag condition. */
-  private buildTagScopedStatement(actions: string[]): iam.PolicyStatement | undefined {
+  /** Resource-naming actions, scoped by the root-stack tag conditions: one statement per condition. */
+  private buildTagScopedStatements(actions: string[]): iam.PolicyStatement[] {
     if (actions.length === 0) {
-      return undefined;
+      return [];
     }
-    return new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions,
-      resources: ['*'],
-      conditions: {
-        StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
-      },
-    });
+    const owner: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
+    return rootStackResourceTagConditions(owner).map(
+      (conditions) =>
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions,
+          resources: ['*'],
+          conditions,
+        }),
+    );
   }
 
   /** Enumeration and account-level actions declare no resource type, so a tag condition cannot bind to them. */

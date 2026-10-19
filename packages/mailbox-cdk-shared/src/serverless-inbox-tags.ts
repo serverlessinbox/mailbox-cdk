@@ -138,25 +138,42 @@ export function applyServerlessInboxEdgeTags(scope: IConstruct, options: ApplySe
   Tags.of(scope).add(ServerlessInboxTagKeys.rootRegion, options.rootRegion);
 }
 
+/** The root stack whose resources a grant admits: its name as tagged under `root-stack`, and its guid as tagged under `root-stack-id`. */
+export interface RootStack {
+  readonly name: string;
+  readonly id: string;
+}
+
+/** The `Condition` block of one IAM statement: operator to condition-key/value map. */
+export type RootStackConditions =Record<string, Record<string, string>>;
+
 /**
- * IAM condition-key/value pair gating on the root-stack RESOURCE tag (an already-tagged resource's
- * own tags), keyed under `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`. Callers spread the
- * result into a `StringEquals` (or similar) condition block alongside any other keys. `value` must be
- * the exact value the caller uses today (e.g. `Aws.STACK_NAME` or a `rootStack`/`rootStackTagValue`
- * parameter) — there is no default, since the two are not interchangeable when a stack has an
- * explicit name.
+ * The conditions of the two statements that together admit the resources the root stack owns:
+ * the first admits a resource whose RESOURCE tag `root-stack-id` equals the owner's id, the second a
+ * resource that has no `root-stack-id` tag and whose `root-stack` tag equals the owner's name. IAM
+ * grants on the union of statements, so a caller adds one statement per element, spreading it into
+ * its own conditions next to any keys under other operators.
  */
-export function rootStackResourceTagCondition(value: string): Record<string, string> {
-  return { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: value };
+export function rootStackResourceTagConditions(owner: RootStack): readonly [RootStackConditions, RootStackConditions] {
+  return rootStackConditions('aws:ResourceTag', owner);
 }
 
 /**
- * IAM condition-key/value pair gating on the root-stack REQUEST tag (the tag value being written by
- * the current request, e.g. on create or first tag-write), keyed under
- * `aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`. Callers spread the result into a
- * `StringEquals` (or similar) condition block alongside any other keys. `value` must be the exact
- * value the caller uses today — there is no default.
+ * The same two conditions over the REQUEST tag (the tags written by the current request, e.g. on
+ * create or first tag-write): the request carries the owner's id, or carries no id and the owner's name.
  */
-export function rootStackRequestTagCondition(value: string): Record<string, string> {
-  return { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: value };
+export function rootStackRequestTagConditions(owner: RootStack): readonly [RootStackConditions, RootStackConditions] {
+  return rootStackConditions('aws:RequestTag', owner);
+}
+
+function rootStackConditions(
+  keyPrefix: 'aws:ResourceTag' | 'aws:RequestTag',
+  owner: RootStack,
+): readonly [RootStackConditions, RootStackConditions] {
+  const idKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStackId}`;
+  const nameKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStack}`;
+  return [
+    { StringEquals: { [idKey]: owner.id } },
+    { StringEquals: { [nameKey]: owner.name }, Null: { [idKey]: 'true' } },
+  ];
 }

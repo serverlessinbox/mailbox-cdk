@@ -43,10 +43,12 @@ export {
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
   serverlessInboxSubStackTags,
-  rootStackResourceTagCondition,
-  rootStackRequestTagCondition,
+  rootStackResourceTagConditions,
+  rootStackRequestTagConditions,
 } from './serverless-inbox-tags';
 export type {
+  RootStack,
+  RootStackConditions,
   ServerlessInboxComponent,
   ApplyServerlessInboxTagsOptions,
   ApplyServerlessInboxEdgeTagsOptions,
