@@ -65,8 +65,7 @@ describe('Mailbox OAuth client wiring', () => {
   }
 
   function bootstrapResource(template: Template): [string, SynthesizedResource] {
-    const matching = Object.entries(template.findResources('AWS::CloudFormation::CustomResource'))
-      .filter(([, resource]) => resource.Properties?.authPolicies !== undefined);
+    const matching = Object.entries(template.findResources('Custom::Bootstrap'));
     expect(matching).toHaveLength(1);
     return matching[0];
   }

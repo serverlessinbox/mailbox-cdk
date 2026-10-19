@@ -196,6 +196,16 @@ describe('BootstrapLambda', () => {
       });
     });
 
+    it('allows describing only the stack the Lambda is deployed in', () => {
+      const template = synthBootstrap();
+
+      hasStatement(template, {
+        Action: 'cloudformation:DescribeStacks',
+        Resource: { Ref: 'AWS::StackId' },
+        Condition: Match.absent(),
+      });
+    });
+
     it('scopes ses:TagResource to the domain identity, gated by RequestTag and TagKeys', () => {
       const template = synthBootstrap();
 

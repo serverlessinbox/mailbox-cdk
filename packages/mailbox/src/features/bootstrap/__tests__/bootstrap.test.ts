@@ -59,7 +59,7 @@ describe('Bootstrap', () => {
   it('sends the webmail client under oauthClients.webmailUi only when one is given', () => {
     createBootstrap({ oauthClients: { webmailUi: client('webmail-client') } });
 
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
         webmailUi: Match.objectLike({ clientId: 'webmail-client', redirectUri: '/' }),
         adminUi: Match.absent(),
@@ -75,7 +75,7 @@ describe('Bootstrap', () => {
       },
     });
 
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
         adminUi: Match.objectLike({ requestedAudience: 'admin-client' }),
         webmailUi: Match.objectLike({ requestedAudience: 'webmail-audience' }),
@@ -86,31 +86,39 @@ describe('Bootstrap', () => {
   it('sends no oauthClients block when none is given', () => {
     createBootstrap();
 
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: Match.absent(),
     });
   });
 
   it('sends the default tenant name and local part when none are given', () => {
     createBootstrap();
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       tenantName: 'default-tenant',
       defaultLocalPart: '{username}',
     });
   });
 
-  it('bounds the time CloudFormation waits for the Lambda to answer', () => {
+  it('is a Custom::Bootstrap resource', () => {
     createBootstrap();
 
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
-      ServiceTimeout: '600',
+    Template.fromStack(stack).resourceCountIs('Custom::Bootstrap', 1);
+  });
+
+  it('bounds the time CloudFormation waits by the Lambda timeout plus a 30 second margin', () => {
+    createBootstrap();
+
+    const template = Template.fromStack(stack);
+    const [lambda] = Object.values(template.findResources('AWS::Lambda::Function'));
+    template.hasResourceProperties('Custom::Bootstrap', {
+      ServiceTimeout: String(lambda.Properties.Timeout + 30),
     });
   });
 
   it('sends the admin client under oauthClients.adminUi only when one is given', () => {
     createBootstrap({ oauthClients: { adminUi: client('admin-client') } });
 
-    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
         adminUi: Match.objectLike({ clientId: 'admin-client' }),
         webmailUi: Match.absent(),
@@ -124,7 +132,7 @@ describe('Bootstrap', () => {
     dependent.node.addDependency(bootstrap.oauthClientsProvisioned);
 
     const template = Template.fromStack(stack);
-    const [bootstrapLogicalId] = Object.keys(template.findResources('AWS::CloudFormation::CustomResource'));
+    const [bootstrapLogicalId] = Object.keys(template.findResources('Custom::Bootstrap'));
 
     expect(template.toJSON().Resources[stack.getLogicalId(dependent)].DependsOn).toContain(bootstrapLogicalId);
   });

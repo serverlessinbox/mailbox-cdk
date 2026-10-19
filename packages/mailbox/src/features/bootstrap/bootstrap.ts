@@ -5,6 +5,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct, IDependable } from 'constructs';
 import type { IDataTable } from '../../data/data-tables';
 import { BootstrapLambda } from '../../lambdas';
+import { BOOTSTRAP_LAMBDA_TIMEOUT } from '../../lambdas/bootstrap';
 import type { SesReceivingMode } from '../../core/email/ses-receiving-mode';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
@@ -14,6 +15,8 @@ import type {
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
 } from '../../auth/types';
+
+const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);
 
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {
@@ -68,9 +71,10 @@ export class Bootstrap extends Construct {
       stackIdentityTagKey: props.stackIdentityTagKey,
     });
 
-    const bootstrapResource = new CustomResource(this, id, {
+    const bootstrapResource = new CustomResource(this, 'resource', {
+      resourceType: 'Custom::Bootstrap',
       serviceToken: this.handler.functionArn,
-      serviceTimeout: Duration.minutes(10),
+      serviceTimeout: BOOTSTRAP_LAMBDA_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),
       properties: {
         ensureServiceQuotasPrereqs: true,
         tenantName: props.tenantName ?? 'default-tenant',

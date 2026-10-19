@@ -9,6 +9,8 @@ import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import type { SesReceivingMode } from '../core/email/ses-receiving-mode';
 
+export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
+
 export interface BootstrapLambdaProps {
   readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
@@ -38,7 +40,7 @@ export class BootstrapLambda extends GoLambda {
       lambdaId: 'bootstrap',
       pipeline: 'infra',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
+      timeout: BOOTSTRAP_LAMBDA_TIMEOUT,
       environment: {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
@@ -64,6 +66,14 @@ export class BootstrapLambda extends GoLambda {
 
     this.grantSesEmailIdentityRegistration(props.domain);
     this.grantSesEmailIdentityStackTagging(props.domain, props.stackIdentityTagKey);
+    this.grantOwnStackStatusRead();
+  }
+
+  private grantOwnStackStatusRead(): void {
+    this.addToRolePolicy(new PolicyStatement({
+      actions: ['cloudformation:DescribeStacks'],
+      resources: [Aws.STACK_ID],
+    }));
   }
 
   private grantServiceQuotasServiceLinkedRoleCreation(): void {
