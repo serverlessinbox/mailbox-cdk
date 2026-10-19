@@ -8,6 +8,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { LicenseRefresherLambda } from '../../lambdas';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 
+/** Inputs of the license refresher Lambda and of the rules that invoke it. */
 export interface LicenseRefreshProps {
   readonly configTable: IDataTable;
   readonly artifactResolver: IArtifactResolver;
@@ -16,8 +17,12 @@ export interface LicenseRefreshProps {
   readonly vendorAccountIds: string[];
 }
 
+/**
+ * The license refresher Lambda together with the rules that invoke it: once a day, and after every
+ * stack create or update.
+ */
 export class LicenseRefresh extends Construct {
-  /** Exposed for constructs that need to gate on the license function (e.g. McpApi). */
+  /** The Lambda function that refreshes the license. */
   public readonly licenseFunction: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props: LicenseRefreshProps) {

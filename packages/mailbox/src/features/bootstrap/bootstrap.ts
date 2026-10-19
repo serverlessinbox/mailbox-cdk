@@ -1,4 +1,5 @@
 import { CustomResource, Duration } from 'aws-cdk-lib';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct, IDependable } from 'constructs';
@@ -7,13 +8,14 @@ import { BootstrapLambda } from '../../lambdas';
 import type { SesReceivingMode } from '../../core/email/ses-receiving-mode';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
-import {
+import type {
   AuthPoliciesConfig,
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
 } from '../../auth/types';
 
+/** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {
   readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
@@ -45,7 +47,7 @@ export interface BootstrapProps {
  */
 export class Bootstrap extends Construct {
   /** The Lambda function backing the bootstrap custom resource. */
-  readonly handler: BootstrapLambda;
+  readonly handler: IFunction;
 
   /** Satisfied once the bootstrap custom resource has written the OAuth client rows to the config table. */
   readonly oauthClientsProvisioned: IDependable;
@@ -53,15 +55,7 @@ export class Bootstrap extends Construct {
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
 
-    const toRequestOAuthClient = (client: OAuthAuthorizationCodeClientConfig) => ({
-      requestedAudience: client.requestedAudience ?? client.clientId,
-      clientId: client.clientId,
-      clientSecret: client.clientSecret?.unsafeUnwrap(),
-      scopes: client.scopes,
-      redirectUri: client.redirectUri,
-    });
-
-    const handler = new BootstrapLambda(this, 'handler', {
+    this.handler = new BootstrapLambda(this, 'handler', {
       configTable: props.configTable,
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver: props.artifactResolver,
@@ -73,11 +67,10 @@ export class Bootstrap extends Construct {
       vendorAccountIds: props.vendorAccountIds,
       stackIdentityTagKey: props.stackIdentityTagKey,
     });
-    this.handler = handler;
 
     const bootstrapResource = new CustomResource(this, id, {
-      serviceToken: handler.functionArn,
-      serviceTimeout: Duration.minutes(10), // caps CFN's default multi-hour wait
+      serviceToken: this.handler.functionArn,
+      serviceTimeout: Duration.minutes(10),
       properties: {
         bootstrapNonce: Date.now().toString(),
         ensureServiceQuotasPrereqs: true,
@@ -91,8 +84,8 @@ export class Bootstrap extends Construct {
         authPolicies: props.authPolicies,
         oauthClients: props.oauthClients
           ? {
-            adminUi: props.oauthClients.adminUi ? toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
-            webmailUi: props.oauthClients.webmailUi ? toRequestOAuthClient(props.oauthClients.webmailUi) : undefined,
+            adminUi: props.oauthClients.adminUi ? this.toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
+            webmailUi: props.oauthClients.webmailUi ? this.toRequestOAuthClient(props.oauthClients.webmailUi) : undefined,
           }
           : undefined,
         hostedZoneId: props.hostedZone?.hostedZoneId,
@@ -100,10 +93,14 @@ export class Bootstrap extends Construct {
     });
     this.oauthClientsProvisioned = bootstrapResource;
   }
-}
 
-export type {
-  OidcProviderConfig,
-  AuthPoliciesConfig,
-  OAuthClientsConfig,
-} from '../../auth/types';
+  private toRequestOAuthClient(client: OAuthAuthorizationCodeClientConfig) {
+    return {
+      requestedAudience: client.requestedAudience ?? client.clientId,
+      clientId: client.clientId,
+      clientSecret: client.clientSecret?.unsafeUnwrap(),
+      scopes: client.scopes,
+      redirectUri: client.redirectUri,
+    };
+  }
+}

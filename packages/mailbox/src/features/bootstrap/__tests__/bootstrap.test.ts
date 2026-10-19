@@ -56,15 +56,54 @@ describe('Bootstrap', () => {
     });
   });
 
-  it('sends the webmail client under oauthClients.webmailUi and nothing under jmapUi', () => {
+  it('sends the webmail client under oauthClients.webmailUi only when one is given', () => {
     createBootstrap({ oauthClients: { webmailUi: client('webmail-client') } });
 
     Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
       oauthClients: {
         webmailUi: Match.objectLike({ clientId: 'webmail-client', redirectUri: '/' }),
-        jmapUi: Match.absent(),
         adminUi: Match.absent(),
       },
+    });
+  });
+
+  it('requests the client id as audience unless a requested audience is given', () => {
+    createBootstrap({
+      oauthClients: {
+        adminUi: client('admin-client'),
+        webmailUi: { ...client('webmail-client'), requestedAudience: 'webmail-audience' },
+      },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+      oauthClients: {
+        adminUi: Match.objectLike({ requestedAudience: 'admin-client' }),
+        webmailUi: Match.objectLike({ requestedAudience: 'webmail-audience' }),
+      },
+    });
+  });
+
+  it('sends no oauthClients block when none is given', () => {
+    createBootstrap();
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+      oauthClients: Match.absent(),
+    });
+  });
+
+  it('sends the default tenant name and local part when none are given', () => {
+    createBootstrap();
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+      tenantName: 'default-tenant',
+      defaultLocalPart: '{username}',
+    });
+  });
+
+  it('bounds the time CloudFormation waits for the Lambda to answer', () => {
+    createBootstrap();
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFormation::CustomResource', {
+      ServiceTimeout: '600',
     });
   });
 
