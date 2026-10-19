@@ -1,5 +1,6 @@
 import { Permission } from '@serverlessinbox/mailbox';
 
+/** The scope names of the Cognito resource server, one per mailbox permission. */
 export enum CognitoScope {
   MAIL_READ = 'mail.read',
   MAIL_WRITE = 'mail.write',
@@ -13,6 +14,7 @@ export enum CognitoScope {
   ADMIN = 'admin',
 }
 
+/** The mailbox permissions each Cognito scope grants. */
 export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.MAIL_READ]: [Permission.MAIL_READ],
   [CognitoScope.MAIL_WRITE]: [Permission.MAIL_WRITE],
@@ -26,6 +28,7 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.ADMIN]: [Permission.ADMIN],
 };
 
+/** The Cognito scope that grants each mailbox permission; the inverse of `CognitoScopeToPermissions`. */
 export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.MAIL_READ]: CognitoScope.MAIL_READ,
   [Permission.MAIL_WRITE]: CognitoScope.MAIL_WRITE,
