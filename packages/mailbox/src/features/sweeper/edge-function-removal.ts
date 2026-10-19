@@ -3,7 +3,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
+import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
 import type { EdgeFunctionRemovalTarget, EdgeFunctionWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
@@ -29,7 +29,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
   }
 
   public grantStatements(): iam.PolicyStatement[] {
-    return [this.grantEdgeFunctionInspection(), this.grantEdgeFunctionDeletion()];
+    return [this.grantEdgeFunctionInspection(), ...this.grantEdgeFunctionDeletion()];
   }
 
   public crProperties(): EdgeFunctionRemovalTarget {
@@ -41,6 +41,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
       removalType: 'edge-fn',
       edgeFnArn: targetField(this.id, 'edgeFnArn'),
       rootStackName: Stack.of(this).stackName,
+      rootStackId: StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'EdgeFn', {
@@ -61,13 +62,14 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
     });
   }
 
-  private grantEdgeFunctionDeletion(): iam.PolicyStatement {
-    return new iam.PolicyStatement({
-      actions: ['lambda:DeleteFunction'],
-      resources: [EdgeFunctionRemoval.anyEdgeFunctionArn],
-      conditions: {
-        StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
-      },
-    });
+  private grantEdgeFunctionDeletion(): iam.PolicyStatement[] {
+    return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid }).map(
+      (conditions) =>
+        new iam.PolicyStatement({
+          actions: ['lambda:DeleteFunction'],
+          resources: [EdgeFunctionRemoval.anyEdgeFunctionArn],
+          conditions,
+        }),
+    );
   }
 }

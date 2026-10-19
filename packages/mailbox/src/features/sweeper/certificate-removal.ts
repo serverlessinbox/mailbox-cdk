@@ -4,7 +4,7 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
+import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
 import type { CertRemovalTarget, CertWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval } from './removal';
@@ -29,7 +29,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
   }
 
   public grantStatements(): iam.PolicyStatement[] {
-    return [this.grantCertificateInspection(), this.grantCertificateDeletion()];
+    return [this.grantCertificateInspection(), ...this.grantCertificateDeletion()];
   }
 
   public crProperties(): CertRemovalTarget {
@@ -41,6 +41,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
       removalType: 'cert',
       certArn: targetField(this.id, 'certArn'),
       rootStackName: Stack.of(this).stackName,
+      rootStackId: StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'Cert', {
@@ -61,13 +62,14 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
     });
   }
 
-  private grantCertificateDeletion(): iam.PolicyStatement {
-    return new iam.PolicyStatement({
-      actions: ['acm:DeleteCertificate'],
-      resources: [CertificateRemoval.anyCertificateArn],
-      conditions: {
-        StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME),
-      },
-    });
+  private grantCertificateDeletion(): iam.PolicyStatement[] {
+    return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid }).map(
+      (conditions) =>
+        new iam.PolicyStatement({
+          actions: ['acm:DeleteCertificate'],
+          resources: [CertificateRemoval.anyCertificateArn],
+          conditions,
+        }),
+    );
   }
 }

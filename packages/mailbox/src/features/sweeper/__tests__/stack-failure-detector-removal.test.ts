@@ -18,8 +18,12 @@ import {
 } from './sweeper-helpers';
 
 describe('StackFailureDetectorRemoval', () => {
-  const rootStackCondition = {
+  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
+    Null: { [idKey]: 'true' },
   };
   const anyRule = {
     'Fn::Join': ['', ['arn:aws:events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*']],
@@ -41,14 +45,11 @@ describe('StackFailureDetectorRemoval', () => {
         Effect: 'Allow',
         Resource: anyRule,
       },
-      {
-        Action: ['events:RemoveTargets', 'events:DeleteRule'],
-        Effect: 'Allow',
-        Resource: anyRule,
-        Condition: rootStackCondition,
-      },
+      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: ownedById },
+      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: ownedByNameWithoutId },
       { Action: 'lambda:GetFunction', Effect: 'Allow', Resource: anyRegionalFunction },
-      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: rootStackCondition },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: ownedById },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: ownedByNameWithoutId },
       { Action: 'iam:ListRoleTags', Effect: 'Allow', Resource: roleArn },
       { Action: ['iam:DeleteRolePolicy', 'iam:DeleteRole'], Effect: 'Allow', Resource: roleArn },
     ]);
@@ -98,5 +99,6 @@ describe('StackFailureDetectorRemoval', () => {
     expect(invoke).toContain('"ruleArn.$":"$.toSweep.detector.ruleArn"');
     expect(invoke).toContain('"detectorRolePolicyName.$":"$.toSweep.detector.detectorRolePolicyName"');
     expect(invoke).toContain('"rootStackName":"DetectorChainStack"');
+    expect(invoke).toContain('"rootStackId":');
   });
 });

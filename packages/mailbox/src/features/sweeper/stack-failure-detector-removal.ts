@@ -3,7 +3,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
+import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStackConditions } from '@serverlessinbox/mailbox-cdk-shared';
 import type { StackFailureDetectorSweepTargets } from '../stack-failure-detection';
 import type {
   StackFailureDetectorRemovalTarget,
@@ -49,9 +50,9 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   public grantStatements(): iam.PolicyStatement[] {
     return [
       this.grantRuleInspection(),
-      this.grantRuleDeletion(),
+      ...this.grantRuleDeletion(),
       this.grantDetectorFunctionInspection(),
-      this.grantDetectorFunctionDeletion(),
+      ...this.grantDetectorFunctionDeletion(),
       this.grantDetectorRoleInspection(),
       this.grantDetectorRoleDeletion(),
     ];
@@ -76,6 +77,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       detectorRoleArn: targetField(this.id, 'detectorRoleArn'),
       detectorRolePolicyName: targetField(this.id, 'detectorRolePolicyName'),
       rootStackName: Stack.of(this).stackName,
+      rootStackId: StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'Detector', {
@@ -98,13 +100,16 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     });
   }
 
-  /** Rules are auto-named and support `aws:ResourceTag` on delete actions, so the root-stack tag is the scope. */
-  private grantRuleDeletion(): iam.PolicyStatement {
-    return new iam.PolicyStatement({
-      actions: ['events:RemoveTargets', 'events:DeleteRule'],
-      resources: [StackFailureDetectorRemoval.anyRuleArn],
-      conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
-    });
+  /** Rules are auto-named and support `aws:ResourceTag` on delete actions, so the root-stack tags are the scope. */
+  private grantRuleDeletion(): iam.PolicyStatement[] {
+    return this.ownerConditions().map(
+      (conditions) =>
+        new iam.PolicyStatement({
+          actions: ['events:RemoveTargets', 'events:DeleteRule'],
+          resources: [StackFailureDetectorRemoval.anyRuleArn],
+          conditions,
+        }),
+    );
   }
 
   /** The detector is a regular regional function, not Lambda@Edge, so the scope is the stack's own region. */
@@ -115,12 +120,15 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     });
   }
 
-  private grantDetectorFunctionDeletion(): iam.PolicyStatement {
-    return new iam.PolicyStatement({
-      actions: ['lambda:DeleteFunction'],
-      resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
-      conditions: { StringEquals: rootStackResourceTagCondition(Aws.STACK_NAME) },
-    });
+  private grantDetectorFunctionDeletion(): iam.PolicyStatement[] {
+    return this.ownerConditions().map(
+      (conditions) =>
+        new iam.PolicyStatement({
+          actions: ['lambda:DeleteFunction'],
+          resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
+          conditions,
+        }),
+    );
   }
 
   /** Scoped to the role's own ARN: `iam:DeleteRole` and `iam:DeleteRolePolicy` take no `aws:ResourceTag` condition. */
@@ -136,5 +144,9 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
       resources: [this.targets.role.roleArn],
     });
+  }
+
+  private ownerConditions(): readonly RootStackConditions[] {
+    return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid });
   }
 }

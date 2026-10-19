@@ -21,19 +21,23 @@ describe('EdgeFunctionRemoval', () => {
     'Fn::Join': ['', ['arn:aws:lambda:us-east-1:', { Ref: 'AWS::AccountId' }, ':function:*']],
   };
 
-  it('reads functions in us-east-1 unconditioned and deletes them there only when the root-stack tag matches', () => {
+  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const ownedByNameWithoutId = {
+    StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
+    Null: { [idKey]: 'true' },
+  };
+
+  it('reads functions in us-east-1 unconditioned and deletes them there only when the root stack owns them, by id or by name without an id tag', () => {
     const stack = newTestStack('EdgeFunctionGrantsStack');
 
     const statements = resolveStatements(stack, newEdgeFunctionRemoval(stack).grantStatements());
 
     expect(statements).toEqual([
       { Action: 'lambda:GetFunction', Effect: 'Allow', Resource: anyUsEast1Function },
-      {
-        Action: 'lambda:DeleteFunction',
-        Effect: 'Allow',
-        Resource: anyUsEast1Function,
-        Condition: { StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } } },
-      },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: ownedById },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: ownedByNameWithoutId },
     ]);
   });
 
@@ -55,5 +59,6 @@ describe('EdgeFunctionRemoval', () => {
     expect(stateBodyOf(definition, 'EdgeFnHasTarget')).toContain('"Default":"Done"');
     expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"edgeFnArn.$":"$.toSweep.edge-fn.edgeFnArn"');
     expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"rootStackName":"EdgeFunctionChainStack"');
+    expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"rootStackId":');
   });
 });

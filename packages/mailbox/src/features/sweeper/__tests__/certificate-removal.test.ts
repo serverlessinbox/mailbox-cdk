@@ -21,7 +21,15 @@ describe('CertificateRemoval', () => {
     'Fn::Join': ['', ['arn:aws:acm:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':certificate/*']],
   };
 
-  it('reads certificates unconditioned and deletes them only when the root-stack tag matches', () => {
+  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const ownedByNameWithoutId = {
+    StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
+    Null: { [idKey]: 'true' },
+  };
+
+  it('reads certificates unconditioned and deletes them only when the root stack owns them, by id or by name without an id tag', () => {
     const stack = newTestStack('CertificateGrantsStack');
 
     const statements = resolveStatements(stack, newCertificateRemoval(stack).grantStatements());
@@ -32,12 +40,8 @@ describe('CertificateRemoval', () => {
         Effect: 'Allow',
         Resource: anyCertificate,
       },
-      {
-        Action: 'acm:DeleteCertificate',
-        Effect: 'Allow',
-        Resource: anyCertificate,
-        Condition: { StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } } },
-      },
+      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: ownedById },
+      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: ownedByNameWithoutId },
     ]);
   });
 
@@ -59,5 +63,6 @@ describe('CertificateRemoval', () => {
     expect(stateBodyOf(definition, 'CertHasTarget')).toContain('"Default":"Done"');
     expect(stateBodyOf(definition, 'CertInvoke')).toContain('"certArn.$":"$.toSweep.cert.certArn"');
     expect(stateBodyOf(definition, 'CertInvoke')).toContain('"rootStackName":"CertificateChainStack"');
+    expect(stateBodyOf(definition, 'CertInvoke')).toContain('"rootStackId":');
   });
 });

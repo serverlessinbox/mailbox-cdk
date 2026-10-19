@@ -17,7 +17,7 @@ describe('removal chain helpers', () => {
   const retryInterval = Duration.minutes(5);
 
   function certPayload(): CertWorkerInput {
-    return { removalType: 'cert', certArn: targetField('cert', 'certArn'), rootStackName: 'root-stack' };
+    return { removalType: 'cert', certArn: targetField('cert', 'certArn'), rootStackName: 'root-stack', rootStackId: 'guid-1' };
   }
 
   describe('buildWorkerRetryLoop', () => {
