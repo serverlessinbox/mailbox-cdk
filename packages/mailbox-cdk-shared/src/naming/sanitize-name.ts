@@ -1,20 +1,13 @@
 /**
- * Sanitize stack name for valid AWS resource naming
- *
- * S3 bucket names must:
- * - Be 3-63 characters long
- * - Contain only lowercase letters, numbers, hyphens
- * - Start and end with letter or number
- *
- * DynamoDB table names must:
- * - Contain only alphanumeric characters, hyphens, underscores, periods
- *
- * This function sanitizes for S3 compatibility (stricter constraints)
+ * Reduces a stack name to `a-z0-9-`: lowercases it, turns every other character into a hyphen,
+ * collapses hyphen runs and drops leading and trailing hyphens, which is what S3 bucket names
+ * (lowercase letters, digits, hyphens, starting and ending with a letter or digit) require.
+ * The 3-63 character length limit is not enforced here.
  */
 export function sanitizeStackName(stackName: string): string {
   return stackName
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')  // Replace invalid chars with hyphens
-    .replace(/-+/g, '-')             // Collapse consecutive hyphens
-    .replace(/^-+|-+$/g, '');        // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

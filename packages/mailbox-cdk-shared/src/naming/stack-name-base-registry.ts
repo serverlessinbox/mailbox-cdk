@@ -15,7 +15,6 @@ import { IConstruct } from 'constructs';
  * so any construct in the stack can be passed and the same key is used for all lookups.
  */
 
-// Use a WeakMap to store name bases per stack, keyed by the stack's construct node
 const registryMap = new WeakMap<IConstruct['node'], string | IResolvable>();
 
 /**
@@ -33,11 +32,11 @@ export function setStackNameBase(stack: IConstruct, nameBase: string | IResolvab
   const existing = registryMap.get(stackNode);
 
   if (existing !== undefined) {
-    // If the exact same value is being set, allow it (idempotent)
+    // Registering the identical value again is allowed; any other value is rejected.
     if (existing === nameBase) {
       return;
     }
-    // Otherwise, throw to prevent accidental overwrites
+
     throw new Error(
       `Stack name base already registered for ${stackNode.path}. ` +
       'Setting it twice with different values is not permitted. ' +

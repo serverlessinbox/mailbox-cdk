@@ -3,7 +3,7 @@ import { Aws, Fn } from 'aws-cdk-lib';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import type { Construct, IConstruct } from 'constructs';
 import { getOrCreateSharedGroup } from './shared-group';
 import type { Pipeline } from './pipelines';
 
@@ -31,10 +31,7 @@ const PIPELINE_REMOVAL_POLICY: Record<Pipeline, cdk.RemovalPolicy> = {
   audit: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
 };
 
-/**
- * The CloudWatch log group for a pipeline — provides narrow grant methods for specific access patterns.
- * Extends `logs.LogGroup` so consumers can pass it directly as a CDK Lambda's logGroup property.
- */
+/** The CloudWatch log group of a pipeline: a `logs.ILogGroup` plus one narrow read grant. */
 export interface IPipelineLogGroup extends logs.ILogGroup {
   /**
    * Grants exactly `logs:FilterLogEvents` on this log group (e.g., for querying logs during
@@ -44,16 +41,14 @@ export interface IPipelineLogGroup extends logs.ILogGroup {
 }
 
 /**
- * The CloudWatch log group for a pipeline — provides narrow grant methods for specific access patterns.
- * Extends `logs.LogGroup` so consumers can pass it directly as a CDK Lambda's logGroup property.
- * The inherited `grantWrite()` from `logs.LogGroup` grants exactly `logs:CreateLogStream` + `logs:PutLogEvents`,
- * which is what consumers need; no separate `grantWrite` method is added here.
+ * The CloudWatch log group of a pipeline, one per (stack, pipeline), created through `getOrCreate`.
+ * Writing needs no method of its own: the inherited `grantWrite()` grants exactly
+ * `logs:CreateLogStream` + `logs:PutLogEvents`.
  */
 export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup {
   /**
    * Get-or-create the one shared CloudWatch log group for a given pipeline, within the Stack that
-   * `scope` belongs to, created lazily by whichever `GoLambda`/`TypeScriptLambda` wrapper asks for a
-   * given pipeline first.
+   * `scope` belongs to.
    *
    * Name: `/serverlessinbox/<stackName>/<pipeline>-<stackGuidPrefix>`. Derived from (stack, pipeline)
    * — never from a construct's logical id — so a construct moving in the tree doesn't rename the
@@ -63,29 +58,19 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
    * Returns the same PipelineLogGroup instance for repeated calls with the same (stack, pipeline) pair.
    */
   static getOrCreate(scope: Construct, pipeline: Pipeline): IPipelineLogGroup {
-    const stack = cdk.Stack.of(scope);
-    const shared = getOrCreateSharedGroup(stack);
+    const shared = getOrCreateSharedGroup(cdk.Stack.of(scope));
     const childId = `log-group-${pipeline}`;
+
     const existing = shared.node.tryFindChild(childId);
     if (existing) {
-      if (!(existing instanceof PipelineLogGroup)) {
-        throw new Error(
-          `Expected PipelineLogGroup at ${childId}, but found ${existing.constructor.name}. ` +
-          'This indicates a construct tree collision — a different resource was placed at this location.'
-        );
-      }
-      return existing;
+      return PipelineLogGroup.requirePipelineLogGroup(existing, childId);
     }
 
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
-    const guidPrefix = Fn.select(0, Fn.split('-', stackGuid));
-    const logGroup = new PipelineLogGroup(shared, childId, {
-      logGroupName: Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', guidPrefix]),
+    return new PipelineLogGroup(shared, childId, {
+      logGroupName: PipelineLogGroup.logGroupNameFor(pipeline),
       retention: PIPELINE_RETENTION[pipeline],
       removalPolicy: PIPELINE_REMOVAL_POLICY[pipeline],
     });
-
-    return logGroup;
   }
 
   grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
@@ -94,5 +79,22 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
       actions: ['logs:FilterLogEvents'],
       resourceArns: [this.logGroupArn],
     });
+  }
+
+  private static requirePipelineLogGroup(existing: IConstruct, childId: string): PipelineLogGroup {
+    if (!(existing instanceof PipelineLogGroup)) {
+      throw new Error(
+        `Expected PipelineLogGroup at ${childId}, but found ${existing.constructor.name}. ` +
+        'This indicates a construct tree collision — a different resource was placed at this location.'
+      );
+    }
+
+    return existing;
+  }
+
+  private static logGroupNameFor(pipeline: Pipeline): string {
+    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    const guidPrefix = Fn.select(0, Fn.split('-', stackGuid));
+    return Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', guidPrefix]);
   }
 }

@@ -1,9 +1,20 @@
 import { App, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
+import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { PipelineLogGroup } from '../pipeline-log-groups';
+import { getOrCreateSharedGroup } from '../shared-group';
 
+/**
+ * Pins the one-log-group-per-(stack, pipeline) contract, the group name and the removal policies.
+ * A group is `RETAIN`ed, so a changed name or a second group per pipeline leaves an orphan behind
+ * and breaks the delete-and-recreate of a stack.
+ */
 function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
+}
+
+function logGroupResources(stack: Stack) {
+  return Template.fromStack(stack).findResources('AWS::Logs::LogGroup');
 }
 
 describe('PipelineLogGroup', () => {
@@ -16,40 +27,34 @@ describe('PipelineLogGroup', () => {
     expect(second).toBe(first);
   });
 
-  it('getOrCreate returns distinct, correctly-named groups for two different pipelines', () => {
+  it('getOrCreate returns distinct groups named /serverlessinbox/<stack>/<pipeline>-<guid prefix>', () => {
     const stack = newStack();
 
     const jmap = PipelineLogGroup.getOrCreate(stack, 'jmap');
     const admin = PipelineLogGroup.getOrCreate(stack, 'admin');
 
     expect(jmap).not.toBe(admin);
-
-    const template = Template.fromStack(stack);
-    const groups = template.findResources('AWS::Logs::LogGroup');
-    const names = Object.values(groups).map((g: any) => JSON.stringify(g.Properties.LogGroupName));
-
-    expect(names.some((n) => n.includes('"/serverlessinbox/"') || n.includes('serverlessinbox'))).toBe(true);
-    expect(Object.keys(groups)).toHaveLength(2);
+    const groups = Object.values(logGroupResources(stack));
+    expect(groups).toHaveLength(2);
+    const nameStarts = groups.map((group) => group.Properties.LogGroupName['Fn::Join'][1].slice(0, 3));
+    expect(nameStarts).toEqual(expect.arrayContaining([
+      ['/serverlessinbox/', { Ref: 'AWS::StackName' }, '/jmap-'],
+      ['/serverlessinbox/', { Ref: 'AWS::StackName' }, '/admin-'],
+    ]));
   });
 
-  it('never produces a log group name beginning with "aws/"', () => {
+  it('getOrCreate throws when another kind of construct occupies the pipeline\'s slot', () => {
     const stack = newStack();
-    PipelineLogGroup.getOrCreate(stack, 'infra');
+    new Role(getOrCreateSharedGroup(stack), 'log-group-jmap', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') });
 
-    const template = Template.fromStack(stack);
-    const groups = template.findResources('AWS::Logs::LogGroup');
-    for (const group of Object.values(groups)) {
-      const nameParts = (group as any).Properties.LogGroupName['Fn::Join'][1] as string[];
-      expect(nameParts[0]).toBe('/serverlessinbox/');
-    }
+    expect(() => PipelineLogGroup.getOrCreate(stack, 'jmap')).toThrow(/Expected PipelineLogGroup at log-group-jmap, but found Role/);
   });
 
   it('tags every pipeline log group with serverless-inbox:root-stack', () => {
     const stack = newStack();
     PipelineLogGroup.getOrCreate(stack, 'audit');
 
-    const template = Template.fromStack(stack);
-    template.hasResourceProperties('AWS::Logs::LogGroup', {
+    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', {
       Tags: Match.arrayWith([
         Match.objectLike({ Key: 'serverless-inbox:root-stack' }),
       ]),
@@ -60,7 +65,7 @@ describe('PipelineLogGroup', () => {
     const stack = newStack();
     PipelineLogGroup.getOrCreate(stack, 'infra');
 
-    const groups = Object.values(Template.fromStack(stack).findResources('AWS::Logs::LogGroup'));
+    const groups = Object.values(logGroupResources(stack));
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
   });
@@ -69,31 +74,26 @@ describe('PipelineLogGroup', () => {
     const stack = newStack();
     PipelineLogGroup.getOrCreate(stack, 'jmap');
 
-    const groups = Object.values(Template.fromStack(stack).findResources('AWS::Logs::LogGroup'));
+    const groups = Object.values(logGroupResources(stack));
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ DeletionPolicy: 'RetainExceptOnCreate' });
   });
 
   it('grantFilterEvents grants logs:FilterLogEvents scoped to the log group ARN', () => {
-    const stack = new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
+    const stack = newStack();
     const logGroup = PipelineLogGroup.getOrCreate(stack, 'jmap');
-
-    const role = new (require('aws-cdk-lib').aws_iam.Role)(stack, 'test-role', {
-      assumedBy: new (require('aws-cdk-lib').aws_iam.ServicePrincipal)('lambda.amazonaws.com'),
-    });
+    const role = new Role(stack, 'test-role', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') });
 
     logGroup.grantFilterEvents(role);
 
-    const template = Template.fromStack(stack);
-    template.hasResourceProperties('AWS::IAM::Policy', {
+    const [logGroupLogicalId] = Object.keys(logGroupResources(stack));
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
             Action: 'logs:FilterLogEvents',
             Effect: 'Allow',
-            Resource: {
-              'Fn::GetAtt': [Match.stringLikeRegexp('.*'), 'Arn'],
-            },
+            Resource: { 'Fn::GetAtt': [logGroupLogicalId, 'Arn'] },
           }),
         ]),
       }),

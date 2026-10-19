@@ -3,6 +3,7 @@ import { CfnGroup } from 'aws-cdk-lib/aws-resourcegroups';
 import { Construct } from 'constructs';
 import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
+/** Options for `addServerlessInboxResourceGroup`. */
 export interface ServerlessInboxResourceGroupProps {
   /**
    * Value the group's tag-filter matches on `serverless-inbox:root-stack`. All resources tagged
@@ -23,7 +24,7 @@ export interface ServerlessInboxResourceGroupProps {
  * `serverless-inbox:root-stack = <rootStackValue>` tag, giving customers a single console view of
  * all of a deployment's resources in that region.
  *
- * Uses a `TAG_FILTERS_1_0` query over `AWS::AllSupported`. Skips per-component sub-groups.
+ * Uses a `TAG_FILTERS_1_0` query over `AWS::AllSupported`.
  */
 export function addServerlessInboxResourceGroup(
   scope: Construct,

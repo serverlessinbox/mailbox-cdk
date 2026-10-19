@@ -4,162 +4,104 @@ import { BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { setStackNameBase, getStackNameBase } from '../stack-name-base-registry';
 import { StackNamedBucket } from '../../named-bucket';
 
+/**
+ * Pins the per-stack name-base registry: one value per stack, the identical value may be registered
+ * again, a different one is rejected. A silently replaced base would give resources of one stack
+ * two different name bases.
+ */
+function newStack(): cdk.Stack {
+  return new cdk.Stack(new cdk.App(), 'TestStack', {
+    env: { account: '123456789012', region: 'us-west-2' },
+    synthesizer: new BootstraplessSynthesizer(),
+  });
+}
+
+function bucketNameOf(stack: cdk.Stack): string {
+  const template = Template.fromStack(stack);
+  template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
+  const resources = template.findResources('AWS::S3::Bucket');
+  const bucketName = Object.values(resources)[0].Properties.BucketName;
+  expect(bucketName).toBeDefined();
+  return JSON.stringify(bucketName);
+}
+
 describe('Stack Name Base Registry', () => {
   describe('setStackNameBase and getStackNameBase', () => {
     it('returns the value set for that stack', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+      const stack = newStack();
 
-      const nameBase = 'test-base-value';
-      setStackNameBase(stack, nameBase);
-      const retrieved = getStackNameBase(stack);
+      setStackNameBase(stack, 'test-base-value');
 
-      expect(retrieved).toBe(nameBase);
+      expect(getStackNameBase(stack)).toBe('test-base-value');
     });
 
     it('returns undefined when no name base is registered', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const retrieved = getStackNameBase(stack);
-      expect(retrieved).toBeUndefined();
+      expect(getStackNameBase(newStack())).toBeUndefined();
     });
 
     it('throws when setting a different value twice', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+      const stack = newStack();
 
       setStackNameBase(stack, 'value1');
-      expect(() => {
-        setStackNameBase(stack, 'value2');
-      }).toThrow(/Stack name base already registered/);
+
+      expect(() => setStackNameBase(stack, 'value2')).toThrow(/Stack name base already registered/);
     });
 
-    it('allows setting the same value twice (idempotent)', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+    it('allows setting the same value twice', () => {
+      const stack = newStack();
 
-      const nameBase = 'test-value';
-      setStackNameBase(stack, nameBase);
-      setStackNameBase(stack, nameBase); // Should not throw
+      setStackNameBase(stack, 'test-value');
+      setStackNameBase(stack, 'test-value');
 
-      const retrieved = getStackNameBase(stack);
-      expect(retrieved).toBe(nameBase);
+      expect(getStackNameBase(stack)).toBe('test-value');
     });
 
     it('handles tokens as name base', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
+      const stack = newStack();
       const token = cdk.Fn.getAtt('SomeResource', 'Value');
-      setStackNameBase(stack, token);
-      const retrieved = getStackNameBase(stack);
 
-      expect(retrieved).toBe(token);
+      setStackNameBase(stack, token);
+
+      expect(getStackNameBase(stack)).toBe(token);
     });
   });
 
   describe('StackNamedBucket with registry', () => {
     it('resolves to registered base when set before bucket creation', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const nameBase = 'custom-base';
-      setStackNameBase(stack, nameBase);
+      const stack = newStack();
+      setStackNameBase(stack, 'custom-base');
 
       new StackNamedBucket(stack, 'test-bucket', {});
 
-      const template = Template.fromStack(stack);
-      // The bucket should have a BucketName that includes the custom base
-      template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-      const resources = template.findResources('AWS::S3::Bucket');
-      expect(Object.values(resources)[0].Properties.BucketName).toBeDefined();
-      expect(JSON.stringify(Object.values(resources)[0].Properties.BucketName)).toContain('custom-base');
+      expect(bucketNameOf(stack)).toContain('custom-base');
     });
 
     it('resolves to registered base when set after bucket creation (Lazy evaluation)', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      // Create bucket before registering name base
+      const stack = newStack();
       new StackNamedBucket(stack, 'test-bucket', {});
 
-      // Register name base after bucket creation
-      const nameBase = 'custom-base';
-      setStackNameBase(stack, nameBase);
+      setStackNameBase(stack, 'custom-base');
 
-      const template = Template.fromStack(stack);
-      // The bucket should have a BucketName that includes the custom base (set after creation)
-      template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-      const resources = template.findResources('AWS::S3::Bucket');
-      expect(Object.values(resources)[0].Properties.BucketName).toBeDefined();
-      expect(JSON.stringify(Object.values(resources)[0].Properties.BucketName)).toContain('custom-base');
+      expect(bucketNameOf(stack)).toContain('custom-base');
     });
 
     it('resolves to AWS::StackName when nothing is registered', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+      const stack = newStack();
 
       new StackNamedBucket(stack, 'test-bucket', {});
 
-      const template = Template.fromStack(stack);
-      // The bucket should have a BucketName that includes AWS::StackName reference
-      template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-      const resources = template.findResources('AWS::S3::Bucket');
-      const bucketName = Object.values(resources)[0].Properties.BucketName;
-      expect(bucketName).toBeDefined();
-      const bucketNameStr = JSON.stringify(bucketName);
-      expect(bucketNameStr).toContain('AWS::StackName');
+      expect(bucketNameOf(stack)).toContain('AWS::StackName');
     });
 
     it('uses explicit nameBase when provided (bypasses registry)', () => {
-      const app = new cdk.App();
-      const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+      const stack = newStack();
+      setStackNameBase(stack, 'registered-base');
 
-      const registeredBase = 'registered-base';
-      setStackNameBase(stack, registeredBase);
+      new StackNamedBucket(stack, 'test-bucket', { nameBase: 'explicit-base' });
 
-      const explicitBase = 'explicit-base';
-      new StackNamedBucket(stack, 'test-bucket', {
-        nameBase: explicitBase,
-      });
-
-      const template = Template.fromStack(stack);
-      // The bucket should have a BucketName that includes the explicit base, not the registered one
-      template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-      const resources = template.findResources('AWS::S3::Bucket');
-      const bucketName = Object.values(resources)[0].Properties.BucketName;
-      expect(bucketName).toBeDefined();
-      const bucketNameStr = JSON.stringify(bucketName);
-      expect(bucketNameStr).toContain('explicit-base');
-      expect(bucketNameStr).not.toContain('registered-base');
+      const bucketName = bucketNameOf(stack);
+      expect(bucketName).toContain('explicit-base');
+      expect(bucketName).not.toContain('registered-base');
     });
   });
 });
