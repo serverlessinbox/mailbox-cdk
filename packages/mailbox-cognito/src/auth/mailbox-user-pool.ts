@@ -423,10 +423,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     return this.authzConfig;
   }
 
-  public fetchAuthorizationConfig(): CognitoIdpUsersAuthorizationConfig {
-    return this.authzConfig;
-  }
-
   /**
    * Attach a bootstrap user Custom Resource to this user pool.
    * The artifact resolver is shared with the rest of the user pool.
@@ -442,6 +438,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const constructId = `bootstrapped-user-${index}`;
     const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
+      userPoolArn: this.userPoolArn,
     });
 
     const properties: BootstrapUserProperties = {
@@ -458,17 +455,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       properties,
       serviceTimeout: Duration.minutes(4),
     });
-
-    handler.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'cognito-idp:AdminCreateUser',
-          'cognito-idp:AdminUpdateUserAttributes',
-          'cognito-idp:AdminAddUserToGroup',
-        ],
-        resources: [this.userPoolArn],
-      }),
-    );
 
     return {
       temporaryPassword: customResource.getAttString('temporaryPassword'),

@@ -42,7 +42,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     const pool: ICognitoIdpUsersPoolConfig = {
       userPoolId: USER_POOL_ID,
       grantAdminAccess: () => {},
-      ...(options.authorization ? { fetchAuthorizationConfig: () => options.authorization! } : {}),
+      ...(options.authorization ? { authorizationConfig: () => options.authorization! } : {}),
     };
 
     const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon', { artifactResolver, auditEventsQueue, identityProvisioner, pool, basePath: options.basePath });

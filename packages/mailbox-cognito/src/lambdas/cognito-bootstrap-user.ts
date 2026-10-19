@@ -6,9 +6,10 @@ import { COGNITO_ARTIFACT_PACKAGE } from '../index';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 
-/** What `CognitoBootstrapUserLambda` needs to resolve its code artifact. */
+/** What `CognitoBootstrapUserLambda` needs to resolve its code artifact and to scope its grant to the pool it administers. */
 export interface CognitoBootstrapUserLambdaProps {
   artifactResolver: IArtifactResolver;
+  userPoolArn: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
     // Grant permission to check parent stack rollback status during custom-resource Update failures.
     // Scoped to this stack only — the Lambda checks the stack it's invoked for.
     this.grantCloudFormationDescribeStacks();
+    this.grantUserPoolBootstrap(props.userPoolArn);
   }
 
   private grantCloudFormationDescribeStacks(): void {
@@ -39,6 +41,19 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
       new iam.PolicyStatement({
         actions: ['cloudformation:DescribeStacks'],
         resources: [stack.stackId],
+      }),
+    );
+  }
+
+  private grantUserPoolBootstrap(userPoolArn: string): void {
+    this.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminUpdateUserAttributes',
+          'cognito-idp:AdminAddUserToGroup',
+        ],
+        resources: [userPoolArn],
       }),
     );
   }

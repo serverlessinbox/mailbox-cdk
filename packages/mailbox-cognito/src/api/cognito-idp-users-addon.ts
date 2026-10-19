@@ -45,7 +45,7 @@ export interface ICognitoIdpUsersPoolConfig {
    * Returns the groups that mark admins and users. Leave it out when your pool defines no such groups: the API
    * is then configured with no group names.
    */
-  fetchAuthorizationConfig?(): CognitoIdpUsersAuthorizationConfig;
+  authorizationConfig?(): CognitoIdpUsersAuthorizationConfig;
 }
 
 /** What `CognitoIdpUsersAdminApiAddon` needs to mount the users API and create the Lambda behind it. */
@@ -100,7 +100,7 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
     this.basePath = props.basePath ?? DEFAULT_BASE_PATH;
     this.uiConfig = this.mergeUiConfig(props.uiConfig);
 
-    const authorization = props.pool.fetchAuthorizationConfig?.();
+    const authorization = props.pool.authorizationConfig?.();
     this.lambdaFunction = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
       userPoolId: props.pool.userPoolId,
