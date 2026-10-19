@@ -7,13 +7,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
-
-/**
- * The receiving mode the Bootstrap Lambda is given through its `SES_RECEIVING_MODE` environment
- * variable when it activates the SES receipt rule set. Activating a rule set replaces whichever one
- * is active in the account and region, so the mode is chosen deliberately.
- */
-export type SesReceivingMode = 'off' | 'on' | 'forced';
+import type { SesReceivingMode } from '../core/email/ses-receiving-mode';
 
 export interface BootstrapLambdaProps {
   readonly configTable: IDataTable;

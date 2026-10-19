@@ -3,7 +3,8 @@ import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import type { IDataTable } from '../../data/data-tables';
-import { BootstrapLambda, SesReceivingMode } from '../../lambdas';
+import { BootstrapLambda } from '../../lambdas';
+import type { SesReceivingMode } from '../../core/email/ses-receiving-mode';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
 import {

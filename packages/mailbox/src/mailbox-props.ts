@@ -1,0 +1,244 @@
+import type * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IAdminApiAddonProvider } from './api';
+import type { IMailboxAuthProvider } from './auth/types';
+import type { SesReceivingMode } from './core/email/ses-receiving-mode';
+import type { SendStackFailuresMode } from './features/stack-failure-detection';
+import type { MailboxKmsConfig } from './utils/kms';
+
+/**
+ * Your own ACM certificates for the endpoints a Mailbox serves, for when you manage DNS and
+ * certificates yourself. Every field left out falls back to the certificate the Mailbox creates
+ * itself, which requires `MailboxProps.hostedZoneId`.
+ */
+export interface MailboxCertificateOverrides {
+  /**
+   * Certificate attached to the CDN's alternate domain name (cdn.<domain>). It must be issued in
+   * us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Used only when `MailboxProps.hostedZoneId` is not set; with a hosted zone the Mailbox's own
+   * edge certificate is used and this field is ignored. Without a hosted zone and without this
+   * certificate, the CDN is served on its default CloudFront domain.
+   */
+  readonly cloudFront?: acm.ICertificate;
+  /**
+   * Certificate attached to the Admin UI's alternate domain name (admin.<domain>). It must be
+   * issued in us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.
+   * Without a hosted zone and without this certificate, the Admin UI is served on its default
+   * CloudFront domain.
+   */
+  readonly adminUi?: acm.ICertificate;
+  /**
+   * Certificate attached to the Webmail UI's alternate domain name (webmail.<domain>). It must be
+   * issued in us-east-1, because CloudFront only accepts certificates from there.
+   *
+   * Takes precedence over the edge certificate the Mailbox creates when a hosted zone is given.
+   * Without a hosted zone and without this certificate, the Webmail UI is served on its default
+   * CloudFront domain.
+   */
+  readonly webmailUi?: acm.ICertificate;
+  /**
+   * Certificate for the Admin API's custom domain (api.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Takes precedence over the regional certificate the Mailbox creates when a hosted zone is
+   * given. Without a hosted zone and without this certificate, the Admin API gets no custom
+   * domain, and the Admin UI is not given an API URL.
+   */
+  readonly api?: acm.ICertificate;
+  /**
+   * Certificate for the JMAP API's custom domain (jmap.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Takes precedence over the regional certificate the Mailbox creates when a hosted zone is
+   * given. Without a hosted zone and without this certificate, the JMAP API gets no custom
+   * domain, and the Webmail UI is not given an API URL.
+   */
+  readonly jmap?: acm.ICertificate;
+  /**
+   * Certificate for the WebSocket push custom domain (ws.<domain>). It must be issued in the same
+   * region as the stack, because API Gateway custom domains use regional certificates.
+   *
+   * Used only when `MailboxProps.hostedZoneId` is set: it then takes precedence over the regional
+   * certificate the Mailbox creates. Without a hosted zone the WebSocket endpoint gets no custom
+   * domain and this field is ignored.
+   */
+  readonly ws?: acm.ICertificate;
+}
+
+/**
+ * Subdomain labels for the endpoints a Mailbox serves. Each label is a single DNS label, so it
+ * must not contain dots. A label you leave out keeps its default.
+ */
+export interface MailboxSubdomainOverrides {
+  /**
+   * Label for the Admin UI: `<label>.<domain>`.
+   * @default "admin"
+   */
+  readonly admin?: string;
+  /**
+   * Label for the Webmail UI: `<label>.<domain>`.
+   * @default "webmail"
+   */
+  readonly webmail?: string;
+  /**
+   * Label for the JMAP API: `<label>.<domain>`.
+   * @default "jmap"
+   */
+  readonly jmap?: string;
+  /**
+   * Label for the Admin API: `<label>.<domain>`.
+   * @default "api"
+   */
+  readonly api?: string;
+  /**
+   * Label for the WebSocket push endpoint: `<label>.<domain>`.
+   * @default "ws"
+   */
+  readonly ws?: string;
+}
+
+/**
+ * Replacements for the certificates and subdomain labels a Mailbox would otherwise generate.
+ */
+export interface MailboxOverrides {
+  /**
+   * Your own ACM certificates per endpoint. When omitted, the Mailbox creates the certificates it
+   * needs, which requires `MailboxProps.hostedZoneId`. Supply individual fields to bypass that
+   * for specific endpoints, for example with manual DNS or a cross-account certificate.
+   */
+  readonly certificates?: MailboxCertificateOverrides;
+
+  /**
+   * Subdomain labels per endpoint. Each endpoint keeps its default label (the property name, for
+   * example "admin") unless overridden here. Every label must be a single DNS label (no dots).
+   */
+  readonly subdomains?: MailboxSubdomainOverrides;
+}
+
+/**
+ * Settings of a {@link Mailbox}: the DNS and certificate setup, the authentication provider, which
+ * UIs and optional capabilities to create, and how artifacts are resolved.
+ */
+export interface MailboxProps {
+  /**
+   * The Route53 hosted zone that serves your domain. The Mailbox derives the domain name from the
+   * zone at deploy time, creates DNS records for its endpoints in it, and creates the ACM
+   * certificates they need.
+   *
+   * When omitted, no DNS records or certificates are created: supply your own through
+   * `overrides.certificates` and point DNS at the endpoints yourself.
+   */
+  readonly hostedZoneId?: string;
+
+  /**
+   * Configuration for at-rest KMS encryption of the Mailbox's core resources. See
+   * {@link MailboxKmsConfig} for the available modes.
+   */
+  readonly kms?: MailboxKmsConfig;
+
+  /**
+   * The construct that supplies authentication: the identity issuer and its token and
+   * authorization endpoints, the auth policies, the OAuth client settings and, optionally,
+   * Admin API and JMAP API addons. Required.
+   *
+   * Pass the provider your users sign in with: its issuer is what the Mailbox is configured to
+   * trust.
+   */
+  readonly authProvider: IMailboxAuthProvider;
+
+  /**
+   * Extra origins allowed by CORS on the Admin API, the JMAP API and the CDN, as full origins
+   * including the scheme, for example `http://localhost:5173` during local development. The
+   * origins of the Admin and Webmail UIs are added automatically.
+   *
+   * @default - only the UI origins are allowed
+   */
+  readonly extraAllowedOrigins?: string[];
+
+  /**
+   * Providers that add capabilities to the Admin API, such as `StackUpdateAddonProvider` or
+   * `SupportAddonProvider`. Nothing beyond the addons your `authProvider` contributes is enabled
+   * unless a provider is listed here.
+   *
+   * @default - no additional providers
+   */
+  readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
+
+  /**
+   * Namespace for all endpoints. When set, every endpoint is placed under
+   * `{namespace}.{domainName}` — e.g. namespace "mailbox" on "example.com" yields
+   * `admin.mailbox.example.com`, `webmail.mailbox.example.com`, etc.
+   *
+   * Must be a single DNS label (no dots). An empty string means no namespace, so a
+   * CloudFormation parameter can switch the namespace on and off at deploy time.
+   *
+   * @default - no namespace
+   */
+  readonly subdomainNamespace?: string;
+  /**
+   * Whether to create the Admin UI: the CloudFront distribution, its token-exchange API and its
+   * OAuth client. When false, there is no Admin UI OAuth client and no Admin UI origin in the CORS
+   * allow-lists.
+   *
+   * @default true
+   */
+  readonly enableAdminUi?: boolean;
+
+  /**
+   * Whether to create the Webmail UI: the CloudFront distribution, its token-exchange API and its
+   * OAuth client. Disabling it makes synthesis fail, because the JMAP API requires the JMAP UI
+   * OAuth client that the Webmail UI provisions.
+   *
+   * @default true
+   */
+  readonly enableWebmailUi?: boolean;
+
+  /**
+   * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced
+   * license tier. The MCP endpoint uses the regional certificate the Mailbox creates, so it also
+   * requires `hostedZoneId`, and `overrides.certificates` must not supply both `api` and `jmap`,
+   * or no regional certificate is created.
+   *
+   * @default false
+   */
+  readonly enableMcp?: boolean;
+
+  /**
+   * The mode (`'off'`, `'on'` or `'forced'`) the Bootstrap Lambda uses when it activates the SES
+   * receipt rule set by calling SetActiveReceiptRuleSet. Only one rule set can be active per
+   * account per region, so activating this one replaces whichever is active: choose it
+   * deliberately.
+   *
+   * @default - the Bootstrap Lambda's default receiving behavior
+   */
+  readonly enableReceiving?: SesReceivingMode;
+
+  /**
+   * Certificate and subdomain overrides.
+   *
+   * @default - generated certificates and default subdomain labels
+   */
+  readonly overrides?: MailboxOverrides;
+
+  /**
+   * The resolver that locates the Lambda code and UI bundle artifacts the Mailbox deploys. When
+   * omitted, a pinned resolver built from the artifact versions shipped with the package is used,
+   * so a deploy ships exactly those versions. Inject an `AutoUpdater` to additionally keep the
+   * deployed artifacts up to date with newer releases.
+   *
+   * @default - a pinned resolver
+   */
+  readonly artifactResolver?: IArtifactResolver;
+
+  /**
+   * Consent for the stack-failure detector, which watches this stack's terminal status events.
+   * `SendStackFailuresMode.DISABLED` provisions no detector infrastructure at all (no Lambda,
+   * rule or role).
+   *
+   * @default SendStackFailuresMode.ENABLED
+   */
+  readonly sendStackFailures?: SendStackFailuresMode;
+}

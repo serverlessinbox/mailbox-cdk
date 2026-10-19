@@ -7,13 +7,15 @@ export { Mailbox } from './mailbox';
 export type {
   MailboxProps,
   MailboxOverrides,
-  MailboxOAuthClients,
   MailboxCertificateOverrides,
   MailboxSubdomainOverrides,
+} from './mailbox-props';
+export type {
+  MailboxOAuthClients,
   MailboxUrls,
   MailboxCertificates,
-  SesReceivingMode,
-} from './mailbox';
+} from './mailbox-outputs';
+export type { SesReceivingMode } from './core/email/ses-receiving-mode';
 
 // Stack-failure-detection — consent enum (referenced by MailboxProps.sendStackFailures)
 export { SendStackFailuresMode } from './features/stack-failure-detection';
