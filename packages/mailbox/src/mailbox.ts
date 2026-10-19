@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { AuthKeyStore } from './features/auth-key-store/auth-key-store';
-import { Cdn } from './features/cdn/cdn-construct';
+import { Cdn, type CdnCustomDomain } from './features/cdn/cdn-construct';
 import { TantivySearch } from './search';
 import { EmailSending, SESEventProcessing } from './email';
 import { AdminApi } from './api/admin/admin-api';
@@ -859,15 +859,16 @@ export class Mailbox extends Construct {
       removals,
     });
 
+    const cdnCertificate = hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront;
+    const cdnCustomDomain: CdnCustomDomain | undefined =
+      useCustomCdnDomain && cdnCertificate ? { name: mailboxDomains.cdn, certificate: cdnCertificate } : undefined;
+
     const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this.blobStoreBucket,
-      configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
-      userPoolIssuer: authProvider.issuer,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
       jmapBlobDownloadVersion: edgeStack.jmapBlobDownloadVersion,
-      domainName: useCustomCdnDomain ? mailboxDomains.cdn : undefined,
-      certificate: hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront,
+      customDomain: cdnCustomDomain,
     });
 
     // DNS is created later, once all endpoint targets are known.

@@ -1,11 +1,22 @@
 import { toRegion, toTableName, type Region, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import * as t from 'typanion';
 import { firstHeaderValue, type CloudFrontRequest } from './cloudfront-event';
-import { isSupportedAlgorithm } from './jwt-verifier';
+import { isSupportedAlgorithm, type SupportedAlgorithm } from './jwt-verifier';
 
-const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table';
-const REGION_HEADER = 'x-region';
-const JWT_ALGORITHMS_HEADER = 'x-jwt-algorithms';
+/**
+ * The custom origin headers the CDN sets on the S3 origin and this function reads, with the value each carries.
+ * The CDN construct builds its headers against this type, so a header added, removed or renamed here breaks
+ * its compile. `x-jwt-algorithms` is typed as the single algorithm the CDN sends.
+ */
+export type BlobDownloadOriginHeaders = {
+  'x-auth-key-store-table': string;
+  'x-region': string;
+  'x-jwt-algorithms': SupportedAlgorithm;
+};
+
+const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table' satisfies keyof BlobDownloadOriginHeaders;
+const REGION_HEADER = 'x-region' satisfies keyof BlobDownloadOriginHeaders;
+const JWT_ALGORITHMS_HEADER = 'x-jwt-algorithms' satisfies keyof BlobDownloadOriginHeaders;
 
 // An AWS region code: a two-letter geography, one or more direction words and a number, such as `eu-west-1` or `us-gov-east-1`.
 const isRegionCode = t.cascade(t.isString(), [t.matchesRegExp(/^[a-z]{2}(-[a-z]+)+-\d$/)]);

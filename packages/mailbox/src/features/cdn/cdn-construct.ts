@@ -5,37 +5,29 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { IBucket } from 'aws-cdk-lib/aws-s3';
-import type { IDataTable } from '../../data/data-tables';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
+import type { BlobDownloadOriginHeaders } from '../../ts-lambdas/jmap-blob-download/config';
+
+/** A custom domain with the us-east-1 ACM certificate that covers it. */
+export interface CdnCustomDomain {
+  readonly name: string;
+  readonly certificate: acm.ICertificate;
+}
 
 /** What the CDN needs: the blob bucket it fronts, the Lambda@Edge authorizer, and the configuration it hands that authorizer. */
 export interface CdnProps {
   readonly blobStore: IBucket;
-  readonly configTable: IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly userPoolIssuer: string;
 
   /** Origins allowed to download cross-origin. Unset or empty adds no CORS response headers policy. */
   readonly allowedOrigins?: string[];
 
-  /** JWT algorithms the authorizer accepts. Unset or empty means RS256 only. */
-  readonly jwtAlgorithms?: string[];
-
   /** Pre-deployed Lambda@Edge version (us-east-1). */
   readonly jmapBlobDownloadVersion: lambda.IVersion;
 
-  /** Custom domain name for the distribution (e.g., cdn.example.com). Applies only together with `certificate`. */
-  readonly domainName?: string;
-
-  /** us-east-1 ACM certificate for `domainName`. Applies only together with `domainName`. */
-  readonly certificate?: acm.ICertificate;
-}
-
-/** A custom domain with the certificate that covers it. */
-interface CustomDomain {
-  readonly name: string;
-  readonly certificate: acm.ICertificate;
+  /** Serves the distribution on this domain. Unset keeps the CloudFront domain. */
+  readonly customDomain?: CdnCustomDomain;
 }
 
 /**
@@ -51,27 +43,18 @@ export class Cdn extends Construct {
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
 
-    const customDomain = this.customDomainOf(props);
-
-    this.distribution = this.createDistribution(props, customDomain);
+    this.distribution = this.createDistribution(props);
     cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    this.host = `https://${customDomain ? customDomain.name : this.distribution.distributionDomainName}`;
+    this.host = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
     this.distributionId = this.distribution.distributionId;
   }
 
-  private customDomainOf(props: CdnProps): CustomDomain | undefined {
-    if (!props.domainName || !props.certificate) {
-      return undefined;
-    }
-    return { name: props.domainName, certificate: props.certificate };
-  }
-
-  private createDistribution(props: CdnProps, customDomain: CustomDomain | undefined): cloudfront.Distribution {
+  private createDistribution(props: CdnProps): cloudfront.Distribution {
     return new cloudfront.Distribution(this, 'blob-distribution', {
       comment: 'CDN for email blob downloads with Lambda@Edge auth',
-      domainNames: customDomain ? [customDomain.name] : undefined,
-      certificate: customDomain?.certificate,
+      domainNames: props.customDomain ? [props.customDomain.name] : undefined,
+      certificate: props.customDomain?.certificate,
       defaultBehavior: {
         origin: this.createBlobOrigin(props),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -98,18 +81,16 @@ export class Cdn extends Construct {
    */
   private createBlobOrigin(props: CdnProps): cloudfront.IOrigin {
     return origins.S3BucketOrigin.withOriginAccessControl(props.blobStore, {
-      customHeaders: {
-        'x-config-table': props.configTable.tableName,
-        'x-auth-key-store-table': props.authKeyStoreTable.tableName,
-        'x-region': cdk.Stack.of(this).region,
-        'x-jwt-algorithms': this.jwtAlgorithmsHeader(props.jwtAlgorithms),
-        'x-auth-policy-name': 'JMAP_API',
-      },
+      customHeaders: this.authorizerHeaders(props),
     });
   }
 
-  private jwtAlgorithmsHeader(jwtAlgorithms: string[] | undefined): string {
-    return jwtAlgorithms && jwtAlgorithms.length > 0 ? jwtAlgorithms.join(',') : 'RS256';
+  private authorizerHeaders(props: CdnProps): BlobDownloadOriginHeaders {
+    return {
+      'x-auth-key-store-table': props.authKeyStoreTable.tableName,
+      'x-region': cdk.Aws.REGION,
+      'x-jwt-algorithms': 'RS256',
+    };
   }
 
   private createCachePolicy(): cloudfront.CachePolicy {
