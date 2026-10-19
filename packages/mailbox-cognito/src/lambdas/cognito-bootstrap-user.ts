@@ -48,11 +48,7 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
   private grantUserPoolBootstrap(userPoolArn: string): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: [
-          'cognito-idp:AdminCreateUser',
-          'cognito-idp:AdminUpdateUserAttributes',
-          'cognito-idp:AdminAddUserToGroup',
-        ],
+        actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'],
         resources: [userPoolArn],
       }),
     );

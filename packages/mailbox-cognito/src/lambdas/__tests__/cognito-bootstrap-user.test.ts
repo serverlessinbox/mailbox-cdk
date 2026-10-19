@@ -46,14 +46,13 @@ describe('CognitoBootstrapUserLambda', () => {
     expect(statements.map((statement) => resourcesOf(statement))).toEqual([[{ Ref: 'AWS::StackId' }]]);
   });
 
-  it('may create users, set their attributes and add them to groups only in the user pool it is given', () => {
+  it('may create users and add them to groups only in the user pool it is given', () => {
     const statements = statementsForAction(template, 'cognito-idp:AdminCreateUser');
 
     expect(statements).toHaveLength(1);
     expect(actionsOf(statements[0]).sort()).toEqual([
       'cognito-idp:AdminAddUserToGroup',
       'cognito-idp:AdminCreateUser',
-      'cognito-idp:AdminUpdateUserAttributes',
     ]);
     expect(resourcesOf(statements[0])).toEqual([USER_POOL_ARN]);
   });
