@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 import type { IConstruct } from 'constructs';
 import { Fn, Stack, Aws, RemovalPolicy, CfnResource } from 'aws-cdk-lib';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PipelineLogGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import { PipelineLogGroup, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectorLambda } from '../../lambdas';
 
 /** Inputs of the stack-failure detection resources. */
@@ -47,8 +47,7 @@ export class StackFailureDetectionInfra extends Construct {
 
     // Differs after destroy+redeploy, keeping RETAIN'd orphans from colliding with a freshly
     // (re)created stack's resources.
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
-    const guidPrefix = Fn.select(0, Fn.split('-', stackGuid));
+    const guidPrefix = StackIdentity.guidPrefix;
 
     // Makes names unique per construct position, so a future move doesn't collide with the old name.
     const parentGroupId = this.node.scope?.node.id ?? 'default';

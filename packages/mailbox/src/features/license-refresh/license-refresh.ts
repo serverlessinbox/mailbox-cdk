@@ -39,9 +39,11 @@ export class LicenseRefresh extends Construct {
     this.licenseFunction = handler;
 
     // The time differs per install so that customer stacks do not all refresh at once.
-    const dailySchedule = StackHelpers.getOrCreate(this, props.artifactResolver).resolveDailySchedule(this, 'schedule');
+    const stackHelpers = StackHelpers.getOrCreate(this, props.artifactResolver);
+    const hour = stackHelpers.resolveSeededNumber(this, 'schedule-hour', { salt: 'license-refresh-hour', range: 24 });
+    const minute = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
     new Rule(this, 'rule', {
-      schedule: Schedule.cron({ hour: dailySchedule.hour, minute: dailySchedule.minute }),
+      schedule: Schedule.cron({ hour, minute }),
       targets: [new LambdaFunction(handler)],
     });
 

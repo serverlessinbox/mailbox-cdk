@@ -1,7 +1,8 @@
-import { Aws, CustomResource, Duration, Fn } from 'aws-cdk-lib';
+import { CustomResource, Duration, Fn } from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { StackIdentity } from '../naming/stack-identity';
 import type { StackDeployerProperties } from '../ts-lambdas/stack-deployer/stack-deployment';
 import { DeployerStarterLambda } from './deployer-starter-lambda';
 import { PollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
@@ -78,7 +79,6 @@ export class DeployerInfra extends Construct {
 
   /** StackId is an ARN, `arn:aws:cloudformation:region:account:stack/stack-name/guid`; its guid keeps the name unique across stacks. */
   private stateMachineName(prefix: string): string {
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
-    return Fn.join('', [prefix, stackGuid]);
+    return Fn.join('', [prefix, StackIdentity.guid]);
   }
 }

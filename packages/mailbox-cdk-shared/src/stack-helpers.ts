@@ -24,11 +24,13 @@ export interface StackHelpersMailboxData {
 }
 
 /**
- * A time of day in UTC as cron field values, each a deploy-time CloudFormation token.
+ * What a seeded number is derived from and how large it may be.
  */
-export interface StackHelpersDailySchedule {
-  readonly hour: string;
-  readonly minute: string;
+export interface StackHelpersSeededNumberProps {
+  /** Gives each purpose its own number within one stack; the same salt in one stack yields the same number. */
+  readonly salt: string;
+  /** The number is in `[0, range)`. A positive integer. */
+  readonly range: number;
 }
 
 /**
@@ -84,15 +86,15 @@ export class StackHelpers extends Construct {
   }
 
   /**
-   * Attaches the caller's own custom resource under `scope`. The time differs between installs and
-   * stays the same across updates of one stack.
+   * Attaches the caller's own custom resource under `scope`; the result is a deploy-time token. The
+   * number differs between installs and stays the same across updates of one stack.
    */
-  resolveDailySchedule(scope: Construct, id: string): StackHelpersDailySchedule {
-    const cr = this.attach(scope, id, {});
-    return {
-      hour: cr.getAttString('dailyScheduleHour'),
-      minute: cr.getAttString('dailyScheduleMinute'),
-    };
+  resolveSeededNumber(scope: Construct, id: string, props: StackHelpersSeededNumberProps): string {
+    const cr = this.attach(scope, id, {
+      Salt: props.salt,
+      Range: props.range.toString(),
+    });
+    return cr.getAttString('seededNumber');
   }
 
   private attach(

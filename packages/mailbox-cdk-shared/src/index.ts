@@ -73,6 +73,9 @@ export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
 // Stack name sanitizing
 export { sanitizeStackName } from './naming/sanitize-name';
 
+// Stack identity
+export { StackIdentity } from './naming/stack-identity';
+
 // Shared group
 export { getOrCreateSharedGroup } from './shared-group';
 

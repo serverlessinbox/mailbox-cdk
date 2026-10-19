@@ -94,25 +94,27 @@ describe('StackHelpers', () => {
     });
   });
 
-  describe('resolveDailySchedule', () => {
-    const { stack: scheduleStack, resolver: scheduleResolver } = createStackWithResolver();
-    const schedule = StackHelpers.getOrCreate(scheduleStack, scheduleResolver).resolveDailySchedule(
-      new Construct(scheduleStack, 'Caller'),
-      'schedule',
+  describe('resolveSeededNumber', () => {
+    const { stack: seededStack, resolver: seededResolver } = createStackWithResolver();
+    const seededNumber = StackHelpers.getOrCreate(seededStack, seededResolver).resolveSeededNumber(
+      new Construct(seededStack, 'Caller'),
+      'seeded-number',
+      { salt: 'some-purpose', range: 24 },
     );
-    const template = Template.fromStack(scheduleStack);
+    const template = Template.fromStack(seededStack);
 
-    it('attaches a Custom::StackHelpers resource that sends no properties of its own', () => {
-      const [resource] = Object.values(template.findResources('Custom::StackHelpers'));
-
-      expect(Object.keys(resource.Properties).sort()).toEqual(['ServiceTimeout', 'ServiceToken']);
+    it('attaches a Custom::StackHelpers resource sending the salt and the range as strings', () => {
+      template.hasResourceProperties('Custom::StackHelpers', {
+        ServiceTimeout: '90',
+        Salt: 'some-purpose',
+        Range: '24',
+      });
     });
 
-    it('returns the dailyScheduleHour and dailyScheduleMinute attributes of that resource', () => {
+    it('returns the seededNumber attribute of that resource', () => {
       const logicalId = logicalIdOfOnlyCustomResource(template);
 
-      expect(scheduleStack.resolve(schedule.hour)).toEqual({ 'Fn::GetAtt': [logicalId, 'dailyScheduleHour'] });
-      expect(scheduleStack.resolve(schedule.minute)).toEqual({ 'Fn::GetAtt': [logicalId, 'dailyScheduleMinute'] });
+      expect(seededStack.resolve(seededNumber)).toEqual({ 'Fn::GetAtt': [logicalId, 'seededNumber'] });
     });
   });
 

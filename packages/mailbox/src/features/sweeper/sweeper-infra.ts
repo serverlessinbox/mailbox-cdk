@@ -3,6 +3,7 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { ArnFormat, Aws, Fn, Stack } from 'aws-cdk-lib';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
 import { retainOnUpdateOrDelete } from '../../utils/cfn-resource';
 import type { IResourceRemoval } from './removal';
@@ -102,7 +103,7 @@ export class SweeperInfra extends Construct {
    * position never collide with the new ones, and the stack's GUID, which differs after destroy+redeploy.
    */
   private resourceNames(): SweeperResourceNames {
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
+    const stackGuid = StackIdentity.guid;
     const parentGroupId = this.node.scope?.node.id ?? 'default';
 
     return {

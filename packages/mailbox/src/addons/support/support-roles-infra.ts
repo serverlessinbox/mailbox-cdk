@@ -1,7 +1,7 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
-import { rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
+import { rootStackResourceTagCondition, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
@@ -144,8 +144,7 @@ export class SupportRolesInfra extends Construct {
 
     // Fixed for a stack's lifetime, differs after destroy+redeploy. Only the first 8-character segment
     // (UUID format: 8-4-4-4-12) is used, to stay within the 64-char IAM role-name limit.
-    const fullStackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
-    const stackGuidSegment = Fn.select(0, Fn.split('-', fullStackGuid));
+    const stackGuidSegment = StackIdentity.guidPrefix;
 
     // The name carries no parent group id, so its length is fixed and independent of construct position.
     const supportHopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
@@ -306,7 +305,7 @@ export class SupportRolesInfra extends Construct {
       ':log-group:/serverlessinbox/',
       Aws.STACK_NAME,
       '/jmap-',
-      Fn.select(0, Fn.split('-', Fn.select(2, Fn.split('/', Aws.STACK_ID)))),
+      StackIdentity.guidPrefix,
       ':*',
     ]);
 

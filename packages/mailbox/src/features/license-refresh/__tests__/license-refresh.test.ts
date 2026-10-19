@@ -43,19 +43,31 @@ describe('LicenseRefresh', () => {
     template = Template.fromStack(stack);
   });
 
-  it('refreshes once a day, at the hour and minute resolved for this install', () => {
-    const [stackHelpersId] = Object.keys(template.findResources('Custom::StackHelpers'));
+  describe('daily schedule', () => {
+    function logicalIdOfSeededNumber(salt: string): string {
+      const matches = Object.entries(template.findResources('Custom::StackHelpers', { Properties: { Salt: salt } }));
+      expect(matches).toHaveLength(1);
+      return matches[0][0];
+    }
 
-    template.hasResourceProperties('AWS::Events::Rule', {
-      ScheduleExpression: {
-        'Fn::Join': ['', [
-          'cron(',
-          { 'Fn::GetAtt': [stackHelpersId, 'dailyScheduleMinute'] },
-          ' ',
-          { 'Fn::GetAtt': [stackHelpersId, 'dailyScheduleHour'] },
-          ' * * ? *)',
-        ]],
-      },
+    it('resolves the hour from 24 values and the minute from 60, each with its own salt', () => {
+      template.hasResourceProperties('Custom::StackHelpers', { Salt: 'license-refresh-hour', Range: '24' });
+      template.hasResourceProperties('Custom::StackHelpers', { Salt: 'license-refresh-minute', Range: '60' });
+      template.resourceCountIs('Custom::StackHelpers', 2);
+    });
+
+    it('refreshes once a day, at the resolved minute and hour', () => {
+      template.hasResourceProperties('AWS::Events::Rule', {
+        ScheduleExpression: {
+          'Fn::Join': ['', [
+            'cron(',
+            { 'Fn::GetAtt': [logicalIdOfSeededNumber('license-refresh-minute'), 'seededNumber'] },
+            ' ',
+            { 'Fn::GetAtt': [logicalIdOfSeededNumber('license-refresh-hour'), 'seededNumber'] },
+            ' * * ? *)',
+          ]],
+        },
+      });
     });
   });
 

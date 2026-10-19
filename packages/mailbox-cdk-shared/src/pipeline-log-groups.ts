@@ -4,6 +4,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { Construct, IConstruct } from 'constructs';
+import { StackIdentity } from './naming/stack-identity';
 import { getOrCreateSharedGroup } from './shared-group';
 import type { Pipeline } from './pipelines';
 
@@ -93,8 +94,6 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
   }
 
   private static logGroupNameFor(pipeline: Pipeline): string {
-    const stackGuid = Fn.select(2, Fn.split('/', Aws.STACK_ID));
-    const guidPrefix = Fn.select(0, Fn.split('-', stackGuid));
-    return Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', guidPrefix]);
+    return Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', StackIdentity.guidPrefix]);
   }
 }

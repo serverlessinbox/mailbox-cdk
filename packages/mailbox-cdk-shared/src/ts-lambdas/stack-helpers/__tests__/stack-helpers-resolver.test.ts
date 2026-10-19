@@ -2,7 +2,7 @@
 
 /**
  * Pins what the stack-helpers Lambda answers for the properties of a Custom::StackHelpers resource.
- * The three values it returns feed S3 bucket names and the Cognito hosted-UI domain, so a wrong
+ * The values it returns feed S3 bucket names, the Cognito hosted-UI domain and schedules, so a wrong
  * hosted-zone name, a stack name S3 rejects, or a Cognito prefix with a reserved word, a double or
  * trailing hyphen or more than 63 characters fails the deploy of the stack that consumes them.
  * Route 53 is faked and supplies the domain name the Cognito prefix is derived from.
@@ -138,34 +138,55 @@ describe('StackHelpersResolver', () => {
     });
   });
 
-  describe('daily schedule', () => {
+  describe('seeded number', () => {
     const otherStackId = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000002');
+    const seeded = { Salt: 'first-purpose', Range: '1000' };
 
-    it('is the same for the same stack id', async () => {
-      const first = await resolveFor({});
-      const second = await resolveFor({});
+    it('is the same for the same stack id and salt', async () => {
+      const first = await resolveFor(seeded);
+      const second = await resolveFor(seeded);
 
-      expect([first.dailyScheduleHour, first.dailyScheduleMinute])
-        .toEqual([second.dailyScheduleHour, second.dailyScheduleMinute]);
+      expect(first.seededNumber).toBe(second.seededNumber);
+    });
+
+    it('differs between salts of one stack id', async () => {
+      const first = await resolveFor(seeded);
+      const other = await resolveFor({ ...seeded, Salt: 'second-purpose' });
+
+      expect(first.seededNumber).not.toBe(other.seededNumber);
     });
 
     it('differs between stack ids', async () => {
-      const first = await resolveFor({}, stackId);
-      const other = await resolveFor({}, otherStackId);
+      const first = await resolveFor(seeded, stackId);
+      const other = await resolveFor(seeded, otherStackId);
 
-      expect([first.dailyScheduleHour, first.dailyScheduleMinute])
-        .not.toEqual([other.dailyScheduleHour, other.dailyScheduleMinute]);
+      expect(first.seededNumber).not.toBe(other.seededNumber);
     });
 
-    it('is an hour from 0 to 23 and a minute from 0 to 59, as plain digits', async () => {
+    it('is a plain-digit number from 0 up to but excluding the range', async () => {
       const stackIds = Array.from({ length: 200 }, (_, index) => toStackId(`arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/${index}`));
 
-      const schedules = await Promise.all(stackIds.map((id) => resolveFor({}, id)));
+      const results = await Promise.all(stackIds.map((id) => resolveFor({ Salt: 'any', Range: '24' }, id)));
 
-      for (const { dailyScheduleHour, dailyScheduleMinute } of schedules) {
-        expect(dailyScheduleHour).toMatch(/^([0-9]|1[0-9]|2[0-3])$/);
-        expect(dailyScheduleMinute).toMatch(/^([0-9]|[1-5][0-9])$/);
+      for (const { seededNumber } of results) {
+        expect(seededNumber).toMatch(/^([0-9]|1[0-9]|2[0-3])$/);
       }
+    });
+
+    it('is always 0 for a range of 1', async () => {
+      const data = await resolveFor({ Salt: 'any', Range: '1' });
+
+      expect(data.seededNumber).toBe('0');
+    });
+
+    it('is empty when the properties carry no Range', async () => {
+      const data = await resolveFor({ Salt: 'any' });
+
+      expect(data.seededNumber).toBe('');
+    });
+
+    it.each(['0', '-5', '2.5', 'ten', '', '010'])('rejects the Range "%s"', async (range) => {
+      await expect(resolveFor({ Salt: 'any', Range: range })).rejects.toThrow(/Invalid ResourceProperties.*Range/);
     });
   });
 

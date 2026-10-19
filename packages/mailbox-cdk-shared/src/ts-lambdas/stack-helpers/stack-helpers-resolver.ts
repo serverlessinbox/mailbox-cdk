@@ -16,8 +16,6 @@ const EDGE_HYPHENS = /^-+|-+$/g;
 const TRAILING_HYPHENS = /-+$/;
 const MAX_COGNITO_PREFIX_LENGTH = 63;
 const LAST_RESORT_COGNITO_PREFIX = 'installer';
-const HOURS_PER_DAY = 24;
-const MINUTES_PER_HOUR = 60;
 
 /**
  * The attributes of a `Custom::StackHelpers` resource. A type alias, not an interface: `wrapHandler`
@@ -27,12 +25,9 @@ export type StackHelpersData = {
   readonly domainName: string;
   readonly s3SafeDataStackName: string;
   readonly cognitoDomainPrefix: string;
-  readonly dailyScheduleHour: string;
-  readonly dailyScheduleMinute: string;
+  /** A number in `[0, Range)`; empty when the properties carry no `Range`. */
+  readonly seededNumber: string;
 };
-
-/** The time of day, in UTC, derived for one stack. */
-type DailySchedule = Pick<StackHelpersData, 'dailyScheduleHour' | 'dailyScheduleMinute'>;
 
 /**
  * Derives the attributes of a `Custom::StackHelpers` resource from its properties. Delete handling
@@ -55,9 +50,9 @@ export class StackHelpersResolver {
     const s3SafeDataStackName = this.sanitizeDataStackName(properties.DataStackName ?? '');
     const prefixFallback = properties.Fallback || s3SafeDataStackName;
     const cognitoDomainPrefix = this.deriveCognitoDomainPrefix(domainName, prefixFallback);
-    const dailySchedule = this.deriveDailySchedule(stackId);
+    const seededNumber = this.deriveSeededNumber(stackId, properties.Salt ?? '', properties.Range);
 
-    return { domainName, s3SafeDataStackName, cognitoDomainPrefix, ...dailySchedule };
+    return { domainName, s3SafeDataStackName, cognitoDomainPrefix, seededNumber };
   }
 
   private parseProperties(resourceProperties: unknown): StackHelpersResourceProperties {
@@ -105,12 +100,16 @@ export class StackHelpersResolver {
       .replace(TRAILING_HYPHENS, '');
   }
 
-  /** The stack id never changes during the life of a stack, so a stack keeps its time across updates. */
-  private deriveDailySchedule(stackId: StackId): DailySchedule {
-    const digest = createHash('sha256').update(stackId).digest();
-    return {
-      dailyScheduleHour: String(digest.readUInt32BE(0) % HOURS_PER_DAY),
-      dailyScheduleMinute: String(digest.readUInt32BE(4) % MINUTES_PER_HOUR),
-    };
+  /**
+   * The stack id never changes during the life of a stack, so a stack keeps its number across
+   * updates; the salt gives each purpose its own number within one stack.
+   */
+  private deriveSeededNumber(stackId: StackId, salt: string, range: string | undefined): string {
+    if (range === undefined) {
+      return '';
+    }
+
+    const digest = createHash('sha256').update(`${stackId}:${salt}`).digest();
+    return String(digest.readUInt32BE(0) % Number(range));
   }
 }
