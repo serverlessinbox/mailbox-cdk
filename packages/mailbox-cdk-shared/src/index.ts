@@ -76,6 +76,7 @@ export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
 export { sanitizeStackName } from './naming/sanitize-name';
 
 // Stack identity
+export { PositionHash } from './naming/position-hash';
 export { StackIdentity } from './naming/stack-identity';
 
 // Shared group

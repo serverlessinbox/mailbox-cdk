@@ -10,6 +10,7 @@
 
 import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
+import { PositionHash } from '@serverlessinbox/mailbox-cdk-shared';
 import { actionsOf, renderLiteralText, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { SweeperInfra } from '../sweeper-infra';
 import { SweeperPolicyNames } from '../sweeper-names';
@@ -69,6 +70,24 @@ describe('SweeperInfra', () => {
       expect(boundary.Properties.PolicyDocument.Statement).toEqual(
         expect.arrayContaining(attachedPolicies.flatMap((policy) => policy.Properties.PolicyDocument.Statement)),
       );
+    });
+  });
+
+  describe('physical names', () => {
+    it('start with the sweeper position hash, so moving the sweeper never reuses a retained name', () => {
+      const { template, infra } = synthesize('PhysicalNamesStack');
+      const hash = PositionHash.of(infra);
+
+      const roleNames = Object.values(template.findResources('AWS::IAM::Role')).map((role) => renderLiteralText(role.Properties.RoleName));
+      const [stateMachine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+
+      expect(roleNames).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(new RegExp(`^mailbox-sweeper-exec-${hash}-`)),
+          expect.stringMatching(new RegExp(`^mailbox-sweeper-worker-${hash}-`)),
+        ]),
+      );
+      expect(renderLiteralText(stateMachine.Properties.StateMachineName)).toMatch(new RegExp(`^mailbox-sweeper-${hash}-`));
     });
   });
 
@@ -142,6 +161,17 @@ describe('SweeperInfra', () => {
       );
 
       expect(starter!.Properties.Environment.Variables.MAILBOX_SWEEPER_STATE_MACHINE_ARN).toEqual(resourcesOf(deletion!)[0]);
+    });
+
+    it('depends on the state machine, so a replaced state machine exists before any sweep starts', () => {
+      const { template } = synthesize('StarterOrderStack');
+
+      const [stateMachineLogicalId] = Object.keys(template.findResources('AWS::StepFunctions::StateMachine'));
+      const starter = Object.values(template.findResources('AWS::Lambda::Function')).find(
+        (resource) => resource.Properties.Handler === 'index.starterHandler',
+      );
+
+      expect(starter!.DependsOn).toContain(stateMachineLogicalId);
     });
   });
 });

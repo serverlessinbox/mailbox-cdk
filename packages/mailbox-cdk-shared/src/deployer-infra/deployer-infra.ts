@@ -2,6 +2,7 @@ import { CustomResource, Duration, Fn } from 'aws-cdk-lib';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { PositionHash } from '../naming/position-hash';
 import { StackIdentity } from '../naming/stack-identity';
 import type { StackDeployerProperties } from '../ts-lambdas/stack-deployer/stack-deployment';
 import { DeployerStarterLambda } from './deployer-starter-lambda';
@@ -13,7 +14,7 @@ export interface DeployerInfraProps {
   readonly artifactResolver: IArtifactResolver;
   /**
    * Prefix for the Step Functions state machine name, e.g. 'mailbox-data-deployer-'.
-   * The stack GUID is appended to keep the name unique and under 80 chars.
+   * The deployer's position hash, a hyphen and the stack GUID prefix are appended to keep the name unique and under 80 chars.
    */
   readonly stateMachineNamePrefix: string;
 
@@ -77,8 +78,8 @@ export class DeployerInfra extends Construct {
     return resource;
   }
 
-  /** StackId is an ARN, `arn:aws:cloudformation:region:account:stack/stack-name/guid`; its guid keeps the name unique across stacks. */
+  /** `<prefix><position hash>-<guid prefix>`: the hash changes when this construct moves, the guid prefix keeps the name unique across installs. */
   private stateMachineName(prefix: string): string {
-    return Fn.join('', [prefix, StackIdentity.guid]);
+    return Fn.join('', [prefix, PositionHash.of(this), '-', StackIdentity.guidPrefix]);
   }
 }

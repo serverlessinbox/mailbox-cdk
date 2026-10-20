@@ -26,7 +26,7 @@ export interface IWebSocketTable {
  * automatically.
  *
  * Pay-per-request billing, removed along with the stack, point-in-time recovery disabled.
- * Physical table name is stack-derived (`StackNamedTable`).
+ * Physical table name is stack-derived and unique per position and install (`StackNamedTable`).
  * `grantWrite`/`grantReadWrite` expose only the specific DynamoDB actions each kind of caller
  * needs (no `Scan` or PartiQL).
  *
@@ -41,6 +41,7 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
 
     // Single-table design: uses shared base repository key names so lambdas can use DynamoBaseRepository.
     const table = new StackNamedTable(this, 'websocket', {
+      uniquePerPosition: true,
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,

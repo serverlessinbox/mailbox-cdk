@@ -1,7 +1,9 @@
 import { Stack } from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
 import { createHash } from 'node:crypto';
+import { PositionHash } from './position-hash';
 import { sanitizeStackName } from './sanitize-name';
+import { StackIdentity } from './stack-identity';
 
 /** Options for `makePhysicalName`. */
 export interface PhysicalNameOptions {
@@ -9,10 +11,17 @@ export interface PhysicalNameOptions {
   maxLength?: number;
 }
 
+/** Characters appended after the readable part: `-`, the 8-character position hash, `-`, the 8-character guid prefix. */
+const IDENTITY_TAIL_LENGTH = 18;
+
 /**
- * A stable, customer-friendly physical name of the form
- * `<account>-<sanitize(stackName)>-<slug(suffix)>`, shortened with a hash tail when it exceeds
- * `options.maxLength`.
+ * A physical name of the form `<account>-<sanitize(stackName)>-<slug(suffix)>-<position hash>-<guid prefix>`.
+ *
+ * The position hash is `PositionHash.ofChild(scope, suffix)`: the name identifies the resource
+ * created as `new X(scope, suffix)`, so it changes when `scope` moves to another parent. The guid
+ * prefix (`StackIdentity.guidPrefix`) makes it differ per install. Both are always whole; when
+ * `options.maxLength` is given, only the readable part is shortened (with a hash tail) to
+ * `maxLength` minus the 18 characters the two identifiers and their hyphens take.
  */
 export function makePhysicalName(scope: IConstruct, suffix: string, options: PhysicalNameOptions = {}): string {
   const stack = Stack.of(scope);
@@ -22,7 +31,8 @@ export function makePhysicalName(scope: IConstruct, suffix: string, options: Phy
 
   const base = `${account}-${stackSlug}-${suffixSlug}`;
   const maxLength = options.maxLength;
-  return typeof maxLength === 'number' ? withMaxLength(base, maxLength) : base;
+  const readable = typeof maxLength === 'number' ? withMaxLength(base, maxLength - IDENTITY_TAIL_LENGTH) : base;
+  return `${readable}-${PositionHash.ofChild(scope, suffix)}-${StackIdentity.guidPrefix}`;
 }
 
 /**

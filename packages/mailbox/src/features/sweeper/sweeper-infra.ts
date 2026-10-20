@@ -3,7 +3,7 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { ArnFormat, Aws, Fn, Stack } from 'aws-cdk-lib';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
 import { retainOnUpdateOrDelete } from '../../utils/cfn-resource';
 import type { IResourceRemoval } from './removal';
@@ -34,12 +34,13 @@ interface SweeperResourceNames {
  * The worker, state machine and execution role are RETAIN'd to survive stack deletion and continue running
  * the sweeper execution asynchronously. The self-cleanup tail deletes them after targets are gone.
  *
- * Circular-dependency mitigation: both the execution role and the worker role carry GUID-suffixed
- * deterministic names. Their ARNs are built via Stack.formatArn() (plain strings, no GetAtt tokens)
- * and used everywhere self-referential ARNs are needed (inline policies, permissions boundary,
- * starter env vars). This removes all CloudFormation dependency edges that would otherwise form a
- * cycle. The GUID suffix ensures the names are unique per stack lifetime but differ after
- * destroy+redeploy, so RETAIN'd role stubs never collide.
+ * Circular-dependency mitigation: the state machine, the execution role and the worker role carry
+ * deterministic names ending in a position hash and a GUID prefix. Their ARNs are built via
+ * Stack.formatArn() (plain strings, no GetAtt tokens) and used everywhere self-referential ARNs are
+ * needed (inline policies, permissions boundary, starter env vars). This removes all CloudFormation
+ * dependency edges that would otherwise form a cycle. The position hash changes when the construct
+ * moves and the GUID prefix differs per install and after destroy+redeploy, so RETAIN'd stubs never
+ * collide.
  */
 export class SweeperInfra extends Construct {
   readonly starter: IFunction;
@@ -91,6 +92,11 @@ export class SweeperInfra extends Construct {
       stateMachineArn,
     });
 
+    // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
+
+    // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
+    this.starter.node.addDependency(workflow);
+
     this.attachWorkerPolicy(workerRole, worker, props.removals);
 
     workflow.grantStartExecution(this.starter);
@@ -98,18 +104,19 @@ export class SweeperInfra extends Construct {
   }
 
   /**
-   * The names are deterministic so ARNs can be plain strings. They carry the id of the group the
-   * sweeper sits in, so moving it to another group changes them and the retained resources of the old
-   * position never collide with the new ones, and the stack's GUID, which differs after destroy+redeploy.
+   * The names are deterministic so ARNs can be plain strings. They carry a hash of this construct's
+   * position in the stack, so moving it changes them and the retained resources of the old position
+   * never collide with the new ones, and the first 8 characters of the stack's GUID, which differ per
+   * install and after destroy+redeploy.
    */
   private resourceNames(): SweeperResourceNames {
-    const stackGuid = StackIdentity.guid;
-    const parentGroupId = this.node.scope?.node.id ?? 'default';
+    const positionHash = PositionHash.of(this);
+    const guidPrefix = StackIdentity.guidPrefix;
 
     return {
-      stateMachine: Fn.join('', ['mailbox-sweeper-', parentGroupId, '-', stackGuid]),
-      executionRole: Fn.join('', ['mailbox-sweeper-exec-', parentGroupId, '-', stackGuid]),
-      workerRole: Fn.join('', ['mailbox-sweeper-worker-', parentGroupId, '-', stackGuid]),
+      stateMachine: Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),
+      executionRole: Fn.join('', ['mailbox-sweeper-exec-', positionHash, '-', guidPrefix]),
+      workerRole: Fn.join('', ['mailbox-sweeper-worker-', positionHash, '-', guidPrefix]),
     };
   }
 

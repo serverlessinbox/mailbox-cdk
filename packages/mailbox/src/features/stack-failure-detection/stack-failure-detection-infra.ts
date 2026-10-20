@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 import type { IConstruct } from 'constructs';
 import { Fn, Stack, Aws, RemovalPolicy, CfnResource } from 'aws-cdk-lib';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PipelineLogGroup, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectorLambda } from '../../lambdas';
 
 /** Inputs of the stack-failure detection resources. */
@@ -25,10 +25,12 @@ const RULE_TARGET_ID = 'Target0';
  * on delete and when its creating operation is rolled back, so the detector still exists to report that
  * rollback.
  *
- * `detectorRoleName` must stay pinned rather than auto-named: `iam:DeleteRole`/`iam:DeleteRolePolicy`
- * don't support the `aws:ResourceTag` condition key at all (verified against the IAM service
- * reference), so a grant to delete this role can only be scoped to a deterministic name prefix — an
- * auto-named role would leave that grant unscoped.
+ * The role and function names are explicit: `mailbox-diag-role-<position hash>-<guid prefix>` and
+ * `mailbox-diag-fn-<position hash>-<guid prefix>`. The position hash is that of this construct, so a
+ * move changes both names; the guid prefix differs per install.
+ * `iam:DeleteRole`/`iam:DeleteRolePolicy` don't support the `aws:ResourceTag` condition key at all
+ * (verified against the IAM service reference), so the grants that delete this role are scoped to the
+ * role's own ARN, taken from `role`.
  * `detectorFunctionName` stays pinned because `StackFailureDetectorLambda`'s `functionName` prop is
  * required.
  *
@@ -50,10 +52,10 @@ export class StackFailureDetectionInfra extends Construct {
     const guidPrefix = StackIdentity.guidPrefix;
 
     // Makes names unique per construct position, so a future move doesn't collide with the old name.
-    const parentGroupId = this.node.scope?.node.id ?? 'default';
+    const positionHash = PositionHash.of(this);
 
-    const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', parentGroupId, '-', guidPrefix]);
-    const detectorRoleName = Fn.join('', ['mailbox-diag-role-', parentGroupId, '-', guidPrefix]);
+    const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', positionHash, '-', guidPrefix]);
+    const detectorRoleName = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
 
     const detectorRole = new iam.Role(this, 'detector-role', {
       roleName: detectorRoleName,
@@ -142,7 +144,8 @@ export class StackFailureDetectionInfra extends Construct {
         }),
       ],
     });
-    detectorPolicy.attachToRole(detectorRole);    this.retainOnEveryOperation(detectorPolicy, 'detector-policy');
+    detectorPolicy.attachToRole(detectorRole);
+    this.retainOnEveryOperation(detectorPolicy, 'detector-policy');
   }
 
   /**

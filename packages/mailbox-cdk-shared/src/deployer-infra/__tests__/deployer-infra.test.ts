@@ -12,6 +12,8 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import type { StackDeployerProperties } from '../../ts-lambdas/stack-deployer/stack-deployment';
+import { PositionHash } from '../../naming/position-hash';
+import { StackIdentity } from '../../naming/stack-identity';
 import { DeployerInfra } from '../deployer-infra';
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 
@@ -50,12 +52,12 @@ describe('DeployerInfra', () => {
     expect(createWorker).toHaveBeenCalledWith(infra, 'worker');
   });
 
-  it('names the state machine by the prefix and the GUID part of the stack id', () => {
-    const { stack } = newInfra();
+  it('names the state machine by the prefix, the infra position hash and the guid prefix of the stack id', () => {
+    const { stack, infra } = newInfra();
 
     Template.fromStack(stack).hasResourceProperties('AWS::StepFunctions::StateMachine', {
       StateMachineName: {
-        'Fn::Join': ['', ['test-deployer-', { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] }]],
+        'Fn::Join': ['', [`test-deployer-${PositionHash.of(infra)}-`, stack.resolve(StackIdentity.guidPrefix)]],
       },
     });
   });

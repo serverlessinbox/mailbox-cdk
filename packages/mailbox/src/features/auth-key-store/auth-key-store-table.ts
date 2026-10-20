@@ -26,7 +26,7 @@ export interface IAuthKeyStoreTable {
  * `sk="blob-url-signing"`, and each issuer's JWKS under `pk="jwks"`, `sk=<issuer>`.
  *
  * Keyed by `pk`/`sk` (item type in `pk`: `"hmac"` or `"jwks"`), pay-per-request billing, removed
- * along with the stack. Physical table name is stack-derived (`StackNamedTable`).
+ * along with the stack. Physical table name is stack-derived and unique per position and install (`StackNamedTable`).
  * `grantRead`/`grantReadWrite` expose only the specific DynamoDB actions each kind of caller
  * needs (no `Scan` or PartiQL).
  *
@@ -41,6 +41,7 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
     super(scope, id);
 
     this.table = new StackNamedTable(this, 'auth-key-store', {
+      uniquePerPosition: true,
       removalPolicy: RemovalPolicy.DESTROY,
       partitionKey: {
         name: 'pk',

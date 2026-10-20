@@ -40,16 +40,11 @@ const PHYSICAL_NAME_KEYS = ['TableName', 'QueueName', 'BucketName', 'FunctionNam
 const DISPLAY_NAME_TYPES = ['AWS::ApiGatewayV2::Api', 'AWS::ApiGatewayV2::Authorizer'];
 
 /**
- * The resources whose explicit name does not change when Mailbox moves. The relocation fix shrinks
- * this list to the names that are intentionally fixed.
+ * The resources whose explicit name is intentionally fixed: it does not change when Mailbox moves.
+ * These are the log groups, the resource group and the data override SSM parameters. Every other
+ * explicit name carries a position hash and must not appear here.
  */
 const EXPECTED_OFFENDERS: string[] = [
-  `AWS::DynamoDB::Table|TableName|{"Fn::Join":["",[{"Ref":"AWS::AccountId"},"-",{"Ref":"AWS::StackName"},"-auth-key-store"]]}`,
-  `AWS::DynamoDB::Table|TableName|{"Fn::Join":["",[{"Ref":"AWS::AccountId"},"-",{"Ref":"AWS::StackName"},"-websocket"]]}`,
-  `AWS::IAM::Role|RoleName|{"Fn::Join":["",["mailbox-diag-role-stack-failure-detection-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
-  `AWS::IAM::Role|RoleName|{"Fn::Join":["",["mailbox-sweeper-exec-ops-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]]}`,
-  `AWS::IAM::Role|RoleName|{"Fn::Join":["",["mailbox-sweeper-worker-ops-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]]}`,
-  `AWS::Lambda::Function|FunctionName|{"Fn::Join":["",["mailbox-diag-fn-stack-failure-detection-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
   `AWS::Logs::LogGroup|LogGroupName|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/admin-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
   `AWS::Logs::LogGroup|LogGroupName|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/audit-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
   `AWS::Logs::LogGroup|LogGroupName|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/infra-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
@@ -57,23 +52,11 @@ const EXPECTED_OFFENDERS: string[] = [
   `AWS::Logs::LogGroup|LogGroupName|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/mail-in-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
   `AWS::Logs::LogGroup|LogGroupName|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/mail-out-",{"Fn::Select":[0,{"Fn::Split":["-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}`,
   `AWS::ResourceGroups::Group|Name|{"Fn::Join":["",[{"Ref":"AWS::StackName"},"-serverless-inbox"]]}`,
-  `AWS::SES::ConfigurationSet|Name|"123456789012-testrelocation-ses-config"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-audit-events"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-audit-events-dlq"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-email-processing-dlq"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-email-processing-queue"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-email-submissions"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-email-submissions-dlq"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-ses-notifications-queue"`,
-  `AWS::SQS::Queue|QueueName|"123456789012-testrelocation-tantivy-indexing-schedule-dlq"`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/auditLogTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/changelogTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/configTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/itemTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/mailFeedbackTable"]]}`,
-  `AWS::StepFunctions::StateMachine|StateMachineName|{"Fn::Join":["",["mailbox-data-deployer-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]]}`,
-  `AWS::StepFunctions::StateMachine|StateMachineName|{"Fn::Join":["",["mailbox-edge-deployer-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]]}`,
-  `AWS::StepFunctions::StateMachine|StateMachineName|{"Fn::Join":["",["mailbox-sweeper-ops-",{"Fn::Select":[2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]]}`,
 ];
 
 function createMockAuthProvider(): IMailboxAuthProvider {

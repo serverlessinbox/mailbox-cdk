@@ -10,8 +10,11 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import { Construct } from 'constructs';
 import { BaseQueue } from '../base-queue';
 import type { BaseQueueProps } from '../base-queue';
+import { PositionHash } from '../naming/position-hash';
+import { StackIdentity } from '../naming/stack-identity';
 
 function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Template {
   const stack = new cdk.Stack(new App(), 'TestStack', {
@@ -41,8 +44,22 @@ describe('BaseQueue', () => {
     });
   });
 
-  it('generates a physical queue name when none is given and keeps an explicit one', () => {
-    queueTemplate().hasResourceProperties('AWS::SQS::Queue', { QueueName: Match.anyValue() });
+  it('names the queue after its own position in the tree and the install', () => {
+    const stack = new cdk.Stack(new App(), 'TestStack', {
+      env: { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const group = new Construct(stack, 'group');
+    new BaseQueue(group, 'jobs');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: {
+        'Fn::Join': ['', [`123456789012-teststack-jobs-${PositionHash.ofChild(group, 'jobs')}-`, stack.resolve(StackIdentity.guidPrefix)]],
+      },
+    });
+  });
+
+  it('keeps an explicit queue name', () => {
     queueTemplate({ queueName: 'explicit-name' }).hasResourceProperties('AWS::SQS::Queue', {
       QueueName: 'explicit-name',
     });
@@ -55,8 +72,8 @@ describe('BaseQueue', () => {
     const [{ Properties: generatedProperties }] = Object.values(generated);
     const [{ Properties: undefinedProperties }] = Object.values(withUndefined);
 
-    expect(typeof generatedProperties.QueueName).toBe('string');
-    expect(undefinedProperties.QueueName).toBe(generatedProperties.QueueName);
+    expect(generatedProperties.QueueName).toBeDefined();
+    expect(undefinedProperties.QueueName).toEqual(generatedProperties.QueueName);
   });
 
   it('encrypts with the SQS-managed KMS key by default', () => {

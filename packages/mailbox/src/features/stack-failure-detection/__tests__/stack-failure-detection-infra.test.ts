@@ -4,9 +4,12 @@
  * the EventBridge rule that triggers it, and a role whose only policy is the one explicit detector
  * policy.
  *
- * Name length: names built as `<prefix>-<parentGroupId>-<full 36-char stack GUID>` fail the deploy with
- * "roleName failed to satisfy constraint: Member must have length less than or equal to 64" once the
- * parent construct id is long, while a synth that asserts nothing about length passes.
+ * Name length: a name that embeds an unbounded part, such as a construct id or the full 36-char stack
+ * GUID, fails the deploy with "roleName failed to satisfy constraint: Member must have length less
+ * than or equal to 64" once that part is long, while a synth that asserts nothing about length passes.
+ *
+ * Name identity: the names end in the construct's position hash, so moving the construct changes them
+ * and the retained original of the old position never shares a name with its replacement.
  *
  * Retention: loosening a retained resource to the default policy lets CloudFormation delete the detector
  * while it reports the very rollback that triggered it.
@@ -21,6 +24,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { Construct } from 'constructs';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { PositionHash } from '@serverlessinbox/mailbox-cdk-shared';
 import { StackFailureDetectionInfra } from '../stack-failure-detection-infra';
 
 const VENDOR_ACCOUNT_ID = '444455556666';
@@ -63,22 +67,29 @@ function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
   });
 }
 
-function synthesizeDetectionTemplate(): Template {
+interface SynthesizedDetection {
+  readonly template: Template;
+  readonly infra: StackFailureDetectionInfra;
+}
+
+function synthesizeDetection(parentId: string): SynthesizedDetection {
   const app = new App();
   const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
     env: { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  // `parentGroupId` is the id of the infra's parent. This id is 23 chars, long enough to push names
-  // that embed the full stack GUID over the 64-char limit.
-  const parent = new Construct(stack, 'stack-failure-detection');
-  new StackFailureDetectionInfra(parent, 'infra', {
+  const parent = new Construct(stack, parentId);
+  const infra = new StackFailureDetectionInfra(parent, 'infra', {
     artifactResolver: createTestArtifactResolver(stack),
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
   });
 
-  return Template.fromStack(stack);
+  return { template: Template.fromStack(stack), infra };
+}
+
+function synthesizeDetectionTemplate(): Template {
+  return synthesizeDetection('stack-failure-detection').template;
 }
 
 function resourcesOfType(template: Template, type: string): SynthesizedResource[] {
@@ -166,6 +177,22 @@ describe('StackFailureDetectionInfra — physical name length', () => {
 
     const length = worstCaseJoinLength(detectorRole.Properties.RoleName);
     expect(length).toBeLessThanOrEqual(64);
+  });
+
+  it('the names start with the infra position hash and differ when the infra sits under another parent', () => {
+    const first = synthesizeDetection('group-one');
+    const second = synthesizeDetection('group-two');
+
+    const namesOf = (detection: SynthesizedDetection): [unknown, unknown] => [
+      findByNamePrefix(resourcesOfType(detection.template, 'AWS::IAM::Role'), 'RoleName', 'mailbox-diag-role-').Properties.RoleName?.['Fn::Join'][1][0],
+      findByNamePrefix(resourcesOfType(detection.template, 'AWS::Lambda::Function'), 'FunctionName', 'mailbox-diag-fn-').Properties.FunctionName?.['Fn::Join'][1][0],
+    ];
+
+    expect(namesOf(first)).toEqual([
+      `mailbox-diag-role-${PositionHash.of(first.infra)}-`,
+      `mailbox-diag-fn-${PositionHash.of(first.infra)}-`,
+    ]);
+    expect(namesOf(first)).not.toEqual(namesOf(second));
   });
 
   it('the rule is CDK-auto-named, not pinned', () => {

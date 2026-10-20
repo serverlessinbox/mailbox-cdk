@@ -18,6 +18,7 @@ import { MailboxDataStack } from '../data/mailbox-data-stack';
 import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
 import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
 import { WebSocketTable } from '../api/websocket/websocket-table';
+import { PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import {
   CloudFormationResource,
@@ -84,7 +85,7 @@ describe('Mailbox Resource Naming', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      new AuthKeyStoreTable(stack, 'auth-key-store');
+      const authKeyStore = new AuthKeyStoreTable(stack, 'auth-key-store');
 
       const template = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
@@ -96,7 +97,8 @@ describe('Mailbox Resource Naming', () => {
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-auth-key-store',
+          `-auth-key-store-${PositionHash.ofChild(authKeyStore, 'auth-key-store')}-`,
+          stack.resolve(StackIdentity.guidPrefix),
         ]],
       });
     });
@@ -111,7 +113,7 @@ describe('Mailbox Resource Naming', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      new WebSocketTable(stack, 'websocket');
+      const websocketTable = new WebSocketTable(stack, 'websocket');
 
       const template = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
@@ -123,7 +125,8 @@ describe('Mailbox Resource Naming', () => {
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          '-websocket',
+          `-websocket-${PositionHash.ofChild(websocketTable, 'websocket')}-`,
+          stack.resolve(StackIdentity.guidPrefix),
         ]],
       });
     });
