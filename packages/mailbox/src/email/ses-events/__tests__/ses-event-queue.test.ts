@@ -45,7 +45,7 @@ describe('SesEventQueue', () => {
     });
   });
 
-  it('lets the topic use a customer-managed key, scoped to the account and the topic', () => {
+  it('lets the topic use a customer-managed key, scoped to the account (as a ref, not a literal) and the topic', () => {
     const stack = createStack();
     const topic = new Topic(stack, 'TestTopic');
     const key = new kms.Key(stack, 'TestKey');
@@ -60,7 +60,7 @@ describe('SesEventQueue', () => {
             Principal: { Service: 'sns.amazonaws.com' },
             Resource: '*',
             Condition: {
-              StringEquals: { 'aws:SourceAccount': '123456789012' },
+              StringEquals: { 'aws:SourceAccount': { Ref: 'AWS::AccountId' } },
               ArnEquals: { 'aws:SourceArn': stack.resolve(topic.topicArn) },
             },
           }),

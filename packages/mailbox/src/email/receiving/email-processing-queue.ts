@@ -8,7 +8,7 @@ import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@
 /** Inputs of {@link EmailProcessingQueue}. */
 export interface EmailProcessingQueueProps {
   /** Only `encryptionMasterKey` is read: with it the queues are KMS-encrypted, without it SQS-managed. */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  readonly queueProps?: Pick<BaseQueueProps, 'encryptionMasterKey'>;
 }
 
 /**

@@ -46,7 +46,7 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       timeToLiveAttribute: 'ttl',
-      pointInTimeRecovery: false,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
     });
 
     // GSI1 for broadcasting by account (subscription items only).

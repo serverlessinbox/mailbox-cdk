@@ -54,9 +54,9 @@ export class BaseQueue extends Queue {
     super(scope, id, {
       visibilityTimeout,
       receiveMessageWaitTime,
-      queueName,
       encryption,
       ...rest,
+      queueName,
     });
   }
 }

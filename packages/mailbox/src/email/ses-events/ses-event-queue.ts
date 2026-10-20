@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import { IGrantable, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import { Stack, Duration } from 'aws-cdk-lib';
+import { Aws, Duration } from 'aws-cdk-lib';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
 import { IKey } from 'aws-cdk-lib/aws-kms';
 import { ITopic } from 'aws-cdk-lib/aws-sns';
@@ -89,7 +89,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
         resources: ['*'],
         conditions: {
           StringEquals: {
-            'aws:SourceAccount': Stack.of(this).account,
+            'aws:SourceAccount': Aws.ACCOUNT_ID,
           },
           ArnEquals: {
             'aws:SourceArn': topic.topicArn,

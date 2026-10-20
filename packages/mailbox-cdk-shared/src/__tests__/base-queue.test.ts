@@ -48,6 +48,17 @@ describe('BaseQueue', () => {
     });
   });
 
+  it('generates the same name when the caller passes queueName: undefined', () => {
+    const generated = queueTemplate().findResources('AWS::SQS::Queue');
+    const withUndefined = queueTemplate({ queueName: undefined }).findResources('AWS::SQS::Queue');
+
+    const [{ Properties: generatedProperties }] = Object.values(generated);
+    const [{ Properties: undefinedProperties }] = Object.values(withUndefined);
+
+    expect(typeof generatedProperties.QueueName).toBe('string');
+    expect(undefinedProperties.QueueName).toBe(generatedProperties.QueueName);
+  });
+
   it('encrypts with the SQS-managed KMS key by default', () => {
     queueTemplate().hasResourceProperties('AWS::SQS::Queue', { KmsMasterKeyId: 'alias/aws/sqs' });
   });
