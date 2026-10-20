@@ -4,6 +4,40 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.3.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.0...v0.3.1) (Tue Oct 20 2026)
+
+### fix
+
+* **mailbox-cdk** the stack-deployer starter may read its deployed stack during a parent rollback ([e04ccc5](https://github.com/serverlessinbox/mailbox-cdk/commit/e04ccc5ac2885b5782ac0ceef204d57190d28044))
+
+* **mailbox-cdk-shared** the content-deployment nonce is the same on every synth ([84e9eba](https://github.com/serverlessinbox/mailbox-cdk/commit/84e9ebaf8bd75ba7e6c879d797ee6da4a5d184a6))
+
+* **mailbox** the template is deterministic; the licence refresh time is random per install ([3fac1cc](https://github.com/serverlessinbox/mailbox-cdk/commit/3fac1cc5e37885c988769f37003b4dbffc5bf01e))
+
+* **stack-helpers** the resolver omits seededNumber when no Range is sent ([ace51f9](https://github.com/serverlessinbox/mailbox-cdk/commit/ace51f98a8de66439ab301fc389ee59a06cc4fa2))
+
+* **cdk** SNS key policy uses Aws.ACCOUNT_ID, queueName undefined keeps generated name, narrow queueProps, current PITR prop ([41b169f](https://github.com/serverlessinbox/mailbox-cdk/commit/41b169f10cc5c739506008caa95809d048e2cee7))
+
+* **cdk** one home for the incoming-email prefix, drop dead props, render refs in WebSocket values, keep the queue encryption default ([94ea0e0](https://github.com/serverlessinbox/mailbox-cdk/commit/94ea0e06b136e2a63eb3e728c970c84bd7d6ea24))
+
+### refactor
+
+* **mailbox-cdk-shared** naming, pipeline log groups and resource group follow the code skills (K) ([5118123](https://github.com/serverlessinbox/mailbox-cdk/commit/511812338b260beb88ccf5302b27bede33274bd1))
+
+* **shared** one StackIdentity class and a seeded number for stack-unique names ([3483187](https://github.com/serverlessinbox/mailbox-cdk/commit/348318788eeae15428c1be0b3276dc2e31a17e17))
+
+* **ownership** root-stack IAM conditions admit the stack id, or the name when a resource has no id tag ([45dd890](https://github.com/serverlessinbox/mailbox-cdk/commit/45dd890fbb0ff2b838f427c099a85bd86e657dbe))
+
+* **cdk** K pass on queue/table bases and named queues/tables ([df57da1](https://github.com/serverlessinbox/mailbox-cdk/commit/df57da11657310cd1851a2bdec957163bcc60339))
+
+### feat
+
+* **tags** tag resources with the root stack id ([c83fbe1](https://github.com/serverlessinbox/mailbox-cdk/commit/c83fbe1595e21d5c0569682c4b04159cc1700f38))
+
+* **cdk** give explicitly named resources a position hash and an install id ([531e675](https://github.com/serverlessinbox/mailbox-cdk/commit/531e67583c5a3569ffbfcea911479644397bf881))
+
+* **cdk** give the edge stack a position-hashed name ([779e750](https://github.com/serverlessinbox/mailbox-cdk/commit/779e7506ef25c50481e1e9b41594ee7c179daef3))
+
 ## [0.3.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.9...v0.3.0) (Mon Oct 19 2026)
 
 ### fix

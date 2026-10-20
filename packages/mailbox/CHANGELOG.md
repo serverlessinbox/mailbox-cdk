@@ -4,6 +4,62 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.3.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.0...v0.3.1) (Tue Oct 20 2026)
+
+### refactor
+
+* **mailbox** MailboxContext and MailboxAddressing resolve the foundation (CS5.2) ([14095eb](https://github.com/serverlessinbox/mailbox-cdk/commit/14095eb76dac1ba420b5578a428cc2fab64ea79f))
+
+* **mailbox** the blob-download origin-header contract lives in an import-free file ([132574f](https://github.com/serverlessinbox/mailbox-cdk/commit/132574ffd0c0208971820c1f4360318358c969ca))
+
+* **mailbox** delete the unused MailboxDomainContext and domain-resolver barrel (CS5.3) ([25ce6f3](https://github.com/serverlessinbox/mailbox-cdk/commit/25ce6f390314136f49d2b3176130fb0ec44361a6))
+
+* **mailbox** bootstrap and licence-refresh constructs follow the code skills (K) ([23f6143](https://github.com/serverlessinbox/mailbox-cdk/commit/23f61438a8df2c1af83b255225bfe2dd130f9ec2))
+
+* **mailbox** email-sending, SES-event and audit-queue constructs follow the code skills (K) ([6cfd43b](https://github.com/serverlessinbox/mailbox-cdk/commit/6cfd43b6e9e5b50fbae46c7775ff42fe57e29660))
+
+* **mailbox** support roles and stack-failure detection follow the code skills (K) ([23e2a94](https://github.com/serverlessinbox/mailbox-cdk/commit/23e2a949948be718f68d080150e060e561686555))
+
+* **shared** one StackIdentity class and a seeded number for stack-unique names ([3483187](https://github.com/serverlessinbox/mailbox-cdk/commit/348318788eeae15428c1be0b3276dc2e31a17e17))
+
+* **ownership** root-stack IAM conditions admit the stack id, or the name when a resource has no id tag ([45dd890](https://github.com/serverlessinbox/mailbox-cdk/commit/45dd890fbb0ff2b838f427c099a85bd86e657dbe))
+
+* **sweeper** the removal resources pass the stack id and apply the root-stack rule ([bf289f6](https://github.com/serverlessinbox/mailbox-cdk/commit/bf289f641fdba8fa44247806d81dc2bdfa2c1d54))
+
+* **sweeper** the sweeper checks root-stack membership by stack id, or by name for a resource without an id tag ([c78aedf](https://github.com/serverlessinbox/mailbox-cdk/commit/c78aedf18afb29cc7f9c2ddb1953efb3f339aafc))
+
+* **artifact-updater** the updater finds the root stack's resources by stack id, or by name without an id tag ([5227b61](https://github.com/serverlessinbox/mailbox-cdk/commit/5227b617227ef8a4ff1592df7226d19f55453c18))
+
+* **cdk** K pass on queue/table bases and named queues/tables ([df57da1](https://github.com/serverlessinbox/mailbox-cdk/commit/df57da11657310cd1851a2bdec957163bcc60339))
+
+* **cdk** bring the API, DNS, UI and SES rule constructs up to the skills ([362b7f2](https://github.com/serverlessinbox/mailbox-cdk/commit/362b7f2948babebc7d0b346b99b705f202283181))
+
+### fix
+
+* **mailbox-cdk** the stack-deployer starter may read its deployed stack during a parent rollback ([e04ccc5](https://github.com/serverlessinbox/mailbox-cdk/commit/e04ccc5ac2885b5782ac0ceef204d57190d28044))
+
+* **mailbox** the template is deterministic; the licence refresh time is random per install ([3fac1cc](https://github.com/serverlessinbox/mailbox-cdk/commit/3fac1cc5e37885c988769f37003b4dbffc5bf01e))
+
+* **mailbox** bootstrap custom resource gets a descriptive type, a Lambda-derived timeout and a stack-status grant ([895fd55](https://github.com/serverlessinbox/mailbox-cdk/commit/895fd55ad64bf949f370e3de649d79bdff2e7c72))
+
+* **cdk** SNS key policy uses Aws.ACCOUNT_ID, queueName undefined keeps generated name, narrow queueProps, current PITR prop ([41b169f](https://github.com/serverlessinbox/mailbox-cdk/commit/41b169f10cc5c739506008caa95809d048e2cee7))
+
+* **cdk** one home for the incoming-email prefix, drop dead props, render refs in WebSocket values, keep the queue encryption default ([94ea0e0](https://github.com/serverlessinbox/mailbox-cdk/commit/94ea0e06b136e2a63eb3e728c970c84bd7d6ea24))
+
+### test
+
+* **mailbox** pin the resources whose explicit names do not follow the Mailbox's position ([128832c](https://github.com/serverlessinbox/mailbox-cdk/commit/128832cb376de58dcefdbbc21074312898ebfbca))
+
+* **cdk** guard the logical IDs of the externally unique Mailbox resources ([955d2ac](https://github.com/serverlessinbox/mailbox-cdk/commit/955d2acf237f1abb912dac73b1d972bf21dfb0ea))
+
+### feat
+
+* **tags** tag resources with the root stack id ([c83fbe1](https://github.com/serverlessinbox/mailbox-cdk/commit/c83fbe1595e21d5c0569682c4b04159cc1700f38))
+
+* **cdk** give explicitly named resources a position hash and an install id ([531e675](https://github.com/serverlessinbox/mailbox-cdk/commit/531e67583c5a3569ffbfcea911479644397bf881))
+
+* **cdk** give the edge stack a position-hashed name ([779e750](https://github.com/serverlessinbox/mailbox-cdk/commit/779e7506ef25c50481e1e9b41594ee7c179daef3))
+
 ## [0.3.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.9...v0.3.0) (Mon Oct 19 2026)
 
 ### refactor

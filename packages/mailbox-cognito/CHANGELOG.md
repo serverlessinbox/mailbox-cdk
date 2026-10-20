@@ -4,6 +4,32 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.3.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.0...v0.3.1) (Tue Oct 20 2026)
+
+### refactor
+
+* **mailbox-cognito** the user pool follows the code skills (K) ([0ea873c](https://github.com/serverlessinbox/mailbox-cdk/commit/0ea873cde1f257b9562c2dd4faec422c29d9cc73))
+
+* **mailbox-cognito** the bootstrap-user Lambda grants itself; one authorization-config hook ([d682c9e](https://github.com/serverlessinbox/mailbox-cdk/commit/d682c9e49c9460f47cc36d3e4827ef5f8e05c365))
+
+* **ownership** root-stack IAM conditions admit the stack id, or the name when a resource has no id tag ([45dd890](https://github.com/serverlessinbox/mailbox-cdk/commit/45dd890fbb0ff2b838f427c099a85bd86e657dbe))
+
+### fix
+
+* **mailbox-cognito** the bootstrap-user Lambda drops its unused AdminUpdateUserAttributes grant ([5186fa6](https://github.com/serverlessinbox/mailbox-cdk/commit/5186fa61c8a33c9c6772345b8fa65b1385743b6d))
+
+* **mailbox-cognito** no import cycle in the OAuth addon; group-join and DCR cap failures are logged ([c07741c](https://github.com/serverlessinbox/mailbox-cdk/commit/c07741c33a7e172e3b96ef0210ea062164cd3b68))
+
+* **mailbox-cdk** the stack-deployer starter may read its deployed stack during a parent rollback ([e04ccc5](https://github.com/serverlessinbox/mailbox-cdk/commit/e04ccc5ac2885b5782ac0ceef204d57190d28044))
+
+* **mailbox-cognito** a DCR duplicate always carries its client id ([759c5c3](https://github.com/serverlessinbox/mailbox-cdk/commit/759c5c32ddbdfcbcc39af76bd3c0eb7a34997ba9))
+
+### feat
+
+* **tags** tag resources with the root stack id ([c83fbe1](https://github.com/serverlessinbox/mailbox-cdk/commit/c83fbe1595e21d5c0569682c4b04159cc1700f38))
+
+* **cdk** give the edge stack a position-hashed name ([779e750](https://github.com/serverlessinbox/mailbox-cdk/commit/779e7506ef25c50481e1e9b41594ee7c179daef3))
+
 ## [0.3.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.9...v0.3.0) (Mon Oct 19 2026)
 
 ### refactor
