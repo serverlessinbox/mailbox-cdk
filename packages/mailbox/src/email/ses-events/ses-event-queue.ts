@@ -3,12 +3,14 @@ import { IGrantable, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-i
 import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { Topic } from 'aws-cdk-lib/aws-sns';
+import { IKey } from 'aws-cdk-lib/aws-kms';
+import { ITopic } from 'aws-cdk-lib/aws-sns';
 import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 
+/** Inputs of {@link SesEventQueue}. */
 export interface SesEventQueueProps {
   /** The SNS topic this queue subscribes to for SES notifications. */
-  readonly topic: Topic;
+  readonly topic: ITopic;
 
   /** Optional default props applied to the queue (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -26,19 +28,18 @@ export interface ISesEventQueue {
 }
 
 /**
- * SQS queue subscribed to the SES-notifications SNS topic, consumed by the `ses-event-processor`
- * Lambda. `grantConsume` exposes only the SQS actions a consumer needs.
+ * SQS queue subscribed to the SES-notifications SNS topic. `grantConsume` exposes only the SQS
+ * actions a consumer needs.
  *
  * SNS cannot deliver to a queue encrypted with the AWS-managed SQS key (`alias/aws/sqs`), so this
  * queue defaults to unencrypted unless the caller supplies a customer-managed KMS key via
  * `queueProps.encryptionMasterKey` — in which case this construct also grants SNS permission to use
  * that key (imported keys that reject policy edits are the caller's responsibility to configure).
  *
- * Visibility timeout is set to 6 minutes, which exceeds the consumer's Lambda timeout (5 minutes)
- * plus its SQS event source batching window (30 seconds) by a safe margin.
+ * Visibility timeout is 6 minutes; it must exceed the consumer's Lambda timeout plus its SQS event
+ * source batching window.
  *
- * Not responsible for the topic itself or the SES configuration set — `SESEventProcessing` creates
- * the topic and passes it in.
+ * Not responsible for the topic itself or the SES configuration set; the topic is passed in.
  */
 export class SesEventQueue extends Construct implements ISesEventQueue {
   public readonly queue: BaseQueue;
@@ -65,33 +66,36 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
       })
     );
 
-    const keyAny = queueProps.encryptionMasterKey as unknown as { addToResourcePolicy?: (s: PolicyStatement) => unknown };
-    if (encryption === QueueEncryption.KMS && queueProps.encryptionMasterKey && typeof keyAny?.addToResourcePolicy === 'function') {
-      keyAny.addToResourcePolicy(
-        new PolicyStatement({
-          actions: [
-            'kms:Decrypt',
-            'kms:Encrypt',
-            'kms:ReEncrypt*',
-            'kms:GenerateDataKey*',
-            'kms:DescribeKey',
-          ],
-          principals: [new ServicePrincipal('sns.amazonaws.com')],
-          resources: ['*'],
-          conditions: {
-            StringEquals: {
-              'aws:SourceAccount': Stack.of(this).account,
-            },
-            ArnEquals: {
-              'aws:SourceArn': props.topic.topicArn,
-            },
-          },
-        })
-      );
+    if (encryption === QueueEncryption.KMS && queueProps.encryptionMasterKey) {
+      this.allowTopicToUseKey(queueProps.encryptionMasterKey, props.topic);
     }
   }
 
   public grantConsume(grantee: IGrantable): void {
     grantQueueActions(grantee, this.queue, SqsActions.consume);
+  }
+
+  private allowTopicToUseKey(key: IKey, topic: ITopic): void {
+    key.addToResourcePolicy(
+      new PolicyStatement({
+        actions: [
+          'kms:Decrypt',
+          'kms:Encrypt',
+          'kms:ReEncrypt*',
+          'kms:GenerateDataKey*',
+          'kms:DescribeKey',
+        ],
+        principals: [new ServicePrincipal('sns.amazonaws.com')],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceAccount': Stack.of(this).account,
+          },
+          ArnEquals: {
+            'aws:SourceArn': topic.topicArn,
+          },
+        },
+      })
+    );
   }
 }

@@ -2,10 +2,16 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
 import { AuthKeyStoreTable } from '../auth-key-store-table';
 
-const READ = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'];
-const WRITE = ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
+/**
+ * AuthKeyStoreTable tests.
+ *
+ * Pin the table definition the signing-key readers and the updater depend on (pk/sk keys, on-demand
+ * billing) and that each grant method hands out the action set meant for its kind of caller; a
+ * regression breaks key lookup or widens a Lambda's DynamoDB access.
+ */
 
 function createStack(): cdk.Stack {
   const app = new App();
@@ -16,6 +22,22 @@ function createStack(): cdk.Stack {
 }
 
 describe('AuthKeyStoreTable', () => {
+  it('defines a pk/sk on-demand table that is deleted together with the stack', () => {
+    const stack = createStack();
+    new AuthKeyStoreTable(stack, 'auth-key-store-table');
+
+    const template = Template.fromStack(stack);
+
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      KeySchema: [
+        { AttributeName: 'pk', KeyType: 'HASH' },
+        { AttributeName: 'sk', KeyType: 'RANGE' },
+      ],
+      BillingMode: 'PAY_PER_REQUEST',
+    });
+    template.hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete' });
+  });
+
   it('tableName references the table resource\'s logical ID', () => {
     const stack = createStack();
     const sut = new AuthKeyStoreTable(stack, 'auth-key-store-table');
@@ -49,7 +71,7 @@ describe('AuthKeyStoreTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: READ,
+            Action: DynamoDbActions.read,
             Effect: 'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -78,7 +100,7 @@ describe('AuthKeyStoreTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: [...READ, ...WRITE],
+            Action: DynamoDbActions.readWrite,
             Effect: 'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },

@@ -3,6 +3,7 @@ import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration } from 'aws-cdk-lib';
 import { makePhysicalName } from './naming/resource-names';
 
+/** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional. */
 export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {
   /**
    * Optional custom visibility timeout (default: 6 minutes).
@@ -38,12 +39,12 @@ export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | '
  * Queues without Lambda consumers do not need to override this.
  */
 export class BaseQueue extends Queue {
-  constructor(scope: Construct, id: string, props?: BaseQueueProps) {
+  constructor(scope: Construct, id: string, props: BaseQueueProps = {}) {
     const {
       visibilityTimeout = Duration.minutes(6),
       receiveMessageWaitTime = Duration.seconds(20),
       ...rest
-    } = props || {};
+    } = props;
 
     const queueName = rest.queueName ?? makePhysicalName(scope, id, { maxLength: 80 });
 

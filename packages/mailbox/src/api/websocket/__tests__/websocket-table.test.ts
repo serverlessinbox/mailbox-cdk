@@ -2,10 +2,16 @@ import * as cdk from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
 import { WebSocketTable } from '../websocket-table';
 
-const READ = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'];
-const WRITE = ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
+/**
+ * WebSocketTable tests.
+ *
+ * Pin the table definition the WebSocket Lambdas depend on (single-table keys, the `gsi1` index,
+ * TTL, on-demand billing) and that each grant method hands out the action set meant for its kind of
+ * caller; a regression breaks connection storage or widens a Lambda's DynamoDB access.
+ */
 
 function createStack(): cdk.Stack {
   const app = new App();
@@ -16,6 +22,38 @@ function createStack(): cdk.Stack {
 }
 
 describe('WebSocketTable', () => {
+  it('defines the pk/sk table with TTL, on-demand billing, a gsi1 index and no point-in-time recovery', () => {
+    const stack = createStack();
+    new WebSocketTable(stack, 'websocket-table');
+
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      KeySchema: [
+        { AttributeName: 'pk', KeyType: 'HASH' },
+        { AttributeName: 'sk', KeyType: 'RANGE' },
+      ],
+      BillingMode: 'PAY_PER_REQUEST',
+      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'gsi1',
+          KeySchema: [
+            { AttributeName: 'gsi1pk', KeyType: 'HASH' },
+            { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+      ],
+    });
+  });
+
+  it('is deleted together with the stack', () => {
+    const stack = createStack();
+    new WebSocketTable(stack, 'websocket-table');
+
+    Template.fromStack(stack).hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete' });
+  });
+
   it('tableName resolves to the table resource', () => {
     const stack = createStack();
     const sut = new WebSocketTable(stack, 'websocket-table');
@@ -40,7 +78,7 @@ describe('WebSocketTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: WRITE,
+            Action: DynamoDbActions.write,
             Effect: 'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -69,7 +107,7 @@ describe('WebSocketTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: [...READ, ...WRITE],
+            Action: DynamoDbActions.readWrite,
             Effect: 'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
