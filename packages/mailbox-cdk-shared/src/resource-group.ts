@@ -1,6 +1,7 @@
-import { Aws, Fn } from 'aws-cdk-lib';
-import { CfnGroup } from 'aws-cdk-lib/aws-resourcegroups';
-import { Construct } from 'constructs';
+import { CfnGroup }               from 'aws-cdk-lib/aws-resourcegroups';
+import { Aws, Fn }                from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
 import { ServerlessInboxTagKeys } from './serverless-inbox-tags';
 
 /** Options for `addServerlessInboxResourceGroup`. */
@@ -32,7 +33,7 @@ export function addServerlessInboxResourceGroup(
   props: ServerlessInboxResourceGroupProps = {},
 ): CfnGroup {
   const rootStackValue = props.rootStackValue ?? Aws.STACK_NAME;
-  const groupName = props.groupName ?? Fn.join('', [Aws.STACK_NAME, '-serverless-inbox']);
+  const groupName      = props.groupName ?? Fn.join('', [Aws.STACK_NAME, '-serverless-inbox']);
 
   return new CfnGroup(scope, id, {
     name: groupName,

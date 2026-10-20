@@ -7,21 +7,22 @@
  * queue it owns the wiring for (grant-concept Phase 2A).
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Topic } from 'aws-cdk-lib/aws-sns';
-import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { SESEventProcessorLambda } from '../ses-event-processor';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { SesEventQueue } from '../../email/ses-events/ses-event-queue';
-import { DataTable } from '../../data/data-tables';
-import { DataBlobStore } from '../../data/data-blob-store';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { SqsActions }                           from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import { Topic }                                from 'aws-cdk-lib/aws-sns';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataBlobStore }                        from '../../data/data-blob-store';
+import { DataTable }                            from '../../data/data-tables';
+import { SesEventQueue }                        from '../../email/ses-events/ses-event-queue';
+import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
+import { SESEventProcessorLambda }              from '../ses-event-processor';
 
 describe('SESEventProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -39,28 +40,28 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const itemTable = new DataTable(new Table(stack, 'item-table', {
+    const itemTable         = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
+    const changelogTable    = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable       = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
-    const topic = new Topic(stack, 'ses-notifications-topic');
-    sesEventQueue = new SesEventQueue(stack, 'ses-event-queue', { topic });
+    const blobStore         = new DataBlobStore(new Bucket(stack, 'blob-store'));
+    const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue');
+    const topic             = new Topic(stack, 'ses-notifications-topic');
+    sesEventQueue           = new SesEventQueue(stack, 'ses-event-queue', { topic });
 
     new SESEventProcessorLambda(stack, 'ses-event-processor', {
       itemTable,

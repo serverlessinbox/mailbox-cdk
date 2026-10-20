@@ -4,9 +4,10 @@
  * statements makes those tests pass or fail for the wrong reason.
  */
 
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
+
 import {
   actionsOf,
   allPolicyStatements,
@@ -19,7 +20,7 @@ import {
 } from '../policy-statements';
 
 function newTemplate(): { template: Template; stack: Stack; readerRole: iam.Role } {
-  const stack = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
+  const stack      = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
   const readerRole = new iam.Role(stack, 'reader', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
   const writerRole = new iam.Role(stack, 'writer', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
   readerRole.attachInlinePolicy(

@@ -1,12 +1,13 @@
 import { toRegion, toTableName, type Region, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t from 'typanion';
-import { firstHeaderValue, type CloudFrontRequest } from './cloudfront-event';
-import { isSupportedAlgorithm } from './jwt-verifier';
-import type { BlobDownloadOriginHeaders } from './origin-headers';
+import * as t                                                 from 'typanion';
+
+import { firstHeaderValue, type CloudFrontRequest }           from './cloudfront-event';
+import { isSupportedAlgorithm }                               from './jwt-verifier';
+import type { BlobDownloadOriginHeaders }                     from './origin-headers';
 
 const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table' satisfies keyof BlobDownloadOriginHeaders;
-const REGION_HEADER = 'x-region' satisfies keyof BlobDownloadOriginHeaders;
-const JWT_ALGORITHMS_HEADER = 'x-jwt-algorithms' satisfies keyof BlobDownloadOriginHeaders;
+const REGION_HEADER               = 'x-region' satisfies keyof BlobDownloadOriginHeaders;
+const JWT_ALGORITHMS_HEADER       = 'x-jwt-algorithms' satisfies keyof BlobDownloadOriginHeaders;
 
 // An AWS region code: a two-letter geography, one or more direction words and a number, such as `eu-west-1` or `us-gov-east-1`.
 const isRegionCode = t.cascade(t.isString(), [t.matchesRegExp(/^[a-z]{2}(-[a-z]+)+-\d$/)]);
@@ -60,7 +61,7 @@ export function extractConfig(request: CloudFrontRequest): ConfigReading {
   }
 
   const jwtAlgorithmsRaw = firstHeaderValue(customHeaders, JWT_ALGORITHMS_HEADER);
-  const jwtAlgorithms = jwtAlgorithmsRaw
+  const jwtAlgorithms    = jwtAlgorithmsRaw
     ? jwtAlgorithmsRaw.split(',').map((algorithm) => algorithm.trim()).filter(Boolean)
     : undefined;
   if (jwtAlgorithms && (jwtAlgorithms.length === 0 || !jwtAlgorithms.every((algorithm) => isSupportedAlgorithm(algorithm)))) {

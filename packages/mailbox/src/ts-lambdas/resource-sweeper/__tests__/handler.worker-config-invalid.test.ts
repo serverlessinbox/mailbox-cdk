@@ -8,9 +8,10 @@
 delete process.env['SERVICE_NAME'];
 delete process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'];
 
-import { mockClient } from 'aws-sdk-client-mock';
 import { ACMClient, ListTagsForCertificateCommand } from '@aws-sdk/client-acm';
-import { workerHandler } from '../handler';
+import { mockClient }                               from 'aws-sdk-client-mock';
+
+import { workerHandler }                            from '../handler';
 
 const acmMock = mockClient(ACMClient);
 

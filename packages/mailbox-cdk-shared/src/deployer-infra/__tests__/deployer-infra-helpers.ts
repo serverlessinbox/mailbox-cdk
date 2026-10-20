@@ -1,13 +1,14 @@
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import * as t from 'typanion';
-import { DeployerStarterLambda } from '../deployer-starter-lambda';
-import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { renderWithTokens } from '../../cdk-test-support';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as lambda                              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { Construct }                            from 'constructs';
+import * as t                                   from 'typanion';
+
+import { renderWithTokens }                     from '../../cdk-test-support';
+import { DeployerStarterLambda }                from '../deployer-starter-lambda';
+import { PollingCfnDeployerWorkflow }           from '../polling-cfn-deployer-workflow';
 
 export const TEST_ACCOUNT = '123456789012';
 export const TEST_REGION = 'us-west-2';
@@ -38,7 +39,7 @@ export interface DeployerTestStack {
 
 /** A stack with an explicit environment and a resolver that pins the package the deployer Lambdas ship in. */
 export function newDeployerTestStack(): DeployerTestStack {
-  const stack = new Stack(new App(), 'TestStack', {
+  const stack            = new Stack(new App(), 'TestStack', {
     env: { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -71,13 +72,13 @@ const isStarterFunction = t.isPartial({
  */
 export function starterServiceName(deployedStackName: string): string {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+  const workflow                    = new PollingCfnDeployerWorkflow(stack, 'workflow', {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'probe-machine',
   });
   new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*' });
 
-  const starters = Object.values(
+  const starters         = Object.values(
     Template.fromStack(stack).findResources('AWS::Lambda::Function', { Properties: { Handler: 'index.starterHandler' } }),
   );
   const errors: string[] = [];

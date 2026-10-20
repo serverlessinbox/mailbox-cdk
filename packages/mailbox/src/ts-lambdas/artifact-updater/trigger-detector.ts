@@ -1,9 +1,10 @@
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import type { CfnTrigger } from './cfn-trigger';
-import type { HttpTrigger, HttpTriggerResponse } from './http-trigger';
-import type { ScheduledTrigger } from './scheduled-trigger';
+import type { CloudFormationCustomResourceEvent, Context }              from 'aws-lambda';
+
+import type { CfnTrigger }                                              from './cfn-trigger';
+import type { HttpTrigger, HttpTriggerResponse }                        from './http-trigger';
+import type { ScheduledTrigger }                                        from './scheduled-trigger';
 import { isCfnTriggerEvent, isHttpTriggerEvent, type HttpTriggerEvent } from './updater-event';
-import type { UpdaterTrigger } from './updater-trigger';
+import type { UpdaterTrigger }                                          from './updater-trigger';
 
 type DispatchMode = 'cfn-custom-resource' | 'http-api' | 'eventbridge-or-self-invoke';
 

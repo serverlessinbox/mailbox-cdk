@@ -1,11 +1,11 @@
-import * as cdk from 'aws-cdk-lib';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
-import { IConstruct } from 'constructs';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import * as apigatewayv2          from 'aws-cdk-lib/aws-apigatewayv2';
+import * as cloudfront            from 'aws-cdk-lib/aws-cloudfront';
+import * as events                from 'aws-cdk-lib/aws-events';
+import * as iam                   from 'aws-cdk-lib/aws-iam';
+import * as lambda                from 'aws-cdk-lib/aws-lambda';
+import * as cdk                   from 'aws-cdk-lib';
+import { IConstruct }             from 'constructs';
 
 /** AWS tag-value maximum length. */
 const MAX_TAG_VALUE_LENGTH = 256;
@@ -64,8 +64,8 @@ const COMPONENT_DESCRIPTIONS: Record<string, string> = {
  */
 function pathTailAfter(node: IConstruct, anchor: string): string {
   const parts = node.node.path.split('/');
-  const idx = parts.indexOf(anchor);
-  if (idx === -1 || idx === parts.length - 1) return node.node.path;
+  const idx   = parts.indexOf(anchor);
+  if (idx === -1 || idx === parts.length - 1) {return node.node.path;}
   return parts.slice(idx + 1).join('/');
 }
 
@@ -82,10 +82,10 @@ function fallbackComponentFromPath(tail: string): string {
  * Humanizes a CFN resource type into a readable role, e.g. `AWS::Foo::BarBaz` → 'foo bar baz'.
  */
 function humanizeCfnType(cfnType: string): string {
-  const parts = cfnType.split('::');
-  const service = parts.length >= 2 ? parts[parts.length - 2] : '';
+  const parts    = cfnType.split('::');
+  const service  = parts.length >= 2 ? parts[parts.length - 2] : '';
   const resource = parts[parts.length - 1] ?? cfnType;
-  const spaced = resource
+  const spaced   = resource
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .toLowerCase();
   return service ? `${service.toLowerCase()} ${spaced}`.trim() : spaced;
@@ -205,12 +205,12 @@ export class MailboxResourceDescriptions implements cdk.IAspect {
   }
 
   public visit(node: IConstruct): void {
-    if (!(node instanceof cdk.CfnResource)) return;
+    if (!(node instanceof cdk.CfnResource)) {return;}
 
     const tail = pathTailAfter(node, this.anchorId);
 
     // Component id = the path segment after the group (tail = `<group>/<component>/...`).
-    const componentId = tail.split('/')[1];
+    const componentId       = tail.split('/')[1];
     const componentSentence = (componentId && COMPONENT_DESCRIPTIONS[componentId])
       ?? this.fallbackDescription
       ?? `ServerlessInbox · ${fallbackComponentFromPath(tail)} · ${tail}`;
@@ -256,7 +256,7 @@ export class MailboxResourceDescriptions implements cdk.IAspect {
       // CfnDistribution uses DistributionConfig.Comment for the description field.
       // distributionConfig may be IResolvable at synth time, so use addPropertyOverride
       // to set the Comment only when it hasn't already been set via L2 props.
-      const cfgProp = node.distributionConfig;
+      const cfgProp         = node.distributionConfig;
       const existingComment = cdk.Token.isUnresolved(cfgProp)
         ? undefined
         : (cfgProp as cloudfront.CfnDistribution.DistributionConfigProperty).comment;

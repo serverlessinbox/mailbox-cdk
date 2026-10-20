@@ -1,10 +1,12 @@
-import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import type { Region } from '../shared/aws-identifiers';
-import type { StackName } from '../shared/custom-resource-identifiers';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import { isParentStackRollingBack } from '../shared/stack-rollback-detector';
+import type { CloudFormationClient }         from '@aws-sdk/client-cloudformation';
+
+import type { Region }                       from '../shared/aws-identifiers';
+import type { StackName }                    from '../shared/custom-resource-identifiers';
+import type { LoggerBuffer }                 from '../shared/logger-buffer';
+import { isParentStackRollingBack }          from '../shared/stack-rollback-detector';
+
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
-import type { OperationInput, RequestType } from './stack-deployment';
+import type { OperationInput, RequestType }  from './stack-deployment';
 
 /** The request that failed, as far as it could be read. */
 export interface FailedRequest {
@@ -38,9 +40,9 @@ export class UpdateRollbackAnswerer implements UpdateRollbackAnswers {
 
   constructor(parentStack: CloudFormationClient, subStacks: SubStackOutputs, responder: CfnResponder, logger: LoggerBuffer) {
     this.parentStack = parentStack;
-    this.subStacks = subStacks;
-    this.responder = responder;
-    this.logger = logger;
+    this.subStacks   = subStacks;
+    this.responder   = responder;
+    this.logger      = logger;
   }
 
   async answerSuccess(request: FailedRequest, target: CfnReplyTarget, failureReason: string): Promise<boolean> {

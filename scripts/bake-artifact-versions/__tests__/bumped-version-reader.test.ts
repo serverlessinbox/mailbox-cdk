@@ -1,7 +1,8 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { BumpedVersionReader } from '../bumped-version-reader';
+import { tmpdir }                                from 'node:os';
+import * as path                                 from 'node:path';
+
+import { BumpedVersionReader }                   from '../bumped-version-reader';
 
 /**
  * Pins that the version baked into a package is exactly the one the bump wrote into its manifest,
@@ -10,7 +11,7 @@ import { BumpedVersionReader } from '../bumped-version-reader';
  */
 describe('BumpedVersionReader', () => {
   const workDir = mkdtempSync(path.join(tmpdir(), 'bumped-version-reader-'));
-  const reader = new BumpedVersionReader();
+  const reader  = new BumpedVersionReader();
 
   function packageDirectory(name: string, manifest: string): string {
     const directory = path.join(workDir, name);

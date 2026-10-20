@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import type { S3Client } from '@aws-sdk/client-s3';
+import type { S3Client }                   from '@aws-sdk/client-s3';
 import type { ListObjectsV2CommandOutput } from '@aws-sdk/client-s3';
 import {
   DeleteObjectsCommand,
@@ -8,9 +8,9 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
-import mime from 'mime-types';
+import mime                   from 'mime-types';
 import { posix as pathPosix } from 'node:path';
-import unzipper from 'unzipper';
+import unzipper               from 'unzipper';
 
 const S3_DELETE_OBJECTS_LIMIT = 1000;
 
@@ -39,7 +39,7 @@ export interface ObjectWrite {
 
 /** Deletes every object under the prefix and returns how many it deleted. */
 export async function deletePrefix(s3: S3Client, bucket: string, prefix: string): Promise<number> {
-  let deleted = 0;
+  let deleted                   = 0;
   let token: string | undefined = undefined;
 
   do {
@@ -176,9 +176,9 @@ async function uploadZipEntry(
  * Throws for a path that is empty or leaves the prefix (`..`), and for one containing `:` (a Windows drive).
  */
 function normalizeRelativeKey(input: string): string {
-  const trimmed = (input ?? '').toString().trim();
+  const trimmed        = (input ?? '').toString().trim();
   const withoutLeading = trimmed.replace(/^\/+/, '');
-  const normalized = pathPosix.normalize(withoutLeading);
+  const normalized     = pathPosix.normalize(withoutLeading);
 
   if (normalized === '.' || normalized.startsWith('..') || normalized.includes(':')) {
     throw new Error(`Invalid relative key: ${input}`);

@@ -1,4 +1,5 @@
-import * as t from 'typanion';
+import * as t                                                                                                                         from 'typanion';
+
 import { isRegion, toFunctionName, toQueueUrl, toRegion, toTableName, type FunctionName, type QueueUrl, type Region, type TableName } from '../aws-identifiers';
 
 /**
@@ -24,7 +25,7 @@ describe('AWS identifiers', () => {
   });
 
   it('does not accept a function name where a queue URL is expected, nor the other way round', () => {
-    const describeQueue = (queue: QueueUrl): string => queue;
+    const describeQueue    = (queue: QueueUrl): string => queue;
     const describeFunction = (name: FunctionName): string => name;
 
     // @ts-expect-error a FunctionName is not a QueueUrl

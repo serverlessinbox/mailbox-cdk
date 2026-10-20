@@ -1,15 +1,17 @@
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import { ArnFormat, Aws, Fn, Stack } from 'aws-cdk-lib';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
+import { PositionHash, StackIdentity }                               from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                      from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                                 from 'aws-cdk-lib/aws-lambda';
+import { ArnFormat, Aws, Fn, Stack }                                 from 'aws-cdk-lib';
+import { Construct }                                                 from 'constructs';
+
 import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
-import { retainOnUpdateOrDelete } from '../../utils/cfn-resource';
-import type { IResourceRemoval } from './removal';
-import { SweeperExecutionGrants } from './sweeper-execution-grants';
-import { SweeperPolicyNames } from './sweeper-names';
-import { SweeperWorkflow } from './sweeper-workflow';
+import { retainOnUpdateOrDelete }                                    from '../../utils/cfn-resource';
+
+import type { IResourceRemoval }                                     from './removal';
+import { SweeperExecutionGrants }                                    from './sweeper-execution-grants';
+import { SweeperPolicyNames }                                        from './sweeper-names';
+import { SweeperWorkflow }                                           from './sweeper-workflow';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;
@@ -48,13 +50,13 @@ export class SweeperInfra extends Construct {
   constructor(scope: Construct, id: string, props: SweeperInfraProps) {
     super(scope, id);
 
-    const names = this.resourceNames();
+    const names            = this.resourceNames();
     const executionRoleArn = this.roleArn(names.executionRole);
-    const workerRoleArn = this.roleArn(names.workerRole);
-    const stateMachineArn = this.stateMachineArnOf(names.stateMachine);
+    const workerRoleArn    = this.roleArn(names.workerRole);
+    const stateMachineArn  = this.stateMachineArnOf(names.stateMachine);
 
     const executionRole = this.createExecutionRole(names.executionRole);
-    const workerRole = this.createWorkerRole(names.workerRole);
+    const workerRole    = this.createWorkerRole(names.workerRole);
 
     // Worker Lambda (RETAIN'd — invoked by the state machine after the stack is deleted)
     const worker = new ResourceSweeperWorkerLambda(this, 'worker', {
@@ -111,7 +113,7 @@ export class SweeperInfra extends Construct {
    */
   private resourceNames(): SweeperResourceNames {
     const positionHash = PositionHash.of(this);
-    const guidPrefix = StackIdentity.guidPrefix;
+    const guidPrefix   = StackIdentity.guidPrefix;
 
     return {
       stateMachine: Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),

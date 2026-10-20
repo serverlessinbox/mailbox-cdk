@@ -1,7 +1,7 @@
-import { Construct } from 'constructs';
-import { AuthorizerLambda, ApiHandlerLambda } from '../../lambdas';
-import type { JmapOAuthHandlerConfig } from '../../lambdas/jmap-api';
-import type { IIdentityProvisioner } from '../../lambdas/identity-provisioner';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                                 from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration, HttpUrlIntegration }                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -13,21 +13,22 @@ import {
   IHttpApi,
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaIntegration, HttpUrlIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import type { IDataTable } from '../../data/data-tables';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
-import { IMailboxAuthProvider } from '../../auth/types';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as acm                                                           from 'aws-cdk-lib/aws-certificatemanager';
+import type { IFunction }                                                 from 'aws-cdk-lib/aws-lambda';
+import { Duration, Aws, CfnResource }                                     from 'aws-cdk-lib';
+import { Construct }                                                      from 'constructs';
+
+import { IMailboxAuthProvider }                                           from '../../auth/types';
+import type { IDataBlobStore }                                            from '../../data/data-blob-store';
+import type { IDataTable }                                                from '../../data/data-tables';
+import type { IEmailSendingQueue }                                        from '../../email/sending/email-sending-queue';
+import type { IAuditEventsQueue }                                         from '../../features/audit-writing/audit-events-queue';
+import type { IAuthKeyStoreTable }                                        from '../../features/auth-key-store/auth-key-store-table';
+import type { IIdentityProvisioner }                                      from '../../lambdas/identity-provisioner';
+import type { JmapOAuthHandlerConfig }                                    from '../../lambdas/jmap-api';
+import { AuthorizerLambda, ApiHandlerLambda }                             from '../../lambdas';
+import type { IJmapApiAddon }                                             from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../websocket/websocket';
-import type { IJmapApiAddon } from '../addons';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
-import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
 /**
  * Inputs of {@link JMapApi}: the tables, queues and blob store its handler Lambda works on, the
@@ -158,7 +159,7 @@ export class JMapApi extends Construct {
         stage: api.defaultStage!,
       });
 
-      this.url = `https://${props.domainName}`;
+      this.url          = `https://${props.domainName}`;
       this.domainTarget = domain.regionalDomainName;
     } else {
       this.url = api.apiEndpoint;
@@ -184,7 +185,7 @@ export class JMapApi extends Construct {
       } satisfies JmapOAuthHandlerConfig,
       oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,
     });
-    this.apiHandlerLambda = apiHandlerLambda;
+    this.apiHandlerLambda  = apiHandlerLambda;
 
     // Instance A: default identity source and caching for authenticated routes
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
@@ -240,7 +241,7 @@ export class JMapApi extends Construct {
       authorization_servers: [oauthIssuerUrl],
     };
 
-    const bucket = PublicStaticAssetsBucket.getOrCreate(this, artifactResolver);
+    const bucket   = PublicStaticAssetsBucket.getOrCreate(this, artifactResolver);
     const deployer = StaticContentDeployer.getOrCreate(this, artifactResolver);
 
     deployer.deploy(this, 'oauth-protected-resource', {
@@ -273,7 +274,7 @@ export class JMapApi extends Construct {
     });
 
     const existingSettings: StageRouteSettings | undefined = cfnStage.routeSettings;
-    const routeSettings: StageRouteSettings = {
+    const routeSettings: StageRouteSettings                = {
       ...existingSettings,
       [`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`]: {
         ThrottlingBurstLimit: 20,

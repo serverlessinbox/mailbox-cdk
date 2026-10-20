@@ -19,14 +19,15 @@
  * 3. Both constructs' CustomResources properly reference the shared deployer Lambda
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { MailboxArtifactResolverFactory, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
-import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
-import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
-import { MailboxUserPool } from '../auth/mailbox-user-pool';
-import * as s3 from 'aws-cdk-lib/aws-s3';
+import { Template }                                                                   from 'aws-cdk-lib/assertions';
+import * as s3                                                                        from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                              from 'aws-cdk-lib';
+
+import { MailboxUserPool }                                                            from '../auth/mailbox-user-pool';
+import { loadMailboxCognitoArtifactVersions }                                         from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                                           from '../mailbox-cognito-registry-record';
 
 interface CloudFormationResource {
   Type: string;
@@ -80,7 +81,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // e.g., "deployer.deploy is not a function" if the wrong-typed object was retrieved.
       // If this assertion passes, it proves that the OAuth addon's StaticContentDeployer.getOrCreate()
       // succeeded in finding/creating the singleton deployer without type errors.
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');
@@ -97,7 +98,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       // This is what prevents the type-collision bug from manifesting.
 
       const registryRecord = loadMailboxCognitoRegistryRecord();
-      const resolver = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, loadMailboxCognitoArtifactVersions());
+      const resolver       = MailboxArtifactResolverFactory.fromContext(stack, registryRecord, loadMailboxCognitoArtifactVersions());
 
       // Call getOrCreate twice from different constructs/scopes
       // Both should resolve to the same singleton on the stack
@@ -117,7 +118,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
 
       // Verify template synthesis succeeds (this would fail if the type collision existed
       // or if the singleton returned an incorrectly-typed object)
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');

@@ -1,9 +1,9 @@
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
-import { IKey } from 'aws-cdk-lib/aws-kms';
-import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { IGrantable }                                                    from 'aws-cdk-lib/aws-iam';
+import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
+import { QueueEncryption }                                               from 'aws-cdk-lib/aws-sqs';
+import { Duration }                                                      from 'aws-cdk-lib';
+import { Construct }                                                     from 'constructs';
 
 /** Inputs of {@link EmailProcessingQueue}. */
 export interface EmailProcessingQueueProps {
@@ -59,7 +59,7 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-processing-queue', {
+    this.queue    = new BaseQueue(this, 'email-processing-queue', {
       ...queueEncryptionProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {

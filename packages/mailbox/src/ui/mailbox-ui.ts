@@ -1,8 +1,18 @@
-import { Construct, IDependable } from 'constructs';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Aws, Fn, RemovalPolicy, Tags } from 'aws-cdk-lib';
-import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { Pipeline }          from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  BucketAutoEmpty,
+  StaticContentDeployer,
+  StaticContentSource,
+  StackNamedBucket,
+  S3Actions,
+  grantObjectActions,
+  grantListBucket,
+  slugifyLabel,
+  ServerlessInboxTagKeys,
+} from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                       from 'aws-cdk-lib/aws-certificatemanager';
+import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   AllowedMethods,
   CachePolicy,
@@ -15,24 +25,16 @@ import {
   OriginRequestPolicy,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
-import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import type { IDataTable } from '../data/data-tables';
+import * as iam                            from 'aws-cdk-lib/aws-iam';
+import { Bucket, BlockPublicAccess }       from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn, RemovalPolicy, Tags }    from 'aws-cdk-lib';
+import { Construct, IDependable }          from 'constructs';
+
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import {
-  BucketAutoEmpty,
-  StaticContentDeployer,
-  StaticContentSource,
-  StackNamedBucket,
-  S3Actions,
-  grantObjectActions,
-  grantListBucket,
-  slugifyLabel,
-  ServerlessInboxTagKeys,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import { IdpTokenExchangeApi } from './idp-token-exchange/api';
+import type { IDataTable }                 from '../data/data-tables';
+import type { IAuditEventsQueue }          from '../features/audit-writing/audit-events-queue';
+
+import { IdpTokenExchangeApi }             from './idp-token-exchange/api';
 
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {
@@ -108,7 +110,7 @@ export class MailboxUi extends Construct {
 
     const artifacts = props.artifactResolver;
 
-    this.bucket = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
+    this.bucket     = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
       abacStatus: true,
@@ -165,7 +167,7 @@ export class MailboxUi extends Construct {
         },
       ],
     });
-    this.distribution = distribution;
+    this.distribution  = distribution;
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.
@@ -204,7 +206,7 @@ export class MailboxUi extends Construct {
 
   private addUiDeployment(props: MailboxUiProps): void {
     const artifacts = props.artifactResolver;
-    const deployer = StaticContentDeployer.getOrCreate(this, artifacts);
+    const deployer  = StaticContentDeployer.getOrCreate(this, artifacts);
 
     // Distribution tags: update type
     Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
@@ -263,7 +265,7 @@ export class MailboxUi extends Construct {
     });
 
     // Token exchange API is internal behind CloudFront.
-    const hostname = Fn.select(1, Fn.split('://', tokenExchange.api.apiEndpoint));
+    const hostname    = Fn.select(1, Fn.split('://', tokenExchange.api.apiEndpoint));
     const oauthOrigin = new HttpOrigin(hostname, { originPath: '' });
 
     const authViewerRequestFunction = new CloudFrontFunction(this, 'auth-viewer-request', {

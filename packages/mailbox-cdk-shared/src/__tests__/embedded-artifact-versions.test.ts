@@ -1,6 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
+import { mkdtempSync, writeFileSync }   from 'node:fs';
+import { tmpdir }                       from 'node:os';
+import * as path                        from 'node:path';
+
 import { loadEmbeddedArtifactVersions } from '../embedded-artifact-versions';
 
 /**

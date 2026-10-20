@@ -1,4 +1,4 @@
-import type { Plugin } from 'esbuild';
+import type { Plugin }           from 'esbuild';
 
 import { runWithInheritedStdio } from '../../utils/run-process';
 
@@ -12,7 +12,7 @@ export function typescriptDeclarationsPlugin(packageFolder: string): Plugin {
     name: 'TypeScriptDeclarationsPlugin',
     setup(build) {
       build.onEnd(async result => {
-        if (result.errors.length > 0) return;
+        if (result.errors.length > 0) {return;}
         await runWithInheritedStdio('yarn', ['tsc', '--emitDeclarationOnly', '--project', 'tsconfig.build.json'], packageFolder);
       });
     },

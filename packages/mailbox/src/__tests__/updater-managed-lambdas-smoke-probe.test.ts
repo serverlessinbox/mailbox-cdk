@@ -13,20 +13,21 @@
  * can never end up in it unnoticed.
  */
 
-import * as path from 'node:path';
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import {
   handlerSourceOf,
   managedLambdasOf,
   probeManagedLambda,
   type ManagedLambda,
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import * as path                         from 'node:path';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { MailboxEdgeStack }              from '../edge/mailbox-edge-stack';
+import { Mailbox }                       from '../mailbox';
 
 const GO_PACKAGE = 'mailbox-go';
 
@@ -76,7 +77,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 }
 
 function synthesizeMailbox(): Template {
-  const app = new App({
+  const app   = new App({
     context: {
       'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
@@ -132,7 +133,7 @@ describe('Lambdas the artifact updater manages', () => {
   });
 
   it('are each a TypeScript Lambda with a bundle entry here or a Go Lambda on the explicit list', async () => {
-    const unplaced: string[] = [];
+    const unplaced: string[]     = [];
     const goWithSource: string[] = [];
 
     for (const lambda of managed) {
@@ -149,7 +150,7 @@ describe('Lambdas the artifact updater manages', () => {
   });
 
   it('lists only Go artifacts that the templates hold, and every listed Go artifact is of the Go package', () => {
-    const names = new Set(managed.map((lambda) => lambda.artifactName));
+    const names                  = new Set(managed.map((lambda) => lambda.artifactName));
     const listedOutsideGoPackage = managed
       .filter((lambda) => GO_ARTIFACTS.has(lambda.artifactName) && lambda.packageName !== GO_PACKAGE)
       .map((lambda) => lambda.artifactName);

@@ -1,4 +1,6 @@
-import { Construct } from 'constructs';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   DomainName,
@@ -8,12 +10,11 @@ import {
   IHttpApi,
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Aws } from 'aws-cdk-lib';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import * as acm         from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda      from 'aws-cdk-lib/aws-lambda';
+import { Aws }          from 'aws-cdk-lib';
+import { Construct }    from 'constructs';
+
 import { McpApiLambda } from '../../lambdas/mcp-api';
 
 /** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */

@@ -1,6 +1,5 @@
-import { SendMessageCommand, type SQSClient } from '@aws-sdk/client-sqs';
-
-import type { AuditEvent } from '@serverlessinbox/mailbox-admin-api';
+import { SendMessageCommand, type SQSClient }       from '@aws-sdk/client-sqs';
+import type { AuditEvent }                          from '@serverlessinbox/mailbox-admin-api';
 import { toTenantId, type QueueUrl, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** The message the audit writer reads from the audit events queue: an audit event that always names its tenant and actor. */
@@ -10,7 +9,7 @@ type AuditWriterMessage = Omit<AuditEvent, 'tenantId' | 'actor'> & {
 };
 
 const UNKNOWN_TENANT = toTenantId('unknown');
-const SYSTEM_ACTOR = { actorType: 'system', actorId: 'admin-api', username: 'admin-api' };
+const SYSTEM_ACTOR   = { actorType: 'system', actorId: 'admin-api', username: 'admin-api' };
 
 /** Sends the audit events of admin API requests to the audit events queue. */
 export class SqsAuditEmitter {

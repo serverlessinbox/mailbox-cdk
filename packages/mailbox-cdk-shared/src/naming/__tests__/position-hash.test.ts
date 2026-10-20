@@ -1,5 +1,6 @@
-import { App, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { App, Stack }   from 'aws-cdk-lib';
+import { Construct }    from 'constructs';
+
 import { PositionHash } from '../position-hash';
 
 /**
@@ -19,15 +20,15 @@ describe('PositionHash.of', () => {
   });
 
   it('differs for the same id under two different parents', () => {
-    const stack = newStack('TestStack');
-    const first = new Construct(stack, 'group-one');
+    const stack  = newStack('TestStack');
+    const first  = new Construct(stack, 'group-one');
     const second = new Construct(stack, 'group-two');
 
     expect(PositionHash.of(new Construct(first, 'worker'))).not.toBe(PositionHash.of(new Construct(second, 'worker')));
   });
 
   it('is equal for the same relative path in two stacks with different ids', () => {
-    const inFirstStack = new Construct(new Construct(newStack('FirstStack'), 'group'), 'worker');
+    const inFirstStack  = new Construct(new Construct(newStack('FirstStack'), 'group'), 'worker');
     const inSecondStack = new Construct(new Construct(newStack('SecondStack'), 'group'), 'worker');
 
     expect(PositionHash.of(inFirstStack)).toBe(PositionHash.of(inSecondStack));

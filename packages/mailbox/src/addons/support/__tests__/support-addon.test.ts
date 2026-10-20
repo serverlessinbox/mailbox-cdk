@@ -6,11 +6,13 @@
  * deployment that disabled it, or trust the wrong AWS account.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import { statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { statementsForRole }         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }         from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }           from 'aws-cdk-lib/assertions';
+import * as cdk                      from 'aws-cdk-lib';
+
 import { SupportAddon, SupportMode } from '../support-addon';
+
 import {
   createApiWithAuthorizer,
   createSupportTestStack,
@@ -19,10 +21,10 @@ import {
   type SynthesizedResource,
 } from './support-test-fixtures';
 
-const DIAG_TAG_KEY = 'serverless-inbox:support:diag';
+const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
 const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';
-const SUPPORT_API = 'support-api';
-const COLLECTOR = 'support-role-assumption-collector';
+const SUPPORT_API         = 'support-api';
+const COLLECTOR           = 'support-role-assumption-collector';
 
 function createAddon(inputs: SupportTestStack, mode: SupportMode): SupportAddon {
   return new SupportAddon(inputs.stack, 'addon', {
@@ -52,7 +54,7 @@ describe('SupportAddon', () => {
   describe('literal DISABLED mode', () => {
     it('provisions no support resources and reports support as unavailable', () => {
       const inputs = createSupportTestStack();
-      const addon = createAddon(inputs, SupportMode.DISABLED);
+      const addon  = createAddon(inputs, SupportMode.DISABLED);
 
       const template = Template.fromStack(inputs.stack);
       template.resourceCountIs('AWS::IAM::Role', 0);
@@ -63,7 +65,7 @@ describe('SupportAddon', () => {
     });
 
     it('mounts no routes', () => {
-      const inputs = createSupportTestStack();
+      const inputs              = createSupportTestStack();
       const { api, authorizer } = createApiWithAuthorizer(inputs.stack);
 
       createAddon(inputs, SupportMode.DISABLED).addRoutes(api, authorizer);
@@ -74,9 +76,9 @@ describe('SupportAddon', () => {
 
   describe('CloudFormation parameter mode', () => {
     function synthesizeWithParameter(): { template: Template; addon: SupportAddon } {
-      const inputs = createSupportTestStack();
+      const inputs        = createSupportTestStack();
       const modeParameter = new cdk.CfnParameter(inputs.stack, 'supportMode', { type: 'String' });
-      const addon = createAddon(inputs, modeParameter.valueAsString as SupportMode);
+      const addon         = createAddon(inputs, modeParameter.valueAsString as SupportMode);
       return { template: Template.fromStack(inputs.stack), addon };
     }
 
@@ -105,7 +107,7 @@ describe('SupportAddon', () => {
     });
 
     it('mounts POST /support/{proxy+} behind the Admin API authorizer', () => {
-      const inputs = createSupportTestStack();
+      const inputs              = createSupportTestStack();
       const { api, authorizer } = createApiWithAuthorizer(inputs.stack);
 
       createAddon(inputs, SupportMode.ENABLED).addRoutes(api, authorizer);
@@ -150,7 +152,7 @@ describe('SupportAddon', () => {
 
     describe('support roles', () => {
       const template = synthesizeEnabled();
-      const roles = Object.entries(template.findResources('AWS::IAM::Role'));
+      const roles    = Object.entries(template.findResources('AWS::IAM::Role'));
       const trusting = (needle: string) => roles.filter(([, role]) => JSON.stringify(role.Properties.AssumeRolePolicyDocument).includes(needle));
 
       it('trusts only the vendor account root on the hop role', () => {
@@ -188,7 +190,7 @@ describe('SupportAddon', () => {
       });
 
       it('grants the diag tier a fixed action set and config-read that set plus configuration reads', () => {
-        const [[, diag]] = trusting(`aws:PrincipalTag/${DIAG_TAG_KEY}"`);
+        const [[, diag]]       = trusting(`aws:PrincipalTag/${DIAG_TAG_KEY}"`);
         const [[, configRead]] = trusting(`aws:PrincipalTag/${CONFIG_READ_TAG_KEY}"`);
 
         // Tripwire: a changed count means a tier gained or lost an action. Review it, do not just update the number.
@@ -201,8 +203,8 @@ describe('SupportAddon', () => {
     });
 
     describe.each([SUPPORT_API, COLLECTOR])('%s Lambda role', (serviceName) => {
-      const template = synthesizeEnabled();
-      const fn = findFunction(template, serviceName);
+      const template   = synthesizeEnabled();
+      const fn         = findFunction(template, serviceName);
       const statements = statementsForRole(template, fn.roleLogicalId);
 
       it('may only tag and untag the hop role, with only the two tier tag keys', () => {
@@ -229,8 +231,8 @@ describe('SupportAddon', () => {
     });
 
     describe('support-api Lambda role', () => {
-      const template = synthesizeEnabled();
-      const fn = findFunction(template, SUPPORT_API);
+      const template   = synthesizeEnabled();
+      const fn         = findFunction(template, SUPPORT_API);
       const statements = statementsForRole(template, fn.roleLogicalId);
 
       it('may send messages to the audit queue it was given', () => {
@@ -241,7 +243,7 @@ describe('SupportAddon', () => {
     });
 
     describe('vendor account IDs', () => {
-      const EXECUTE_API_SUFFIX = ':*/*/POST/support-case-sync';
+      const EXECUTE_API_SUFFIX  = ':*/*/POST/support-case-sync';
       const executeApiStatement = (template: Template) => statementsForRole(template, findFunction(template, SUPPORT_API).roleLogicalId)
         .find((statement) => statement.Action === 'execute-api:Invoke');
 

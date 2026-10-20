@@ -11,15 +11,16 @@
  * setting makes the starter answer every invocation with a configuration failure.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { actionsOf, allPolicyStatements } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ResourceSweeperStarterLambda } from '../resource-sweeper-starter';
-import { loadStarter } from '../../ts-lambdas/resource-sweeper/config';
+import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, allPolicyStatements }       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { loadStarter }                          from '../../ts-lambdas/resource-sweeper/config';
+import { ResourceSweeperStarterLambda }         from '../resource-sweeper-starter';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper';
 
@@ -27,7 +28,7 @@ describe('ResourceSweeperStarterLambda', () => {
   let template: Template;
 
   beforeEach(() => {
-    const stack = new cdk.Stack(new App(), 'TestStack', {
+    const stack                                 = new cdk.Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -56,10 +57,10 @@ describe('ResourceSweeperStarterLambda', () => {
   });
 
   it('provides an environment its runtime configuration loads, with the state machine ARN it was given', () => {
-    const [starter] = Object.values(template.findResources('AWS::Lambda::Function'));
-    const originalEnv = process.env;
+    const [starter]               = Object.values(template.findResources('AWS::Lambda::Function'));
+    const originalEnv             = process.env;
     const injectedByLambdaRuntime = { AWS_REGION: 'us-west-2', AWS_LAMBDA_FUNCTION_NAME: 'sweeper-starter-function' };
-    process.env = { ...originalEnv, ...stringValues(starter.Properties.Environment.Variables), ...injectedByLambdaRuntime };
+    process.env                   = { ...originalEnv, ...stringValues(starter.Properties.Environment.Variables), ...injectedByLambdaRuntime };
 
     try {
       const { config, error } = env.tryLoad(loadStarter);

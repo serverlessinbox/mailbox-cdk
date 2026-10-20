@@ -1,4 +1,4 @@
-import { fromJson, toJson } from '@bufbuild/protobuf';
+import { fromJson, toJson }                             from '@bufbuild/protobuf';
 
 import type { HandlerContext, MethodSpec, ServiceSpec } from './registry';
 

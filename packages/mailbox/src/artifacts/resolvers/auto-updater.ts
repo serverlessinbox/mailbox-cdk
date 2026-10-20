@@ -1,16 +1,18 @@
-import { Construct, IConstruct } from 'constructs';
-import { Aws, Duration, Fn, Tags } from 'aws-cdk-lib';
-import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import type { IArtifactResolver, RegistryLocation, ResolvedArtifact }            from '@serverlessinbox/artifact-registry-cdk';
 import { MailboxArtifactResolverFactory, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
-import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
-import { loadMailboxArtifactVersions } from '../../mailbox-artifact-versions';
-import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
-import { ArtifactUpdaterLambda } from '../../lambdas/artifact-updater';
-import { ArtifactUpdaterAddon } from '../../addons/artifact-updater/artifact-updater-addon';
-import { TrackedUpdateTriggers } from './tracked-update-triggers';
+import * as iam                                                                  from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                               from 'aws-cdk-lib/aws-lambda';
+import { Aws, Duration, Fn, Tags }                                               from 'aws-cdk-lib';
+import * as cdk                                                                  from 'aws-cdk-lib';
+import { Construct, IConstruct }                                                 from 'constructs';
+
+import { ArtifactUpdaterAddon }                                                  from '../../addons/artifact-updater/artifact-updater-addon';
+import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../api/addons';
+import { ArtifactUpdaterLambda }                                                 from '../../lambdas/artifact-updater';
+import { loadMailboxArtifactVersions }                                           from '../../mailbox-artifact-versions';
+import { loadMailboxRegistryRecord }                                             from '../../mailbox-registry-record';
+
+import { TrackedUpdateTriggers }                                                 from './tracked-update-triggers';
 
 /**
  * How the artifact updater follows new releases.
@@ -105,7 +107,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
-    this.pinned = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
+    this.pinned   = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
     this.location = this.pinned.location;
 
     // cast: the prop is a string so that a CloudFormation parameter token is accepted.
@@ -117,7 +119,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     });
 
     // The updater Lambda exists under 'pinned' too, so it stays invocable from the admin API.
-    const updater = new ArtifactUpdaterLambda(this, 'artifact-updater', {
+    const updater        = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver: this.pinned,
       artifactBucketBase: this.location.bucketBase,
       distTag: props.distTag ?? 'stable',
@@ -126,7 +128,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       rootStackId: StackIdentity.guid,
     });
     this.updaterFunction = updater;
-    this.grantPrincipal = updater.grantPrincipal;
+    this.grantPrincipal  = updater.grantPrincipal;
     this.excludeFromAutoUpdate(updater);
 
     this.trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {

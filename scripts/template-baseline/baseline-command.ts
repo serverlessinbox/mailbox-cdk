@@ -1,9 +1,10 @@
-import * as path from 'node:path';
-import { Command, Option } from 'clipanion';
-import { BaselineStore } from './baseline-store';
+import { Command, Option }     from 'clipanion';
+import * as path               from 'node:path';
+
+import { BaselineStore }       from './baseline-store';
 import { BaselineSynthesizer } from './baseline-synthesizer';
 import { FrozenProcessValues } from './frozen-process-values';
-import { TemplateJsonParser } from './template-json-parser';
+import { TemplateJsonParser }  from './template-json-parser';
 
 const BASELINE_ROOT = path.resolve(__dirname, '..', '..', '.template-baseline');
 

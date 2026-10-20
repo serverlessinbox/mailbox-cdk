@@ -21,7 +21,7 @@ describe('CaughtError', () => {
 
   it('treats a thrown value that is not an Error as nameless, even when it looks like one', () => {
     const lookalike = new CaughtError({ name: 'ResourceNotFoundException', message: 'not found' });
-    const text = new CaughtError('just a string');
+    const text      = new CaughtError('just a string');
 
     expect(lookalike.name).toBeUndefined();
     expect(lookalike.is('ResourceNotFoundException')).toBe(false);

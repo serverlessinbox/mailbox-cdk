@@ -1,17 +1,18 @@
-import * as cdk from 'aws-cdk-lib';
-import { Aws, Fn, RemovalPolicy } from 'aws-cdk-lib';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
-import { Construct } from 'constructs';
-import {
-  JMAP_SCOPE_DESCRIPTIONS,
-  MailboxResourceDescriptions,
-} from '@serverlessinbox/mailbox';
 import {
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   isDevelopmentMode,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  JMAP_SCOPE_DESCRIPTIONS,
+  MailboxResourceDescriptions,
+} from '@serverlessinbox/mailbox';
+import * as cognito                  from 'aws-cdk-lib/aws-cognito';
+import * as cdk                      from 'aws-cdk-lib';
+import { Aws, Fn, RemovalPolicy }    from 'aws-cdk-lib';
+import { Construct }                 from 'constructs';
+
 import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
 
 /**

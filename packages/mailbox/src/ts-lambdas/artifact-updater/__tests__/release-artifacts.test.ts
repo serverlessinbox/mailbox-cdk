@@ -7,9 +7,11 @@
  * redirect-following client and be rebuilt on every call. The registry package is faked because it reads S3.
  */
 
-import { SemVer } from 'semver';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ReleaseArtifacts } from '../release-artifacts';
+import { LoggerBuffer }                                                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SemVer }                                                                      from 'semver';
+
+import { ReleaseArtifacts }                                                            from '../release-artifacts';
+
 import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
@@ -23,9 +25,9 @@ const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
 ) as RegistryMocks;
 
 describe('ReleaseArtifacts', () => {
-  const registryS3 = fakeUpdaterClients().registryS3;
+  const registryS3                                         = fakeUpdaterClients().registryS3;
   const { packageName, deployedVersion: DEPLOYED_VERSION } = lambdaTarget();
-  const releases = new ReleaseArtifacts(registryS3, testConfig, new LoggerBuffer());
+  const releases                                           = new ReleaseArtifacts(registryS3, testConfig, new LoggerBuffer());
 
   beforeEach(() => {
     jest.clearAllMocks();

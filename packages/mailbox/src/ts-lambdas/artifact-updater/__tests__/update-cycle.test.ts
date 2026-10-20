@@ -6,21 +6,23 @@
  * must not stop the others from being updated. The three updaters have their own suites and are faked here.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetResourcesCommand,
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
 import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { EdgeLambdaUpdater } from '../edge-lambda-updater';
-import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback } from '../lambda-code-rollback';
-import { LambdaCodeUpdater } from '../lambda-code-updater';
-import { LambdaFunctionCode } from '../lambda-function-code';
-import { ReleaseArtifacts } from '../release-artifacts';
-import { UiBucketUpdater } from '../ui-bucket-updater';
-import { UpdateCycle } from '../update-cycle';
+import { mockClient }                from 'aws-sdk-client-mock';
+
+import { EdgeLambdaUpdater }         from '../edge-lambda-updater';
+import { FunctionSmokeTester }       from '../function-smoke-tester';
+import { LambdaCodeRollback }        from '../lambda-code-rollback';
+import { LambdaCodeUpdater }         from '../lambda-code-updater';
+import { LambdaFunctionCode }        from '../lambda-function-code';
+import { ReleaseArtifacts }          from '../release-artifacts';
+import { UiBucketUpdater }           from '../ui-bucket-updater';
+import { UpdateCycle }               from '../update-cycle';
+
 import {
   DISTRIBUTION_ARN,
   LAMBDA_ARN,
@@ -71,15 +73,15 @@ describe('UpdateCycle', () => {
   const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
 
   function newCycle(deploymentRegion?: Region) {
-    const clients = fakeUpdaterClients(deploymentRegion);
-    const logger = new LoggerBuffer(undefined, 'debug');
-    const releases = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
-    const functionCode = new LambdaFunctionCode(noSleep);
-    const smokeTester = new FunctionSmokeTester(logger);
-    const rollback = new LambdaCodeRollback(functionCode, logger);
-    const codeUpdater = new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger);
+    const clients            = fakeUpdaterClients(deploymentRegion);
+    const logger             = new LoggerBuffer(undefined, 'debug');
+    const releases           = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
+    const functionCode       = new LambdaFunctionCode(noSleep);
+    const smokeTester        = new FunctionSmokeTester(logger);
+    const rollback           = new LambdaCodeRollback(functionCode, logger);
+    const codeUpdater        = new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger);
     const rootStackResources = testRootStackResources();
-    const edgeUpdater = new EdgeLambdaUpdater(
+    const edgeUpdater        = new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
       rootStackResources,
@@ -90,8 +92,8 @@ describe('UpdateCycle', () => {
       logger,
       noSleep,
     );
-    const uiUpdater = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
-    const cycle = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
+    const uiUpdater          = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
+    const cycle              = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
     return { cycle, clients, codeUpdater, edgeUpdater, uiUpdater };
   }
 

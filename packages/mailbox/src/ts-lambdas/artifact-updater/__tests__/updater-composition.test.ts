@@ -8,13 +8,15 @@
  * does not exist. The update cycle is faked because it reads and writes AWS.
  */
 
-import { Writable } from 'stream';
-import * as https from 'https';
-import { mockClient } from 'aws-sdk-client-mock';
-import { InvokeCommand } from '@aws-sdk/client-lambda';
-import { UpdateCycle } from '../update-cycle';
-import { EDGE_REGION } from '../updater-clients';
+import { InvokeCommand }      from '@aws-sdk/client-lambda';
+import { mockClient }         from 'aws-sdk-client-mock';
+import * as https             from 'https';
+import { Writable }           from 'stream';
+
+import { UpdateCycle }        from '../update-cycle';
+import { EDGE_REGION }        from '../updater-clients';
 import { UpdaterComposition } from '../updater-composition';
+
 import {
   BAD_CONFIG_ERROR,
   deployEndTriggerEvent,
@@ -105,7 +107,7 @@ describe('UpdaterComposition', () => {
     });
 
     it('builds an HTTP trigger that invokes the configured function through the deployment region client', async () => {
-      const runtime = readyRuntime();
+      const runtime    = readyRuntime();
       const lambdaMock = mockClient(runtime.clients!.deployment.lambda);
       lambdaMock.on(InvokeCommand).resolves({});
 

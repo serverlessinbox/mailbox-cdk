@@ -1,6 +1,7 @@
 import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import type { Config } from './config';
-import type { UpdaterClients } from './updater-clients';
+
+import type { Config }               from './config';
+import type { UpdaterClients }       from './updater-clients';
 
 /** A valid configuration together with the clients built from it. */
 export interface ReadyUpdater {

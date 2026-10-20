@@ -1,6 +1,7 @@
-import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
-import { AnswerDeliveryFailure } from '../answer-delivery-failure';
-import { CfnResponder } from '../cfn-responder';
+import { toPhysicalResourceId }                                                                                    from '../../shared/custom-resource-identifiers';
+import { AnswerDeliveryFailure }                                                                                   from '../answer-delivery-failure';
+import { CfnResponder }                                                                                            from '../cfn-responder';
+
 import { cfnRequest, fakeCfnEndpoint, LOG_STREAM_NAME, replyTarget, RESPONSE_URL, sfnEvent, STACK_ID, STACK_NAME } from './stack-deployer-helpers';
 
 /**
@@ -14,7 +15,7 @@ describe('CfnResponder', () => {
   let responder: CfnResponder;
 
   beforeEach(() => {
-    pauses = [];
+    pauses    = [];
     responder = new CfnResponder(async (milliseconds) => {
       pauses.push(milliseconds);
     });
@@ -71,7 +72,7 @@ describe('CfnResponder', () => {
 
   describe('targetForStep physical id', () => {
     it('keeps the physical id CloudFormation sent, whatever the stack of the operation', () => {
-      const event = sfnEvent();
+      const event  = sfnEvent();
       const withId = { ...event, cfn: { ...event.cfn, PhysicalResourceId: toPhysicalResourceId('sent-by-cloudformation') } };
 
       expect(responder.targetForStep(withId, LOG_STREAM_NAME).physicalResourceId).toBe('sent-by-cloudformation');
@@ -165,7 +166,7 @@ describe('CfnResponder', () => {
   describe('the reason of an answer', () => {
     it('keeps a reason at the limit whole', async () => {
       const endpoint = fakeCfnEndpoint();
-      const reason = 'x'.repeat(3500);
+      const reason   = 'x'.repeat(3500);
 
       await responder.fail(replyTarget(), reason);
 
@@ -174,7 +175,7 @@ describe('CfnResponder', () => {
 
     it.each(['fail', 'succeed'] as const)('truncates a longer reason to the limit and marks it when the answer is a %s', async (answer) => {
       const endpoint = fakeCfnEndpoint();
-      const reason = 'x'.repeat(3501);
+      const reason   = 'x'.repeat(3501);
 
       if (answer === 'fail') {
         await responder.fail(replyTarget(), reason);

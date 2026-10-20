@@ -7,18 +7,19 @@
  * table (and nothing broader, e.g. no Scan/PartiQL), and that the table-name env var is present.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AuthorizerLambda } from '../authorizer';
-import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
-import { DataTable } from '../../data/data-tables';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataTable }                            from '../../data/data-tables';
+import { AuthKeyStoreTable }                    from '../../features/auth-key-store/auth-key-store-table';
+import { AuthorizerLambda }                     from '../authorizer';
 
 describe('AuthorizerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -36,7 +37,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -87,7 +88,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
   });
 
   it('grants no Scan/PartiQL and no Deny on the auth-key-store table', () => {
-    const statements = authKeyStoreStatements();
+    const statements  = authKeyStoreStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');

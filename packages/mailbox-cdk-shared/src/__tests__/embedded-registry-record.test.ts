@@ -1,8 +1,10 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
+import { tmpdir }                     from 'node:os';
+import * as path                      from 'node:path';
+
 import { loadEmbeddedRegistryRecord } from '../embedded-registry-record';
-import { TEST_REGISTRY_RECORD } from './test-registry-record';
+
+import { TEST_REGISTRY_RECORD }       from './test-registry-record';
 
 /**
  * Pins that the record at the caller-supplied path is the one loaded, and that a record which

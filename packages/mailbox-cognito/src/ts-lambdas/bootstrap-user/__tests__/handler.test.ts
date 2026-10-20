@@ -8,18 +8,22 @@
  * never be fixed.
  */
 
-import * as t from 'typanion';
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
   NotAuthorizedException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { isParentStackRollingBack, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { isParentStackRollingBack, type LoggerBuffer }                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                                from 'aws-lambda';
+import { mockClient }                                                                     from 'aws-sdk-client-mock';
+import * as t                                                                             from 'typanion';
 
-// wrapHandler reports the outcome by PUTting a body to the event's ResponseURL over https,
-// so the CloudFormation response is observable only at that layer.
+// Import handler AFTER mocking https
+import { handler }                                                                        from '../index';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../password';
+
+import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
+
 const mockSentResponseBodies: string[] = [];
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),
@@ -37,16 +41,10 @@ jest.mock('https', () => ({
     };
   },
 }));
-
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   isParentStackRollingBack: jest.fn(),
 }));
-
-// Import handler AFTER mocking https
-import { handler } from '../index';
-import { PASSWORD_SET_AT_INSTALL_TIME } from '../password';
-import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 
 const isCfnResponse = t.isPartial({
   Status: t.isEnum(['SUCCESS', 'FAILED']),
@@ -108,7 +106,7 @@ async function invoke(invokedHandler: HandlerOf, event: CloudFormationCustomReso
   mockSentResponseBodies.length = 0;
   await invokedHandler(event, context).catch(() => undefined);
   expect(mockSentResponseBodies).toHaveLength(1);
-  const body: unknown = JSON.parse(mockSentResponseBodies[0]);
+  const body: unknown    = JSON.parse(mockSentResponseBodies[0]);
   const errors: string[] = [];
   if (!isCfnResponse(body, { errors })) {
     throw new Error(`Unexpected CloudFormation response body: ${errors.join('; ')}`);
@@ -164,7 +162,7 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
 }
 
 describe('bootstrap-user handler', () => {
-  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  const cognitoMock                  = mockClient(CognitoIdentityProviderClient);
   const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<typeof isParentStackRollingBack>;
   let debugLog: jest.SpyInstance;
   let originalEnvironment: NodeJS.ProcessEnv;

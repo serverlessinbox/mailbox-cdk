@@ -6,18 +6,19 @@
  * them, such as messages reappearing before a consumer finishes.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }                         from 'aws-cdk-lib/assertions';
+import * as kms                                    from 'aws-cdk-lib/aws-kms';
+import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as kms from 'aws-cdk-lib/aws-kms';
-import { Construct } from 'constructs';
-import { BaseQueue } from '../base-queue';
-import type { BaseQueueProps } from '../base-queue';
-import { PositionHash } from '../naming/position-hash';
-import { StackIdentity } from '../naming/stack-identity';
+import { Construct }                               from 'constructs';
+
+import { BaseQueue }                               from '../base-queue';
+import type { BaseQueueProps }                     from '../base-queue';
+import { PositionHash }                            from '../naming/position-hash';
+import { StackIdentity }                           from '../naming/stack-identity';
 
 function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Template {
-  const stack = new cdk.Stack(new App(), 'TestStack', {
+  const stack               = new cdk.Stack(new App(), 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -66,7 +67,7 @@ describe('BaseQueue', () => {
   });
 
   it('generates the same name when the caller passes queueName: undefined', () => {
-    const generated = queueTemplate().findResources('AWS::SQS::Queue');
+    const generated     = queueTemplate().findResources('AWS::SQS::Queue');
     const withUndefined = queueTemplate({ queueName: undefined }).findResources('AWS::SQS::Queue');
 
     const [{ Properties: generatedProperties }] = Object.values(generated);

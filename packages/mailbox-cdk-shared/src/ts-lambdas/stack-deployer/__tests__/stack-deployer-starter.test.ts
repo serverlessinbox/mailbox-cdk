@@ -1,11 +1,13 @@
 import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import { mockClient } from 'aws-sdk-client-mock';
-import { ExpectedFailure } from '../../shared/expected-failure';
-import { CfnResponder } from '../cfn-responder';
-import { toStateMachineArn, type StateMachineArn } from '../deployer-identifiers';
-import { StackDeployerStarter } from '../stack-deployer-starter';
-import { StackOperationFailure } from '../stack-operation-failure';
-import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
+import { mockClient }                                                 from 'aws-sdk-client-mock';
+
+import { ExpectedFailure }                                            from '../../shared/expected-failure';
+import { CfnResponder }                                               from '../cfn-responder';
+import { toStateMachineArn, type StateMachineArn }                    from '../deployer-identifiers';
+import { StackDeployerStarter }                                       from '../stack-deployer-starter';
+import { StackDeploymentEventReader }                                 from '../stack-deployment-event-reader';
+import { StackOperationFailure }                                      from '../stack-operation-failure';
+
 import {
   BUCKET_ARN_AS_STACK_ID,
   cfnRequest,
@@ -23,8 +25,8 @@ import {
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
 
-const ALREADY_EXISTS = { name: 'ExecutionAlreadyExists', message: 'Execution already exists' };
-const ACCESS_DENIED = { name: 'AccessDeniedException', message: 'not allowed' };
+const ALREADY_EXISTS         = { name: 'ExecutionAlreadyExists', message: 'Execution already exists' };
+const ACCESS_DENIED          = { name: 'AccessDeniedException', message: 'not allowed' };
 const EXISTING_EXECUTION_ARN = 'arn:aws:states:us-east-1:123456789012:execution:MailboxDataDeployer-abc123:request-123';
 
 /**

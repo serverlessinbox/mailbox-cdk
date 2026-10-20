@@ -1,7 +1,7 @@
-import { Stack } from 'aws-cdk-lib';
-import type { IConstruct } from 'constructs';
-import { createHash } from 'node:crypto';
 import { sanitizeStackName } from '@serverlessinbox/mailbox-cdk-shared';
+import { Stack }             from 'aws-cdk-lib';
+import type { IConstruct }   from 'constructs';
+import { createHash }        from 'node:crypto';
 
 function slugifyPart(value: string): string {
   return value
@@ -12,11 +12,11 @@ function slugifyPart(value: string): string {
 }
 
 function withMaxLength(name: string, maxLength: number): string {
-  if (name.length <= maxLength) return name;
+  if (name.length <= maxLength) {return name;}
 
-  const hash = createHash('sha1').update(name).digest('hex').slice(0, 8);
+  const hash   = createHash('sha1').update(name).digest('hex').slice(0, 8);
   const suffix = `-${hash}`;
-  const keep = Math.max(1, maxLength - suffix.length);
+  const keep   = Math.max(1, maxLength - suffix.length);
   return `${name.slice(0, keep)}${suffix}`.replace(/-+$/g, '');
 }
 
@@ -29,12 +29,12 @@ export interface PhysicalNameOptions {
  * `<account>-<sanitize(stackName)>-<suffix>`.
  */
 export function makePhysicalName(scope: IConstruct, suffix: string, options: PhysicalNameOptions = {}): string {
-  const stack = Stack.of(scope);
-  const account = stack.account;
-  const stackSlug = sanitizeStackName(stack.stackName);
+  const stack      = Stack.of(scope);
+  const account    = stack.account;
+  const stackSlug  = sanitizeStackName(stack.stackName);
   const suffixSlug = slugifyPart(suffix);
 
-  const base = `${account}-${stackSlug}-${suffixSlug}`;
+  const base      = `${account}-${stackSlug}-${suffixSlug}`;
   const maxLength = options.maxLength;
   return typeof maxLength === 'number' ? withMaxLength(base, maxLength) : base;
 }

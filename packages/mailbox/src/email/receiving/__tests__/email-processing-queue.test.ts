@@ -1,9 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as kms                          from 'aws-cdk-lib/aws-kms';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as kms from 'aws-cdk-lib/aws-kms';
-import { EmailProcessingQueue } from '../email-processing-queue';
+
+import { EmailProcessingQueue }          from '../email-processing-queue';
 
 /**
  * EmailProcessingQueue tests.
@@ -23,15 +24,15 @@ function createStack(): cdk.Stack {
 describe('EmailProcessingQueue', () => {
   it('grantSend grants exactly sqs:SendMessage on the queue ARN', () => {
     const stack = createStack();
-    const sut = new EmailProcessingQueue(stack, 'email-processing-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new EmailProcessingQueue(stack, 'email-processing-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantSend(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -49,15 +50,15 @@ describe('EmailProcessingQueue', () => {
 
   it('grantConsume grants exactly the consume actions on the queue ARN', () => {
     const stack = createStack();
-    const sut = new EmailProcessingQueue(stack, 'email-processing-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new EmailProcessingQueue(stack, 'email-processing-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantConsume(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -87,10 +88,10 @@ describe('EmailProcessingQueue', () => {
 
   it('moves a message to the 14 day dead-letter queue after 3 receives', () => {
     const stack = createStack();
-    const sut = new EmailProcessingQueue(stack, 'email-processing-queue');
+    const sut   = new EmailProcessingQueue(stack, 'email-processing-queue');
 
     const template = Template.fromStack(stack);
-    const dlqId = stack.getLogicalId(sut.dlq.node.defaultChild as cdk.CfnResource);
+    const dlqId    = stack.getLogicalId(sut.dlq.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::SQS::Queue', {
       RedrivePolicy: { deadLetterTargetArn: { 'Fn::GetAtt': [dlqId, 'Arn'] }, maxReceiveCount: 3 },
@@ -111,7 +112,7 @@ describe('EmailProcessingQueue', () => {
 
   it('uses the given KMS master key for both queues', () => {
     const stack = createStack();
-    const key = new kms.Key(stack, 'TestKey');
+    const key   = new kms.Key(stack, 'TestKey');
     new EmailProcessingQueue(stack, 'email-processing-queue', { queueProps: { encryptionMasterKey: key } });
 
     Template.fromStack(stack).allResourcesProperties('AWS::SQS::Queue', {

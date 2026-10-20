@@ -8,24 +8,25 @@
  * that OAUTH_HANDLER_CONFIG carries the scope map the Go handler reads and no other field.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
-import { DynamoDbActions, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { ApiHandlerLambda } from '../jmap-api';
-import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
-import { DataTable } from '../../data/data-tables';
-import { DataBlobStore } from '../../data/data-blob-store';
-import { Permission } from '../../auth/jmap-scopes';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { DynamoDbActions, VENDOR_ACCOUNT_ID }   from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { Permission }                           from '../../auth/jmap-scopes';
+import { DataBlobStore }                        from '../../data/data-blob-store';
+import { DataTable }                            from '../../data/data-tables';
+import { EmailSendingQueue }                    from '../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
+import { AuthKeyStoreTable }                    from '../../features/auth-key-store/auth-key-store-table';
+import { ApiHandlerLambda }                     from '../jmap-api';
 
 describe('ApiHandlerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -43,25 +44,25 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable                 = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const itemTable = new DataTable(new Table(stack, 'item-table', {
+    const itemTable                   = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
+    const changelogTable              = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
-    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
-    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
+    authKeyStoreTable                 = new AuthKeyStoreTable(stack, 'auth-key-store');
+    const blobStore                   = new DataBlobStore(new Bucket(stack, 'blob-store'));
+    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue');
+    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue');
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(
       stack,
       'identity-provisioner-ref',
@@ -118,7 +119,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
   });
 
   it('grants no Scan/PartiQL and no Deny on the auth-key-store table', () => {
-    const statements = authKeyStoreStatements();
+    const statements  = authKeyStoreStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');

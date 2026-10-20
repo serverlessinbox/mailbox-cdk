@@ -8,12 +8,13 @@
  * of an unchanged app reports changes and may replace resources.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { Mailbox }                       from '../mailbox';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -49,7 +50,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 }
 
 function synthesizeMailboxTemplate(): string {
-  const app = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
+  const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
   const stack = new cdk.Stack(app, 'TestDeterminism', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),

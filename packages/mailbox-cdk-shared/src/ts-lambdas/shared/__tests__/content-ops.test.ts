@@ -10,7 +10,6 @@
  * a deployment owns, and text without its charset would be decoded with the browser's default.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   S3Client,
   DeleteObjectsCommand,
@@ -19,6 +18,8 @@ import {
   PutObjectCommand,
   type _Object,
 } from '@aws-sdk/client-s3';
+import { mockClient }                                   from 'aws-sdk-client-mock';
+
 import { deletePrefix, deployZipToPrefix, writeObject } from '../content-ops';
 
 jest.mock('unzipper', () => ({
@@ -72,7 +73,7 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
-    const result = await deployZipToPrefix(s3Client, {
+    const result   = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       targetBucket: 'target-bucket',
@@ -150,7 +151,7 @@ describe('deployZipToPrefix', () => {
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
-    const result = await deployZipToPrefix(s3Client, {
+    const result   = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
       sourceKey: 'ui.zip',
       targetBucket: 'target-bucket',

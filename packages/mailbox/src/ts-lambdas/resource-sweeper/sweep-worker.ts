@@ -1,4 +1,5 @@
 import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type {
   CertRemovalInput,
   EdgeFunctionRemovalInput,

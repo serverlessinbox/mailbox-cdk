@@ -1,6 +1,7 @@
-import { Construct } from 'constructs';
-import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { StackNamedTable }                from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType }                  from 'aws-cdk-lib/aws-dynamodb';
+import { Construct }                      from 'constructs';
+
 import { DataTableProps, dataTableProps } from './data-table-props';
 
 /**

@@ -12,12 +12,13 @@
  * SERVICE_NAME value.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { Mailbox }                       from '../mailbox';
 
 /**
  * Minimal mock IMailboxAuthProvider for testing (mirrors api-authorizer.test.ts's helper).
@@ -57,7 +58,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 
 describe('Mailbox stack SERVICE_NAME uniqueness', () => {
   it('no two Lambda functions share a SERVICE_NAME value', () => {
-    const app = new App({
+    const app   = new App({
       context: {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
@@ -81,18 +82,18 @@ describe('Mailbox stack SERVICE_NAME uniqueness', () => {
       authProvider: createMockAuthProvider(),
     });
 
-    const template = Template.fromStack(stack);
+    const template  = Template.fromStack(stack);
     const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, unknown> }> | undefined;
-    if (!resources) throw new Error('No resources in template');
+    if (!resources) {throw new Error('No resources in template');}
 
     const serviceNamesByLogicalId = new Map<string, string>();
 
     for (const [logicalId, resource] of Object.entries(resources)) {
-      if (resource.Type !== 'AWS::Lambda::Function') continue;
+      if (resource.Type !== 'AWS::Lambda::Function') {continue;}
 
-      const env = resource.Properties?.Environment as { Variables?: Record<string, unknown> } | undefined;
+      const env         = resource.Properties?.Environment as { Variables?: Record<string, unknown> } | undefined;
       const serviceName = env?.Variables?.SERVICE_NAME;
-      if (typeof serviceName !== 'string') continue;
+      if (typeof serviceName !== 'string') {continue;}
 
       serviceNamesByLogicalId.set(logicalId, serviceName);
     }
@@ -101,7 +102,7 @@ describe('Mailbox stack SERVICE_NAME uniqueness', () => {
     // with SERVICE_NAME set (regression guard would be vacuous otherwise).
     expect(serviceNamesByLogicalId.size).toBeGreaterThan(5);
 
-    const seen = new Map<string, string>();
+    const seen                                                             = new Map<string, string>();
     const collisions: Array<{ serviceName: string; logicalIds: string[] }> = [];
 
     for (const [logicalId, serviceName] of serviceNamesByLogicalId) {

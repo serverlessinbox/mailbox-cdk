@@ -16,14 +16,14 @@ export class FrozenProcessValues {
 
   /** Both are restored also when `work` throws; `work` must be synchronous, since the freeze ends when it returns. */
   run<T>(work: () => T): T {
-    const originalNow = Date.now;
+    const originalNow    = Date.now;
     const originalRandom = Math.random;
-    Date.now = () => this.frozenTimeMillis;
-    Math.random = () => this.frozenRandom;
+    Date.now             = () => this.frozenTimeMillis;
+    Math.random          = () => this.frozenRandom;
     try {
       return work();
     } finally {
-      Date.now = originalNow;
+      Date.now    = originalNow;
       Math.random = originalRandom;
     }
   }

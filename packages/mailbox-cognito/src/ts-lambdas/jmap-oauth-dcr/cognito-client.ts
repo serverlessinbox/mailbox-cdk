@@ -5,7 +5,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 
 import { toClientId, type ClientId, type UserPoolId } from '../shared/cognito-identifiers';
-import type { RedirectUri, Scope } from '../shared/identity-identifiers';
+import type { RedirectUri, Scope }                    from '../shared/identity-identifiers';
 
 /**
  * The Cognito calls of Dynamic Client Registration. They live in this Lambda and not in `identity-provisioner`,

@@ -1,4 +1,5 @@
-import type { CustomResourceRequest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CustomResourceRequest }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { BootstrapUserProperties } from '../properties';
 
 /** The keys, with the values they carry, that CloudFormation hands the Lambda for the bootstrap user resource. */

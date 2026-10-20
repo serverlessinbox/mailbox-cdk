@@ -7,9 +7,11 @@
  * the compiler, and CloudFormation would only report it when the resource is created.
  */
 
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import { StackHelpers } from '../stack-helpers';
+import { Match, Template }         from 'aws-cdk-lib/assertions';
+import { Construct }               from 'constructs';
+
+import { StackHelpers }            from '../stack-helpers';
+
 import { createStackWithResolver } from './stack-helpers-helpers';
 
 describe('StackHelpers', () => {
@@ -45,12 +47,12 @@ describe('StackHelpers', () => {
 
   describe('resolveMailboxData', () => {
     const { stack: mailboxStack, resolver: mailboxResolver } = createStackWithResolver();
-    const data = StackHelpers.getOrCreate(mailboxStack, mailboxResolver).resolveMailboxData(
+    const data                                               = StackHelpers.getOrCreate(mailboxStack, mailboxResolver).resolveMailboxData(
       new Construct(mailboxStack, 'Caller'),
       'mailbox-data',
       { hostedZoneId: 'Z123', dataStackName: 'my-data-stack' },
     );
-    const template = Template.fromStack(mailboxStack);
+    const template                                           = Template.fromStack(mailboxStack);
 
     it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -73,12 +75,12 @@ describe('StackHelpers', () => {
 
   describe('resolveCognitoDomainPrefix', () => {
     const { stack: cognitoStack, resolver: cognitoResolver } = createStackWithResolver();
-    const prefix = StackHelpers.getOrCreate(cognitoStack, cognitoResolver).resolveCognitoDomainPrefix(
+    const prefix                                             = StackHelpers.getOrCreate(cognitoStack, cognitoResolver).resolveCognitoDomainPrefix(
       new Construct(cognitoStack, 'Caller'),
       'cognito-prefix',
       'Z456',
     );
-    const template = Template.fromStack(cognitoStack);
+    const template                                           = Template.fromStack(cognitoStack);
 
     it('attaches a Custom::StackHelpers resource falling back to the stack name', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -96,12 +98,12 @@ describe('StackHelpers', () => {
 
   describe('resolveSeededNumber', () => {
     const { stack: seededStack, resolver: seededResolver } = createStackWithResolver();
-    const seededNumber = StackHelpers.getOrCreate(seededStack, seededResolver).resolveSeededNumber(
+    const seededNumber                                     = StackHelpers.getOrCreate(seededStack, seededResolver).resolveSeededNumber(
       new Construct(seededStack, 'Caller'),
       'seeded-number',
       { salt: 'some-purpose', range: 24 },
     );
-    const template = Template.fromStack(seededStack);
+    const template                                         = Template.fromStack(seededStack);
 
     it('attaches a Custom::StackHelpers resource sending the salt and the range as strings', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -119,7 +121,7 @@ describe('StackHelpers', () => {
   });
 
   it('gives every resolver call its own resource while the Lambda stays shared', () => {
-    const helpers = StackHelpers.getOrCreate(stack, resolver);
+    const helpers     = StackHelpers.getOrCreate(stack, resolver);
     const callerScope = new Construct(stack, 'CallerScope');
     helpers.resolveMailboxData(callerScope, 'mailbox-data', { hostedZoneId: 'Z123', dataStackName: 'data' });
     helpers.resolveCognitoDomainPrefix(callerScope, 'cognito-prefix', 'Z123');

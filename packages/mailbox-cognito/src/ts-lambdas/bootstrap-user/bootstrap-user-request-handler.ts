@@ -7,10 +7,12 @@ import {
   type CustomResourceRequest,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { BootstrapUserAnswers, type BootstrapUserAnswer } from './bootstrap-user-answers';
-import { toGroupName, toUserPoolId, toUsername } from '../shared/cognito-identifiers';
-import { UserEnsurer, type BootstrapUser } from './ensure-user';
-import { generateSecurePassword, PASSWORD_SET_AT_INSTALL_TIME } from './password';
+
+import { toGroupName, toUserPoolId, toUsername }                   from '../shared/cognito-identifiers';
+
+import { BootstrapUserAnswers, type BootstrapUserAnswer }          from './bootstrap-user-answers';
+import { UserEnsurer, type BootstrapUser }                         from './ensure-user';
+import { generateSecurePassword, PASSWORD_SET_AT_INSTALL_TIME }    from './password';
 import { isBootstrapUserProperties, type BootstrapUserProperties } from './properties';
 
 const DEFAULT_USERNAME = 'admin';
@@ -25,9 +27,9 @@ export class BootstrapUserRequestHandler {
   private readonly logger: LoggerBuffer;
 
   constructor(userEnsurer: UserEnsurer, cloudFormation: CloudFormationClient, logger: LoggerBuffer) {
-    this.userEnsurer = userEnsurer;
+    this.userEnsurer    = userEnsurer;
     this.cloudFormation = cloudFormation;
-    this.logger = logger;
+    this.logger         = logger;
   }
 
   /**
@@ -40,9 +42,9 @@ export class BootstrapUserRequestHandler {
       return BootstrapUserAnswers.withPasswordMarker();
     }
 
-    const properties = this.readProperties(request);
+    const properties        = this.readProperties(request);
     const temporaryPassword = properties.temporaryPassword ?? generateSecurePassword();
-    const user = this.toBootstrapUser(properties, temporaryPassword);
+    const user              = this.toBootstrapUser(properties, temporaryPassword);
 
     const userWasCreated = await this.ensureUser(user);
 
@@ -67,7 +69,7 @@ export class BootstrapUserRequestHandler {
 
   private readProperties(request: CustomResourceRequest): BootstrapUserProperties {
     const errors: string[] = [];
-    const properties = request.ResourceProperties;
+    const properties       = request.ResourceProperties;
     if (!isBootstrapUserProperties(properties, { errors })) {
       throw new ExpectedFailure(`Invalid ResourceProperties: ${errors.join('; ')}`);
     }

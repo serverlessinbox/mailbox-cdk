@@ -15,22 +15,24 @@
  * Config is loaded when the handler module loads, so the environment is set before it is imported.
  */
 
-const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
-process.env['SERVICE_NAME'] = 'resource-sweeper';
+const STATE_MACHINE_ARN                          = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
+process.env['SERVICE_NAME']                      = 'resource-sweeper';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand } from '@aws-sdk/client-sfn';
 import {
   ACMClient,
   DescribeCertificateCommand,
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
-import { ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { starterHandler, workerHandler } from '../handler';
-import { SweepStarter } from '../sweep-starter';
-import { SweepWorker } from '../sweep-worker';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand }     from '@aws-sdk/client-sfn';
+import { ExpectedFailure, LoggerBuffer }                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                  from 'aws-sdk-client-mock';
+
+import { starterHandler, workerHandler }                               from '../handler';
+import { SweepStarter }                                                from '../sweep-starter';
+import { SweepWorker }                                                 from '../sweep-worker';
+
 import { captureCfnResponse, createEvent, lambdaContext, updateEvent } from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
@@ -66,7 +68,7 @@ describe('starterHandler logger scope', () => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const consoleDebug = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const consoleDebug           = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
     const eventWithoutProperties = createEvent();
     Reflect.deleteProperty(eventWithoutProperties, 'ResourceProperties');
 

@@ -1,8 +1,9 @@
-import { App, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { PositionHash } from '../position-hash';
+import { App, Stack }                     from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
+
+import { PositionHash }                   from '../position-hash';
 import { makePhysicalName, slugifyLabel } from '../resource-names';
-import { StackIdentity } from '../stack-identity';
+import { StackIdentity }                  from '../stack-identity';
 
 /**
  * Pins the physical-name scheme `<account>-<stack slug>-<suffix slug>-<position hash>-<guid prefix>`
@@ -22,7 +23,7 @@ interface RenderedName {
 
 function render(stack: Stack, name: string): RenderedName {
   // cast: Stack.resolve returns untyped template JSON; this is the one framework boundary.
-  const joined = stack.resolve(name) as { 'Fn::Join': [string, [string, unknown]] };
+  const joined             = stack.resolve(name) as { 'Fn::Join': [string, [string, unknown]] };
   const [head, guidPrefix] = joined['Fn::Join'][1];
   return { head, guidPrefix };
 }
@@ -64,7 +65,7 @@ describe('makePhysicalName', () => {
   it('keeps two long names that share their first characters distinct', () => {
     const stack = newStack();
 
-    const first = render(stack, makePhysicalName(stack, 'a-long-suffix-one', { maxLength: 48 }));
+    const first  = render(stack, makePhysicalName(stack, 'a-long-suffix-one', { maxLength: 48 }));
     const second = render(stack, makePhysicalName(stack, 'a-long-suffix-two', { maxLength: 48 }));
 
     expect(first.head).not.toBe(second.head);
@@ -73,7 +74,7 @@ describe('makePhysicalName', () => {
   it('gives the same suffix a different name under a different parent', () => {
     const stack = newStack();
 
-    const underFirst = render(stack, makePhysicalName(new Construct(stack, 'first'), 'jobs'));
+    const underFirst  = render(stack, makePhysicalName(new Construct(stack, 'first'), 'jobs'));
     const underSecond = render(stack, makePhysicalName(new Construct(stack, 'second'), 'jobs'));
 
     expect(underFirst.head).not.toBe(underSecond.head);

@@ -9,11 +9,12 @@
  * refused by the API only at runtime, so these tests pin the synthesized clients and the policies.
  */
 
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Permission } from '@serverlessinbox/mailbox';
+import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { Permission }                            from '@serverlessinbox/mailbox';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import * as lambda                               from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+
 import { MailboxUserPool, MailboxUserPoolProps } from '../mailbox-user-pool';
 
 const PINNED_VERSION = '0.0.1-test';
@@ -36,7 +37,7 @@ function pinnedResolver(stack: Stack, packageNames: string[]): PinnedArtifactRes
 /** A pool with an explicit Cognito domain prefix and a resolver pinning both packages the pool resolves; `overrides` replace those props. */
 function createUserPool(overrides: Partial<MailboxUserPoolProps> = {}): { pool: MailboxUserPool; stack: Stack } {
   const stack = newStack();
-  const pool = new MailboxUserPool(stack, 'user-pool', {
+  const pool  = new MailboxUserPool(stack, 'user-pool', {
     domain: { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
     artifactResolver: pinnedResolver(stack, ['mailbox-cognito', 'mailbox-cdk-shared']),
     ...overrides,
@@ -75,7 +76,7 @@ describe('MailboxUserPool without an injected artifactResolver', () => {
 
 describe('MailboxUserPool with an injected artifactResolver', () => {
   it('fails to synthesize naming the package the resolver holds no pin for', () => {
-    const stack = newStack();
+    const stack                        = newStack();
     const resolverWithoutSharedPackage = pinnedResolver(stack, ['mailbox-cognito']);
 
     expect(() => {
@@ -171,7 +172,7 @@ describe('MailboxUserPool UI client provisioning', () => {
     const { pool } = createUserPool();
 
     const adminClient = pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: [], logoutUrls: [] });
-    const jmapClient = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
+    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
 
     expect(pool.policies.adminApi.audiences).toEqual([adminClient.clientId]);
     expect(pool.policies.jmapApi.audiences).toEqual([jmapClient.clientId]);
@@ -179,9 +180,9 @@ describe('MailboxUserPool UI client provisioning', () => {
 
   it('returns the existing client when the same app is provisioned twice', () => {
     const { pool, stack } = createUserPool();
-    const config = { name: 'admin-ui', callbackUrls: ['https://a.example.com/cb'], logoutUrls: ['https://a.example.com/'] };
+    const config          = { name: 'admin-ui', callbackUrls: ['https://a.example.com/cb'], logoutUrls: ['https://a.example.com/'] };
 
-    const first = pool.provisionAdminApiClient(config);
+    const first  = pool.provisionAdminApiClient(config);
     const second = pool.provisionAdminApiClient(config);
 
     expect(second).toBe(first);
@@ -229,7 +230,7 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('returns the existing client when the name is provisioned again and registers the audiences it is now listed for', () => {
     const { pool, stack } = createUserPool();
 
-    const first = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
+    const first  = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
     const second = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['adminApi'], permissions: [Permission.MAIL_READ] });
 
     expect(second).toBe(first);
@@ -251,7 +252,7 @@ describe('MailboxUserPool authorization', () => {
     const { pool } = createUserPool({ authorization: { adminGroups: ['ops'], userGroups: ['staff'] } });
 
     const adminClient = pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: [], logoutUrls: [] });
-    const jmapClient = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
+    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
 
     expect(pool.policies.adminApi.requireAnyOfGroups).toEqual(['ops']);
     expect(adminClient.groups).toEqual(['ops']);
@@ -285,7 +286,7 @@ describe('MailboxUserPool JMAP OAuth discovery', () => {
 describe('MailboxUserPool.grantAdminAccess', () => {
   it('grants the function user administration on the pool itself, never on every resource', () => {
     const { pool, stack } = createUserPool();
-    const fn = new lambda.Function(stack, 'fn', {
+    const fn              = new lambda.Function(stack, 'fn', {
       runtime: lambda.Runtime.NODEJS_LATEST,
       handler: 'index.handler',
       code: lambda.Code.fromInline('exports.handler = async () => {};'),

@@ -1,5 +1,6 @@
-import { ExpectedFailure } from '../../shared/expected-failure';
+import { ExpectedFailure }            from '../../shared/expected-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
+
 import {
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
@@ -261,7 +262,7 @@ describe('StackDeploymentEventReader', () => {
     });
 
     it('gives the physical id of the envelope, and still the response target when it is wrong', () => {
-      const sent = { cfn: { ...sfnEvent().cfn, PhysicalResourceId: 'sent-by-cloudformation' }, op: 'none' };
+      const sent  = { cfn: { ...sfnEvent().cfn, PhysicalResourceId: 'sent-by-cloudformation' }, op: 'none' };
       const wrong = { cfn: { ...sfnEvent().cfn, PhysicalResourceId: 7 }, op: 'none' };
 
       expect(reader.readAnswerableSfnInput(sent)).toMatchObject({ physicalResourceId: 'sent-by-cloudformation' });

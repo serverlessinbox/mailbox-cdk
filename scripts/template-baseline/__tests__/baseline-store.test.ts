@@ -1,8 +1,9 @@
 import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { BaselineStore } from '../baseline-store';
-import { TemplateJsonParser } from '../template-json-parser';
+import { tmpdir }                    from 'node:os';
+import * as path                     from 'node:path';
+
+import { BaselineStore }             from '../baseline-store';
+import { TemplateJsonParser }        from '../template-json-parser';
 
 /**
  * Pins the on-disk layout of a baseline (`<root>/<label>/<stack>.template.json`, formatted JSON),
@@ -14,7 +15,7 @@ describe('BaselineStore', () => {
   let store: BaselineStore;
 
   beforeEach(() => {
-    root = mkdtempSync(path.join(tmpdir(), 'baseline-store-'));
+    root  = mkdtempSync(path.join(tmpdir(), 'baseline-store-'));
     store = new BaselineStore(root, new TemplateJsonParser());
   });
 

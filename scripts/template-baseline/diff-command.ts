@@ -1,7 +1,7 @@
-import { BaselineCommand } from './baseline-command';
-import { DiffReportFormatter } from './diff-report-formatter';
+import { BaselineCommand }                    from './baseline-command';
+import { DiffReportFormatter }                from './diff-report-formatter';
 import { KNOWN_NON_DETERMINISTIC_PROPERTIES } from './known-non-deterministic-properties';
-import { TemplateDiffer } from './template-differ';
+import { TemplateDiffer }                     from './template-differ';
 
 /**
  * `template-baseline diff`: synthesizes every stack again and compares each template with the
@@ -19,14 +19,14 @@ export class DiffCommand extends BaselineCommand {
   });
 
   async execute(): Promise<number> {
-    const store = this.createStore();
-    const differ = new TemplateDiffer(KNOWN_NON_DETERMINISTIC_PROPERTIES);
+    const store     = this.createStore();
+    const differ    = new TemplateDiffer(KNOWN_NON_DETERMINISTIC_PROPERTIES);
     const formatter = new DiffReportFormatter();
 
     let allIdentical = true;
     for (const { stackName, template } of this.createSynthesizer().synthesize()) {
       const baseline = await store.readStackTemplate(this.label, stackName);
-      const diff = differ.diff(baseline, template);
+      const diff     = differ.diff(baseline, template);
       this.context.stdout.write(formatter.format(stackName, diff));
       allIdentical = allIdentical && diff.identical;
     }

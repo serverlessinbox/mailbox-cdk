@@ -1,4 +1,4 @@
-import * as t from 'typanion';
+import * as t            from 'typanion';
 
 import { isRedirectUri } from '../shared/identity-identifiers';
 

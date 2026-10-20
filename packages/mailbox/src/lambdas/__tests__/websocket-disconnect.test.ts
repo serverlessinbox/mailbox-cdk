@@ -7,18 +7,19 @@
  * table (and nothing broader, e.g. no Scan/PartiQL/Deny), via the real WebSocketTable construct.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { WebSocketDisconnectLambda } from '../websocket-disconnect';
-import { WebSocketTable } from '../../api/websocket/websocket-table';
-import { DataTable } from '../../data/data-tables';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { WebSocketTable }                       from '../../api/websocket/websocket-table';
+import { DataTable }                            from '../../data/data-tables';
+import { WebSocketDisconnectLambda }            from '../websocket-disconnect';
 
 describe('WebSocketDisconnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
@@ -35,13 +36,13 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable      = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
@@ -64,7 +65,7 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
   }
 
   it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
-    const tableId = 'websockettablewebsocketEF927F93';
+    const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -84,7 +85,7 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
   });
 
   it('grants no Scan/PartiQL and no Deny on the connections table', () => {
-    const statements = connectionsTableStatements();
+    const statements  = connectionsTableStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');

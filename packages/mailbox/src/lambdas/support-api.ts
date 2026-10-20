@@ -1,12 +1,13 @@
-import { Construct } from 'constructs';
-import { Duration, Stack } from 'aws-cdk-lib';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
+import { Duration, Stack }         from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
+
 import {
   buildSupportTierEnvironment,
 } from '../addons/support/support-roles-infra';
+import type { IDataTable }        from '../data/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface SupportApiLambdaProps {
@@ -57,7 +58,7 @@ export class SupportApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SupportApiLambdaProps) {
     // Build environment object with fixed order for CloudFormation template stability:
     // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, STACK_ID, then tier vars (from registry order)
-    const tierEnv = buildSupportTierEnvironment(props.tierRoleArns);
+    const tierEnv                             = buildSupportTierEnvironment(props.tierRoleArns);
     const environment: Record<string, string> = {
       SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
       CONFIG_TABLE_NAME: props.configTable.tableName,

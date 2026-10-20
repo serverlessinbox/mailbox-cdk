@@ -7,25 +7,55 @@
  * invocation holds no more than the failure itself.
  */
 
-import './set-test-env';
+import { CognitoIdentityProviderClient, CreateUserPoolClientCommand }  from '@aws-sdk/client-cognito-identity-provider';
+import type * as CognitoSdk                                            from '@aws-sdk/client-cognito-identity-provider';
+import { InvokeCommand, LambdaClient }                                 from '@aws-sdk/client-lambda';
+import type * as LambdaSdk                                             from '@aws-sdk/client-lambda';
+import type { LoggerBuffer }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                  from 'aws-sdk-client-mock';
 
-import { CognitoIdentityProviderClient, CreateUserPoolClientCommand } from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type * as HandlerModule                                         from '../handler';
 
-import { handler } from '../handler';
-import { mockIdentityProvisioner, requestEvent } from './jmap-oauth-dcr-helpers';
+import { mockIdentityProvisioner, requestEvent }                       from './jmap-oauth-dcr-helpers';
 
-type Handler = typeof handler;
+type Handler = (typeof HandlerModule)['handler'];
+
+const sharedLambdaSdk  = jest.requireActual<typeof LambdaSdk>('@aws-sdk/client-lambda');
+const sharedCognitoSdk = jest.requireActual<typeof CognitoSdk>('@aws-sdk/client-cognito-identity-provider');
+
+const MANDATORY_ENVIRONMENT = { IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner-fn', USER_POOL_ID: 'pool-1' };
+
+/**
+ * The handler as a cold start loads it: the handler reads its configuration when it is loaded, so the mandatory
+ * variables are set before it is.
+ */
+function loadHandler(stage: () => void = () => undefined): Handler {
+  const saved = { ...process.env };
+  let loaded: Handler | undefined;
+  try {
+    Object.assign(process.env, MANDATORY_ENVIRONMENT);
+    jest.isolateModules(() => {
+      // The isolated registry would load its own SDK clients, which the clients mocked below do not cover.
+      jest.doMock('@aws-sdk/client-lambda', () => sharedLambdaSdk);
+      jest.doMock('@aws-sdk/client-cognito-identity-provider', () => sharedCognitoSdk);
+      stage();
+      loaded = jest.requireActual<typeof HandlerModule>('../handler').handler;
+    });
+  } finally {
+    process.env = saved;
+  }
+  if (loaded === undefined) {
+    throw new Error('the handler was not loaded');
+  }
+  return loaded;
+}
 
 /**
  * The handler as a cold start loads it when its registration logs a debug line and then fails. No failure the real
  * registration throws follows a buffered line, so this one is staged.
  */
 function loadHandlerWhoseRegistrationFails(): Handler {
-  let loaded: Handler | undefined;
-  jest.isolateModules(() => {
+  return loadHandler(() => {
     jest.doMock('../client-registration', () => ({
       ClientRegistration: class {
         constructor(
@@ -42,19 +72,19 @@ function loadHandlerWhoseRegistrationFails(): Handler {
         }
       },
     }));
-    loaded = jest.requireActual<{ handler: Handler }>('../handler').handler;
   });
-  if (loaded === undefined) {
-    throw new Error('the handler was not loaded');
-  }
-  return loaded;
 }
 
 describe('jmap-oauth-dcr handler', () => {
-  const lambdaMock = mockClient(LambdaClient);
+  const lambdaMock  = mockClient(LambdaClient);
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  let handler: Handler;
   let debugLog: jest.SpyInstance;
   let errorLog: jest.SpyInstance;
+
+  beforeAll(() => {
+    handler = loadHandler();
+  });
 
   beforeEach(() => {
     lambdaMock.reset();

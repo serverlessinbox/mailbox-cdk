@@ -16,17 +16,17 @@
  * are registered explicitly in their own files and reviewed at the call site.
  */
 
-import * as fs from 'fs';
+import * as fs   from 'fs';
 import * as path from 'path';
 
 describe('Sweeper removal boundary guard', () => {
   it('no PolicyStatement is constructed outside the sweeper feature directory for removal implementations', () => {
     // Locate the mailbox package root
     const packageRoot = path.resolve(__dirname, '../../../');
-    const sweeperDir = path.resolve(packageRoot, 'features/sweeper');
+    const sweeperDir  = path.resolve(packageRoot, 'features/sweeper');
 
     // Scan all TypeScript source files in the mailbox package
-    const sourceFiles = scanDirForTypeScriptFiles(packageRoot);
+    const sourceFiles              = scanDirForTypeScriptFiles(packageRoot);
     const violatingFiles: string[] = [];
 
     for (const file of sourceFiles) {

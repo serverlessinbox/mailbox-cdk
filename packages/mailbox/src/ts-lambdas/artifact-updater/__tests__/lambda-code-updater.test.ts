@@ -7,7 +7,6 @@
  * is faked at the SDK clients; the release registry is faked because it reads S3.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetFunctionConfigurationCommand,
   InvokeCommand,
@@ -15,12 +14,15 @@ import {
   TagResourceCommand,
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer }        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }          from 'aws-sdk-client-mock';
+
 import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback } from '../lambda-code-rollback';
-import { LambdaCodeUpdater } from '../lambda-code-updater';
-import { LambdaFunctionCode } from '../lambda-function-code';
-import { ReleaseArtifacts } from '../release-artifacts';
+import { LambdaCodeRollback }  from '../lambda-code-rollback';
+import { LambdaCodeUpdater }   from '../lambda-code-updater';
+import { LambdaFunctionCode }  from '../lambda-function-code';
+import { ReleaseArtifacts }    from '../release-artifacts';
+
 import {
   EU_WEST_1,
   fakeUpdaterClients,
@@ -43,10 +45,10 @@ const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
 
 describe('LambdaCodeUpdater', () => {
   const lambdaMock = mockClient(LambdaClient);
-  const clients = fakeUpdaterClients();
+  const clients    = fakeUpdaterClients();
 
   function newUpdater(): LambdaCodeUpdater {
-    const logger = new LoggerBuffer();
+    const logger       = new LoggerBuffer();
     const functionCode = new LambdaFunctionCode(noSleep);
     return new LambdaCodeUpdater(
       new ReleaseArtifacts(clients.registryS3, testConfig, logger),

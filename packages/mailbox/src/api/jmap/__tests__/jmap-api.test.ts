@@ -10,26 +10,27 @@
  * tsc and synth, so these assertions are the only guard.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import { JMapApi } from '../jmap-api';
-import type { JMapApiProps } from '../jmap-api';
-import type { IJmapApiAddon } from '../../addons';
-import type { IWebSocketBroadcastPublisher } from '../../websocket/websocket';
-import type { IMailboxAuthProvider } from '../../../auth/types';
-import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
-import { AuthKeyStoreTable } from '../../../features/auth-key-store/auth-key-store-table';
-import { EmailSendingQueue } from '../../../email/sending/email-sending-queue';
-import { DataTable } from '../../../data/data-tables';
-import { DataBlobStore } from '../../../data/data-blob-store';
+import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
+import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import type { IMailboxAuthProvider }            from '../../../auth/types';
+import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataTable }                            from '../../../data/data-tables';
+import { EmailSendingQueue }                    from '../../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { AuthKeyStoreTable }                    from '../../../features/auth-key-store/auth-key-store-table';
+import type { IJmapApiAddon }                   from '../../addons';
+import type { IWebSocketBroadcastPublisher }    from '../../websocket/websocket';
+import { JMapApi }                              from '../jmap-api';
+import type { JMapApiProps }                    from '../jmap-api';
 
 describe('JMapApi', () => {
   let stack: cdk.Stack;
@@ -99,7 +100,7 @@ describe('JMapApi', () => {
       const sut = new JMapApi(stack, 'jmap-api', propsWith());
 
       const template = Template.fromStack(stack);
-      const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+      const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
       expect(stack.resolve(sut.url)).toEqual({ 'Fn::GetAtt': [apiId, 'ApiEndpoint'] });
       expect(sut.domainTarget).toBeUndefined();
@@ -167,9 +168,9 @@ describe('JMapApi', () => {
     it('serves the session document anonymously and everything else behind the authorizer', () => {
       new JMapApi(stack, 'jmap-api', propsWith());
 
-      const template = Template.fromStack(stack);
-      const authorizers = template.findResources('AWS::ApiGatewayV2::Authorizer');
-      const anonymousId = Object.keys(authorizers)
+      const template        = Template.fromStack(stack);
+      const authorizers     = template.findResources('AWS::ApiGatewayV2::Authorizer');
+      const anonymousId     = Object.keys(authorizers)
         .find((id) => authorizers[id].Properties.AuthorizerResultTtlInSeconds === 0);
       const authenticatedId = Object.keys(authorizers)
         .find((id) => authorizers[id].Properties.AuthorizerResultTtlInSeconds !== 0);
@@ -191,7 +192,7 @@ describe('JMapApi', () => {
     });
 
     it('mounts each addon on the HTTP API', () => {
-      const first: IJmapApiAddon = { addRoutes: jest.fn() };
+      const first: IJmapApiAddon  = { addRoutes: jest.fn() };
       const second: IJmapApiAddon = { addRoutes: jest.fn() };
 
       new JMapApi(stack, 'jmap-api', propsWith({ jmapApiAddons: [first, second] }));
@@ -226,7 +227,7 @@ describe('JMapApi', () => {
       new JMapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
 
       const template = Template.fromStack(stack);
-      const route = Object.values(template.findResources('AWS::ApiGatewayV2::Route'))
+      const route    = Object.values(template.findResources('AWS::ApiGatewayV2::Route'))
         .find((candidate) => candidate.Properties.RouteKey === protectedResourceRouteKey);
 
       expect(route?.Properties.AuthorizationType).toBe('NONE');
@@ -250,8 +251,8 @@ describe('JMapApi', () => {
       new JMapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
 
       const template = Template.fromStack(stack);
-      const routes = template.findResources('AWS::ApiGatewayV2::Route');
-      const routeId = Object.keys(routes)
+      const routes   = template.findResources('AWS::ApiGatewayV2::Route');
+      const routeId  = Object.keys(routes)
         .find((id) => routes[id].Properties.RouteKey === protectedResourceRouteKey);
 
       template.hasResource('AWS::ApiGatewayV2::Stage', {
@@ -263,7 +264,7 @@ describe('JMapApi', () => {
   describe('enableWebSocketPublishing', () => {
     it('lets the handler Lambda invoke the broadcaster', () => {
       const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut = new JMapApi(stack, 'jmap-api', propsWith());
+      const sut                                       = new JMapApi(stack, 'jmap-api', propsWith());
 
       sut.enableWebSocketPublishing('wss://ws.example.com', broadcaster);
 

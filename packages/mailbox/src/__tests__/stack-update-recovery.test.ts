@@ -15,22 +15,23 @@
  * construct, per `unit-testing`/`iam-scoping`.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { StackUpdateAddon } from '../addons/stack-update/stack-update-addon';
+import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                          from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { AuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import { DataTable } from '../data/data-tables';
+import { Template }                                  from 'aws-cdk-lib/assertions';
+import * as dynamodb                                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
+
+import { StackUpdateAddon }                          from '../addons/stack-update/stack-update-addon';
+import { DataTable }                                 from '../data/data-tables';
+import { AuditEventsQueue }                          from '../features/audit-writing/audit-events-queue';
 
 const TEST_ACCOUNT = '123456789012';
-const TEST_REGION = 'us-west-2';
+const TEST_REGION  = 'us-west-2';
 
 function buildTemplate(): Template {
-  const app = new App();
+  const app   = new App();
   const stack = new cdk.Stack(app, 'TestStackUpdateRecovery', {
     env: { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
@@ -39,13 +40,13 @@ function buildTemplate(): Template {
   const packages: Record<string, ArtifactPin> = {
     'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const artifactResolver = new PinnedArtifactResolver({
+  const artifactResolver                      = new PinnedArtifactResolver({
     packages,
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 
-  const configTable = new DataTable(dynamodb.Table.fromTableArn(
+  const configTable      = new DataTable(dynamodb.Table.fromTableArn(
     stack,
     'config-table',
     `arn:aws:dynamodb:${TEST_REGION}:${TEST_ACCOUNT}:table/config`,
@@ -73,7 +74,7 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   function stackUpdateLambda(): { logicalId: string; resource: any } {
-    const fns = template.findResources('AWS::Lambda::Function');
+    const fns     = template.findResources('AWS::Lambda::Function');
     const entries = Object.entries(fns).filter(
       ([, fn]: [string, any]) => fn.Properties?.Environment?.Variables?.CONFIG_TABLE_NAME &&
                                   !fn.Properties?.Environment?.Variables?.STACK_UPDATE_STATE_MACHINE_ARN,
@@ -89,7 +90,7 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('no EventBridge rule for UPDATE_ROLLBACK_FAILED is created', () => {
-    const rules = template.findResources('AWS::Events::Rule');
+    const rules     = template.findResources('AWS::Events::Rule');
     const rulesList = Object.values(rules) as any[];
 
     const rollbackRules = rulesList.filter((rule) =>
@@ -104,8 +105,8 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('Lambda does not have cloudformation:ExecuteChangeSet permission', () => {
-    const { resource } = stackUpdateLambda();
-    const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
+    const { resource }  = stackUpdateLambda();
+    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
     const allStatements = statementsForRole(template, roleLogicalId);
@@ -117,8 +118,8 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('Lambda does not have states:* or states:StartExecution/ListExecutions permissions', () => {
-    const { resource } = stackUpdateLambda();
-    const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
+    const { resource }  = stackUpdateLambda();
+    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
     const allStatements = statementsForRole(template, roleLogicalId);
@@ -133,8 +134,8 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('Lambda does not have cloudformation:ContinueUpdateRollback or rollback-recovery actions', () => {
-    const { resource } = stackUpdateLambda();
-    const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
+    const { resource }  = stackUpdateLambda();
+    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
     const allStatements = statementsForRole(template, roleLogicalId);
@@ -154,8 +155,8 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('Lambda has ChangeSe permissions scoped to root stack ARN (no ExecuteChangeSet)', () => {
-    const { resource } = stackUpdateLambda();
-    const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
+    const { resource }  = stackUpdateLambda();
+    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
     const allStatements = statementsForRole(template, roleLogicalId);
@@ -183,14 +184,14 @@ describe('StackUpdateAddon: security hardening (no execution capability)', () =>
   });
 
   it('Lambda has no iam:* or lambda:* or service wildcard permissions', () => {
-    const { resource } = stackUpdateLambda();
-    const roleArnRef = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
+    const { resource }  = stackUpdateLambda();
+    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
     const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
 
     const allStatements = statementsForRole(template, roleLogicalId);
 
     for (const stmt of allStatements) {
-      const actions = actionsOf(stmt);
+      const actions   = actionsOf(stmt);
       const resources = resourcesOf(stmt);
 
       // No service wildcards like lambda:*, dynamodb:*, etc.

@@ -1,47 +1,48 @@
-import { Construct, DependencyGroup } from 'constructs';
-import { AuthKeyStore } from './features/auth-key-store/auth-key-store';
-import { Cdn, type CdnCustomDomain } from './features/cdn/cdn-construct';
-import { TantivySearch } from './search';
-import { EmailSending, SESEventProcessing } from './email';
-import { AdminApi } from './api/admin/admin-api';
-import { JMapApi } from './api/jmap/jmap-api';
-import { WebSocketPush } from './api/websocket/websocket';
-import { McpApi } from './api/mcp/mcp-api';
-import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext } from './api';
-import { SesRules } from './email/receiving/ses-rules';
-import type { IMailboxAuthProvider } from './auth/types';
-import { EmailProcessorLambda } from './lambdas/email-processor';
-import { IdentityProvisionerLambda } from './lambdas';
-import { AuditWriting } from './features/audit-writing/audit-writing';
-import { PipelineLogGroup, applyServerlessInboxComponentTag, setStackNameBase } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Bootstrap } from './features/bootstrap/bootstrap';
+import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
+import { PipelineLogGroup, applyServerlessInboxComponentTag, setStackNameBase }                                from '@serverlessinbox/mailbox-cdk-shared';
+import { addServerlessInboxResourceGroup, StackHelpers }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                                                from 'aws-cdk-lib/aws-certificatemanager';
+import type { IGrantable }                                                                                     from 'aws-cdk-lib/aws-iam';
+import * as awslambda                                                                                          from 'aws-cdk-lib/aws-lambda';
+import { IBucket }                                                                                             from 'aws-cdk-lib/aws-s3';
+import { Fn }                                                                                                  from 'aws-cdk-lib';
+import * as cdk                                                                                                from 'aws-cdk-lib';
+import { Aws }                                                                                                 from 'aws-cdk-lib';
+import { Construct, DependencyGroup }                                                                          from 'constructs';
+
+import { AdminApi }                                                                                            from './api/admin/admin-api';
+import { JMapApi }                                                                                             from './api/jmap/jmap-api';
+import { McpApi }                                                                                              from './api/mcp/mcp-api';
+import { WebSocketPush }                                                                                       from './api/websocket/websocket';
+import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './api';
+import type { IMailboxAuthProvider }                                                                           from './auth/types';
+import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
+import type { IDataBlobStore }                                                                                 from './data/data-blob-store';
+import type { IDataTable }                                                                                     from './data/data-tables';
+import { MailboxDataDeployer }                                                                                 from './data';
+import { MailboxDns }                                                                                          from './domains';
+import { MailboxEdgeDeployer }                                                                                 from './edge';
+import { SesRules }                                                                                            from './email/receiving/ses-rules';
+import { EmailSending, SESEventProcessing }                                                                    from './email';
+import { AuditWriting }                                                                                        from './features/audit-writing/audit-writing';
+import { AuthKeyStore }                                                                                        from './features/auth-key-store/auth-key-store';
+import { Bootstrap }                                                                                           from './features/bootstrap/bootstrap';
+import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';
+import { LicenseRefresh }                                                                                      from './features/license-refresh/license-refresh';
+import { StackFailureDetection, SendStackFailuresMode }                                                        from './features/stack-failure-detection';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
-import type { IResourceRemoval } from './features/sweeper';
-import { StackFailureDetection, SendStackFailuresMode } from './features/stack-failure-detection';
-import { LicenseRefresh } from './features/license-refresh/license-refresh';
-import { Fn } from 'aws-cdk-lib';
-import { MailboxDns } from './domains';
-import * as cdk from 'aws-cdk-lib';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as awslambda from 'aws-cdk-lib/aws-lambda';
-import { MailboxEdgeDeployer } from './edge';
-import { AdminUi } from './ui/admin-ui';
-import { WebmailUi } from './ui/webmail-ui';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import type { IDataTable } from './data/data-tables';
-import type { IDataBlobStore } from './data/data-blob-store';
-import { Aws } from 'aws-cdk-lib';
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
-import type { MailboxUi } from './ui/mailbox-ui';
-import { MailboxDataDeployer } from './data';
-import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
-import { MailboxResourceDescriptions } from './utils/resource-descriptions';
-import { addServerlessInboxResourceGroup, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxContext } from './mailbox-context';
-import { MailboxAddressing } from './core/domains/mailbox-addressing';
-import type { MailboxProps } from './mailbox-props';
-import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients } from './mailbox-outputs';
+import type { IResourceRemoval }                                                                               from './features/sweeper';
+import { EmailProcessorLambda }                                                                                from './lambdas/email-processor';
+import { IdentityProvisionerLambda }                                                                           from './lambdas';
+import { MailboxContext }                                                                                      from './mailbox-context';
+import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
+import type { MailboxProps }                                                                                   from './mailbox-props';
+import { TantivySearch }                                                                                       from './search';
+import { AdminUi }                                                                                             from './ui/admin-ui';
+import type { MailboxUi }                                                                                      from './ui/mailbox-ui';
+import { WebmailUi }                                                                                           from './ui/webmail-ui';
+import { resolveMailboxEncryptionPlan }                                                                        from './utils/mailbox-encryption';
+import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
 
 /**
  * The complete Serverless Inbox mail server as one construct: data stack, email receiving and
@@ -84,7 +85,7 @@ export class Mailbox extends Construct {
     const authProvider: IMailboxAuthProvider = props.authProvider;
 
     // Resolved once here, as the composition root, and threaded down as props.
-    const context = MailboxContext.resolve(this, props);
+    const context                                                                                                 = MailboxContext.resolve(this, props);
     const { artifactResolver, stackVersion, deployerType, vendorAccountIds, stackIdentityTagKey, encryptionPlan } = context;
 
     // --- Group nodes (8 intermediate constructs for construct-tree grouping) ---
@@ -112,7 +113,7 @@ export class Mailbox extends Construct {
     // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
-    const stackHelpers = StackHelpers.getOrCreate(this, artifactResolver);
+    const stackHelpers                                      = StackHelpers.getOrCreate(this, artifactResolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
       groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
@@ -125,14 +126,14 @@ export class Mailbox extends Construct {
     setStackNameBase(this, mainStackNameBase);
 
     const domainName: string = derivedDomainName;
-    const nameBase: string = derivedS3SafeDataStackName;
+    const nameBase: string   = derivedS3SafeDataStackName;
 
-    const enableAdminUi = props.enableAdminUi ?? true;
+    const enableAdminUi   = props.enableAdminUi ?? true;
     const enableWebmailUi = props.enableWebmailUi ?? true;
 
-    const addressing = MailboxAddressing.resolve(this, props, domainName, { adminUi: enableAdminUi, webmailUi: enableWebmailUi });
+    const addressing                                                = MailboxAddressing.resolve(this, props, domainName, { adminUi: enableAdminUi, webmailUi: enableWebmailUi });
     const { zone: hostedZone, domains: mailboxDomains, edgePrefix } = addressing;
-    this.urls = addressing.urls;
+    this.urls                                                       = addressing.urls;
 
     this.emailQueueProps = encryptionPlan.queues;
 
@@ -148,7 +149,7 @@ export class Mailbox extends Construct {
     this.blobStoreHandle = dataRef.blobStore;
 
     const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
-    this.configTable = configTable;
+    this.configTable                                                                   = configTable;
 
     const auditWriting = new AuditWriting(groups.ops, 'audit-writing', {
       auditLogTable,
@@ -176,7 +177,7 @@ export class Mailbox extends Construct {
 
     const edgeCertificate = edgeStack.edgeCertificate;
 
-    const hasHostedZone = Boolean(props.hostedZoneId);
+    const hasHostedZone      = Boolean(props.hostedZoneId);
     const useCustomCdnDomain = Boolean(props.overrides?.certificates?.cloudFront || hasHostedZone);
 
     const defaultUiCertificate = hasHostedZone ? edgeCertificate : undefined;
@@ -186,9 +187,9 @@ export class Mailbox extends Construct {
 
     // Regional ACM certificates for regional services (API Gateway).
     // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
-    const providedApiCertificate = props.overrides?.certificates?.api;
+    const providedApiCertificate  = props.overrides?.certificates?.api;
     const providedJmapCertificate = props.overrides?.certificates?.jmap;
-    const providedWsCertificate = props.overrides?.certificates?.ws;
+    const providedWsCertificate   = props.overrides?.certificates?.ws;
 
     // If either API certificate is missing and there is a hosted zone, one SAN certificate covers
     // the api, jmap, ws and mcp names and fills the gaps.
@@ -227,7 +228,7 @@ export class Mailbox extends Construct {
     const wsCertificate = providedWsCertificate
       ?? regionalSanCertificate;
 
-    const adminUiOrigins: string[] = [];
+    const adminUiOrigins: string[]   = [];
     const webmailUiOrigins: string[] = [];
 
     let adminUi: AdminUi | undefined;
@@ -302,7 +303,7 @@ export class Mailbox extends Construct {
     };
 
     const jmapApiAddons: IJmapApiAddon[] = (() => {
-      if (typeof authProvider.createJmapApiAddons !== 'function') return [];
+      if (typeof authProvider.createJmapApiAddons !== 'function') {return [];}
       return authProvider.createJmapApiAddons(groups.apis, jmapApiAddonContext);
     })();
 
@@ -375,10 +376,10 @@ export class Mailbox extends Construct {
       ...(webmailUi ? { webmailUi: webmailUi.oauthClient } : {}),
     };
 
-    const extraOrigins = props.extraAllowedOrigins ?? [];
+    const extraOrigins              = props.extraAllowedOrigins ?? [];
     const allowedOriginsForAdminApi = [...adminUiOrigins, ...extraOrigins];
-    const allowedOriginsForJmapApi = [...webmailUiOrigins, ...extraOrigins];
-    const allowedOriginsForCdn = [...adminUiOrigins, ...webmailUiOrigins, ...extraOrigins];
+    const allowedOriginsForJmapApi  = [...webmailUiOrigins, ...extraOrigins];
+    const allowedOriginsForCdn      = [...adminUiOrigins, ...webmailUiOrigins, ...extraOrigins];
 
     const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
       ?? this.oauthClients.adminUi?.groups
@@ -481,8 +482,8 @@ export class Mailbox extends Construct {
     // Extract the edge jmap-blob-download Lambda ARN (strip version qualifier).
     // Version ARN:  arn:aws:lambda:us-east-1:<acct>:function:<name>:<version>
     // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
-    const versionArn = edgeStack.getOutput('jmapBlobDownloadVersionArn');
-    const fnArnParts = Fn.split(':', versionArn);
+    const versionArn      = edgeStack.getOutput('jmapBlobDownloadVersionArn');
+    const fnArnParts      = Fn.split(':', versionArn);
     const edgeFunctionArn = Fn.join(':', [
       Fn.select(0, fnArnParts), // arn
       Fn.select(1, fnArnParts), // aws
@@ -522,7 +523,7 @@ export class Mailbox extends Construct {
       removals,
     });
 
-    const cdnCertificate = hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront;
+    const cdnCertificate                               = hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront;
     const cdnCustomDomain: CdnCustomDomain | undefined =
       useCustomCdnDomain && cdnCertificate ? { name: mailboxDomains.cdn, certificate: cdnCertificate } : undefined;
 
@@ -547,7 +548,7 @@ export class Mailbox extends Construct {
     // tantivySearch is used for side-effects only at this level.
     void tantivySearch;
 
-    this.jmapApi = new JMapApi(groups.apis, 'jmap-api', {
+    this.jmapApi  = new JMapApi(groups.apis, 'jmap-api', {
       configTable,
       itemTable,
       changelogTable,

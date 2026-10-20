@@ -7,15 +7,15 @@
  * group list accepted with a non-string in it would hand the authorization a name it cannot compare.
  */
 
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { load } from '../config';
 
 const VARIABLES = ['SERVICE_NAME', 'USER_POOL_ID', 'AUDIT_EVENTS_QUEUE_URL', 'IDENTITY_PROVISIONER_FUNCTION_NAME', 'ADMIN_GROUPS', 'USER_GROUPS'];
 
 function setMandatoryVariables(): void {
-  process.env.USER_POOL_ID = 'pool-123';
-  process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123/audit';
+  process.env.USER_POOL_ID                       = 'pool-123';
+  process.env.AUDIT_EVENTS_QUEUE_URL             = 'https://sqs.us-east-1.amazonaws.com/123/audit';
   process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
 }
 
@@ -31,7 +31,7 @@ describe('cognito-idp-users-api config', () => {
   it('loads the variables it adds', () => {
     setMandatoryVariables();
     process.env.ADMIN_GROUPS = '["admin","superuser"]';
-    process.env.USER_GROUPS = '["user","viewer"]';
+    process.env.USER_GROUPS  = '["user","viewer"]';
 
     expect(env.tryLoad(load)).toMatchObject({
       config: {

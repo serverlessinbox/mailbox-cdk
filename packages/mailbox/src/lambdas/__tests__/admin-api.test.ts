@@ -13,21 +13,22 @@
  * rename in the wrapper must fail here.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone, PinnedArtifactResolver }                     from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import { AdminApiLambda } from '../admin-api';
-import type { IWebSocketBroadcastPublisher } from '../../api/websocket/websocket';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
-import { DataTable } from '../../data/data-tables';
-import { DataBlobStore } from '../../data/data-blob-store';
+import { Match, Template }                                          from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                                     from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                               from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                   from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                     from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                            from 'aws-cdk-lib';
+
+import type { IWebSocketBroadcastPublisher }                        from '../../api/websocket/websocket';
+import { DataBlobStore }                                            from '../../data/data-blob-store';
+import { DataTable }                                                from '../../data/data-tables';
+import { EmailSendingQueue }                                        from '../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                                         from '../../features/audit-writing/audit-events-queue';
+import { AdminApiLambda }                                           from '../admin-api';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
@@ -46,30 +47,30 @@ describe('AdminApiLambda IAM scoping', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable                 = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const itemTable = new DataTable(new Table(stack, 'item-table', {
+    const itemTable                   = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
+    const auditLogTable               = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
+    const changelogTable              = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
+    const mailFeedbackTable           = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
-    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
+    const blobStore                   = new DataBlobStore(new Bucket(stack, 'blob-store'));
+    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue');
+    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue');
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(
       stack,
       'identity-provisioner-ref',
@@ -120,12 +121,12 @@ describe('AdminApiLambda IAM scoping', () => {
   });
 
   it('scopes ses:TagResource to its own pair of statements: a request carrying the root stack id, or only its name', () => {
-    const template = Template.fromStack(stack);
+    const template    = Template.fromStack(stack);
     const identityArn = {
       'Fn::Join': ['', ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
     };
-    const tagKeys = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
-    const conditions = [
+    const tagKeys     = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
+    const conditions  = [
       Match.objectEquals({
         StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
         'ForAllValues:StringEquals': tagKeys,

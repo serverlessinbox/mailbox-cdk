@@ -6,8 +6,9 @@
  * or a data source that gains a wildcard widens what the deployer may write.
  */
 
-import { Stack } from 'aws-cdk-lib';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket }              from 'aws-cdk-lib/aws-s3';
+import { Stack }               from 'aws-cdk-lib';
+
 import { StaticContentSource } from '../static-content-source';
 
 describe('StaticContentSource', () => {

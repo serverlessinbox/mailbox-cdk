@@ -1,22 +1,23 @@
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import { LambdaClient } from '@aws-sdk/client-lambda';
-import { SQSClient } from '@aws-sdk/client-sqs';
-import type { ApiGatewayV2EventLike } from '@serverlessinbox/mailbox-admin-api';
+import { CognitoIdentityProviderClient }    from '@aws-sdk/client-cognito-identity-provider';
+import { LambdaClient }                     from '@aws-sdk/client-lambda';
+import { SQSClient }                        from '@aws-sdk/client-sqs';
+import type { ApiGatewayV2EventLike }       from '@serverlessinbox/mailbox-admin-api';
 import { env, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
-import { load } from './config';
-import { IdpUserMapper } from './idp-user-mapper';
-import { IdpUsersAdminApi } from './idp-users-admin-api';
-import { CognitoIdpUsersService } from './idp-users.service';
-import { IdpUsersRequestValidator } from './idp-users.validation';
-import { SqsAuditEmitter } from './sqs-audit-emitter';
+import { IdentityProvisionerClient }        from '../shared/identity-provisioner-client';
+
+import { load }                             from './config';
+import { IdpUserMapper }                    from './idp-user-mapper';
+import { IdpUsersAdminApi }                 from './idp-users-admin-api';
+import { CognitoIdpUsersService }           from './idp-users.service';
+import { IdpUsersRequestValidator }         from './idp-users.validation';
+import { SqsAuditEmitter }                  from './sqs-audit-emitter';
 
 const config = env.mustLoad(load);
 
 const cognitoClient = new CognitoIdentityProviderClient({});
-const lambdaClient = new LambdaClient({});
-const sqsClient = new SQSClient({});
+const lambdaClient  = new LambdaClient({});
+const sqsClient     = new SQSClient({});
 
 const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 

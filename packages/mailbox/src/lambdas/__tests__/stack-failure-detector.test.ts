@@ -8,15 +8,16 @@
  * hands it the wrong log group, or lets CDK attach a policy to its role.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { StackFailureDetectorLambda } from '../stack-failure-detector';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { StackFailureDetectorLambda }           from '../stack-failure-detector';
 
 function createDetector(): { stack: cdk.Stack; role: iam.Role } {
-  const stack = new cdk.Stack(new App(), 'TestStack', {
+  const stack            = new cdk.Stack(new App(), 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -25,7 +26,7 @@ function createDetector(): { stack: cdk.Stack; role: iam.Role } {
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-  const role = new iam.Role(stack, 'DetectorRole', {
+  const role             = new iam.Role(stack, 'DetectorRole', {
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
 

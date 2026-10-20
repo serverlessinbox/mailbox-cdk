@@ -1,14 +1,15 @@
-import { Construct } from 'constructs';
-import type { IDataTable } from '../data/data-tables';
-import { Aws, Duration, Stack } from 'aws-cdk-lib';
+import type { IArtifactResolver }                                                         from '@serverlessinbox/artifact-registry-cdk';
 import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
-import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
-import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
-import type { SesReceivingMode } from '../core/email/ses-receiving-mode';
+import type { RootStack }                                                                 from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                                from 'aws-cdk-lib/aws-iam';
+import type { IHostedZone }                                                               from 'aws-cdk-lib/aws-route53';
+import type { IReceiptRuleSet }                                                           from 'aws-cdk-lib/aws-ses';
+import { Aws, Duration, Stack }                                                           from 'aws-cdk-lib';
+import { Construct }                                                                      from 'constructs';
+
+import type { SesReceivingMode }                                                          from '../core/email/ses-receiving-mode';
+import type { IDataTable }                                                                from '../data/data-tables';
+import type { IAuthKeyStoreTable }                                                        from '../features/auth-key-store/auth-key-store-table';
 
 export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
 

@@ -9,14 +9,15 @@
  * assertions are the only guard.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { McpApi } from '../mcp-api';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
+import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda                              from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { McpApi }                               from '../mcp-api';
 
 describe('McpApi', () => {
   let stack: cdk.Stack;
@@ -24,15 +25,15 @@ describe('McpApi', () => {
   let sut: McpApi;
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
+    stack                  = new cdk.Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
-    certificate = new acm.Certificate(stack, 'certificate', {
+    certificate            = new acm.Certificate(stack, 'certificate', {
       domainName: 'mcp.example.com',
       validation: acm.CertificateValidation.fromDns(),
     });
-    const jmapApiGateway = new HttpApi(stack, 'jmap-http-api');
+    const jmapApiGateway   = new HttpApi(stack, 'jmap-http-api');
     const authorizerLambda = new lambda.Function(stack, 'authorizer', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',

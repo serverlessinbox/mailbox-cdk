@@ -6,7 +6,8 @@
  * resources; a wildcard here would let a compromised execution delete other stacks' roles or functions.
  */
 
-import { SweeperExecutionGrants } from '../sweeper-execution-grants';
+import { SweeperExecutionGrants }          from '../sweeper-execution-grants';
+
 import { newTestStack, resolveStatements } from './sweeper-helpers';
 
 describe('SweeperExecutionGrants', () => {
@@ -31,7 +32,7 @@ describe('SweeperExecutionGrants', () => {
   });
 
   it('builds a new list of new statements on every call, so each policy document owns its own', () => {
-    const [first] = grants.statements();
+    const [first]  = grants.statements();
     const [second] = grants.statements();
 
     expect(first).not.toBe(second);

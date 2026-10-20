@@ -1,5 +1,5 @@
 import { DiffReportFormatter } from '../diff-report-formatter';
-import type { TemplateDiff } from '../template-diff';
+import type { TemplateDiff }   from '../template-diff';
 
 /**
  * Pins the text the gate prints: a failing difference and a known non-deterministic one must be

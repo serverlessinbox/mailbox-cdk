@@ -1,6 +1,7 @@
-import { BillingMode, Table, TableProps } from 'aws-cdk-lib/aws-dynamodb';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { BillingMode, Table, TableProps }    from 'aws-cdk-lib/aws-dynamodb';
+import * as iam                              from 'aws-cdk-lib/aws-iam';
+import { Construct }                         from 'constructs';
+
 import { removalPolicyForRetainedResources } from './development-mode';
 
 export class BaseTable extends Table {

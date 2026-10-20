@@ -1,6 +1,6 @@
-import { Construct } from 'constructs';
-import { AdminApiLambda, AuthorizerLambda } from '../../lambdas';
-import type { IDataTable } from '../../data/data-tables';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -10,20 +10,20 @@ import {
   HttpMethod,
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
-import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AUTH_POLICY_ADMIN_API } from '../../auth/types';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as acm                                                    from 'aws-cdk-lib/aws-certificatemanager';
+import { Duration, Aws, CfnResource }                              from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IAdminApiAddon } from '../addons';
+import { AUTH_POLICY_ADMIN_API }                                   from '../../auth/types';
+import type { IDataBlobStore }                                     from '../../data/data-blob-store';
+import type { IDataTable }                                         from '../../data/data-tables';
+import type { IEmailSendingQueue }                                 from '../../email/sending/email-sending-queue';
+import type { IAuditEventsQueue }                                  from '../../features/audit-writing/audit-events-queue';
+import type { IAuthKeyStoreTable }                                 from '../../features/auth-key-store/auth-key-store-table';
+import type { IIdentityProvisioner }                               from '../../lambdas/identity-provisioner';
+import { AdminApiLambda, AuthorizerLambda }                        from '../../lambdas';
+import type { IAdminApiAddon }                                     from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../websocket/websocket';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
-import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
-import type { IIdentityProvisioner } from '../../lambdas/identity-provisioner';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, the
@@ -122,7 +122,7 @@ export class AdminApi extends Construct {
         stage: api.defaultStage!,
       });
 
-      this.url = `https://${props.domainName}`;
+      this.url          = `https://${props.domainName}`;
       this.domainTarget = domain.regionalDomainName;
     } else {
       this.url = api.apiEndpoint;
@@ -145,7 +145,7 @@ export class AdminApi extends Construct {
       vendorAccountIds: props.vendorAccountIds,
       stackIdentityTagKey: props.stackIdentityTagKey,
     });
-    this.apiHandlerLambda = apiHandlerLambda;
+    this.apiHandlerLambda  = apiHandlerLambda;
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,

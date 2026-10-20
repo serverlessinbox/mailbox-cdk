@@ -1,10 +1,12 @@
-import { Construct } from 'constructs';
-import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from "../auth/types";
-import type { IDataTable } from '../data/data-tables';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxUi } from './mailbox-ui';
+import type { IArtifactResolver }                                                               from '@serverlessinbox/artifact-registry-cdk';
+import * as acm                                                                                 from 'aws-cdk-lib/aws-certificatemanager';
+import { Construct }                                                                            from 'constructs';
+
+import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from '../auth/types';
+import type { IDataTable }                                                                      from '../data/data-tables';
+import type { IAuditEventsQueue }                                                               from '../features/audit-writing/audit-events-queue';
+
+import { MailboxUi }                                                                            from './mailbox-ui';
 
 export interface AdminUiProps {
   /**
@@ -98,7 +100,7 @@ export class AdminUi extends MailboxUi {
       artifactResolver: props.artifactResolver,
     });
 
-    const uiHost = this.distributionDomainName;
+    const uiHost     = this.distributionDomainName;
     this.oauthClient = props.authProvider.provisionAdminApiClient({
       name: 'admin-ui',
       callbackUrls: [`https://${uiHost}/auth/callback`],

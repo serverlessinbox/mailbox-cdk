@@ -1,9 +1,10 @@
-import type { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { MailboxDomains } from '../../domains';
+import * as route53          from 'aws-cdk-lib/aws-route53';
+import * as cdk              from 'aws-cdk-lib';
+import type { Construct }    from 'constructs';
+
+import { MailboxDomains }    from '../../domains';
+import type { MailboxUrls }  from '../../mailbox-outputs';
 import type { MailboxProps } from '../../mailbox-props';
-import type { MailboxUrls } from '../../mailbox-outputs';
 
 /** The `MailboxProps` fields the addressing is resolved from. */
 type MailboxAddressingProps = Pick<MailboxProps, 'hostedZoneId' | 'subdomainNamespace' | 'overrides'>;

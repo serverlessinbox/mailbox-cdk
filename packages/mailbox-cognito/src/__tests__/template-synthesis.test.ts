@@ -5,17 +5,18 @@
  * Verifies that identity/auth tier resources are correctly tagged, scoped, and configured.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxCognitoDataStack } from '../cognito/mailbox-cognito-data-stack';
-import { MailboxCognitoDataDeployerWorker } from '../cognito/mailbox-cognito-data-deployer-worker';
-import { MailboxUserPool } from '../auth/mailbox-user-pool';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
-import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
+import { MailboxArtifactResolverFactory }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                     from 'aws-cdk-lib/assertions';
+import * as cdk                                         from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+
+import { MailboxUserPool }                              from '../auth/mailbox-user-pool';
+import { MailboxCognitoDataDeployerWorker }             from '../cognito/mailbox-cognito-data-deployer-worker';
+import { MailboxCognitoDataStack }                      from '../cognito/mailbox-cognito-data-stack';
+import { loadMailboxCognitoArtifactVersions }           from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }             from '../mailbox-cognito-registry-record';
 
 interface CloudFormationResource {
   Type: string;
@@ -51,13 +52,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
    */
   describe('Tag Contract (S2.1)', () => {
     it('cognito-data stack: Cognito resources have tag structure for correlation', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -80,13 +81,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
     });
 
     it('cognito-data stack: declares a mandatory rootStackId parameter and tags the user pool with it', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template   = Template.fromStack(stack);
       const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
       expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
       expect(parameters.rootStackId.Default).toBeUndefined();
@@ -102,13 +103,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
    */
   describe('IAM Wildcard Guard (S2.2)', () => {
     it('cognito-data stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -135,13 +136,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const violations: string[] = [];
 
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
+        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
 
-        const policyDoc = resource.Properties?.PolicyDocument;
+        const policyDoc  = resource.Properties?.PolicyDocument;
         const statements = statementsOfDocument(policyDoc);
 
         for (const stmt of statements) {
-          const actions = actionsOf(stmt);
+          const actions      = actionsOf(stmt);
           const resourceList = resourcesOf(stmt);
 
           for (const action of actions) {
@@ -163,13 +164,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
    */
   describe('Construct Quality (L5)', () => {
     it('cognito-data stack: Template.fromStack succeeds with expected resources', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
 
       // Cognito data stack should have resources
@@ -177,8 +178,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
       expect(Object.keys(resources || {}).length).toBeGreaterThan(0);
 
       // Check for key Cognito resource types
-      const resourceEntries = Object.values(resources || {});
-      const hasUserPool = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Cognito::UserPool'));
+      const resourceEntries   = Object.values(resources || {});
+      const hasUserPool       = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Cognito::UserPool'));
       const hasUserPoolDomain = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Cognito::UserPoolDomain'));
 
       expect(hasUserPool).toBe(true);
@@ -186,13 +187,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
     });
 
     it('cognito-data stack: template has expected parameter schema', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template   = Template.fromStack(stack);
       const parameters = template.toJSON().Parameters || {};
 
       // Cognito data stack should have domain and password policy parameters
@@ -203,13 +204,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
     });
 
     it('cognito-data stack: has Cognito UserPool resource with RETAIN policy', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -229,13 +230,13 @@ describe('Cognito Data Stack Template Synthesis', () => {
     });
 
     it('cognito-data stack: has UserPoolResourceServer for JMAP scopes', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -276,7 +277,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const registryRecord = loadMailboxCognitoRegistryRecord();
+      const registryRecord   = loadMailboxCognitoRegistryRecord();
       const artifactResolver = MailboxArtifactResolverFactory.fromContext(testStack, registryRecord, loadMailboxCognitoArtifactVersions());
 
       new MailboxCognitoDataDeployerWorker(testStack, 'worker', {
@@ -285,7 +286,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         deployedStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',
       });
 
-      const template = Template.fromStack(testStack);
+      const template  = Template.fromStack(testStack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -294,21 +295,21 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Reuse the same wildcard guard as the whole-stack test: no unscoped iam:*/logs:* write
       // on Resource "*" without a Condition (regression guard even though this grant function
       // doesn't currently touch iam actions — catches one being added unscoped later).
-      const writeActions = new Set([
+      const writeActions         = new Set([
         'iam:CreateRole', 'iam:DeleteRole', 'iam:PutRolePolicy', 'iam:DeleteRolePolicy',
         'iam:AttachRolePolicy', 'iam:DetachRolePolicy', 'iam:TagRole', 'iam:UntagRole', 'iam:PassRole',
         'logs:CreateLogGroup', 'logs:DeleteLogGroup', 'logs:CreateLogStream', 'logs:DeleteLogStream',
         'logs:PutRetentionPolicy', 'logs:PutLogEvents',
       ]);
       const violations: string[] = [];
-      let sawCreateStack = false;
+      let sawCreateStack         = false;
 
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
+        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
         const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
 
         for (const stmt of statements) {
-          const actions = actionsOf(stmt);
+          const actions      = actionsOf(stmt);
           const resourceList = resourcesOf(stmt);
 
           for (const action of actions) {
@@ -390,7 +391,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       expect(userPool.oauthDomain).toBeDefined();
 
       // Synthesize and check template resources
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');
@@ -398,7 +399,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // For cognito-auto, there should be Lambda and custom resource resources created
       // (StackHelpers creates a Lambda and CfnCustomResource)
-      let hasLambda = false;
+      let hasLambda         = false;
       let hasCustomResource = false;
 
       for (const [, resource] of Object.entries(resources)) {
@@ -423,7 +424,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const resolver = createTestResolver(stack);
+      const resolver       = createTestResolver(stack);
       const explicitPrefix = 'my-oauth-domain';
 
       // Construct with explicit cognito domain config
@@ -440,7 +441,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       expect(userPool.oauthDomain).toBeDefined();
 
       // Synthesize and check template resources
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');
@@ -487,7 +488,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       expect(userPool.oauthDomain).toBeDefined();
 
       // Synthesize and check template resources
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');
@@ -550,7 +551,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       expect(userPool).toBeDefined();
 
       // Synthesize and verify template is valid
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources in synthesized template');

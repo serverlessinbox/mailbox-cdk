@@ -4,12 +4,13 @@ import {
   UpdateFunctionCodeCommand,
   type LambdaClient,
 } from '@aws-sdk/client-lambda';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { ArtifactLocation } from './release-artifacts';
+import { ServerlessInboxTagKeys }                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import type { ArtifactLocation }                   from './release-artifacts';
 import type { ArtifactVersion, LambdaFunctionArn } from './updater-identifiers';
 
 const MAX_POLL_ATTEMPTS = 30;
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS  = 2000;
 
 /** Waits for the given number of milliseconds. */
 export type Sleep = (milliseconds: number) => Promise<void>;

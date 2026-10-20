@@ -1,6 +1,6 @@
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
 import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                       from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
 
 /** Inputs of {@link TantivyIndexingScheduleDlq}. */
 export interface TantivyIndexingScheduleDlqProps {
@@ -30,7 +30,7 @@ export class TantivyIndexingScheduleDlq extends Construct implements ITantivyInd
   constructor(scope: Construct, id: string, props: TantivyIndexingScheduleDlqProps = {}) {
     super(scope, id);
 
-    this.queue = new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
+    this.queue    = new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
       ...props.queueProps,
       retentionPeriod: Duration.days(14),
     });

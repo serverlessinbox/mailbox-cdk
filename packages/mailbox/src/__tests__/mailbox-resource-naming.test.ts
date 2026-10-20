@@ -9,17 +9,19 @@
  * 2. Double `-data-` in grants: nameBase already contains the data stack name
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxDataStack } from '../data/mailbox-data-stack';
-import { MailboxDataDeployerWorker } from '../data/mailbox-data-deployer-worker';
-import { AuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
-import { WebSocketTable } from '../api/websocket/websocket-table';
-import { PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
+import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash, StackIdentity }          from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { WebSocketTable }                       from '../api/websocket/websocket-table';
+import { MailboxDataDeployerWorker }            from '../data/mailbox-data-deployer-worker';
+import { MailboxDataStack }                     from '../data/mailbox-data-stack';
+import { AuthKeyStoreTable }                    from '../features/auth-key-store/auth-key-store-table';
+
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -33,7 +35,7 @@ describe('Mailbox Resource Naming', () => {
       // The actual main-stack Mailbox test is integration-level; this unit test
       // validates the infrastructure component.
 
-      const app = new App();
+      const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -55,7 +57,7 @@ describe('Mailbox Resource Naming', () => {
         expect(bucket.explicitBucketName).toBeDefined();
 
         // Verify the bucket was created successfully (the fix ensures registry lookup works)
-        const template = Template.fromStack(stack);
+        const template  = Template.fromStack(stack);
         const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
         if (resources) {
           let bucketFound = false;
@@ -79,7 +81,7 @@ describe('Mailbox Resource Naming', () => {
       // AuthKeyStoreTable does NOT use the nameBase registry; StackNamedTable falls back to
       // Aws.STACK_NAME, so the synthesized TableName must reference AWS::StackName (not the
       // data-stack nameBase parameter).
-      const app = new App();
+      const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -87,7 +89,7 @@ describe('Mailbox Resource Naming', () => {
 
       const authKeyStore = new AuthKeyStoreTable(stack, 'auth-key-store');
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
       const logicalId = 'authkeystoreB751EF55';
@@ -107,7 +109,7 @@ describe('Mailbox Resource Naming', () => {
       // WebSocketTable's child table id is 'websocket' (see cdk-construct-pattern's "Moving
       // an explicitly named non-persistent resource"), so the CDK-generated logical ID is
       // derived from the construct path rather than a pinned override.
-      const app = new App();
+      const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -115,7 +117,7 @@ describe('Mailbox Resource Naming', () => {
 
       const websocketTable = new WebSocketTable(stack, 'websocket');
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
       const logicalId = 'websocketA7355EF4';
@@ -137,7 +139,7 @@ describe('Mailbox Resource Naming', () => {
     // resource pattern that appends a hardcoded '-data-' segment on top produces a broken
     // double '-data-data-' ARN. Assert against the real synthesized worker, not the source text.
     function synthDataDeployerWorker(nameBase: string): Template {
-      const app = new App();
+      const app   = new App();
       const stack = new cdk.Stack(app, 'TestStack', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -146,7 +148,7 @@ describe('Mailbox Resource Naming', () => {
       const packages: Record<string, ArtifactPin> = {
         'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       };
-      const artifactResolver = new PinnedArtifactResolver({
+      const artifactResolver                      = new PinnedArtifactResolver({
         packages,
         location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
@@ -173,7 +175,7 @@ describe('Mailbox Resource Naming', () => {
     }
 
     it('grants DynamoDB table access with correct resource pattern (no double -data-)', () => {
-      const template = synthDataDeployerWorker('test-data');
+      const template  = synthDataDeployerWorker('test-data');
       const resources = resourcesForAction(template, 'dynamodb:CreateTable');
 
       // nameBase ('test-data') is joined after the literal Aws.ACCOUNT_ID Ref token, so the
@@ -191,7 +193,7 @@ describe('Mailbox Resource Naming', () => {
     });
 
     it('grants S3 bucket access with correct resource pattern (no double -data-)', () => {
-      const template = synthDataDeployerWorker('test-data');
+      const template  = synthDataDeployerWorker('test-data');
       const resources = resourcesForAction(template, 's3:CreateBucket');
 
       // stack.account resolves to a literal (explicit env on the test stack), so this resource
@@ -202,13 +204,13 @@ describe('Mailbox Resource Naming', () => {
 
   describe('Data Stack: Table and Bucket Naming', () => {
     it('should synthesize all DynamoDB table names with nameBase parameter reference', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -216,12 +218,12 @@ describe('Mailbox Resource Naming', () => {
 
       // Expected table logical IDs from data stack
       const expectedTableIds = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
-      let tablesFound = 0;
+      let tablesFound        = 0;
 
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table')) continue;
+        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table')) {continue;}
 
-        if (!expectedTableIds.includes(logicalId)) continue;
+        if (!expectedTableIds.includes(logicalId)) {continue;}
         tablesFound++;
 
         const tableName = resource.Properties?.TableName;
@@ -251,13 +253,13 @@ describe('Mailbox Resource Naming', () => {
     });
 
     it('should synthesize blob-store bucket name with nameBase parameter reference', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
         env: { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -266,9 +268,9 @@ describe('Mailbox Resource Naming', () => {
       // Find blob store bucket
       let blobStoreFound = false;
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) continue;
+        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
 
-        if (logicalId !== 'blobStore') continue;
+        if (logicalId !== 'blobStore') {continue;}
         blobStoreFound = true;
 
         const bucketName = resource.Properties?.BucketName;

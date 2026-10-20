@@ -1,7 +1,8 @@
-import { Bucket, BucketProps, IBucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket, BucketProps, IBucket }             from 'aws-cdk-lib/aws-s3';
 import { Aws, IResolvable, Fn, Lazy, Stack, Token } from 'aws-cdk-lib';
-import { Construct, IConstruct } from 'constructs';
-import { getStackNameBase } from './naming/stack-name-base-registry';
+import { Construct, IConstruct }                    from 'constructs';
+
+import { getStackNameBase }                         from './naming/stack-name-base-registry';
 
 export interface INamedBucket extends IBucket {
   readonly explicitBucketName: string;
@@ -26,7 +27,7 @@ function resolveBucketNamePrefix(scope: IConstruct): string {
   return Lazy.string({
     produce: () => {
       const registered = getStackNameBase(stack);
-      const nameBase = registered ? Token.asString(registered) : Aws.STACK_NAME;
+      const nameBase   = registered ? Token.asString(registered) : Aws.STACK_NAME;
       return Fn.join('', [Aws.ACCOUNT_ID, '-', nameBase, '-']);
     },
   });

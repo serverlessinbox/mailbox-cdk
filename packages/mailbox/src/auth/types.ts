@@ -1,7 +1,9 @@
-import { SecretValue } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { Permission } from './jmap-scopes';
+import { SecretValue }                                                     from 'aws-cdk-lib';
+import { Construct }                                                       from 'constructs';
+
 import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '../api/addons';
+
+import { Permission }                                                      from './jmap-scopes';
 
 // ---- Names / keys used in the config table ----
 

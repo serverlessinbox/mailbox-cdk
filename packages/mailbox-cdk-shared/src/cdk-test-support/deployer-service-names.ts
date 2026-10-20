@@ -1,7 +1,9 @@
-import { Template } from 'aws-cdk-lib/assertions';
-import * as t from 'typanion';
+import { Template }             from 'aws-cdk-lib/assertions';
+import * as t                   from 'typanion';
+
 import { DeployerWorkerLambda } from '../deployer-infra/deployer-worker-lambda';
-import { newProbeStack } from './probe-stack';
+
+import { newProbeStack }        from './probe-stack';
 
 const isFunctionResource = t.isPartial({
   Properties: t.isPartial({

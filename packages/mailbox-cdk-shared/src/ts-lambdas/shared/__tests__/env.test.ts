@@ -5,6 +5,7 @@
  */
 
 import * as t from 'typanion';
+
 import {
   mustLoad,
   tryLoad,
@@ -121,7 +122,7 @@ describe('env', () => {
     });
 
     it('records the message of a parser that throws something that is not an Error', () => {
-      process.env.COUNT = '1';
+      process.env.COUNT       = '1';
       const parseThrowingText = (): number => {
         throw 'plain text';
       };

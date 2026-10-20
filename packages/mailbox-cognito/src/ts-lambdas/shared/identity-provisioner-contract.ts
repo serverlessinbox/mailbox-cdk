@@ -1,8 +1,8 @@
-import * as t from 'typanion';
-import { isAccountId, isTenantId, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { isAccountId, isTenantId, type TenantId }                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                         from 'typanion';
 
 import { isClientId, type ClientId, type GroupName, type UserSubject, type Username } from './cognito-identifiers';
-import { isPrincipalId, type EmailAddress, type RedirectUri } from './identity-identifiers';
+import { isPrincipalId, type EmailAddress, type RedirectUri }                         from './identity-identifiers';
 
 /**
  * The invoke contract of the `identity-provisioner` Lambda: one request per `kind` it answers, and the response
@@ -64,8 +64,8 @@ export const isResolveTenantResponse = t.isObject({ tenantId: isTenantId });
 /** The tenant the request belongs to. */
 export type ResolveTenantResponse = t.InferType<typeof isResolveTenantResponse>;
 
-const isDcrProceedResponse = t.isObject({ status: t.isLiteral('proceed') });
-const isDcrDedupHitResponse = t.isObject({
+const isDcrProceedResponse     = t.isObject({ status: t.isLiteral('proceed') });
+const isDcrDedupHitResponse    = t.isObject({
   status: t.isLiteral('dedup_hit'),
   clientId: isClientId,
   scope: t.isOptional(t.isString()),

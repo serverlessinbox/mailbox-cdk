@@ -1,5 +1,7 @@
-import * as t from 'typanion';
+import * as t              from 'typanion';
+
 import { ExpectedFailure } from '../shared/expected-failure';
+
 import {
   isCfnRequest,
   isCfnTarget,

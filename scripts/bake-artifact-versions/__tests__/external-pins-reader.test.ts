@@ -1,7 +1,8 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { ExternalPinsReader } from '../external-pins-reader';
+import { tmpdir }                     from 'node:os';
+import * as path                      from 'node:path';
+
+import { ExternalPinsReader }         from '../external-pins-reader';
 
 /**
  * Pins that the output of `resolve-artifacts` is read in the `{ version, zone }` shape and that
@@ -10,11 +11,11 @@ import { ExternalPinsReader } from '../external-pins-reader';
  */
 describe('ExternalPinsReader', () => {
   const workDir = mkdtempSync(path.join(tmpdir(), 'external-pins-reader-'));
-  const reader = new ExternalPinsReader();
+  const reader  = new ExternalPinsReader();
 
   it('reads the pins resolve-artifacts wrote', async () => {
     const pinsFile = path.join(workDir, 'resolved.json');
-    const pins = { 'mailbox-go': { version: '1.2.3', zone: 'regional' } };
+    const pins     = { 'mailbox-go': { version: '1.2.3', zone: 'regional' } };
     writeFileSync(pinsFile, JSON.stringify(pins));
 
     expect(await reader.readExternalPins(pinsFile)).toEqual(pins);

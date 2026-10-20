@@ -1,9 +1,9 @@
-import { context } from 'esbuild';
-import { glob } from 'glob';
-import { join } from 'path';
+import { context }                      from 'esbuild';
+import { glob }                         from 'glob';
+import { join }                         from 'path';
 
-import { jsiiIgnorePlugin } from './plugins/jsii-ignore';
-import { localLibImportPlugin } from './plugins/local-lib-import';
+import { jsiiIgnorePlugin }             from './plugins/jsii-ignore';
+import { localLibImportPlugin }         from './plugins/local-lib-import';
 import { typescriptDeclarationsPlugin } from './plugins/typescript-declarations';
 
 const sourcesWithoutDeclarationsGlob = 'src/**/*!(.d).ts';
@@ -16,7 +16,7 @@ const sourcesWithoutDeclarationsGlob = 'src/**/*!(.d).ts';
  */
 export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: string[]): Promise<void> {
   const ignorePatterns = jsiiExcludes.map(p => join(absoluteFolder, p));
-  const entryPoints = await glob(join(absoluteFolder, sourcesWithoutDeclarationsGlob), { ignore: ignorePatterns });
+  const entryPoints    = await glob(join(absoluteFolder, sourcesWithoutDeclarationsGlob), { ignore: ignorePatterns });
 
   const tsToJs = await context({
     plugins: [

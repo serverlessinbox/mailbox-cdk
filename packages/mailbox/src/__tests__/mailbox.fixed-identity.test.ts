@@ -11,13 +11,15 @@
  * on that creates these resources.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
-import { CloudFormationResource } from './iam-test-helpers';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { Mailbox }                       from '../mailbox';
+
+import { CloudFormationResource }        from './iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -102,7 +104,7 @@ function isUniquelyNamed(resource: CloudFormationResource): boolean {
 }
 
 function uniquelyNamedLogicalIds(): string[] {
-  const app = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
+  const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
   const stack = new cdk.Stack(app, 'TestFixedIdentity', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),

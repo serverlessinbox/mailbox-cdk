@@ -10,13 +10,14 @@
  * on the bootstrap custom resource that writes the row it reads.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Mailbox } from '../mailbox';
-import type { MailboxProps } from '../mailbox-props';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import type { MailboxProps }             from '../mailbox-props';
+import { Mailbox }                       from '../mailbox';
 
 interface SynthesizedResource {
   Properties?: Record<string, unknown>;
@@ -40,7 +41,7 @@ describe('Mailbox OAuth client wiring', () => {
   }
 
   function synthesize(extraProps: Partial<MailboxProps> = {}): { mailbox: Mailbox; template: Template } {
-    const app = new App({
+    const app   = new App({
       context: {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
@@ -79,7 +80,7 @@ describe('Mailbox OAuth client wiring', () => {
 
   describe('with both UIs enabled', () => {
     it('sends the admin and webmail client blocks, and no jmapUi block, to the bootstrap resource', () => {
-      const { template } = synthesize();
+      const { template }  = synthesize();
       const [, bootstrap] = bootstrapResource(template);
 
       expect(bootstrap.Properties).toMatchObject({
@@ -99,7 +100,7 @@ describe('Mailbox OAuth client wiring', () => {
     });
 
     it('makes the webmail token-exchange function depend on the bootstrap custom resource', () => {
-      const { template } = synthesize();
+      const { template }         = synthesize();
       const [bootstrapLogicalId] = bootstrapResource(template);
       const webmailTokenExchange = functionsByEnvironment(template, 'SERVICE_NAME', 'idp-token-exchange-webmail-ui');
 
@@ -111,7 +112,7 @@ describe('Mailbox OAuth client wiring', () => {
   describe('with the Webmail UI disabled', () => {
     it('synthesizes without a Webmail UI URL or client block, and still creates the JMAP API', () => {
       const { mailbox, template } = synthesize({ enableWebmailUi: false });
-      const [, bootstrap] = bootstrapResource(template);
+      const [, bootstrap]         = bootstrapResource(template);
 
       expect(mailbox.urls.webmailUi).toBeUndefined();
       expect(bootstrap.Properties?.oauthClients).not.toHaveProperty('webmailUi');
@@ -121,7 +122,7 @@ describe('Mailbox OAuth client wiring', () => {
 
   describe('with the Admin UI disabled', () => {
     it('leaves out the admin client block and still sends the webmail block', () => {
-      const { template } = synthesize({ enableAdminUi: false });
+      const { template }  = synthesize({ enableAdminUi: false });
       const [, bootstrap] = bootstrapResource(template);
 
       expect(bootstrap.Properties?.oauthClients).toMatchObject({ webmailUi: { clientId: 'test-webmail-ui' } });
@@ -129,7 +130,7 @@ describe('Mailbox OAuth client wiring', () => {
     });
 
     it('still sends the Admin API authorizer policy', () => {
-      const { template } = synthesize({ enableAdminUi: false });
+      const { template }  = synthesize({ enableAdminUi: false });
       const [, bootstrap] = bootstrapResource(template);
 
       expect(bootstrap.Properties?.authPolicies).toMatchObject({ adminApi: { audiences: ['admin-api'] } });
@@ -143,7 +144,7 @@ describe('Mailbox OAuth client wiring', () => {
     });
 
     it('gives the identity provisioner no ADMIN_UI_URL instead of an empty one', () => {
-      const { template } = synthesize({ enableAdminUi: false });
+      const { template }        = synthesize({ enableAdminUi: false });
       const identityProvisioner = functionsByEnvironment(template, 'SERVICE_NAME', 'identity-provisioner');
 
       expect(identityProvisioner).toHaveLength(1);

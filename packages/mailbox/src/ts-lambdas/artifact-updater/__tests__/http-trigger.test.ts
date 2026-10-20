@@ -6,11 +6,13 @@
  * with the reason; a request met by a bad configuration is answered 500 naming the problem and starts nothing.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { HttpTrigger } from '../http-trigger';
-import type { HttpTriggerEvent } from '../updater-event';
+import { InvokeCommand, LambdaClient }    from '@aws-sdk/client-lambda';
+import { LoggerBuffer }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                     from 'aws-sdk-client-mock';
+
+import { HttpTrigger }                    from '../http-trigger';
+import type { HttpTriggerEvent }          from '../updater-event';
+
 import { BAD_CONFIG_ERROR, httpApiEvent } from './updater-helpers';
 
 describe('HttpTrigger', () => {
@@ -109,7 +111,7 @@ describe('HttpTrigger', () => {
   describe('answerFailure', () => {
     it('answers 500 with the reason, and logs the error name and message', () => {
       const denied = new Error('not authorized');
-      denied.name = 'AccessDeniedException';
+      denied.name  = 'AccessDeniedException';
 
       const response = triggerFor(httpApiEvent('POST', '/artifact-updates/trigger')).answerFailure(denied);
 

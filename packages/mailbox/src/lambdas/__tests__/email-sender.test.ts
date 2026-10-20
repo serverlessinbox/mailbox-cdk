@@ -10,19 +10,20 @@
  *   queue it owns the wiring for (grant-concept Phase 2A).
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { EmailSenderLambda } from '../email-sender';
-import { EmailSendingQueue } from '../../email/sending/email-sending-queue';
-import { DataTable } from '../../data/data-tables';
-import { DataBlobStore } from '../../data/data-blob-store';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { SqsActions }                           from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataBlobStore }                        from '../../data/data-blob-store';
+import { DataTable }                            from '../../data/data-tables';
+import { EmailSendingQueue }                    from '../../email/sending/email-sending-queue';
+import { EmailSenderLambda }                    from '../email-sender';
 
 describe('EmailSenderLambda IAM scoping', () => {
   let app: App;
@@ -41,23 +42,23 @@ describe('EmailSenderLambda IAM scoping', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable    = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const itemTable = new DataTable(new Table(stack, 'item-table', {
+    const itemTable      = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const blobStore = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    submissionQueue = new EmailSendingQueue(stack, 'email-submissions-queue');
+    const blobStore      = new DataBlobStore(new Bucket(stack, 'blob-store'));
+    submissionQueue      = new EmailSendingQueue(stack, 'email-submissions-queue');
 
     new EmailSenderLambda(stack, 'email-sender', {
       configTable,
@@ -125,7 +126,7 @@ describe('EmailSenderLambda IAM scoping', () => {
   });
 
   it('grants the role exactly the SqsActions.consume statement on the email-submissions queue', () => {
-    const template = Template.fromStack(stack);
+    const template          = Template.fromStack(stack);
     const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);

@@ -6,7 +6,8 @@
  * is what an operator reads to find the broken distribution setting; a default for the region would hide it.
  */
 
-import { extractConfig } from '../config';
+import { extractConfig }                         from '../config';
+
 import { AUTH_KEY_STORE_TABLE, originRequestOf } from './jmap-blob-download-helpers';
 
 describe('extractConfig', () => {

@@ -1,6 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { PinsByPackage } from './baked-package';
+import { readFile }               from 'node:fs/promises';
+
+import type { PinsByPackage }     from './baked-package';
 
 /**
  * Reads the output of `artifact-registry resolve-artifacts`: the pins of the externally released

@@ -1,4 +1,4 @@
-import { parseArn } from '../shared/arn';
+import { parseArn }                      from '../shared/arn';
 import { isBrandedString, type Branded } from '../shared/branded';
 
 /**

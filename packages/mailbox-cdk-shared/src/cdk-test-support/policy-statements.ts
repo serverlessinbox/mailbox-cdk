@@ -1,5 +1,5 @@
 import type { Template } from 'aws-cdk-lib/assertions';
-import * as t from 'typanion';
+import * as t            from 'typanion';
 
 const isIntrinsicOrString = t.isOneOf([t.isString(), t.isPartial({})]);
 

@@ -8,16 +8,17 @@
  * env var is present.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AuthKeyStoreUpdaterLambda } from '../auth-key-store-updater';
-import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { AuthKeyStoreTable }                    from '../../features/auth-key-store/auth-key-store-table';
+import { AuthKeyStoreUpdaterLambda }            from '../auth-key-store-updater';
 
 describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
@@ -35,7 +36,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -81,7 +82,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
   });
 
   it('grants no Scan/PartiQL and no Deny on the auth-key-store table', () => {
-    const statements = authKeyStoreStatements();
+    const statements  = authKeyStoreStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');

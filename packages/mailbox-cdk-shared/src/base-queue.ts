@@ -1,7 +1,8 @@
-import { Construct } from 'constructs';
 import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
-import { Duration } from 'aws-cdk-lib';
-import { makePhysicalName } from './naming/resource-names';
+import { Duration }                           from 'aws-cdk-lib';
+import { Construct }                          from 'constructs';
+
+import { makePhysicalName }                   from './naming/resource-names';
 
 /** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional. */
 export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {

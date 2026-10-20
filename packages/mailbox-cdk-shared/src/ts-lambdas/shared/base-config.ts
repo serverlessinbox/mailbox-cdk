@@ -1,4 +1,4 @@
-import * as env from './env';
+import * as env                               from './env';
 import { parseLogLevelStrict, type LogLevel } from './logger-buffer';
 
 /** The environment every Lambda reads: the level of its logger and the service name its logs carry. */

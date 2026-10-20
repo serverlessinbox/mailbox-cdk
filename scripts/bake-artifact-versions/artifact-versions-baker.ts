@@ -1,8 +1,9 @@
-import { writeFile } from 'node:fs/promises';
-import { PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import { writeFile }                        from 'node:fs/promises';
+
 import type { BakedPackage, PinsByPackage } from './baked-package';
-import type { BumpedVersionReader } from './bumped-version-reader';
-import type { ExternalPinsReader } from './external-pins-reader';
+import type { BumpedVersionReader }         from './bumped-version-reader';
+import type { ExternalPinsReader }          from './external-pins-reader';
 
 /**
  * Writes the `artifact-versions.json` a publishable package ships: the externally released
@@ -18,7 +19,7 @@ export class ArtifactVersionsBaker {
 
   public async bake(bakedPackage: BakedPackage): Promise<void> {
     const externalPins = await this.readExternalPins(bakedPackage);
-    const ownPins = await this.readOwnPins(bakedPackage);
+    const ownPins      = await this.readOwnPins(bakedPackage);
 
     for (const key of Object.keys(ownPins)) {
       if (key in externalPins) {
@@ -41,7 +42,7 @@ export class ArtifactVersionsBaker {
   private async readOwnPins(bakedPackage: BakedPackage): Promise<PinsByPackage> {
     const ownPins: PinsByPackage = {};
     for (const ownArtifact of bakedPackage.ownArtifacts) {
-      const version = await this.bumpedVersionReader.readBumpedVersion(ownArtifact.manifestDirectory);
+      const version            = await this.bumpedVersionReader.readBumpedVersion(ownArtifact.manifestDirectory);
       ownPins[ownArtifact.key] = { version, zone: ownArtifact.zone };
     }
     return ownPins;

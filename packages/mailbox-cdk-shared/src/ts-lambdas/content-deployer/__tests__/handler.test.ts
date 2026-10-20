@@ -7,9 +7,17 @@
  * response is read from the request the handler sends to the ResponseURL.
  */
 
-import { Writable } from 'stream';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
+import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
+import type * as CloudFrontSdk     from '@aws-sdk/client-cloudfront';
+import type * as S3Sdk             from '@aws-sdk/client-s3';
+import { mockClient }              from 'aws-sdk-client-mock';
+import type { AwsClientStub }      from 'aws-sdk-client-mock';
+import type * as Https             from 'https';
+import { Writable }                from 'stream';
+
+import type { SmokeTestProbe }     from '../../shared/with-smoke-test';
+import type * as HandlerModule     from '../handler';
+
 import {
   PHYSICAL_RESOURCE_ID,
   dataSource,
@@ -19,12 +27,6 @@ import {
   fakeUpdateEvent,
 } from './content-deployer-helpers';
 import type { FakeCfnEvent } from './content-deployer-helpers';
-import type * as Https from 'https';
-import type * as S3Sdk from '@aws-sdk/client-s3';
-import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
-import type * as CloudFrontSdk from '@aws-sdk/client-cloudfront';
-import type * as HandlerModule from '../handler';
-import type { SmokeTestProbe } from '../../shared/with-smoke-test';
 
 jest.mock('https', () => ({
   request: jest.fn(),
@@ -48,7 +50,7 @@ interface Fakes {
 }
 
 const GOOD_ENVIRONMENT = { SERVICE_NAME: 'content-deployer' };
-const BAD_ENVIRONMENT = { SERVICE_NAME: 'content-deployer', LOG_LEVEL: 'verbose' };
+const BAD_ENVIRONMENT  = { SERVICE_NAME: 'content-deployer', LOG_LEVEL: 'verbose' };
 
 describe('content-deployer handler', () => {
   const originalEnv = process.env;
@@ -84,7 +86,7 @@ describe('content-deployer handler', () => {
     const cloudFormationSdk = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const cloudFrontSdk = require('@aws-sdk/client-cloudfront') as typeof CloudFrontSdk;
-    const fakes: Fakes = {
+    const fakes: Fakes  = {
       s3: mockClient(s3Sdk.S3Client),
       cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
       cloudFront: mockClient(cloudFrontSdk.CloudFrontClient),
@@ -109,7 +111,7 @@ describe('content-deployer handler', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result = await handler(event, fakeLambdaContext());
+    const result      = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);

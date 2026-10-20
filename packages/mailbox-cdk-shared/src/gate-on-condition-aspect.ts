@@ -1,5 +1,5 @@
+import * as cdk       from 'aws-cdk-lib';
 import { IConstruct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
 
 /**
  * Aspect that gates all CfnResource children of a construct onto a condition,
@@ -23,7 +23,7 @@ export class GateOnConditionAspect implements cdk.IAspect {
 
   visit(node: IConstruct): void {
     // Skip the condition itself (a condition cannot carry a condition)
-    if (node === this.condition) return;
+    if (node === this.condition) {return;}
 
     // Gate every CfnResource in the subtree
     if (cdk.CfnResource.isCfnResource(node)) {

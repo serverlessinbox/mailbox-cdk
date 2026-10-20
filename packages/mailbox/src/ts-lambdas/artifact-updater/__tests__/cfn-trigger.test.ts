@@ -10,13 +10,15 @@
  * CloudFormation client returns; the response is read from the request sent to the ResponseURL.
  */
 
-import { Writable } from 'stream';
-import * as https from 'https';
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
-import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { mockClient } from 'aws-sdk-client-mock';
-import { CfnTrigger } from '../cfn-trigger';
-import { UpdateCycle } from '../update-cycle';
+import type { CloudFormationCustomResourceEvent }                        from 'aws-lambda';
+import { mockClient }                                                    from 'aws-sdk-client-mock';
+import * as https                                                        from 'https';
+import { Writable }                                                      from 'stream';
+
+import { CfnTrigger }                                                    from '../cfn-trigger';
+import { UpdateCycle }                                                   from '../update-cycle';
+
 import {
   BAD_CONFIG_ERROR,
   badConfigCycle,

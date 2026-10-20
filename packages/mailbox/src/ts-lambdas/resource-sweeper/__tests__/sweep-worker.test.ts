@@ -4,9 +4,10 @@
  * are fakes.
  */
 
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer }                                                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { SweepWorker } from '../sweep-worker';
+import { SweepWorker }                                                                                                    from '../sweep-worker';
 
 /** A sweeper fake that records the input it was handed and answers a fixed result after logging a trace line. */
 class FakeSweeper<TInput> implements TargetSweeper<TInput> {
@@ -26,12 +27,12 @@ class FakeSweeper<TInput> implements TargetSweeper<TInput> {
 
 const DONE: TargetResult = { target: 'cert', status: 'done' };
 
-const CERT_INPUT: CertRemovalInput = {
+const CERT_INPUT: CertRemovalInput                     = {
   certArn: 'arn:aws:acm:us-west-2:123456789012:certificate/abc',
   rootStackName: 'test-stack',
   rootStackId: 'guid-1',
 };
-const EDGE_INPUT: EdgeFunctionRemovalInput = {
+const EDGE_INPUT: EdgeFunctionRemovalInput             = {
   edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge',
   rootStackName: 'test-stack',
   rootStackId: 'guid-1',
@@ -47,11 +48,11 @@ const DETECTOR_INPUT: StackFailureDetectorRemovalInput = {
 };
 
 function workerWith(results: { cert?: TargetResult; edge?: TargetResult; detector?: TargetResult } = {}) {
-  const logger = new LoggerBuffer('resource-sweeper-worker', 'error');
-  const cert = new FakeSweeper<CertRemovalInput>(results.cert ?? DONE, logger);
-  const edge = new FakeSweeper<EdgeFunctionRemovalInput>(results.edge ?? DONE, logger);
+  const logger   = new LoggerBuffer('resource-sweeper-worker', 'error');
+  const cert     = new FakeSweeper<CertRemovalInput>(results.cert ?? DONE, logger);
+  const edge     = new FakeSweeper<EdgeFunctionRemovalInput>(results.edge ?? DONE, logger);
   const detector = new FakeSweeper<StackFailureDetectorRemovalInput>(results.detector ?? DONE, logger);
-  const worker = new SweepWorker(logger, cert, edge, detector);
+  const worker   = new SweepWorker(logger, cert, edge, detector);
   return { worker, cert, edge, detector };
 }
 

@@ -1,11 +1,13 @@
-import type { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { S3Client } from '@aws-sdk/client-s3';
+import type { CloudFrontClient }                        from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                from '@aws-sdk/client-s3';
+
+import { invalidateCloudFront }                         from '../shared/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
-import type { CustomResourceRequest } from '../shared/custom-resource-request';
-import { ExpectedFailure } from '../shared/expected-failure';
-import { hasTimeLeft, type InvocationDeadline } from '../shared/invocation-deadline';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import { invalidateCloudFront } from '../shared/cloudfront-invalidation';
+import type { CustomResourceRequest }                   from '../shared/custom-resource-request';
+import { ExpectedFailure }                              from '../shared/expected-failure';
+import { hasTimeLeft, type InvocationDeadline }         from '../shared/invocation-deadline';
+import type { LoggerBuffer }                            from '../shared/logger-buffer';
+
 import {
   isContentDeployerResourceProperties,
   type ContentDeployerResourceProperties,
@@ -39,9 +41,9 @@ export class ContentDeployerRequestHandler {
   private readonly logger: LoggerBuffer;
 
   constructor(s3: S3Client, cloudFront: CloudFrontClient, logger: LoggerBuffer) {
-    this.s3 = s3;
+    this.s3         = s3;
     this.cloudFront = cloudFront;
-    this.logger = logger;
+    this.logger     = logger;
   }
 
   async handle(request: CustomResourceRequest, deadline: InvocationDeadline): Promise<ContentDeployerResponse> {
@@ -52,9 +54,9 @@ export class ContentDeployerRequestHandler {
       return this.answerDeleted(request);
     }
 
-    const properties = this.readProperties(request);
-    const targetBucket = this.readTargetBucket(properties);
-    const objectsWritten = await this.deploySources(properties.sources ?? [], targetBucket, deadline);
+    const properties       = this.readProperties(request);
+    const targetBucket     = this.readTargetBucket(properties);
+    const objectsWritten   = await this.deploySources(properties.sources ?? [], targetBucket, deadline);
     const cacheInvalidated = await this.invalidateCache(request, properties, deadline);
 
     return this.answerDeployed(request, objectsWritten, cacheInvalidated);

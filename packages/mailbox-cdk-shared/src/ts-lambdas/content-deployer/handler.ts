@@ -1,23 +1,25 @@
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import { S3Client } from '@aws-sdk/client-s3';
-import { wrapHandler } from 'aws-custom-resources';
-import { withSmokeTest } from '../shared/with-smoke-test';
-import { emitManualFinalize } from '../shared/manual-finalize';
-import { answerRequestWithBadConfig } from '../shared/bad-config-answer';
-import { toStackId } from '../shared/custom-resource-identifiers';
-import type { CustomResourceRequest } from '../shared/custom-resource-request';
-import * as env from '../shared/env';
-import { ExpectedFailure } from '../shared/expected-failure';
-import { FailedRequestAnswerer } from '../shared/failed-request-answerer';
-import { LoggerBuffer } from '../shared/logger-buffer';
-import { load } from './config';
+import { CloudFormationClient }          from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }              from '@aws-sdk/client-cloudfront';
+import { S3Client }                      from '@aws-sdk/client-s3';
+import { wrapHandler }                   from 'aws-custom-resources';
+
+import { answerRequestWithBadConfig }    from '../shared/bad-config-answer';
+import { toStackId }                     from '../shared/custom-resource-identifiers';
+import type { CustomResourceRequest }    from '../shared/custom-resource-request';
+import * as env                          from '../shared/env';
+import { ExpectedFailure }               from '../shared/expected-failure';
+import { FailedRequestAnswerer }         from '../shared/failed-request-answerer';
+import { LoggerBuffer }                  from '../shared/logger-buffer';
+import { emitManualFinalize }            from '../shared/manual-finalize';
+import { withSmokeTest }                 from '../shared/with-smoke-test';
+
+import { load }                          from './config';
 import { ContentDeployerRequestHandler } from './content-deployer-request-handler';
 
 const { config, error: configError } = env.tryLoad(load);
-const s3 = new S3Client({});
-const cloudFront = new CloudFrontClient({});
-const cloudFormation = new CloudFormationClient({});
+const s3                             = new S3Client({});
+const cloudFront                     = new CloudFrontClient({});
+const cloudFormation                 = new CloudFormationClient({});
 
 export const handler = withSmokeTest(wrapHandler(async (event, context) => {
   const request: CustomResourceRequest = event;
@@ -28,8 +30,8 @@ export const handler = withSmokeTest(wrapHandler(async (event, context) => {
 
   emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
-  const requestHandler = new ContentDeployerRequestHandler(s3, cloudFront, logger);
+  const logger                = new LoggerBuffer(config.serviceName, config.logLevel);
+  const requestHandler        = new ContentDeployerRequestHandler(s3, cloudFront, logger);
   const failedRequestAnswerer = new FailedRequestAnswerer(cloudFormation, logger);
 
   try {

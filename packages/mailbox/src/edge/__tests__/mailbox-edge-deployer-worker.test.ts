@@ -7,22 +7,23 @@
  * certificates and functions of other stacks, and one that is too narrow fails the edge deployment.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxEdgeDeployerWorker } from '../mailbox-edge-deployer-worker';
-import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
 import { renderWithTokens, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                                  from 'aws-cdk-lib/assertions';
+
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../__tests__/deployer-test-helpers';
+import { MailboxEdgeDeployerWorker }           from '../mailbox-edge-deployer-worker';
+import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
 
-const EDGE_REGION = 'us-east-1';
-const EDGE_STACK_ARN = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge*/*';
-const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
-const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
+const EDGE_REGION                 = 'us-east-1';
+const EDGE_STACK_ARN              = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge*/*';
+const TEMPLATE_OBJECT_ARN         = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
+const ARTIFACT_OBJECT_ARN         = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
-const ROOT_STACK_TAG = 'serverless-inbox:root-stack';
-const ROOT_STACK_ID_TAG = 'serverless-inbox:root-stack-id';
+const ROOT_STACK_TAG              = 'serverless-inbox:root-stack';
+const ROOT_STACK_ID_TAG           = 'serverless-inbox:root-stack-id';
 
 /** The two statements that admit an owned resource: tagged with the id, or without an id tag and tagged with the name. */
 function ownedByResourceTag(): unknown[] {

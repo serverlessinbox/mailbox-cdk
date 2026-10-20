@@ -1,8 +1,8 @@
-import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Aws, Duration } from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { TypeScriptLambda }       from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                   from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }          from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
 
 export interface ResourceSweeperStarterLambdaProps {
   artifactResolver: IArtifactResolver;

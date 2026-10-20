@@ -9,10 +9,11 @@
  */
 
 process.env['SERVICE_NAME'] = 'data-override-resolver';
-process.env['LOG_LEVEL'] = 'verbose';
+process.env['LOG_LEVEL']    = 'verbose';
 
-import { handler } from '../handler';
-import { TableOverrideResolver } from '../table-override-resolver';
+import { handler }                                                     from '../handler';
+import { TableOverrideResolver }                                       from '../table-override-resolver';
+
 import { captureCfnResponse, createEvent, deleteEvent, lambdaContext } from './data-override-resolver-helpers';
 
 jest.mock('https', () => ({ request: jest.fn() }));

@@ -6,12 +6,13 @@
  * ARN as the override, silently ignoring it.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template, Match } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxDataOverrideResolver } from '../mailbox-data-override-resolver';
-import type { ResourceProperties, TableRole } from '../../ts-lambdas/data-override-resolver/resource-properties';
+import { Template, Match }                      from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import type { ResourceProperties, TableRole }   from '../../ts-lambdas/data-override-resolver/resource-properties';
+import { MailboxDataOverrideResolver }          from '../mailbox-data-override-resolver';
 
 const ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
@@ -29,7 +30,7 @@ describe('MailboxDataOverrideResolver', () => {
   let template: Template;
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
+    stack    = new cdk.Stack(new App(), 'TestStack', {
       synthesizer: new BootstraplessSynthesizer(),
       env: { account: '123456789012', region: 'us-west-2' },
     });

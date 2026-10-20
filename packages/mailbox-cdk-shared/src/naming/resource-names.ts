@@ -1,9 +1,10 @@
-import { Stack } from 'aws-cdk-lib';
-import type { IConstruct } from 'constructs';
-import { createHash } from 'node:crypto';
-import { PositionHash } from './position-hash';
+import { Stack }             from 'aws-cdk-lib';
+import type { IConstruct }   from 'constructs';
+import { createHash }        from 'node:crypto';
+
+import { PositionHash }      from './position-hash';
 import { sanitizeStackName } from './sanitize-name';
-import { StackIdentity } from './stack-identity';
+import { StackIdentity }     from './stack-identity';
 
 /** Options for `makePhysicalName`. */
 export interface PhysicalNameOptions {
@@ -24,14 +25,14 @@ const IDENTITY_TAIL_LENGTH = 18;
  * `maxLength` minus the 18 characters the two identifiers and their hyphens take.
  */
 export function makePhysicalName(scope: IConstruct, suffix: string, options: PhysicalNameOptions = {}): string {
-  const stack = Stack.of(scope);
-  const account = stack.account;
-  const stackSlug = sanitizeStackName(stack.stackName);
+  const stack      = Stack.of(scope);
+  const account    = stack.account;
+  const stackSlug  = sanitizeStackName(stack.stackName);
   const suffixSlug = slugifyLabel(suffix);
 
-  const base = `${account}-${stackSlug}-${suffixSlug}`;
+  const base      = `${account}-${stackSlug}-${suffixSlug}`;
   const maxLength = options.maxLength;
-  const readable = typeof maxLength === 'number' ? withMaxLength(base, maxLength - IDENTITY_TAIL_LENGTH) : base;
+  const readable  = typeof maxLength === 'number' ? withMaxLength(base, maxLength - IDENTITY_TAIL_LENGTH) : base;
   return `${readable}-${PositionHash.ofChild(scope, suffix)}-${StackIdentity.guidPrefix}`;
 }
 
@@ -53,8 +54,8 @@ function withMaxLength(name: string, maxLength: number): string {
     return name;
   }
 
-  const hash = createHash('sha1').update(name).digest('hex').slice(0, 8);
+  const hash   = createHash('sha1').update(name).digest('hex').slice(0, 8);
   const suffix = `-${hash}`;
-  const keep = Math.max(1, maxLength - suffix.length);
+  const keep   = Math.max(1, maxLength - suffix.length);
   return `${name.slice(0, keep)}${suffix}`.replace(/-+$/g, '');
 }

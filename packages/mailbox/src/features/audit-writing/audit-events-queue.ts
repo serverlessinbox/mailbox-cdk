@@ -1,7 +1,7 @@
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                                               from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                      from 'aws-cdk-lib';
+import { Construct }                                                     from 'constructs';
 
 /** Props of {@link AuditEventsQueue}. */
 export interface AuditEventsQueueProps {
@@ -63,7 +63,7 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'audit-events', {
+    this.queue    = new BaseQueue(this, 'audit-events', {
       ...queueProps,
       visibilityTimeout: Duration.minutes(5),
       deadLetterQueue: {

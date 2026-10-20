@@ -1,5 +1,5 @@
 import { TagResourceCommand, type CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { S3Client } from '@aws-sdk/client-s3';
+import type { S3Client }                             from '@aws-sdk/client-s3';
 import {
   CaughtError,
   deployZipToPrefix,
@@ -8,9 +8,10 @@ import {
   ServerlessInboxTagKeys,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { UiTarget } from './artifact-target';
+
+import type { UiTarget }                      from './artifact-target';
 import type { ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients } from './updater-clients';
+import type { RegionClients }                 from './updater-clients';
 
 const CONTENT_PREFIX = 'content/';
 
@@ -36,8 +37,8 @@ export class UiBucketUpdater {
     this.registryS3 = registryS3;
     this.deployment = deployment;
     this.cloudFront = cloudFront;
-    this.releases = releases;
-    this.logger = logger;
+    this.releases   = releases;
+    this.logger     = logger;
   }
 
   /** True when the bucket was advanced; false when it was not behind. */
@@ -47,7 +48,7 @@ export class UiBucketUpdater {
       return false;
     }
 
-    const location = this.releases.locate(this.deployment.region, target.packageName, stale.parsed, target.artifactName);
+    const location       = this.releases.locate(this.deployment.region, target.packageName, stale.parsed, target.artifactName);
     const distributionId = parseArn(target.arn).resourceId;
 
     try {
@@ -59,7 +60,7 @@ export class UiBucketUpdater {
         deploymentRegion: this.deployment.region,
       });
 
-      const deployed = await deployZipToPrefix(this.registryS3, {
+      const deployed     = await deployZipToPrefix(this.registryS3, {
         sourceBucket: location.bucket,
         sourceKey: location.key,
         targetBucket: target.bucketName,

@@ -1,8 +1,9 @@
-import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-import { TypeScriptLambda } from './ts-lambda';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                   from 'aws-cdk-lib/aws-iam';
+import * as cdk                   from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
+import { TypeScriptLambda }       from './ts-lambda';
 
 /** The artifact resolver the stack-helpers Lambda's code is loaded through. */
 export interface StackHelpersLambdaProps {

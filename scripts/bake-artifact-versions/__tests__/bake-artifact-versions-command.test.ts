@@ -1,9 +1,10 @@
+import { Cli }                                                              from 'clipanion';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { Writable } from 'node:stream';
-import { Cli } from 'clipanion';
-import { BakeArtifactVersionsCommand } from '../bake-artifact-versions-command';
+import { tmpdir }                                                           from 'node:os';
+import * as path                                                            from 'node:path';
+import { Writable }                                                         from 'node:stream';
+
+import { BakeArtifactVersionsCommand }                                      from '../bake-artifact-versions-command';
 
 /**
  * Pins the release configuration against the placeholders committed with each package: every own
@@ -56,7 +57,7 @@ describe('BakeArtifactVersionsCommand', () => {
       const pinsFile = path.join(root, 'pins.json');
       writeFileSync(pinsFile, JSON.stringify({ 'mailbox-go': { version: '7.8.9', zone: 'regional' } }));
       const stdout: string[] = [];
-      const stdoutStream = new Writable({
+      const stdoutStream     = new Writable({
         write(chunk: Buffer, _encoding, callback) {
           stdout.push(chunk.toString());
           callback();

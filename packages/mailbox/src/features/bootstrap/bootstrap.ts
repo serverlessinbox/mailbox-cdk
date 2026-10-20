@@ -1,20 +1,21 @@
+import type { IArtifactResolver }   from '@serverlessinbox/artifact-registry-cdk';
+import type { IFunction }           from 'aws-cdk-lib/aws-lambda';
+import * as route53                 from 'aws-cdk-lib/aws-route53';
+import { IReceiptRuleSet }          from 'aws-cdk-lib/aws-ses';
 import { CustomResource, Duration } from 'aws-cdk-lib';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { Construct, IDependable } from 'constructs';
-import type { IDataTable } from '../../data/data-tables';
-import { BootstrapLambda } from '../../lambdas';
-import { BOOTSTRAP_LAMBDA_TIMEOUT } from '../../lambdas/bootstrap';
-import type { SesReceivingMode } from '../../core/email/ses-receiving-mode';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
+import { Construct, IDependable }   from 'constructs';
+
 import type {
   AuthPoliciesConfig,
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
 } from '../../auth/types';
+import type { SesReceivingMode }    from '../../core/email/ses-receiving-mode';
+import type { IDataTable }          from '../../data/data-tables';
+import { BOOTSTRAP_LAMBDA_TIMEOUT } from '../../lambdas/bootstrap';
+import { BootstrapLambda }          from '../../lambdas';
+import type { IAuthKeyStoreTable }  from '../auth-key-store/auth-key-store-table';
 
 const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);
 
@@ -71,7 +72,7 @@ export class Bootstrap extends Construct {
       stackIdentityTagKey: props.stackIdentityTagKey,
     });
 
-    const bootstrapResource = new CustomResource(this, 'resource', {
+    const bootstrapResource      = new CustomResource(this, 'resource', {
       resourceType: 'Custom::Bootstrap',
       serviceToken: this.handler.functionArn,
       serviceTimeout: BOOTSTRAP_LAMBDA_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),

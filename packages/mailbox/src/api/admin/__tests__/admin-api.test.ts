@@ -10,26 +10,27 @@
  * green in tsc and synth, so these assertions are the only guard.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import { AdminApi } from '../admin-api';
-import type { AdminApiProps } from '../admin-api';
-import type { IAdminApiAddon } from '../../addons';
-import type { IWebSocketBroadcastPublisher } from '../../websocket/websocket';
-import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
-import { AuthKeyStoreTable } from '../../../features/auth-key-store/auth-key-store-table';
-import { EmailSendingQueue } from '../../../email/sending/email-sending-queue';
-import { DataTable } from '../../../data/data-tables';
-import { DataBlobStore } from '../../../data/data-blob-store';
+import { Match, Template }                           from 'aws-cdk-lib/assertions';
+import { HttpLambdaAuthorizer }                      from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpApi }                                   from 'aws-cdk-lib/aws-apigatewayv2';
+import * as acm                                      from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
+import * as cdk                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
+
+import { DataBlobStore }                             from '../../../data/data-blob-store';
+import { DataTable }                                 from '../../../data/data-tables';
+import { EmailSendingQueue }                         from '../../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                          from '../../../features/audit-writing/audit-events-queue';
+import { AuthKeyStoreTable }                         from '../../../features/auth-key-store/auth-key-store-table';
+import type { IAdminApiAddon }                       from '../../addons';
+import type { IWebSocketBroadcastPublisher }         from '../../websocket/websocket';
+import { AdminApi }                                  from '../admin-api';
+import type { AdminApiProps }                        from '../admin-api';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;
@@ -90,7 +91,7 @@ describe('AdminApi', () => {
       const sut = new AdminApi(stack, 'admin-api', propsWith());
 
       const template = Template.fromStack(stack);
-      const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+      const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
       expect(stack.resolve(sut.url)).toEqual({ 'Fn::GetAtt': [apiId, 'ApiEndpoint'] });
       expect(sut.domainTarget).toBeUndefined();
@@ -172,7 +173,7 @@ describe('AdminApi', () => {
     });
 
     it('mounts each addon with the API and the same authorizer', () => {
-      const first: IAdminApiAddon = { addRoutes: jest.fn() };
+      const first: IAdminApiAddon  = { addRoutes: jest.fn() };
       const second: IAdminApiAddon = { addRoutes: jest.fn() };
 
       new AdminApi(stack, 'admin-api', propsWith({ addons: [first, second] }));
@@ -187,7 +188,7 @@ describe('AdminApi', () => {
   describe('enableWebSocketPublishing', () => {
     it('lets the handler Lambda invoke the broadcaster', () => {
       const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut = new AdminApi(stack, 'admin-api', propsWith());
+      const sut                                       = new AdminApi(stack, 'admin-api', propsWith());
 
       sut.enableWebSocketPublishing(broadcaster);
 

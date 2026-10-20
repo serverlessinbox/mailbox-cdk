@@ -7,8 +7,10 @@ import {
   UpdateStackCommand,
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
-import { mockClient } from 'aws-sdk-client-mock';
-import { CloudFormationStacks } from '../cloudformation-stacks';
+import { mockClient }                                                                             from 'aws-sdk-client-mock';
+
+import { CloudFormationStacks }                                                                   from '../cloudformation-stacks';
+
 import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack, STACK_NAME, US_EAST_1 } from './stack-deployer-helpers';
 
 // A status the SDK's enum does not list, as CloudFormation could send it: the wire is JSON, so the fixture is too.
@@ -24,7 +26,7 @@ function cancelledEventFromWire(): StackEvent {
  * a deployment failed that CloudFormation would have accepted.
  */
 describe('CloudFormationStacks', () => {
-  const cfn = mockClient(CloudFormationClient);
+  const cfn               = mockClient(CloudFormationClient);
   const regions: string[] = [];
   let stacks: CloudFormationStacks;
 
@@ -107,7 +109,7 @@ describe('CloudFormationStacks', () => {
     it('gives nothing, and logs a warning, when the stack cannot be read', async () => {
       const consoleSpies = silenceConsole();
       cfn.on(DescribeStacksCommand).rejects({ name: 'AccessDenied', message: 'cannot describe' });
-      const logger = defaultLevelLogger();
+      const logger  = defaultLevelLogger();
       const reading = new CloudFormationStacks((region) => new CloudFormationClient({ region }), EU_WEST_1, logger);
 
       await expect(reading.currentOutputs(operation())).resolves.toBeUndefined();

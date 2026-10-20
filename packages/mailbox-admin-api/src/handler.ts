@@ -1,6 +1,6 @@
-import { statusCodeForError } from './errors';
+import { statusCodeForError }                                            from './errors';
+import type { ServiceRegistry }                                          from './registry';
 import type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike, JsonValue } from './types';
-import type { ServiceRegistry } from './registry';
 
 export type AuditEvent = {
   tenantId?: string;
@@ -55,7 +55,7 @@ export type AdminApiHandlerOptions<TAuth> = {
 
 function json(statusCode: number, body: JsonValue): ApiGatewayV2ResultLike {
   const safeBody = JSON.stringify(body, (key, value) => {
-    if (key === '$typeName') return undefined;
+    if (key === '$typeName') {return undefined;}
     return typeof value === 'bigint' ? value.toString() : value;
   });
   return {
@@ -71,7 +71,7 @@ function parsePath(
   event: ApiGatewayV2EventLike
 ): { basePath: string; service?: string; method: string } {
   const rawPath = event.rawPath ?? '';
-  const parts = rawPath.split('/').filter(Boolean);
+  const parts   = rawPath.split('/').filter(Boolean);
   // Prefer: /{basePath}/{method} (matches generated TS clients)
   // Fallback: /{basePath}/{service}/{method}
   if (parts.length < 2) {
@@ -86,7 +86,7 @@ function parsePath(
 }
 
 function safeParseJson(body: string | null | undefined): unknown {
-  if (!body) return {};
+  if (!body) {return {};}
   try {
     return JSON.parse(body);
   } catch {
@@ -112,9 +112,9 @@ export function createAdminApiHandler<TAuth>(options: AdminApiHandlerOptions<TAu
 
     try {
       const parsed = parsePath(event);
-      basePath = parsed.basePath;
-      serviceName = parsed.service ?? '';
-      methodName = parsed.method;
+      basePath     = parsed.basePath;
+      serviceName  = parsed.service ?? '';
+      methodName   = parsed.method;
     } catch (e) {
       return json(400, { error: { message: (e as Error).message } });
     }
@@ -139,7 +139,7 @@ export function createAdminApiHandler<TAuth>(options: AdminApiHandlerOptions<TAu
       return json(status, { error: { message: (e as Error)?.message ?? String(e) } });
     }
 
-    const requestId = (event.requestContext as any)?.requestId ?? undefined;
+    const requestId           = (event.requestContext as any)?.requestId ?? undefined;
     const audit: AuditContext = {
       entityType: basePath.replace(/^\//, '').replace(/\/+$/, ''),
       action: `${service.serviceName}/${methodName}`,
@@ -158,8 +158,8 @@ export function createAdminApiHandler<TAuth>(options: AdminApiHandlerOptions<TAu
 
     try {
       const validatedReq = method.validate(reqBody);
-      const rawResult = await method.handler(ctx as any, validatedReq);
-      const result = method.serializeResponse ? method.serializeResponse(rawResult) : rawResult;
+      const rawResult    = await method.handler(ctx as any, validatedReq);
+      const result       = method.serializeResponse ? method.serializeResponse(rawResult) : rawResult;
 
       if (!isReadMethod && options.emitAuditEvent) {
         const entityId = audit.entityId ?? 'unknown';

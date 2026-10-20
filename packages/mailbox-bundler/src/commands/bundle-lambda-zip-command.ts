@@ -1,5 +1,5 @@
 import { Command, Option } from 'clipanion';
-import { resolve } from 'path';
+import { resolve }         from 'path';
 
 import { bundleLambdaZip } from '../lambda-zip/bundle-lambda-zip';
 

@@ -7,16 +7,17 @@
  * user pool defines none.
  */
 
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import type { ICognitoIdpUsersPoolConfig } from '../../api/cognito-idp-users-addon';
+import { ArtifactZone, PinnedArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
+import type { IAuditEventsQueue, IIdentityProvisioner }                 from '@serverlessinbox/mailbox';
+import { Template }                                                     from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, Stack }                         from 'aws-cdk-lib';
+
+import type { ICognitoIdpUsersPoolConfig }                              from '../../api/cognito-idp-users-addon';
 import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '../cognito-idp-users-api';
 
 describe('CognitoIdpUsersApiLambda', () => {
-  const pool: ICognitoIdpUsersPoolConfig = { userPoolId: 'us-west-2_abcdefgh', grantAdminAccess: jest.fn() };
-  const auditEventsQueue: IAuditEventsQueue = {
+  const pool: ICognitoIdpUsersPoolConfig          = { userPoolId: 'us-west-2_abcdefgh', grantAdminAccess: jest.fn() };
+  const auditEventsQueue: IAuditEventsQueue       = {
     queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: jest.fn(),
@@ -28,7 +29,7 @@ describe('CognitoIdpUsersApiLambda', () => {
   };
 
   function synthesize(groups: Pick<CognitoIdpUsersApiLambdaProps, 'adminGroups' | 'userGroups'>): { template: Template; lambda: CognitoIdpUsersApiLambda } {
-    const stack = new Stack(new App(), 'TestStack', {
+    const stack            = new Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });

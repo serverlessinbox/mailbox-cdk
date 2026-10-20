@@ -1,5 +1,5 @@
+import * as cognito  from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 export interface MailboxCognitoDataStackRefProps {
   readonly userPoolId: string;
@@ -20,8 +20,8 @@ export class MailboxCognitoDataStackRef extends Construct {
   constructor(scope: Construct, id: string, props: MailboxCognitoDataStackRefProps) {
     super(scope, id);
 
-    this.userPool = cognito.UserPool.fromUserPoolArn(this, 'user-pool', props.userPoolArn);
-    this.userPoolId = props.userPoolId;
+    this.userPool    = cognito.UserPool.fromUserPoolArn(this, 'user-pool', props.userPoolArn);
+    this.userPoolId  = props.userPoolId;
     this.userPoolArn = props.userPoolArn;
     this.oauthDomain = props.oauthDomain;
   }

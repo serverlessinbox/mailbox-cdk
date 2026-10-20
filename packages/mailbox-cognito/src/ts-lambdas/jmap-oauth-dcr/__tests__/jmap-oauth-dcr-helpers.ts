@@ -1,9 +1,9 @@
 /// <reference types="jest" />
 
-import { InvokeCommand, type LambdaClient } from '@aws-sdk/client-lambda';
+import { InvokeCommand, type LambdaClient }                               from '@aws-sdk/client-lambda';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
-import * as t from 'typanion';
+import type { AwsClientStub }                                             from 'aws-sdk-client-mock';
+import * as t                                                             from 'typanion';
 
 /**
  * The payload of an invoke result is a `Uint8ArrayBlobAdapter` (`@smithy/util-stream`): a `Uint8Array` with a

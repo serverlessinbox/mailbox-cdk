@@ -1,20 +1,20 @@
+import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
+import { renderLiteralText }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                       from 'aws-cdk-lib/assertions';
+import * as acm                                           from 'aws-cdk-lib/aws-certificatemanager';
+import * as events                                        from 'aws-cdk-lib/aws-events';
+import * as iam                                           from 'aws-cdk-lib/aws-iam';
+import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
 /// <reference types="jest" />
-
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import { Construct } from 'constructs';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { renderLiteralText } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { CertificateRemoval } from '../certificate-removal';
-import { EdgeFunctionRemoval } from '../edge-function-removal';
-import type { IResourceRemoval } from '../removal';
-import { StackFailureDetectorRemoval } from '../stack-failure-detector-removal';
+import { Construct }                                      from 'constructs';
+
+import { CertificateRemoval }                             from '../certificate-removal';
+import { EdgeFunctionRemoval }                            from '../edge-function-removal';
+import type { IResourceRemoval }                          from '../removal';
+import { StackFailureDetectorRemoval }                    from '../stack-failure-detector-removal';
 
 /** Shared fixtures of the sweeper feature's tests: a stack, real removals over imported or fresh CDK objects, and a rendered state machine. */
 
@@ -63,8 +63,8 @@ export interface DetectorRemovalFixture {
 }
 
 export function newDetectorRemoval(scope: Construct, gracePeriod?: Duration): DetectorRemovalFixture {
-  const rule = new events.Rule(scope, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
-  const role = new iam.Role(scope, 'detector-role', {
+  const rule     = new events.Rule(scope, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
+  const role     = new iam.Role(scope, 'detector-role', {
     roleName: 'mailbox-diag-role-test',
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
@@ -73,7 +73,7 @@ export function newDetectorRemoval(scope: Construct, gracePeriod?: Duration): De
     'detector-fn-ref',
     'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
   );
-  const removal = new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
+  const removal  = new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
     rule,
     ruleTargetId: 'Target0',
     detector,
@@ -107,7 +107,7 @@ export function newWorkerFunction(scope: Construct): lambda.IFunction {
 /** Wraps `chain` in a state machine of its own and returns its definition with the intrinsic functions dropped. */
 export function renderDefinition(scope: Construct, chain: sfn.IChainable): string {
   new sfn.StateMachine(scope, 'rendered-machine', { definition: chain });
-  const machines = Template.fromStack(Stack.of(scope)).findResources('AWS::StepFunctions::StateMachine');
+  const machines  = Template.fromStack(Stack.of(scope)).findResources('AWS::StepFunctions::StateMachine');
   const [machine] = Object.values(machines);
   return renderLiteralText(machine.Properties.DefinitionString);
 }
@@ -118,12 +118,12 @@ export function renderDefinition(scope: Construct, chain: sfn.IChainable): strin
  * as on the definition, and breaks on a Choice's nested `Choices` array.
  */
 export function stateBodyOf(definition: string, stateName: string): string {
-  const marker = `"${stateName}":{`;
+  const marker      = `"${stateName}":{`;
   const markerIndex = definition.indexOf(marker);
   expect(markerIndex).toBeGreaterThanOrEqual(0);
 
   const start = markerIndex + marker.length - 1;
-  let depth = 0;
+  let depth   = 0;
   for (let end = start; end < definition.length; end++) {
     if (definition[end] === '{') {
       depth++;

@@ -6,16 +6,17 @@
  * CloudFormation deletes with the stack.
  */
 
-import { Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { Template }               from 'aws-cdk-lib/assertions';
+import * as iam                   from 'aws-cdk-lib/aws-iam';
+import { Stack }                  from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
 import { retainOnUpdateOrDelete } from '../cfn-resource';
 
 describe('retainOnUpdateOrDelete', () => {
   it('retains the resource on update and delete, but not on a failed create', () => {
     const stack = new Stack();
-    const role = new iam.Role(stack, 'role', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const role  = new iam.Role(stack, 'role', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
     retainOnUpdateOrDelete(role);
 

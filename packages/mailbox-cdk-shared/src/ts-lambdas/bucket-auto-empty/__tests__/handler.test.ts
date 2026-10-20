@@ -7,16 +7,18 @@
  * response is read from the request the handler sends to the ResponseURL.
  */
 
-import { Writable } from 'stream';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
+import type * as CloudFormationSdk                                                                    from '@aws-sdk/client-cloudformation';
+import type * as S3Sdk                                                                                from '@aws-sdk/client-s3';
+import { mockClient }                                                                                 from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                                                         from 'aws-sdk-client-mock';
+import type * as Https                                                                                from 'https';
+import { Writable }                                                                                   from 'stream';
+
+import type { SmokeTestProbe }                                                                        from '../../shared/with-smoke-test';
+import type * as HandlerModule                                                                        from '../handler';
+
 import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext, fakeUpdateEvent, PHYSICAL_RESOURCE_ID } from './bucket-auto-empty-helpers';
-import type { FakeCfnEvent } from './bucket-auto-empty-helpers';
-import type * as Https from 'https';
-import type * as S3Sdk from '@aws-sdk/client-s3';
-import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
-import type * as HandlerModule from '../handler';
-import type { SmokeTestProbe } from '../../shared/with-smoke-test';
+import type { FakeCfnEvent }                                                                          from './bucket-auto-empty-helpers';
 
 jest.mock('https', () => ({
   request: jest.fn(),
@@ -38,7 +40,7 @@ interface Fakes {
 }
 
 const GOOD_ENVIRONMENT = { SERVICE_NAME: 'bucket-auto-empty' };
-const BAD_ENVIRONMENT = { SERVICE_NAME: 'bucket-auto-empty', LOG_LEVEL: 'verbose' };
+const BAD_ENVIRONMENT  = { SERVICE_NAME: 'bucket-auto-empty', LOG_LEVEL: 'verbose' };
 
 describe('bucket-auto-empty handler', () => {
   const originalEnv = process.env;
@@ -72,7 +74,7 @@ describe('bucket-auto-empty handler', () => {
     const s3Sdk = require('@aws-sdk/client-s3') as typeof S3Sdk;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const cloudFormationSdk = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
-    const fakes: Fakes = {
+    const fakes: Fakes      = {
       s3: mockClient(s3Sdk.S3Client),
       cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
       s3Sdk,
@@ -95,7 +97,7 @@ describe('bucket-auto-empty handler', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result = await handler(event, fakeLambdaContext(remainingMs));
+    const result      = await handler(event, fakeLambdaContext(remainingMs));
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);

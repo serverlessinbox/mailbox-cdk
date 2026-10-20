@@ -1,9 +1,11 @@
-import { Construct } from 'constructs';
-import type { IDataTable } from '../../data/data-tables';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { AuditWriterLambda } from '../../lambdas';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
+import { type BaseQueueProps }                      from '@serverlessinbox/mailbox-cdk-shared';
+import * as lambda                                  from 'aws-cdk-lib/aws-lambda';
+import { Construct }                                from 'constructs';
+
+import type { IDataTable }                          from '../../data/data-tables';
+import { AuditWriterLambda }                        from '../../lambdas';
+
 import { AuditEventsQueue, type IAuditEventsQueue } from './audit-events-queue';
 
 export interface AuditWritingProps {
@@ -30,7 +32,7 @@ export class AuditWriting extends Construct {
     const auditEventsQueue = new AuditEventsQueue(this, 'audit-events-queue', {
       queueProps: props.queueProps,
     });
-    this.auditEventsQueue = auditEventsQueue;
+    this.auditEventsQueue  = auditEventsQueue;
 
     this.auditWriterLambda = new AuditWriterLambda(this, 'audit-writer', {
       auditLogTable: props.auditLogTable,

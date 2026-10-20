@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }       from '@serverlessinbox/artifact-registry-cdk';
+import { readFileSync }           from 'node:fs';
 
 /** The pin of every package a construct resolves, keyed by package name, as shipped in `artifact-versions.json`. */
 export type EmbeddedArtifactVersions = { [packageName: string]: ArtifactPin };

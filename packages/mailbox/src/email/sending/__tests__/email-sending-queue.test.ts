@@ -3,11 +3,12 @@
  * consumer) and the visibility timeout. Widening a grant would hand producers consume access;
  * shortening the timeout would redeliver submissions that are still being processed.
  */
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { EmailSendingQueue } from '../email-sending-queue';
+
+import { EmailSendingQueue }             from '../email-sending-queue';
 
 function createStack(): cdk.Stack {
   const app = new App();
@@ -20,8 +21,8 @@ function createStack(): cdk.Stack {
 describe('EmailSendingQueue', () => {
   it('grantSend grants exactly sqs:SendMessage on the queue ARN', () => {
     const stack = createStack();
-    const sut = new EmailSendingQueue(stack, 'email-sending-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new EmailSendingQueue(stack, 'email-sending-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
@@ -45,8 +46,8 @@ describe('EmailSendingQueue', () => {
 
   it('grantConsume grants exactly the consume actions on the queue ARN', () => {
     const stack = createStack();
-    const sut = new EmailSendingQueue(stack, 'email-sending-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new EmailSendingQueue(stack, 'email-sending-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 

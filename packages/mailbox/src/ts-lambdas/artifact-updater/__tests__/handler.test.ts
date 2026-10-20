@@ -8,14 +8,16 @@
  * AWS clients it builds faked and CloudFormation's response read from the request sent to the ResponseURL.
  */
 
-import { Writable } from 'stream';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
-import type * as Https from 'https';
-import type * as LambdaSdk from '@aws-sdk/client-lambda';
-import type * as TaggingSdk from '@aws-sdk/client-resource-groups-tagging-api';
-import type * as LambdaRuntime from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type * as HandlerModule from '../handler';
+import type * as LambdaSdk                                        from '@aws-sdk/client-lambda';
+import type * as TaggingSdk                                       from '@aws-sdk/client-resource-groups-tagging-api';
+import type * as LambdaRuntime                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                             from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                     from 'aws-sdk-client-mock';
+import type * as Https                                            from 'https';
+import { Writable }                                               from 'stream';
+
+import type * as HandlerModule                                    from '../handler';
+
 import { deployEndTriggerEvent, fakeLambdaContext, httpApiEvent } from './updater-helpers';
 
 jest.mock('https', () => ({
@@ -54,7 +56,7 @@ const GOOD_ENVIRONMENT = {
   ROOT_STACK_TAG_VALUE: 'my-stack',
   ROOT_STACK_ID: 'guid-1',
 };
-const BAD_ENVIRONMENT = { ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
+const BAD_ENVIRONMENT  = { ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
 
 describe('artifact-updater handler', () => {
   const originalEnv = process.env;
@@ -93,7 +95,7 @@ describe('artifact-updater handler', () => {
     // The handler's `instanceof ExpectedFailure` sees the class of its own module registry, so the test takes it from the same one.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const lambdaRuntime = require('@serverlessinbox/mailbox-cdk-shared/lambda-runtime') as typeof LambdaRuntime;
-    const fakes: Fakes = {
+    const fakes: Fakes  = {
       tagging: mockClient(taggingSdk.ResourceGroupsTaggingAPIClient),
       lambda: mockClient(lambdaSdk.LambdaClient),
       taggingSdk,
@@ -116,7 +118,7 @@ describe('artifact-updater handler', () => {
     }) as typeof https.request);
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { handler } = require('../handler') as typeof HandlerModule;
+    const { handler }                               = require('../handler') as typeof HandlerModule;
     let result: Awaited<ReturnType<typeof handler>> = undefined;
     let failure: unknown;
     try {

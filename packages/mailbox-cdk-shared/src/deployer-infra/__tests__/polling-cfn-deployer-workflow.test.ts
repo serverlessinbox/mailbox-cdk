@@ -6,11 +6,13 @@
  * mis-wired transition either fails every deployment or loops it until the workflow times out.
  */
 
-import { CfnResource, Duration, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
-import type { PollingCfnDeployerWorkflowProps } from '../polling-cfn-deployer-workflow';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import { CfnResource, Duration, Stack }          from 'aws-cdk-lib';
+
 import { renderWithTokens, statementsForAction } from '../../cdk-test-support';
+import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
+import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
+
 import {
   TEST_ACCOUNT,
   TEST_REGION,
@@ -28,7 +30,7 @@ interface SynthesizedWorkflow {
 
 function synthWorkflow(props: Partial<PollingCfnDeployerWorkflowProps> = {}): SynthesizedWorkflow {
   const { stack } = newDeployerTestStack();
-  const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+  const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
     ...props,
@@ -38,8 +40,8 @@ function synthWorkflow(props: Partial<PollingCfnDeployerWorkflowProps> = {}): Sy
 
 function synthWorkflowWithGrantee(): SynthesizedWorkflow {
   const { stack } = newDeployerTestStack();
-  const grantee = newWorkerStandIn(stack, 'grantee');
-  const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+  const grantee   = newWorkerStandIn(stack, 'grantee');
+  const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });
@@ -184,7 +186,7 @@ describe('PollingCfnDeployerWorkflow', () => {
 
   it('exposes the state machine as the dependable a dependent resource waits for', () => {
     const { stack } = newDeployerTestStack();
-    const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+    const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
       handler: newWorkerStandIn(stack, 'worker'),
       stateMachineName: 'test-deployer-machine',
     });

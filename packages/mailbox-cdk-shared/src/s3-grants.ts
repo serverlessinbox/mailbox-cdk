@@ -1,8 +1,8 @@
 import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import { IBucket }           from 'aws-cdk-lib/aws-s3';
 
-const READ = ['s3:GetObject'] as const;
-const WRITE = ['s3:PutObject'] as const;
+const READ   = ['s3:GetObject'] as const;
+const WRITE  = ['s3:PutObject'] as const;
 const DELETE = ['s3:DeleteObject'] as const;
 
 /**

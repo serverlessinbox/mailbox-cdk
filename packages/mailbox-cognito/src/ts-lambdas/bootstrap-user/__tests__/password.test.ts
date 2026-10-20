@@ -33,7 +33,7 @@ describe('password module', () => {
     });
 
     it('generates passwords that meet Cognito policy requirements', () => {
-      const password = generateSecurePassword();
+      const password   = generateSecurePassword();
       const validation = validatePassword(password);
       expect(validation.isValid).toBe(true);
     });
@@ -47,7 +47,7 @@ describe('password module', () => {
 
     it('generates multiple passwords all meeting policy requirements', () => {
       for (let i = 0; i < 10; i++) {
-        const password = generateSecurePassword();
+        const password   = generateSecurePassword();
         const validation = validatePassword(password);
         if (!validation.isValid) {
           throw new Error(
@@ -60,11 +60,11 @@ describe('password module', () => {
 
     it('uses crypto.randomInt (CSPRNG) and never Math.random', () => {
       // Regression test: ensure the implementation uses crypto.randomInt for all randomness.
-      const crypto = require('crypto');
+      const crypto            = require('crypto');
       const originalRandomInt = crypto.randomInt;
 
       let randomIntCallCount = 0;
-      crypto.randomInt = jest.fn((...args: unknown[]) => {
+      crypto.randomInt       = jest.fn((...args: unknown[]) => {
         randomIntCallCount++;
         return (originalRandomInt as typeof originalRandomInt)(...(args as [number, number]));
       });

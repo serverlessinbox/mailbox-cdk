@@ -1,14 +1,14 @@
-import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import {
   DeployerWorkerLambda,
   ServerlessInboxTagKeys,
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { RootStack }        from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }       from 'aws-cdk-lib/aws-iam';
+import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
+import { Construct }             from 'constructs';
 
 export interface MailboxEdgeDeployerWorkerProps {
   readonly artifactResolver: IArtifactResolver;
@@ -158,7 +158,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * aws:TagKeys.
    */
   private grantLambdaFunctionLifecycle(stack: Stack, edgeStackNamePattern: string, rootStack: RootStack): void {
-    const edgeLambdaActions = [
+    const edgeLambdaActions   = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
       'lambda:UpdateFunctionCode',

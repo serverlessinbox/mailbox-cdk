@@ -1,15 +1,17 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
 import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
 import {
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
-import { addServerlessInboxResourceGroup } from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { addServerlessInboxResourceGroup }                      from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                 from 'aws-cdk-lib';
+import { Construct }                                            from 'constructs';
+
+import { MailboxResourceDescriptions }                          from '../utils/resource-descriptions';
+
+import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
 
 export interface MailboxEdgeStackProps extends cdk.StackProps {
   // No additional props - configuration comes from CloudFormation parameters
@@ -218,7 +220,7 @@ export class MailboxEdgeStack extends cdk.Stack {
 
     // Only create the certificate resource when hosted zone parameters are provided.
     // This avoids getting stuck on email validation when no hosted zone is available.
-    const cfnCertificate = this.construct.certificate;
+    const cfnCertificate                = this.construct.certificate;
     cfnCertificate.cfnOptions.condition = hasHostedZone;
 
     // Always expose the output key so the regional stack can safely `GetAtt` it.

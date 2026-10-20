@@ -1,12 +1,13 @@
-import { Construct } from 'constructs';
-import { Duration } from 'aws-cdk-lib';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
+import { Duration }                from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
+
 import {
   buildSupportTierEnvironment,
 } from '../addons/support/support-roles-infra';
+import type { IDataTable } from '../data/data-tables';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */
@@ -58,7 +59,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SupportRoleAssumptionCollectorLambdaProps) {
     // Build environment object with fixed order for CloudFormation template stability:
     // CONFIG_TABLE_NAME, SUPPORT_HOP_ROLE_ARN, then tier vars (from registry order)
-    const tierEnv = buildSupportTierEnvironment(props.tierRoleArns);
+    const tierEnv                             = buildSupportTierEnvironment(props.tierRoleArns);
     const environment: Record<string, string> = {
       CONFIG_TABLE_NAME: props.configTable.tableName,
       SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,

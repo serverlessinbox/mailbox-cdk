@@ -16,8 +16,8 @@ describe('LoggerBuffer', () => {
 
   beforeEach(() => {
     consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation();
-    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    consoleInfoSpy  = jest.spyOn(console, 'info').mockImplementation();
+    consoleWarnSpy  = jest.spyOn(console, 'warn').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 

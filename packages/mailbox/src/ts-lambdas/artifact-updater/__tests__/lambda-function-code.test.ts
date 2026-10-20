@@ -6,21 +6,23 @@
  * but not after the last one, or an update that never settles holds the Lambda longer than its timeout.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetFunctionConfigurationCommand,
   LambdaClient,
   TagResourceCommand,
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
-import { LambdaFunctionCode } from '../lambda-function-code';
+import { mockClient }                                             from 'aws-sdk-client-mock';
+
+import { LambdaFunctionCode }                                     from '../lambda-function-code';
+
 import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION } from './updater-helpers';
 
 describe('LambdaFunctionCode', () => {
-  const lambdaMock = mockClient(LambdaClient);
-  const lambda = new LambdaClient({ region: 'us-east-1' });
-  const functionArn = lambdaTarget().arn;
-  const sleep = jest.fn(async () => undefined);
+  const lambdaMock   = mockClient(LambdaClient);
+  const lambda       = new LambdaClient({ region: 'us-east-1' });
+  const functionArn  = lambdaTarget().arn;
+  const sleep        = jest.fn(async () => undefined);
   const functionCode = new LambdaFunctionCode(sleep);
 
   beforeEach(() => {

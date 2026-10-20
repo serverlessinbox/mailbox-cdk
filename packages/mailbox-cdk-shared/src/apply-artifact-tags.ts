@@ -1,4 +1,4 @@
-import { Tags } from 'aws-cdk-lib';
+import { Tags }            from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
 
 /**
@@ -11,7 +11,7 @@ export type AutoUpdateType = 'code' | 'ui' | 'edge' | 'none';
  * Tag keys for serverless-inbox artifact tracking.
  * Defined as literal strings to avoid importing from mailbox (circular dependency prevention).
  */
-const TAG_PREFIX = 'serverless-inbox:' as const;
+const TAG_PREFIX    = 'serverless-inbox:' as const;
 const ARTIFACT_TAGS = {
   artifactName: `${TAG_PREFIX}artifact-name`,
   artifactPackage: `${TAG_PREFIX}artifact-package`,

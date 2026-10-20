@@ -1,10 +1,11 @@
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as kms                          from 'aws-cdk-lib/aws-kms';
+import { Topic }                         from 'aws-cdk-lib/aws-sns';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as kms from 'aws-cdk-lib/aws-kms';
-import { Topic } from 'aws-cdk-lib/aws-sns';
-import { SesEventQueue } from '../ses-event-queue';
+
+import { SesEventQueue }                 from '../ses-event-queue';
 
 /**
  * SesEventQueue tests.
@@ -28,7 +29,7 @@ describe('SesEventQueue', () => {
     new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'TestTopic') });
 
     const queueProperties = Template.fromStack(stack).findResources('AWS::SQS::Queue');
-    const [queue] = Object.values(queueProperties);
+    const [queue]         = Object.values(queueProperties);
 
     expect(queue.Properties.VisibilityTimeout).toBe(360);
     expect(queue.Properties.KmsMasterKeyId).toBeUndefined();
@@ -48,7 +49,7 @@ describe('SesEventQueue', () => {
   it('lets the topic use a customer-managed key, scoped to the account (as a ref, not a literal) and the topic', () => {
     const stack = createStack();
     const topic = new Topic(stack, 'TestTopic');
-    const key = new kms.Key(stack, 'TestKey');
+    const key   = new kms.Key(stack, 'TestKey');
     new SesEventQueue(stack, 'ses-event-queue', { topic, queueProps: { encryptionMasterKey: key } });
 
     Template.fromStack(stack).hasResourceProperties('AWS::KMS::Key', {
@@ -72,15 +73,15 @@ describe('SesEventQueue', () => {
   it('grantConsume grants exactly the consume actions on the queue ARN, no KMS', () => {
     const stack = createStack();
     const topic = new Topic(stack, 'TestTopic');
-    const sut = new SesEventQueue(stack, 'ses-event-queue', { topic });
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new SesEventQueue(stack, 'ses-event-queue', { topic });
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantConsume(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -99,20 +100,20 @@ describe('SesEventQueue', () => {
   it('grantConsume with a customer-managed KMS key also grants the exact kms:Decrypt statement', () => {
     const stack = createStack();
     const topic = new Topic(stack, 'TestTopic');
-    const key = new kms.Key(stack, 'TestKey');
-    const sut = new SesEventQueue(stack, 'ses-event-queue', {
+    const key   = new kms.Key(stack, 'TestKey');
+    const sut   = new SesEventQueue(stack, 'ses-event-queue', {
       topic,
       queueProps: { encryptionMasterKey: key },
     });
-    const role = new iam.Role(stack, 'TestRole', {
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantConsume(role);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
-    const keyId = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
+    const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

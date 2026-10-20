@@ -10,13 +10,16 @@
  * These tests lock in the fixes and catch regressions.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
-import { MailboxEdgeDeployerWorker } from '../edge/mailbox-edge-deployer-worker';
+import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                             from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                     from 'aws-cdk-lib/assertions';
+import * as cdk                                         from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+
+import { MailboxEdgeDeployerWorker }                    from '../edge/mailbox-edge-deployer-worker';
+import { MailboxEdgeStack }                             from '../edge/mailbox-edge-stack';
+
 import {
   CloudFormationResource,
   CloudFormationTag,
@@ -24,7 +27,6 @@ import {
   getTagValue,
   isResourceOfType,
 } from './iam-test-helpers';
-import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 
 describe('MailboxEdgeStack Template Synthesis', () => {
   /**
@@ -32,7 +34,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Tag Contract (S2.1)', () => {
     it('edge stack: all taggable resources have correct root-stack tag', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -54,7 +56,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         }
 
         const tags = resource.Properties?.Tags;
-        if (!Array.isArray(tags)) continue;
+        if (!Array.isArray(tags)) {continue;}
         taggedResourceCount++;
 
         const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
@@ -68,19 +70,19 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     });
 
     it('edge stack: declares a mandatory rootStackId parameter and tags its resources with it', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template   = Template.fromStack(stack);
       const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
       expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
       expect(parameters.rootStackId.Default).toBeUndefined();
 
       const resources = Object.values(template.toJSON().Resources as Record<string, CloudFormationResource>);
-      const tagged = resources.filter(
+      const tagged    = resources.filter(
         (r) => (isResourceOfType(r, 'AWS::Lambda::Function') || isResourceOfType(r, 'AWS::IAM::Role')) && Array.isArray(r.Properties?.Tags),
       );
       expect(tagged.length).toBeGreaterThan(0);
@@ -96,13 +98,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('IAM Wildcard Guard (S2.2)', () => {
     it('edge stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -131,13 +133,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       const violations: string[] = [];
 
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
+        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
 
-        const policyDoc = resource.Properties?.PolicyDocument;
+        const policyDoc  = resource.Properties?.PolicyDocument;
         const statements = statementsOfDocument(policyDoc);
 
         for (const stmt of statements) {
-          const actions = actionsOf(stmt);
+          const actions      = actionsOf(stmt);
           const resourceList = resourcesOf(stmt);
 
           // Check if any write action is on "*" without a condition
@@ -165,13 +167,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Edge Stack Policy Quality (S2.3)', () => {
     it('edge stack: contains no IAM policies', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -180,7 +182,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       let policyCount = 0;
 
       for (const [, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
+        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
         policyCount++;
       }
 
@@ -194,13 +196,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Construct Quality (L5)', () => {
     it('edge stack: Template.fromStack succeeds with sane resource counts', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
 
       // Edge stack should have several resources: Lambda, ACM, etc.
@@ -210,8 +212,8 @@ describe('MailboxEdgeStack Template Synthesis', () => {
 
       // Check for key resource types
       const resourceEntries = Object.values(resources || {});
-      const hasLambda = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Lambda::Function'));
-      const hasAcm = resourceEntries.some((r) => isResourceOfType(r, 'AWS::CertificateManager::Certificate'));
+      const hasLambda       = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Lambda::Function'));
+      const hasAcm          = resourceEntries.some((r) => isResourceOfType(r, 'AWS::CertificateManager::Certificate'));
 
       expect(hasLambda).toBe(true);
       // Role is now in root stack, not edge stack
@@ -220,13 +222,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     });
 
     it('edge stack: template has expected parameter schema', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template   = Template.fromStack(stack);
       const parameters = template.toJSON().Parameters || {};
 
       // Edge stack should have domain, prefix, hosted zone, artifact parameters
@@ -242,14 +244,14 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     });
 
     it('edge stack: the Lambda@Edge function, its version and the version output are named jmap-blob-download', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack).toJSON();
-      const resources = template.Resources as Record<string, CloudFormationResource>;
+      const template         = Template.fromStack(stack).toJSON();
+      const resources        = template.Resources as Record<string, CloudFormationResource>;
       const logicalIdsOfType = (type: string): string[] =>
         Object.entries(resources).filter(([, resource]) => isResourceOfType(resource, type)).map(([logicalId]) => logicalId);
 
@@ -259,13 +261,13 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     });
 
     it('edge stack: jmap-blob-download LoggingConfig.LogGroup resolves to a Ref on the logGroupName parameter', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -288,23 +290,23 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Regression: Edge Lambda Tag Value', () => {
     it('edge Lambda functions do NOT use AWS::StackName for root-stack tag', () => {
-      const app = new App();
+      const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
       }
 
       for (const [, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::Lambda::Function')) continue;
+        if (!isResourceOfType(resource, 'AWS::Lambda::Function')) {continue;}
 
         const tags = resource.Properties?.Tags;
-        if (!Array.isArray(tags)) continue;
+        if (!Array.isArray(tags)) {continue;}
 
         const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
 
@@ -340,7 +342,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
    */
   describe('Deployer Worker IAM', () => {
     it('edge deployer worker: grants only iam:PassRole on the concrete role ARN, no role authorship', () => {
-      const app = new App();
+      const app       = new App();
       const testStack = new cdk.Stack(app, 'TestEdgeDeployerStack', {
         env: { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
@@ -349,7 +351,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       const packages: Record<string, ArtifactPin> = {
         'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       };
-      const artifactResolver = new PinnedArtifactResolver({
+      const artifactResolver                      = new PinnedArtifactResolver({
         packages,
         location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: testStack.region,
@@ -368,7 +370,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         jmapBlobDownloadRoleArn: 'arn:aws:iam::123456789012:role/test-role',
       });
 
-      const template = Template.fromStack(testStack);
+      const template  = Template.fromStack(testStack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {
         throw new Error('No resources found in template');
@@ -379,10 +381,10 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       const forbiddenRoleAuthorshipActions = new Set([
         'iam:CreateRole', 'iam:PutRolePolicy', 'iam:AttachRolePolicy',
       ]);
-      const violations: string[] = [];
+      const violations: string[]           = [];
 
       for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) continue;
+        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
         const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
 
         for (const stmt of statements) {

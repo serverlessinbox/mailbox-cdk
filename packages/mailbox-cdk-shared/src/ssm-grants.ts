@@ -1,5 +1,5 @@
 import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
-import { IParameter } from 'aws-cdk-lib/aws-ssm';
+import { IParameter }        from 'aws-cdk-lib/aws-ssm';
 
 const READ = ['ssm:GetParameter'] as const;
 

@@ -1,4 +1,5 @@
-import type { CustomResourceAnswer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CustomResourceAnswer }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { PASSWORD_SET_AT_INSTALL_TIME } from './password';
 
 /** The attributes of the custom resource; the construct reads `temporaryPassword` through `GetAtt`. */

@@ -8,16 +8,17 @@
  * auth provider as a JMAP-API client named after the app.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { WebmailUi } from '../webmail-ui';
-import type { IMailboxAuthProvider } from '../../auth/types';
-import { Permission } from '../../auth/jmap-scopes';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../data/data-tables';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { Permission }                           from '../../auth/jmap-scopes';
+import type { IMailboxAuthProvider }            from '../../auth/types';
+import { DataTable }                            from '../../data/data-tables';
+import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
+import { WebmailUi }                            from '../webmail-ui';
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };

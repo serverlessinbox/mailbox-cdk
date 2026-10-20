@@ -1,5 +1,5 @@
 import { ExpectedFailure } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t from 'typanion';
+import * as t              from 'typanion';
 
 // CloudFront defines the origin-request event; only the fields the authorizer reads or writes are listed.
 const isHeaders = t.isRecord(t.isArray(t.isPartial({

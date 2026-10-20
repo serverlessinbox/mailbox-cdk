@@ -1,5 +1,8 @@
-import type { Construct } from 'constructs';import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
-import { SupportAddon, SupportMode } from './support-addon';
+import type { Construct }                                               from 'constructs';
+
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+
+import { SupportAddon, SupportMode }                                    from './support-addon';
 
 /** Settings of the {@link SupportAddonProvider}. */
 export interface SupportAddonProviderProps {

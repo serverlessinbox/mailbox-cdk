@@ -1,14 +1,16 @@
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as path from 'node:path';
-import * as fs from 'node:fs';
-import { parseArgs, writeJson } from './_common';
-import { MailboxCognitoDataStack } from '../src/cognito/mailbox-cognito-data-stack';
+import * as fs                           from 'node:fs';
+import * as path                         from 'node:path';
+
+import { MailboxCognitoDataStack }       from '../src/cognito/mailbox-cognito-data-stack';
+
+import { parseArgs, writeJson }          from './_common';
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args   = parseArgs(process.argv.slice(2));
   const outDir = (typeof args.outDir === 'string' && args.outDir !== '') ? args.outDir : 'dist';
 
-  const app = new App();
+  const app   = new App();
   const stack = new MailboxCognitoDataStack(app, 'MailboxCognitoData', {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000',

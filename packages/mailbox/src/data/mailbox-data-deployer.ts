@@ -1,14 +1,15 @@
-import { Aws, Fn, Stack } from 'aws-cdk-lib';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                          from '@serverlessinbox/mailbox-cdk-shared';
 import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxDataDeployerWorker } from './mailbox-data-deployer-worker';
-import { MailboxDataStackRef } from './mailbox-data-stack-ref';
-import { MailboxDataOverrideResolver } from './mailbox-data-override-resolver';
-import type { IDataTable } from './data-tables';
-import type { IDataBlobStore } from './data-blob-store';
+import { IBucket }                                                   from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn, Stack }                                            from 'aws-cdk-lib';
+import { Construct }                                                 from 'constructs';
+
+import type { IDataBlobStore }                                       from './data-blob-store';
+import type { IDataTable }                                           from './data-tables';
+import { MailboxDataDeployerWorker }                                 from './mailbox-data-deployer-worker';
+import { MailboxDataOverrideResolver }                               from './mailbox-data-override-resolver';
+import { MailboxDataStackRef }                                       from './mailbox-data-stack-ref';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {
@@ -50,9 +51,9 @@ export class MailboxDataDeployer extends Construct {
   constructor(scope: Construct, id: string, props: MailboxDataDeployerProps) {
     super(scope, id);
 
-    const stack = Stack.of(this);
+    const stack         = Stack.of(this);
     const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
-    const dataStackArn = stack.formatArn({
+    const dataStackArn  = stack.formatArn({
       service: 'cloudformation',
       resource: 'stack',
       resourceName: `${dataStackName}/*`,

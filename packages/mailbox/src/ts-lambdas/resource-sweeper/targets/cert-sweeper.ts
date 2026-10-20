@@ -4,10 +4,11 @@ import {
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, type LoggerBuffer }                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { CertRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { RootStackMembership } from '../root-stack-membership';
-import { TargetResults } from '../target-results';
+import { RootStackMembership }                                from '../root-stack-membership';
+import { TargetResults }                                      from '../target-results';
 
 /**
  * Sweeps the ACM certificate named by `CertRemovalInput.certArn`: deletes it once it belongs to

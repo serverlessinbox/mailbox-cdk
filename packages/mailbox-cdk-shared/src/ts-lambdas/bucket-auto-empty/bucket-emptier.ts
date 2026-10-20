@@ -5,7 +5,8 @@ import {
   type ObjectIdentifier,
   type S3Client,
 } from '@aws-sdk/client-s3';
-import { ExpectedFailure } from '../shared/expected-failure';
+
+import { ExpectedFailure }                      from '../shared/expected-failure';
 import { hasTimeLeft, type InvocationDeadline } from '../shared/invocation-deadline';
 
 const DELETE_OBJECTS_BATCH_SIZE = 1000;
@@ -37,14 +38,14 @@ export class BucketEmptier {
    * was deleted stays deleted, so a repeated run continues where this one stopped.
    */
   async empty(bucketName: string, deadline: InvocationDeadline): Promise<number> {
-    let deleted = 0;
+    let deleted                                      = 0;
     let position: VersionListingPosition | undefined = {};
 
     do {
       this.assertTimeLeft(bucketName, deadline, deleted);
       const page = await this.listVersions(bucketName, position);
-      deleted += await this.deleteVersions(bucketName, this.identifiersIn(page), deadline);
-      position = this.nextPosition(page);
+      deleted   += await this.deleteVersions(bucketName, this.identifiersIn(page), deadline);
+      position   = this.nextPosition(page);
     } while (position);
 
     return deleted;
@@ -101,7 +102,7 @@ export class BucketEmptier {
     deadline: InvocationDeadline,
   ): Promise<void> {
     let undeleted = batch;
-    let attempts = 0;
+    let attempts  = 0;
 
     while (undeleted.length > 0 && attempts < DELETE_ATTEMPTS && (attempts === 0 || hasTimeLeft(deadline))) {
       undeleted = await this.sendDelete(bucketName, undeleted);

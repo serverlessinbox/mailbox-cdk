@@ -6,7 +6,8 @@
  * the supplied resolver would pin consumers to the package's baked versions instead of their own.
  */
 
-import { MailboxContext } from '../mailbox-context';
+import { MailboxContext }                              from '../mailbox-context';
+
 import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from './deployer-test-helpers';
 
 describe('MailboxContext', () => {

@@ -1,13 +1,13 @@
-import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
-import { Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IDataTable } from '../../data/data-tables';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-
-import { LicenseRefresherLambda } from '../../lambdas';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { StackHelpers }           from '@serverlessinbox/mailbox-cdk-shared';
+import { LambdaFunction }         from 'aws-cdk-lib/aws-events-targets';
+import { Rule, Schedule }         from 'aws-cdk-lib/aws-events';
+import * as lambda                from 'aws-cdk-lib/aws-lambda';
+import { Stack }                  from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
+import type { IDataTable }        from '../../data/data-tables';
+import { LicenseRefresherLambda } from '../../lambdas';
 
 /** Inputs of the license refresher Lambda and of the rules that invoke it. */
 export interface LicenseRefreshProps {
@@ -40,8 +40,8 @@ export class LicenseRefresh extends Construct {
 
     // The time differs per install so that customer stacks do not all refresh at once.
     const stackHelpers = StackHelpers.getOrCreate(this, props.artifactResolver);
-    const hour = stackHelpers.resolveSeededNumber(this, 'schedule-hour', { salt: 'license-refresh-hour', range: 24 });
-    const minute = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
+    const hour         = stackHelpers.resolveSeededNumber(this, 'schedule-hour', { salt: 'license-refresh-hour', range: 24 });
+    const minute       = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
     new Rule(this, 'rule', {
       schedule: Schedule.cron({ hour, minute }),
       targets: [new LambdaFunction(handler)],

@@ -1,17 +1,19 @@
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import { Aws, Duration, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
 import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStackConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { StackFailureDetectorSweepTargets } from '../stack-failure-detection';
+import type { RootStackConditions }                      from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                          from 'aws-cdk-lib/aws-iam';
+import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                          from 'aws-cdk-lib/aws-stepfunctions';
+import { Aws, Duration, Stack }                          from 'aws-cdk-lib';
+import { Construct }                                     from 'constructs';
+
 import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
 } from '../../ts-lambdas/resource-sweeper/removal';
+import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
+
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
-import type { IResourceRemoval } from './removal';
+import type { IResourceRemoval }                                      from './removal';
 
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {
   /**
@@ -43,7 +45,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
 
   constructor(scope: Construct, id: string, props: StackFailureDetectorRemovalProps) {
     super(scope, id);
-    this.targets = props;
+    this.targets     = props;
     this.gracePeriod = props.gracePeriod ?? StackFailureDetectorRemoval.defaultGracePeriod;
   }
 

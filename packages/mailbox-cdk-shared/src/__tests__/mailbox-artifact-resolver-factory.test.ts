@@ -7,10 +7,12 @@
  * developer's override, or reads the wrong regional bucket.
  */
 
+import { ArtifactZone }                         from '@serverlessinbox/artifact-registry-cdk';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { ArtifactZone } from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxArtifactResolverFactory } from '../mailbox-artifact-resolver-factory';
-import { TEST_REGISTRY_RECORD } from './test-registry-record';
+
+import { MailboxArtifactResolverFactory }       from '../mailbox-artifact-resolver-factory';
+
+import { TEST_REGISTRY_RECORD }                 from './test-registry-record';
 
 const DEFAULT_PINS = {
   'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -50,8 +52,8 @@ describe('MailboxArtifactResolverFactory.fromContext', () => {
 
   it('pins objects to the S3 versions in the serverlessinbox:artifact_versions context', () => {
     const baseline = MailboxArtifactResolverFactory.fromContext(stackWithContext({}), TEST_REGISTRY_RECORD, DEFAULT_PINS);
-    const key = baseline.resolve('mailbox-go', 'lambdas/api.zip').key;
-    const stack = stackWithContext({ 'serverlessinbox:artifact_versions': { [key]: 'version-id-1' } });
+    const key      = baseline.resolve('mailbox-go', 'lambdas/api.zip').key;
+    const stack    = stackWithContext({ 'serverlessinbox:artifact_versions': { [key]: 'version-id-1' } });
 
     const resolver = MailboxArtifactResolverFactory.fromContext(stack, TEST_REGISTRY_RECORD, DEFAULT_PINS);
 

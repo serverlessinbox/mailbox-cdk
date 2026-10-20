@@ -1,11 +1,11 @@
-import { Construct } from 'constructs';
-import { IGrantable, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import { Aws, Duration } from 'aws-cdk-lib';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { IKey } from 'aws-cdk-lib/aws-kms';
-import { ITopic } from 'aws-cdk-lib/aws-sns';
-import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import { IGrantable, PolicyStatement, ServicePrincipal }                 from 'aws-cdk-lib/aws-iam';
+import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
+import { SqsSubscription }                                               from 'aws-cdk-lib/aws-sns-subscriptions';
+import { ITopic }                                                        from 'aws-cdk-lib/aws-sns';
+import { QueueEncryption }                                               from 'aws-cdk-lib/aws-sqs';
+import { Aws, Duration }                                                 from 'aws-cdk-lib';
+import { Construct }                                                     from 'constructs';
 
 /** Inputs of {@link SesEventQueue}. */
 export interface SesEventQueueProps {
@@ -53,7 +53,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
     const encryption = queueProps.encryption
       ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
 
-    this.queue = new BaseQueue(this, 'ses-notifications-queue', {
+    this.queue    = new BaseQueue(this, 'ses-notifications-queue', {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       encryption,

@@ -15,7 +15,7 @@ export class WorkerResult {
   readonly createRetryCount?: number;
 
   private constructor(done: boolean, retries?: RetryCounts) {
-    this.done = done;
+    this.done             = done;
     this.deleteRetryCount = retries?.deleteRetryCount;
     this.createRetryCount = retries?.createRetryCount;
   }

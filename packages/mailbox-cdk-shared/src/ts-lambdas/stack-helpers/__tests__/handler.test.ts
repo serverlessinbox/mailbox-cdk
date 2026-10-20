@@ -8,15 +8,17 @@
  * response is read from the request the handler sends to the ResponseURL.
  */
 
-import { Writable } from 'stream';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
+import type * as Route53Sdk                                    from '@aws-sdk/client-route-53';
+import { mockClient }                                          from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                  from 'aws-sdk-client-mock';
+import type * as Https                                         from 'https';
+import { Writable }                                            from 'stream';
+
+import type { SmokeTestProbe }                                 from '../../shared/with-smoke-test';
+import type * as HandlerModule                                 from '../handler';
+
 import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext } from './cfn-helpers';
-import type { FakeCfnEvent } from './cfn-helpers';
-import type * as Https from 'https';
-import type * as Route53Sdk from '@aws-sdk/client-route-53';
-import type * as HandlerModule from '../handler';
-import type { SmokeTestProbe } from '../../shared/with-smoke-test';
+import type { FakeCfnEvent }                                   from './cfn-helpers';
 
 jest.mock('https', () => ({
   request: jest.fn(),
@@ -56,9 +58,9 @@ describe('stack-helpers handler', () => {
 
     // Required after resetModules so the faked client class is the one the handler constructs.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const route53Sdk = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
+    const route53Sdk                              = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
     const { GetHostedZoneCommand, Route53Client } = route53Sdk;
-    const route53Mock = mockClient(Route53Client);
+    const route53Mock                             = mockClient(Route53Client);
     route53Mock.on(GetHostedZoneCommand).resolves({
       HostedZone: { Id: '/hostedzone/Z123', Name: 'example.com.', CallerReference: 'ref' },
     });
@@ -79,7 +81,7 @@ describe('stack-helpers handler', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result = await handler(event, fakeLambdaContext());
+    const result      = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);

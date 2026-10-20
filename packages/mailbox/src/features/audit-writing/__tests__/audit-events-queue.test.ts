@@ -3,11 +3,12 @@
  * consume for the single writer. Widening the send grant would let an emitter read or delete other
  * emitters' audit events.
  */
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { AuditEventsQueue } from '../audit-events-queue';
+
+import { AuditEventsQueue }              from '../audit-events-queue';
 
 function createStack(): cdk.Stack {
   const app = new App();
@@ -20,8 +21,8 @@ function createStack(): cdk.Stack {
 describe('AuditEventsQueue', () => {
   it('grantSend grants exactly sqs:SendMessage on the queue ARN', () => {
     const stack = createStack();
-    const sut = new AuditEventsQueue(stack, 'audit-events-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new AuditEventsQueue(stack, 'audit-events-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
@@ -57,8 +58,8 @@ describe('AuditEventsQueue', () => {
 
   it('grantConsume grants exactly the consume actions on the queue ARN', () => {
     const stack = createStack();
-    const sut = new AuditEventsQueue(stack, 'audit-events-queue');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new AuditEventsQueue(stack, 'audit-events-queue');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 

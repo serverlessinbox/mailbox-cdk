@@ -6,8 +6,10 @@
  * the grant every lookup fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { StackHelpersLambda } from '../stack-helpers-lambda';
+import { Match, Template }         from 'aws-cdk-lib/assertions';
+
+import { StackHelpersLambda }      from '../stack-helpers-lambda';
+
 import { createStackWithResolver } from './stack-helpers-helpers';
 
 describe('StackHelpersLambda', () => {

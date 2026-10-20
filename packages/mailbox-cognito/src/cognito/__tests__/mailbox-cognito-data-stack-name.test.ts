@@ -6,7 +6,8 @@
  * not manage.
  */
 
-import { App, Stack } from 'aws-cdk-lib';
+import { App, Stack }           from 'aws-cdk-lib';
+
 import { cognitoDataStackName } from '../mailbox-cognito-data-stack-name';
 
 describe('cognitoDataStackName', () => {

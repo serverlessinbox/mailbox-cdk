@@ -1,9 +1,5 @@
-import { Aws, CustomResource, Duration, SecretValue } from 'aws-cdk-lib';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-
+import type { IArtifactResolver }                                                          from '@serverlessinbox/artifact-registry-cdk';
+import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthClientConfig,
   AuthPolicyConfig,
@@ -16,21 +12,23 @@ import {
   ProvisionAdminApiClientParams,
   ProvisionJmapApiClientParams,
 } from '@serverlessinbox/mailbox';
-
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
-import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
-import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
+import * as cognito                                                                                              from 'aws-cdk-lib/aws-cognito';
+import * as iam                                                                                                  from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                                                               from 'aws-cdk-lib/aws-lambda';
+import { Aws, CustomResource, Duration, SecretValue }                                                            from 'aws-cdk-lib';
+import { Construct }                                                                                             from 'constructs';
 
-import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig } from '../api/cognito-idp-users-addon';
-import { JmapOAuthAddon } from '../api/jmap-oauth-addon';
-import { DynamicClientRegistrationMode } from './dynamic-client-registration-mode';
+import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig }                                      from '../api/cognito-idp-users-addon';
+import { JmapOAuthAddon }                                                                                        from '../api/jmap-oauth-addon';
+import { MailboxCognitoDataDeployer }                                                                            from '../cognito/mailbox-cognito-data-deployer';
+import { CognitoBootstrapUserLambda }                                                                            from '../lambdas/cognito-bootstrap-user';
+import { loadMailboxCognitoArtifactVersions }                                                                    from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                                                                      from '../mailbox-cognito-registry-record';
+import type { BootstrapUserProperties }                                                                          from '../ts-lambdas/bootstrap-user/properties';
 
-import { CognitoScopeToPermissions, PermissionToCognitoScope } from './scopemaps/cognito';
-import { CognitoBootstrapUserLambda } from '../lambdas/cognito-bootstrap-user';
-import type { BootstrapUserProperties } from '../ts-lambdas/bootstrap-user/properties';
-import { MailboxCognitoDataDeployer } from '../cognito/mailbox-cognito-data-deployer';
+import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
+import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './scopemaps/cognito';
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.
@@ -254,17 +252,17 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
     super(scope, id);
 
-    this.enableJmapOAuthDiscovery = props.enableJmapOAuthDiscovery ?? false;
+    this.enableJmapOAuthDiscovery  = props.enableJmapOAuthDiscovery ?? false;
     this.dynamicClientRegistration = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
-    this.artifacts = props.artifactResolver
+    this.artifacts                 = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
-    this.authzConfig = {
+    this.authzConfig               = {
       adminGroups: props.authorization?.adminGroups ?? ['admin'],
       userGroups: props.authorization?.userGroups ?? ['user'],
     };
-    this.scopeMap = this.buildScopeMap();
-    this.policies = this.buildPolicies();
-    this.authFlows = props.authFlows ?? {
+    this.scopeMap                  = this.buildScopeMap();
+    this.policies                  = this.buildPolicies();
+    this.authFlows                 = props.authFlows ?? {
       userPassword: false,
       userSrp: false,
     };
@@ -282,13 +280,13 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       artifactResolver: this.artifacts,
       deployerType,
     });
-    const stackRef = cognitoDeployer.dataStackRef;
+    const stackRef        = cognitoDeployer.dataStackRef;
 
-    this.userPool = stackRef.userPool;
-    this.userPoolId = stackRef.userPoolId;
+    this.userPool    = stackRef.userPool;
+    this.userPoolId  = stackRef.userPoolId;
     this.userPoolArn = stackRef.userPoolArn;
     this.oauthDomain = stackRef.oauthDomain;
-    this.issuer = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPoolId}`;
+    this.issuer      = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPoolId}`;
   }
 
   /**
@@ -329,7 +327,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   /** Provision the authorization-code OAuth client of an application that calls the Admin API; one per name. */
   public provisionAdminApiClient(config: ProvisionAdminApiClientParams): AuthClientConfig {
     const resolvedName = `${AUTH_POLICY_ADMIN_API}_${config.name}`;
-    const existing = this.adminApiClients.get(resolvedName);
+    const existing     = this.adminApiClients.get(resolvedName);
     if (existing) {
       return existing;
     }
@@ -351,7 +349,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   /** Provision the authorization-code OAuth client of an application that calls the JMAP API; one per name. */
   public provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig {
     const resolvedName = `${AUTH_POLICY_JMAP_API}_${config.name}`;
-    const existing = this.jmapApiClients.get(resolvedName);
+    const existing     = this.jmapApiClients.get(resolvedName);
     if (existing) {
       return existing;
     }
@@ -425,9 +423,9 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    * @returns Handle to the bootstrapped user resource, with access to the temporary password
    */
   public addBootstrapUser(config: BootstrapUserConfig): IBootstrapUserHandle {
-    const index = ++this.bootstrapUserCount;
+    const index       = ++this.bootstrapUserCount;
     const constructId = `bootstrapped-user-${index}`;
-    const handler = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
+    const handler     = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
       userPoolArn: this.userPoolArn,
     });
@@ -440,7 +438,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       // Force re-invocation when response contract changes (e.g., Data field added)
       responseContractVersion: '1',
     };
-    const customResource = new CustomResource(this, constructId, {
+    const customResource                      = new CustomResource(this, constructId, {
       resourceType: 'Custom::CognitoBootstrapUser',
       serviceToken: handler.functionArn,
       properties,
@@ -526,8 +524,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   private createOAuthClient(params: GenerateClientParams): AuthClientConfig {
     const isClientCredentials = params.flow === 'client_credentials';
-    const clientKey = slugifyLabel(params.name);
-    const requestScopeList = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
+    const clientKey           = slugifyLabel(params.name);
+    const requestScopeList    = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
 
     const cfnClient = new cognito.CfnUserPoolClient(this, `user-pool-client-${clientKey}`, {
       userPoolId: this.userPoolId,

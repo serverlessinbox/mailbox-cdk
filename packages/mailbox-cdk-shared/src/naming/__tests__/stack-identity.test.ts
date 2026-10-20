@@ -6,7 +6,8 @@
  * retained across deploys and which later deploys would then fail to recreate.
  */
 
-import { Stack } from 'aws-cdk-lib';
+import { Stack }         from 'aws-cdk-lib';
+
 import { StackIdentity } from '../stack-identity';
 
 describe('StackIdentity', () => {

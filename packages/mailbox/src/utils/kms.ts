@@ -1,5 +1,5 @@
+import * as kms      from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
-import * as kms from 'aws-cdk-lib/aws-kms';
 
 export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 
@@ -38,7 +38,7 @@ export interface MailboxKmsConfig {
 
 export function mailboxKmsMode(config?: MailboxKmsConfig): MailboxKmsMode {
   const mode = config?.mode ?? 'aws-managed';
-  if (mode === 'none') return 'aws-managed';
+  if (mode === 'none') {return 'aws-managed';}
   return mode;
 }
 
@@ -47,13 +47,13 @@ export function mailboxKmsDisabled(config?: MailboxKmsConfig): boolean {
 }
 
 export function mailboxKmsExcluded(resource: MailboxKmsResource, config?: MailboxKmsConfig): boolean {
-  if (mailboxKmsDisabled(config)) return true;
+  if (mailboxKmsDisabled(config)) {return true;}
   return (config?.excluded ?? []).includes(resource);
 }
 
 function awsManagedAlias(scope: Construct, id: string, aliasName: string): kms.IKey {
   const existing = scope.node.tryFindChild(id);
-  if (existing) return existing as unknown as kms.IKey;
+  if (existing) {return existing as unknown as kms.IKey;}
   return kms.Alias.fromAliasName(scope, id, aliasName);
 }
 
@@ -66,7 +66,7 @@ export function resolveBlobStoreKey(scope: Construct, config?: MailboxKmsConfig)
 }
 
 export function resolveDynamoTablesKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsExcluded('dynamodb', config)) return undefined;
+  if (mailboxKmsExcluded('dynamodb', config)) {return undefined;}
 
   if (mailboxKmsMode(config) === 'aws-managed') {
     // DynamoDB's AWS-managed key. We don't strictly need the IKey (TableEncryption.AWS_MANAGED works without it),
@@ -78,7 +78,7 @@ export function resolveDynamoTablesKey(scope: Construct, config?: MailboxKmsConf
 }
 
 export function resolveQueuesKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsExcluded('sqs', config)) return undefined;
+  if (mailboxKmsExcluded('sqs', config)) {return undefined;}
 
   if (mailboxKmsMode(config) === 'aws-managed') {
     return awsManagedAlias(scope, 'aws-managed-kms-sqs', 'alias/aws/sqs');

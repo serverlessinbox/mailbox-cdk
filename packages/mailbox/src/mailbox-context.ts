@@ -1,5 +1,4 @@
-import type { Construct } from 'constructs';
-import { Aws } from 'aws-cdk-lib';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import {
   MailboxArtifactResolverFactory,
   ServerlessInboxTagKeys,
@@ -8,12 +7,14 @@ import {
   resolveVendorAccountIds,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { loadMailboxArtifactVersions } from './mailbox-artifact-versions';
-import { loadMailboxRegistryRecord } from './mailbox-registry-record';
-import type { MailboxProps } from './mailbox-props';
-import { resolveMailboxEncryptionPlan } from './utils/mailbox-encryption';
-import type { MailboxEncryptionPlan } from './utils/mailbox-encryption';
+import { Aws }                              from 'aws-cdk-lib';
+import type { Construct }                   from 'constructs';
+
+import { loadMailboxArtifactVersions }      from './mailbox-artifact-versions';
+import type { MailboxProps }                from './mailbox-props';
+import { loadMailboxRegistryRecord }        from './mailbox-registry-record';
+import { resolveMailboxEncryptionPlan }     from './utils/mailbox-encryption';
+import type { MailboxEncryptionPlan }       from './utils/mailbox-encryption';
 
 /** The `MailboxProps` fields the foundation is resolved from. */
 type MailboxContextProps = Pick<MailboxProps, 'artifactResolver' | 'kms'>;
@@ -38,14 +39,14 @@ export class MailboxContext {
 
   /** Resolves the foundation under `scope` and applies the base tags to it. */
   public static resolve(scope: Construct, props: MailboxContextProps): MailboxContext {
-    const deployerType = resolveDeployerType(scope);
+    const deployerType     = resolveDeployerType(scope);
     const vendorAccountIds = resolveVendorAccountIds(scope);
 
     // The supplied resolver wins; otherwise one is pinned from the package's baked versions,
     // overridden by CDK context.
     const artifactResolver: IArtifactResolver = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(scope, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    const stackVersion = artifactResolver.getVersion('mailbox-cdk');
+    const stackVersion                        = artifactResolver.getVersion('mailbox-cdk');
 
     // Uses AWS::StackName so this also works when deployed via pure CloudFormation. The Mailbox
     // is the main stack, so it is its own root-stack (the base helper also tags `stack`).

@@ -1,40 +1,41 @@
-import { wrapHandler } from 'aws-custom-resources';
-import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
+import { ACMClient }                                         from '@aws-sdk/client-acm';
+import { CloudFormationClient }                              from '@aws-sdk/client-cloudformation';
+import { EventBridgeClient }                                 from '@aws-sdk/client-eventbridge';
+import { IAMClient }                                         from '@aws-sdk/client-iam';
+import { LambdaClient }                                      from '@aws-sdk/client-lambda';
+import { SFNClient }                                         from '@aws-sdk/client-sfn';
 import { withSmokeTest, env, ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { SFNClient } from '@aws-sdk/client-sfn';
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { ACMClient } from '@aws-sdk/client-acm';
-import { LambdaClient } from '@aws-sdk/client-lambda';
-import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
-import { IAMClient } from '@aws-sdk/client-iam';
-import { loadStarter, loadWorker } from './config';
-import type { WorkerInput, WorkerOutput } from './removal';
-import { RootStackMembership } from './root-stack-membership';
-import { SweepStarter } from './sweep-starter';
-import { SweepTargetPlanner } from './sweep-target-planner';
-import { SweepWorker } from './sweep-worker';
-import { CertSweeper } from './targets/cert-sweeper';
-import { EdgeFunctionSweeper } from './targets/edge-function-sweeper';
-import { StackFailureDetectorSweeper } from './targets/stack-failure-detector-sweeper';
+import { wrapHandler }                                       from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent }            from 'aws-lambda';
+
+import { loadStarter, loadWorker }                           from './config';
+import type { WorkerInput, WorkerOutput }                    from './removal';
+import { RootStackMembership }                               from './root-stack-membership';
+import { SweepStarter }                                      from './sweep-starter';
+import { SweepTargetPlanner }                                from './sweep-target-planner';
+import { SweepWorker }                                       from './sweep-worker';
+import { CertSweeper }                                       from './targets/cert-sweeper';
+import { EdgeFunctionSweeper }                               from './targets/edge-function-sweeper';
+import { StackFailureDetectorSweeper }                       from './targets/stack-failure-detector-sweeper';
 
 // Lambda@Edge functions live in us-east-1 only, wherever the stack runs.
 const LAMBDA_AT_EDGE_REGION = 'us-east-1';
 
-const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
-const acmClient = new ACMClient({ region: process.env.AWS_REGION });
-const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
-const lambdaClientEdge = new LambdaClient({ region: LAMBDA_AT_EDGE_REGION });
+const sfnClient         = new SFNClient({ region: process.env.AWS_REGION });
+const acmClient         = new ACMClient({ region: process.env.AWS_REGION });
+const lambdaClient      = new LambdaClient({ region: process.env.AWS_REGION });
+const lambdaClientEdge  = new LambdaClient({ region: LAMBDA_AT_EDGE_REGION });
 const eventBridgeClient = new EventBridgeClient({ region: process.env.AWS_REGION });
-const iamClient = new IAMClient({ region: process.env.AWS_REGION });
-const cfnClient = new CloudFormationClient({ region: process.env.AWS_REGION });
+const iamClient         = new IAMClient({ region: process.env.AWS_REGION });
+const cfnClient         = new CloudFormationClient({ region: process.env.AWS_REGION });
 
 // The starter and worker Lambdas are two physical functions sharing this code bundle, but the CDK
 // gives each a different environment — so each loads only the config its own handler needs.
 const { config: starterConfig, error: starterConfigError } = env.tryLoad(loadStarter);
-const { config: workerConfig, error: workerConfigError } = env.tryLoad(loadWorker);
+const { config: workerConfig, error: workerConfigError }   = env.tryLoad(loadWorker);
 
 const sweepTargetPlanner = new SweepTargetPlanner();
-const STARTER_RESPONSE = {
+const STARTER_RESPONSE   = {
   PhysicalResourceId: 'mailbox-deferred-removal',
   Data: {},
 };
@@ -48,9 +49,9 @@ export const workerHandler = withSmokeTest(async (input: WorkerInput): Promise<W
     throw new ExpectedFailure(workerConfigError);
   }
 
-  const logger = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
+  const logger              = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
   const rootStackMembership = new RootStackMembership(logger);
-  const sweepWorker = new SweepWorker(
+  const sweepWorker         = new SweepWorker(
     logger,
     new CertSweeper(acmClient, rootStackMembership, logger),
     new EdgeFunctionSweeper(lambdaClientEdge, rootStackMembership, logger),
@@ -84,7 +85,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
     return STARTER_RESPONSE;
   }
 
-  const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
+  const logger       = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
   const sweepStarter = new SweepStarter(starterConfig, sfnClient, cfnClient, sweepTargetPlanner, logger);
 
   // cast: wrapHandler's own event type (`TypeSafeCloudFormationResourceEvent`, from

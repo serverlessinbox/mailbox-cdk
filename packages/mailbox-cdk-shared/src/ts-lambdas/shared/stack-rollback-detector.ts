@@ -3,8 +3,9 @@ import {
   type CloudFormationClient,
   type StackStatus,
 } from '@aws-sdk/client-cloudformation';
-import { CaughtError } from './caught-error';
-import type { StackId } from './custom-resource-identifiers';
+
+import { CaughtError }       from './caught-error';
+import type { StackId }      from './custom-resource-identifiers';
 import type { LoggerBuffer } from './logger-buffer';
 
 /**

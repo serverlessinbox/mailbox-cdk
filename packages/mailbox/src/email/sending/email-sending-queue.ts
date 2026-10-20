@@ -1,7 +1,7 @@
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                                               from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                      from 'aws-cdk-lib';
+import { Construct }                                                     from 'constructs';
 
 /** Props of {@link EmailSendingQueue}. */
 export interface EmailSendingQueueProps {
@@ -55,7 +55,7 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue = new BaseQueue(this, 'email-submissions', {
+    this.queue    = new BaseQueue(this, 'email-submissions', {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue: {

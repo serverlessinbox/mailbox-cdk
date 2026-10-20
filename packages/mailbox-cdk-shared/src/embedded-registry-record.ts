@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { parseRegistryRecord } from '@serverlessinbox/artifact-registry/registry';
 import type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
+import { readFileSync }        from 'node:fs';
 
 /**
  * Loads and validates the registry record committed with a publishable package

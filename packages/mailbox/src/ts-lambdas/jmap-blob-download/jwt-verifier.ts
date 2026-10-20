@@ -1,15 +1,16 @@
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand }                                 from '@aws-sdk/client-dynamodb';
+import { toIssuer, type Issuer, type TableName }                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from 'jose';
-import * as t from 'typanion';
-import { toIssuer, type Issuer, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAudience, type Audience } from './auth-identifiers';
-import type { VerifiedJwt } from './auth-tokens';
-import { SUPPORTED_ALGORITHMS } from './origin-headers';
+import * as t                                                             from 'typanion';
+
+import { toAudience, type Audience }                                      from './auth-identifiers';
+import type { VerifiedJwt }                                               from './auth-tokens';
+import { SUPPORTED_ALGORITHMS }                                           from './origin-headers';
 
 export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
 
 const DEFAULT_ALLOWED_ALGORITHMS: readonly string[] = ['RS256'];
-const CLOCK_TOLERANCE_SECONDS = 300;
+const CLOCK_TOLERANCE_SECONDS                       = 300;
 
 const isJwtPayload = t.isPartial({
   sub: t.isOptional(t.isString()),
@@ -68,14 +69,14 @@ export class JwtVerifier {
   ): Promise<VerifiedJwt | null> {
     try {
       const unverifiedClaims = this.claimsOf(decodeJwt(token));
-      const issuer = this.normalizeIssuer(unverifiedClaims?.iss ?? '');
-      const header = decodeProtectedHeader(token);
-      const algorithms = this.supportedAlgorithmsOf(allowedAlgorithms);
+      const issuer           = this.normalizeIssuer(unverifiedClaims?.iss ?? '');
+      const header           = decodeProtectedHeader(token);
+      const algorithms       = this.supportedAlgorithmsOf(allowedAlgorithms);
       if (!issuer || !header.kid || !header.alg || !algorithms.includes(header.alg)) {
         return null;
       }
 
-      const keySet = await this.keySetOf(issuer, authKeyStoreTable);
+      const keySet      = await this.keySetOf(issuer, authKeyStoreTable);
       const { payload } = await jwtVerify(token, keySet, {
         clockTolerance: CLOCK_TOLERANCE_SECONDS,
         algorithms,
@@ -132,7 +133,7 @@ export class JwtVerifier {
       throw new Error(`JWKS not found in ${authKeyStoreTable} for issuer ${issuer}`);
     }
 
-    const jwks: unknown = JSON.parse(jwksJson);
+    const jwks: unknown    = JSON.parse(jwksJson);
     const errors: string[] = [];
     if (!isJwks(jwks, { errors })) {
       throw new Error(`JWKS of issuer ${issuer} in ${authKeyStoreTable} is malformed: ${errors.join('; ')}`);

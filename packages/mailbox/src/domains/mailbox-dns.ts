@@ -1,6 +1,7 @@
-import * as cdk from 'aws-cdk-lib';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { Construct } from 'constructs';
+import * as route53                                                from 'aws-cdk-lib/aws-route53';
+import * as cdk                                                    from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
+
 import { MAILBOX_ENDPOINTS, IMailboxDomainNames, MailboxEndpoint } from './mailbox-domains';
 
 /** The CNAME target (hostname without protocol) to publish for each endpoint; an endpoint without one gets no record. */

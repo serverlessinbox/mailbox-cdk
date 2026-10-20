@@ -4,9 +4,10 @@
  * `wrapHandler`-wrapped handler PUTs.
  */
 
-import { Writable } from 'stream';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import type { ResourceProperties, TableRole } from '../resource-properties';
+import { Writable }                                        from 'stream';
+
+import type { ResourceProperties, TableRole }              from '../resource-properties';
 
 export const SERVICE_TOKEN = 'arn:aws:lambda:eu-west-1:123456789012:function:data-override-resolver';
 
@@ -82,7 +83,7 @@ export interface CapturedCfnResponse {
 export function captureCfnResponse(): () => CapturedCfnResponse {
   // eslint-disable-next-line global-require
   const https = require('https');
-  let body = '';
+  let body    = '';
   https.request.mockImplementation((_options: unknown, callback?: (res: { statusCode: number }) => void) => {
     if (callback) {
       callback({ statusCode: 200 });

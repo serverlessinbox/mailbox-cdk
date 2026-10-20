@@ -1,18 +1,19 @@
-import { ArnFormat, Duration, Fn, Stack } from 'aws-cdk-lib';
-import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Construct, IDependable } from 'constructs';
-import type { SfnInvokeEvent, WorkflowInput } from '../ts-lambdas/stack-deployer/stack-deployment';
-import type { RetryCounts, WorkerResult } from '../ts-lambdas/stack-deployer/worker-result';
+import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
+import { IFunction }                          from 'aws-cdk-lib/aws-lambda';
+import * as tasks                             from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sfn                               from 'aws-cdk-lib/aws-stepfunctions';
+import { ArnFormat, Duration, Fn, Stack }     from 'aws-cdk-lib';
+import { Construct, IDependable }             from 'constructs';
 
-const CFN_FIELD = 'cfn' satisfies keyof WorkflowInput;
-const OP_FIELD = 'op' satisfies keyof WorkflowInput;
-const ATTEMPT_FIELD = 'attempt' satisfies keyof SfnInvokeEvent;
+import type { SfnInvokeEvent, WorkflowInput } from '../ts-lambdas/stack-deployer/stack-deployment';
+import type { RetryCounts, WorkerResult }     from '../ts-lambdas/stack-deployer/worker-result';
+
+const CFN_FIELD            = 'cfn' satisfies keyof WorkflowInput;
+const OP_FIELD             = 'op' satisfies keyof WorkflowInput;
+const ATTEMPT_FIELD        = 'attempt' satisfies keyof SfnInvokeEvent;
 const DELETE_RETRIES_FIELD = 'deleteRetryCount' satisfies keyof RetryCounts;
 const CREATE_RETRIES_FIELD = 'createRetryCount' satisfies keyof RetryCounts;
-const DONE_FIELD = 'done' satisfies keyof WorkerResult;
+const DONE_FIELD           = 'done' satisfies keyof WorkerResult;
 
 /** Where the workflow keeps the answer of the start invocation, and of the latest check invocation. */
 const START_RESULT = 'start';
@@ -65,7 +66,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
       stateMachineName: props.stateMachineName,
     });
 
-    this.stateMachineArn = stateMachine.stateMachineArn;
+    this.stateMachineArn        = stateMachine.stateMachineArn;
     this.stateMachineDependable = stateMachine;
   }
 
@@ -83,14 +84,14 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
   }
 
   private buildDefinition(props: PollingCfnDeployerWorkflowProps): sfn.IChainable {
-    const init = this.initialState();
-    const startOp = this.workerInvocation('StartStackOperation', START_RESULT, this.startPayload(), props.handler);
-    const wait = new sfn.Wait(this, 'WaitBeforeCheck', {
+    const init             = this.initialState();
+    const startOp          = this.workerInvocation('StartStackOperation', START_RESULT, this.startPayload(), props.handler);
+    const wait             = new sfn.Wait(this, 'WaitBeforeCheck', {
       time: sfn.WaitTime.duration(props.checkInterval ?? Duration.seconds(20)),
     });
-    const checkOp = this.workerInvocation('CheckStackOperation', CHECK_RESULT, this.checkPayload(), props.handler);
+    const checkOp          = this.workerInvocation('CheckStackOperation', CHECK_RESULT, this.checkPayload(), props.handler);
     const incrementAttempt = this.incrementAttemptState();
-    const done = new sfn.Succeed(this, 'Done');
+    const done             = new sfn.Succeed(this, 'Done');
 
     // The counters are read from a check that is still polling; a done result may carry none.
     const checkChoice = new sfn.Choice(this, 'IsDone?')

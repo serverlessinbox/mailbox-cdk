@@ -1,5 +1,5 @@
+import { Topic }     from 'aws-cdk-lib/aws-sns';
 import { Construct } from 'constructs';
-import { Topic } from 'aws-cdk-lib/aws-sns';
 
 /**
  * Read-only identity of the SES-notifications SNS topic. No grant method is exposed: the topic is

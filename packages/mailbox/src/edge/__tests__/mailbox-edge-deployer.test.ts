@@ -7,28 +7,29 @@
  * blob endpoint can read.
  */
 
-import { Stack, Token } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table } from 'aws-cdk-lib/aws-dynamodb';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { DataTable } from '../../data/data-tables';
-import { MailboxEdgeDeployer } from '../mailbox-edge-deployer';
-import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
+import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
 import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import { Table }                                 from 'aws-cdk-lib/aws-dynamodb';
+import * as route53                              from 'aws-cdk-lib/aws-route53';
+import { Stack, Token }                          from 'aws-cdk-lib';
+import { Construct }                             from 'constructs';
+
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../__tests__/deployer-test-helpers';
+import { DataTable }                     from '../../data/data-tables';
+import { MailboxEdgeDeployer }           from '../mailbox-edge-deployer';
+import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
 
-const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxEdgeDeployer';
-const STACK_NAME_REF = { Ref: 'AWS::StackName' };
-const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const EDGE_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, Match.stringLikeRegexp('^-edge-[0-9a-f]{8}$')]] };
-const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^edgedeployeredgestack/);
-const ITEM_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
-const CONFIG_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
+const DEPLOYER_RESOURCE_TYPE   = 'Custom::MailboxEdgeDeployer';
+const STACK_NAME_REF           = { Ref: 'AWS::StackName' };
+const STACK_GUID               = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const EDGE_STACK_NAME          = { 'Fn::Join': ['', [STACK_NAME_REF, Match.stringLikeRegexp('^-edge-[0-9a-f]{8}$')]] };
+const DEPLOYER_RESOURCE_ID     = expect.stringMatching(/^edgedeployeredgestack/);
+const ITEM_TABLE_ARN           = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
+const CONFIG_TABLE_ARN         = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
 const AUTH_KEY_STORE_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/auth-keys';
 
 interface SynthesizedDeployer {
@@ -47,8 +48,8 @@ function synthDeployer(
   parentId?: string,
 ): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const parent = parentId === undefined ? stack : new Construct(stack, parentId);
-  const deployer = new MailboxEdgeDeployer(parent, 'edge-deployer', {
+  const parent                      = parentId === undefined ? stack : new Construct(stack, parentId);
+  const deployer                    = new MailboxEdgeDeployer(parent, 'edge-deployer', {
     artifactResolver,
     domainName: 'example.com',
     itemTable: dataTable(stack, 'item-table', ITEM_TABLE_ARN),
@@ -96,7 +97,7 @@ describe('MailboxEdgeDeployer', () => {
       const stackNameOf = ({ template }: SynthesizedDeployer): string =>
         JSON.stringify(Object.values(template.findResources(DEPLOYER_RESOURCE_TYPE))[0].Properties.stackName);
 
-      const atTheRoot = stackNameOf(synthDeployer());
+      const atTheRoot    = stackNameOf(synthDeployer());
       const underAParent = stackNameOf(synthDeployer(() => ({}), 'moved-here'));
 
       expect(underAParent).not.toEqual(atTheRoot);
@@ -132,7 +133,7 @@ describe('MailboxEdgeDeployer', () => {
 
     it('passes the domain, the JMAP blob download artifact, the tables, the log group and the tagging values as template parameters', () => {
       const { artifactResolver, template } = synthDeployer();
-      const jmapBlobDownload = artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip');
+      const jmapBlobDownload               = artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip');
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({

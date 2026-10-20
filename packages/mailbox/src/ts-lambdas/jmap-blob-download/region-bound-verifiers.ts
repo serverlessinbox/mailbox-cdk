@@ -1,7 +1,8 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import type { Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { HmacVerifier } from './hmac-verifier';
-import { JwtVerifier } from './jwt-verifier';
+import type { Region }         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import { HmacVerifier }        from './hmac-verifier';
+import { JwtVerifier }         from './jwt-verifier';
 
 /** The verifiers of the credentials a blob download carries, reading their keys from one auth key store. */
 export interface Verifiers {
@@ -29,7 +30,7 @@ export class RegionBoundVerifiers {
       return existing;
     }
 
-    const dynamodb = this.createDynamoDBClient(region);
+    const dynamodb           = this.createDynamoDBClient(region);
     const created: Verifiers = { jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) };
     this.verifiersByRegion.set(region, created);
     return created;

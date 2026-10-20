@@ -1,5 +1,6 @@
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import type { RemovalPropertiesMap } from './removal';
+
+import type { RemovalPropertiesMap }              from './removal';
 
 /**
  * Decides what a custom-resource request needs to sweep, per registered removal; makes no AWS calls.
@@ -76,7 +77,7 @@ export class SweepTargetPlanner {
       return a.length === b.length && a.every((value, i) => this.deepEqual(value, b[i]));
     }
     const aEntries = Object.entries(a);
-    const bValues = new Map(Object.entries(b));
+    const bValues  = new Map(Object.entries(b));
     return aEntries.length === bValues.size && aEntries.every(([key, value]) => this.deepEqual(value, bValues.get(key)));
   }
 }

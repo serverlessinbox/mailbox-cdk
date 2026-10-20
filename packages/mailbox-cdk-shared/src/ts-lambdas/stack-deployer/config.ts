@@ -1,6 +1,7 @@
-import { toRegion, type Region } from '../shared/aws-identifiers';
-import { loadBaseConfig, type BaseConfig } from '../shared/base-config';
-import * as env from '../shared/env';
+import { toRegion, type Region }                   from '../shared/aws-identifiers';
+import { loadBaseConfig, type BaseConfig }         from '../shared/base-config';
+import * as env                                    from '../shared/env';
+
 import { toStateMachineArn, type StateMachineArn } from './deployer-identifiers';
 
 // Stands in for the region when AWS_REGION is missing; the problem is recorded and the config is never used.

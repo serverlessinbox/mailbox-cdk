@@ -1,10 +1,11 @@
-import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
-import { Duration, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
+import { LambdaFunction }                        from 'aws-cdk-lib/aws-events-targets';
+import { Rule, Schedule }                        from 'aws-cdk-lib/aws-events';
+import { Duration, Stack }                       from 'aws-cdk-lib';
+import { Construct }                             from 'constructs';
 
-import { AuthKeyStoreUpdaterLambda } from '../../lambdas';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { AuthKeyStoreUpdaterLambda }             from '../../lambdas';
+
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
 
 export interface AuthKeyStoreProps {

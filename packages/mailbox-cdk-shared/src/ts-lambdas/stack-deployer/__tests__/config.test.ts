@@ -1,4 +1,4 @@
-import * as env from '../../shared/env';
+import * as env                    from '../../shared/env';
 import { loadStarter, loadWorker } from '../config';
 
 /**
@@ -36,7 +36,7 @@ describe('stack-deployer worker config', () => {
 describe('stack-deployer starter config', () => {
   beforeEach(() => {
     delete process.env.MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN;
-    process.env.AWS_REGION = 'eu-west-1';
+    process.env.AWS_REGION   = 'eu-west-1';
     process.env.SERVICE_NAME = 'deployer-service';
   });
 

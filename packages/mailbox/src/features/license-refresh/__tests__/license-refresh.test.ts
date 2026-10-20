@@ -7,14 +7,15 @@
  * owns it; if either rule is missing or points at another stack, licenses silently go stale.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { LicenseRefresh } from '../license-refresh';
-import { DataTable } from '../../../data/data-tables';
+import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataTable }                            from '../../../data/data-tables';
+import { LicenseRefresh }                       from '../license-refresh';
 
 describe('LicenseRefresh', () => {
   let stack: cdk.Stack;

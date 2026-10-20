@@ -1,6 +1,6 @@
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbActions, grantTableActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { ITable }                             from 'aws-cdk-lib/aws-dynamodb';
+import { IGrantable }                         from 'aws-cdk-lib/aws-iam';
 
 /**
  * A handle to one of the data sub-stack's DynamoDB tables (config, item, changelog, audit log, or
@@ -48,7 +48,7 @@ export class DataTable implements IDataTable {
 
   constructor(private readonly table: ITable) {
     this.tableName = table.tableName;
-    this.tableArn = table.tableArn;
+    this.tableArn  = table.tableArn;
   }
 
   public grantRead(grantee: IGrantable): void {

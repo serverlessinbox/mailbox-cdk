@@ -1,8 +1,8 @@
-import { Command, Option } from 'clipanion';
-import { join } from 'path';
+import { Command, Option }   from 'clipanion';
+import { join }              from 'path';
 
 import { bundleJsiiPackage } from '../jsii-package/bundle-jsii-package';
-import { readPackageJson } from '../jsii-package/package-json';
+import { readPackageJson }   from '../jsii-package/package-json';
 
 /**
  * CLI entry point of `mailbox-bundler package`: resolves the package folder and its jsii excludes,
@@ -24,8 +24,8 @@ export class BundlePackageCommand extends Command {
 
   async execute(): Promise<void> {
     const absoluteFolder = join(process.cwd(), this.packageFolder);
-    const packageJson = await readPackageJson(absoluteFolder);
-    const jsiiExcludes = packageJson.jsii?.excludeTypescript ?? [];
+    const packageJson    = await readPackageJson(absoluteFolder);
+    const jsiiExcludes   = packageJson.jsii?.excludeTypescript ?? [];
     await bundleJsiiPackage(absoluteFolder, jsiiExcludes);
   }
 }

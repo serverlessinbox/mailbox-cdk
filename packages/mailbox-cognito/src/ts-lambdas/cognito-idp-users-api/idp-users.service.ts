@@ -10,19 +10,19 @@ import {
   type AdminGetUserCommandOutput,
   type CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { create } from '@bufbuild/protobuf';
+import { create }                                                                                                                                                                                                                                                                                      from '@bufbuild/protobuf';
+import type { AdminAuthContext, AuditContext, HandlerContext }                                                                                                                                                                                                                                         from '@serverlessinbox/mailbox-admin-api';
+import { ConflictError, InvalidInputError, NotFoundError }                                                                                                                                                                                                                                             from '@serverlessinbox/mailbox-admin-api';
+import { CaughtError, toTenantId, type LoggerBuffer, type TenantId }                                                                                                                                                                                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { AdminAuthContext, AuditContext, HandlerContext } from '@serverlessinbox/mailbox-admin-api';
-import { ConflictError, InvalidInputError, NotFoundError } from '@serverlessinbox/mailbox-admin-api';
-import { CaughtError, toTenantId, type LoggerBuffer, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toGroupName, toUserSubject, toUsername, type GroupName, type UserPoolId, type UserSubject, type Username }                                                                                                                                                                                    from '../shared/cognito-identifiers';
+import { toEmailAddress, type EmailAddress }                                                                                                                                                                                                                                                           from '../shared/identity-identifiers';
+import type { IdentityProvisionerClient }                                                                                                                                                                                                                                                              from '../shared/identity-provisioner-client';
 
-import { toGroupName, toUserSubject, toUsername, type GroupName, type UserPoolId, type UserSubject, type Username } from '../shared/cognito-identifiers';
-import type { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
-import { toEmailAddress, type EmailAddress } from '../shared/identity-identifiers';
 import type { CreateIdpUserRequest, CreateIdpUserResponse, DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
-import { CreateIdpUserResponseSchema, DeleteIdpUserResponseSchema, GetIdpUserResponseSchema, ListIdpUsersResponseSchema, SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema } from './generated/idp_users_pb';
-import type { IdpUsersServiceHandlers } from './generated/idp_users_service';
-import type { IdpUserMapper } from './idp-user-mapper';
+import { CreateIdpUserResponseSchema, DeleteIdpUserResponseSchema, GetIdpUserResponseSchema, ListIdpUsersResponseSchema, SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema }                                                                                                           from './generated/idp_users_pb';
+import type { IdpUsersServiceHandlers }                                                                                                                                                                                                                                                                from './generated/idp_users_service';
+import type { IdpUserMapper }                                                                                                                                                                                                                                                                          from './idp-user-mapper';
 
 type IdpUsersContext = HandlerContext<AdminAuthContext, AuditContext>;
 
@@ -36,7 +36,7 @@ const ADMIN_API_ERROR_FOR: Record<CognitoFailureName, (failure: CaughtError) => 
   UsernameExistsException: () => new ConflictError('User already exists', 'already exists'),
 };
 
-const DEFAULT_GROUP = 'user';
+const DEFAULT_GROUP   = 'user';
 const MASKED_PASSWORD = '***';
 
 /** What {@link CognitoIdpUsersService} needs besides the Cognito client and the user pool. */
@@ -65,9 +65,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     deps: CognitoIdpUsersServiceDeps,
   ) {
     this.identityProvisioner = deps.identityProvisioner;
-    this.userMapper = deps.userMapper;
-    this.adminGroups = deps.adminGroups ?? [];
-    this.logger = deps.logger;
+    this.userMapper          = deps.userMapper;
+    this.adminGroups         = deps.adminGroups ?? [];
+    this.logger              = deps.logger;
   }
 
   public async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {
@@ -100,9 +100,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
   /** A failure after the user was created deletes the user again and fails the request with that failure. */
   public async createIdpUser(ctx: IdpUsersContext, req: CreateIdpUserRequest): Promise<CreateIdpUserResponse> {
     const username = toUsername(req.username);
-    const email = req.email === undefined ? undefined : toEmailAddress(req.email);
-    const enabled = req.enabled ?? true;
-    const groups = this.groupsToJoin(req);
+    const email    = req.email === undefined ? undefined : toEmailAddress(req.email);
+    const enabled  = req.enabled ?? true;
+    const groups   = this.groupsToJoin(req);
 
     this.auditEntity(ctx, username, email ?? username);
     ctx.audit.changes = [{ op: 'create', path: '/user', value: { username, email, enabled, groups: req.groups } }];
@@ -121,7 +121,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     this.auditEntity(ctx, username, username);
     ctx.audit.changes = [{ op: 'replace', path: '/enabled', value: req.enabled }];
 
-    const input = { UserPoolId: this.userPoolId, Username: username };
+    const input   = { UserPoolId: this.userPoolId, Username: username };
     const command = req.enabled ? new AdminEnableUserCommand(input) : new AdminDisableUserCommand(input);
     await this.cognito.send(command).catch((thrown: unknown) => {
       throw this.translate(thrown, 'UserNotFoundException', 'InvalidParameterException');
@@ -167,13 +167,13 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
   }
 
   private auditEntity(ctx: IdpUsersContext, username: Username, entityName: Username | EmailAddress): void {
-    ctx.audit.entityId = username;
+    ctx.audit.entityId   = username;
     ctx.audit.entityName = entityName;
   }
 
   /** A failure in `handled` becomes the admin API error for it; any other failure is returned as it is. */
   private translate(thrown: unknown, ...handled: CognitoFailureName[]): unknown {
-    const failure = new CaughtError(thrown);
+    const failure     = new CaughtError(thrown);
     const handledName = handled.find((name) => failure.is(name));
     return handledName ? ADMIN_API_ERROR_FOR[handledName](failure) : thrown;
   }

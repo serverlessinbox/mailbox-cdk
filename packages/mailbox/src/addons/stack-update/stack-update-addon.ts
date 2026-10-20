@@ -1,16 +1,17 @@
-import * as cdk from 'aws-cdk-lib';
-import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../../data/data-tables';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import type { IArtifactResolver }                                                              from '@serverlessinbox/artifact-registry-cdk';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
+import { HttpLambdaAuthorizer }                                                                from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration }                                                               from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod }                                                                 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as cdk                                                                                from 'aws-cdk-lib';
+import { Construct }                                                                           from 'constructs';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
-import { StackUpdateApiLambda } from '../../lambdas/stack-update-api';
-import { TemplateVersionParam, type ITemplateVersionParam } from './template-version-param';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../api/addons';
+import type { IDataTable }                                                                     from '../../data/data-tables';
+import type { IAuditEventsQueue }                                                              from '../../features/audit-writing/audit-events-queue';
+import { StackUpdateApiLambda }                                                                from '../../lambdas/stack-update-api';
+
+import { TemplateVersionParam, type ITemplateVersionParam }                                    from './template-version-param';
 
 /** Inputs of `StackUpdateAddon`, as threaded in by `StackUpdateAddonProvider`. */
 export interface StackUpdateAddonProps {
@@ -54,12 +55,12 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     };
 
     const rootStackArn = cdk.Stack.of(this).stackId;
-    const stack = cdk.Stack.of(this);
-    const region = stack.region;
+    const stack        = cdk.Stack.of(this);
+    const region       = stack.region;
 
     const artifactLocation = props.artifactResolver.location;
 
-    const pointerKey = buildReleasePointerKey('template', props.templateName, {
+    const pointerKey    = buildReleasePointerKey('template', props.templateName, {
       distTag: props.distTag ?? 'stable',
       project: artifactLocation.project,
     });
@@ -75,8 +76,8 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
     const templateVersionParamConstruct = new TemplateVersionParam(this, 'template-version', {
       templateVersion: props.templateVersion,
     });
-    this.templateVersionParamAccess = templateVersionParamConstruct;
-    const templateVersionParam = templateVersionParamConstruct.parameter;
+    this.templateVersionParamAccess     = templateVersionParamConstruct;
+    const templateVersionParam          = templateVersionParamConstruct.parameter;
 
     this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,

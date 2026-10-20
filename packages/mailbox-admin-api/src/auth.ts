@@ -1,4 +1,4 @@
-import { ForbiddenError } from './errors';
+import { ForbiddenError }             from './errors';
 import type { ApiGatewayV2EventLike } from './types';
 
 export type AdminAuthType = 'anonymous' | 'authenticated';
@@ -22,14 +22,14 @@ export type AdminAuthContext = {
 };
 
 function toRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {return {};}
   return value as Record<string, unknown>;
 }
 
 function pickString(obj: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = obj[key];
-    if (typeof value === 'string' && value.length > 0) return value;
+    if (typeof value === 'string' && value.length > 0) {return value;}
   }
   return undefined;
 }
@@ -42,20 +42,20 @@ function pickStringFromNested(obj: Record<string, unknown>, keys: string[], nest
 }
 
 function toStringArray(value: unknown): string[] {
-  if (value === undefined || value === null) return [];
-  if (Array.isArray(value)) return value.filter((v) => typeof v === 'string') as string[];
+  if (value === undefined || value === null) {return [];}
+  if (Array.isArray(value)) {return value.filter((v) => typeof v === 'string') as string[];}
   if (typeof value === 'string') {
     // Allow comma-separated or JSON-ish single strings.
     const trimmed = value.trim();
-    if (!trimmed) return [];
-    if (trimmed.includes(',')) return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!trimmed) {return [];}
+    if (trimmed.includes(',')) {return trimmed.split(',').map((s) => s.trim()).filter(Boolean);}
     return [trimmed];
   }
   return [];
 }
 
 function toScopes(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((v) => typeof v === 'string') as string[];
+  if (Array.isArray(value)) {return value.filter((v) => typeof v === 'string') as string[];}
   if (typeof value === 'string') {
     return value
       .split(/[\s,]+/)
@@ -93,11 +93,11 @@ export type ExtractAuthOptions = {
  */
 export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: ExtractAuthOptions): AdminAuthContext {
   const adminGroupName = (options?.adminGroupName ?? 'admin').toLowerCase();
-  const requireSub = options?.requireSub ?? true;
+  const requireSub     = options?.requireSub ?? true;
 
   const requestContext = event.requestContext as any;
-  const rawAuthorizer = (requestContext?.authorizer?.lambda ?? {}) as unknown;
-  const raw = toRecord(rawAuthorizer);
+  const rawAuthorizer  = (requestContext?.authorizer?.lambda ?? {}) as unknown;
+  const raw            = toRecord(rawAuthorizer);
 
   const authTypeRaw =
     pickString(raw, ['authType', 'auth_type', 'authtype']) ??
@@ -135,23 +135,23 @@ export function extractAdminAuthContext(event: ApiGatewayV2EventLike, options?: 
     ...toStringArray(raw['roles']),
   ].filter(Boolean);
 
-  const normalizedGroups = groups.map((g) => g.toLowerCase());
+  const normalizedGroups      = groups.map((g) => g.toLowerCase());
   const configuredAdminGroups = (options?.adminGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
-  const configuredUserGroups = (options?.userGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
+  const configuredUserGroups  = (options?.userGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
 
   const isAdmin = configuredAdminGroups.length > 0
     ? configuredAdminGroups.some((g) => normalizedGroups.includes(g))
     : normalizedGroups.includes(adminGroupName);
 
   const roles: string[] = [];
-  if (isAdmin) roles.push('admin');
+  if (isAdmin) {roles.push('admin');}
   if (configuredUserGroups.length > 0) {
     if (configuredUserGroups.some((g) => normalizedGroups.includes(g))) {
       roles.push('user');
     }
   } else {
     // Best-effort: if authenticated and not admin, still treat as user.
-    if (authType === 'authenticated') roles.push('user');
+    if (authType === 'authenticated') {roles.push('user');}
   }
 
   const scopes = [

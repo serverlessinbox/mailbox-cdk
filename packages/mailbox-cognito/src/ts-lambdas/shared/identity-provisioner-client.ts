@@ -1,5 +1,5 @@
 import { InvokeCommand, type InvokeCommandOutput, type LambdaClient } from '@aws-sdk/client-lambda';
-import type { FunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { FunctionName }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   isDcrCheckResponse,

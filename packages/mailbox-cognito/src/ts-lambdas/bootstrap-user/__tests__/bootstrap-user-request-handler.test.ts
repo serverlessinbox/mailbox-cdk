@@ -7,7 +7,6 @@
  * during a stack rollback leaves the stack in UPDATE_ROLLBACK_FAILED.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
@@ -15,10 +14,13 @@ import {
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { createCloudFormationClient, ExpectedFailure, isParentStackRollingBack, LoggerBuffer, toStackId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { BootstrapUserRequestHandler } from '../bootstrap-user-request-handler';
-import { UserEnsurer } from '../ensure-user';
-import { PASSWORD_SET_AT_INSTALL_TIME } from '../password';
-import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
+import { mockClient }                                                                                     from 'aws-sdk-client-mock';
+
+import { BootstrapUserRequestHandler }                                                                    from '../bootstrap-user-request-handler';
+import { UserEnsurer }                                                                                    from '../ensure-user';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                                                   from '../password';
+
+import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID }                      from './bootstrap-user-helpers';
 
 // The stack-status lookup belongs to isParentStackRollingBack and is pinned by its own tests, so this suite
 // mocks that function and lets everything else run for real.
@@ -32,9 +34,9 @@ const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunc
 const SUPPLIED_PASSWORD = 'Supplied1Password';
 
 describe('BootstrapUserRequestHandler', () => {
-  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  const cognitoMock    = mockClient(CognitoIdentityProviderClient);
   const cloudFormation = createCloudFormationClient();
-  const logger = new LoggerBuffer('test-service', 'error');
+  const logger         = new LoggerBuffer('test-service', 'error');
   let requestHandler: BootstrapUserRequestHandler;
 
   beforeEach(() => {

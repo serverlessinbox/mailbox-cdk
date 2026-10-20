@@ -1,9 +1,11 @@
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
-import { mockClient } from 'aws-sdk-client-mock';
-import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
-import { CfnResponder } from '../cfn-responder';
-import type { OperationInput } from '../stack-deployment';
+import { CloudFormationClient, DescribeStacksCommand }                      from '@aws-sdk/client-cloudformation';
+import { mockClient }                                                       from 'aws-sdk-client-mock';
+
+import { toPhysicalResourceId }                                             from '../../shared/custom-resource-identifiers';
+import { CfnResponder }                                                     from '../cfn-responder';
+import type { OperationInput }                                              from '../stack-deployment';
 import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';
+
 import {
   defaultLevelLogger,
   fakeCfnEndpoint,
@@ -18,8 +20,8 @@ import {
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
 
-const OLD_OUTPUTS = { TableName: 'items-old' };
-const FAILURE = 'Stack deployer check failed';
+const OLD_OUTPUTS           = { TableName: 'items-old' };
+const FAILURE               = 'Stack deployer check failed';
 const UPDATE: FailedRequest = { requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 };
 
 /**
@@ -30,7 +32,7 @@ const UPDATE: FailedRequest = { requestType: 'Update', stackName: STACK_NAME, re
  */
 describe('UpdateRollbackAnswerer', () => {
   const parentClient = new CloudFormationClient({});
-  const parentStack = mockClient(parentClient);
+  const parentStack  = mockClient(parentClient);
   let subStacks: jest.Mocked<SubStackOutputs>;
   let endpoint: FakeCfnEndpoint;
   let consoleSpies: ConsoleSpies;
@@ -42,10 +44,10 @@ describe('UpdateRollbackAnswerer', () => {
 
   beforeEach(() => {
     parentStack.reset();
-    subStacks = { currentOutputs: jest.fn<Promise<Record<string, string> | undefined>, [OperationInput]>(async () => OLD_OUTPUTS) };
+    subStacks    = { currentOutputs: jest.fn<Promise<Record<string, string> | undefined>, [OperationInput]>(async () => OLD_OUTPUTS) };
     consoleSpies = silenceConsole();
-    endpoint = fakeCfnEndpoint();
-    answerer = new UpdateRollbackAnswerer(parentClient, subStacks, new CfnResponder(noPause), defaultLevelLogger());
+    endpoint     = fakeCfnEndpoint();
+    answerer     = new UpdateRollbackAnswerer(parentClient, subStacks, new CfnResponder(noPause), defaultLevelLogger());
   });
 
   afterEach(() => {

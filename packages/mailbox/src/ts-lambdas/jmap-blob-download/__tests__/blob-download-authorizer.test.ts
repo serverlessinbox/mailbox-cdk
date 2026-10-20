@@ -7,15 +7,17 @@
  * every refused request in the log.
  */
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { DynamoDBClient }                     from '@aws-sdk/client-dynamodb';
+import { ExpectedFailure, LoggerBuffer }      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { HmacTokenPayload, VerifiedJwt } from '../auth-tokens';
-import { BlobDownloadAuthorizer } from '../blob-download-authorizer';
-import { BlobRequestRejected } from '../blob-request-rejected';
-import type { CloudFrontRequest } from '../cloudfront-event';
-import type { CloudFrontResponse } from '../cloudfront-responses';
-import { HmacVerifier } from '../hmac-verifier';
-import { JwtVerifier } from '../jwt-verifier';
+import { BlobDownloadAuthorizer }             from '../blob-download-authorizer';
+import { BlobRequestRejected }                from '../blob-request-rejected';
+import type { CloudFrontRequest }             from '../cloudfront-event';
+import type { CloudFrontResponse }            from '../cloudfront-responses';
+import { HmacVerifier }                       from '../hmac-verifier';
+import { JwtVerifier }                        from '../jwt-verifier';
+
 import {
   ACCOUNT_ID,
   ANOTHER_AUDIENCE,
@@ -76,19 +78,19 @@ describe('BlobDownloadAuthorizer', () => {
   }
 
   beforeEach(() => {
-    const dynamodb = new DynamoDBClient({});
+    const dynamodb      = new DynamoDBClient({});
     verifySignatureOnly = jest.spyOn(JwtVerifier.prototype, 'verifySignatureOnly').mockResolvedValue(VERIFIED_JWT);
-    verifySessionToken = jest.spyOn(HmacVerifier.prototype, 'verifySessionToken').mockResolvedValue(SESSION);
-    verifyBlobMac = jest.spyOn(HmacVerifier.prototype, 'verifyBlobMac').mockResolvedValue(true);
-    consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    verifySessionToken  = jest.spyOn(HmacVerifier.prototype, 'verifySessionToken').mockResolvedValue(SESSION);
+    verifyBlobMac       = jest.spyOn(HmacVerifier.prototype, 'verifyBlobMac').mockResolvedValue(true);
+    consoleError        = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'debug').mockImplementation(() => undefined);
     flush = jest.spyOn(LoggerBuffer.prototype, 'flush');
 
-    logger = new LoggerBuffer();
+    logger       = new LoggerBuffer();
     verifiersFor = jest.fn(() => ({ jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) }));
-    authorizer = new BlobDownloadAuthorizer(logger, verifiersFor);
+    authorizer   = new BlobDownloadAuthorizer(logger, verifiersFor);
   });
 
   afterEach(() => {

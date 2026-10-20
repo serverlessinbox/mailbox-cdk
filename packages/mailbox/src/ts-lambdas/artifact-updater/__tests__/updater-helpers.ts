@@ -1,26 +1,24 @@
 /// <reference types="jest" />
+import { CloudFormationClient }                                                     from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }                                                         from '@aws-sdk/client-cloudfront';
+import { LambdaClient, type InvokeCommandOutput }                                   from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient }                                           from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client }                                                                 from '@aws-sdk/client-s3';
+import { LoggerBuffer, toRegion, type Region }                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context }  from 'aws-lambda';
 
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import { LambdaClient, type InvokeCommandOutput } from '@aws-sdk/client-lambda';
-import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
-import { S3Client } from '@aws-sdk/client-s3';
-import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import { LoggerBuffer, toRegion, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { LambdaTarget, UiTarget } from '../artifact-target';
-import type { Config } from '../config';
-import { EdgeLambdaUpdater } from '../edge-lambda-updater';
-import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback } from '../lambda-code-rollback';
-import { LambdaCodeUpdater } from '../lambda-code-updater';
-import { LambdaFunctionCode, type Sleep } from '../lambda-function-code';
-import { ReleaseArtifacts } from '../release-artifacts';
-import type { HttpTriggerEvent } from '../updater-event';
-import { UiBucketUpdater } from '../ui-bucket-updater';
-import { UpdateCycle } from '../update-cycle';
+import type { LambdaTarget, UiTarget }                                              from '../artifact-target';
+import type { Config }                                                              from '../config';
+import { EdgeLambdaUpdater }                                                        from '../edge-lambda-updater';
+import { FunctionSmokeTester }                                                      from '../function-smoke-tester';
+import { LambdaCodeRollback }                                                       from '../lambda-code-rollback';
+import { LambdaCodeUpdater }                                                        from '../lambda-code-updater';
+import { LambdaFunctionCode, type Sleep }                                           from '../lambda-function-code';
+import { ReleaseArtifacts }                                                         from '../release-artifacts';
+import { UiBucketUpdater }                                                          from '../ui-bucket-updater';
+import { UpdateCycle }                                                              from '../update-cycle';
 import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from '../updater-clients';
-import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
-import type { NewUpdateCycle } from '../updater-trigger';
+import type { HttpTriggerEvent }                                                    from '../updater-event';
 import {
   toArtifactBucketName,
   toArtifactName,
@@ -30,6 +28,8 @@ import {
   toDistributionArn,
   toLambdaFunctionArn,
 } from '../updater-identifiers';
+import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
+import type { NewUpdateCycle }              from '../updater-trigger';
 
 /** The functions of the faked release registry package, which a suite sets up per test. */
 export interface RegistryMocks {
@@ -117,12 +117,12 @@ export function uiTarget(values: TargetValues = {}): UiTarget {
 
 /** An update cycle wired from real parts over fake clients; a suite that fakes the cycle's module gets a fake instead. */
 export function newUpdateCycle(): UpdateCycle {
-  const clients = fakeUpdaterClients();
-  const logger = new LoggerBuffer();
-  const releases = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
-  const functionCode = new LambdaFunctionCode(noSleep);
-  const smokeTester = new FunctionSmokeTester(logger);
-  const rollback = new LambdaCodeRollback(functionCode, logger);
+  const clients            = fakeUpdaterClients();
+  const logger             = new LoggerBuffer();
+  const releases           = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
+  const functionCode       = new LambdaFunctionCode(noSleep);
+  const smokeTester        = new FunctionSmokeTester(logger);
+  const rollback           = new LambdaCodeRollback(functionCode, logger);
   const rootStackResources = testRootStackResources();
   return new UpdateCycle(
     testConfig,
@@ -173,7 +173,7 @@ export function fakeCloudFormationClient(): CloudFormationClient {
  * The properties are strings, as they arrive.
  */
 export function deployEndTriggerEvent(requestType: 'Create' | 'Update' | 'Delete'): CloudFormationCustomResourceEvent {
-  const base = {
+  const base       = {
     ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
     ResponseURL: 'https://cloudformation-custom-resource-response-url.example.com/',
     StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/my-stack/guid',

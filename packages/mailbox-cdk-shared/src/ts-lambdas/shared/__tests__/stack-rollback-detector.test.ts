@@ -4,16 +4,17 @@
  * during a normal update or skip work it must do, and a wrong false during a rollback strands the stack.
  */
 
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
-import { mockClient } from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand }         from '@aws-sdk/client-cloudformation';
+import { mockClient }                                          from 'aws-sdk-client-mock';
+
+import { toStackId }                                           from '../custom-resource-identifiers';
+import { LoggerBuffer }                                        from '../logger-buffer';
 import { isParentStackBeingDeleted, isParentStackRollingBack } from '../stack-rollback-detector';
-import { toStackId } from '../custom-resource-identifiers';
-import { LoggerBuffer } from '../logger-buffer';
 
 const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid');
 
 describe('parent stack detectors', () => {
-  const cfnMock = mockClient(CloudFormationClient);
+  const cfnMock   = mockClient(CloudFormationClient);
   const cfnClient = new CloudFormationClient({});
 
   beforeEach(() => {
@@ -51,7 +52,7 @@ describe('parent stack detectors', () => {
 
     it('returns false and records the failure as a buffered warn on the given logger when the lookup fails', async () => {
       cfnMock.on(DescribeStacksCommand).rejects(new Error('AccessDenied'));
-      const logger = new LoggerBuffer();
+      const logger         = new LoggerBuffer();
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       await expect(detect(STACK_ID, cfnClient, logger)).resolves.toBe(false);
@@ -65,7 +66,7 @@ describe('parent stack detectors', () => {
 
   it('records the text of a failure that is not an Error', async () => {
     cfnMock.on(DescribeStacksCommand).callsFake(() => Promise.reject('plain text'));
-    const logger = new LoggerBuffer(undefined, 'warn');
+    const logger         = new LoggerBuffer(undefined, 'warn');
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
     await isParentStackRollingBack(STACK_ID, cfnClient, logger);

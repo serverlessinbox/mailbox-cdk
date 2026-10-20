@@ -1,20 +1,21 @@
-import { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import { HttpApi, HttpMethod, HttpRoute, CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpUrlIntegration, HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { IUserPool } from 'aws-cdk-lib/aws-cognito';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { IJmapApiAddon, IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { DynamicClientRegistrationMode } from '../auth/dynamic-client-registration-mode';
-import { JmapOAuthDcrLambda } from '../lambdas/jmap-oauth-dcr';
+import { IJmapApiAddon, IIdentityProvisioner }                                                         from '@serverlessinbox/mailbox';
+import { HttpUrlIntegration, HttpLambdaIntegration }                                                   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod, HttpRoute, CfnStage }                                                    from 'aws-cdk-lib/aws-apigatewayv2';
+import { IUserPool }                                                                                   from 'aws-cdk-lib/aws-cognito';
+import { IBucket }                                                                                     from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                                                        from 'aws-cdk-lib';
+import { Construct }                                                                                   from 'constructs';
+
+import { DynamicClientRegistrationMode }                                                               from '../auth/dynamic-client-registration-mode';
+import { JmapOAuthDcrLambda }                                                                          from '../lambdas/jmap-oauth-dcr';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
-const REGISTRATION_PATH = '/oauth/register';
+const REGISTRATION_PATH      = '/oauth/register';
 const REGISTRATION_ROUTE_KEY = `POST ${REGISTRATION_PATH}`;
 
-const OPENID_CONFIGURATION_PATH = '/.well-known/openid-configuration';
+const OPENID_CONFIGURATION_PATH      = '/.well-known/openid-configuration';
 const OPENID_CONFIGURATION_ROUTE_KEY = `GET ${OPENID_CONFIGURATION_PATH}`;
 
 /**
@@ -30,7 +31,7 @@ interface RouteThrottle {
 /** The throttling of each route of a stage, by route key. A value is a token when the route is gated on a condition. */
 type RouteSettings = Record<string, RouteThrottle | cdk.IResolvable>;
 
-const DISCOVERY_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 };
+const DISCOVERY_THROTTLE: RouteThrottle    = { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 };
 const REGISTRATION_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 };
 
 /** What the addon needs from the Cognito user pool providing OAuth: its identity and its OAuth endpoints. */
@@ -131,10 +132,10 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   }
 
   public addRoutes(api: HttpApi): void {
-    const stage = this.defaultStageOf(api);
+    const stage                           = this.defaultStageOf(api);
     const existingSettings: RouteSettings = { ...stage.routeSettings };
 
-    const discoverySettings = this.addDiscoveryRoute(api, stage);
+    const discoverySettings    = this.addDiscoveryRoute(api, stage);
     const registrationSettings = this.addRegistrationRoute(api, stage);
 
     stage.routeSettings = { ...existingSettings, ...discoverySettings, ...registrationSettings };
@@ -173,7 +174,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   /** Mounts the discovery document as a direct S3 proxy, with no Lambda invocation. */
   private addDiscoveryRoute(api: HttpApi, stage: CfnStage): RouteSettings {
     const integration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}${OPENID_CONFIGURATION_PATH}`);
-    const routes = api.addRoutes({
+    const routes      = api.addRoutes({
       path: OPENID_CONFIGURATION_PATH,
       methods: [HttpMethod.GET],
       integration,
@@ -195,7 +196,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     }
 
     const registrationEnabled = this.registrationEnabled;
-    const routes = api.addRoutes({
+    const routes              = api.addRoutes({
       path: REGISTRATION_PATH,
       methods: [HttpMethod.POST],
       integration: new HttpLambdaIntegration('dcr-integration', this.dcrLambda),

@@ -10,7 +10,7 @@ describe('withSmokeTest', () => {
   describe('probe', () => {
     it('is answered healthy without invoking the handler', async () => {
       const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
 
@@ -20,7 +20,7 @@ describe('withSmokeTest', () => {
 
     it('is recognised as JSON text', async () => {
       const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       const result = await wrapped(JSON.stringify({ serverlessInboxSmokeTest: true }), {});
 
@@ -31,9 +31,9 @@ describe('withSmokeTest', () => {
 
   describe('real traffic', () => {
     it('reaches the handler and returns its result', async () => {
-      const cfnEvent = { RequestType: 'Create', ResponseURL: 'https://example.com/response', LogicalResourceId: 'MyResource' };
+      const cfnEvent    = { RequestType: 'Create', ResponseURL: 'https://example.com/response', LogicalResourceId: 'MyResource' };
       const handlerMock = jest.fn(async () => ({ Status: 'SUCCESS' }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       const result = await wrapped(cfnEvent, {});
 
@@ -43,8 +43,8 @@ describe('withSmokeTest', () => {
 
     it('reaches the handler when the event carries the probe flag beside other keys', async () => {
       const flaggedEvent = { serverlessInboxSmokeTest: true, RequestType: 'Create' };
-      const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const handlerMock  = jest.fn(async () => ({ statusCode: 200 }));
+      const wrapped      = withSmokeTest(handlerMock);
 
       const result = await wrapped(flaggedEvent, {});
 
@@ -54,7 +54,7 @@ describe('withSmokeTest', () => {
 
     it('reaches the handler when the probe flag is not true', async () => {
       const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       await wrapped({ serverlessInboxSmokeTest: false }, {});
 
@@ -63,7 +63,7 @@ describe('withSmokeTest', () => {
 
     it('reaches the handler when the event is text that is not JSON', async () => {
       const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       const result = await wrapped('not valid json', {});
 
@@ -73,7 +73,7 @@ describe('withSmokeTest', () => {
 
     it('reaches the handler when the event is null or undefined', async () => {
       const handlerMock = jest.fn(async () => ({ statusCode: 200 }));
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       await wrapped(null, {});
       await wrapped(undefined, {});
@@ -85,7 +85,7 @@ describe('withSmokeTest', () => {
       const handlerMock = jest.fn(async () => {
         throw new Error('Handler failed');
       });
-      const wrapped = withSmokeTest(handlerMock);
+      const wrapped     = withSmokeTest(handlerMock);
 
       await expect(wrapped({ method: 'GET' }, {})).rejects.toThrow('Handler failed');
     });
@@ -95,8 +95,8 @@ describe('withSmokeTest', () => {
   // runtimes reject a handler declared with a third formal parameter at Init (Runtime.CallbackHandlerDeprecated).
   describe('checks', () => {
     it('all pass: the probe is answered healthy', async () => {
-      const check1 = jest.fn(async () => undefined);
-      const check2 = jest.fn(() => undefined);
+      const check1  = jest.fn(async () => undefined);
+      const check2  = jest.fn(() => undefined);
       const wrapped = withSmokeTest(jest.fn(async () => ({})), check1, check2);
 
       const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
@@ -107,11 +107,11 @@ describe('withSmokeTest', () => {
     });
 
     it('the first to throw fails the probe and the remaining checks do not run', async () => {
-      const failingCheck = jest.fn(async () => {
+      const failingCheck   = jest.fn(async () => {
         throw new Error('Config validation failed');
       });
       const unreachedCheck = jest.fn(async () => undefined);
-      const wrapped = withSmokeTest(jest.fn(async () => ({})), failingCheck, unreachedCheck);
+      const wrapped        = withSmokeTest(jest.fn(async () => ({})), failingCheck, unreachedCheck);
 
       const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
 
@@ -123,7 +123,7 @@ describe('withSmokeTest', () => {
       const syncFailingCheck = jest.fn(() => {
         throw new Error('Config validation failed');
       });
-      const wrapped = withSmokeTest(jest.fn(async () => ({})), syncFailingCheck);
+      const wrapped          = withSmokeTest(jest.fn(async () => ({})), syncFailingCheck);
 
       const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
 
@@ -131,7 +131,7 @@ describe('withSmokeTest', () => {
     });
 
     it('do not run for real traffic', async () => {
-      const check = jest.fn(async () => undefined);
+      const check   = jest.fn(async () => undefined);
       const wrapped = withSmokeTest(jest.fn(async () => ({ statusCode: 200 })), check);
 
       await wrapped({ method: 'GET' }, {});

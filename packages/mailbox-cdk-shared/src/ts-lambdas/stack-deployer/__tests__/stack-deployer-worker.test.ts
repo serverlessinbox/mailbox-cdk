@@ -7,13 +7,16 @@ import {
   UpdateStackCommand,
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
-import { mockClient } from 'aws-sdk-client-mock';
-import { AnswerDeliveryFailure } from '../answer-delivery-failure';
-import { CfnResponder } from '../cfn-responder';
-import { CloudFormationStacks } from '../cloudformation-stacks';
-import { StackDeployerWorker } from '../stack-deployer-worker';
-import { StackOperationFailure } from '../stack-operation-failure';
+import { mockClient }                 from 'aws-sdk-client-mock';
+
+import { AnswerDeliveryFailure }      from '../answer-delivery-failure';
+import { CfnResponder }               from '../cfn-responder';
+import { CloudFormationStacks }       from '../cloudformation-stacks';
+import { StackDeployerWorker }        from '../stack-deployer-worker';
+import type { OperationInput }        from '../stack-deployment';
+import { StackOperationFailure }      from '../stack-operation-failure';
 import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
+
 import {
   awsError,
   defaultLevelLogger,
@@ -31,7 +34,6 @@ import {
   type ConsoleSpies,
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
-import type { OperationInput } from '../stack-deployment';
 
 function failedEvent(reason: string): StackEvent {
   return {
@@ -75,7 +77,7 @@ describe('StackDeployerWorker', () => {
     cfn.reset();
     cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: [] });
     consoleSpies = silenceConsole();
-    endpoint = fakeCfnEndpoint();
+    endpoint     = fakeCfnEndpoint();
   });
 
   afterEach(() => {
@@ -428,7 +430,7 @@ describe('StackDeployerWorker', () => {
 
       // Drives the worker the way the workflow does: one check per attempt, the attempt counted after each.
       let attempt = 0;
-      let result = await check({ attempt });
+      let result  = await check({ attempt });
       while (!result.done) {
         attempt += 1;
         expect(attempt).toBeLessThanOrEqual(135);
@@ -486,8 +488,8 @@ describe('StackDeployerWorker', () => {
 
   describe('an Update that would be answered FAILED', () => {
     const rolledBack = () => rollbackAnswering(true);
-    const update = operation({ requestType: 'Update' });
-    const target = replyTarget();
+    const update     = operation({ requestType: 'Update' });
+    const target     = replyTarget();
 
     it.each([
       ['the stack does not exist', { Stacks: [] }, 0, `Stack ${STACK_NAME} does not exist`],
@@ -507,7 +509,7 @@ describe('StackDeployerWorker', () => {
 
     it('is offered to the rollback answerer with the failure of a StackOperationFailure, and left unanswered when that answers it', async () => {
       const rollback = rolledBack();
-      const failure = new StackOperationFailure('Stack deployer start failed', awsError('AccessDenied', 'cannot update'));
+      const failure  = new StackOperationFailure('Stack deployer start failed', awsError('AccessDenied', 'cannot update'));
 
       const result = await workerForStacks(rollback).answerFailure(update, failure, target);
 

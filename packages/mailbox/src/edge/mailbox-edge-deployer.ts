@@ -1,14 +1,16 @@
-import { Aws, CustomResource, Stack, Token } from 'aws-cdk-lib';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { Construct } from 'constructs';
-import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver, ResolvedArtifact }                                from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                        from '@serverlessinbox/mailbox-cdk-shared';
 import { DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IDataTable } from '../data/data-tables';
-import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
+import * as acm                                                                    from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                                    from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                                 from 'aws-cdk-lib/aws-lambda';
+import * as route53                                                                from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Stack, Token }                                       from 'aws-cdk-lib';
+import { Construct }                                                               from 'constructs';
+
+import type { IDataTable }                                                         from '../data/data-tables';
+
+import { MailboxEdgeDeployerWorker }                                               from './mailbox-edge-deployer-worker';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -82,7 +84,7 @@ export class MailboxEdgeDeployer extends Construct {
     // Matches the name above and the unhashed `${Aws.STACK_NAME}-edge` that earlier installs deployed,
     // whose resource is deleted with this policy in force.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
-    const edgeStackArn = stack.formatArn({
+    const edgeStackArn         = stack.formatArn({
       service: 'cloudformation',
       region: 'us-east-1',
       resource: 'stack',

@@ -1,8 +1,9 @@
-import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { toStackId } from './custom-resource-identifiers';
+import type { CloudFormationClient }                        from '@aws-sdk/client-cloudformation';
+
+import { toStackId }                                        from './custom-resource-identifiers';
 import type { CustomResourceAnswer, CustomResourceRequest } from './custom-resource-request';
-import type { LoggerBuffer } from './logger-buffer';
-import { isParentStackRollingBack } from './stack-rollback-detector';
+import type { LoggerBuffer }                                from './logger-buffer';
+import { isParentStackRollingBack }                         from './stack-rollback-detector';
 
 /**
  * Decides the answer to a custom-resource request that failed. It suppresses only an Update that fails while
@@ -14,7 +15,7 @@ export class FailedRequestAnswerer {
 
   constructor(cloudFormation: CloudFormationClient, logger: LoggerBuffer) {
     this.cloudFormation = cloudFormation;
-    this.logger = logger;
+    this.logger         = logger;
   }
 
   /**

@@ -7,18 +7,19 @@
  * would leave the user created with the wrong name, groups or password.
  */
 
+import { MailboxArtifactResolverFactory }       from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { loadMailboxCognitoRegistryRecord } from '../../mailbox-cognito-registry-record';
-import { loadMailboxCognitoArtifactVersions } from '../../mailbox-cognito-artifact-versions';
-import { templateProperties } from '../../ts-lambdas/bootstrap-user/__tests__/bootstrap-user-helpers';
-import { MailboxUserPool } from '../mailbox-user-pool';
+
+import { loadMailboxCognitoArtifactVersions }   from '../../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }     from '../../mailbox-cognito-registry-record';
+import { templateProperties }                   from '../../ts-lambdas/bootstrap-user/__tests__/bootstrap-user-helpers';
+import { MailboxUserPool }                      from '../mailbox-user-pool';
 
 const BOOTSTRAP_USER_TYPE = 'Custom::CognitoBootstrapUser';
 
 function synthesizeBootstrapUser(): Record<string, unknown> {
-  const app = new App({
+  const app   = new App({
     context: {
       'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
@@ -36,14 +37,14 @@ function synthesizeBootstrapUser(): Record<string, unknown> {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const pool = new MailboxUserPool(stack, 'user-pool', {
+  const pool  = new MailboxUserPool(stack, 'user-pool', {
     domain: { kind: 'cognito', cognitoDomainPrefix: 'test-bootstrap' },
     artifactResolver: MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions()),
   });
 
   pool.addBootstrapUser({ username: 'admin', groups: ['admin'], temporaryPassword: 'Temp1Password' });
 
-  const resources = Template.fromStack(stack).findResources(BOOTSTRAP_USER_TYPE);
+  const resources  = Template.fromStack(stack).findResources(BOOTSTRAP_USER_TYPE);
   const [resource] = Object.values(resources);
   return resource.Properties;
 }

@@ -1,11 +1,12 @@
-import { Construct } from 'constructs';
-import { TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
-import { QueueEncryption } from 'aws-cdk-lib/aws-sqs';
+import type { BaseQueueProps }                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import { TableEncryption }                                                                                   from 'aws-cdk-lib/aws-dynamodb';
+import { QueueEncryption }                                                                                   from 'aws-cdk-lib/aws-sqs';
+import { Construct }                                                                                         from 'constructs';
 
-import type { BlobStoreProps } from '../resources/blob-store';
-import type { BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import type { MailboxKmsConfig } from './kms';
-import type { DynamoTableEncryptionProps } from '../resources/data-table-props';
+import type { BlobStoreProps }                                                                               from '../resources/blob-store';
+import type { DynamoTableEncryptionProps }                                                                   from '../resources/data-table-props';
+
+import type { MailboxKmsConfig }                                                                             from './kms';
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 
 export interface MailboxEncryptionPlan {

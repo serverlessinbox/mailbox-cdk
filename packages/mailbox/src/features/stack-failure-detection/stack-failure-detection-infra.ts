@@ -1,13 +1,14 @@
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import type { IConstruct } from 'constructs';
-import { Fn, Stack, Aws, RemovalPolicy, CfnResource } from 'aws-cdk-lib';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
 import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import { StackFailureDetectorLambda } from '../../lambdas';
+import * as targets                                      from 'aws-cdk-lib/aws-events-targets';
+import * as events                                       from 'aws-cdk-lib/aws-events';
+import * as iam                                          from 'aws-cdk-lib/aws-iam';
+import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
+import { Fn, Stack, Aws, RemovalPolicy, CfnResource }    from 'aws-cdk-lib';
+import { Construct }                                     from 'constructs';
+import type { IConstruct }                               from 'constructs';
+
+import { StackFailureDetectorLambda }                    from '../../lambdas';
 
 /** Inputs of the stack-failure detection resources. */
 export interface StackFailureDetectionInfraProps {
@@ -17,7 +18,7 @@ export interface StackFailureDetectionInfraProps {
 }
 
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
-const RULE_TARGET_ID = 'Target0';
+const RULE_TARGET_ID       = 'Target0';
 
 /**
  * The detector Lambda, its execution role and inline policy, and the EventBridge rule that fires the
@@ -55,7 +56,7 @@ export class StackFailureDetectionInfra extends Construct {
     const positionHash = PositionHash.of(this);
 
     const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', positionHash, '-', guidPrefix]);
-    const detectorRoleName = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
+    const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
 
     const detectorRole = new iam.Role(this, 'detector-role', {
       roleName: detectorRoleName,
@@ -79,10 +80,10 @@ export class StackFailureDetectionInfra extends Construct {
 
     this.createDetectorPolicy(detectorRole, infraLogGroup.logGroupArn, props.vendorAccountIds);
 
-    this.detector = detector;
-    this.rule = rule;
-    this.role = detectorRole;
-    this.ruleTargetId = RULE_TARGET_ID;
+    this.detector               = detector;
+    this.rule                   = rule;
+    this.role                   = detectorRole;
+    this.ruleTargetId           = RULE_TARGET_ID;
     this.detectorRolePolicyName = DETECTOR_POLICY_NAME;
   }
 

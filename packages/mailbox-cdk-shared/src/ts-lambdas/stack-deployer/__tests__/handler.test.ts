@@ -1,8 +1,10 @@
-import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
-import type * as SfnSdk from '@aws-sdk/client-sfn';
+import type * as CloudFormationSdk        from '@aws-sdk/client-cloudformation';
+import type * as SfnSdk                   from '@aws-sdk/client-sfn';
 import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
-import type * as HandlerModule from '../handler';
-import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
+
+import { toPhysicalResourceId }           from '../../shared/custom-resource-identifiers';
+import type * as HandlerModule            from '../handler';
+
 import {
   cfnRequest,
   fakeCfnEndpoint,
@@ -25,8 +27,8 @@ interface LoadedHandlers {
   readonly cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
 }
 
-const CONTEXT = { logStreamName: LOG_STREAM_NAME };
-const ACCESS_DENIED = { name: 'AccessDeniedException', message: 'not allowed' };
+const CONTEXT        = { logStreamName: LOG_STREAM_NAME };
+const ACCESS_DENIED  = { name: 'AccessDeniedException', message: 'not allowed' };
 const ALREADY_EXISTS = { name: 'ExecutionAlreadyExists', message: 'Execution already exists' };
 
 /**
@@ -51,9 +53,9 @@ describe('stack-deployer handlers', () => {
 
     let loaded: LoadedHandlers | undefined;
     jest.isolateModules(() => {
-      const sfnSdk: typeof SfnSdk = require('@aws-sdk/client-sfn');
+      const sfnSdk: typeof SfnSdk                       = require('@aws-sdk/client-sfn');
       const cloudFormationSdk: typeof CloudFormationSdk = require('@aws-sdk/client-cloudformation');
-      loaded = {
+      loaded                                            = {
         handlers: require('../handler'),
         sfn: mockClient(sfnSdk.SFNClient),
         cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
@@ -66,7 +68,7 @@ describe('stack-deployer handlers', () => {
   }
 
   const starterEnvironment = { SERVICE_NAME: 'stack-deployer-data-starter', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: STATE_MACHINE_ARN, LOG_LEVEL: undefined };
-  const workerEnvironment = { SERVICE_NAME: 'stack-deployer-data-worker', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
+  const workerEnvironment  = { SERVICE_NAME: 'stack-deployer-data-worker', AWS_REGION: 'us-east-1', MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: undefined, LOG_LEVEL: undefined };
 
   /** CloudFormation as it is while the parent stack rolls back: the parent says so, and the stack of the operation has outputs. */
   const rollingBackParent = async (input: { StackName?: string }) =>
@@ -76,7 +78,7 @@ describe('stack-deployer handlers', () => {
 
   beforeEach(() => {
     consoleSpies = silenceConsole();
-    endpoint = fakeCfnEndpoint();
+    endpoint     = fakeCfnEndpoint();
   });
 
   afterEach(() => {
@@ -159,7 +161,7 @@ describe('stack-deployer handlers', () => {
 
     it('answers FAILED with the reason of an expected failure and writes none of the buffered trace', async () => {
       const { handlers, sfn } = loadHandlers(starterEnvironment);
-      const request = cfnRequest({ StackId: stackIdOf('this-is-a-very-long-names') });
+      const request           = cfnRequest({ StackId: stackIdOf('this-is-a-very-long-names') });
 
       await handlers.starterHandler(request, CONTEXT);
 

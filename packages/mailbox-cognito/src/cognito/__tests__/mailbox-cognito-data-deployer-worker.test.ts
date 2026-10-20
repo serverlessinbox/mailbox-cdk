@@ -7,18 +7,20 @@
  * stacks' pools, and a plain StringEquals on the multivalued aws:TagKeys silently denies every tag write.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
 import { actionsOf, allPolicyStatements, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxCognitoDataDeployerWorker } from '../mailbox-cognito-data-deployer-worker';
-import { newDeployerTestStack } from './cognito-deployer-helpers';
+import type { PolicyStatementJson }                                                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                                                                       from 'aws-cdk-lib/assertions';
+
+import { MailboxCognitoDataDeployerWorker }                                                                               from '../mailbox-cognito-data-deployer-worker';
+
+import { newDeployerTestStack }                                                                                           from './cognito-deployer-helpers';
 
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
-const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
+const DEPLOYED_STACK_ARN  = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
 
 /** The tag source of a root-stack statement: 'id' when it matches the stack's guid, 'name' when it matches the name of a resource without an id tag. */
 function tagSourceOf(statement: PolicyStatementJson, tagSource: 'ResourceTag' | 'RequestTag'): 'id' | 'name' | undefined {
-  const idKey = `aws:${tagSource}/serverless-inbox:root-stack-id`;
+  const idKey   = `aws:${tagSource}/serverless-inbox:root-stack-id`;
   const nameKey = `aws:${tagSource}/serverless-inbox:root-stack`;
   if (statement.Condition?.StringEquals?.[idKey] !== undefined) {
     return 'id';

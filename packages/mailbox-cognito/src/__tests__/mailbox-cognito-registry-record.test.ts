@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
+import { readFileSync }                     from 'node:fs';
+import * as path                            from 'node:path';
+
 import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
 
 /**

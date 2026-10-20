@@ -12,22 +12,23 @@ import {
   CreateUserPoolClientCommand,
   DeleteUserPoolClientCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { mockClient } from 'aws-sdk-client-mock';
-import { LoggerBuffer, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvokeCommand, LambdaClient }                                                  from '@aws-sdk/client-lambda';
+import { LoggerBuffer, toFunctionName }                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                                   from 'aws-sdk-client-mock';
 
-import { toUserPoolId } from '../../shared/cognito-identifiers';
-import { IdentityProvisionerClient } from '../../shared/identity-provisioner-client';
-import { ClientRegistration } from '../client-registration';
-import { CognitoUserPoolClientManager } from '../cognito-client';
-import { PoolResolver } from '../pool-resolver';
-import { RedirectUriPolicy } from '../redirect-uri';
+import { toUserPoolId }                                                                 from '../../shared/cognito-identifiers';
+import { IdentityProvisionerClient }                                                    from '../../shared/identity-provisioner-client';
+import { ClientRegistration }                                                           from '../client-registration';
+import { CognitoUserPoolClientManager }                                                 from '../cognito-client';
+import { PoolResolver }                                                                 from '../pool-resolver';
+import { RedirectUriPolicy }                                                            from '../redirect-uri';
+
 import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent, sentRequests } from './jmap-oauth-dcr-helpers';
 
 const LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/cb';
 
 describe('ClientRegistration', () => {
-  const lambdaMock = mockClient(LambdaClient);
+  const lambdaMock  = mockClient(LambdaClient);
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
   let registration: ClientRegistration;
@@ -41,7 +42,7 @@ describe('ClientRegistration', () => {
     cognitoMock.on(DeleteUserPoolClientCommand).resolves({});
 
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    warnLog = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    warnLog  = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     errorLog = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     registration = new ClientRegistration(

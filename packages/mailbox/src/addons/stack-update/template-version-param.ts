@@ -1,7 +1,7 @@
-import { Construct } from 'constructs';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { SsmActions, grantParameterActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { IGrantable }                        from 'aws-cdk-lib/aws-iam';
+import * as ssm                              from 'aws-cdk-lib/aws-ssm';
+import { Construct }                         from 'constructs';
 
 export interface TemplateVersionParamProps {
   /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev') stored as the parameter's value. */
@@ -40,7 +40,7 @@ export class TemplateVersionParam implements ITemplateVersionParam {
   public readonly parameterName: string;
 
   constructor(scope: Construct, id: string, props: TemplateVersionParamProps) {
-    this.parameter = new ssm.StringParameter(scope, id, {
+    this.parameter     = new ssm.StringParameter(scope, id, {
       stringValue: props.templateVersion,
       tier: ssm.ParameterTier.STANDARD,
     });

@@ -6,14 +6,16 @@
  * unexpected (a schema mismatch or a DynamoDB failure, which the handler flushes).
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBClient, DescribeTableCommand, ResourceNotFoundException } from '@aws-sdk/client-dynamodb';
-import { ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { TableOverrideResolver } from '../table-override-resolver';
-import { INCOMING_ARNS, PROPERTIES_WITHOUT_OVERRIDES, tableArn } from './data-override-resolver-helpers';
+import { ExpectedFailure, LoggerBuffer }                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                      from 'aws-sdk-client-mock';
 
-const OVERRIDE_ITEM_TABLE_NAME = 'override-item';
-const OVERRIDE_ITEM_ARN = tableArn(OVERRIDE_ITEM_TABLE_NAME);
+import { TableOverrideResolver }                                           from '../table-override-resolver';
+
+import { INCOMING_ARNS, PROPERTIES_WITHOUT_OVERRIDES, tableArn }           from './data-override-resolver-helpers';
+
+const OVERRIDE_ITEM_TABLE_NAME      = 'override-item';
+const OVERRIDE_ITEM_ARN             = tableArn(OVERRIDE_ITEM_TABLE_NAME);
 const PROPERTIES_WITH_ITEM_OVERRIDE = { ...PROPERTIES_WITHOUT_OVERRIDES, itemTableOverrideArn: OVERRIDE_ITEM_ARN };
 
 describe('TableOverrideResolver', () => {
@@ -24,7 +26,7 @@ describe('TableOverrideResolver', () => {
   beforeEach(() => {
     dynamodbMock.reset();
     consoleInfo = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    resolver = new TableOverrideResolver(new DynamoDBClient({ region: 'eu-west-1' }), new LoggerBuffer('test', 'info'));
+    resolver    = new TableOverrideResolver(new DynamoDBClient({ region: 'eu-west-1' }), new LoggerBuffer('test', 'info'));
   });
 
   afterEach(() => {

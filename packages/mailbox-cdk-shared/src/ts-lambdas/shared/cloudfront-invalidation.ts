@@ -1,8 +1,8 @@
-import type { CloudFrontClient } from '@aws-sdk/client-cloudfront';
+import type { CloudFrontClient }     from '@aws-sdk/client-cloudfront';
 import { CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
-import { createHash } from 'node:crypto';
+import { createHash }                from 'node:crypto';
 
-const MAX_CALLER_REFERENCE_LENGTH = 128;
+const MAX_CALLER_REFERENCE_LENGTH    = 128;
 const HASHED_CALLER_REFERENCE_LENGTH = 64;
 
 /** What to invalidate: the distribution, the paths on it and the caller reference that makes the request idempotent. */
@@ -26,7 +26,7 @@ export async function invalidateCloudFront(
   request: InvalidationRequest,
 ): Promise<InvalidationResult> {
   const { distributionId, paths, callerReference } = request;
-  const dist = (distributionId ?? '').trim();
+  const dist                                       = (distributionId ?? '').trim();
   if (!dist) {
     return { invalidated: false };
   }

@@ -6,7 +6,6 @@
  * request. Creating over an existing user must not be a failure, or every repeated deployment would fail.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
@@ -14,9 +13,11 @@ import {
   NotAuthorizedException,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer }                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                            from 'aws-sdk-client-mock';
+
 import { toGroupName, toUserPoolId, toUsername } from '../../shared/cognito-identifiers';
-import { UserEnsurer, type BootstrapUser } from '../ensure-user';
+import { UserEnsurer, type BootstrapUser }       from '../ensure-user';
 
 function bootstrapUser(overrides: Partial<BootstrapUser> = {}): BootstrapUser {
   return {
@@ -38,8 +39,8 @@ describe('UserEnsurer', () => {
     cognitoMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
-    logger = new LoggerBuffer('test-service', 'error');
-    errorLog = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+    logger      = new LoggerBuffer('test-service', 'error');
+    errorLog    = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
     userEnsurer = new UserEnsurer(new CognitoIdentityProviderClient({}), logger);
   });
 

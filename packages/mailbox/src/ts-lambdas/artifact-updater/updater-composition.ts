@@ -1,27 +1,28 @@
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import { LambdaClient } from '@aws-sdk/client-lambda';
-import { ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
-import { S3Client } from '@aws-sdk/client-s3';
-import { setTimeout as sleep } from 'node:timers/promises';
-import { env, LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { CfnTrigger } from './cfn-trigger';
-import { load } from './config';
-import { EdgeLambdaUpdater } from './edge-lambda-updater';
-import { FunctionSmokeTester } from './function-smoke-tester';
-import { HttpTrigger } from './http-trigger';
-import { LambdaCodeRollback } from './lambda-code-rollback';
-import { LambdaCodeUpdater } from './lambda-code-updater';
-import { LambdaFunctionCode } from './lambda-function-code';
-import { ReleaseArtifacts } from './release-artifacts';
-import { ScheduledTrigger } from './scheduled-trigger';
-import type { TriggerBuilder } from './trigger-detector';
-import { UiBucketUpdater } from './ui-bucket-updater';
-import { UpdateCycle } from './update-cycle';
+import { CloudFormationClient }                                                     from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }                                                         from '@aws-sdk/client-cloudfront';
+import { LambdaClient }                                                             from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient }                                           from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client }                                                                 from '@aws-sdk/client-s3';
+import { env, LoggerBuffer, type Region }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                          from 'aws-lambda';
+import { setTimeout as sleep }                                                      from 'node:timers/promises';
+
+import { CfnTrigger }                                                               from './cfn-trigger';
+import { load }                                                                     from './config';
+import { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
+import { FunctionSmokeTester }                                                      from './function-smoke-tester';
+import { HttpTrigger }                                                              from './http-trigger';
+import { LambdaCodeRollback }                                                       from './lambda-code-rollback';
+import { LambdaCodeUpdater }                                                        from './lambda-code-updater';
+import { LambdaFunctionCode }                                                       from './lambda-function-code';
+import { ReleaseArtifacts }                                                         from './release-artifacts';
+import { ScheduledTrigger }                                                         from './scheduled-trigger';
+import type { TriggerBuilder }                                                      from './trigger-detector';
+import { UiBucketUpdater }                                                          from './ui-bucket-updater';
+import { UpdateCycle }                                                              from './update-cycle';
 import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from './updater-clients';
-import type { HttpTriggerEvent } from './updater-event';
-import type { ReadyUpdater, UpdaterRuntime } from './updater-runtime';
+import type { HttpTriggerEvent }                                                    from './updater-event';
+import type { ReadyUpdater, UpdaterRuntime }                                        from './updater-runtime';
 
 /**
  * Builds what one invocation works with, from the runtime the entry point loaded once per cold start: the
@@ -35,7 +36,7 @@ export class UpdaterComposition implements TriggerBuilder {
 
   constructor(runtime: UpdaterRuntime) {
     this.runtime = runtime;
-    this.logger = new LoggerBuffer(runtime.config.serviceName, runtime.config.logLevel);
+    this.logger  = new LoggerBuffer(runtime.config.serviceName, runtime.config.logLevel);
   }
 
   /** Loads the configuration and, when it loaded, builds the clients; a configuration that failed has no clients. */
@@ -76,11 +77,11 @@ export class UpdaterComposition implements TriggerBuilder {
 
   private updateCycle(): UpdateCycle {
     const { config, clients } = this.ready();
-    const releases = new ReleaseArtifacts(clients.registryS3, config, this.logger);
-    const functionCode = new LambdaFunctionCode(sleep);
-    const smokeTester = new FunctionSmokeTester(this.logger);
-    const rollback = new LambdaCodeRollback(functionCode, this.logger);
-    const rootStackResources = new RootStackResources(config.rootStackTagValue, config.rootStackId);
+    const releases            = new ReleaseArtifacts(clients.registryS3, config, this.logger);
+    const functionCode        = new LambdaFunctionCode(sleep);
+    const smokeTester         = new FunctionSmokeTester(this.logger);
+    const rollback            = new LambdaCodeRollback(functionCode, this.logger);
+    const rootStackResources  = new RootStackResources(config.rootStackTagValue, config.rootStackId);
     return new UpdateCycle(
       config,
       clients,

@@ -1,5 +1,5 @@
-import { Aws } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { Aws }  from 'aws-cdk-lib';
 
 /** The resources the execution role acts on, each as a plain ARN string so no grant adds a CloudFormation dependency edge. */
 export interface SweeperExecutionTargets {

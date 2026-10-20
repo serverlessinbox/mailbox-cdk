@@ -7,10 +7,12 @@
  * guard keeps a removal from running against a target that is not in the execution input.
  */
 
-import { Duration } from 'aws-cdk-lib';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import type { CertWorkerInput } from '../../../ts-lambdas/resource-sweeper/removal';
-import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from '../removal';
+import * as sfn                                                           from 'aws-cdk-lib/aws-stepfunctions';
+import { Duration }                                                       from 'aws-cdk-lib';
+
+import type { CertWorkerInput }                                           from '../../../ts-lambdas/resource-sweeper/removal';
+import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from '../removal';
+
 import { newTestStack, newWorkerFunction, renderDefinition, stateBodyOf } from './sweeper-helpers';
 
 describe('removal chain helpers', () => {
@@ -22,9 +24,9 @@ describe('removal chain helpers', () => {
 
   describe('buildWorkerRetryLoop', () => {
     function renderLoop(gracePeriod?: Duration): string {
-      const stack = newTestStack('RetryLoopStack');
+      const stack     = newTestStack('RetryLoopStack');
       const onSuccess = new sfn.Succeed(stack, 'Done');
-      const entry = buildWorkerRetryLoop(stack, 'Cert', {
+      const entry     = buildWorkerRetryLoop(stack, 'Cert', {
         worker: newWorkerFunction(stack),
         payload: certPayload(),
         retryInterval,
@@ -45,7 +47,7 @@ describe('removal chain helpers', () => {
 
     it('continues on SUCCESS, waits and invokes again on RETRY, and fails on anything else', () => {
       const definition = renderLoop();
-      const choice = stateBodyOf(definition, 'CertStatusChoice');
+      const choice     = stateBodyOf(definition, 'CertStatusChoice');
 
       expect(choice).toMatch(/"StringEquals":"SUCCESS"[^}]*"Next":"Done"/);
       expect(choice).toMatch(/"StringEquals":"RETRY"[^}]*"Next":"CertWaitRetry"/);
@@ -74,10 +76,10 @@ describe('removal chain helpers', () => {
 
   describe('withTargetPresenceGuard', () => {
     it('enters the chain only when the removal id is present in the execution input, else skips to onSuccess', () => {
-      const stack = newTestStack('GuardStack');
-      const entry = new sfn.Pass(stack, 'Entry');
+      const stack     = newTestStack('GuardStack');
+      const entry     = new sfn.Pass(stack, 'Entry');
       const onSuccess = new sfn.Succeed(stack, 'Done');
-      const guard = withTargetPresenceGuard(stack, 'HasTarget', 'edge-fn', entry, onSuccess);
+      const guard     = withTargetPresenceGuard(stack, 'HasTarget', 'edge-fn', entry, onSuccess);
 
       const choice = stateBodyOf(renderDefinition(stack, guard), 'HasTarget');
 

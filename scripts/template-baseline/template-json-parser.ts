@@ -1,4 +1,4 @@
-import { isJsonObject } from './json-value';
+import { isJsonObject }    from './json-value';
 import type { JsonObject } from './json-value';
 
 /**

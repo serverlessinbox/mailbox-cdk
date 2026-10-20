@@ -1,18 +1,20 @@
-import { wrapHandler } from 'aws-custom-resources';
-import { Route53Client } from '@aws-sdk/client-route-53';
-import { withSmokeTest } from '../shared/with-smoke-test';
-import { emitManualFinalize } from '../shared/manual-finalize';
+import { Route53Client }              from '@aws-sdk/client-route-53';
+import { wrapHandler }                from 'aws-custom-resources';
+
 import { answerRequestWithBadConfig } from '../shared/bad-config-answer';
-import { toStackId } from '../shared/custom-resource-identifiers';
+import { toStackId }                  from '../shared/custom-resource-identifiers';
 import type { CustomResourceRequest } from '../shared/custom-resource-request';
-import * as env from '../shared/env';
-import { ExpectedFailure } from '../shared/expected-failure';
-import { LoggerBuffer } from '../shared/logger-buffer';
-import { load } from './config';
-import { StackHelpersResolver } from './stack-helpers-resolver';
+import * as env                       from '../shared/env';
+import { ExpectedFailure }            from '../shared/expected-failure';
+import { LoggerBuffer }               from '../shared/logger-buffer';
+import { emitManualFinalize }         from '../shared/manual-finalize';
+import { withSmokeTest }              from '../shared/with-smoke-test';
+
+import { load }                       from './config';
+import { StackHelpersResolver }       from './stack-helpers-resolver';
 
 const { config, error: configError } = env.tryLoad(load);
-const route53 = new Route53Client({});
+const route53                        = new Route53Client({});
 
 export const handler = withSmokeTest(wrapHandler(async (event) => {
   const request: CustomResourceRequest = event;
@@ -28,7 +30,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     return {};
   }
 
-  const logger = new LoggerBuffer(config.serviceName, config.logLevel);
+  const logger   = new LoggerBuffer(config.serviceName, config.logLevel);
   const resolver = new StackHelpersResolver(route53, logger);
 
   try {

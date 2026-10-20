@@ -9,12 +9,13 @@
  * - Caller's own SERVICE_NAME (if supplied) is overridden by construct
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda } from '../go-lambda';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { GoLambda }                             from '../go-lambda';
 
 describe('GoLambda Construct', () => {
   let app: App;
@@ -33,7 +34,7 @@ describe('GoLambda Construct', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -167,7 +168,7 @@ describe('GoLambda Construct', () => {
         const packages: Record<string, ArtifactPin> = {
           'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         };
-        const resolver = new PinnedArtifactResolver({
+        const resolver                              = new PinnedArtifactResolver({
           packages,
           location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
           deploymentRegion: testStack.region,

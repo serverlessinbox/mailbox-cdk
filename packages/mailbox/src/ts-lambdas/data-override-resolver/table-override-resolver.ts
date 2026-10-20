@@ -8,6 +8,7 @@ import {
   type ParsedArn,
   type TableName,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { isResourceProperties, type ResourceProperties, type TableRole } from './resource-properties';
 
 /** The effective table ARN of each role, under the attribute name `<role>Arn` the custom resource answers CloudFormation with. */

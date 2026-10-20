@@ -1,6 +1,7 @@
-import { App, Aws, Stack } from 'aws-cdk-lib';
-import { CfnQueue } from 'aws-cdk-lib/aws-sqs';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Template }                                                                   from 'aws-cdk-lib/assertions';
+import { CfnQueue }                                                                   from 'aws-cdk-lib/aws-sqs';
+import { App, Aws, Stack }                                                            from 'aws-cdk-lib';
+
 import { applyServerlessInboxBaseTags, applyServerlessInboxBaseTagsWithDeployerType } from '../serverless-inbox-tags';
 
 /**

@@ -1,11 +1,13 @@
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk-lib/aws-ses';
-import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
-import { Construct } from 'constructs';
-import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { BlobStore } from '../../resources/blob-store';
-import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
+import { type BaseQueueProps }                                      from '@serverlessinbox/mailbox-cdk-shared';
+import { IBucket }                                                  from 'aws-cdk-lib/aws-s3';
+import { Lambda, LambdaInvocationType, S3 }                         from 'aws-cdk-lib/aws-ses-actions';
+import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy }  from 'aws-cdk-lib/aws-ses';
+import { Construct }                                                from 'constructs';
+
+import { SesReceiptForwarderLambda }                                from '../../lambdas/ses-receipt-forwarder';
+import { BlobStore }                                                from '../../resources/blob-store';
+
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
 
 /** Where received email is stored and how it is queued for processing. */
@@ -41,7 +43,7 @@ export class SesRules extends Construct {
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
       queueProps: props.delivery.queueProps,
     });
-    this.emailProcessingQueue = emailProcessingQueue;
+    this.emailProcessingQueue  = emailProcessingQueue;
 
     // SES's SNS action has a hard 150 KB limit on the inbound email, so the notification goes
     // through a forwarder Lambda that enqueues it on SQS instead.
@@ -50,9 +52,9 @@ export class SesRules extends Construct {
       artifactResolver: props.delivery.artifactResolver,
     });
 
-    const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {});
+    const ruleSet    = new ReceiptRuleSet(this, 'email-rule-set', {});
     this.ruleSetName = ruleSet.receiptRuleSetName;
-    this.ruleSet = ruleSet;
+    this.ruleSet     = ruleSet;
 
     new ReceiptRule(this, 'email-rule', {
       ruleSet: ruleSet,

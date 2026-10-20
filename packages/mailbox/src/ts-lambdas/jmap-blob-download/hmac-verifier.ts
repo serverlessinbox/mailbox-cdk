@@ -1,10 +1,11 @@
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import * as crypto from 'crypto';
+import { DynamoDBClient, GetItemCommand }                    from '@aws-sdk/client-dynamodb';
 import { toAccountId, toIssuer, toTenantId, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAudience } from './auth-identifiers';
-import type { HmacTokenPayload } from './auth-tokens';
+import * as crypto                                           from 'crypto';
 
-const HMAC_KEYS_TTL_MS = 30 * 60 * 1000;
+import { toAudience }                                        from './auth-identifiers';
+import type { HmacTokenPayload }                             from './auth-tokens';
+
+const HMAC_KEYS_TTL_MS          = 30 * 60 * 1000;
 const SESSION_TOKEN_FIELD_COUNT = 4;
 
 /**
@@ -74,7 +75,7 @@ export class HmacVerifier {
   }
 
   private async hmacKeys(authKeyStoreTable: TableName): Promise<HmacKeys | null> {
-    const now = Date.now();
+    const now    = Date.now();
     const cached = this.cachedKeysByTable.get(authKeyStoreTable);
     if (cached && now - cached.fetchedAt < HMAC_KEYS_TTL_MS) {
       return cached.keys;
@@ -116,14 +117,14 @@ export class HmacVerifier {
       return null;
     }
 
-    const payloadBase64 = token.slice(0, dotIndex);
+    const payloadBase64   = token.slice(0, dotIndex);
     const signatureBase64 = token.slice(dotIndex + 1);
     if (payloadBase64.includes('.') || signatureBase64.includes('.')) {
       return null;
     }
 
     const payloadBytes = Buffer.from(payloadBase64, 'base64url');
-    const signature = Buffer.from(signatureBase64, 'base64url');
+    const signature    = Buffer.from(signatureBase64, 'base64url');
     if (!this.signatureMatches(payloadBytes, signature, key)) {
       return null;
     }

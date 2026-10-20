@@ -1,7 +1,7 @@
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import * as fs       from 'node:fs';
+import * as os       from 'node:os';
+import * as path     from 'node:path';
 
 export function run(cmd: string, args: string[], opts?: { cwd?: string }) {
   const res = spawnSync(cmd, args, {
@@ -41,7 +41,7 @@ export function parseArgs(argv: string[]): Record<string, string | boolean> {
     if (!arg.startsWith('--')) {
       continue;
     }
-    const key = arg.slice(2);
+    const key  = arg.slice(2);
     const next = argv[i + 1];
     if (!next || next.startsWith('--')) {
       out[key] = true;

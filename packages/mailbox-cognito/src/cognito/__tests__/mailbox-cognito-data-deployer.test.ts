@@ -7,19 +7,21 @@
  * defaults decide the pool's MFA and password policy on every install that does not set them.
  */
 
-import { Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxCognitoDataDeployer } from '../mailbox-cognito-data-deployer';
-import type { MailboxCognitoDataDeployerProps } from '../mailbox-cognito-data-deployer';
+import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens, statementsForAction }       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                             from 'aws-cdk-lib/assertions';
+import { Stack }                                       from 'aws-cdk-lib';
+
+import { MailboxCognitoDataDeployer }                  from '../mailbox-cognito-data-deployer';
+import type { MailboxCognitoDataDeployerProps }        from '../mailbox-cognito-data-deployer';
+
 import { TEST_ARTIFACT_VERSION, newDeployerTestStack } from './cognito-deployer-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxCognitoDataDeployer';
-const STACK_NAME_REF = { Ref: 'AWS::StackName' };
-const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const COGNITO_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
-const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^deployerresource/);
+const STACK_NAME_REF         = { Ref: 'AWS::StackName' };
+const STACK_GUID             = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const COGNITO_STACK_NAME     = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
+const DEPLOYER_RESOURCE_ID   = expect.stringMatching(/^deployerresource/);
 
 interface SynthesizedDeployer {
   readonly stack: Stack;
@@ -30,7 +32,7 @@ interface SynthesizedDeployer {
 
 function synthDeployer(props: Partial<MailboxCognitoDataDeployerProps> = {}): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const deployer = new MailboxCognitoDataDeployer(stack, 'deployer', {
+  const deployer                    = new MailboxCognitoDataDeployer(stack, 'deployer', {
     artifactResolver,
     cognitoDomainPrefix: 'test-prefix',
     deployerType: 'cdk',

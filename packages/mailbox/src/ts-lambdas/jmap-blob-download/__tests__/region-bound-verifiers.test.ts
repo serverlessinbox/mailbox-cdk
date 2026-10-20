@@ -5,8 +5,10 @@
  * verifiers of another would read its auth key store through a client in the wrong region.
  */
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient }       from '@aws-sdk/client-dynamodb';
+
 import { RegionBoundVerifiers } from '../region-bound-verifiers';
+
 import { EU_WEST_1, US_EAST_1 } from './jmap-blob-download-helpers';
 
 describe('RegionBoundVerifiers', () => {
@@ -20,9 +22,9 @@ describe('RegionBoundVerifiers', () => {
 
   it('serves a later request for the same region from the verifiers it built before', () => {
     const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
-    const verifiers = new RegionBoundVerifiers(createDynamoDBClient);
+    const verifiers            = new RegionBoundVerifiers(createDynamoDBClient);
 
-    const first = verifiers.get(EU_WEST_1);
+    const first  = verifiers.get(EU_WEST_1);
     const second = verifiers.get(EU_WEST_1);
 
     expect(second).toBe(first);
@@ -31,7 +33,7 @@ describe('RegionBoundVerifiers', () => {
 
   it('builds verifiers with a client of their own for each region it is asked for', () => {
     const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
-    const verifiers = new RegionBoundVerifiers(createDynamoDBClient);
+    const verifiers            = new RegionBoundVerifiers(createDynamoDBClient);
 
     const inEuWest1 = verifiers.get(EU_WEST_1);
     const inUsEast1 = verifiers.get(US_EAST_1);

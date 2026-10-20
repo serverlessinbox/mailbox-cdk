@@ -59,7 +59,7 @@ export function parseArn(arn: string): ParsedArn {
   }
 
   const { resourceType, resourceId, qualifier } = parseResource(arn, resource);
-  const resourceName = resourceId.slice(resourceId.lastIndexOf('/') + 1);
+  const resourceName                            = resourceId.slice(resourceId.lastIndexOf('/') + 1);
   return { partition, service, region, account, resource, resourceType, resourceId, resourceName, qualifier };
 }
 
@@ -103,7 +103,7 @@ function parseResource(arn: string, resource: string): ResourceParts {
   }
 
   const qualifierIndex = afterType.indexOf(':');
-  const resourceId = qualifierIndex === -1 ? afterType : afterType.slice(0, qualifierIndex);
+  const resourceId     = qualifierIndex === -1 ? afterType : afterType.slice(0, qualifierIndex);
   // A colon after the type promises an id in front of the next colon.
   if (!resourceId) {
     throw invalidArn(arn, 'the resource id is empty');

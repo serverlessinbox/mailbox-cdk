@@ -1,8 +1,9 @@
-import * as crypto from 'crypto';
-import { toAccountId, toIssuer, toRegion, toTableName, toTenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { toAudience } from '../auth-identifiers';
+import { toAccountId, toIssuer, toRegion, toTableName, toTenantId }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as crypto                                                                  from 'crypto';
+
+import { toAudience }                                                               from '../auth-identifiers';
 import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobId } from '../blob-id';
-import { readOriginRequest, type CloudFrontRequest } from '../cloudfront-event';
+import { readOriginRequest, type CloudFrontRequest }                                from '../cloudfront-event';
 
 export const AUTH_KEY_STORE_TABLE = toTableName('auth-key-store');
 export const OTHER_AUTH_KEY_STORE_TABLE = toTableName('other-auth-key-store');
@@ -34,7 +35,7 @@ export function sessionTokenSignedBy(key: Buffer, tenantId: string, issuer: stri
 /** A session token signing an arbitrary payload string, for payloads the Go signer would not build. */
 export function sessionTokenOverPayload(key: Buffer, payload: string): string {
   const payloadBytes = Buffer.from(payload, 'utf-8');
-  const signature = crypto.createHmac('sha256', key).update(payloadBytes).digest();
+  const signature    = crypto.createHmac('sha256', key).update(payloadBytes).digest();
   return `${payloadBytes.toString('base64url')}.${signature.toString('base64url')}`;
 }
 
@@ -87,7 +88,7 @@ export function originRequestOf(options: OriginRequestOptions = {}): CloudFrontR
   }
 
   const customHeaders = options.customHeaders === undefined ? DEFAULT_CUSTOM_HEADERS : options.customHeaders;
-  const origin = customHeaders === null
+  const origin        = customHeaders === null
     ? undefined
     : {
       s3: {

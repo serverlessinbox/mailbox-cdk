@@ -6,8 +6,10 @@
  */
 
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { mockClient } from 'aws-sdk-client-mock';
-import { HmacVerifier } from '../hmac-verifier';
+import { mockClient }                     from 'aws-sdk-client-mock';
+
+import { HmacVerifier }                   from '../hmac-verifier';
+
 import {
   AUTH_KEY_STORE_TABLE,
   blobMacSignedBy,
@@ -16,9 +18,9 @@ import {
   sessionTokenSignedBy,
 } from './jmap-blob-download-helpers';
 
-const CURRENT_KEY = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
+const CURRENT_KEY  = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');
-const OTHER_KEY = Buffer.from('an-unrelated-key-nobody-rotated-', 'utf-8');
+const OTHER_KEY    = Buffer.from('an-unrelated-key-nobody-rotated-', 'utf-8');
 
 const MAC_PAYLOAD = 'tenant-1|account-1|email-1';
 
@@ -181,7 +183,7 @@ describe('HmacVerifier', () => {
       ['an empty MAC', () => ''],
       ['a MAC with a flipped first byte', (mac: string) => {
         const bytes = Buffer.from(mac, 'base64url');
-        bytes[0] ^= 0xff;
+        bytes[0]   ^= 0xff;
         return bytes.toString('base64url');
       }],
     ])('rejects %s', async (_name, tamper) => {
@@ -211,7 +213,7 @@ describe('HmacVerifier', () => {
 
     it('reads the store again once the cached keys are thirty minutes old', async () => {
       const startedAt = Date.now();
-      const clock = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
+      const clock     = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
       storeHoldsKeys(CURRENT_KEY);
       await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', AUTH_KEY_STORE_TABLE);
 
@@ -238,7 +240,7 @@ describe('HmacVerifier', () => {
 
     it('re-reads the keys of each table thirty minutes after that table was read', async () => {
       const startedAt = Date.now();
-      const clock = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
+      const clock     = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
       storeHoldsKeys(CURRENT_KEY);
       await verifier.verifyBlobMac(MAC_PAYLOAD, 'x', AUTH_KEY_STORE_TABLE);
 

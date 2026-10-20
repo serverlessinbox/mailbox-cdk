@@ -6,12 +6,14 @@
  * stack's tags and templates to the role.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { DeployerWorkerLambda } from '../deployer-worker-lambda';
+import type { IArtifactResolver }                                from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                                              from 'aws-cdk-lib/assertions';
+import { Construct }                                             from 'constructs';
+
 import { statementsForAction, statementsForResource, tagKeysOf } from '../../cdk-test-support';
-import { newDeployerTestStack } from './deployer-infra-helpers';
+import { DeployerWorkerLambda }                                  from '../deployer-worker-lambda';
+
+import { newDeployerTestStack }                                  from './deployer-infra-helpers';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
 class ProbeWorker extends DeployerWorkerLambda {
@@ -36,7 +38,7 @@ class ProbeWorker extends DeployerWorkerLambda {
   }
 }
 
-const STACK_ARN = 'arn:aws:cloudformation:us-west-2:123456789012:stack/probe/*';
+const STACK_ARN     = 'arn:aws:cloudformation:us-west-2:123456789012:stack/probe/*';
 const BASE_TAG_KEYS = [
   'serverless-inbox:product',
   'serverless-inbox:root-stack',
@@ -115,7 +117,7 @@ describe('DeployerWorkerLambda', () => {
 
   it('lets the role read exactly the given artifact objects', () => {
     const objectArns = ['arn:aws:s3:::bucket/template.json', 'arn:aws:s3:::bucket/lambdas/function.zip'];
-    const template = synthProbe((worker) => worker.applyArtifactRead(objectArns));
+    const template   = synthProbe((worker) => worker.applyArtifactRead(objectArns));
 
     const statements = statementsForAction(template, 's3:GetObject');
     expect(statements).toHaveLength(1);

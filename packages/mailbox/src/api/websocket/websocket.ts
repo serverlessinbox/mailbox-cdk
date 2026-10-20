@@ -1,11 +1,6 @@
-import { Aws, CfnResource } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import {
-  WebSocketConnectLambda,
-  WebSocketDisconnectLambda,
-  WebSocketMessageLambda,
-  WebSocketBroadcastLambda,
-} from '../../lambdas';
+import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
+import { WebSocketLambdaAuthorizer }  from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   DomainName,
@@ -14,13 +9,20 @@ import {
   WebSocketApi,
   WebSocketStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { WebSocketLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import type { IDataTable } from '../../data/data-tables';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as acm                                from 'aws-cdk-lib/aws-certificatemanager';
 import { Effect, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IFunction }                      from 'aws-cdk-lib/aws-lambda';
+import { Aws, CfnResource }                    from 'aws-cdk-lib';
+import { Construct }                           from 'constructs';
+
+import type { IDataTable }                     from '../../data/data-tables';
+import {
+  WebSocketConnectLambda,
+  WebSocketDisconnectLambda,
+  WebSocketMessageLambda,
+  WebSocketBroadcastLambda,
+} from '../../lambdas';
+
 import { WebSocketTable, IWebSocketTable } from './websocket-table';
 
 /** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */

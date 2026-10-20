@@ -4,12 +4,13 @@
  * rollback before the resource's Delete runs, which then fails with AccessDenied and the bucket cannot be deleted.
  */
 
-import { App, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { CfnRole } from 'aws-cdk-lib/aws-iam';
-import { Bucket, CfnBucket } from 'aws-cdk-lib/aws-s3';
 import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
-import { BucketAutoEmpty } from '../bucket-auto-empty';
+import { Match, Template }                          from 'aws-cdk-lib/assertions';
+import { CfnRole }                                  from 'aws-cdk-lib/aws-iam';
+import { Bucket, CfnBucket }                        from 'aws-cdk-lib/aws-s3';
+import { App, Stack }                               from 'aws-cdk-lib';
+
+import { BucketAutoEmpty }                          from '../bucket-auto-empty';
 
 /** Minimal stand-in for the real resolver — resolves everything to a fixed S3 location. */
 const fakeResolver: IArtifactResolver = {
@@ -25,8 +26,8 @@ function newStack(): Stack {
 }
 
 function synth() {
-  const stack = newStack();
-  const bucket = new Bucket(stack, 'target-bucket');
+  const stack           = newStack();
+  const bucket          = new Bucket(stack, 'target-bucket');
   const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
   bucketAutoEmpty.attach(stack, 'auto-empty', bucket);
   return {
@@ -43,7 +44,7 @@ describe('BucketAutoEmpty', () => {
     it('is created once per stack', () => {
       const stack = newStack();
 
-      const first = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
+      const first  = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
       const second = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
 
       expect(second).toBe(first);
@@ -101,7 +102,7 @@ describe('BucketAutoEmpty', () => {
     });
 
     it('makes the custom resource depend on that Policy so it is deleted first', () => {
-      const { template } = synth();
+      const { template }  = synth();
       const grantPolicyId = Object.keys(
         template.findResources('AWS::IAM::Policy', {
           Properties: { PolicyDocument: { Statement: Match.arrayWith([LIST_VERSIONS_STATEMENT]) } },
@@ -122,7 +123,7 @@ describe('BucketAutoEmpty', () => {
     });
 
     it('refuses to attach when the Lambda has no execution role', () => {
-      const stack = newStack();
+      const stack           = newStack();
       const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
       Object.defineProperty(bucketAutoEmpty, 'role', { value: undefined });
 

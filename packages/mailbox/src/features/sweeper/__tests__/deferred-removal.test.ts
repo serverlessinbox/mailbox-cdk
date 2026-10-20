@@ -8,21 +8,23 @@
  * and its service timeout stops a starter that dies without answering from holding the stack for an hour.
  */
 
-import { Duration } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { DeferredRemoval } from '../deferred-removal';
+import { Template }                                                    from 'aws-cdk-lib/assertions';
+import * as iam                                                        from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                     from 'aws-cdk-lib/aws-lambda';
+import { Duration }                                                    from 'aws-cdk-lib';
+
+import { DeferredRemoval }                                             from '../deferred-removal';
+
 import { newCertificateRemoval, newEdgeFunctionRemoval, newTestStack } from './sweeper-helpers';
 
 describe('DeferredRemoval', () => {
   function synthesize(withCertificate: boolean): Template {
-    const stack = newTestStack('DeferredRemovalStack');
+    const stack          = newTestStack('DeferredRemovalStack');
     const sweeperStarter = lambda.Function.fromFunctionAttributes(stack, 'starter', {
       functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
       sameEnvironment: true,
     });
-    const removals = withCertificate
+    const removals       = withCertificate
       ? [newCertificateRemoval(stack), newEdgeFunctionRemoval(stack)]
       : [newEdgeFunctionRemoval(stack)];
     new DeferredRemoval(stack, 'deferred-removal', { sweeperStarter, removals });
@@ -39,7 +41,7 @@ describe('DeferredRemoval', () => {
   });
 
   it('depends on the whole starter construct, including the policy on its role', () => {
-    const stack = newTestStack('DeferredRemovalDependencyStack');
+    const stack          = newTestStack('DeferredRemovalDependencyStack');
     const sweeperStarter = new lambda.Function(stack, 'starter', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
@@ -50,7 +52,7 @@ describe('DeferredRemoval', () => {
     const template = Template.fromStack(stack);
 
     const [policyLogicalId] = Object.keys(template.findResources('AWS::IAM::Policy'));
-    const [resource] = Object.values(template.findResources('Custom::DeferredRemoval'));
+    const [resource]        = Object.values(template.findResources('Custom::DeferredRemoval'));
     expect(resource.DependsOn).toContain(policyLogicalId);
   });
 

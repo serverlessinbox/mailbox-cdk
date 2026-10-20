@@ -1,14 +1,14 @@
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as cdk from 'aws-cdk-lib';
-import { Aws } from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import { Construct } from 'constructs';
 import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
-import { applyArtifactTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { applyArtifactTags }     from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                  from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                  from 'aws-cdk-lib/aws-iam';
+import * as lambda               from 'aws-cdk-lib/aws-lambda';
+import * as logs                 from 'aws-cdk-lib/aws-logs';
+import * as route53              from 'aws-cdk-lib/aws-route53';
+import * as s3                   from 'aws-cdk-lib/aws-s3';
+import * as cdk                  from 'aws-cdk-lib';
+import { Aws }                   from 'aws-cdk-lib';
+import { Construct }             from 'constructs';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */
@@ -67,10 +67,10 @@ export class MailboxEdgeConstruct extends Construct {
 
     // DomainName and Prefix are CloudFormation parameters (tokens) in the edge stack.
     // Validation happens via the parameter allowedPattern in the stack.
-    const admin = `admin${props.prefix}${props.domainName}`;
+    const admin   = `admin${props.prefix}${props.domainName}`;
     const webmail = `webmail${props.prefix}${props.domainName}`;
-    const auth = `auth${props.prefix}${props.domainName}`;
-    const cdn = `cdn${props.prefix}${props.domainName}`;
+    const auth    = `auth${props.prefix}${props.domainName}`;
+    const cdn     = `cdn${props.prefix}${props.domainName}`;
 
     const hostedZone = props.hostedZone
       ?? (props.hostedZoneId !== undefined && props.hostedZoneName !== undefined
@@ -167,7 +167,7 @@ export class MailboxEdgeConstruct extends Construct {
         cdk.Fn.conditionEquals(props.jmapBlobDownloadReference.versionId ?? '', ''),
       ),
     });
-    const cfnFunction = jmapBlobDownloadFunction.node.defaultChild as lambda.CfnFunction;
+    const cfnFunction                = jmapBlobDownloadFunction.node.defaultChild as lambda.CfnFunction;
     cfnFunction.addPropertyOverride(
       'Code.S3ObjectVersion',
       cdk.Fn.conditionIf(hasJmapBlobDownloadVersion.logicalId, props.jmapBlobDownloadReference.versionId ?? '', cdk.Aws.NO_VALUE),

@@ -1,11 +1,13 @@
-import { Construct, IDependable } from 'constructs';
-import type { IDataTable } from '../data/data-tables';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from "../auth/types";
-import { Permission } from '../auth/jmap-scopes';
-import { MailboxUi, UiBundleSource } from './mailbox-ui';
+import type { IArtifactResolver }                                                                from '@serverlessinbox/artifact-registry-cdk';
+import * as acm                                                                                  from 'aws-cdk-lib/aws-certificatemanager';
+import { Construct, IDependable }                                                                from 'constructs';
+
+import { Permission }                                                                            from '../auth/jmap-scopes';
+import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../auth/types';
+import type { IDataTable }                                                                       from '../data/data-tables';
+import type { IAuditEventsQueue }                                                                from '../features/audit-writing/audit-events-queue';
+
+import { MailboxUi, UiBundleSource }                                                             from './mailbox-ui';
 
 export interface WebmailUiProps {
   /**
@@ -64,9 +66,9 @@ export class WebmailUi extends MailboxUi {
       artifactResolver: props.artifactResolver,
     });
 
-    const uiHost = this.distributionDomainName;
+    const uiHost         = this.distributionDomainName;
     const allPermissions = Object.values(Permission);
-    this.oauthClient = props.authProvider.provisionJmapApiClient({
+    this.oauthClient     = props.authProvider.provisionJmapApiClient({
       name: 'webmail-ui',
       permissions: allPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],

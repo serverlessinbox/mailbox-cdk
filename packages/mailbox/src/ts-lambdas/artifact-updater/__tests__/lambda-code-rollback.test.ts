@@ -7,25 +7,27 @@
  * at error so an operator sees that the function may be left on code that failed its probe.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetFunctionConfigurationCommand,
   LambdaClient,
   TagResourceCommand,
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { SemVer } from 'semver';
-import { LambdaCodeRollback } from '../lambda-code-rollback';
-import { LambdaFunctionCode } from '../lambda-function-code';
-import type { ArtifactLocation, StaleTarget } from '../release-artifacts';
+import { LoggerBuffer }                                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                      from 'aws-sdk-client-mock';
+import { SemVer }                                                          from 'semver';
+
+import { LambdaCodeRollback }                                              from '../lambda-code-rollback';
+import { LambdaFunctionCode }                                              from '../lambda-function-code';
+import type { ArtifactLocation, StaleTarget }                              from '../release-artifacts';
+
 import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from './updater-helpers';
 
 describe('LambdaCodeRollback', () => {
-  const lambdaMock = mockClient(LambdaClient);
-  const lambda = new LambdaClient({ region: 'us-east-1' });
-  const target = lambdaTarget();
-  const stale: StaleTarget = {
+  const lambdaMock                         = mockClient(LambdaClient);
+  const lambda                             = new LambdaClient({ region: 'us-east-1' });
+  const target                             = lambdaTarget();
+  const stale: StaleTarget                 = {
     version: NEWER_VERSION,
     parsed: new SemVer('1.2.4'),
     deployed: new SemVer('1.2.3'),

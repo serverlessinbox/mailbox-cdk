@@ -7,16 +7,15 @@
  * its caller a value of the wrong shape.
  */
 
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { mockClient } from 'aws-sdk-client-mock';
-
-import { toFunctionName, toTenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvokeCommand, LambdaClient }                        from '@aws-sdk/client-lambda';
+import { toFunctionName, toTenantId }                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                         from 'aws-sdk-client-mock';
 
 import { toClientId, toGroupName, toUserSubject, toUsername } from '../cognito-identifiers';
-import { toEmailAddress, toRedirectUri } from '../identity-identifiers';
-import { IdentityProvisionerClient } from '../identity-provisioner-client';
+import { toEmailAddress, toRedirectUri }                      from '../identity-identifiers';
+import { IdentityProvisionerClient }                          from '../identity-provisioner-client';
 
-const TENANT_ID = toTenantId('t1');
+const TENANT_ID     = toTenantId('t1');
 const REDIRECT_URIS = [toRedirectUri('http://127.0.0.1/cb')];
 
 /**
@@ -35,7 +34,7 @@ function payloadOf(response: unknown): Uint8Array & { transformToString(encoding
 
 describe('IdentityProvisionerClient', () => {
   const lambdaMock = mockClient(LambdaClient);
-  const client = new IdentityProvisionerClient(toFunctionName('fn-name'), new LambdaClient({}));
+  const client     = new IdentityProvisionerClient(toFunctionName('fn-name'), new LambdaClient({}));
 
   function sentEnvelope(): unknown {
     const input = lambdaMock.commandCalls(InvokeCommand)[0].args[0].input;

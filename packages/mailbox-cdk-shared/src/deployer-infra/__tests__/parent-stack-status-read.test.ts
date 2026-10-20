@@ -7,7 +7,8 @@
  */
 
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { parentStackStatusReadStatement } from '../parent-stack-status-read';
+
+import { parentStackStatusReadStatement }       from '../parent-stack-status-read';
 
 describe('parentStackStatusReadStatement', () => {
   const stack = new Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' }, synthesizer: new BootstraplessSynthesizer() });

@@ -9,18 +9,19 @@
  * they run only after those client rows exist.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { ReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
+import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
 import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Bootstrap } from '../bootstrap';
-import type { BootstrapProps } from '../bootstrap';
-import type { OAuthAuthorizationCodeClientConfig } from '../../../auth/types';
-import { AuthKeyStoreTable } from '../../auth-key-store/auth-key-store-table';
-import { DataTable } from '../../../data/data-tables';
+import { Match, Template }                           from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
+import { ReceiptRuleSet }                            from 'aws-cdk-lib/aws-ses';
+import * as cdk                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
+
+import type { OAuthAuthorizationCodeClientConfig }   from '../../../auth/types';
+import { DataTable }                                 from '../../../data/data-tables';
+import { AuthKeyStoreTable }                         from '../../auth-key-store/auth-key-store-table';
+import { Bootstrap }                                 from '../bootstrap';
+import type { BootstrapProps }                       from '../bootstrap';
 
 describe('Bootstrap', () => {
   let stack: cdk.Stack;
@@ -131,7 +132,7 @@ describe('Bootstrap', () => {
     const dependent = new cdk.CfnResource(stack, 'dependent', { type: 'Custom::Dependent' });
     dependent.node.addDependency(bootstrap.oauthClientsProvisioned);
 
-    const template = Template.fromStack(stack);
+    const template             = Template.fromStack(stack);
     const [bootstrapLogicalId] = Object.keys(template.findResources('Custom::Bootstrap'));
 
     expect(template.toJSON().Resources[stack.getLogicalId(dependent)].DependsOn).toContain(bootstrapLogicalId);

@@ -7,12 +7,13 @@
  * delete resources no stack claimed.
  */
 
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer }        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { RootStackMembership } from '../root-stack-membership';
 
 const NAME_TAG_KEY = 'serverless-inbox:root-stack';
-const ID_TAG_KEY = 'serverless-inbox:root-stack-id';
-const ROOT_STACK = { rootStackName: 'test-stack', rootStackId: 'guid-1' };
+const ID_TAG_KEY   = 'serverless-inbox:root-stack-id';
+const ROOT_STACK   = { rootStackName: 'test-stack', rootStackId: 'guid-1' };
 
 describe('RootStackMembership', () => {
   const membership = new RootStackMembership(new LoggerBuffer());
@@ -72,8 +73,8 @@ describe('RootStackMembership', () => {
 
   it('logs a mismatch at warn level, labelled with the resource kind, and logs nothing for a resource of the root stack', () => {
     const bufferedLogger = new LoggerBuffer(undefined, 'warn');
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const buffered = new RootStackMembership(bufferedLogger);
+    const warn           = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const buffered       = new RootStackMembership(bufferedLogger);
 
     buffered.mismatchInTagMap(ROOT_STACK, 'Lambda function', { [ID_TAG_KEY]: 'guid-1' });
     expect(warn).not.toHaveBeenCalled();

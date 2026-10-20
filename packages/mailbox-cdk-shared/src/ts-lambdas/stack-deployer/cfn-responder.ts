@@ -1,6 +1,7 @@
-import { CaughtError } from '../shared/caught-error';
-import { toPhysicalResourceId, type PhysicalResourceId } from '../shared/custom-resource-identifiers';
-import { AnswerDeliveryFailure } from './answer-delivery-failure';
+import { CaughtError }                                                                from '../shared/caught-error';
+import { toPhysicalResourceId, type PhysicalResourceId }                              from '../shared/custom-resource-identifiers';
+
+import { AnswerDeliveryFailure }                                                      from './answer-delivery-failure';
 import type { AnswerableEvent, CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from './stack-deployment';
 
 // CloudFormation caps the size of a response reason; this leaves headroom.
@@ -10,7 +11,7 @@ const TRUNCATION_MARKER = ' …(truncated)';
 // A response URL is a presigned S3 URL, and S3 answers a request now and then with a 5xx that a second try
 // passes. Four attempts with 250, 500 and 1000 ms between them add under two seconds to an answer, far inside
 // the timeout of both functions, and bound how long a failing answer holds the invocation.
-const MAX_ANSWER_ATTEMPTS = 4;
+const MAX_ANSWER_ATTEMPTS  = 4;
 const FIRST_RETRY_DELAY_MS = 250;
 
 const UNNAMED_STACK_RESOURCE_ID = toPhysicalResourceId('MailboxStack');

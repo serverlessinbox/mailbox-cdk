@@ -5,10 +5,11 @@
  */
 
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { CustomResourceRequest } from '../custom-resource-request';
-import { FailedRequestAnswerer } from '../failed-request-answerer';
-import { LoggerBuffer } from '../logger-buffer';
+import { mockClient }                                                    from 'aws-sdk-client-mock';
+
+import type { CustomResourceRequest }                                    from '../custom-resource-request';
+import { FailedRequestAnswerer }                                         from '../failed-request-answerer';
+import { LoggerBuffer }                                                  from '../logger-buffer';
 
 const PHYSICAL_RESOURCE_ID = 'physical-id-from-cloudformation';
 
@@ -24,7 +25,7 @@ function request(requestType: string): CustomResourceRequest {
 
 describe('FailedRequestAnswerer', () => {
   const cloudFormationMock = mockClient(CloudFormationClient);
-  const answerer = new FailedRequestAnswerer(new CloudFormationClient({}), new LoggerBuffer('test-service', 'warn'));
+  const answerer           = new FailedRequestAnswerer(new CloudFormationClient({}), new LoggerBuffer('test-service', 'warn'));
 
   function parentStackIsIn(stackStatus: StackStatus): void {
     cloudFormationMock.on(DescribeStacksCommand).resolves({

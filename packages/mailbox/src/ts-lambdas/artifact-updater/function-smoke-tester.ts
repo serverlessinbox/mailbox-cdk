@@ -1,7 +1,8 @@
 import { InvokeCommand, type LambdaClient } from '@aws-sdk/client-lambda';
-import * as t from 'typanion';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { LambdaFunctionArn } from './updater-identifiers';
+import { CaughtError, type LoggerBuffer }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                               from 'typanion';
+
+import type { LambdaFunctionArn }           from './updater-identifiers';
 
 /**
  * What a smoke-test probe found:

@@ -1,12 +1,14 @@
-import { Aws, Duration, Lazy } from 'aws-cdk-lib';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { IRole, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { IRole, IGrantable, PolicyStatement }         from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                  from 'aws-cdk-lib/aws-lambda';
+import * as tasks                                     from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sfn                                       from 'aws-cdk-lib/aws-stepfunctions';
+import { Aws, Duration, Lazy }                        from 'aws-cdk-lib';
+import { Construct }                                  from 'constructs';
+
 import { defaultCfnResource, retainOnUpdateOrDelete } from '../../utils/cfn-resource';
-import type { IResourceRemoval } from './removal';
-import { SweeperPolicyNames } from './sweeper-names';
+
+import type { IResourceRemoval }                      from './removal';
+import { SweeperPolicyNames }                         from './sweeper-names';
 
 export interface SweeperWorkflowProps {
   /** The role the state machine runs as. */
@@ -60,7 +62,7 @@ export class SweeperWorkflow extends Construct {
     super(scope, id);
 
     this.stateMachineArn = props.stateMachineArn;
-    this.stateMachine = this.createSweeperStateMachine(props);
+    this.stateMachine    = this.createSweeperStateMachine(props);
   }
 
   public grantStartExecution(grantee: IGrantable): void {
@@ -118,11 +120,11 @@ export class SweeperWorkflow extends Construct {
   }
 
   private createSelfCleanupChain(props: SweeperWorkflowProps): sfn.State {
-    const succeed = new sfn.Succeed(this, 'Succeed');
-    const deleteStateMachine = this.createDeleteStateMachine(props, succeed);
-    const deleteWorkerRole = this.createDeleteWorkerRole(props, deleteStateMachine);
+    const succeed                = new sfn.Succeed(this, 'Succeed');
+    const deleteStateMachine     = this.createDeleteStateMachine(props, succeed);
+    const deleteWorkerRole       = this.createDeleteWorkerRole(props, deleteStateMachine);
     const deleteWorkerRolePolicy = this.createDeleteWorkerRolePolicy(props, deleteWorkerRole);
-    const deleteWorker = this.createDeleteWorker(props, deleteWorkerRolePolicy);
+    const deleteWorker           = this.createDeleteWorker(props, deleteWorkerRolePolicy);
 
     return this.createOwnPresenceCheck(deleteWorker, succeed);
   }

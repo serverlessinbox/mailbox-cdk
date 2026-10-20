@@ -1,9 +1,10 @@
 import { ITable, TableProps } from 'aws-cdk-lib/aws-dynamodb';
-import { Aws, IResolvable } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { BaseTable } from './base-table';
-import { PositionHash } from './naming/position-hash';
-import { StackIdentity } from './naming/stack-identity';
+import { Aws, IResolvable }   from 'aws-cdk-lib';
+import { Construct }          from 'constructs';
+
+import { BaseTable }          from './base-table';
+import { PositionHash }       from './naming/position-hash';
+import { StackIdentity }      from './naming/stack-identity';
 
 /** A table whose explicit physical name is known at synth time, so a holder can reuse the name without a `Ref`. */
 export interface INamedTable extends ITable {
@@ -33,8 +34,8 @@ export class StackNamedTable extends BaseTable implements INamedTable {
   readonly explicitTableName: string;
 
   constructor(scope: Construct, tableName: string, props: StackNamedTableProps) {
-    const nameBase = props.nameBase || Aws.STACK_NAME;
-    const stableName = `${Aws.ACCOUNT_ID}-${nameBase}-${tableName}`;
+    const nameBase      = props.nameBase || Aws.STACK_NAME;
+    const stableName    = `${Aws.ACCOUNT_ID}-${nameBase}-${tableName}`;
     const fullTableName = props.uniquePerPosition
       ? `${stableName}-${PositionHash.ofChild(scope, tableName)}-${StackIdentity.guidPrefix}`
       : stableName;

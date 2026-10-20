@@ -9,16 +9,17 @@
  * what CloudFormation and IAM act on.
  */
 
-import { Construct } from 'constructs';
+import { ArtifactZone, PinnedArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                          from 'aws-cdk-lib/assertions';
+import { Bucket }                                   from 'aws-cdk-lib/aws-s3';
+import type { IBucket }                             from 'aws-cdk-lib/aws-s3';
 import { App, BootstraplessSynthesizer, Fn, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import type { IBucket } from 'aws-cdk-lib/aws-s3';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { StaticContentDeployer } from '../content-deployer';
-import { StaticContentSource } from '../static-content-source';
-import { statementsForAction } from '../cdk-test-support';
+import { Construct }                                from 'constructs';
+
+import { statementsForAction }                      from '../cdk-test-support';
+import { StaticContentDeployer }                    from '../content-deployer';
+import { StaticContentSource }                      from '../static-content-source';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {
@@ -52,7 +53,7 @@ describe('StaticContentDeployer', () => {
   let deployer: StaticContentDeployer;
 
   beforeEach(() => {
-    stack = newStack();
+    stack    = newStack();
     deployer = StaticContentDeployer.getOrCreate(stack, newArtifactResolver(stack));
   });
 
@@ -179,13 +180,13 @@ describe('StaticContentDeployer', () => {
     });
 
     it('depends on the deployments of its own scope and on no others', () => {
-      const uiScope = new Construct(stack, 'ui');
+      const uiScope    = new Construct(stack, 'ui');
       const otherScope = new Construct(stack, 'other');
-      const uiContent = deployer.deploy(uiScope, 'content', {
+      const uiContent  = deployer.deploy(uiScope, 'content', {
         targetBucket: targetBucket(uiScope),
         source: StaticContentSource.zipFromBucket('artifacts-bucket', 'admin-ui.zip', 'content/'),
       });
-      const uiConfig = deployer.deploy(uiScope, 'config', {
+      const uiConfig   = deployer.deploy(uiScope, 'config', {
         targetBucket: targetBucket(new Construct(uiScope, 'config-target')),
         source: StaticContentSource.data('config.json', '{}'),
       });
@@ -238,21 +239,21 @@ describe('StaticContentDeployer', () => {
 
     it('changes when the deployed archive version changes', () => {
       const before = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1')));
-      const after = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v2')));
+      const after  = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v2')));
 
       expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
     });
 
     it('changes when the deployed archive key changes', () => {
       const before = synthInvalidationProperties(deployUi(zip('admin-ui.zip', 'v1')));
-      const after = synthInvalidationProperties(deployUi(zip('admin-ui-v2.zip', 'v1')));
+      const after  = synthInvalidationProperties(deployUi(zip('admin-ui-v2.zip', 'v1')));
 
       expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
     });
 
     it('changes when the body of a deployed data source changes, without embedding the body', () => {
       const before = synthInvalidationProperties(deployUi(StaticContentSource.data('config.json', '{"theme":"light"}')));
-      const after = synthInvalidationProperties(deployUi(StaticContentSource.data('config.json', '{"theme":"dark"}')));
+      const after  = synthInvalidationProperties(deployUi(StaticContentSource.data('config.json', '{"theme":"dark"}')));
 
       expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
       expect(JSON.stringify(after)).not.toContain('dark');
@@ -269,7 +270,7 @@ describe('StaticContentDeployer', () => {
         );
 
       it('gives the same nonce across synths of the same body', () => {
-        const first = synthInvalidationProperties(deployBody('light'));
+        const first  = synthInvalidationProperties(deployBody('light'));
         const second = synthInvalidationProperties(deployBody('light'));
 
         expect(second.deploymentNonce).toEqual(first.deploymentNonce);
@@ -286,7 +287,7 @@ describe('StaticContentDeployer', () => {
 
       it('changes when a literal of the body changes', () => {
         const before = synthInvalidationProperties(deployBody('light'));
-        const after = synthInvalidationProperties(deployBody('dark'));
+        const after  = synthInvalidationProperties(deployBody('dark'));
 
         expect(after.deploymentNonce).not.toEqual(before.deploymentNonce);
       });
@@ -294,7 +295,7 @@ describe('StaticContentDeployer', () => {
 
     it('ignores the deployments of other scopes', () => {
       const properties = synthInvalidationProperties((configuredDeployer, configuredStack) => {
-        const uiScope = new Construct(configuredStack, 'ui');
+        const uiScope    = new Construct(configuredStack, 'ui');
         const otherScope = new Construct(configuredStack, 'other');
         configuredDeployer.deploy(otherScope, 'content', {
           targetBucket: targetBucket(otherScope),

@@ -5,9 +5,11 @@
  * wrong table or queue, or with Lambda code from the wrong artifact release.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
-import { SupportMode } from '../support-addon';
+import { Template }             from 'aws-cdk-lib/assertions';
+
 import { SupportAddonProvider } from '../support-addon-provider';
+import { SupportMode }          from '../support-addon';
+
 import {
   createAddonContext,
   createArtifactResolver,
@@ -43,9 +45,9 @@ describe('SupportAddonProvider', () => {
 
     new SupportAddonProvider({ mode: SupportMode.ENABLED }).createAdminApiAddons(inputs.stack, createAddonContext(inputs));
 
-    const template = Template.fromStack(inputs.stack);
+    const template        = Template.fromStack(inputs.stack);
     const [configTableId] = Object.keys(template.findResources('AWS::DynamoDB::Table')).filter((id) => id.startsWith('configtable'));
-    const [auditQueueId] = Object.keys(template.findResources('AWS::SQS::Queue')).filter((id) => id.startsWith('auditqueue') && !id.includes('dlq'));
+    const [auditQueueId]  = Object.keys(template.findResources('AWS::SQS::Queue')).filter((id) => id.startsWith('auditqueue') && !id.includes('dlq'));
     expect(findFunction(template, SUPPORT_API).environment).toEqual(expect.objectContaining({
       CONFIG_TABLE_NAME: { Ref: configTableId },
       AUDIT_EVENTS_QUEUE_URL: { Ref: auditQueueId },
@@ -53,12 +55,12 @@ describe('SupportAddonProvider', () => {
   });
 
   it('resolves the Lambda code through the context artifact resolver', () => {
-    const inputs = createSupportTestStack();
+    const inputs  = createSupportTestStack();
     const context = { ...createAddonContext(inputs), artifactResolver: createArtifactResolver(inputs.stack, '9.9.9') };
 
     new SupportAddonProvider({ mode: SupportMode.ENABLED }).createAdminApiAddons(inputs.stack, context);
 
-    const template = Template.fromStack(inputs.stack);
+    const template   = Template.fromStack(inputs.stack);
     const supportApi = Object.values(template.findResources('AWS::Lambda::Function'))
       .find((fn) => fn.Properties.Environment?.Variables?.SERVICE_NAME === SUPPORT_API);
     expect(supportApi?.Properties.Code.S3Key).toContain('9.9.9');

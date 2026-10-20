@@ -9,13 +9,14 @@
  * creating any. A moved SRV name makes JMAP autodiscovery fail silently for clients.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, Duration } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import { MailboxDns } from '../mailbox-dns';
+import { Template }             from 'aws-cdk-lib/assertions';
+import * as route53             from 'aws-cdk-lib/aws-route53';
+import * as cdk                 from 'aws-cdk-lib';
+import { App, Duration }        from 'aws-cdk-lib';
+
+import { MailboxDns }           from '../mailbox-dns';
 import type { MailboxDnsProps } from '../mailbox-dns';
-import { MailboxDomains } from '../mailbox-domains';
+import { MailboxDomains }       from '../mailbox-domains';
 
 describe('MailboxDns', () => {
   let stack: cdk.Stack;
@@ -30,7 +31,7 @@ describe('MailboxDns', () => {
   }
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' } });
+    stack      = new cdk.Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' } });
     hostedZone = route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', {
       hostedZoneId: 'Z123',
       zoneName: 'example.com',

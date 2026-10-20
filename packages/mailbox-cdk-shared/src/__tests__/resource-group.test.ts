@@ -1,5 +1,6 @@
-import { App, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Template }                        from 'aws-cdk-lib/assertions';
+import { App, Stack }                      from 'aws-cdk-lib';
+
 import { addServerlessInboxResourceGroup } from '../resource-group';
 
 /**

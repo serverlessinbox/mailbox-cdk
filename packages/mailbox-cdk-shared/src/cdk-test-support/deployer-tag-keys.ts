@@ -1,10 +1,12 @@
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import * as t from 'typanion';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { DeployerWorkerLambda } from '../deployer-infra/deployer-worker-lambda';
-import { newProbeStack } from './probe-stack';
+import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import { Construct }                                     from 'constructs';
+import * as t                                            from 'typanion';
+
+import { DeployerWorkerLambda }                          from '../deployer-infra/deployer-worker-lambda';
+
 import { statementsForAction, type PolicyStatementJson } from './policy-statements';
+import { newProbeStack }                                 from './probe-stack';
 
 const isTagKeysConstraint = t.isObject({ 'aws:TagKeys': t.isArray(t.isString()) });
 
@@ -22,7 +24,7 @@ class SharedTaggingWorker extends DeployerWorkerLambda {
  */
 export function tagKeysOf(statement: PolicyStatementJson): string[] {
   const errors: string[] = [];
-  const constraint = statement.Condition?.['ForAllValues:StringLike'];
+  const constraint       = statement.Condition?.['ForAllValues:StringLike'];
   if (!isTagKeysConstraint(constraint, { errors })) {
     throw new Error(`Statement has no ForAllValues:StringLike constraint on aws:TagKeys: ${errors.join('; ')}`);
   }

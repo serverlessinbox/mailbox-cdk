@@ -1,16 +1,17 @@
-import { createHash } from 'node:crypto';
-import { Construct, type IDependable } from 'constructs';
+import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                                                      from 'aws-cdk-lib/aws-iam';
+import type { IBucket }                                              from 'aws-cdk-lib/aws-s3';
 import { Aws, Duration, CustomResource, Stack, Token, Tokenization } from 'aws-cdk-lib';
-import type { IBucket } from 'aws-cdk-lib/aws-s3';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda } from './ts-lambda';
-import type { IStaticContentSource } from './static-content-source';
-import { getOrCreateSharedGroup } from './shared-group';
+import { Construct, type IDependable }                               from 'constructs';
+import { createHash }                                                from 'node:crypto';
+
+import { getOrCreateSharedGroup }                                    from './shared-group';
+import type { IStaticContentSource }                                 from './static-content-source';
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
 } from './ts-lambdas/content-deployer/resource-properties';
+import { TypeScriptLambda } from './ts-lambda';
 
 /** What `StaticContentDeployer.deploy` deploys, and where. */
 export interface StaticContentDeploymentProps {
@@ -61,9 +62,9 @@ export class StaticContentDeployer extends TypeScriptLambda {
    * The singleton is placed under a "shared" group construct at stack root.
    */
   static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): StaticContentDeployer {
-    const stack = Stack.of(scope);
+    const stack       = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
-    const existing = sharedGroup.node.tryFindChild('content-deployer');
+    const existing    = sharedGroup.node.tryFindChild('content-deployer');
     if (existing instanceof StaticContentDeployer) {
       return existing;
     }
@@ -81,7 +82,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       targetBucket: props.targetBucket.bucketName,
       sources: [props.source.spec],
     };
-    const resource = new CustomResource(scope, id, {
+    const resource                                      = new CustomResource(scope, id, {
       serviceToken: this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType: 'Custom::ContentDeployment',
@@ -102,14 +103,14 @@ export class StaticContentDeployer extends TypeScriptLambda {
   invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
     this.grantInvalidation(props.distributionId);
 
-    const deployments = this.deploymentsByScope.get(scope) ?? [];
+    const deployments                                   = this.deploymentsByScope.get(scope) ?? [];
     const properties: ContentDeployerResourceProperties = {
       sources: [],
       distributionId: props.distributionId,
       invalidationPaths: props.paths,
       deploymentNonce: this.deploymentNonce(deployments),
     };
-    const resource = new CustomResource(scope, id, {
+    const resource                                      = new CustomResource(scope, id, {
       serviceToken: this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType: 'Custom::ContentInvalidation',
@@ -194,10 +195,10 @@ export class StaticContentDeployer extends TypeScriptLambda {
    * at deploy time: the identity changes when a referenced value changes, and not otherwise.
    */
   private dataSourceIdentity(key: string, body: string): string {
-    const fragments = Tokenization.reverseString(body);
+    const fragments  = Tokenization.reverseString(body);
     const maskedBody = fragments.mapTokens({ mapToken: () => TOKEN_PLACEHOLDER }).join({ join: (left, right) => `${left}${right}` });
-    const digest = createHash('sha256').update(maskedBody).digest('hex');
-    const tokens = fragments.tokens.map((token) => Token.asString(token));
+    const digest     = createHash('sha256').update(maskedBody).digest('hex');
+    const tokens     = fragments.tokens.map((token) => Token.asString(token));
     return ['data', key, digest, ...tokens].join(':');
   }
 

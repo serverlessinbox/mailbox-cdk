@@ -1,16 +1,17 @@
+import { ArtifactCode }           from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import {
   Architecture,
   FunctionOptions,
   Runtime,
   Function as LambdaFunction,
 } from 'aws-cdk-lib/aws-lambda';
-import { Aws } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { ArtifactCode } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Aws }               from 'aws-cdk-lib';
+import { Construct }         from 'constructs';
+
 import { applyArtifactTags } from './apply-artifact-tags';
-import { PipelineLogGroup } from './pipeline-log-groups';
-import type { Pipeline } from './pipelines';
+import { PipelineLogGroup }  from './pipeline-log-groups';
+import type { Pipeline }     from './pipelines';
 
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**

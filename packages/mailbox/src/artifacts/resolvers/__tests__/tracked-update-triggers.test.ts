@@ -9,10 +9,11 @@
  * must wait for what it is told to wait for, or it scans a half-deployed stack.
  */
 
+import { Template }                                                                      from 'aws-cdk-lib/assertions';
+import { Code, Function as LambdaFunction, Runtime }                                     from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, CfnCondition, CfnResource, Duration, Fn, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { TrackedUpdateTriggers } from '../tracked-update-triggers';
+
+import { TrackedUpdateTriggers }                                                         from '../tracked-update-triggers';
 
 const TRACKING_CONDITION = 'IsTracking';
 
@@ -22,11 +23,11 @@ interface TriggersFixture {
 }
 
 function build(updateInterval: Duration): TriggersFixture {
-  const stack = new Stack(new App(), 'TestStack', {
+  const stack      = new Stack(new App(), 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const updater = new LambdaFunction(stack, 'updater', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
+  const updater    = new LambdaFunction(stack, 'updater', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
   const isTracking = new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') });
 
   return { stack, triggers: new TrackedUpdateTriggers(stack, 'triggers', { updater, isTracking, updateInterval }) };
@@ -79,9 +80,9 @@ describe('TrackedUpdateTriggers', () => {
     const { stack, triggers } = build(Duration.hours(6));
     triggers.waitFor(new CfnResource(stack, 'awaited', { type: 'Custom::Awaited' }));
 
-    const template = Template.fromStack(stack);
+    const template           = Template.fromStack(stack);
     const [awaitedLogicalId] = Object.keys(template.findResources('Custom::Awaited'));
-    const [deployEnd] = Object.values(template.findResources('Custom::DeployEndTrigger'));
+    const [deployEnd]        = Object.values(template.findResources('Custom::DeployEndTrigger'));
     expect(deployEnd.DependsOn).toContain(awaitedLogicalId);
   });
 });

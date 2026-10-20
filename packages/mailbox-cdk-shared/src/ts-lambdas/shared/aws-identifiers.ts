@@ -1,4 +1,4 @@
-import type { Branded } from './branded';
+import type { Branded }    from './branded';
 import { isBrandedString } from './branded';
 
 /**

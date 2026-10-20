@@ -6,30 +6,31 @@
  * already elapsed.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   EventBridgeClient,
   ListTagsForResourceCommand,
   RemoveTargetsCommand,
   DeleteRuleCommand,
 } from '@aws-sdk/client-eventbridge';
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
 import {
   IAMClient,
   ListRoleTagsCommand,
   DeleteRolePolicyCommand,
   DeleteRoleCommand,
 } from '@aws-sdk/client-iam';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { StackFailureDetectorRemovalInput } from '../../removal';
-import { RootStackMembership } from '../../root-stack-membership';
-import { StackFailureDetectorSweeper } from '../stack-failure-detector-sweeper';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
+import { LoggerBuffer }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                              from 'aws-sdk-client-mock';
+
+import type { StackFailureDetectorRemovalInput }                   from '../../removal';
+import { RootStackMembership }                                     from '../../root-stack-membership';
+import { StackFailureDetectorSweeper }                             from '../stack-failure-detector-sweeper';
 
 const eventsMock = mockClient(EventBridgeClient);
 const lambdaMock = mockClient(LambdaClient);
-const iamMock = mockClient(IAMClient);
+const iamMock    = mockClient(IAMClient);
 
-const ROOT_STACK_NAME = 'test-stack';
+const ROOT_STACK_NAME    = 'test-stack';
 const ROOT_STACK_TAG_KEY = 'serverless-inbox:root-stack';
 
 const INPUT: StackFailureDetectorRemovalInput = {
@@ -43,8 +44,8 @@ const INPUT: StackFailureDetectorRemovalInput = {
 };
 
 function sweep(input: StackFailureDetectorRemovalInput = INPUT) {
-  const region = { region: 'us-west-2' };
-  const logger = new LoggerBuffer();
+  const region  = { region: 'us-west-2' };
+  const logger  = new LoggerBuffer();
   const sweeper = new StackFailureDetectorSweeper(
     new EventBridgeClient(region),
     new LambdaClient(region),

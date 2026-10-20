@@ -9,13 +9,14 @@
  * invocation type stays green in tsc and synth and only shows up as lost or bounced mail.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { BlobStore } from '../../../resources/blob-store';
-import { SesRules } from '../ses-rules';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { BlobStore }                            from '../../../resources/blob-store';
+import { SesRules }                             from '../ses-rules';
 
 describe('SesRules', () => {
   let stack: cdk.Stack;
@@ -23,7 +24,7 @@ describe('SesRules', () => {
   let sut: SesRules;
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
+    stack     = new cdk.Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -59,7 +60,7 @@ describe('SesRules', () => {
   });
 
   it('puts the rule in the rule set it publishes by name', () => {
-    const template = Template.fromStack(stack);
+    const template  = Template.fromStack(stack);
     const ruleSetId = Object.keys(template.findResources('AWS::SES::ReceiptRuleSet'))[0];
 
     expect(stack.resolve(sut.ruleSetName)).toEqual({ Ref: ruleSetId });

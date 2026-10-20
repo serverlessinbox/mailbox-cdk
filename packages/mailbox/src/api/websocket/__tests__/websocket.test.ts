@@ -11,36 +11,37 @@
  * `$connect` is behind the authorizer, the default subscription limit and the broadcaster handle.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { WebSocketPush } from '../websocket';
-import type { WebSocketPushProps } from '../websocket';
-import { DataTable } from '../../../data/data-tables';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
+import * as lambda                              from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataTable }                            from '../../../data/data-tables';
+import { WebSocketPush }                        from '../websocket';
+import type { WebSocketPushProps }              from '../websocket';
 
 function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushProps> = {}): WebSocketPush {
   const packages: Record<string, ArtifactPin> = {
     'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+  const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
     packages,
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 
-  const configTable = new DataTable(new Table(stack, 'config-table', {
+  const configTable      = new DataTable(new Table(stack, 'config-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
-  const itemTable = new DataTable(new Table(stack, 'item-table', {
+  const itemTable        = new DataTable(new Table(stack, 'item-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
-  const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
+  const changelogTable   = new DataTable(new Table(stack, 'changelog-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
   const authorizerLambda = new lambda.Function(stack, 'authorizer', {
@@ -75,13 +76,13 @@ function newCertificate(stack: cdk.Stack): acm.Certificate {
 
 describe('WebSocketPush.grantManageConnections', () => {
   it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const sut = buildWebSocketPush(stack);
+    const sut  = buildWebSocketPush(stack);
     const role = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
@@ -89,7 +90,7 @@ describe('WebSocketPush.grantManageConnections', () => {
     sut.grantManageConnections(role);
 
     const template = Template.fromStack(stack);
-    const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+    const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -118,7 +119,7 @@ describe('WebSocketPush without a custom domain', () => {
     const sut = buildWebSocketPush(stack);
 
     const template = Template.fromStack(stack);
-    const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+    const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
     expect(stack.resolve(sut.webSocketUrl)).toEqual({
       'Fn::Join': ['', ['wss://', { Ref: apiId }, '.execute-api.us-west-2.', { Ref: 'AWS::URLSuffix' }, '/prod']],
     });
@@ -146,7 +147,7 @@ describe('WebSocketPush with a custom domain', () => {
   });
 
   it('makes the domain depend on the certificate so the domain is deleted first', () => {
-    const stack = newStack();
+    const stack       = newStack();
     const certificate = newCertificate(stack);
 
     buildWebSocketPush(stack, { domainName: 'ws.example.com', certificate });
@@ -207,12 +208,12 @@ describe('WebSocketPush maxSubscriptions', () => {
 describe('WebSocketPush.broadcaster', () => {
   it('names the broadcast function and grants invoke on it', () => {
     const stack = newStack();
-    const sut = buildWebSocketPush(stack);
-    const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const sut   = buildWebSocketPush(stack);
+    const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
     sut.broadcaster.grantInvoke(role);
 
-    const template = Template.fromStack(stack);
+    const template            = Template.fromStack(stack);
     const broadcastFunctionId = Object.keys(template.findResources('AWS::Lambda::Function'))
       .find((id) => id.toLowerCase().includes('broadcasthandler'));
     expect(stack.resolve(sut.broadcaster.functionName)).toEqual({ Ref: broadcastFunctionId });
@@ -227,15 +228,15 @@ describe('WebSocketPush.broadcaster', () => {
 
 describe('WebSocketPush.managementEndpoint', () => {
   it('builds the ApiGatewayManagementApi endpoint URL for the given stage', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const sut = buildWebSocketPush(stack);
+    const sut      = buildWebSocketPush(stack);
     const template = Template.fromStack(stack);
-    const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+    const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
     expect(stack.resolve(sut.managementEndpoint)).toEqual({
       'Fn::Join': ['', ['https://', { Ref: apiId }, '.execute-api.', { Ref: 'AWS::Region' }, '.amazonaws.com/prod']],

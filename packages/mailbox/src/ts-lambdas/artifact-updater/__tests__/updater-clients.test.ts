@@ -7,30 +7,31 @@
  * through the updater's grants change, resources it does not own.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetResourcesCommand,
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
+import { mockClient }         from 'aws-sdk-client-mock';
+
 import { RootStackResources } from '../updater-clients';
 
-const ID_KEY = 'serverless-inbox:root-stack-id';
+const ID_KEY   = 'serverless-inbox:root-stack-id';
 const NAME_KEY = 'serverless-inbox:root-stack';
-const TYPES = ['lambda:function'];
+const TYPES    = ['lambda:function'];
 
 function mapping(arn: string, tags: Record<string, string>): ResourceTagMapping {
   return { ResourceARN: arn, Tags: Object.entries(tags).map(([Key, Value]) => ({ Key, Value })) };
 }
 
 describe('RootStackResources', () => {
-  const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
-  const tagging = new ResourceGroupsTaggingAPIClient({ region: 'us-east-1' });
+  const taggingMock        = mockClient(ResourceGroupsTaggingAPIClient);
+  const tagging            = new ResourceGroupsTaggingAPIClient({ region: 'us-east-1' });
   const rootStackResources = new RootStackResources('my-stack', 'guid-1');
 
   function answerQuery(tagKey: string, ...pages: ResourceTagMapping[][]): void {
-    const matcher = { TagFilters: [{ Key: tagKey, Values: [tagKey === ID_KEY ? 'guid-1' : 'my-stack'] }] };
-    const answers = pages.map((page, index) => ({
+    const matcher  = { TagFilters: [{ Key: tagKey, Values: [tagKey === ID_KEY ? 'guid-1' : 'my-stack'] }] };
+    const answers  = pages.map((page, index) => ({
       ResourceTagMappingList: page,
       PaginationToken: index < pages.length - 1 ? `page-${index + 2}` : '',
     }));
@@ -68,9 +69,9 @@ describe('RootStackResources', () => {
   });
 
   it('follows the pagination token of each query', async () => {
-    const first = mapping('arn:d', { [ID_KEY]: 'guid-1' });
+    const first  = mapping('arn:d', { [ID_KEY]: 'guid-1' });
     const second = mapping('arn:e', { [ID_KEY]: 'guid-1' });
-    const third = mapping('arn:f', { [NAME_KEY]: 'my-stack' });
+    const third  = mapping('arn:f', { [NAME_KEY]: 'my-stack' });
     answerQuery(ID_KEY, [first], [second]);
     answerQuery(NAME_KEY, [third]);
 

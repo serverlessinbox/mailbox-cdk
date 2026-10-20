@@ -5,8 +5,9 @@
  * tier widen silently, trust the wrong AWS account, or let a tier role be assumed without a case.
  */
 
+import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+
 import {
   SupportRolesInfra,
   SUPPORT_CONFIG_READ_TAG_KEY,
@@ -15,11 +16,11 @@ import {
   getSupportTierTagKeys,
 } from '../support-roles-infra';
 
-const DIAG_TAG_KEY = 'serverless-inbox:support:diag';
+const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
 const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';
-const DIAG_POLICY = 'support-diag-access';
-const CONFIG_READ_POLICY = 'support-config-read-access';
-const HOP_POLICY = 'support-hop-assume';
+const DIAG_POLICY         = 'support-diag-access';
+const CONFIG_READ_POLICY  = 'support-config-read-access';
+const HOP_POLICY          = 'support-hop-assume';
 
 interface StatementJson {
   readonly Effect: string;
@@ -142,7 +143,7 @@ describe('SupportRolesInfra', () => {
     });
 
     it('are created only after the hop role they trust exists', () => {
-      const { template } = synthesize(['111111111111']);
+      const { template }                = synthesize(['111111111111']);
       const { logicalId: hopLogicalId } = roleWithPolicy(template, HOP_POLICY);
 
       for (const policyName of [DIAG_POLICY, CONFIG_READ_POLICY]) {
@@ -153,7 +154,7 @@ describe('SupportRolesInfra', () => {
     it('grant diag the observability actions and config-read those plus configuration reads', () => {
       const { template } = synthesize(['111111111111']);
 
-      const diag = actionsOf(roleWithPolicy(template, DIAG_POLICY).role);
+      const diag       = actionsOf(roleWithPolicy(template, DIAG_POLICY).role);
       const configRead = actionsOf(roleWithPolicy(template, CONFIG_READ_POLICY).role);
 
       expect(diag.has('logs:GetLogEvents')).toBe(true);
@@ -164,7 +165,7 @@ describe('SupportRolesInfra', () => {
 
     it('scope resource-naming actions by the root-stack tags, by id and by name for a resource without an id tag, and leave enumeration actions unconditioned', () => {
       const { template } = synthesize(['111111111111']);
-      const { role } = roleWithPolicy(template, CONFIG_READ_POLICY);
+      const { role }     = roleWithPolicy(template, CONFIG_READ_POLICY);
 
       const owned = statementsOf(role).filter((s) => [s.Action].flat().includes('lambda:GetFunctionConfiguration'));
       expect(owned.map((s) => Object.keys(s.Condition as object))).toEqual([['StringEquals'], ['StringEquals', 'Null']]);
@@ -180,7 +181,7 @@ describe('SupportRolesInfra', () => {
     });
 
     it('let only diag read the edge log group, by its exact ARN', () => {
-      const { template } = synthesize(['111111111111']);
+      const { template }    = synthesize(['111111111111']);
       const edgeLogGroupArn = (role: SynthesizedRole) => JSON.stringify(statementsOf(role).map((s) => s.Resource));
 
       expect(edgeLogGroupArn(roleWithPolicy(template, DIAG_POLICY).role)).toContain(':log-group:/serverlessinbox/');
@@ -189,7 +190,7 @@ describe('SupportRolesInfra', () => {
 
     it.each([DIAG_POLICY, CONFIG_READ_POLICY])('%s may read the stack and its nested stacks', (policyName) => {
       const { template } = synthesize(['111111111111']);
-      const { role } = roleWithPolicy(template, policyName);
+      const { role }     = roleWithPolicy(template, policyName);
 
       const statement = statementGranting(role, 'cloudformation:GetTemplate');
 

@@ -1,8 +1,9 @@
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
-import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }    from '@aws-sdk/client-lambda';
+import { CaughtError, parseArn, type LoggerBuffer }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { EdgeFunctionRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { RootStackMembership } from '../root-stack-membership';
-import { TargetResults } from '../target-results';
+import { RootStackMembership }                                        from '../root-stack-membership';
+import { TargetResults }                                              from '../target-results';
 
 /**
  * Sweeps the Lambda@Edge function named by `EdgeFunctionRemovalInput.edgeFnArn`: deletes it once it

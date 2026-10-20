@@ -1,6 +1,7 @@
-import * as t from 'typanion';
+import * as t                    from 'typanion';
+
 import { isRegion, type Region } from '../shared/aws-identifiers';
-import type { Unbranded } from '../shared/branded';
+import type { Unbranded }        from '../shared/branded';
 import {
   isLogicalResourceId,
   isPhysicalResourceId,
@@ -11,8 +12,9 @@ import {
   type PhysicalResourceId,
   type StackName,
 } from '../shared/custom-resource-identifiers';
+
 import { isTemplateUrl } from './deployer-identifiers';
-import { isStackFlag } from './stack-flag';
+import { isStackFlag }   from './stack-flag';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);
 

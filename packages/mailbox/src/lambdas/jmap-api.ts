@@ -1,16 +1,18 @@
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
-import type { IDataBlobStore } from '../data/data-blob-store';
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import type { IMailboxAuthProviderBase } from '../auth/types';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IArtifactResolver }                                         from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                       from 'aws-cdk-lib';
+import { Construct }                                                      from 'constructs';
+
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../api/websocket/websocket';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
-import type { IEmailSendingQueue } from '../email/sending/email-sending-queue';
-import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
-import type { IIdentityProvisioner } from './identity-provisioner';
+import type { IMailboxAuthProviderBase }                                  from '../auth/types';
+import type { IDataBlobStore }                                            from '../data/data-blob-store';
+import type { IDataTable }                                                from '../data/data-tables';
+import type { IEmailSendingQueue }                                        from '../email/sending/email-sending-queue';
+import type { IAuditEventsQueue }                                         from '../features/audit-writing/audit-events-queue';
+import type { IAuthKeyStoreTable }                                        from '../features/auth-key-store/auth-key-store-table';
+
+import type { IIdentityProvisioner }                                      from './identity-provisioner';
 
 export type JmapOAuthHandlerConfig = {
   scopeMap: IMailboxAuthProviderBase['scopeMap'];

@@ -7,11 +7,8 @@
  *   pattern matches exactly the five terminal stack-status-change statuses and no others.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import {
   actionsOf,
   allPolicyStatements,
@@ -19,7 +16,11 @@ import {
   resourcesOf,
   statementsForAction,
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                     from 'aws-cdk-lib/assertions';
+import * as cdk                                         from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+
 import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-detection';
 
 function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
@@ -44,7 +45,7 @@ function buildStack(id: string): cdk.Stack {
 
 describe('StackFailureDetection', () => {
   it('disabled: synthesizes zero detector resources', () => {
-    const stack = buildStack('test-stack-diag-disabled');
+    const stack            = buildStack('test-stack-diag-disabled');
     const artifactResolver = createTestArtifactResolver(stack);
 
     new StackFailureDetection(stack, 'stack-failure-detection', {
@@ -63,7 +64,7 @@ describe('StackFailureDetection', () => {
   });
 
   it('disabled: exposes no sweep-target interfaces', () => {
-    const stack = buildStack('test-stack-diag-disabled-props');
+    const stack            = buildStack('test-stack-diag-disabled-props');
     const artifactResolver = createTestArtifactResolver(stack);
 
     const diag = new StackFailureDetection(stack, 'stack-failure-detection', {
@@ -80,7 +81,7 @@ describe('StackFailureDetection', () => {
     let diag: StackFailureDetection;
 
     beforeEach(() => {
-      const stack = buildStack('test-stack-diag-enabled');
+      const stack            = buildStack('test-stack-diag-enabled');
       const artifactResolver = createTestArtifactResolver(stack);
 
       diag = new StackFailureDetection(stack, 'stack-failure-detection', {
@@ -130,7 +131,7 @@ describe('StackFailureDetection', () => {
       const RETAIN_STYLE = new Set(['Retain', 'RetainExceptOnCreate']);
 
       const rules = template.findResources('AWS::Events::Rule');
-      const fns = template.findResources('AWS::Lambda::Function');
+      const fns   = template.findResources('AWS::Lambda::Function');
       const roles = template.findResources('AWS::IAM::Role');
 
       for (const [, res] of Object.entries(rules)) {
@@ -146,7 +147,7 @@ describe('StackFailureDetection', () => {
     });
 
     it('attaches exactly one inline policy to the detector role, the detector policy and no CDK-generated DefaultPolicy', () => {
-      const roleIds = Object.keys(template.findResources('AWS::IAM::Role'));
+      const roleIds           = Object.keys(template.findResources('AWS::IAM::Role'));
       const policyNamesOnRole = Object.values(template.findResources('AWS::IAM::Policy'))
         .filter((policy) => policy.Properties.Roles.some((role: { Ref?: string }) => roleIds.includes(role.Ref ?? '')))
         .map((policy) => policy.Properties.PolicyName);
@@ -159,11 +160,11 @@ describe('StackFailureDetection', () => {
       if (!targets) {
         throw new Error('enabled detector must expose sweep targets');
       }
-      const roleIds = Object.keys(template.findResources('AWS::IAM::Role'));
+      const roleIds           = Object.keys(template.findResources('AWS::IAM::Role'));
       const policyNamesOnRole = Object.values(template.findResources('AWS::IAM::Policy'))
         .filter((policy) => policy.Properties.Roles.some((role: { Ref?: string }) => roleIds.includes(role.Ref ?? '')))
         .map((policy) => policy.Properties.PolicyName);
-      const ruleTargetIds = Object.values(template.findResources('AWS::Events::Rule')).flatMap((rule) =>
+      const ruleTargetIds     = Object.values(template.findResources('AWS::Events::Rule')).flatMap((rule) =>
         rule.Properties.Targets.map((target: { Id: string }) => target.Id),
       );
 
@@ -174,7 +175,7 @@ describe('StackFailureDetection', () => {
     it('renders DeletionPolicy Retain for every CFN resource under the detector construct, whatever its type', () => {
       // Walks the construct tree rather than a list of types, so a resource added later (a policy, a log
       // group, a permission) is covered without editing this test.
-      const stack = cdk.Stack.of(diag);
+      const stack     = cdk.Stack.of(diag);
       const resources = diag.node.findAll().filter((c): c is cdk.CfnResource => c instanceof cdk.CfnResource);
       expect(resources.length).toBeGreaterThan(0);
 
@@ -201,9 +202,9 @@ describe('StackFailureDetection', () => {
       // `environment` at all. This asserts not just presence but that the env var and the
       // `logs:FilterLogEvents` grant resolve to the SAME underlying log-group resource — both must
       // reference the same CloudFormation logical id, so they can never silently drift apart.
-      const fns = template.findResources('AWS::Lambda::Function');
+      const fns            = template.findResources('AWS::Lambda::Function');
       const [, detectorFn] = Object.entries(fns)[0];
-      const envVars = (detectorFn as any).Properties.Environment.Variables;
+      const envVars        = (detectorFn as any).Properties.Environment.Variables;
 
       expect(envVars.INFRA_LOG_GROUP_NAME).toBeDefined();
       const envLogicalId = envVars.INFRA_LOG_GROUP_NAME.Ref;
@@ -226,15 +227,15 @@ describe('StackFailureDetection', () => {
     });
 
     it('the rule matches CloudFormation Stack Status Change with exactly the five terminal statuses', () => {
-      const rules = template.findResources('AWS::Events::Rule');
+      const rules    = template.findResources('AWS::Events::Rule');
       const [, rule] = Object.entries(rules)[0];
-      const pattern = (rule as any).Properties.EventPattern;
+      const pattern  = (rule as any).Properties.EventPattern;
 
       expect(pattern['detail-type']).toEqual(['CloudFormation Stack Status Change']);
       expect(pattern.source).toEqual(['aws.cloudformation']);
 
       const statuses: string[] = pattern.detail['status-details'].status;
-      const statusSet = new Set(statuses);
+      const statusSet          = new Set(statuses);
 
       expect(statusSet).toEqual(
         new Set([

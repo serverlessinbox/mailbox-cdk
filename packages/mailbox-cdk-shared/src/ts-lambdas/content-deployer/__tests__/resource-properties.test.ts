@@ -5,7 +5,8 @@
  */
 
 import { isContentDeployerResourceProperties } from '../resource-properties';
-import { dataSource, zipSource } from './content-deployer-helpers';
+
+import { dataSource, zipSource }               from './content-deployer-helpers';
 
 describe('isContentDeployerResourceProperties', () => {
   describe('accepts', () => {

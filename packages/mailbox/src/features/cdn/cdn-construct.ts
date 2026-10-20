@@ -1,13 +1,14 @@
-import * as cdk from 'aws-cdk-lib';
-import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
-import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IAuthKeyStoreTable } from '../auth-key-store/auth-key-store-table';
+import { ServerlessInboxTagKeys }         from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                           from 'aws-cdk-lib/aws-certificatemanager';
+import * as origins                       from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as cloudfront                    from 'aws-cdk-lib/aws-cloudfront';
+import * as lambda                        from 'aws-cdk-lib/aws-lambda';
+import { IBucket }                        from 'aws-cdk-lib/aws-s3';
+import * as cdk                           from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
+
 import type { BlobDownloadOriginHeaders } from '../../ts-lambdas/jmap-blob-download/origin-headers';
+import type { IAuthKeyStoreTable }        from '../auth-key-store/auth-key-store-table';
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
 export interface CdnCustomDomain {
@@ -46,7 +47,7 @@ export class Cdn extends Construct {
     this.distribution = this.createDistribution(props);
     cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    this.host = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
+    this.host           = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
     this.distributionId = this.distribution.distributionId;
   }
 

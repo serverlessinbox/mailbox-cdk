@@ -5,13 +5,14 @@
  * a resolver without that pin must fail to synthesize rather than reference a missing artifact.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { allPolicyStatements } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DataOverrideResolverLambda } from '../data-override-resolver';
+import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
+import { allPolicyStatements }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataOverrideResolverLambda }           from '../data-override-resolver';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {

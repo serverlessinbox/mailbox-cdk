@@ -1,10 +1,11 @@
-import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand } from '@aws-sdk/client-sfn';
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import { CloudFormationClient }                                                                     from '@aws-sdk/client-cloudformation';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand }            from '@aws-sdk/client-sfn';
 import { CaughtError, emitManualFinalize, isParentStackBeingDeleted, toStackId, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { StarterConfig } from './config';
-import type { RemovalPropertiesMap } from './removal';
-import type { SweepTargetPlanner } from './sweep-target-planner';
+import type { CloudFormationCustomResourceEvent }                                                   from 'aws-lambda';
+
+import type { StarterConfig }                                                                       from './config';
+import type { RemovalPropertiesMap }                                                                from './removal';
+import type { SweepTargetPlanner }                                                                  from './sweep-target-planner';
 
 /**
  * Starts one Step Functions execution to sweep whatever the `SweepTargetPlanner` decides needs

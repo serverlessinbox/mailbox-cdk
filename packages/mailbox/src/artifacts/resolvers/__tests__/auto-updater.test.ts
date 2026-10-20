@@ -9,17 +9,18 @@
  * code mid-run.
  */
 
+import { getAttLogicalId, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                       from 'aws-cdk-lib/assertions';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpApi }                                        from 'aws-cdk-lib/aws-apigatewayv2';
+import { PolicyStatement }                                from 'aws-cdk-lib/aws-iam';
+import { Code, Function as LambdaFunction, Runtime }      from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { getAttLogicalId, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { AdminApiAddonContext } from '../../../api/addons';
-import { AutoUpdater } from '../auto-updater';
-import type { AutoUpdaterProps } from '../auto-updater';
+
+import type { AdminApiAddonContext }                      from '../../../api/addons';
+import { AutoUpdater }                                    from '../auto-updater';
+import type { AutoUpdaterProps }                          from '../auto-updater';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -52,7 +53,7 @@ interface UpdaterFunction {
 }
 
 function build(props?: AutoUpdaterProps): UpdaterFixture {
-  const app = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
+  const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
   const stack = new Stack(app, 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
@@ -66,7 +67,7 @@ function inlineFunction(stack: Stack, id: string): LambdaFunction {
 
 /** The updater is the only function whose environment sets DIST_TAG. */
 function updaterOf(template: Template): UpdaterFunction {
-  const functions = template.findResources('AWS::Lambda::Function');
+  const functions   = template.findResources('AWS::Lambda::Function');
   const [logicalId] = Object.keys(functions).filter((id) => (functions[id] as FunctionResource).Properties.Environment?.Variables.DIST_TAG);
   return { logicalId, resource: functions[logicalId] as FunctionResource };
 }
@@ -142,10 +143,10 @@ describe('AutoUpdater', () => {
 
       autoUpdater.addDeployEndDependency(inlineFunction(stack, 'awaited'));
 
-      const template = Template.fromStack(stack);
-      const functions = template.findResources('AWS::Lambda::Function');
+      const template         = Template.fromStack(stack);
+      const functions        = template.findResources('AWS::Lambda::Function');
       const awaitedLogicalId = Object.keys(functions).find((id) => id.startsWith('awaited'));
-      const [deployEnd] = Object.values(template.findResources('Custom::DeployEndTrigger'));
+      const [deployEnd]      = Object.values(template.findResources('Custom::DeployEndTrigger'));
       expect(awaitedLogicalId).toBeDefined();
       expect(deployEnd.DependsOn).toContain(awaitedLogicalId);
     });
@@ -156,7 +157,7 @@ describe('AutoUpdater', () => {
       const { stack, autoUpdater } = build();
       autoUpdater.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({ actions: ['s3:PutObject'], resources: ['arn:aws:s3:::a-bucket/*'] }));
 
-      const template = Template.fromStack(stack);
+      const template      = Template.fromStack(stack);
       const roleLogicalId = getAttLogicalId(updaterOf(template).resource.Properties.Role) ?? '';
       expect(statementsForRole(template, roleLogicalId)).toContainEqual({
         Action: 's3:PutObject',
@@ -169,8 +170,8 @@ describe('AutoUpdater', () => {
   describe('createAdminApiAddons', () => {
     it('returns one addon that mounts the updater function on the admin API', () => {
       const { stack, autoUpdater } = build();
-      const api = new HttpApi(stack, 'api');
-      const authorizer = new HttpLambdaAuthorizer('authorizer', inlineFunction(stack, 'authorizer'), {
+      const api                    = new HttpApi(stack, 'api');
+      const authorizer             = new HttpLambdaAuthorizer('authorizer', inlineFunction(stack, 'authorizer'), {
         responseTypes: [HttpLambdaResponseType.SIMPLE],
       });
       // cast: AutoUpdater does not read the context, so an empty one stands in for the shared tables.
@@ -178,7 +179,7 @@ describe('AutoUpdater', () => {
 
       addons.forEach((addon) => addon.addRoutes(api, authorizer));
 
-      const template = Template.fromStack(stack);
+      const template            = Template.fromStack(stack);
       const invokedByApiGateway = Object.values(template.findResources('AWS::Lambda::Permission'))
         .filter((permission) => permission.Properties.Principal === 'apigateway.amazonaws.com')
         .map((permission) => getAttLogicalId(permission.Properties.FunctionName));

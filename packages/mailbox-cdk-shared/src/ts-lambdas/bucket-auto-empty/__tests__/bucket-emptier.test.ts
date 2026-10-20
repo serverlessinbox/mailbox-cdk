@@ -6,14 +6,15 @@
  */
 
 import { S3Client, ListObjectVersionsCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { mockClient } from 'aws-sdk-client-mock';
-import { BucketEmptier } from '../bucket-emptier';
-import { ExpectedFailure } from '../../shared/expected-failure';
+import { mockClient }                                                from 'aws-sdk-client-mock';
+
+import { ExpectedFailure }                                           from '../../shared/expected-failure';
+import { BucketEmptier }                                             from '../bucket-emptier';
 
 const PLENTY_OF_TIME = { getRemainingTimeInMillis: () => 900_000 };
 
 describe('BucketEmptier', () => {
-  const s3Mock = mockClient(S3Client);
+  const s3Mock  = mockClient(S3Client);
   const emptier = new BucketEmptier(new S3Client({}));
 
   beforeEach(() => {
@@ -121,7 +122,7 @@ describe('BucketEmptier', () => {
   });
 
   describe('when S3 reports versions it did not delete', () => {
-    const TWO_VERSIONS = {
+    const TWO_VERSIONS  = {
       Versions: [
         { Key: 'file1.txt', VersionId: 'v1' },
         { Key: 'file2.txt', VersionId: 'v2' },

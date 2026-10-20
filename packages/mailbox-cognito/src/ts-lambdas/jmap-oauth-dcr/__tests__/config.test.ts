@@ -6,7 +6,8 @@
  * would count a registration against the tenant's cap before it failed, so both must be reported at load.
  */
 
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { load } from '../config';
 
 describe('jmap-oauth-dcr config', () => {
@@ -25,7 +26,7 @@ describe('jmap-oauth-dcr config', () => {
 
   it('loads the user pool and the identity provisioner function', () => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
-    process.env.USER_POOL_ID = 'pool-123';
+    process.env.USER_POOL_ID                       = 'pool-123';
 
     expect(env.tryLoad(load)).toEqual({
       config: {
@@ -47,8 +48,8 @@ describe('jmap-oauth-dcr config', () => {
 
   it('loads SERVICE_NAME when it is set', () => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
-    process.env.USER_POOL_ID = 'pool-123';
-    process.env.SERVICE_NAME = 'oauth-dcr-service';
+    process.env.USER_POOL_ID                       = 'pool-123';
+    process.env.SERVICE_NAME                       = 'oauth-dcr-service';
 
     expect(env.tryLoad(load).config?.serviceName).toBe('oauth-dcr-service');
   });

@@ -1,9 +1,10 @@
-import { CaughtError } from '../shared/caught-error';
-import type { CustomResourceRequest } from '../shared/custom-resource-request';
-import { ExpectedFailure } from '../shared/expected-failure';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import type { InvocationDeadline } from '../shared/invocation-deadline';
-import type { BucketEmptier } from './bucket-emptier';
+import { CaughtError }                                                              from '../shared/caught-error';
+import type { CustomResourceRequest }                                               from '../shared/custom-resource-request';
+import { ExpectedFailure }                                                          from '../shared/expected-failure';
+import type { InvocationDeadline }                                                  from '../shared/invocation-deadline';
+import type { LoggerBuffer }                                                        from '../shared/logger-buffer';
+
+import type { BucketEmptier }                                                       from './bucket-emptier';
 import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from './resource-properties';
 
 /** The answer sent to CloudFormation for a request that succeeded. */
@@ -24,7 +25,7 @@ export class BucketAutoEmptyRequestHandler {
 
   constructor(bucketEmptier: BucketEmptier, logger: LoggerBuffer) {
     this.bucketEmptier = bucketEmptier;
-    this.logger = logger;
+    this.logger        = logger;
   }
 
   async handle(request: CustomResourceRequest, deadline: InvocationDeadline): Promise<BucketAutoEmptyResponse> {
@@ -67,7 +68,7 @@ export class BucketAutoEmptyRequestHandler {
     request: CustomResourceRequest,
     deadline: InvocationDeadline,
   ): Promise<BucketAutoEmptyResponse> {
-    const bucketName = this.readBucketNameForDelete(request);
+    const bucketName         = this.readBucketNameForDelete(request);
     const physicalResourceId = request.PhysicalResourceId || this.derivePhysicalResourceId(request);
 
     this.logger.debug('Emptying bucket', { bucketName });

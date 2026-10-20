@@ -1,5 +1,5 @@
 import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
-import { IQueue } from 'aws-cdk-lib/aws-sqs';
+import { IQueue }            from 'aws-cdk-lib/aws-sqs';
 
 const SEND = ['sqs:SendMessage'] as const;
 

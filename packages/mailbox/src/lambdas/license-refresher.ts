@@ -1,9 +1,10 @@
-import { Construct } from 'constructs';
-import type { IDataTable } from '../data/data-tables';
-import { Duration } from 'aws-cdk-lib';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }        from 'aws-cdk-lib/aws-iam';
+import { Duration }               from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
+import type { IDataTable }        from '../data/data-tables';
 
 export interface LicenseRefresherLambdaProps {
   configTable: IDataTable;

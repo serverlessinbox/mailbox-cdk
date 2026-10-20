@@ -1,5 +1,6 @@
-import * as t from 'typanion';
-import { Construct } from 'constructs';
+import { Construct }                 from 'constructs';
+import * as t                        from 'typanion';
+
 import { DEPLOYER_TYPE_CONTEXT_KEY } from './context-keys';
 
 const DEPLOYER_TYPES = ['cdk', 'cfn', 'marketplace'] as const;

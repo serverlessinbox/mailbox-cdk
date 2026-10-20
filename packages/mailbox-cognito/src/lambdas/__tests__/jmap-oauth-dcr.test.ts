@@ -7,17 +7,18 @@
  * variable missing or renamed here stops the Lambda at cold start.
  */
 
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as t from 'typanion';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { load } from '../../ts-lambdas/jmap-oauth-dcr/config';
-import { JmapOAuthDcrLambda } from '../jmap-oauth-dcr';
+import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { IIdentityProvisioner }            from '@serverlessinbox/mailbox';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
-const USER_POOL_ID = 'us-west-2_abcdefgh';
+import { load }                                 from '../../ts-lambdas/jmap-oauth-dcr/config';
+import { JmapOAuthDcrLambda }                   from '../jmap-oauth-dcr';
+
+const USER_POOL_ID  = 'us-west-2_abcdefgh';
 const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
 
 const isEnvironment = t.isRecord(t.isString());
@@ -33,8 +34,8 @@ describe('JmapOAuthDcrLambda', () => {
   let originalEnvironment: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    originalEnvironment = { ...process.env };
-    const stack = new Stack(new App(), 'TestStack', {
+    originalEnvironment    = { ...process.env };
+    const stack            = new Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -44,7 +45,7 @@ describe('JmapOAuthDcrLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    lambda = new JmapOAuthDcrLambda(stack, 'dcr-lambda', { artifactResolver, identityProvisioner, userPoolId: USER_POOL_ID, userPoolArn: USER_POOL_ARN });
+    lambda   = new JmapOAuthDcrLambda(stack, 'dcr-lambda', { artifactResolver, identityProvisioner, userPoolId: USER_POOL_ID, userPoolArn: USER_POOL_ARN });
     template = Template.fromStack(stack);
   });
 
@@ -57,9 +58,9 @@ describe('JmapOAuthDcrLambda', () => {
   });
 
   it('sets the variables its configuration loads from', () => {
-    const [lambdaFunction] = Object.values(template.findResources('AWS::Lambda::Function'));
+    const [lambdaFunction]   = Object.values(template.findResources('AWS::Lambda::Function'));
     const variables: unknown = lambdaFunction.Properties.Environment.Variables;
-    const errors: string[] = [];
+    const errors: string[]   = [];
     if (!isEnvironment(variables, { errors })) {
       throw new Error(`The environment of the Lambda is not a set of strings: ${errors.join('; ')}`);
     }

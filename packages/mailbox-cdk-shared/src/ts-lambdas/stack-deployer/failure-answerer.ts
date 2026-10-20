@@ -1,12 +1,13 @@
-import { CaughtError } from '../shared/caught-error';
-import { ExpectedFailure } from '../shared/expected-failure';
-import { AnswerDeliveryFailure } from './answer-delivery-failure';
-import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
+import { CaughtError }                          from '../shared/caught-error';
+import { ExpectedFailure }                      from '../shared/expected-failure';
+
+import { AnswerDeliveryFailure }                from './answer-delivery-failure';
+import type { CfnReplyTarget, CfnResponder }    from './cfn-responder';
+import type { StackDeploymentEventReader }      from './stack-deployment-event-reader';
 import type { AnswerableEvent, OperationInput } from './stack-deployment';
-import type { StackDeploymentEventReader } from './stack-deployment-event-reader';
-import { StackOperationFailure } from './stack-operation-failure';
-import type { UpdateRollbackAnswers } from './update-rollback-answerer';
-import { WorkerResult } from './worker-result';
+import { StackOperationFailure }                from './stack-operation-failure';
+import type { UpdateRollbackAnswers }           from './update-rollback-answerer';
+import { WorkerResult }                         from './worker-result';
 
 /** Answers CloudFormation for a stack operation that failed, with the detail only the stack operation can add. */
 export interface StackFailureAnswerer {
@@ -27,9 +28,9 @@ export class FailureAnswerer {
   private readonly rollback: UpdateRollbackAnswers | undefined;
 
   constructor(events: StackDeploymentEventReader, responder: CfnResponder, rollback: UpdateRollbackAnswers | undefined) {
-    this.events = events;
+    this.events    = events;
     this.responder = responder;
-    this.rollback = rollback;
+    this.rollback  = rollback;
   }
 
   /** Answers the CloudFormation request the starter received. */

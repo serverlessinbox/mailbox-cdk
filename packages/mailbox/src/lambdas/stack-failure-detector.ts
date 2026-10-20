@@ -1,8 +1,8 @@
-import { Construct } from 'constructs';
-import { Duration } from 'aws-cdk-lib';
-import { IRole } from 'aws-cdk-lib/aws-iam';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
+import { IRole }                  from 'aws-cdk-lib/aws-iam';
+import { Duration }               from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
 
 /** Inputs of {@link StackFailureDetectorLambda}. */
 export interface StackFailureDetectorLambdaProps {

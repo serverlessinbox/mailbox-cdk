@@ -18,20 +18,21 @@
  * depends on every route it has settings for.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template, Match } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { renderLiteralText } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { loadMailboxCognitoRegistryRecord } from '../../mailbox-cognito-registry-record';
-import { loadMailboxCognitoArtifactVersions } from '../../mailbox-cognito-artifact-versions';
-import { MailboxUserPool } from '../../auth/mailbox-user-pool';
-import { DynamicClientRegistrationMode } from '../../auth/dynamic-client-registration-mode';
-import { JmapOAuthAddon } from '../jmap-oauth-addon';
+import { renderLiteralText }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { MailboxArtifactResolverFactory }     from '@serverlessinbox/mailbox-cdk-shared';
+import { Template, Match }                    from 'aws-cdk-lib/assertions';
+import { HttpApi }                            from 'aws-cdk-lib/aws-apigatewayv2';
+import * as lambda                            from 'aws-cdk-lib/aws-lambda';
+import * as cdk                               from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
 
-const API_BASE_URL = 'https://api.example.com';
+import { DynamicClientRegistrationMode }      from '../../auth/dynamic-client-registration-mode';
+import { MailboxUserPool }                    from '../../auth/mailbox-user-pool';
+import { loadMailboxCognitoArtifactVersions } from '../../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }   from '../../mailbox-cognito-registry-record';
+import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
+
+const API_BASE_URL           = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
 
 function setUpArtifactContext(app: App): void {
@@ -113,7 +114,7 @@ function buildHarness(
  */
 function findGatingConditionLogicalId(template: Template, expectedFlag: unknown): string {
   const conditions: Record<string, EqualsCondition> = template.toJSON().Conditions ?? {};
-  const matches = Object.entries(conditions).filter(([, expression]) => expression['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
+  const matches                                     = Object.entries(conditions).filter(([, expression]) => expression['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
   expect(matches).toHaveLength(1);
 
   const [logicalId, expression] = matches[0];
@@ -209,7 +210,7 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
     addon.addRoutes(api);
 
-    const template = Template.fromStack(stack);
+    const template    = Template.fromStack(stack);
     const conditionId = findGatingConditionLogicalId(template, DynamicClientRegistrationMode.ENABLED);
 
     const routes = findRegistrationRoutes(template);
@@ -228,11 +229,11 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
   });
 
   it('enabled: the true branch of the discovery document adds exactly one key (registration_endpoint) to the false branch', () => {
-    const { stack } = buildHarness(DynamicClientRegistrationMode.ENABLED);
+    const { stack }                   = buildHarness(DynamicClientRegistrationMode.ENABLED);
     const { trueBranch, falseBranch } = findDiscoveryDocumentFnIfBranches(Template.fromStack(stack));
 
-    const trueText = renderLiteralText(trueBranch);
-    const trueKeys = extractDocumentKeys(trueText);
+    const trueText  = renderLiteralText(trueBranch);
+    const trueKeys  = extractDocumentKeys(trueText);
     const falseKeys = extractDocumentKeys(renderLiteralText(falseBranch));
 
     expect(new Set(trueKeys)).toEqual(new Set([...falseKeys, 'registration_endpoint']));
@@ -247,9 +248,9 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
     addon.addRoutes(api);
 
-    const template = Template.fromStack(stack);
+    const template    = Template.fromStack(stack);
     const conditionId = findGatingConditionLogicalId(template, DynamicClientRegistrationMode.ENABLED);
-    const stages = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
+    const stages      = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
     expect(stages).toHaveLength(1);
 
     const routeSettings = stages[0].Properties.RouteSettings;
@@ -269,8 +270,8 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.ENABLED);
     addon.addRoutes(api);
 
-    const template = Template.fromStack(stack);
-    const [stage] = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
+    const template            = Template.fromStack(stack);
+    const [stage]             = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
     const routeLogicalIdByKey = new Map<string, string>();
     for (const [logicalId, route] of Object.entries(template.findResources('AWS::ApiGatewayV2::Route'))) {
       routeLogicalIdByKey.set(route.Properties.RouteKey, logicalId);
@@ -304,7 +305,7 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     const { stack, addon, api } = harness;
     addon.addRoutes(api);
 
-    const template = Template.fromStack(stack);
+    const template    = Template.fromStack(stack);
     const conditionId = findGatingConditionLogicalId(template, { Ref: stack.getLogicalId(parameter) });
 
     const dcrFunctionEntries = findDcrFunctionEntries(template);

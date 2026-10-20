@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from './json-value';
+import type { JsonObject, JsonValue }                               from './json-value';
 import type { EntryChange, NonDeterministicProperty, TemplateDiff } from './template-diff';
 
 const RESOURCES_SECTION_PREFIX = 'Resources/';
@@ -14,22 +14,22 @@ export class TemplateDiffer {
   /** Diffs the freshly synthesized `after` against the baseline `before`. */
   diff(before: JsonObject, after: JsonObject): TemplateDiff {
     const beforeEntries = this.entriesOf(before);
-    const afterEntries = this.entriesOf(after);
+    const afterEntries  = this.entriesOf(after);
 
-    const added = [...afterEntries.keys()].filter((entryId) => !beforeEntries.has(entryId)).sort();
+    const added   = [...afterEntries.keys()].filter((entryId) => !beforeEntries.has(entryId)).sort();
     const removed = [...beforeEntries.keys()].filter((entryId) => !afterEntries.has(entryId)).sort();
 
-    const changed: EntryChange[] = [];
+    const changed: EntryChange[]               = [];
     const knownNonDeterministic: EntryChange[] = [];
     for (const [entryId, beforeEntry] of [...beforeEntries.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       const afterEntry = afterEntries.get(entryId);
       if (afterEntry === undefined) {
         continue;
       }
-      const paths = this.changedPaths(beforeEntry, afterEntry, '');
+      const paths        = this.changedPaths(beforeEntry, afterEntry, '');
       const resourceType = this.resourceTypeOf(entryId, afterEntry);
-      const knownPaths = paths.filter((path) => this.isKnownNonDeterministic(resourceType, path));
-      const realPaths = paths.filter((path) => !knownPaths.includes(path));
+      const knownPaths   = paths.filter((path) => this.isKnownNonDeterministic(resourceType, path));
+      const realPaths    = paths.filter((path) => !knownPaths.includes(path));
       if (realPaths.length > 0) {
         changed.push({ entryId, propertyPaths: realPaths });
       }

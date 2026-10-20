@@ -1,4 +1,5 @@
-import type * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import type * as acm             from 'aws-cdk-lib/aws-certificatemanager';
+
 import type { AuthClientConfig } from './auth/types';
 
 /**

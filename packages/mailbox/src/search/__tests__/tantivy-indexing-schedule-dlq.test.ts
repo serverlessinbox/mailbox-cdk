@@ -6,10 +6,11 @@
  * early or hands the schedule a wrong target ARN.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                                from 'aws-cdk-lib/assertions';
+import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { TantivyIndexingScheduleDlq } from '../tantivy-indexing-schedule-dlq';
+
+import { TantivyIndexingScheduleDlq }              from '../tantivy-indexing-schedule-dlq';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
@@ -42,7 +43,7 @@ describe('TantivyIndexingScheduleDlq', () => {
 
   it('queueArn resolves to the queue resource\'s Arn attribute', () => {
     const stack = createStack();
-    const sut = new TantivyIndexingScheduleDlq(stack, 'dlq');
+    const sut   = new TantivyIndexingScheduleDlq(stack, 'dlq');
 
     const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 

@@ -5,13 +5,15 @@
  * CloudFront operations are faked: they are owned by the shared modules.
  */
 
-import { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import { S3Client } from '@aws-sdk/client-s3';
+import { CloudFrontClient }                             from '@aws-sdk/client-cloudfront';
+import { S3Client }                                     from '@aws-sdk/client-s3';
+
+import { invalidateCloudFront }                         from '../../shared/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../../shared/content-ops';
-import { ExpectedFailure } from '../../shared/expected-failure';
-import { LoggerBuffer } from '../../shared/logger-buffer';
-import { invalidateCloudFront } from '../../shared/cloudfront-invalidation';
-import { ContentDeployerRequestHandler } from '../content-deployer-request-handler';
+import { ExpectedFailure }                              from '../../shared/expected-failure';
+import { LoggerBuffer }                                 from '../../shared/logger-buffer';
+import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
+
 import {
   PHYSICAL_RESOURCE_ID,
   REQUEST_ID,
@@ -33,10 +35,10 @@ jest.mock('../../shared/cloudfront-invalidation', () => ({
 }));
 
 describe('ContentDeployerRequestHandler', () => {
-  const s3 = new S3Client({});
-  const cloudFront = new CloudFrontClient({});
+  const s3             = new S3Client({});
+  const cloudFront     = new CloudFrontClient({});
   const requestHandler = new ContentDeployerRequestHandler(s3, cloudFront, new LoggerBuffer('content-deployer', 'error'));
-  const invocation = fakeLambdaContext();
+  const invocation     = fakeLambdaContext();
 
   beforeEach(() => {
     jest.resetAllMocks();

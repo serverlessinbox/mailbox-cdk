@@ -1,9 +1,9 @@
-import { Construct, IConstruct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import * as targets              from 'aws-cdk-lib/aws-events-targets';
+import * as events               from 'aws-cdk-lib/aws-events';
+import * as lambda               from 'aws-cdk-lib/aws-lambda';
+import * as cdk                  from 'aws-cdk-lib';
+import { Construct, IConstruct } from 'constructs';
 
 export interface TrackedUpdateTriggersProps {
   readonly updater: lambda.IFunction;

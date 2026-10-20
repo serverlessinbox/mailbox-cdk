@@ -1,6 +1,6 @@
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 export const TEST_ACCOUNT = '111122223333';
 export const TEST_REGION = 'us-west-2';
@@ -13,7 +13,7 @@ export interface DeployerTestStack {
 
 /** A stack with an explicit environment and a resolver pinning every package the sub-stack deployers resolve artifacts from. */
 export function newDeployerTestStack(): DeployerTestStack {
-  const stack = new Stack(new App(), 'test-stack', {
+  const stack            = new Stack(new App(), 'test-stack', {
     env: { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });

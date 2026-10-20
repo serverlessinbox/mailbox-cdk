@@ -1,9 +1,11 @@
-import { Duration } from 'aws-cdk-lib';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-import { TypeScriptLambda } from '../ts-lambda';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { parentStackStatusReadStatement } from './parent-stack-status-read';
+import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
+import { Duration }                         from 'aws-cdk-lib';
+import { Construct }                        from 'constructs';
+
+import { TypeScriptLambda }                 from '../ts-lambda';
+
+import { parentStackStatusReadStatement }   from './parent-stack-status-read';
 import type { IPollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
 
 export interface DeployerStarterLambdaProps {

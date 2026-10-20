@@ -1,4 +1,5 @@
 import * as t from 'typanion';
+
 import {
   isTemplateUrl,
   toExecutionArn,
@@ -14,7 +15,7 @@ import {
  */
 describe('deployer identifiers', () => {
   const STATE_MACHINE_ARN = 'arn:aws:states:us-east-1:123456789012:stateMachine:deployer';
-  const EXECUTION_ARN = 'arn:aws:states:us-east-1:123456789012:execution:deployer:request-123';
+  const EXECUTION_ARN     = 'arn:aws:states:us-east-1:123456789012:execution:deployer:request-123';
 
   function describeExecution(arn: ExecutionArn): string {
     return arn;

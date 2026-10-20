@@ -8,22 +8,24 @@
  * holds exactly the grants the registered removals ask for.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import { PositionHash } from '@serverlessinbox/mailbox-cdk-shared';
 import { actionsOf, renderLiteralText, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { SweeperInfra } from '../sweeper-infra';
-import { SweeperPolicyNames } from '../sweeper-names';
-import { newArtifactResolver, newRemovals, newTestStack, resolveStatements } from './sweeper-helpers';
+import { PositionHash }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                           from 'aws-cdk-lib/assertions';
+import { Construct }                                                          from 'constructs';
+
+import { SweeperInfra }                                                       from '../sweeper-infra';
+import { SweeperPolicyNames }                                                 from '../sweeper-names';
+
+import { newArtifactResolver, newRemovals, newTestStack, resolveStatements }  from './sweeper-helpers';
 
 const RETAINED = { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' };
 
 describe('SweeperInfra', () => {
   function synthesize(stackId: string): { template: Template; removals: ReturnType<typeof newRemovals>; infra: SweeperInfra; opsGroup: Construct } {
-    const stack = newTestStack(stackId);
+    const stack    = newTestStack(stackId);
     const opsGroup = new Construct(stack, 'ops');
     const removals = newRemovals(opsGroup);
-    const infra = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver: newArtifactResolver(stack), removals });
+    const infra    = new SweeperInfra(opsGroup, 'sweeper', { artifactResolver: newArtifactResolver(stack), removals });
     return { template: Template.fromStack(stack), removals, infra, opsGroup };
   }
 
@@ -61,10 +63,10 @@ describe('SweeperInfra', () => {
       const [executionRoleLogicalId] = Object.entries(template.findResources('AWS::IAM::Role'))
         .filter(([, role]) => renderLiteralText(role.Properties.RoleName).startsWith('mailbox-sweeper-exec-'))
         .map(([logicalId]) => logicalId);
-      const attachedPolicies = Object.values(template.findResources('AWS::IAM::Policy')).filter((policy) =>
+      const attachedPolicies         = Object.values(template.findResources('AWS::IAM::Policy')).filter((policy) =>
         policy.Properties.Roles.some((role: { Ref: string }) => role.Ref === executionRoleLogicalId),
       );
-      const [boundary] = Object.values(template.findResources('AWS::IAM::ManagedPolicy'));
+      const [boundary]               = Object.values(template.findResources('AWS::IAM::ManagedPolicy'));
 
       expect(attachedPolicies.map((policy) => policy.Properties.PolicyName)).toEqual([SweeperPolicyNames.executionPolicy]);
       expect(boundary.Properties.PolicyDocument.Statement).toEqual(
@@ -76,9 +78,9 @@ describe('SweeperInfra', () => {
   describe('physical names', () => {
     it('start with the sweeper position hash, so moving the sweeper never reuses a retained name', () => {
       const { template, infra } = synthesize('PhysicalNamesStack');
-      const hash = PositionHash.of(infra);
+      const hash                = PositionHash.of(infra);
 
-      const roleNames = Object.values(template.findResources('AWS::IAM::Role')).map((role) => renderLiteralText(role.Properties.RoleName));
+      const roleNames      = Object.values(template.findResources('AWS::IAM::Role')).map((role) => renderLiteralText(role.Properties.RoleName));
       const [stateMachine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
 
       expect(roleNames).toEqual(
@@ -98,7 +100,7 @@ describe('SweeperInfra', () => {
       const [executionPolicyLogicalId] = Object.entries(template.findResources('AWS::IAM::Policy'))
         .filter(([, policy]) => policy.Properties.PolicyName === SweeperPolicyNames.executionPolicy)
         .map(([logicalId]) => logicalId);
-      const [stateMachine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+      const [stateMachine]             = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
 
       expect(stateMachine.DependsOn).toContain(executionPolicyLogicalId);
     });
@@ -124,14 +126,14 @@ describe('SweeperInfra', () => {
     it('retains what the sweeper needs after the stack is deleted, and not the starter', () => {
       const { template } = synthesize('RetentionStack');
 
-      const resourcesWhere = (type: string, matches: (properties: Record<string, unknown>) => boolean): unknown[] =>
+      const resourcesWhere  = (type: string, matches: (properties: Record<string, unknown>) => boolean): unknown[] =>
         Object.values(template.findResources(type)).filter((resource) => matches(resource.Properties));
-      const sweeperRoles = resourcesWhere('AWS::IAM::Role', (properties) => renderLiteralText(properties.RoleName).startsWith('mailbox-sweeper-'));
+      const sweeperRoles    = resourcesWhere('AWS::IAM::Role', (properties) => renderLiteralText(properties.RoleName).startsWith('mailbox-sweeper-'));
       const sweeperPolicies = resourcesWhere('AWS::IAM::Policy', (properties) =>
         Object.values(SweeperPolicyNames).some((name) => name === properties.PolicyName),
       );
-      const worker = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.workerHandler');
-      const starter = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.starterHandler');
+      const worker          = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.workerHandler');
+      const starter         = resourcesWhere('AWS::Lambda::Function', (properties) => properties.Handler === 'index.starterHandler');
 
       expect(sweeperRoles).toHaveLength(2);
       expect(sweeperPolicies).toHaveLength(2);
@@ -155,8 +157,8 @@ describe('SweeperInfra', () => {
       const { template } = synthesize('StarterWiringStack');
 
       const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.executionPolicy);
-      const deletion = statements.find((statement) => actionsOf(statement).includes('states:DeleteStateMachine'));
-      const starter = Object.values(template.findResources('AWS::Lambda::Function')).find(
+      const deletion   = statements.find((statement) => actionsOf(statement).includes('states:DeleteStateMachine'));
+      const starter    = Object.values(template.findResources('AWS::Lambda::Function')).find(
         (resource) => resource.Properties.Handler === 'index.starterHandler',
       );
 
@@ -167,7 +169,7 @@ describe('SweeperInfra', () => {
       const { template } = synthesize('StarterOrderStack');
 
       const [stateMachineLogicalId] = Object.keys(template.findResources('AWS::StepFunctions::StateMachine'));
-      const starter = Object.values(template.findResources('AWS::Lambda::Function')).find(
+      const starter                 = Object.values(template.findResources('AWS::Lambda::Function')).find(
         (resource) => resource.Properties.Handler === 'index.starterHandler',
       );
 

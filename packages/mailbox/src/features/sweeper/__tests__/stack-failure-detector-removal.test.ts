@@ -7,8 +7,9 @@
  * the detector time to report a failed stack before the sweeper tears it down.
  */
 
-import { Duration } from 'aws-cdk-lib';
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }               from 'aws-cdk-lib';
+
 import {
   newDetectorRemoval,
   newTestStack,
@@ -18,22 +19,22 @@ import {
 } from './sweeper-helpers';
 
 describe('StackFailureDetectorRemoval', () => {
-  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
     Null: { [idKey]: 'true' },
   };
-  const anyRule = {
+  const anyRule              = {
     'Fn::Join': ['', ['arn:aws:events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*']],
   };
-  const anyRegionalFunction = {
+  const anyRegionalFunction  = {
     'Fn::Join': ['', ['arn:aws:lambda:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':function:*']],
   };
 
   it('scopes rule and function deletion by the root-stack tag and role deletion by the role\'s own ARN', () => {
-    const stack = newTestStack('DetectorGrantsStack');
+    const stack             = newTestStack('DetectorGrantsStack');
     const { removal, role } = newDetectorRemoval(stack);
 
     const statements = resolveStatements(stack, removal.grantStatements());
@@ -56,7 +57,7 @@ describe('StackFailureDetectorRemoval', () => {
   });
 
   it('puts the rule, function and role of the detector in its ResourceProperties entry', () => {
-    const stack = newTestStack('DetectorPropertiesStack');
+    const stack                   = newTestStack('DetectorPropertiesStack');
     const { removal, rule, role } = newDetectorRemoval(stack);
 
     expect(stack.resolve(removal.crProperties())).toEqual({

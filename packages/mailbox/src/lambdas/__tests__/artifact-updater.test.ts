@@ -10,25 +10,26 @@
  * with a configuration failure.
  */
 
+import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
+import { getAttLogicalId, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                       from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin } from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { getAttLogicalId, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ArtifactUpdaterLambda } from '../artifact-updater';
-import { load } from '../../ts-lambdas/artifact-updater/config';
 
-const ROOT_STACK = 'my-root-stack';
-const BUCKET_BASE = 'test-artifacts';
-const ROOT_STACK_ID = 'guid-1';
-const ROOT_STACK_TAG_KEY = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-const ROOT_STACK_ID_TAG_KEY = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-const OWNED_BY_ID = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT_STACK_ID } };
+import { load }                                           from '../../ts-lambdas/artifact-updater/config';
+import { ArtifactUpdaterLambda }                          from '../artifact-updater';
+
+const ROOT_STACK               = 'my-root-stack';
+const BUCKET_BASE              = 'test-artifacts';
+const ROOT_STACK_ID            = 'guid-1';
+const ROOT_STACK_TAG_KEY       = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
+const ROOT_STACK_ID_TAG_KEY    = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+const OWNED_BY_ID              = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT_STACK_ID } };
 const OWNED_BY_NAME_WITHOUT_ID = { StringEquals: { [ROOT_STACK_TAG_KEY]: ROOT_STACK }, Null: { [ROOT_STACK_ID_TAG_KEY]: 'true' } };
-const ARTIFACT_VERSION_ONLY = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
+const ARTIFACT_VERSION_ONLY    = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
 
 function accountArn(prefix: string, suffix: string): unknown {
   return { 'Fn::Join': ['', [prefix, { Ref: 'AWS::AccountId' }, suffix]] };
@@ -51,7 +52,7 @@ describe('ArtifactUpdaterLambda', () => {
   let roleLogicalId: string;
 
   beforeAll(() => {
-    const stack = new Stack(new App(), 'TestStack', {
+    const stack                                 = new Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -69,12 +70,12 @@ describe('ArtifactUpdaterLambda', () => {
       artifactBucketBase: BUCKET_BASE,
     });
 
-    template = Template.fromStack(stack);
-    const functions = template.findResources('AWS::Lambda::Function');
+    template           = Template.fromStack(stack);
+    const functions    = template.findResources('AWS::Lambda::Function');
     [updaterLogicalId] = Object.keys(functions);
-    updater = functions[updaterLogicalId] as FunctionResource;
-    roleLogicalId = getAttLogicalId(updater.Properties.Role) ?? '';
-    roleStatements = statementsForRole(template, roleLogicalId);
+    updater            = functions[updaterLogicalId] as FunctionResource;
+    roleLogicalId      = getAttLogicalId(updater.Properties.Role) ?? '';
+    roleStatements     = statementsForRole(template, roleLogicalId);
   });
 
   describe('function', () => {
@@ -95,9 +96,9 @@ describe('ArtifactUpdaterLambda', () => {
     });
 
     it('provides an environment its runtime configuration loads without error', () => {
-      const originalEnv = process.env;
+      const originalEnv             = process.env;
       const injectedByLambdaRuntime = { AWS_REGION: 'us-west-2', AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function' };
-      process.env = { ...originalEnv, ...stringValues(updater.Properties.Environment.Variables), ...injectedByLambdaRuntime };
+      process.env                   = { ...originalEnv, ...stringValues(updater.Properties.Environment.Variables), ...injectedByLambdaRuntime };
 
       try {
         expect(env.tryLoad(load).error).toBeUndefined();

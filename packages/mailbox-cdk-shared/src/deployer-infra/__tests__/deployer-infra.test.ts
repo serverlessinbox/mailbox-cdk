@@ -7,14 +7,16 @@
  * resource must depend on the workflow so the workflow can still answer its delete.
  */
 
-import { Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import type { StackDeployerProperties } from '../../ts-lambdas/stack-deployer/stack-deployment';
-import { PositionHash } from '../../naming/position-hash';
-import { StackIdentity } from '../../naming/stack-identity';
-import { DeployerInfra } from '../deployer-infra';
+import { Match, Template }                                                                   from 'aws-cdk-lib/assertions';
+import type { IFunction }                                                                    from 'aws-cdk-lib/aws-lambda';
+import { Stack }                                                                             from 'aws-cdk-lib';
+import { Construct }                                                                         from 'constructs';
+
+import { PositionHash }                                                                      from '../../naming/position-hash';
+import { StackIdentity }                                                                     from '../../naming/stack-identity';
+import type { StackDeployerProperties }                                                      from '../../ts-lambdas/stack-deployer/stack-deployment';
+import { DeployerInfra }                                                                     from '../deployer-infra';
+
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 
 const DEPLOYMENT: StackDeployerProperties = {
@@ -33,8 +35,8 @@ interface SynthesizedInfra {
 
 function newInfra(): SynthesizedInfra {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const createWorker = jest.fn((scope: Construct, id: string) => newWorkerStandIn(scope, id));
-  const infra = new DeployerInfra(stack, 'infra', {
+  const createWorker                = jest.fn((scope: Construct, id: string) => newWorkerStandIn(scope, id));
+  const infra                       = new DeployerInfra(stack, 'infra', {
     artifactResolver,
     stateMachineNamePrefix: 'test-deployer-',
     deployedStackName: 'cognito',
@@ -74,7 +76,7 @@ describe('DeployerInfra', () => {
   describe('deployStack', () => {
     it('creates the typed custom resource as the given scope’s child with the given id, passing the properties through', () => {
       const { stack, infra } = newInfra();
-      const deployer = new Construct(stack, 'deployer');
+      const deployer         = new Construct(stack, 'deployer');
 
       infra.deployStack(deployer, 'sub-stack', 'Custom::TestDeployer', DEPLOYMENT);
 
@@ -89,7 +91,7 @@ describe('DeployerInfra', () => {
       infra.deployStack(new Construct(stack, 'deployer'), 'resource', 'Custom::TestDeployer', DEPLOYMENT);
 
       const template = Template.fromStack(stack);
-      const starter = Object.keys(template.findResources('AWS::Lambda::Function', {
+      const starter  = Object.keys(template.findResources('AWS::Lambda::Function', {
         Properties: { Handler: 'index.starterHandler' },
       }))[0];
       template.hasResourceProperties('Custom::TestDeployer', {

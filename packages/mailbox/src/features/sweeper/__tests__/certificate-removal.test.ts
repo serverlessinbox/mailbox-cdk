@@ -8,6 +8,7 @@
  */
 
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+
 import {
   newCertificateRemoval,
   newTestStack,
@@ -21,9 +22,9 @@ describe('CertificateRemoval', () => {
     'Fn::Join': ['', ['arn:aws:acm:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':certificate/*']],
   };
 
-  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
     Null: { [idKey]: 'true' },

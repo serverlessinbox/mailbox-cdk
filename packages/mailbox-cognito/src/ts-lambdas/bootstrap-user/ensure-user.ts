@@ -3,7 +3,8 @@ import {
   AdminCreateUserCommand,
   type CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, type LoggerBuffer }       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import type { GroupName, UserPoolId, Username } from '../shared/cognito-identifiers';
 
 /** A user that must exist in a user pool, the groups it belongs to, and the password it is created with. */
@@ -26,7 +27,7 @@ export class UserEnsurer {
 
   constructor(cognito: CognitoIdentityProviderClient, logger: LoggerBuffer) {
     this.cognito = cognito;
-    this.logger = logger;
+    this.logger  = logger;
   }
 
   /**

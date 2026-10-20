@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises';
-import { join } from 'path';
-import * as t from 'typanion';
+import { join }     from 'path';
+import * as t       from 'typanion';
 
 const isJsiiSettings = t.isPartial({
   excludeTypescript: t.isOptional(t.isArray(t.isString())),
@@ -28,7 +28,7 @@ export type PackageJson = t.InferType<typeof isPackageJson>;
  */
 export async function readPackageJson(packageFolder: string): Promise<PackageJson> {
   const packageJsonPath = join(packageFolder, 'package.json');
-  const content = await readFile(packageJsonPath, 'utf-8');
+  const content         = await readFile(packageJsonPath, 'utf-8');
 
   let parsed: unknown;
   try {

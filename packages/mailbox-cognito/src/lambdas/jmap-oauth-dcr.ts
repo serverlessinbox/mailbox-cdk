@@ -1,11 +1,11 @@
-import { Duration } from 'aws-cdk-lib';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-
-import { COGNITO_ARTIFACT_PACKAGE } from '../index';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda }          from '@serverlessinbox/mailbox-cdk-shared';
 import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
+import { Effect, PolicyStatement }   from 'aws-cdk-lib/aws-iam';
+import { Duration }                  from 'aws-cdk-lib';
+import { Construct }                 from 'constructs';
+
+import { COGNITO_ARTIFACT_PACKAGE }  from '../index';
 
 /** What `JmapOAuthDcrLambda` needs to resolve its code and to reach the user pool and the Lambda it works with. */
 export interface JmapOAuthDcrLambdaProps {

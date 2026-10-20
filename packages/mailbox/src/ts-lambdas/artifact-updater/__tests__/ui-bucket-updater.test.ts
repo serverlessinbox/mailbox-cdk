@@ -7,12 +7,14 @@
  * content operations and the release registry are faked because they read and write S3.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { CloudFrontClient, TagResourceCommand } from '@aws-sdk/client-cloudfront';
-import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ReleaseArtifacts } from '../release-artifacts';
-import { UiBucketUpdater } from '../ui-bucket-updater';
-import type { S3Client } from '@aws-sdk/client-s3';
+import { CloudFrontClient, TagResourceCommand }                                                      from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                                                             from '@aws-sdk/client-s3';
+import { LoggerBuffer, type Region }                                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                                                from 'aws-sdk-client-mock';
+
+import { ReleaseArtifacts }                                                                          from '../release-artifacts';
+import { UiBucketUpdater }                                                                           from '../ui-bucket-updater';
+
 import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
@@ -42,7 +44,7 @@ interface UpdaterFixture {
 const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
   '@serverlessinbox/artifact-registry',
 ) as RegistryMocks;
-const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock(
+const { deployZipToPrefix, invalidateCloudFront }           = jest.requireMock(
   '@serverlessinbox/mailbox-cdk-shared/lambda-runtime',
 ) as ContentOperationMocks;
 
@@ -51,7 +53,7 @@ describe('UiBucketUpdater', () => {
 
   function newUpdater(deploymentRegion?: Region): UpdaterFixture {
     const clients = fakeUpdaterClients(deploymentRegion);
-    const logger = new LoggerBuffer();
+    const logger  = new LoggerBuffer();
     const updater = new UiBucketUpdater(
       clients.registryS3,
       clients.deployment,

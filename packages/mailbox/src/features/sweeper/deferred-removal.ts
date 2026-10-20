@@ -1,8 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
+import { IFunction }                      from 'aws-cdk-lib/aws-lambda';
+import * as cdk                           from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
+
 import type { RemovalId, RemovalTargets } from '../../ts-lambdas/resource-sweeper/removal';
-import type { IResourceRemoval } from './removal';
+
+import type { IResourceRemoval }          from './removal';
 
 /** The custom resource's `ResourceProperties`: the entry of each registered removal, by removal id. */
 type RemovalProperties = { -readonly [TId in RemovalId]?: RemovalTargets[TId] };

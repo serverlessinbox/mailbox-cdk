@@ -2,9 +2,9 @@ import * as crypto from 'crypto';
 
 const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
 const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const DIGITS = '0123456789';
+const DIGITS    = '0123456789';
 // Symbols are allowed by Cognito but not required; they are left out for simplicity.
-const ALL_CHARACTERS = LOWERCASE + UPPERCASE + DIGITS;
+const ALL_CHARACTERS  = LOWERCASE + UPPERCASE + DIGITS;
 const PASSWORD_LENGTH = 16;
 
 /**
@@ -29,7 +29,7 @@ export function generateSecurePassword(): string {
 
   // Fisher-Yates with cryptographic random selection, so the required characters do not sit at fixed positions.
   for (let i = passwordChars.length - 1; i > 0; i--) {
-    const j = crypto.randomInt(0, i + 1);
+    const j                              = crypto.randomInt(0, i + 1);
     [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
   }
 

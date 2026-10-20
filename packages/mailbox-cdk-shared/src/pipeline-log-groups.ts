@@ -1,12 +1,13 @@
-import * as cdk from 'aws-cdk-lib';
-import { Aws, Fn } from 'aws-cdk-lib';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iam                       from 'aws-cdk-lib/aws-iam';
+import * as logs                      from 'aws-cdk-lib/aws-logs';
+import { RetentionDays }              from 'aws-cdk-lib/aws-logs';
+import * as cdk                       from 'aws-cdk-lib';
+import { Aws, Fn }                    from 'aws-cdk-lib';
 import type { Construct, IConstruct } from 'constructs';
-import { StackIdentity } from './naming/stack-identity';
-import { getOrCreateSharedGroup } from './shared-group';
-import type { Pipeline } from './pipelines';
+
+import { StackIdentity }              from './naming/stack-identity';
+import type { Pipeline }              from './pipelines';
+import { getOrCreateSharedGroup }     from './shared-group';
 
 /** Log retention, settable per pipeline. */
 const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
@@ -59,7 +60,7 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
    * Returns the same PipelineLogGroup instance for repeated calls with the same (stack, pipeline) pair.
    */
   static getOrCreate(scope: Construct, pipeline: Pipeline): IPipelineLogGroup {
-    const shared = getOrCreateSharedGroup(cdk.Stack.of(scope));
+    const shared  = getOrCreateSharedGroup(cdk.Stack.of(scope));
     const childId = `log-group-${pipeline}`;
 
     const existing = shared.node.tryFindChild(childId);

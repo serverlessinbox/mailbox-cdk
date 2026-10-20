@@ -6,15 +6,17 @@
  * answer for a pass would keep broken code.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { FunctionSmokeTester } from '../function-smoke-tester';
+import { InvokeCommand, LambdaClient }  from '@aws-sdk/client-lambda';
+import { LoggerBuffer }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                   from 'aws-sdk-client-mock';
+
+import { FunctionSmokeTester }          from '../function-smoke-tester';
+
 import { invokeResponse, lambdaTarget } from './updater-helpers';
 
 describe('FunctionSmokeTester', () => {
-  const lambdaMock = mockClient(LambdaClient);
-  const lambda = new LambdaClient({ region: 'us-east-1' });
+  const lambdaMock  = mockClient(LambdaClient);
+  const lambda      = new LambdaClient({ region: 'us-east-1' });
   const functionArn = lambdaTarget().arn;
   const smokeTester = new FunctionSmokeTester(new LoggerBuffer('smoke-tester', 'warn'));
 
@@ -66,7 +68,7 @@ describe('FunctionSmokeTester', () => {
 
   it('is unprobeable when the invoke is rejected, and logs the error name and message', async () => {
     const denied = new Error('not authorized to invoke');
-    denied.name = 'AccessDeniedException';
+    denied.name  = 'AccessDeniedException';
     lambdaMock.on(InvokeCommand).rejects(denied);
 
     await expect(smokeTester.probe(lambda, functionArn)).resolves.toBe('unprobeable');

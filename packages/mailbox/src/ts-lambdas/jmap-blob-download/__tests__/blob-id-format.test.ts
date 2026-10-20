@@ -4,8 +4,9 @@
  * taking the MAC from the first colon instead of the last mis-parses every filename that contains one.
  */
 
-import { toEncodedBlobId } from '../blob-id';
-import { BlobIdFormat } from '../blob-id-format';
+import { BlobIdFormat }                     from '../blob-id-format';
+import { toEncodedBlobId }                  from '../blob-id';
+
 import { decodedBlobIdOf, encodedBlobIdOf } from './jmap-blob-download-helpers';
 
 describe('BlobIdFormat.decode', () => {

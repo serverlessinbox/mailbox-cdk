@@ -7,10 +7,11 @@
  * back on every cycle.
  */
 
-import * as path from 'node:path';
-import { App, BootstraplessSynthesizer, Stack, Tags } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { Template }                                                                  from 'aws-cdk-lib/assertions';
+import * as lambda                                                                   from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack, Tags }                                from 'aws-cdk-lib';
+import * as path                                                                     from 'node:path';
+
 import { handlerSourceOf, managedLambdasOf, probeManagedLambda, type ManagedLambda } from '../managed-lambdas';
 
 const ROOT_A = path.join(__dirname, 'fixtures', 'root-a');

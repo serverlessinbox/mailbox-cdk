@@ -1,6 +1,6 @@
-import { Stack } from 'aws-cdk-lib';
+import { Stack }           from 'aws-cdk-lib';
 import type { IConstruct } from 'constructs';
-import { createHash } from 'node:crypto';
+import { createHash }      from 'node:crypto';
 
 /**
  * A short hash of where a construct sits in its stack's tree. Physical names built from it change

@@ -1,15 +1,16 @@
+import { CaughtError, type LoggerBuffer, type TenantId }                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import { CaughtError, type LoggerBuffer, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { ClientId, UserPoolId } from '../shared/cognito-identifiers';
-import { toScope, type Scope } from '../shared/identity-identifiers';
-import type { DcrPersistResponse } from '../shared/identity-provisioner-contract';
-import type { IdentityProvisionerClient } from '../shared/identity-provisioner-client';
-import type { CognitoUserPoolClientManager } from './cognito-client';
-import { isClientRegistrationRequest, type ClientRegistrationRequest } from './dcr.validation';
-import type { PoolResolver } from './pool-resolver';
-import type { RedirectUriPolicy } from './redirect-uri';
-import { RegistrationAnswers } from './registration-answers';
+import type { ClientId, UserPoolId }                                      from '../shared/cognito-identifiers';
+import { toScope, type Scope }                                            from '../shared/identity-identifiers';
+import type { IdentityProvisionerClient }                                 from '../shared/identity-provisioner-client';
+import type { DcrPersistResponse }                                        from '../shared/identity-provisioner-contract';
+
+import type { CognitoUserPoolClientManager }                              from './cognito-client';
+import { isClientRegistrationRequest, type ClientRegistrationRequest }    from './dcr.validation';
+import type { PoolResolver }                                              from './pool-resolver';
+import type { RedirectUriPolicy }                                         from './redirect-uri';
+import { RegistrationAnswers }                                            from './registration-answers';
 
 const DEFAULT_CLIENT_NAME = 'Unnamed JMAP Client';
 
@@ -71,7 +72,7 @@ export class ClientRegistration {
   }
 
   private async registerNewClient(tenantId: TenantId, request: ClientRegistrationRequest, clientName: string): Promise<APIGatewayProxyStructuredResultV2> {
-    const userPoolId = this.poolResolver.resolve(tenantId);
+    const userPoolId    = this.poolResolver.resolve(tenantId);
     const cognitoScopes = this.cognitoScopesOf(request.scope);
 
     let clientId: ClientId;
@@ -92,7 +93,7 @@ export class ClientRegistration {
         clientName,
         scope: grantedScope,
       });
-      persistStatus = persisted.status;
+      persistStatus   = persisted.status;
     } catch (failure) {
       return this.answerPersistFailure(failure, tenantId, userPoolId, clientId);
     }

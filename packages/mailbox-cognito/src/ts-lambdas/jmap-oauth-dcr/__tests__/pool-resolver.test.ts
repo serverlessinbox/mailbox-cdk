@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { toTenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toTenantId }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { toUserPoolId } from '../../shared/cognito-identifiers';
 import { PoolResolver } from '../pool-resolver';

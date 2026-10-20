@@ -6,10 +6,12 @@
  * one that did not flush an unexpected error would leave the bug without its trace.
  */
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { handler } from '../handler';
-import { RegionBoundVerifiers } from '../region-bound-verifiers';
+import { DynamoDBClient }                                                                   from '@aws-sdk/client-dynamodb';
+import { LoggerBuffer }                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import { handler }                                                                          from '../handler';
+import { RegionBoundVerifiers }                                                             from '../region-bound-verifiers';
+
 import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, EU_CENTRAL_1, originRequestOf } from './jmap-blob-download-helpers';
 
 jest.mock('../region-bound-verifiers');
@@ -23,12 +25,12 @@ function downloadEvent(customHeaders: Record<string, string> | null): unknown {
 
 describe('handler', () => {
   const verifiersFactory = jest.mocked(RegionBoundVerifiers).mock.calls[0][0];
-  const verifiersGet = jest.mocked(RegionBoundVerifiers).mock.instances[0].get as jest.Mock;
+  const verifiersGet     = jest.mocked(RegionBoundVerifiers).mock.instances[0].get as jest.Mock;
   let flush: jest.SpyInstance;
   let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
-    flush = jest.spyOn(LoggerBuffer.prototype, 'flush');
+    flush        = jest.spyOn(LoggerBuffer.prototype, 'flush');
     consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     jest.spyOn(console, 'debug').mockImplementation(() => undefined);

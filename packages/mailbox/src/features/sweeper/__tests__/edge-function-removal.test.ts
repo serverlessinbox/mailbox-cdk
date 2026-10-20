@@ -8,6 +8,7 @@
  */
 
 import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+
 import {
   newEdgeFunctionRemoval,
   newTestStack,
@@ -21,9 +22,9 @@ describe('EdgeFunctionRemoval', () => {
     'Fn::Join': ['', ['arn:aws:lambda:us-east-1:', { Ref: 'AWS::AccountId' }, ':function:*']],
   };
 
-  const stackGuid = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById = { StringEquals: { [idKey]: stackGuid } };
+  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
     Null: { [idKey]: 'true' },

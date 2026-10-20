@@ -1,10 +1,11 @@
-import type { ResourceTagMapping, Tag } from '@aws-sdk/client-resource-groups-tagging-api';
-import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { LambdaTarget, UiTarget } from './artifact-target';
-import type { Config } from './config';
-import type { EdgeLambdaUpdater } from './edge-lambda-updater';
-import type { LambdaCodeUpdater } from './lambda-code-updater';
-import type { UiBucketUpdater } from './ui-bucket-updater';
+import type { ResourceTagMapping, Tag }                                                  from '@aws-sdk/client-resource-groups-tagging-api';
+import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer }              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import type { LambdaTarget, UiTarget }                                                   from './artifact-target';
+import type { Config }                                                                   from './config';
+import type { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
+import type { LambdaCodeUpdater }                                                        from './lambda-code-updater';
+import type { UiBucketUpdater }                                                          from './ui-bucket-updater';
 import { EDGE_REGION, type RegionClients, type RootStackResources, type UpdaterClients } from './updater-clients';
 import {
   toArtifactName,
@@ -55,13 +56,13 @@ export class UpdateCycle {
     edgeUpdater: EdgeLambdaUpdater,
     uiUpdater: UiBucketUpdater,
   ) {
-    this.config = config;
-    this.clients = clients;
+    this.config             = config;
+    this.clients            = clients;
     this.rootStackResources = rootStackResources;
-    this.logger = logger;
-    this.codeUpdater = codeUpdater;
-    this.edgeUpdater = edgeUpdater;
-    this.uiUpdater = uiUpdater;
+    this.logger             = logger;
+    this.codeUpdater        = codeUpdater;
+    this.edgeUpdater        = edgeUpdater;
+    this.uiUpdater          = uiUpdater;
   }
 
   /**
@@ -84,9 +85,9 @@ export class UpdateCycle {
   private beginCycle(): RegionClients[] {
     const { deployment, edge } = this.clients;
     // The deployment region is scanned once when it is the edge region.
-    const scanTargets = edge === deployment ? [deployment] : [deployment, edge];
+    const scanTargets     = edge === deployment ? [deployment] : [deployment, edge];
     this.updatesAttempted = 0;
-    this.updatesFailed = 0;
+    this.updatesFailed    = 0;
 
     this.logger.info('artifact update cycle started', {
       rootStackTag: this.config.rootStackTagValue,
@@ -127,7 +128,7 @@ export class UpdateCycle {
       }
     } catch (thrown) {
       this.updatesAttempted += 1;
-      this.updatesFailed += 1;
+      this.updatesFailed    += 1;
       this.recordFailedResource(resource.arn, thrown);
     }
   }
@@ -139,11 +140,11 @@ export class UpdateCycle {
       return undefined;
     }
 
-    const tags = this.tagMapFrom(mapping.Tags);
-    const service = this.serviceOf(arn);
-    const autoUpdateType = tags[ServerlessInboxTagKeys.autoUpdateType] ?? 'none';
-    const packageName = tags[ServerlessInboxTagKeys.artifactPackage];
-    const artifactName = tags[ServerlessInboxTagKeys.artifactName];
+    const tags            = this.tagMapFrom(mapping.Tags);
+    const service         = this.serviceOf(arn);
+    const autoUpdateType  = tags[ServerlessInboxTagKeys.autoUpdateType] ?? 'none';
+    const packageName     = tags[ServerlessInboxTagKeys.artifactPackage];
+    const artifactName    = tags[ServerlessInboxTagKeys.artifactName];
     const deployedVersion = tags[ServerlessInboxTagKeys.artifactVersion];
 
     // A resource that did not opt in is skipped before its artifact tags are checked, since it needs none.

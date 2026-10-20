@@ -1,6 +1,4 @@
 import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { wrapHandler } from 'aws-custom-resources';
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
 import {
   answerRequestWithBadConfig,
   emitManualFinalize,
@@ -9,7 +7,10 @@ import {
   type CustomResourceAnswer,
   type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { NewUpdateCycle, UpdaterTrigger } from './updater-trigger';
+import { wrapHandler }                                     from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+
+import type { NewUpdateCycle, UpdaterTrigger }             from './updater-trigger';
 
 /** The answer to CloudFormation: the physical id when this resource sets one, and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type CfnTriggerAnswer = {
@@ -40,18 +41,18 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     configError: string | undefined,
     serviceName: string,
   ) {
-    this.event = event;
-    this.context = context;
+    this.event          = event;
+    this.context        = context;
     this.newUpdateCycle = newUpdateCycle;
     this.cloudFormation = cloudFormation;
-    this.configError = configError;
-    this.serviceName = serviceName;
+    this.configError    = configError;
+    this.serviceName    = serviceName;
   }
 
   /** Answers CloudFormation, then throws what the update cycle threw. */
   public async handle(): Promise<void> {
     const cycleFailures: unknown[] = [];
-    const answerCloudFormation = wrapHandler(async (event) => {
+    const answerCloudFormation     = wrapHandler(async (event) => {
       const request: CustomResourceRequest = event;
 
       emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: this.serviceName });

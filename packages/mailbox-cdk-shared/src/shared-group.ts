@@ -1,5 +1,6 @@
-import { Aws } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { Aws }                          from 'aws-cdk-lib';
+import { Construct }                    from 'constructs';
+
 import { applyServerlessInboxBaseTags } from './serverless-inbox-tags';
 
 /**
@@ -10,7 +11,7 @@ import { applyServerlessInboxBaseTags } from './serverless-inbox-tags';
  */
 export function getOrCreateSharedGroup(stack: Construct): Construct {
   const existing = stack.node.tryFindChild('shared');
-  if (existing) return existing as Construct;
+  if (existing) {return existing as Construct;}
 
   const shared = new Construct(stack, 'shared');
 

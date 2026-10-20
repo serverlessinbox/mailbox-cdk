@@ -11,18 +11,20 @@
  * does not have and crashes synthesis.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Mailbox } from '../mailbox';
-import { AutoUpdater } from '../artifacts';
-import { loadMailboxRegistryRecord } from '../mailbox-registry-record';
-import { loadMailboxArtifactVersions } from '../mailbox-artifact-versions';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+import { actionsOf, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                 from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { MailboxArtifactResolverFactory }           from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                 from 'aws-cdk-lib/assertions';
+import * as cdk                                     from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }            from 'aws-cdk-lib';
+
+import { AutoUpdater }                              from '../artifacts';
+import { Permission }                               from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }                from '../auth/types';
+import { loadMailboxArtifactVersions }              from '../mailbox-artifact-versions';
+import { loadMailboxRegistryRecord }                from '../mailbox-registry-record';
+import { Mailbox }                                  from '../mailbox';
+
 import { CloudFormationResource, isResourceOfType } from './iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
@@ -75,12 +77,12 @@ function buildStack(stackId: string): cdk.Stack {
 function findBucketLogicalIdBySuffix(template: Record<string, unknown>, suffix: string): string {
   const resources = (template.Resources ?? {}) as Record<string, CloudFormationResource>;
   for (const [logicalId, resource] of Object.entries(resources)) {
-    if (!isResourceOfType(resource, 'AWS::S3::Bucket')) continue;
+    if (!isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
     const bucketName = resource.Properties?.BucketName;
     if (typeof bucketName === 'object' && bucketName !== null && 'Fn::Join' in bucketName) {
       const [, args] = (bucketName as { 'Fn::Join': [string, unknown[]] })['Fn::Join'];
-      const lastArg = args[args.length - 1];
-      if (typeof lastArg === 'string' && lastArg.endsWith(suffix)) return logicalId;
+      const lastArg  = args[args.length - 1];
+      if (typeof lastArg === 'string' && lastArg.endsWith(suffix)) {return logicalId;}
     }
   }
   throw new Error(`No S3 bucket found with name suffix "${suffix}"`);
@@ -90,11 +92,11 @@ function findBucketLogicalIdBySuffix(template: Record<string, unknown>, suffix: 
 function findUpdaterRoleLogicalId(template: Record<string, unknown>): string {
   const resources = (template.Resources ?? {}) as Record<string, CloudFormationResource>;
   for (const resource of Object.values(resources)) {
-    if (!isResourceOfType(resource, 'AWS::Lambda::Function')) continue;
+    if (!isResourceOfType(resource, 'AWS::Lambda::Function')) {continue;}
     const environment = resource.Properties?.Environment as { Variables?: Record<string, unknown> } | undefined;
-    if (!environment?.Variables?.DIST_TAG) continue;
+    if (!environment?.Variables?.DIST_TAG) {continue;}
     const role = resource.Properties?.Role as { 'Fn::GetAtt'?: [string, string] } | undefined;
-    if (role?.['Fn::GetAtt']) return role['Fn::GetAtt'][0];
+    if (role?.['Fn::GetAtt']) {return role['Fn::GetAtt'][0];}
   }
   throw new Error('No Lambda function with a DIST_TAG environment variable (the artifact updater) found');
 }
@@ -104,7 +106,7 @@ describe('Mailbox with a grantable artifact resolver (AutoUpdater)', () => {
   let updaterStatements: PolicyStatementJson[];
 
   beforeAll(() => {
-    const stack = buildStack('TestAutoUpdaterGrantable');
+    const stack       = buildStack('TestAutoUpdaterGrantable');
     const autoUpdater = new AutoUpdater(stack, 'auto-updater');
     new Mailbox(stack, 'mailbox', {
       authProvider: createMockAuthProvider(),
@@ -112,14 +114,14 @@ describe('Mailbox with a grantable artifact resolver (AutoUpdater)', () => {
     });
 
     const synthesized = Template.fromStack(stack);
-    const template = synthesized.toJSON() as Record<string, unknown>;
-    adminBucketId = findBucketLogicalIdBySuffix(template, 'ui-admin-ui');
+    const template    = synthesized.toJSON() as Record<string, unknown>;
+    adminBucketId     = findBucketLogicalIdBySuffix(template, 'ui-admin-ui');
     updaterStatements = statementsForRole(synthesized, findUpdaterRoleLogicalId(template));
   });
 
   const writesTo = (prefix: string): PolicyStatementJson[] =>
     updaterStatements.filter((statement) => {
-      const actions = actionsOf(statement);
+      const actions   = actionsOf(statement);
       const resources = JSON.stringify(statement.Resource);
       return actions.includes('s3:PutObject') && actions.includes('s3:DeleteObject') && resources.includes(adminBucketId) && resources.includes(prefix);
     });
@@ -146,7 +148,7 @@ describe('Mailbox with a grantable artifact resolver (AutoUpdater)', () => {
 
 describe('Mailbox with a resolver that has no principal (the default pinned resolver)', () => {
   it('synthesizes without error', () => {
-    const stack = buildStack('TestAutoUpdaterPinned');
+    const stack          = buildStack('TestAutoUpdaterPinned');
     const pinnedResolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
 
     expect(() => {

@@ -1,8 +1,8 @@
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-import { Fn, Aws, Stack, Duration } from 'aws-cdk-lib';
 import { rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                          from 'aws-cdk-lib/aws-iam';
+import { Fn, Aws, Stack, Duration }                      from 'aws-cdk-lib';
+import { Construct }                                     from 'constructs';
 
 // Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
 const SUPPORT_DIAG_ALLOWED_ACTIONS = [
@@ -153,7 +153,7 @@ export class SupportRolesInfra extends Construct {
     // Role ARNs are formatted from the names rather than read from the roles: the roles reference these
     // ARNs in their own policies, and a GetAtt would make that a dependency cycle.
     this.supportHopRoleArn = this.formatRoleArn(supportHopRoleName);
-    this.tierArns = {};
+    this.tierArns          = {};
     for (const tier of SUPPORT_TIERS) {
       this.tierArns[tier.constructId] = this.formatRoleArn(this.tierRoleName(stackGuidSegment, tier));
     }
@@ -194,7 +194,7 @@ export class SupportRolesInfra extends Construct {
     if (!(hopCfnRole instanceof iam.CfnRole)) {
       throw new Error('support-hop: expected defaultChild to be an iam.CfnRole');
     }
-    const vendorPrincipals = vendorAccountIds.map((accountId) => `arn:aws:iam::${accountId}:root`);
+    const vendorPrincipals              = vendorAccountIds.map((accountId) => `arn:aws:iam::${accountId}:root`);
     hopCfnRole.assumeRolePolicyDocument = {
       Version: '2012-10-17',
       Statement: [
@@ -235,7 +235,7 @@ export class SupportRolesInfra extends Construct {
   }
 
   private buildTierStatements(tier: SupportTier): iam.PolicyStatement[] {
-    const tagScopedActions = tier.actions.filter((a) => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+    const tagScopedActions   = tier.actions.filter((a) => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
     const enumerationActions = tier.actions.filter((a) => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
 
     const statements: iam.PolicyStatement[] = [];

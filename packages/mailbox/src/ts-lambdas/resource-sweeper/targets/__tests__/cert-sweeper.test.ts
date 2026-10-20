@@ -5,21 +5,22 @@
  * belonging to another stack.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   ACMClient,
   DescribeCertificateCommand,
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CertRemovalInput } from '../../removal';
-import { RootStackMembership } from '../../root-stack-membership';
-import { CertSweeper } from '../cert-sweeper';
+import { LoggerBuffer }          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }            from 'aws-sdk-client-mock';
 
-const acmMock = mockClient(ACMClient);
+import type { CertRemovalInput } from '../../removal';
+import { RootStackMembership }   from '../../root-stack-membership';
+import { CertSweeper }           from '../cert-sweeper';
+
+const acmMock         = mockClient(ACMClient);
 const ROOT_STACK_NAME = 'test-stack';
-const CERT_ARN = 'arn:aws:acm:us-west-2:123456789012:certificate/abc-123';
+const CERT_ARN        = 'arn:aws:acm:us-west-2:123456789012:certificate/abc-123';
 
 const INPUT: CertRemovalInput = { certArn: CERT_ARN, rootStackName: ROOT_STACK_NAME, rootStackId: 'guid-1' };
 

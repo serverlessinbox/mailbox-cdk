@@ -22,15 +22,15 @@ export class ConflictError extends Error {
 }
 
 export function statusCodeForError(err: unknown): number {
-  if (!err) return 200;
+  if (!err) {return 200;}
 
-  if (err instanceof InvalidInputError) return 400;
-  if (err instanceof NotFoundError) return 404;
-  if (err instanceof ForbiddenError) return 403;
+  if (err instanceof InvalidInputError) {return 400;}
+  if (err instanceof NotFoundError) {return 404;}
+  if (err instanceof ForbiddenError) {return 403;}
 
   if (err instanceof ConflictError) {
     const reason = (err.reason ?? err.message).toLowerCase();
-    if (reason.includes('already exists')) return 400;
+    if (reason.includes('already exists')) {return 400;}
     return 409;
   }
 

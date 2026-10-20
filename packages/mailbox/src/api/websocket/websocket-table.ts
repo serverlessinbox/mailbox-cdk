@@ -1,8 +1,8 @@
-import { AttributeType, BillingMode, ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { RemovalPolicy } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { DynamoDbActions, grantTableActions, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode, ITable }                  from 'aws-cdk-lib/aws-dynamodb';
+import { IGrantable }                                          from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                                       from 'aws-cdk-lib';
+import { Construct }                                           from 'constructs';
 
 /**
  * Write or read-write access to the WebSocket connections table without exposing the underlying
@@ -58,7 +58,7 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
       sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
     });
 
-    this.table = table;
+    this.table     = table;
     this.tableName = this.table.tableName;
   }
 

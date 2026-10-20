@@ -1,11 +1,12 @@
-import type { IDataTable } from '../data/data-tables';
-import type { IDataBlobStore } from '../data/data-blob-store';
-import { GoLambda } from "@serverlessinbox/mailbox-cdk-shared";
-import { Duration } from "aws-cdk-lib";
-import { Construct } from "constructs"
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IWebSocketBroadcastPublisher } from "../api/websocket/websocket";
-import type { IEmailProcessingQueueConsumer } from "../email/receiving/email-processing-queue";
+import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                           from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                           from 'aws-cdk-lib';
+import { Construct }                          from 'constructs'
+
+import type { IWebSocketBroadcastPublisher }  from '../api/websocket/websocket';
+import type { IDataBlobStore }                from '../data/data-blob-store';
+import type { IDataTable }                    from '../data/data-tables';
+import type { IEmailProcessingQueueConsumer } from '../email/receiving/email-processing-queue';
 
 export interface EmailProcessorLambdaProps {
   configTable: IDataTable;

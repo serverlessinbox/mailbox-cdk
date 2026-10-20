@@ -7,11 +7,11 @@
  */
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AuditEvent } from '@serverlessinbox/mailbox-admin-api';
-import { toQueueUrl } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { AuditEvent }               from '@serverlessinbox/mailbox-admin-api';
+import { toQueueUrl }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                    from 'aws-sdk-client-mock';
 
-import { SqsAuditEmitter } from '../sqs-audit-emitter';
+import { SqsAuditEmitter }               from '../sqs-audit-emitter';
 
 const QUEUE_URL = toQueueUrl('https://sqs.us-east-1.amazonaws.com/123456789012/audit-events');
 

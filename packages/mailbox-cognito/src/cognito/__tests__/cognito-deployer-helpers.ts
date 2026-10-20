@@ -1,6 +1,6 @@
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 export const TEST_ARTIFACT_VERSION = '0.0.1-test';
 
@@ -11,7 +11,7 @@ export interface DeployerTestStack {
 
 /** A stack with an explicit environment and a resolver pinning the packages the cognito deployer resolves artifacts from. */
 export function newDeployerTestStack(): DeployerTestStack {
-  const stack = new Stack(new App(), 'test-stack', {
+  const stack            = new Stack(new App(), 'test-stack', {
     env: { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });

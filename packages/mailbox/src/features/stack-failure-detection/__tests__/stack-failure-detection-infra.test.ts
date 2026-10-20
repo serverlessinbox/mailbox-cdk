@@ -18,16 +18,17 @@
  * `DefaultPolicy` cannot be removed that way, so the role could never be deleted.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { PositionHash } from '@serverlessinbox/mailbox-cdk-shared';
-import { StackFailureDetectionInfra } from '../stack-failure-detection-infra';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { PositionHash }                         from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { Construct }                            from 'constructs';
 
-const VENDOR_ACCOUNT_ID = '444455556666';
+import { StackFailureDetectionInfra }           from '../stack-failure-detection-infra';
+
+const VENDOR_ACCOUNT_ID    = '444455556666';
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
 
 /** A physical name built with `Fn.join('', [...])`, as far as these assertions read it. */
@@ -73,14 +74,14 @@ interface SynthesizedDetection {
 }
 
 function synthesizeDetection(parentId: string): SynthesizedDetection {
-  const app = new App();
+  const app   = new App();
   const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
     env: { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
   const parent = new Construct(stack, parentId);
-  const infra = new StackFailureDetectionInfra(parent, 'infra', {
+  const infra  = new StackFailureDetectionInfra(parent, 'infra', {
     artifactResolver: createTestArtifactResolver(stack),
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
   });
@@ -109,7 +110,7 @@ function resourcesOfType(template: Template, type: string): SynthesizedResource[
  */
 function selectedTokenLength(token: SelectToken): number {
   const [index, source] = token['Fn::Select'];
-  const splitDelimiter = source['Fn::Split'][0];
+  const splitDelimiter  = source['Fn::Split'][0];
   if (index === 2 && splitDelimiter === '/') {
     return 36;
   }
@@ -180,7 +181,7 @@ describe('StackFailureDetectionInfra — physical name length', () => {
   });
 
   it('the names start with the infra position hash and differ when the infra sits under another parent', () => {
-    const first = synthesizeDetection('group-one');
+    const first  = synthesizeDetection('group-one');
     const second = synthesizeDetection('group-two');
 
     const namesOf = (detection: SynthesizedDetection): [unknown, unknown] => [
@@ -211,8 +212,8 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
   });
 
   it('the detector role, function and detector policy are retained', () => {
-    const roles = resourcesOfType(template, 'AWS::IAM::Role');
-    const fns = resourcesOfType(template, 'AWS::Lambda::Function');
+    const roles    = resourcesOfType(template, 'AWS::IAM::Role');
+    const fns      = resourcesOfType(template, 'AWS::Lambda::Function');
     const policies = resourcesOfType(template, 'AWS::IAM::Policy').filter(
       (p) => p.Properties.PolicyName === DETECTOR_POLICY_NAME,
     );
@@ -230,7 +231,7 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
   });
 
   it('the rule and its invoke permission are retained', () => {
-    const rules = resourcesOfType(template, 'AWS::Events::Rule');
+    const rules       = resourcesOfType(template, 'AWS::Events::Rule');
     const permissions = resourcesOfType(template, 'AWS::Lambda::Permission');
 
     expect(rules).toHaveLength(1);
@@ -299,7 +300,7 @@ describe('StackFailureDetectionInfra — vendor license API access', () => {
     const policies = Object.values(template.findResources('AWS::IAM::Policy')) as SynthesizedPolicy[];
 
     const detectorPolicy = policies.find((p) => p.Properties.PolicyName === DETECTOR_POLICY_NAME);
-    const invoke = detectorPolicy?.Properties.PolicyDocument.Statement.find((s) =>
+    const invoke         = detectorPolicy?.Properties.PolicyDocument.Statement.find((s) =>
       [s.Action].flat().includes('execute-api:Invoke'),
     );
 

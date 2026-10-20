@@ -11,7 +11,6 @@
  * limited number of times.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -20,7 +19,6 @@ import {
   type DistributionConfig,
   type LambdaFunctionAssociation,
 } from '@aws-sdk/client-cloudfront';
-import { GetResourcesCommand, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
 import {
   GetFunctionConfigurationCommand,
   InvokeCommand,
@@ -30,12 +28,16 @@ import {
   TagResourceCommand,
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { EdgeLambdaUpdater } from '../edge-lambda-updater';
-import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback } from '../lambda-code-rollback';
-import { LambdaFunctionCode } from '../lambda-function-code';
-import { ReleaseArtifacts } from '../release-artifacts';
+import { GetResourcesCommand, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
+import { LoggerBuffer }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                          from 'aws-sdk-client-mock';
+
+import { EdgeLambdaUpdater }                                   from '../edge-lambda-updater';
+import { FunctionSmokeTester }                                 from '../function-smoke-tester';
+import { LambdaCodeRollback }                                  from '../lambda-code-rollback';
+import { LambdaFunctionCode }                                  from '../lambda-function-code';
+import { ReleaseArtifacts }                                    from '../release-artifacts';
+
 import {
   fakeUpdaterClients,
   invokeResponse,
@@ -56,8 +58,8 @@ const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
   '@serverlessinbox/artifact-registry',
 ) as RegistryMocks;
 
-const EDGE_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
-const OTHER_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:other-lambda';
+const EDGE_ARN        = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
+const OTHER_ARN       = 'arn:aws:lambda:us-east-1:123456789012:function:other-lambda';
 const NEW_VERSION_ARN = `${EDGE_ARN}:5`;
 
 function association(arn: string, eventType: 'origin-request' | 'viewer-request'): LambdaFunctionAssociation {
@@ -91,15 +93,15 @@ function distributionConfig(defaults: LambdaFunctionAssociation[], additional: L
 }
 
 describe('EdgeLambdaUpdater', () => {
-  const lambdaMock = mockClient(LambdaClient);
+  const lambdaMock     = mockClient(LambdaClient);
   const cloudFrontMock = mockClient(CloudFrontClient);
-  const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
-  const clients = fakeUpdaterClients();
-  const sleep = jest.fn(async () => undefined);
-  const target = lambdaTarget({ arn: EDGE_ARN, packageName: 'edge-pkg', artifactName: 'edge-lambda' });
+  const taggingMock    = mockClient(ResourceGroupsTaggingAPIClient);
+  const clients        = fakeUpdaterClients();
+  const sleep          = jest.fn(async () => undefined);
+  const target         = lambdaTarget({ arn: EDGE_ARN, packageName: 'edge-pkg', artifactName: 'edge-lambda' });
 
   function newUpdater(): EdgeLambdaUpdater {
-    const logger = new LoggerBuffer();
+    const logger       = new LoggerBuffer();
     const functionCode = new LambdaFunctionCode(noSleep);
     return new EdgeLambdaUpdater(
       clients.edge,

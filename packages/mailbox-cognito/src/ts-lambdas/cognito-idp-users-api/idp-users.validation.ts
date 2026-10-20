@@ -1,14 +1,13 @@
-import * as t from 'typanion';
-import { create } from '@bufbuild/protobuf';
+import { create }                                                                                                                                                                      from '@bufbuild/protobuf';
+import { createValidator, InvalidInputError }                                                                                                                                          from '@serverlessinbox/mailbox-admin-api';
+import * as t                                                                                                                                                                          from 'typanion';
 
-import { createValidator, InvalidInputError } from '@serverlessinbox/mailbox-admin-api';
-
-import type { CreateIdpUserRequest, DeleteIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest } from './generated/idp_users_pb';
+import type { CreateIdpUserRequest, DeleteIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest }                                from './generated/idp_users_pb';
 import { CreateIdpUserRequestSchema, DeleteIdpUserRequestSchema, GetIdpUserRequestSchema, ListIdpUsersRequestSchema, SetIdpUserEnabledRequestSchema, SetIdpUserPasswordRequestSchema } from './generated/idp_users_pb';
 
-const MIN_PASSWORD_LENGTH = 8;
-const MIN_PAGE_SIZE = 1;
-const MAX_PAGE_SIZE = 1000;
+const MIN_PASSWORD_LENGTH   = 8;
+const MIN_PAGE_SIZE         = 1;
+const MAX_PAGE_SIZE         = 1000;
 const MAX_PAGE_TOKEN_LENGTH = 2048;
 
 const isListIdpUsersBody = t.isPartial({
@@ -88,7 +87,7 @@ export class IdpUsersRequestValidator {
 
   private readBody<Body>(body: unknown, isBody: t.StrictValidator<unknown, Body>): Body {
     const bodyOrEmpty: unknown = body ?? {};
-    const errors: string[] = [];
+    const errors: string[]     = [];
     if (!isBody(bodyOrEmpty, { errors })) {
       throw new InvalidInputError(`Invalid request body: ${errors.join('; ')}`);
     }

@@ -9,20 +9,21 @@
  * is faked here: the real ARN/statement shape it produces is pinned by WebSocketPush's own tests.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
-import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { actionsOf, statementsForResource } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { WebSocketBroadcastLambda } from '../websocket-broadcast';
-import { WebSocketTable } from '../../api/websocket/websocket-table';
-import type { IWebSocketPushApi } from '../../api/websocket/websocket';
-import { DataTable } from '../../data/data-tables';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { WebSocketTable }                       from '../../api/websocket/websocket-table';
+import type { IWebSocketPushApi }               from '../../api/websocket/websocket';
+import { DataTable }                            from '../../data/data-tables';
+import { WebSocketBroadcastLambda }             from '../websocket-broadcast';
 
 class FakeWebSocketPushApi implements IWebSocketPushApi {
   public readonly managementEndpoint = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
@@ -50,17 +51,17 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable      = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
-    fakePushApi = new FakeWebSocketPushApi();
+    fakePushApi            = new FakeWebSocketPushApi();
 
     broadcastLambda = new WebSocketBroadcastLambda(stack, 'websocket-broadcast', {
       connectionsTable,
@@ -81,7 +82,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
   }
 
   it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
-    const tableId = 'websockettablewebsocketEF927F93';
+    const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -101,7 +102,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
   });
 
   it('grants no Scan/PartiQL and no Deny on the connections table', () => {
-    const statements = connectionsTableStatements();
+    const statements  = connectionsTableStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');

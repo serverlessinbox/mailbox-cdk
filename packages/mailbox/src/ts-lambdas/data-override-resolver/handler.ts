@@ -1,4 +1,4 @@
-import { wrapHandler } from 'aws-custom-resources';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   answerRequestWithBadConfig,
   withSmokeTest,
@@ -9,11 +9,12 @@ import {
   toStackId,
   type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { load } from './config';
+import { wrapHandler }           from 'aws-custom-resources';
+
+import { load }                  from './config';
 import { TableOverrideResolver } from './table-override-resolver';
 
-const dynamodb = new DynamoDBClient({});
+const dynamodb                       = new DynamoDBClient({});
 const { config, error: configError } = env.tryLoad(load);
 
 /**

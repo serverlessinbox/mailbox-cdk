@@ -1,12 +1,13 @@
 import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { HmacTokenPayload, VerifiedJwt } from './auth-tokens';
-import { BlobIdFormat } from './blob-id-format';
-import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId } from './blob-id';
-import { BlobRequestRejected } from './blob-request-rejected';
-import { firstHeaderValue, type CloudFrontRequest } from './cloudfront-event';
-import { CloudFrontResponses, type CloudFrontResponse } from './cloudfront-responses';
-import { extractConfig, type Config } from './config';
-import type { Verifiers } from './region-bound-verifiers';
+
+import type { HmacTokenPayload, VerifiedJwt }                                                      from './auth-tokens';
+import { BlobIdFormat }                                                                            from './blob-id-format';
+import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id';
+import { BlobRequestRejected }                                                                     from './blob-request-rejected';
+import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront-event';
+import { CloudFrontResponses, type CloudFrontResponse }                                            from './cloudfront-responses';
+import { extractConfig, type Config }                                                              from './config';
+import type { Verifiers }                                                                          from './region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {
@@ -28,7 +29,7 @@ export class BlobDownloadAuthorizer {
   private readonly verifiersFor: (region: Region) => Verifiers;
 
   constructor(logger: LoggerBuffer, verifiersFor: (region: Region) => Verifiers) {
-    this.logger = logger;
+    this.logger       = logger;
     this.verifiersFor = verifiersFor;
   }
 
@@ -41,17 +42,17 @@ export class BlobDownloadAuthorizer {
       return CloudFrontResponses.corsPreflight(firstHeaderValue(request.headers, 'origin'));
     }
 
-    const config = this.readConfig(request);
+    const config        = this.readConfig(request);
     const { jwt, hmac } = this.verifiersFor(config.region);
 
-    const query = new URLSearchParams(request.querystring || '');
-    const params = this.readDownloadParams(query);
-    const blob = this.readBlob(params.blobId);
-    const jwtToken = this.readBearerToken(request);
+    const query        = new URLSearchParams(request.querystring || '');
+    const params       = this.readDownloadParams(query);
+    const blob         = this.readBlob(params.blobId);
+    const jwtToken     = this.readBearerToken(request);
     const sessionToken = this.readSessionToken(query);
 
     const verifiedJwt = await this.verifyJwt(jwt, jwtToken, config);
-    const session = await this.verifySession(hmac, sessionToken, config);
+    const session     = await this.verifySession(hmac, sessionToken, config);
     this.requireAccountAccess(session, params.accountId, blob);
     this.requireSameIdentity(verifiedJwt, session);
     await this.requireBlobMac(hmac, session, params.accountId, blob, config);
@@ -87,7 +88,7 @@ export class BlobDownloadAuthorizer {
 
   private readDownloadParams(query: URLSearchParams): DownloadParams {
     const accountId = query.get('accountId');
-    const blobId = query.get('blobId');
+    const blobId    = query.get('blobId');
     if (!accountId || !blobId) {
       throw this.reject(400, 'Missing required parameters: accountId and blobId');
     }

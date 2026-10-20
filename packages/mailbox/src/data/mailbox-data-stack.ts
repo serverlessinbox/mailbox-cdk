@@ -1,17 +1,18 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { BlobStore } from '../resources/blob-store';
-import { ConfigTable } from '../resources/config-table';
-import { ItemTable } from '../resources/item-table';
-import { ChangelogTable } from '../resources/changelog-table';
-import { AuditLogTable } from '../resources/auditlog-table';
-import { MailFeedbackTable } from '../resources/mailfeedback-table';
-import { MailboxKmsConfig } from '../utils/kms';
-import { resolveMailboxEncryptionPlan } from '../utils/mailbox-encryption';
-import { isDevelopmentMode } from '@serverlessinbox/mailbox-cdk-shared';
+import { isDevelopmentMode }                                                              from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxBaseTagsWithDeployerType, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxResourceDescriptions } from '../utils/resource-descriptions';
+import type { ServerlessInboxDeployerType }                                               from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                                           from 'aws-cdk-lib';
+import { Construct }                                                                      from 'constructs';
+
+import { AuditLogTable }                                                                  from '../resources/auditlog-table';
+import { BlobStore }                                                                      from '../resources/blob-store';
+import { ChangelogTable }                                                                 from '../resources/changelog-table';
+import { ConfigTable }                                                                    from '../resources/config-table';
+import { ItemTable }                                                                      from '../resources/item-table';
+import { MailFeedbackTable }                                                              from '../resources/mailfeedback-table';
+import { MailboxKmsConfig }                                                               from '../utils/kms';
+import { resolveMailboxEncryptionPlan }                                                   from '../utils/mailbox-encryption';
+import { MailboxResourceDescriptions }                                                    from '../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
@@ -104,11 +105,11 @@ export class MailboxDataStack extends cdk.Stack {
       nameBase: nameBaseParam.valueAsString,
     };
 
-    const blobStore = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, nameBase: nameBaseParam.valueAsString });
-    const configTable = new ConfigTable(this, dynamoTableProps);
-    const itemTable = new ItemTable(this, dynamoTableProps);
-    const changelogTable = new ChangelogTable(this, dynamoTableProps);
-    const auditLogTable = new AuditLogTable(this, dynamoTableProps);
+    const blobStore         = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, nameBase: nameBaseParam.valueAsString });
+    const configTable       = new ConfigTable(this, dynamoTableProps);
+    const itemTable         = new ItemTable(this, dynamoTableProps);
+    const changelogTable    = new ChangelogTable(this, dynamoTableProps);
+    const auditLogTable     = new AuditLogTable(this, dynamoTableProps);
     const mailFeedbackTable = new MailFeedbackTable(this, dynamoTableProps);
 
     // Set explicit logical IDs for reproducible CloudFormation templates

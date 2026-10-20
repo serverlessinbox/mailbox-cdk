@@ -1,14 +1,15 @@
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import { IGrantable } from 'aws-cdk-lib/aws-iam';
 import { S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox/mailbox-cdk-shared';
-import { BlobStore } from '../resources/blob-store';
+import { IGrantable }                                     from 'aws-cdk-lib/aws-iam';
+import { IBucket }                                        from 'aws-cdk-lib/aws-s3';
 
-const EMAIL_BLOB_KEY_PATTERN = 'tenants/*/accounts/*/emails/*';
-const UPLOAD_BLOB_KEY_PATTERN = 'uploads/*';
+import { BlobStore }                                      from '../resources/blob-store';
+
+const EMAIL_BLOB_KEY_PATTERN     = 'tenants/*/accounts/*/emails/*';
+const UPLOAD_BLOB_KEY_PATTERN    = 'uploads/*';
 const INCOMING_EMAIL_KEY_PATTERN = `${BlobStore.INCOMING_EMAIL_PREFIX}*`;
-const CONTACT_BLOB_KEY_PATTERN = 'tenants/*/accounts/*/contacts/*';
+const CONTACT_BLOB_KEY_PATTERN   = 'tenants/*/accounts/*/contacts/*';
 const PRINCIPAL_BLOB_KEY_PATTERN = 'tenants/*/principals/*';
-const SEARCH_INDEX_KEY_PATTERN = 'tenants/*/accounts/*/search-indexes/*';
+const SEARCH_INDEX_KEY_PATTERN   = 'tenants/*/accounts/*/search-indexes/*';
 
 /**
  * A handle to the data sub-stack's S3 blob store, given to code outside that sub-stack instead of

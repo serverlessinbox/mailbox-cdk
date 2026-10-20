@@ -101,6 +101,8 @@ export default [
       'align-assignments/align-assignments': 'error',
       'arca/import-align': 'error',
       'arca/import-ordering': 'error',
+      'arca/import-quotes': 'error',
+      'arca/newline-after-import-section': 'error',
       curly: ['error', 'all'],
       'custom/plan-labels': 'error',
       'max-classes-per-file': ['error', 1],

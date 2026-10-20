@@ -1,5 +1,5 @@
 import { CfnResource, RemovalPolicy } from 'aws-cdk-lib';
-import type { IConstruct } from 'constructs';
+import type { IConstruct }            from 'constructs';
 
 /**
  * The CloudFormation resource behind an L2 construct. A construct without one throws at synth: the

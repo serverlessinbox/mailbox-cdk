@@ -5,9 +5,10 @@
  */
 
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront';
-import { mockClient } from 'aws-sdk-client-mock';
-import type { AwsClientStub } from 'aws-sdk-client-mock';
-import { invalidateCloudFront } from '../cloudfront-invalidation';
+import { mockClient }                                  from 'aws-sdk-client-mock';
+import type { AwsClientStub }                          from 'aws-sdk-client-mock';
+
+import { invalidateCloudFront }                        from '../cloudfront-invalidation';
 
 describe('invalidateCloudFront', () => {
   let cloudFrontMock: AwsClientStub<CloudFrontClient>;
@@ -15,7 +16,7 @@ describe('invalidateCloudFront', () => {
 
   beforeEach(() => {
     cloudFrontMock = mockClient(CloudFrontClient);
-    mockClient_ = new CloudFrontClient();
+    mockClient_    = new CloudFrontClient();
   });
 
   afterEach(() => {
@@ -107,14 +108,14 @@ describe('invalidateCloudFront', () => {
     cloudFrontMock.on(CreateInvalidationCommand).resolves({});
 
     const longRef = 'a'.repeat(200);
-    const result = await invalidateCloudFront(mockClient_, {
+    const result  = await invalidateCloudFront(mockClient_, {
       distributionId: 'DIST123',
       paths: ['/*'],
       callerReference: longRef,
     });
 
     expect(result).toEqual({ invalidated: true });
-    const call = cloudFrontMock.commandCalls(CreateInvalidationCommand)[0];
+    const call      = cloudFrontMock.commandCalls(CreateInvalidationCommand)[0];
     const callerRef = call.args[0].input.InvalidationBatch?.CallerReference;
     expect(callerRef).toBeDefined();
     expect(callerRef).not.toBe(longRef);
@@ -124,7 +125,7 @@ describe('invalidateCloudFront', () => {
   it('preserves caller reference when 128 characters or less', async () => {
     cloudFrontMock.on(CreateInvalidationCommand).resolves({});
 
-    const ref = 'a'.repeat(128);
+    const ref    = 'a'.repeat(128);
     const result = await invalidateCloudFront(mockClient_, {
       distributionId: 'DIST123',
       paths: ['/*'],

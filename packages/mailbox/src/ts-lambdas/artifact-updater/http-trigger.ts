@@ -1,7 +1,8 @@
-import { InvokeCommand, type LambdaClient } from '@aws-sdk/client-lambda';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvokeCommand, type LambdaClient }          from '@aws-sdk/client-lambda';
+import { CaughtError, type LoggerBuffer }            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { hasHttpRequestLine, type HttpTriggerEvent } from './updater-event';
-import type { UpdaterTrigger } from './updater-trigger';
+import type { UpdaterTrigger }                       from './updater-trigger';
 
 /** The response to an HTTP API request. */
 export interface HttpTriggerResponse {
@@ -35,11 +36,11 @@ export class HttpTrigger implements UpdaterTrigger<HttpTriggerResponse> {
     logger: LoggerBuffer,
     configError: string | undefined,
   ) {
-    this.event = event;
+    this.event            = event;
     this.deploymentLambda = deploymentLambda;
-    this.functionName = functionName;
-    this.logger = logger;
-    this.configError = configError;
+    this.functionName     = functionName;
+    this.logger           = logger;
+    this.configError      = configError;
   }
 
   /** Throws when the background invocation cannot be started. */

@@ -6,12 +6,13 @@
  * begins with `aws/`, and each carries the support-scoping tag.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { Mailbox }                       from '../mailbox';
 
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
@@ -48,7 +49,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 
 describe('Mailbox stack pipeline log groups', () => {
   function synth() {
-    const app = new App({
+    const app   = new App({
       context: {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
@@ -76,7 +77,7 @@ describe('Mailbox stack pipeline log groups', () => {
   }
 
   it('every Lambda function resolves to one of the pipeline log groups', () => {
-    const template = synth();
+    const template  = synth();
     const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
 
     const logGroupLogicalIds = new Set(
@@ -96,14 +97,14 @@ describe('Mailbox stack pipeline log groups', () => {
   });
 
   it('no synthesized log group name begins with "aws/"', () => {
-    const template = synth();
+    const template  = synth();
     const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
 
     for (const [, resource] of Object.entries(resources)) {
-      if (resource.Type !== 'AWS::Logs::LogGroup') continue;
+      if (resource.Type !== 'AWS::Logs::LogGroup') {continue;}
       const nameProp = resource.Properties?.LogGroupName;
       // Name is built via Fn::Join from literal parts; the first part is the literal prefix.
-      const joinParts = nameProp?.['Fn::Join']?.[1] as unknown[] | undefined;
+      const joinParts    = nameProp?.['Fn::Join']?.[1] as unknown[] | undefined;
       const firstLiteral = Array.isArray(joinParts) ? joinParts[0] : nameProp;
       if (typeof firstLiteral === 'string') {
         expect(firstLiteral.startsWith('aws/')).toBe(false);
@@ -112,7 +113,7 @@ describe('Mailbox stack pipeline log groups', () => {
   });
 
   it('each pipeline log group carries the serverless-inbox:root-stack tag', () => {
-    const template = synth();
+    const template  = synth();
     const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
 
     const pipelineGroups = Object.entries(resources).filter(([logicalId, r]) =>
@@ -121,7 +122,7 @@ describe('Mailbox stack pipeline log groups', () => {
     expect(pipelineGroups.length).toBeGreaterThan(0);
 
     for (const [, resource] of pipelineGroups) {
-      const tags = (resource.Properties?.Tags ?? []) as Array<{ Key: string; Value: unknown }>;
+      const tags            = (resource.Properties?.Tags ?? []) as Array<{ Key: string; Value: unknown }>;
       const hasRootStackTag = tags.some((t) => t.Key === 'serverless-inbox:root-stack');
       expect(hasRootStackTag).toBe(true);
     }

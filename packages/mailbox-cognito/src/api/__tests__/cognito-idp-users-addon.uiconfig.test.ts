@@ -7,11 +7,12 @@
  * the UI's call targets.
  */
 
-import { App, Stack, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { CognitoIdpUsersAdminApiAddon } from '../cognito-idp-users-addon';
+import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { App, Stack, BootstraplessSynthesizer }         from 'aws-cdk-lib';
+
+import { CognitoIdpUsersAdminApiAddon }                 from '../cognito-idp-users-addon';
 
 describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   let stack: Stack;
@@ -31,7 +32,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
 
   beforeEach(() => {
     const app = new App();
-    stack = new Stack(app, 'TestStack', {
+    stack     = new Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -43,7 +44,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -73,7 +74,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
 
     it('should include custom basePath in uiConfig when basePath is explicitly set (REGRESSION GUARD)', () => {
       const customPath = '/custom/idp-api/v2';
-      const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-custom', {
+      const addon      = new CognitoIdpUsersAdminApiAddon(stack, 'addon-custom', {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
@@ -88,7 +89,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
     });
 
     it('should merge provider uiConfig while maintaining addon-owned basePath', () => {
-      const customPath = '/api/v2/idp-users';
+      const customPath     = '/api/v2/idp-users';
       const providerConfig = {
         idp: {
           someProviderFeature: 'enabled',

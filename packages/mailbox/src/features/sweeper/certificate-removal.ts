@@ -1,13 +1,15 @@
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Aws, Duration, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { CertRemovalTarget, CertWorkerInput } from '../../ts-lambdas/resource-sweeper/removal';
+import { StackIdentity, rootStackResourceTagConditions }              from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                       from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                       from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                                  from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                                       from 'aws-cdk-lib/aws-stepfunctions';
+import { Aws, Duration, Stack }                                       from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
+
+import type { CertRemovalTarget, CertWorkerInput }                    from '../../ts-lambdas/resource-sweeper/removal';
+
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
-import type { IResourceRemoval } from './removal';
+import type { IResourceRemoval }                                      from './removal';
 
 export interface CertificateRemovalProps {
   /** The ACM certificate to defer removal for. */

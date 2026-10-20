@@ -8,13 +8,14 @@ import {
   type ApiGatewayV2ResultLike,
   type AuditContext,
 } from '@serverlessinbox/mailbox-admin-api';
-import { toIssuer, type Issuer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { toIssuer, type Issuer }                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { toGroupName, toUserSubject, toUsername, type GroupName, type UserSubject, type Username } from '../shared/cognito-identifiers';
-import { toEmailAddress, toScope, type EmailAddress, type Scope } from '../shared/identity-identifiers';
-import { IdpUsersServiceRuntime, type IdpUsersServiceHandlers } from './generated/idp_users_service';
-import type { IdpUsersRequestValidator } from './idp-users.validation';
-import type { SqsAuditEmitter } from './sqs-audit-emitter';
+import { toEmailAddress, toScope, type EmailAddress, type Scope }                                  from '../shared/identity-identifiers';
+
+import { IdpUsersServiceRuntime, type IdpUsersServiceHandlers }                                    from './generated/idp_users_service';
+import type { IdpUsersRequestValidator }                                                           from './idp-users.validation';
+import type { SqsAuditEmitter }                                                                    from './sqs-audit-emitter';
 
 type MethodName = keyof typeof IdpUsersServiceRuntime.methods;
 
@@ -26,7 +27,7 @@ type IdpUsersHandlers = {
   [Handler in keyof IdpUsersServiceHandlers<AdminAuthContext, AuditContext>]: IdpUsersServiceHandlers<AdminAuthContext, AuditContext>[Handler];
 };
 
-const UNKNOWN_SUBJECT = toUserSubject('unknown');
+const UNKNOWN_SUBJECT  = toUserSubject('unknown');
 const UNKNOWN_USERNAME = toUsername('unknown');
 
 /** Who an audit event is attributed to: the signed-in user, or the system when the request carried no subject. */
@@ -77,7 +78,7 @@ export class IdpUsersAdminApi {
       SetIdpUserPassword: this.validator.validateSetIdpUserPassword,
       DeleteIdpUser: this.validator.validateDeleteIdpUser,
     } satisfies Record<MethodName, (request: unknown) => unknown>;
-    const validators = new Map(Object.entries(validatorByMethodName));
+    const validators            = new Map(Object.entries(validatorByMethodName));
 
     const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
     registry.register(

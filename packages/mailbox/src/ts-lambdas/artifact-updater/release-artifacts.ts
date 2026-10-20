@@ -1,8 +1,9 @@
-import type { S3Client } from '@aws-sdk/client-s3';
-import { buildArtifactKey, deriveTrack, readReleasePointer } from '@serverlessinbox/artifact-registry';
+import type { S3Client }                                                      from '@aws-sdk/client-s3';
+import { buildArtifactKey, deriveTrack, readReleasePointer }                  from '@serverlessinbox/artifact-registry';
+import { LoggerBuffer, type Region }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
-import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { UpdaterTargetConfig } from './config';
+
+import type { UpdaterTargetConfig }                                           from './config';
 import {
   toArtifactBucketName,
   toArtifactVersion,
@@ -35,8 +36,8 @@ export class ReleaseArtifacts {
 
   constructor(registryS3: S3Client, config: UpdaterTargetConfig, logger: LoggerBuffer) {
     this.registryS3 = registryS3;
-    this.config = config;
-    this.logger = logger;
+    this.config     = config;
+    this.logger     = logger;
   }
 
   /**
@@ -49,7 +50,7 @@ export class ReleaseArtifacts {
     deployedVersion: ArtifactVersion,
   ): Promise<StaleTarget | null> {
     const { distTag, granularity, project, artifactBucketBase } = this.config;
-    const track = deriveTrack(deployedVersion, granularity);
+    const track                                                 = deriveTrack(deployedVersion, granularity);
 
     const pointer = await readReleasePointer(
       this.registryS3,
@@ -82,7 +83,7 @@ export class ReleaseArtifacts {
       return null;
     }
 
-    const parsed = semverParse(pointer.version);
+    const parsed   = semverParse(pointer.version);
     const deployed = semverParse(deployedVersion);
     if (!parsed || !deployed) {
       this.logger.debug('failed to parse version (logic error: semverValid guard should have prevented this)', {

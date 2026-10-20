@@ -6,19 +6,20 @@
  * the groups decide how the Lambda reads the roles of a caller. The UI config the addon publishes is tested beside it.
  */
 
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
+import { ArtifactZone, PinnedArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
+import type { IAuditEventsQueue, IIdentityProvisioner }                                                           from '@serverlessinbox/mailbox';
+import { Match, Template }                                                                                        from 'aws-cdk-lib/assertions';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType }                                                           from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpApi }                                                                                                from 'aws-cdk-lib/aws-apigatewayv2';
+import { Code, Function as LambdaFunction, Runtime }                                                              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack }                                                                   from 'aws-cdk-lib';
+
 import { CognitoIdpUsersAdminApiAddon, type CognitoIdpUsersAuthorizationConfig, type ICognitoIdpUsersPoolConfig } from '../cognito-idp-users-addon';
 
 const USER_POOL_ID = 'us-west-2_abcdefgh';
 
 describe('CognitoIdpUsersAdminApiAddon', () => {
-  const auditEventsQueue: IAuditEventsQueue = {
+  const auditEventsQueue: IAuditEventsQueue       = {
     queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: () => {},
@@ -30,11 +31,11 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
   };
 
   function synthesize(options: { authorization?: CognitoIdpUsersAuthorizationConfig; basePath?: string }): Template {
-    const stack = new Stack(new App(), 'TestStack', {
+    const stack                            = new Stack(new App(), 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
-    const artifactResolver = new PinnedArtifactResolver({
+    const artifactResolver                 = new PinnedArtifactResolver({
       packages: { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,

@@ -1,8 +1,7 @@
-/// <reference types="jest" />
-
-import { access } from 'node:fs/promises';
-import * as path from 'node:path';
 import type { Template } from 'aws-cdk-lib/assertions';
+/// <reference types="jest" />
+import { access }        from 'node:fs/promises';
+import * as path         from 'node:path';
 
 /** A function of a synthesized template that the artifact updater manages, as the template describes it. */
 export interface ManagedLambda {
@@ -31,11 +30,11 @@ export interface ProbeOutcome {
   readonly detail: string;
 }
 
-const AUTO_UPDATE_TYPE_TAG = 'serverless-inbox:auto-update-type';
-const ARTIFACT_NAME_TAG = 'serverless-inbox:artifact-name';
-const ARTIFACT_PACKAGE_TAG = 'serverless-inbox:artifact-package';
-const MANAGED_UPDATE_TYPES = ['code', 'edge'];
-const PROBE = { serverlessInboxSmokeTest: true };
+const AUTO_UPDATE_TYPE_TAG  = 'serverless-inbox:auto-update-type';
+const ARTIFACT_NAME_TAG     = 'serverless-inbox:artifact-name';
+const ARTIFACT_PACKAGE_TAG  = 'serverless-inbox:artifact-package';
+const MANAGED_UPDATE_TYPES  = ['code', 'edge'];
+const PROBE                 = { serverlessInboxSmokeTest: true };
 const PLACEHOLDER_FOR_TOKEN = 'resolved-at-deploy-time';
 
 /**
@@ -43,16 +42,16 @@ const PLACEHOLDER_FOR_TOKEN = 'resolved-at-deploy-time';
  * `code` or `edge`. Throws when such a function lacks its artifact-name or artifact-package tag.
  */
 export function managedLambdasOf(template: Template): ManagedLambda[] {
-  const resources = template.toJSON().Resources as Record<string, LambdaFunctionResource>;
+  const resources                = template.toJSON().Resources as Record<string, LambdaFunctionResource>;
   const managed: ManagedLambda[] = [];
 
   for (const [logicalId, resource] of Object.entries(resources)) {
     if (resource.Type !== 'AWS::Lambda::Function') {
       continue;
     }
-    const tags = resource.Properties?.Tags ?? [];
+    const tags           = resource.Properties?.Tags ?? [];
     const autoUpdateType = tags.find((tag) => tag.Key === AUTO_UPDATE_TYPE_TAG)?.Value;
-    const artifactName = tags.find((tag) => tag.Key === ARTIFACT_NAME_TAG)?.Value;
+    const artifactName   = tags.find((tag) => tag.Key === ARTIFACT_NAME_TAG)?.Value;
     if (typeof autoUpdateType !== 'string' || !MANAGED_UPDATE_TYPES.includes(autoUpdateType)) {
       continue;
     }

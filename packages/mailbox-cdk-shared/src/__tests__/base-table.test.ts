@@ -8,13 +8,14 @@
  * are correctly embedded in IAM policies, not just constructed in memory.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { BaseTable } from '../base-table';
+import { Template }                        from 'aws-cdk-lib/assertions';
+import * as lambda                         from 'aws-cdk-lib/aws-lambda';
+import * as cdk                            from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }   from 'aws-cdk-lib';
+
+import { BaseTable }                       from '../base-table';
 import { actionsOf, statementsOfDocument } from '../cdk-test-support';
-import type { PolicyStatementJson } from '../cdk-test-support';
+import type { PolicyStatementJson }        from '../cdk-test-support';
 
 /**
  * Normalize resources into an array for consistent checking.
@@ -28,7 +29,7 @@ function normalizeResources(resource: unknown): unknown[] {
 
 describe('BaseTable Deny Enumeration', () => {
   it('synthesizes Deny statement for Scan and all PartiQL actions in Lambda role granted grantReadData', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -48,9 +49,9 @@ describe('BaseTable Deny Enumeration', () => {
 
     table.grantReadData(fn);
 
-    const template = Template.fromStack(stack);
+    const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
-    const resources = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
+    const resources    = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
 
     if (!resources) {
       throw new Error('No resources found in template');
@@ -100,7 +101,7 @@ describe('BaseTable Deny Enumeration', () => {
         continue;
       }
 
-      const policyDoc = policyDetails.PolicyDocument;
+      const policyDoc  = policyDetails.PolicyDocument;
       const statements = statementsOfDocument(policyDoc);
 
       for (const stmt of statements) {
@@ -156,7 +157,7 @@ describe('BaseTable Deny Enumeration', () => {
   });
 
   it('applies one Deny statement per table when a role is granted on multiple tables', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -181,16 +182,16 @@ describe('BaseTable Deny Enumeration', () => {
     table1.grantReadData(fn);
     table2.grantReadData(fn);
 
-    const template = Template.fromStack(stack);
+    const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
-    const resources = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
+    const resources    = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
 
     if (!resources) {
       throw new Error('No resources found in template');
     }
 
     // Count Deny statements with PartiQL actions
-    let denyCount = 0;
+    let denyCount                       = 0;
     const deniedResourceArns: unknown[] = [];
 
     for (const [, resource] of Object.entries(resources)) {
@@ -199,8 +200,8 @@ describe('BaseTable Deny Enumeration', () => {
       }
 
       const policyDetails = resource.Properties as Record<string, unknown>;
-      const policyDoc = policyDetails.PolicyDocument;
-      const statements = statementsOfDocument(policyDoc);
+      const policyDoc     = policyDetails.PolicyDocument;
+      const statements    = statementsOfDocument(policyDoc);
 
       for (const stmt of statements) {
         if (stmt.Effect === 'Deny') {
@@ -231,7 +232,7 @@ describe('BaseTable Deny Enumeration', () => {
   });
 
   it('synthesizes Deny statement for grantFullAccess', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -249,9 +250,9 @@ describe('BaseTable Deny Enumeration', () => {
 
     table.grantFullAccess(fn);
 
-    const template = Template.fromStack(stack);
+    const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
-    const resources = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
+    const resources    = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
 
     if (!resources) {
       throw new Error('No resources found in template');
@@ -266,8 +267,8 @@ describe('BaseTable Deny Enumeration', () => {
       }
 
       const policyDetails = resource.Properties as Record<string, unknown>;
-      const policyDoc = policyDetails.PolicyDocument;
-      const statements = statementsOfDocument(policyDoc);
+      const policyDoc     = policyDetails.PolicyDocument;
+      const statements    = statementsOfDocument(policyDoc);
 
       if (statements.some((stmt: PolicyStatementJson) => {
         if (stmt.Effect !== 'Deny') {
@@ -287,7 +288,7 @@ describe('BaseTable Deny Enumeration', () => {
   });
 
   it('preserves existing Allow grants when applying Deny', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -305,9 +306,9 @@ describe('BaseTable Deny Enumeration', () => {
 
     table.grantReadData(fn);
 
-    const template = Template.fromStack(stack);
+    const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
-    const resources = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
+    const resources    = templateJson.Resources as Record<string, Record<string, unknown>> | undefined;
 
     if (!resources) {
       throw new Error('No resources found in template');
@@ -322,8 +323,8 @@ describe('BaseTable Deny Enumeration', () => {
       }
 
       const policyDetails = resource.Properties as Record<string, unknown>;
-      const policyDoc = policyDetails.PolicyDocument;
-      const statements = statementsOfDocument(policyDoc);
+      const policyDoc     = policyDetails.PolicyDocument;
+      const statements    = statementsOfDocument(policyDoc);
 
       if (statements.some((stmt: PolicyStatementJson) => {
         if (stmt.Effect !== 'Allow') {

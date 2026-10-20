@@ -1,10 +1,11 @@
-import * as path from 'node:path';
-import { ArtifactZone } from '@serverlessinbox/artifact-registry-cdk';
-import { Command, Option } from 'clipanion';
+import { ArtifactZone }          from '@serverlessinbox/artifact-registry-cdk';
+import { Command, Option }       from 'clipanion';
+import * as path                 from 'node:path';
+
 import { ArtifactVersionsBaker } from './artifact-versions-baker';
-import type { BakedPackage } from './baked-package';
-import { BumpedVersionReader } from './bumped-version-reader';
-import { ExternalPinsReader } from './external-pins-reader';
+import type { BakedPackage }     from './baked-package';
+import { BumpedVersionReader }   from './bumped-version-reader';
+import { ExternalPinsReader }    from './external-pins-reader';
 
 /**
  * CLI entry point of `bake-artifact-versions`: writes the `artifact-versions.json` of each
@@ -38,7 +39,7 @@ export class BakeArtifactVersionsCommand extends Command {
   static bakedPackages(root: string, mailboxPinsFile: string): BakedPackage[] {
     const mailboxDirectory = path.join(root, 'packages', 'mailbox');
     const cognitoDirectory = path.join(root, 'packages', 'mailbox-cognito');
-    const sharedDirectory = path.join(root, 'packages', 'mailbox-cdk-shared');
+    const sharedDirectory  = path.join(root, 'packages', 'mailbox-cdk-shared');
     return [
       {
         outputFile: path.join(mailboxDirectory, 'artifact-versions.json'),
@@ -60,7 +61,7 @@ export class BakeArtifactVersionsCommand extends Command {
   }
 
   async execute(): Promise<void> {
-    const root = path.resolve(this.root ?? process.cwd());
+    const root            = path.resolve(this.root ?? process.cwd());
     const mailboxPinsFile = path.resolve(this.mailboxPins);
 
     const baker = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());

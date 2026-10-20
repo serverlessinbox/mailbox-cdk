@@ -22,11 +22,11 @@ export class CaughtError {
   private readonly requestId: string | undefined;
 
   constructor(thrown: unknown) {
-    this.thrown = thrown;
-    this.name = thrown instanceof Error ? thrown.name : undefined;
-    this.message = thrown instanceof Error ? thrown.message : undefined;
+    this.thrown         = thrown;
+    this.name           = thrown instanceof Error ? thrown.name : undefined;
+    this.message        = thrown instanceof Error ? thrown.message : undefined;
     this.httpStatusCode = this.metadataOf(thrown)?.httpStatusCode;
-    this.requestId = this.metadataOf(thrown)?.requestId;
+    this.requestId      = this.metadataOf(thrown)?.requestId;
   }
 
   /** True when the caught value is an `Error` named `errorName`; a value that is not an `Error` is never any name. */
@@ -50,8 +50,8 @@ export class CaughtError {
    * string form, so any thrown value yields a usable reason.
    */
   public describeWithMetadata(): string {
-    const name = this.name ? this.name : 'Error';
-    const message = this.message ? this.message : String(this.thrown);
+    const name     = this.name ? this.name : 'Error';
+    const message  = this.message ? this.message : String(this.thrown);
     const metadata = [
       this.httpStatusCode ? `http=${this.httpStatusCode}` : undefined,
       this.requestId ? `requestId=${this.requestId}` : undefined,

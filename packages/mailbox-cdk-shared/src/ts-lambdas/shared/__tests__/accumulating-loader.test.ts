@@ -20,7 +20,7 @@ describe('AccumulatingLoader', () => {
   describe('mandatory', () => {
     it('returns the value of a set variable and records nothing', () => {
       process.env.LOADER_VAR = 'alice';
-      const loader = new AccumulatingLoader();
+      const loader           = new AccumulatingLoader();
 
       expect(loader.mandatory('LOADER_VAR')).toBe('alice');
       expect(loader.error()).toBeUndefined();

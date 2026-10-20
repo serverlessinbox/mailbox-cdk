@@ -1,11 +1,12 @@
+import { ArtifactZone }                                                    from '@serverlessinbox/artifact-registry-cdk';
 import { mkdirSync, mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { ArtifactZone } from '@serverlessinbox/artifact-registry-cdk';
-import { ArtifactVersionsBaker } from '../artifact-versions-baker';
-import type { BakedPackage } from '../baked-package';
-import { BumpedVersionReader } from '../bumped-version-reader';
-import { ExternalPinsReader } from '../external-pins-reader';
+import { tmpdir }                                                          from 'node:os';
+import * as path                                                           from 'node:path';
+
+import { ArtifactVersionsBaker }                                           from '../artifact-versions-baker';
+import type { BakedPackage }                                               from '../baked-package';
+import { BumpedVersionReader }                                             from '../bumped-version-reader';
+import { ExternalPinsReader }                                              from '../external-pins-reader';
 
 /**
  * Pins the file a published package ships: its own packages carry the version the bump wrote into
@@ -15,7 +16,7 @@ import { ExternalPinsReader } from '../external-pins-reader';
  */
 describe('ArtifactVersionsBaker', () => {
   const workDir = mkdtempSync(path.join(tmpdir(), 'artifact-versions-baker-'));
-  const baker = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());
+  const baker   = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());
 
   function bumpedManifestDirectory(name: string, version: string): string {
     const directory = path.join(workDir, name);

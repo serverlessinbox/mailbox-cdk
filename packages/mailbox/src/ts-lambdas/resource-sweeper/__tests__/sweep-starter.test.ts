@@ -13,15 +13,16 @@
  *   logged at error level, since a lower level would be discarded at the default log level.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import type { StackStatus }                            from '@aws-sdk/client-cloudformation';
 import {
   SFNClient,
   StartExecutionCommand,
   ListExecutionsCommand,
   StopExecutionCommand,
 } from '@aws-sdk/client-sfn';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
-import type { StackStatus } from '@aws-sdk/client-cloudformation';
+import { mockClient } from 'aws-sdk-client-mock';
+
 import {
   PARENT_STACK_ID,
   STATE_MACHINE_ARN,

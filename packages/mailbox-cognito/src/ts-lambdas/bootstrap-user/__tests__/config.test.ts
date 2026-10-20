@@ -5,7 +5,8 @@
  * Making it mandatory would reject any template that does not set it and fail the resource.
  */
 
-import { env } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
 import { load } from '../config';
 
 describe('bootstrap-user config', () => {

@@ -27,11 +27,11 @@ describe('handler cold start with an invalid configuration', () => {
 
   /** Loads the handler and returns the number of AWS calls made while doing so; the load is expected to throw. */
   function loadHandlerAndCountAwsCalls(): { loadHandler: () => void; awsCalls: () => number } {
-    const { LambdaClient, InvokeCommand } = jest.requireActual<LambdaSdk>('@aws-sdk/client-lambda');
+    const { LambdaClient, InvokeCommand }                                = jest.requireActual<LambdaSdk>('@aws-sdk/client-lambda');
     const { CognitoIdentityProviderClient, CreateUserPoolClientCommand } = jest.requireActual<CognitoSdk>('@aws-sdk/client-cognito-identity-provider');
-    const { mockClient } = jest.requireActual<ClientMock>('aws-sdk-client-mock');
-    const lambdaMock = mockClient(LambdaClient);
-    const cognitoMock = mockClient(CognitoIdentityProviderClient);
+    const { mockClient }                                                 = jest.requireActual<ClientMock>('aws-sdk-client-mock');
+    const lambdaMock                                                     = mockClient(LambdaClient);
+    const cognitoMock                                                    = mockClient(CognitoIdentityProviderClient);
 
     return {
       loadHandler: () => jest.requireActual('../handler'),
@@ -64,7 +64,7 @@ describe('handler cold start with an invalid configuration', () => {
     } else {
       process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = value;
     }
-    process.env.USER_POOL_ID = 'pool-1';
+    process.env.USER_POOL_ID        = 'pool-1';
     const { loadHandler, awsCalls } = loadHandlerAndCountAwsCalls();
 
     expect(loadHandler).toThrow(/IDENTITY_PROVISIONER_FUNCTION_NAME/);

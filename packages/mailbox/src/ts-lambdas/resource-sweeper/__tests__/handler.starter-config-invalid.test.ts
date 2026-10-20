@@ -11,15 +11,17 @@
 process.env['SERVICE_NAME'] = 'resource-sweeper-starter';
 delete process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'];
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { SFNClient } from '@aws-sdk/client-sfn';
 import {
   ACMClient,
   DescribeCertificateCommand,
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
-import { starterHandler, workerHandler } from '../handler';
+import { SFNClient }                                                   from '@aws-sdk/client-sfn';
+import { mockClient }                                                  from 'aws-sdk-client-mock';
+
+import { starterHandler, workerHandler }                               from '../handler';
+
 import { captureCfnResponse, createEvent, deleteEvent, lambdaContext } from './sweep-helpers';
 
 jest.mock('https', () => ({ request: jest.fn() }));

@@ -1,11 +1,12 @@
-import { Construct } from 'constructs';
-import { Stack, RemovalPolicy } from 'aws-cdk-lib';
+import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                       from 'aws-cdk-lib/aws-iam';
 import { IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { BucketAutoEmpty } from './bucket-auto-empty';
-import { getOrCreateSharedGroup } from './shared-group';
-import { StackNamedBucket } from './named-bucket';
+import { Stack, RemovalPolicy }       from 'aws-cdk-lib';
+import { Construct }                  from 'constructs';
+
+import { BucketAutoEmpty }            from './bucket-auto-empty';
+import { StackNamedBucket }           from './named-bucket';
+import { getOrCreateSharedGroup }     from './shared-group';
 
 /**
  * Singleton construct for a shared, public S3 bucket used to store small public static assets
@@ -26,7 +27,7 @@ export class PublicStaticAssetsBucket {
    * BucketAutoEmpty is wired once, centrally, inside this method.
    */
   static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): IBucket {
-    const stack = Stack.of(scope);
+    const stack       = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
 
     // Try to find an existing bucket by its construct ID.

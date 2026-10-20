@@ -3,13 +3,14 @@
  * one removal entry, and the capture of the response a `wrapHandler`-wrapped handler PUTs.
  */
 
-import { Writable } from 'stream';
+import { CloudFormationClient }                            from '@aws-sdk/client-cloudformation';
+import { SFNClient }                                       from '@aws-sdk/client-sfn';
+import { LoggerBuffer }                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import { SFNClient } from '@aws-sdk/client-sfn';
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { SweepStarter } from '../sweep-starter';
-import { SweepTargetPlanner } from '../sweep-target-planner';
+import { Writable }                                        from 'stream';
+
+import { SweepStarter }                                    from '../sweep-starter';
+import { SweepTargetPlanner }                              from '../sweep-target-planner';
 
 export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 
@@ -89,7 +90,7 @@ export function lambdaContext(): Context {
 export function captureCfnResponse(): () => CapturedCfnResponse {
   // eslint-disable-next-line global-require
   const https = require('https');
-  let body = '';
+  let body    = '';
   https.request.mockImplementation((_options: unknown, callback?: (res: { statusCode: number }) => void) => {
     if (callback) {
       callback({ statusCode: 200 });

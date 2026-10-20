@@ -1,9 +1,10 @@
-import { Aws, Tags } from 'aws-cdk-lib';
-import type { IConstruct } from 'constructs';
-import { ServerlessInboxTagKeys } from './ts-lambdas/shared/tag-keys';
-import { StackIdentity } from './naming/stack-identity';
-import { resolveDeployerType } from './deployer-type';
+import { Aws, Tags }                        from 'aws-cdk-lib';
+import type { IConstruct }                  from 'constructs';
+
+import { resolveDeployerType }              from './deployer-type';
 import type { ServerlessInboxDeployerType } from './deployer-type';
+import { StackIdentity }                    from './naming/stack-identity';
+import { ServerlessInboxTagKeys }           from './ts-lambdas/shared/tag-keys';
 
 export type ServerlessInboxComponent =
   | 'auth'
@@ -64,9 +65,9 @@ function applyServerlessInboxTags(
 
   const extra = options.extraTags ?? {};
   for (const [key, value] of Object.entries(extra)) {
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null) {continue;}
     const v = String(value).trim();
-    if (!v) continue;
+    if (!v) {continue;}
     Tags.of(scope).add(key, v);
   }
 }
@@ -170,7 +171,7 @@ function rootStackConditions(
   keyPrefix: 'aws:ResourceTag' | 'aws:RequestTag',
   rootStack: RootStack,
 ): readonly [RootStackConditions, RootStackConditions] {
-  const idKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStackId}`;
+  const idKey   = `${keyPrefix}/${ServerlessInboxTagKeys.rootStackId}`;
   const nameKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStack}`;
   return [
     { StringEquals: { [idKey]: rootStack.id } },

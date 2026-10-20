@@ -1,8 +1,9 @@
-import * as cdk from 'aws-cdk-lib';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { DataOverrideResolverLambda } from '../lambdas/data-override-resolver';
+import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
+import * as ssm                               from 'aws-cdk-lib/aws-ssm';
+import * as cdk                               from 'aws-cdk-lib';
+import { Construct }                          from 'constructs';
+
+import { DataOverrideResolverLambda }         from '../lambdas/data-override-resolver';
 import type { ResourceProperties, TableRole } from '../ts-lambdas/data-override-resolver/resource-properties';
 
 /** Incoming data table ARNs, one per table role, and the artifact resolver for the resolver Lambda's code. */
@@ -33,10 +34,10 @@ export class MailboxDataOverrideResolver extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    const configTableOverride = this.createOverrideParameter('config-table-override', 'configTable', 'config table', props.configTableArn);
-    const itemTableOverride = this.createOverrideParameter('item-table-override', 'itemTable', 'item table', props.itemTableArn);
-    const changelogTableOverride = this.createOverrideParameter('changelog-table-override', 'changelogTable', 'changelog table', props.changelogTableArn);
-    const auditLogTableOverride = this.createOverrideParameter('auditlog-table-override', 'auditLogTable', 'audit log table', props.auditLogTableArn);
+    const configTableOverride       = this.createOverrideParameter('config-table-override', 'configTable', 'config table', props.configTableArn);
+    const itemTableOverride         = this.createOverrideParameter('item-table-override', 'itemTable', 'item table', props.itemTableArn);
+    const changelogTableOverride    = this.createOverrideParameter('changelog-table-override', 'changelogTable', 'changelog table', props.changelogTableArn);
+    const auditLogTableOverride     = this.createOverrideParameter('auditlog-table-override', 'auditLogTable', 'audit log table', props.auditLogTableArn);
     const mailFeedbackTableOverride = this.createOverrideParameter('mailfeedback-table-override', 'mailFeedbackTable', 'mail feedback table', props.mailFeedbackTableArn);
 
     const resolverProps: ResourceProperties = {

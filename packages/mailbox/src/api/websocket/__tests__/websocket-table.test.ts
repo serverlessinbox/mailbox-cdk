@@ -1,9 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
+import { DynamoDbActions }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { DynamoDbActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { WebSocketTable } from '../websocket-table';
+
+import { WebSocketTable }                from '../websocket-table';
 
 /**
  * WebSocketTable tests.
@@ -56,21 +57,21 @@ describe('WebSocketTable', () => {
 
   it('tableName resolves to the table resource', () => {
     const stack = createStack();
-    const sut = new WebSocketTable(stack, 'websocket-table');
+    const sut   = new WebSocketTable(stack, 'websocket-table');
 
     expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'websockettablewebsocketEF927F93' });
   });
 
   it('grantWrite grants exactly one Allow statement with the write actions', () => {
     const stack = createStack();
-    const sut = new WebSocketTable(stack, 'websocket-table');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new WebSocketTable(stack, 'websocket-table');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantWrite(role);
 
-    const tableId = 'websockettablewebsocketEF927F93';
+    const tableId  = 'websockettablewebsocketEF927F93';
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
@@ -92,14 +93,14 @@ describe('WebSocketTable', () => {
 
   it('grantReadWrite grants exactly one Allow statement with the read+write actions', () => {
     const stack = createStack();
-    const sut = new WebSocketTable(stack, 'websocket-table');
-    const role = new iam.Role(stack, 'TestRole', {
+    const sut   = new WebSocketTable(stack, 'websocket-table');
+    const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     sut.grantReadWrite(role);
 
-    const tableId = 'websockettablewebsocketEF927F93';
+    const tableId  = 'websockettablewebsocketEF927F93';
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {

@@ -1,13 +1,12 @@
-import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-
+import type { IArtifactResolver }                                            from '@serverlessinbox/artifact-registry-cdk';
 import { IAdminApiAddon, type IAuditEventsQueue, type IIdentityProvisioner } from '@serverlessinbox/mailbox';
+import { HttpLambdaAuthorizer }                                              from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration }                                             from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod }                                               from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                    from 'aws-cdk-lib/aws-lambda';
+import { Construct }                                                         from 'constructs';
 
-import { CognitoIdpUsersApiLambda } from '../lambdas/cognito-idp-users-api';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { CognitoIdpUsersApiLambda }                                          from '../lambdas/cognito-idp-users-api';
 
 /**
  * The Cognito groups that mark admins and regular users for the users API. Pass the names of the groups you

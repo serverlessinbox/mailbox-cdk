@@ -1,7 +1,7 @@
+import { ITable }            from 'aws-cdk-lib/aws-dynamodb';
 import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
-const READ = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'] as const;
+const READ  = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'] as const;
 const WRITE = ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'] as const;
 
 /**

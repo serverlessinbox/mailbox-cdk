@@ -8,13 +8,15 @@
  * target is already gone, and the last one cannot be followed by a state that runs against a deleted machine.
  */
 
-import { Duration } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-import { actionsOf, renderLiteralText, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { SweeperWorkflow } from '../sweeper-workflow';
-import type { SweeperWorkflowProps } from '../sweeper-workflow';
+import { actionsOf, renderLiteralText, statementsOfDocument }        from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                  from 'aws-cdk-lib/assertions';
+import * as iam                                                      from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                  from 'aws-cdk-lib';
+import { Construct }                                                 from 'constructs';
+
+import { SweeperWorkflow }                                           from '../sweeper-workflow';
+import type { SweeperWorkflowProps }                                 from '../sweeper-workflow';
+
 import { newRemovals, newTestStack, newWorkerFunction, stateBodyOf } from './sweeper-helpers';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper-machine';
@@ -27,8 +29,8 @@ describe('SweeperWorkflow', () => {
   }
 
   function synthesize(stackId: string, overrides: Partial<SweeperWorkflowProps> = {}): Synthesized {
-    const stack = newTestStack(stackId);
-    const group = new Construct(stack, 'ops');
+    const stack    = newTestStack(stackId);
+    const group    = new Construct(stack, 'ops');
     const workflow = new SweeperWorkflow(stack, 'workflow', {
       executionRole: new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
       workerRoleArn: 'arn:aws:iam::123456789012:role/worker-role',
@@ -39,12 +41,12 @@ describe('SweeperWorkflow', () => {
       removals: newRemovals(group),
       ...overrides,
     });
-    const grantee = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const grantee  = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
     workflow.grantStartExecution(grantee);
     workflow.grantExecutionReaping(grantee);
     workflow.markForRetention();
 
-    const template = Template.fromStack(stack);
+    const template                           = Template.fromStack(stack);
     const [[stateMachineLogicalId, machine]] = Object.entries(template.findResources('AWS::StepFunctions::StateMachine'));
     return { template, definition: renderLiteralText(machine.Properties.DefinitionString), stateMachineLogicalId };
   }

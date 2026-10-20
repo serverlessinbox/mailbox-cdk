@@ -1,11 +1,12 @@
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Construct } from 'constructs';
-import type { IDataTable } from '../data/data-tables';
-import { Duration } from 'aws-cdk-lib';
+import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
+import type { Pipeline }                   from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                        from 'aws-cdk-lib';
+import { Construct }                       from 'constructs';
+
 import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import type { IDataTable }                 from '../data/data-tables';
+import type { IAuditEventsQueue }          from '../features/audit-writing/audit-events-queue';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: IDataTable;

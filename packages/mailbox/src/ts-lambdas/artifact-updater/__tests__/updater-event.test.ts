@@ -6,8 +6,9 @@
  * request down the scheduled path and run an update cycle instead of answering it.
  */
 
-import { deployEndTriggerEvent, httpApiEvent } from './updater-helpers';
 import { isCfnTriggerEvent, isHttpTriggerEvent } from '../updater-event';
+
+import { deployEndTriggerEvent, httpApiEvent }   from './updater-helpers';
 
 describe('isCfnTriggerEvent', () => {
   it.each(['Create', 'Update', 'Delete'] as const)('accepts a full %s request from CloudFormation', (requestType) => {

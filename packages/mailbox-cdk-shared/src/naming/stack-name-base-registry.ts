@@ -1,5 +1,5 @@
 import { IResolvable, Stack } from 'aws-cdk-lib';
-import { IConstruct } from 'constructs';
+import { IConstruct }         from 'constructs';
 
 /**
  * Per-stack registry for S3-safe name bases.
@@ -29,7 +29,7 @@ const registryMap = new WeakMap<IConstruct['node'], string | IResolvable>();
  */
 export function setStackNameBase(stack: IConstruct, nameBase: string | IResolvable): void {
   const stackNode = Stack.of(stack).node;
-  const existing = registryMap.get(stackNode);
+  const existing  = registryMap.get(stackNode);
 
   if (existing !== undefined) {
     // Registering the identical value again is allowed; any other value is rejected.

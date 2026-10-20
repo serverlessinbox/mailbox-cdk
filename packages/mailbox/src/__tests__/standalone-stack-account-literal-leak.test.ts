@@ -21,8 +21,9 @@
  * owner lands the named-resource change.
  */
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { MailboxDataStack } from '../data/mailbox-data-stack';
-import { MailboxEdgeStack } from '../edge/mailbox-edge-stack';
+
+import { MailboxDataStack }              from '../data/mailbox-data-stack';
+import { MailboxEdgeStack }              from '../edge/mailbox-edge-stack';
 
 // Stand-in for "a real customer account leaked into a published template" — distinctive so it can
 // never be confused with a legitimate value, and never a real account number.
@@ -99,7 +100,7 @@ function findAccountLiterals(node: unknown, allowed: ReadonlySet<string>, path =
  * legible for a couple of entries but this makes the location report explicit regardless of count.
  */
 function assertNoAccountLiterals(violations: AccountLiteralViolation[], stackLabel: string): void {
-  if (violations.length === 0) return;
+  if (violations.length === 0) {return;}
   const report = violations.map((v) => `  ${v.path} = ${JSON.stringify(v.value)}`).join('\n');
   throw new Error(`Account-literal leak found in ${stackLabel} template (${violations.length} occurrence(s)):\n${report}`);
 }
@@ -134,7 +135,7 @@ function isPostponedNamedResource(value: string): boolean {
 
 describe('Standalone sub-stack account-literal leak (regression gate)', () => {
   it('MailboxDataStack, synthesized like tools/build-data-stack.ts, leaks no real account literal', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new MailboxDataStack(app, 'MailboxData', {
       env: {
         account: FAKE_ACCOUNT,
@@ -154,7 +155,7 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
   });
 
   it('MailboxEdgeStack, synthesized like tools/build-edge-stack.ts, leaks no real account literal', () => {
-    const app = new App();
+    const app   = new App();
     const stack = new MailboxEdgeStack(app, 'MailboxEdge', {
       env: {
         account: FAKE_ACCOUNT,

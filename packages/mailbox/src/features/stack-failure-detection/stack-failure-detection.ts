@@ -1,11 +1,12 @@
-import * as cdk from 'aws-cdk-lib';
-import { Fn } from 'aws-cdk-lib';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Construct } from 'constructs';
-import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
+import { GateOnConditionAspect }      from '@serverlessinbox/mailbox-cdk-shared';
+import * as events                    from 'aws-cdk-lib/aws-events';
+import * as iam                       from 'aws-cdk-lib/aws-iam';
+import * as lambda                    from 'aws-cdk-lib/aws-lambda';
+import * as cdk                       from 'aws-cdk-lib';
+import { Fn }                         from 'aws-cdk-lib';
+import { Construct }                  from 'constructs';
+
 import { StackFailureDetectionInfra } from './stack-failure-detection-infra';
 
 export enum SendStackFailuresMode {
@@ -51,7 +52,7 @@ export class StackFailureDetection extends Construct {
       expression: Fn.conditionEquals(props.mode, SendStackFailuresMode.ENABLED),
     });
 
-    const infra = new StackFailureDetectionInfra(this, 'infra', {
+    const infra       = new StackFailureDetectionInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       vendorAccountIds: props.vendorAccountIds,
     });

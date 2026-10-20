@@ -1,16 +1,17 @@
-import { RemovalPolicy } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { RemovalPolicy }           from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
+
 import { DEVELOPMENT_CONTEXT_KEY } from './context-keys';
 
 const TRUTHY_VALUES = new Set(['true', '1', 'yes', 'y', 'dev']);
-const FALSY_VALUES = new Set(['false', '0', 'no', 'n']);
+const FALSY_VALUES  = new Set(['false', '0', 'no', 'n']);
 
 function parseTruthy(key: string, value: unknown): boolean {
-  if (typeof value === 'boolean') return value;
+  if (typeof value === 'boolean') {return value;}
 
   const normalized = String(value).trim().toLowerCase();
-  if (TRUTHY_VALUES.has(normalized)) return true;
-  if (FALSY_VALUES.has(normalized)) return false;
+  if (TRUTHY_VALUES.has(normalized)) {return true;}
+  if (FALSY_VALUES.has(normalized)) {return false;}
 
   throw new Error(
     `@serverlessinbox/mailbox: invalid CDK context value for "${key}": ${JSON.stringify(value)}. ` +
@@ -25,7 +26,7 @@ function parseTruthy(key: string, value: unknown): boolean {
  */
 export function isDevelopmentMode(scope: Construct): boolean {
   const value = scope.node.tryGetContext(DEVELOPMENT_CONTEXT_KEY);
-  if (value === undefined || value === null) return false;
+  if (value === undefined || value === null) {return false;}
   return parseTruthy(DEVELOPMENT_CONTEXT_KEY, value);
 }
 

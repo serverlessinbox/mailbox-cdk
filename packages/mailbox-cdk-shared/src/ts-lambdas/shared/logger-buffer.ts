@@ -20,7 +20,7 @@ export function parseLogLevelStrict(raw: string): LogLevel {
   }
 
   const normalized = raw.toLowerCase();
-  const level = LEVELS.find((candidate) => candidate === normalized);
+  const level      = LEVELS.find((candidate) => candidate === normalized);
   if (level === undefined) {
     throw new Error(`Invalid log level: '${raw}' is not one of ${LEVELS.join(', ')}`);
   }
@@ -44,7 +44,7 @@ export class LoggerBuffer {
   private readonly emitLevel: LogLevel;
 
   constructor(service?: string, level?: LogLevel) {
-    this.service = service;
+    this.service   = service;
     this.emitLevel = level ?? 'error';
   }
 

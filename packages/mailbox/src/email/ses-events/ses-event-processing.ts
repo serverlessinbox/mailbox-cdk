@@ -1,14 +1,16 @@
-import { Construct } from 'constructs';
-import { SESEventProcessorLambda } from '../../lambdas';
-import type { IDataTable } from '../../data/data-tables';
+import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
+import { makePhysicalName, type BaseQueueProps }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
-import { makePhysicalName, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IDataBlobStore } from '../../data/data-blob-store';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { SesEventTopic, type ISesEventTopic } from './ses-event-topic';
-import { SesEventQueue, type ISesEventQueue } from './ses-event-queue';
+import { Construct }                                                from 'constructs';
+
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../api/websocket/websocket';
+import type { IDataBlobStore }                                      from '../../data/data-blob-store';
+import type { IDataTable }                                          from '../../data/data-tables';
+import type { IAuditEventsQueue }                                   from '../../features/audit-writing/audit-events-queue';
+import { SESEventProcessorLambda }                                  from '../../lambdas';
+
+import { SesEventQueue, type ISesEventQueue }                       from './ses-event-queue';
+import { SesEventTopic, type ISesEventTopic }                       from './ses-event-topic';
 
 /** Props of {@link SESEventProcessing}. */
 export interface SESEventProcessingProps {
@@ -41,7 +43,7 @@ export class SESEventProcessing extends Construct {
     super(scope, id);
 
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
-    this.sesEventTopic = sesEventTopic;
+    this.sesEventTopic  = sesEventTopic;
 
     // SNS cannot be granted use of the AWS-managed SQS key (alias/aws/sqs), so a queue encrypted
     // with it never receives the topic's messages.
@@ -49,9 +51,9 @@ export class SESEventProcessing extends Construct {
       topic: sesEventTopic,
       queueProps: props.queueProps,
     });
-    this.sesEventQueue = sesEventQueue;
+    this.sesEventQueue  = sesEventQueue;
 
-    const cfnConfigSet = new CfnConfigurationSet(this, 'ses-configuration-set', {
+    const cfnConfigSet    = new CfnConfigurationSet(this, 'ses-configuration-set', {
       name: makePhysicalName(this, 'ses-config', { maxLength: 64 }),
     });
     this.sesConfigSetName = cfnConfigSet.ref;

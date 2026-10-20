@@ -1,4 +1,3 @@
-import { PublishVersionCommand } from '@aws-sdk/client-lambda';
 import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -6,18 +5,20 @@ import {
   type DistributionConfig,
   type LambdaFunctionAssociation,
 } from '@aws-sdk/client-cloudfront';
+import { PublishVersionCommand } from '@aws-sdk/client-lambda';
 import {
   CaughtError,
   parseArn,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { LambdaTarget } from './artifact-target';
-import type { FunctionSmokeTester, SmokeTestVerdict } from './function-smoke-tester';
-import type { LambdaCodeRollback } from './lambda-code-rollback';
-import type { LambdaFunctionCode, Sleep } from './lambda-function-code';
+
+import type { LambdaTarget }                                    from './artifact-target';
+import type { FunctionSmokeTester, SmokeTestVerdict }           from './function-smoke-tester';
+import type { LambdaCodeRollback }                              from './lambda-code-rollback';
+import type { LambdaFunctionCode, Sleep }                       from './lambda-function-code';
 import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients, RootStackResources } from './updater-clients';
-import { toLambdaFunctionArn, type LambdaFunctionArn } from './updater-identifiers';
+import type { RegionClients, RootStackResources }               from './updater-clients';
+import { toLambdaFunctionArn, type LambdaFunctionArn }          from './updater-identifiers';
 
 const CONFLICT_RETRY_DELAYS_MS = [3000, 6000];
 
@@ -59,15 +60,15 @@ export class EdgeLambdaUpdater {
     logger: LoggerBuffer,
     sleep: Sleep,
   ) {
-    this.edge = edge;
-    this.cloudFront = cloudFront;
+    this.edge               = edge;
+    this.cloudFront         = cloudFront;
     this.rootStackResources = rootStackResources;
-    this.releases = releases;
-    this.functionCode = functionCode;
-    this.smokeTester = smokeTester;
-    this.rollback = rollback;
-    this.logger = logger;
-    this.sleep = sleep;
+    this.releases           = releases;
+    this.functionCode       = functionCode;
+    this.smokeTester        = smokeTester;
+    this.rollback           = rollback;
+    this.logger             = logger;
+    this.sleep              = sleep;
   }
 
   /**
@@ -85,7 +86,7 @@ export class EdgeLambdaUpdater {
     try {
       await this.deployNewCode(target, stale, location);
       const newVersionArn = await this.publishVersion(target);
-      const verdict = await this.smokeTester.probe(this.edge.lambda, newVersionArn);
+      const verdict       = await this.smokeTester.probe(this.edge.lambda, newVersionArn);
       if (verdict !== 'pass') {
         await this.keepDistributionOnDeployedVersion(target, stale, verdict);
         return false;
@@ -194,7 +195,7 @@ export class EdgeLambdaUpdater {
 
   /** The ids of the distributions of this install, looked up in the edge region. */
   private async findTaggedDistributionIds(): Promise<string[]> {
-    const distributions = await this.rootStackResources.find(this.edge.tagging, ['cloudfront:distribution']);
+    const distributions             = await this.rootStackResources.find(this.edge.tagging, ['cloudfront:distribution']);
     const distributionIds: string[] = [];
     for (const mapping of distributions) {
       if (mapping.ResourceARN) {
@@ -238,7 +239,7 @@ export class EdgeLambdaUpdater {
   }
 
   private lambdaAssociationsOf(behaviors: CacheBehaviorsOf): LambdaFunctionAssociation[] {
-    const defaultAssociations = behaviors.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items ?? [];
+    const defaultAssociations    = behaviors.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items ?? [];
     const additionalAssociations = (behaviors.CacheBehaviors?.Items ?? []).flatMap(
       (behavior) => behavior.LambdaFunctionAssociations?.Items ?? [],
     );

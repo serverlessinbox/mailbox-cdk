@@ -1,10 +1,11 @@
-import { Duration } from 'aws-cdk-lib';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
-import { Construct } from 'constructs';
-import { IWebSocketTable } from '../api/websocket/websocket-table';
-import { IWebSocketPushApi } from '../api/websocket/websocket';
+import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }               from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
+import { IWebSocketTable }        from '../api/websocket/websocket-table';
+import { IWebSocketPushApi }      from '../api/websocket/websocket';
+import type { IDataTable }        from '../data/data-tables';
 
 export interface WebSocketBroadcastLambdaProps {
   connectionsTable: IWebSocketTable;

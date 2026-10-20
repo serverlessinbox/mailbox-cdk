@@ -1,11 +1,12 @@
-import { Construct } from 'constructs';
-import { Duration, CustomResource, Stack } from 'aws-cdk-lib';
-import { IBucket } from 'aws-cdk-lib/aws-s3';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda } from './ts-lambda';
-import { getOrCreateSharedGroup } from './shared-group';
+import type { IArtifactResolver }                 from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                                   from 'aws-cdk-lib/aws-iam';
+import { IBucket }                                from 'aws-cdk-lib/aws-s3';
+import { Duration, CustomResource, Stack }        from 'aws-cdk-lib';
+import { Construct }                              from 'constructs';
+
+import { getOrCreateSharedGroup }                 from './shared-group';
 import type { BucketAutoEmptyResourceProperties } from './ts-lambdas/bucket-auto-empty/resource-properties';
+import { TypeScriptLambda }                       from './ts-lambda';
 
 /**
  * Empties S3 buckets when the stack is deleted, so that a bucket with `RemovalPolicy.DESTROY` can be
@@ -31,9 +32,9 @@ export class BucketAutoEmpty extends TypeScriptLambda {
    * The singleton is placed under a "shared" group construct at stack root.
    */
   static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): BucketAutoEmpty {
-    const stack = Stack.of(scope);
+    const stack       = Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
-    const existing = sharedGroup.node.tryFindChild('bucket-auto-empty');
+    const existing    = sharedGroup.node.tryFindChild('bucket-auto-empty');
     if (existing instanceof BucketAutoEmpty) {
       return existing;
     }
@@ -67,7 +68,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
     });
 
     const properties: BucketAutoEmptyResourceProperties = { bucketName: bucket.bucketName };
-    const resource = new CustomResource(scope, id, {
+    const resource                                      = new CustomResource(scope, id, {
       serviceToken: this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType: 'Custom::BucketAutoEmpty',

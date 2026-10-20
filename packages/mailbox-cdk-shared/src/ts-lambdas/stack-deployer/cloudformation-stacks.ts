@@ -9,12 +9,14 @@ import {
   type Stack,
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import { CaughtError } from '../shared/caught-error';
-import type { Region } from '../shared/aws-identifiers';
+
+import type { Region }         from '../shared/aws-identifiers';
+import { CaughtError }         from '../shared/caught-error';
+import type { LoggerBuffer }   from '../shared/logger-buffer';
+
 import type { OperationInput } from './stack-deployment';
-import { isSwitchedOn } from './stack-flag';
-import { StackStatus } from './stack-status';
+import { isSwitchedOn }        from './stack-flag';
+import { StackStatus }         from './stack-status';
 
 const STACK_CAPABILITIES: Capability[] = ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'];
 
@@ -42,8 +44,8 @@ export class CloudFormationStacks {
 
   constructor(clientForRegion: (region: Region) => CloudFormationClient, defaultRegion: Region, logger: LoggerBuffer) {
     this.clientForRegion = clientForRegion;
-    this.defaultRegion = defaultRegion;
-    this.logger = logger;
+    this.defaultRegion   = defaultRegion;
+    this.logger          = logger;
   }
 
   /** The stack of the operation, or undefined when it does not exist. */
@@ -163,8 +165,8 @@ export class CloudFormationStacks {
       }
 
       const logicalId = event.LogicalResourceId ?? 'UnknownLogicalId';
-      const type = event.ResourceType ?? 'UnknownType';
-      const reason = event.ResourceStatusReason ?? 'Unknown reason';
+      const type      = event.ResourceType ?? 'UnknownType';
+      const reason    = event.ResourceStatusReason ?? 'Unknown reason';
       lines.push(`${logicalId} (${type}) ${status}: ${reason}`);
     }
     return lines;

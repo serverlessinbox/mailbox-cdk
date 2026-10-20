@@ -1,11 +1,13 @@
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as path from 'node:path';
-import * as fs from 'node:fs';
+import * as fs                           from 'node:fs';
+import * as path                         from 'node:path';
+
+import { MailboxEdgeStack }              from '../src/edge/mailbox-edge-stack';
+
 import {
   parseArgs,
   writeJson,
 } from './_common';
-import { MailboxEdgeStack } from '../src/edge/mailbox-edge-stack';
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));

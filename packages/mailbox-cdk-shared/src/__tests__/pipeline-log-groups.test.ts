@@ -1,7 +1,8 @@
-import { App, Stack } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
+import { Match, Template }        from 'aws-cdk-lib/assertions';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { PipelineLogGroup } from '../pipeline-log-groups';
+import { App, Stack }             from 'aws-cdk-lib';
+
+import { PipelineLogGroup }       from '../pipeline-log-groups';
 import { getOrCreateSharedGroup } from '../shared-group';
 
 /**
@@ -21,7 +22,7 @@ describe('PipelineLogGroup', () => {
   it('getOrCreate returns the same construct for two calls with the same (stack, pipeline)', () => {
     const stack = newStack();
 
-    const first = PipelineLogGroup.getOrCreate(stack, 'jmap');
+    const first  = PipelineLogGroup.getOrCreate(stack, 'jmap');
     const second = PipelineLogGroup.getOrCreate(stack, 'jmap');
 
     expect(second).toBe(first);
@@ -30,7 +31,7 @@ describe('PipelineLogGroup', () => {
   it('getOrCreate returns distinct groups named /serverlessinbox/<stack>/<pipeline>-<guid prefix>', () => {
     const stack = newStack();
 
-    const jmap = PipelineLogGroup.getOrCreate(stack, 'jmap');
+    const jmap  = PipelineLogGroup.getOrCreate(stack, 'jmap');
     const admin = PipelineLogGroup.getOrCreate(stack, 'admin');
 
     expect(jmap).not.toBe(admin);
@@ -80,9 +81,9 @@ describe('PipelineLogGroup', () => {
   });
 
   it('grantFilterEvents grants logs:FilterLogEvents scoped to the log group ARN', () => {
-    const stack = newStack();
+    const stack    = newStack();
     const logGroup = PipelineLogGroup.getOrCreate(stack, 'jmap');
-    const role = new Role(stack, 'test-role', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') });
+    const role     = new Role(stack, 'test-role', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') });
 
     logGroup.grantFilterEvents(role);
 

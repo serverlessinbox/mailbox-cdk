@@ -7,17 +7,18 @@
  * moved table collide with its retained original.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import { AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import { StackNamedTable } from '../named-table';
-import type { StackNamedTableProps } from '../named-table';
-import { PositionHash } from '../naming/position-hash';
-import { StackIdentity } from '../naming/stack-identity';
+import { Construct }                     from 'constructs';
 
-const accountRef = { Ref: 'AWS::AccountId' };
+import { StackNamedTable }               from '../named-table';
+import type { StackNamedTableProps }     from '../named-table';
+import { PositionHash }                  from '../naming/position-hash';
+import { StackIdentity }                 from '../naming/stack-identity';
+
+const accountRef   = { Ref: 'AWS::AccountId' };
 const stackNameRef = { Ref: 'AWS::StackName' };
 
 function createStack(): cdk.Stack {
@@ -74,7 +75,7 @@ describe('StackNamedTable', () => {
   it('gives a table with the same id a different name under a different parent when uniquePerPosition is set', () => {
     const stack = createStack();
 
-    const first = new StackNamedTable(new Construct(stack, 'first'), 'orders', { ...propsWith(), uniquePerPosition: true });
+    const first  = new StackNamedTable(new Construct(stack, 'first'), 'orders', { ...propsWith(), uniquePerPosition: true });
     const second = new StackNamedTable(new Construct(stack, 'second'), 'orders', { ...propsWith(), uniquePerPosition: true });
 
     expect(stack.resolve(first.explicitTableName)).not.toEqual(stack.resolve(second.explicitTableName));

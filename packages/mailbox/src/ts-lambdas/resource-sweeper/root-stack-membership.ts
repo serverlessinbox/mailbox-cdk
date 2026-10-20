@@ -1,5 +1,6 @@
 import { ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { RootStack } from './removal';
+
+import type { RootStack }                            from './removal';
 
 /** One key/value tag as the ACM, EventBridge and IAM tag listings return it. */
 export interface TagEntry {

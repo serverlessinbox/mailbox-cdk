@@ -1,12 +1,13 @@
-import * as cdk from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys }        from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda                       from 'aws-cdk-lib/aws-lambda';
+import * as s3                           from 'aws-cdk-lib/aws-s3';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IAuthKeyStoreTable } from '../../auth-key-store/auth-key-store-table';
-import { Cdn, type CdnProps } from '../cdn-construct';
+
+import type { IAuthKeyStoreTable }       from '../../auth-key-store/auth-key-store-table';
+import { Cdn, type CdnProps }            from '../cdn-construct';
 
 /*
  * Pins the synthesized CloudFront distribution of the blob CDN. The Lambda@Edge authorizer receives its whole
@@ -17,7 +18,7 @@ import { Cdn, type CdnProps } from '../cdn-construct';
  */
 
 const EDGE_VERSION_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download:3';
-const CERTIFICATE_ARN = 'arn:aws:acm:us-east-1:123456789012:certificate/11111111-2222-3333-4444-555555555555';
+const CERTIFICATE_ARN  = 'arn:aws:acm:us-east-1:123456789012:certificate/11111111-2222-3333-4444-555555555555';
 
 /** Stands in for the auth key store table; the CDN reads only its name. */
 function fakeAuthKeyStoreTable(tableName: string): IAuthKeyStoreTable {
@@ -40,7 +41,7 @@ function synthesizeCdn(overrides: Partial<CdnProps> = {}): SynthesizedCdn {
     synthesizer: new BootstraplessSynthesizer(),
     env: { account: '123456789012', region: 'eu-west-1' },
   });
-  const cdn = new Cdn(stack, 'blob-cdn', {
+  const cdn   = new Cdn(stack, 'blob-cdn', {
     blobStore: s3.Bucket.fromBucketName(stack, 'blob-store', 'blob-bucket'),
     authKeyStoreTable: fakeAuthKeyStoreTable('auth-key-store-table'),
     jmapBlobDownloadVersion: lambda.Version.fromVersionArn(stack, 'edge-version', EDGE_VERSION_ARN),

@@ -1,6 +1,6 @@
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 /** A stack and the artifact resolver pinning `mailbox-cdk-shared`, for building a shared deployer Lambda to read what it renders. */
 export interface ProbeStack {
@@ -10,7 +10,7 @@ export interface ProbeStack {
 
 /** A fresh stack with an explicit environment, holding nothing, so what a probe renders is all it contains. */
 export function newProbeStack(): ProbeStack {
-  const stack = new Stack(new App(), 'shared-probe', {
+  const stack            = new Stack(new App(), 'shared-probe', {
     env: { account: '111122223333', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

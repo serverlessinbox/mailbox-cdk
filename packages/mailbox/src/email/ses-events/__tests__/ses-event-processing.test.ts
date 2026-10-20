@@ -4,18 +4,19 @@
  * topic through the configuration set, the exposed queue is the one the Lambda consumes, and the
  * WebSocket capability reaches the Lambda. A break here silently drops bounce and complaint feedback.
  */
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone, PinnedArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                           from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                                  from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                             from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                                           from 'aws-cdk-lib/aws-s3';
+import * as cdk                                             from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                    from 'aws-cdk-lib';
+
+import type { IWebSocketBroadcastPublisher }                from '../../../api/websocket/websocket';
+import { DataBlobStore }                                    from '../../../data/data-blob-store';
+import { DataTable }                                        from '../../../data/data-tables';
+import { AuditEventsQueue }                                 from '../../../features/audit-writing/audit-events-queue';
 import { SESEventProcessing, type SESEventProcessingProps } from '../ses-event-processing';
-import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../../data/data-tables';
-import { DataBlobStore } from '../../../data/data-blob-store';
-import type { IWebSocketBroadcastPublisher } from '../../../api/websocket/websocket';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
@@ -30,7 +31,7 @@ function createProps(stack: cdk.Stack): SESEventProcessingProps {
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-  const dataTable = (id: string) => new DataTable(new Table(stack, id, {
+  const dataTable                           = (id: string) => new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
 
@@ -48,7 +49,7 @@ function createProps(stack: cdk.Stack): SESEventProcessingProps {
 describe('SESEventProcessing', () => {
   it('publishes the configuration set\'s events to the notifications topic', () => {
     const stack = createStack();
-    const sut = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
+    const sut   = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
 
     const template = Template.fromStack(stack);
 
@@ -63,7 +64,7 @@ describe('SESEventProcessing', () => {
 
   it('exposes the name of the configuration set it creates', () => {
     const stack = createStack();
-    const sut = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
+    const sut   = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
 
     const template = Template.fromStack(stack);
 
@@ -73,7 +74,7 @@ describe('SESEventProcessing', () => {
 
   it('feeds the Lambda from the queue it exposes as sesEventQueue', () => {
     const stack = createStack();
-    const sut = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
+    const sut   = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
 
     const template = Template.fromStack(stack);
 
@@ -83,8 +84,8 @@ describe('SESEventProcessing', () => {
   });
 
   it('enableWebSocketPublishing sets the broadcaster function name on the processor Lambda', () => {
-    const stack = createStack();
-    const sut = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
+    const stack                                     = createStack();
+    const sut                                       = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
       grantInvoke: () => undefined,

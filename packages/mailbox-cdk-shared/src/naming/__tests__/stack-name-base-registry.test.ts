@@ -1,8 +1,9 @@
-import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Template }                           from 'aws-cdk-lib/assertions';
+import * as cdk                               from 'aws-cdk-lib';
+import { BootstraplessSynthesizer }           from 'aws-cdk-lib';
+
+import { StackNamedBucket }                   from '../../named-bucket';
 import { setStackNameBase, getStackNameBase } from '../stack-name-base-registry';
-import { StackNamedBucket } from '../../named-bucket';
 
 /**
  * Pins the per-stack name-base registry: one value per stack, the identical value may be registered
@@ -19,7 +20,7 @@ function newStack(): cdk.Stack {
 function bucketNameOf(stack: cdk.Stack): string {
   const template = Template.fromStack(stack);
   template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-  const resources = template.findResources('AWS::S3::Bucket');
+  const resources  = template.findResources('AWS::S3::Bucket');
   const bucketName = Object.values(resources)[0].Properties.BucketName;
   expect(bucketName).toBeDefined();
   return JSON.stringify(bucketName);

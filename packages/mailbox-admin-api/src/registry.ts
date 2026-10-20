@@ -30,8 +30,8 @@ export class ServiceRegistry<TAuth = unknown, TAudit = unknown> {
   private readonly services = new Map<string, Map<string, ServiceSpec<TAuth, TAudit>>>();
 
   register(service: ServiceSpec<TAuth, TAudit>): void {
-    const basePath = normalizeBasePath(service.basePath);
-    const baseKey = basePath.toLowerCase();
+    const basePath   = normalizeBasePath(service.basePath);
+    const baseKey    = basePath.toLowerCase();
     const serviceKey = service.serviceName.toLowerCase();
 
     const perBase = this.services.get(baseKey) ?? new Map<string, ServiceSpec<TAuth, TAudit>>();
@@ -46,8 +46,8 @@ export class ServiceRegistry<TAuth = unknown, TAudit = unknown> {
 
   getDefault(basePath: string): ServiceSpec<TAuth, TAudit> | undefined {
     const perBase = this.services.get(normalizeBasePath(basePath).toLowerCase());
-    if (!perBase) return undefined;
-    if (perBase.size !== 1) return undefined;
+    if (!perBase) {return undefined;}
+    if (perBase.size !== 1) {return undefined;}
     return perBase.values().next().value;
   }
 }

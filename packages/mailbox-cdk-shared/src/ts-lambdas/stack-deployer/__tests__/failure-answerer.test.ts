@@ -1,12 +1,13 @@
-import { ExpectedFailure } from '../../shared/expected-failure';
-import { AnswerDeliveryFailure } from '../answer-delivery-failure';
-import { CfnResponder } from '../cfn-responder';
+import { toPhysicalResourceId }                       from '../../shared/custom-resource-identifiers';
+import { ExpectedFailure }                            from '../../shared/expected-failure';
+import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
+import { CfnResponder }                               from '../cfn-responder';
 import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';
-import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
-import { StackOperationFailure } from '../stack-operation-failure';
-import { toPhysicalResourceId } from '../../shared/custom-resource-identifiers';
-import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
-import { WorkerResult } from '../worker-result';
+import { StackDeploymentEventReader }                 from '../stack-deployment-event-reader';
+import { StackOperationFailure }                      from '../stack-operation-failure';
+import type { UpdateRollbackAnswers }                 from '../update-rollback-answerer';
+import { WorkerResult }                               from '../worker-result';
+
 import {
   awsError,
   cfnRequest,
@@ -37,7 +38,7 @@ describe('FailureAnswerer', () => {
   let consoleSpies: ConsoleSpies;
 
   beforeEach(() => {
-    endpoint = fakeCfnEndpoint();
+    endpoint     = fakeCfnEndpoint();
     consoleSpies = silenceConsole();
   });
 
@@ -106,14 +107,14 @@ describe('FailureAnswerer', () => {
   });
 
   describe('an Update that would be answered FAILED', () => {
-    const rolledBack = () => rollbackAnswering(true);
+    const rolledBack    = () => rollbackAnswering(true);
     const notRolledBack = () => rollbackAnswering(false);
-    const answererWith = (rollback: UpdateRollbackAnswers) => new FailureAnswerer(new StackDeploymentEventReader(), new CfnResponder(noPause), rollback);
-    const update = sfnEvent({ op: operation({ requestType: 'Update', region: US_WEST_2 }) });
+    const answererWith  = (rollback: UpdateRollbackAnswers) => new FailureAnswerer(new StackDeploymentEventReader(), new CfnResponder(noPause), rollback);
+    const update        = sfnEvent({ op: operation({ requestType: 'Update', region: US_WEST_2 }) });
 
     it('is offered to the rollback answerer as far as the request can be read, and left unanswered when that answers it', async () => {
       const rollback = rolledBack();
-      const request = cfnRequest({ RequestType: 'Update' }, stackDeployerProperties({ region: US_WEST_2 }));
+      const request  = cfnRequest({ RequestType: 'Update' }, stackDeployerProperties({ region: US_WEST_2 }));
 
       await answererWith(rollback).answerCfnRequest(request, awsError('Boom', 'it broke'), LOG_STREAM_NAME);
 
@@ -181,7 +182,7 @@ describe('FailureAnswerer', () => {
 
     it('leaves the answer of a StackOperationFailure to the stack failures, with the operation and the target of the input', async () => {
       const failure = new StackOperationFailure('Stack deployer check failed', awsError('Denied', 'no'));
-      const event = sfnEvent();
+      const event   = sfnEvent();
 
       await answerer.answerSfnInput(event, failure, LOG_STREAM_NAME, stackFailures);
 

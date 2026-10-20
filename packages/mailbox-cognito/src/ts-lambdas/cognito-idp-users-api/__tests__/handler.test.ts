@@ -11,17 +11,18 @@
 const MANDATORY_VARIABLES = ['USER_POOL_ID', 'AUDIT_EVENTS_QUEUE_URL', 'IDENTITY_PROVISIONER_FUNCTION_NAME'];
 
 function setValidEnvironment(): void {
-  process.env.USER_POOL_ID = 'pool-1';
-  process.env.AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
+  process.env.USER_POOL_ID                       = 'pool-1';
+  process.env.AUDIT_EVENTS_QUEUE_URL             = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
   process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
-  process.env.ADMIN_GROUPS = JSON.stringify(['admin']);
-  process.env.USER_GROUPS = JSON.stringify(['user']);
+  process.env.ADMIN_GROUPS                       = JSON.stringify(['admin']);
+  process.env.USER_GROUPS                        = JSON.stringify(['user']);
 }
 
 setValidEnvironment();
 
 import * as lambdaRuntime from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { handler } from '../handler';
+
+import { handler }        from '../handler';
 
 describe('IdP users API handler', () => {
   afterEach(() => {
@@ -49,11 +50,11 @@ describe('IdP users API handler', () => {
 
   it('builds its logger with the configured service name and log level', () => {
     const actualRuntime = jest.requireActual<typeof lambdaRuntime>('@serverlessinbox/mailbox-cdk-shared/lambda-runtime');
-    const loggerBuffer = jest.fn((...args: ConstructorParameters<typeof lambdaRuntime.LoggerBuffer>) => new actualRuntime.LoggerBuffer(...args));
-    const saved = { ...process.env };
+    const loggerBuffer  = jest.fn((...args: ConstructorParameters<typeof lambdaRuntime.LoggerBuffer>) => new actualRuntime.LoggerBuffer(...args));
+    const saved         = { ...process.env };
     try {
       process.env.SERVICE_NAME = 'cognito-idp-users-api';
-      process.env.LOG_LEVEL = 'warn';
+      process.env.LOG_LEVEL    = 'warn';
       jest.isolateModules(() => {
         jest.doMock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({ ...actualRuntime, LoggerBuffer: loggerBuffer }));
         require('../handler');

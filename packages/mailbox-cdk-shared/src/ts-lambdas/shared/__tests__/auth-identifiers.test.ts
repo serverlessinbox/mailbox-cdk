@@ -1,4 +1,5 @@
-import * as t from 'typanion';
+import * as t                                                                                                     from 'typanion';
+
 import { isAccountId, isTenantId, toAccountId, toIssuer, toTenantId, type AccountId, type Issuer, type TenantId } from '../auth-identifiers';
 
 /**

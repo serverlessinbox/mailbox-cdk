@@ -11,23 +11,24 @@
  * present. The `Mailbox` suite of the mailbox package cannot cover them: it synthesizes with a fake auth provider.
  */
 
-import * as path from 'node:path';
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { AdminApiAddonContext } from '@serverlessinbox/mailbox';
-import { MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   handlerSourceOf,
   managedLambdasOf,
   probeManagedLambda,
   type ManagedLambda,
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-record';
+import { MailboxArtifactResolverFactory }     from '@serverlessinbox/mailbox-cdk-shared';
+import type { AdminApiAddonContext }          from '@serverlessinbox/mailbox';
+import { Template }                           from 'aws-cdk-lib/assertions';
+import * as cdk                               from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
+import * as path                              from 'node:path';
+
+import { DynamicClientRegistrationMode }      from '../auth/dynamic-client-registration-mode';
+import { MailboxUserPool }                    from '../auth/mailbox-user-pool';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
-import { MailboxUserPool } from '../auth/mailbox-user-pool';
-import { DynamicClientRegistrationMode } from '../auth/dynamic-client-registration-mode';
+import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
 
 const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'ts-lambdas')];
 
@@ -64,7 +65,7 @@ function adminApiAddonContextOf(artifactResolver: IArtifactResolver): AdminApiAd
 }
 
 function synthesizeUserPool(): Template {
-  const app = new App({
+  const app      = new App({
     context: {
       'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
@@ -78,7 +79,7 @@ function synthesizeUserPool(): Template {
       'serverlessinbox:artifact_versions': {},
     },
   });
-  const stack = new cdk.Stack(app, 'TestManagedCognitoLambdas', {
+  const stack    = new cdk.Stack(app, 'TestManagedCognitoLambdas', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

@@ -1,4 +1,4 @@
-import type { TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { TenantId }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { UserPoolId } from '../shared/cognito-identifiers';
 

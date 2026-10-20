@@ -1,22 +1,23 @@
-import * as cdk from 'aws-cdk-lib';
-import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { Construct } from 'constructs';
-import { Fn } from 'aws-cdk-lib';
-import type { IFunction } from 'aws-cdk-lib/aws-lambda';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import type { IDataTable } from '../../data/data-tables';
-import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
+import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
+import { GateOnConditionAspect }                                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { resolveVendorAccountIds }                                                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                                                        from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration }                                                                       from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod }                                                                         from 'aws-cdk-lib/aws-apigatewayv2';
+import * as targets                                                                                    from 'aws-cdk-lib/aws-events-targets';
+import * as events                                                                                     from 'aws-cdk-lib/aws-events';
+import type { IFunction }                                                                              from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                                                                        from 'aws-cdk-lib';
+import { Fn }                                                                                          from 'aws-cdk-lib';
+import { Construct }                                                                                   from 'constructs';
 
-import { IAdminApiAddon } from '../../api/addons';
-import { SupportApiLambda } from '../../lambdas/support-api';
-import { SupportRoleAssumptionCollectorLambda } from '../../lambdas/support-role-assumption-collector';
+import { IAdminApiAddon }                                                                              from '../../api/addons';
+import type { IDataTable }                                                                             from '../../data/data-tables';
+import type { IAuditEventsQueue }                                                                      from '../../features/audit-writing/audit-events-queue';
+import { SupportApiLambda }                                                                            from '../../lambdas/support-api';
+import { SupportRoleAssumptionCollectorLambda }                                                        from '../../lambdas/support-role-assumption-collector';
+
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
-import { resolveVendorAccountIds } from '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Whether the support feature is provisioned.
@@ -90,7 +91,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       // applies the condition to each, so a false condition yields no live resources.
 
       // Resolved once here, as the composition root of the support feature, and threaded down as props.
-      const vendorAccountIds = resolveVendorAccountIds(this);
+      const vendorAccountIds   = resolveVendorAccountIds(this);
       const supportTierTagKeys = getSupportTierTagKeys();
 
       // Support roles: the hop role plus the tier roles, with static trust scoped by hop role tags.

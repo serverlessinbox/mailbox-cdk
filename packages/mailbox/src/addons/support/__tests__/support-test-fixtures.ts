@@ -1,16 +1,17 @@
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import type { Template } from 'aws-cdk-lib/assertions';
-import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import type { Template }                                from 'aws-cdk-lib/assertions';
 import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { AdminApiAddonContext } from '../../../api/addons';
-import type { IIdentityProvisioner } from '../../../lambdas/identity-provisioner';
-import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../../data/data-tables';
+import { HttpApi }                                      from 'aws-cdk-lib/aws-apigatewayv2';
+import { Table, AttributeType }                         from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda                                      from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                         from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+
+import type { AdminApiAddonContext }                    from '../../../api/addons';
+import { DataTable }                                    from '../../../data/data-tables';
+import { AuditEventsQueue }                             from '../../../features/audit-writing/audit-events-queue';
+import type { IIdentityProvisioner }                    from '../../../lambdas/identity-provisioner';
 
 /** A resource of a synthesized template, as `Template.findResources` returns it. */
 export type SynthesizedResource = ReturnType<Template['findResources']>[string];

@@ -1,14 +1,14 @@
-import { Aws } from 'aws-cdk-lib';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import {
   DeployerWorkerLambda,
   StackIdentity,
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { RootStack }          from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Aws }                     from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
 export interface MailboxCognitoDataDeployerWorkerProps {
   readonly artifactResolver: IArtifactResolver;

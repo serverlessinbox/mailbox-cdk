@@ -1,8 +1,9 @@
-import { Construct } from 'constructs';
-import { Table } from 'aws-cdk-lib/aws-dynamodb';
-import { IBucket, Bucket } from 'aws-cdk-lib/aws-s3';
-import { DataTable, IDataTable } from './data-tables';
+import { Table }                         from 'aws-cdk-lib/aws-dynamodb';
+import { IBucket, Bucket }               from 'aws-cdk-lib/aws-s3';
+import { Construct }                     from 'constructs';
+
 import { DataBlobStore, IDataBlobStore } from './data-blob-store';
+import { DataTable, IDataTable }         from './data-tables';
 
 /**
  * Keys identifying each of the data sub-stack's DynamoDB tables. Drives the mapped type below so

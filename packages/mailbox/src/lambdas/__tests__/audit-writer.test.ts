@@ -7,17 +7,18 @@
  * queue it owns the wiring for (grant-concept Phase 2A).
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { SqsActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AuditWriterLambda } from '../audit-writer';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../data/data-tables';
+import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { SqsActions }                           from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+
+import { DataTable }                            from '../../data/data-tables';
+import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
+import { AuditWriterLambda }                    from '../audit-writer';
 
 describe('AuditWriterLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -35,7 +36,7 @@ describe('AuditWriterLambda event-source wiring', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
+    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -44,7 +45,7 @@ describe('AuditWriterLambda event-source wiring', () => {
     const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
+    auditEventsQueue    = new AuditEventsQueue(stack, 'audit-events-queue');
 
     new AuditWriterLambda(stack, 'audit-writer', {
       auditLogTable,

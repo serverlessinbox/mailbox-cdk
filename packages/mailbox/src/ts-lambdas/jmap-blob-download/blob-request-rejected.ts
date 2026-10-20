@@ -9,7 +9,7 @@ export class BlobRequestRejected extends ExpectedFailure {
 
   constructor(status: number, answer: string) {
     super(answer);
-    this.name = 'BlobRequestRejected';
+    this.name   = 'BlobRequestRejected';
     this.status = status;
     Object.setPrototypeOf(this, BlobRequestRejected.prototype);
   }

@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import * as path from 'node:path';
-import type { JsonObject } from './json-value';
-import type { StackTemplate } from './stack-template';
-import type { TemplateJsonParser } from './template-json-parser';
+import * as path                      from 'node:path';
+
+import type { JsonObject }            from './json-value';
+import type { StackTemplate }         from './stack-template';
+import type { TemplateJsonParser }    from './template-json-parser';
 
 const LABEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

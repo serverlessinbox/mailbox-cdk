@@ -9,20 +9,21 @@
  * grants is pinned to the scope it is meant to have.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { HostedZone } from 'aws-cdk-lib/aws-route53';
-import { ReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
+import { ArtifactZone, PinnedArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
+import { statementsForAction }                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { BootstrapLambda } from '../bootstrap';
-import type { BootstrapLambdaProps } from '../bootstrap';
-import { AuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
-import { DataTable } from '../../data/data-tables';
+import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                                                      from 'aws-cdk-lib/aws-dynamodb';
+import { HostedZone }                                                                from 'aws-cdk-lib/aws-route53';
+import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
+import * as cdk                                                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                             from 'aws-cdk-lib';
+
+import { DataTable }                                                                 from '../../data/data-tables';
+import { AuthKeyStoreTable }                                                         from '../../features/auth-key-store/auth-key-store-table';
+import { BootstrapLambda }                                                           from '../bootstrap';
+import type { BootstrapLambdaProps }                                                 from '../bootstrap';
 
 describe('BootstrapLambda', () => {
   let stack: cdk.Stack;
@@ -40,17 +41,17 @@ describe('BootstrapLambda', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
-    configTable = new DataTable(new Table(stack, 'config-table', {
+    configTable       = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
-    sesRuleSet = new ReceiptRuleSet(stack, 'ses-rule-set', {});
+    sesRuleSet        = new ReceiptRuleSet(stack, 'ses-rule-set', {});
   });
 
   function synthBootstrap(overrides: Partial<BootstrapLambdaProps> = {}): Template {
@@ -179,7 +180,7 @@ describe('BootstrapLambda', () => {
 
     it('grants record management on the hosted zone when one is given', () => {
       const hostedZone = HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0123456789', zoneName: 'example.com' });
-      const template = synthBootstrap({ hostedZone });
+      const template   = synthBootstrap({ hostedZone });
 
       hasStatement(template, {
         Action: ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
@@ -214,7 +215,7 @@ describe('BootstrapLambda', () => {
 
     it('scopes ses:TagResource to the domain identity with one statement for a request carrying the root stack id and one for a request carrying only its name', () => {
       const template = synthBootstrap();
-      const tagKeys = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
+      const tagKeys  = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
 
       hasStatement(template, {
         Action: 'ses:TagResource',

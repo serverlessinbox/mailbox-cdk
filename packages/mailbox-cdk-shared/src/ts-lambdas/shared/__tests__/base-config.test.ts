@@ -5,7 +5,7 @@
  */
 
 import { loadBaseConfig, loadLogLevel } from '../base-config';
-import { tryLoad } from '../env';
+import { tryLoad }                      from '../env';
 
 describe('base config', () => {
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('base config', () => {
 
   describe('loadBaseConfig', () => {
     it('loads both variables when set', () => {
-      process.env.LOG_LEVEL = 'info';
+      process.env.LOG_LEVEL    = 'info';
       process.env.SERVICE_NAME = 'test-service';
 
       expect(tryLoad(loadBaseConfig)).toEqual({

@@ -10,23 +10,24 @@
  * wrong output grants the mailbox access to the wrong resource.
  */
 
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { MailboxDataDeployer } from '../mailbox-data-deployer';
-import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
-import type { TableRole } from '../../ts-lambdas/data-override-resolver/resource-properties';
 import { renderWithTokens, resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                                    from 'aws-cdk-lib/assertions';
+import * as iam                                               from 'aws-cdk-lib/aws-iam';
+
 import {
   TEST_ACCOUNT,
   TEST_ARTIFACT_VERSION,
   TEST_REGION,
   newDeployerTestStack,
 } from '../../__tests__/deployer-test-helpers';
+import type { TableRole }                from '../../ts-lambdas/data-override-resolver/resource-properties';
+import { MailboxDataDeployer }           from '../mailbox-data-deployer';
+import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
 
-const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxDataDeployer';
-const RESOLVER_RESOURCE_TYPE = 'Custom::MailboxDataOverrideResolver';
-const STACK_NAME_REF = { Ref: 'AWS::StackName' };
-const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const DEPLOYER_RESOURCE_TYPE            = 'Custom::MailboxDataDeployer';
+const RESOLVER_RESOURCE_TYPE            = 'Custom::MailboxDataOverrideResolver';
+const STACK_NAME_REF                    = { Ref: 'AWS::StackName' };
+const STACK_GUID                        = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 interface SynthesizedDeployer {
@@ -52,7 +53,7 @@ function synthDeployer(props: Partial<MailboxDataDeployerProps> = {}): Synthesiz
 
 function synthGrantedDeployer(grant: (deployer: MailboxDataDeployer, grantee: iam.IGrantable) => void): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const deployer = new MailboxDataDeployer(stack, 'data-deployer', {
+  const deployer                    = new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
     nameBase: 'test-name-base',
     deployerType: 'cdk',

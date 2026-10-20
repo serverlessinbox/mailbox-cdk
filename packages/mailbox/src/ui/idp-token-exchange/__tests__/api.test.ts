@@ -8,15 +8,16 @@
  * function itself, the function can be created or updated before that work has completed.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { IdpTokenExchangeApi } from '../api';
+import { ArtifactZone, PinnedArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as dynamodb                                     from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
+
 import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../../auth/types';
-import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../../data/data-tables';
+import { DataTable }                                     from '../../../data/data-tables';
+import { AuditEventsQueue }                              from '../../../features/audit-writing/audit-events-queue';
+import { IdpTokenExchangeApi }                           from '../api';
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };

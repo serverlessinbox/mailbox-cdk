@@ -1,5 +1,5 @@
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import * as t from 'typanion';
+import * as t                                     from 'typanion';
 
 const hasCfnTriggerFields = t.isPartial({
   RequestType: t.isString(),

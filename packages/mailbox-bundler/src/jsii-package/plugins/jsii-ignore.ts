@@ -1,6 +1,6 @@
-import { createRequire } from 'module';
-import { dirname } from 'path';
 import type { Plugin, PluginBuild } from 'esbuild';
+import { createRequire }            from 'module';
+import { dirname }                  from 'path';
 
 /**
  * Marks every `import` of a jsii package external, so the bundle keeps referring to the one

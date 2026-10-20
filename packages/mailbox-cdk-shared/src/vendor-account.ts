@@ -1,4 +1,5 @@
-import { Construct } from 'constructs';
+import { Construct }                      from 'constructs';
+
 import { VENDOR_ACCOUNT_IDS_CONTEXT_KEY } from './context-keys';
 
 /**

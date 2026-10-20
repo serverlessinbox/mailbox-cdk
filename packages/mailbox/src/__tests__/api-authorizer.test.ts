@@ -10,26 +10,28 @@
  * - An AWS::ApiGatewayV2::Authorizer resource MUST be created for each API
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { AdminApi } from '../api/admin/admin-api';
-import { JMapApi } from '../api/jmap/jmap-api';
-import { McpApi } from '../api/mcp/mcp-api';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
-import { AuditEventsQueue, type IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import { ArtifactZone, PinnedArtifactResolver }       from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                                   from 'aws-cdk-lib/assertions';
+import * as acm                                       from 'aws-cdk-lib/aws-certificatemanager';
+import * as dynamodb                                  from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda                                    from 'aws-cdk-lib/aws-lambda';
+import * as s3                                        from 'aws-cdk-lib/aws-s3';
+import * as cdk                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }              from 'aws-cdk-lib';
+import { Construct }                                  from 'constructs';
+
+import { AdminApi }                                   from '../api/admin/admin-api';
+import { JMapApi }                                    from '../api/jmap/jmap-api';
+import { McpApi }                                     from '../api/mcp/mcp-api';
+import { Permission }                                 from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }                  from '../auth/types';
+import { DataBlobStore, type IDataBlobStore }         from '../data/data-blob-store';
+import { DataTable, type IDataTable }                 from '../data/data-tables';
 import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
+import { AuditEventsQueue, type IAuditEventsQueue }   from '../features/audit-writing/audit-events-queue';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
-import { DataTable, type IDataTable } from '../data/data-tables';
-import { DataBlobStore, type IDataBlobStore } from '../data/data-blob-store';
+
 import {
   CloudFormationResource,
   isResourceOfType,
@@ -80,13 +82,13 @@ function findAuthorizerResources(
   apiPattern?: string,
 ): Array<[string, CloudFormationResource]> {
   const results: Array<[string, CloudFormationResource]> = [];
-  if (!resources) return results;
+  if (!resources) {return results;}
   for (const [logicalId, resource] of Object.entries(resources)) {
-    if (!isResourceOfType(resource, 'AWS::ApiGatewayV2::Authorizer')) continue;
+    if (!isResourceOfType(resource, 'AWS::ApiGatewayV2::Authorizer')) {continue;}
     if (apiPattern) {
       // Remove hyphens from pattern to match CDK's logical ID generation
       const normalizedPattern = apiPattern.replace(/-/g, '');
-      if (!logicalId.toLowerCase().includes(normalizedPattern.toLowerCase())) continue;
+      if (!logicalId.toLowerCase().includes(normalizedPattern.toLowerCase())) {continue;}
     }
     results.push([logicalId, resource]);
   }
@@ -101,13 +103,13 @@ function findRouteResources(
   apiPattern?: string,
 ): Array<[string, CloudFormationResource]> {
   const routes: Array<[string, CloudFormationResource]> = [];
-  if (!resources) return routes;
+  if (!resources) {return routes;}
   for (const [logicalId, resource] of Object.entries(resources)) {
-    if (!isResourceOfType(resource, 'AWS::ApiGatewayV2::Route')) continue;
+    if (!isResourceOfType(resource, 'AWS::ApiGatewayV2::Route')) {continue;}
     if (apiPattern) {
       // Remove hyphens from pattern to match CDK's logical ID generation
       const normalizedPattern = apiPattern.replace(/-/g, '');
-      if (!logicalId.toLowerCase().includes(normalizedPattern.toLowerCase())) continue;
+      if (!logicalId.toLowerCase().includes(normalizedPattern.toLowerCase())) {continue;}
     }
     routes.push([logicalId, resource]);
   }
@@ -132,7 +134,7 @@ describe('API Authorizer Wiring', () => {
   let certificate: acm.ICertificate;
 
   beforeEach(() => {
-    app = new App();
+    app   = new App();
     stack = new cdk.Stack(app, 'TestStack', {
       env: { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -143,7 +145,7 @@ describe('API Authorizer Wiring', () => {
       'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
@@ -177,9 +179,9 @@ describe('API Authorizer Wiring', () => {
 
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    blobStore = new DataBlobStore(new s3.Bucket(stack, 'blob-store'));
+    blobStore            = new DataBlobStore(new s3.Bucket(stack, 'blob-store'));
     emailSubmissionQueue = new EmailSendingQueue(stack, 'email-submission-queue');
-    auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
+    auditEventsQueue     = new AuditEventsQueue(stack, 'audit-events-queue');
 
     // Identity provisioner function - use a minimal Node.js function for testing
     identityProvisionerFunction = new lambda.Function(stack, 'identity-provisioner', {
@@ -219,14 +221,14 @@ describe('API Authorizer Wiring', () => {
         stackIdentityTagKey: 'serverless-inbox:root-stack',
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // Verify an Authorizer resource exists
       const authorizers = findAuthorizerResources(resources, 'admin-api');
       expect(authorizers.length).toBeGreaterThan(0);
-      if (authorizers.length === 0) throw new Error('No authorizers found for AdminApi');
+      if (authorizers.length === 0) {throw new Error('No authorizers found for AdminApi');}
       const [, authorizerResource] = authorizers[0];
       expect(isResourceOfType(authorizerResource, 'AWS::ApiGatewayV2::Authorizer')).toBe(true);
 
@@ -235,7 +237,7 @@ describe('API Authorizer Wiring', () => {
       expect(routes.length).toBeGreaterThan(0);
 
       for (const [, route] of routes) {
-        const props = route.Properties as Record<string, unknown> | undefined;
+        const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
         expect(authorizerId).toBeDefined();
         expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
@@ -265,9 +267,9 @@ describe('API Authorizer Wiring', () => {
         stackIdentityTagKey: 'serverless-inbox:root-stack',
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // Verify all routes have an AuthorizerId (this would fail if authorizer prop is removed)
       const routes = findRouteResources(resources, 'admin-api');
@@ -327,9 +329,9 @@ describe('API Authorizer Wiring', () => {
         vendorAccountIds: ['123456789012'],
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // Verify an Authorizer resource exists
       const authorizers = findAuthorizerResources(resources, 'jmap-api');
@@ -342,7 +344,7 @@ describe('API Authorizer Wiring', () => {
       expect(routes.length).toBeGreaterThan(0);
 
       for (const [, route] of routes) {
-        const props = route.Properties as Record<string, unknown> | undefined;
+        const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
         expect(authorizerId).toBeDefined();
         expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
@@ -366,9 +368,9 @@ describe('API Authorizer Wiring', () => {
         vendorAccountIds: ['123456789012'],
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // Find routes for JMapApi
       const routes = findRouteResources(resources, 'jmap-api');
@@ -393,7 +395,7 @@ describe('API Authorizer Wiring', () => {
 
       // First create a JMAP API to get its authorizer lambda
       const jmapApiGroup = new Construct(stack, 'jmap-api-group');
-      const jmapApi = new JMapApi(jmapApiGroup, 'jmap-api', {
+      const jmapApi      = new JMapApi(jmapApiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -421,9 +423,9 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // Verify an Authorizer resource exists for MCP API
       const authorizers = findAuthorizerResources(resources, 'mcp-api');
@@ -436,7 +438,7 @@ describe('API Authorizer Wiring', () => {
       expect(routes.length).toBeGreaterThan(0);
 
       for (const [, route] of routes) {
-        const props = route.Properties as Record<string, unknown> | undefined;
+        const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
         expect(authorizerId).toBeDefined();
         expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
@@ -447,7 +449,7 @@ describe('API Authorizer Wiring', () => {
       const apiGroup = new Construct(stack, 'api-group');
 
       const jmapApiGroup = new Construct(stack, 'jmap-api-group');
-      const jmapApi = new JMapApi(jmapApiGroup, 'jmap-api', {
+      const jmapApi      = new JMapApi(jmapApiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -474,9 +476,9 @@ describe('API Authorizer Wiring', () => {
         artifactResolver,
       });
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) throw new Error('No resources in template');
+      if (!resources) {throw new Error('No resources in template');}
 
       // MCP API has one proxy route: /{proxy+}
       const routes = findRouteResources(resources, 'mcp-api');

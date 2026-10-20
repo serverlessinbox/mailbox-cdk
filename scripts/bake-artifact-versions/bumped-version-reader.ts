@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
-import * as t from 'typanion';
+import * as path    from 'node:path';
+import * as t       from 'typanion';
 
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 
@@ -18,7 +18,7 @@ type PackageJson = t.InferType<typeof isPackageJson>;
 export class BumpedVersionReader {
   public async readBumpedVersion(manifestDirectory: string): Promise<string> {
     const manifestPath = path.join(manifestDirectory, 'package.json');
-    const packageJson = await this.readPackageJson(manifestPath);
+    const packageJson  = await this.readPackageJson(manifestPath);
     return packageJson.version;
   }
 

@@ -1,8 +1,8 @@
-import { Construct } from 'constructs';
-import { TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
-import type * as kms from 'aws-cdk-lib/aws-kms';
 import { isDevelopmentMode } from '@serverlessinbox/mailbox-cdk-shared';
-import { StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
+import { StackNamedTable }   from '@serverlessinbox/mailbox-cdk-shared';
+import { TableEncryption }   from 'aws-cdk-lib/aws-dynamodb';
+import type * as kms         from 'aws-cdk-lib/aws-kms';
+import { Construct }         from 'constructs';
 
 /**
  * Encryption configuration for DynamoDB tables.

@@ -7,13 +7,15 @@
  */
 
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { mockClient } from 'aws-sdk-client-mock';
-import * as crypto from 'crypto';
-import { JwtVerifier } from '../jwt-verifier';
-import { AUTH_KEY_STORE_TABLE } from './jmap-blob-download-helpers';
+import { mockClient }                     from 'aws-sdk-client-mock';
+import * as crypto                        from 'crypto';
+
+import { JwtVerifier }                    from '../jwt-verifier';
+
+import { AUTH_KEY_STORE_TABLE }           from './jmap-blob-download-helpers';
 
 const ISSUER = 'https://idp.example.com/pool';
-const KID = 'kid-1';
+const KID    = 'kid-1';
 
 interface SigningKey {
   readonly privateKey: crypto.KeyObject;
@@ -30,9 +32,9 @@ function ecSigningKey(namedCurve: 'P-256' | 'P-384'): SigningKey {
   return { privateKey, jwk: publicKey.export({ format: 'jwk' }) };
 }
 
-const RSA_KEY = rsaSigningKey();
-const ES256_KEY = ecSigningKey('P-256');
-const ES384_KEY = ecSigningKey('P-384');
+const RSA_KEY       = rsaSigningKey();
+const ES256_KEY     = ecSigningKey('P-256');
+const ES384_KEY     = ecSigningKey('P-384');
 const OTHER_RSA_KEY = rsaSigningKey();
 
 const SIGNATURE_DIGEST: Record<string, string> = {
@@ -51,12 +53,12 @@ function nowSeconds(): number {
 }
 
 function jwtOf(options: JwtOptions = {}): string {
-  const alg = options.alg ?? 'RS256';
-  const header = { alg, kid: KID, ...options.header };
-  const payload = { iss: ISSUER, sub: 'user-1', client_id: 'client-1', exp: nowSeconds() + 3600, ...options.payload };
+  const alg          = options.alg ?? 'RS256';
+  const header       = { alg, kid: KID, ...options.header };
+  const payload      = { iss: ISSUER, sub: 'user-1', client_id: 'client-1', exp: nowSeconds() + 3600, ...options.payload };
   const signingInput = `${Buffer.from(JSON.stringify(header)).toString('base64url')}.${Buffer.from(JSON.stringify(payload)).toString('base64url')}`;
-  const signWith = options.signWith ?? RSA_KEY;
-  const signature = alg.startsWith('ES')
+  const signWith     = options.signWith ?? RSA_KEY;
+  const signature    = alg.startsWith('ES')
     ? crypto.sign(SIGNATURE_DIGEST[alg], Buffer.from(signingInput), { key: signWith.privateKey, dsaEncoding: 'ieee-p1363' })
     : alg === 'PS256'
       ? crypto.sign('sha256', Buffer.from(signingInput), { key: signWith.privateKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: 32 })
@@ -154,7 +156,7 @@ describe('JwtVerifier', () => {
 
     it('rejects a token whose payload was changed after signing', async () => {
       const [header, , signature] = jwtOf().split('.');
-      const forgedPayload = Buffer.from(JSON.stringify({ iss: ISSUER, sub: 'admin', exp: nowSeconds() + 3600 })).toString('base64url');
+      const forgedPayload         = Buffer.from(JSON.stringify({ iss: ISSUER, sub: 'admin', exp: nowSeconds() + 3600 })).toString('base64url');
 
       await expect(verify(`${header}.${forgedPayload}.${signature}`)).resolves.toBeNull();
     });
@@ -214,7 +216,7 @@ describe('JwtVerifier', () => {
 
     it('rejects a token with the alg none', async () => {
       const [, payload] = jwtOf().split('.');
-      const header = Buffer.from(JSON.stringify({ alg: 'none', kid: KID })).toString('base64url');
+      const header      = Buffer.from(JSON.stringify({ alg: 'none', kid: KID })).toString('base64url');
 
       await expect(verify(`${header}.${payload}.`, ['none'])).resolves.toBeNull();
     });

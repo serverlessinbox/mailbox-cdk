@@ -4,17 +4,18 @@
  * props reach that queue, and the WebSocket capability reaches the Lambda. A break here leaves
  * submissions enqueued that nothing sends, or a sender that never publishes WebSocket updates.
  */
-import * as cdk from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                  from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                         from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                    from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                                  from 'aws-cdk-lib/aws-s3';
+import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { EmailSending, type EmailSendingProps } from '../email-sending';
-import { DataTable } from '../../../data/data-tables';
-import { DataBlobStore } from '../../../data/data-blob-store';
-import type { IWebSocketBroadcastPublisher } from '../../../api/websocket/websocket';
+
+import type { IWebSocketBroadcastPublisher }       from '../../../api/websocket/websocket';
+import { DataBlobStore }                           from '../../../data/data-blob-store';
+import { DataTable }                               from '../../../data/data-tables';
+import { EmailSending, type EmailSendingProps }    from '../email-sending';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
@@ -29,7 +30,7 @@ function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProp
     location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-  const dataTable = (id: string) => new DataTable(new Table(stack, id, {
+  const dataTable                           = (id: string) => new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
 
@@ -47,7 +48,7 @@ function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProp
 describe('EmailSending', () => {
   it('feeds the Lambda from the queue it exposes as submissionQueue', () => {
     const stack = createStack();
-    const sut = new EmailSending(stack, 'email-sending', createProps(stack));
+    const sut   = new EmailSending(stack, 'email-sending', createProps(stack));
 
     const template = Template.fromStack(stack);
 
@@ -69,8 +70,8 @@ describe('EmailSending', () => {
   });
 
   it('enableWebSocketPublishing sets the broadcaster function name on the sender Lambda', () => {
-    const stack = createStack();
-    const sut = new EmailSending(stack, 'email-sending', createProps(stack));
+    const stack                                     = createStack();
+    const sut                                       = new EmailSending(stack, 'email-sending', createProps(stack));
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
       grantInvoke: () => undefined,

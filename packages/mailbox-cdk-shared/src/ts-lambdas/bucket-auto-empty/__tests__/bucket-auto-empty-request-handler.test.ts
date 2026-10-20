@@ -5,11 +5,13 @@
  * DELETE_FAILED over a bucket that needs nothing.
  */
 
-import { NoSuchBucket, S3Client } from '@aws-sdk/client-s3';
+import { NoSuchBucket, S3Client }        from '@aws-sdk/client-s3';
+
+import { ExpectedFailure }               from '../../shared/expected-failure';
+import { LoggerBuffer }                  from '../../shared/logger-buffer';
 import { BucketAutoEmptyRequestHandler } from '../bucket-auto-empty-request-handler';
-import { BucketEmptier } from '../bucket-emptier';
-import { ExpectedFailure } from '../../shared/expected-failure';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { BucketEmptier }                 from '../bucket-emptier';
+
 import {
   PHYSICAL_RESOURCE_ID,
   fakeCreateEvent,
@@ -18,9 +20,9 @@ import {
 } from './bucket-auto-empty-helpers';
 
 describe('BucketAutoEmptyRequestHandler', () => {
-  const bucketEmptier = new BucketEmptier(new S3Client({}));
+  const bucketEmptier  = new BucketEmptier(new S3Client({}));
   const requestHandler = new BucketAutoEmptyRequestHandler(bucketEmptier, new LoggerBuffer('bucket-auto-empty', 'error'));
-  const deadline = { getRemainingTimeInMillis: () => 900_000 };
+  const deadline       = { getRemainingTimeInMillis: () => 900_000 };
   let emptyBucket: jest.SpiedFunction<BucketEmptier['empty']>;
 
   beforeEach(() => {

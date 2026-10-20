@@ -13,9 +13,11 @@
 
 process.env['SERVICE_NAME'] = 'data-override-resolver';
 
-import { ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { handler } from '../handler';
-import { TableOverrideResolver, type ResolvedTableArns } from '../table-override-resolver';
+import { ExpectedFailure, LoggerBuffer }                                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import { handler }                                                                                   from '../handler';
+import { TableOverrideResolver, type ResolvedTableArns }                                             from '../table-override-resolver';
+
 import { captureCfnResponse, createEvent, deleteEvent, lambdaContext, PROPERTIES_WITHOUT_OVERRIDES } from './data-override-resolver-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
@@ -36,7 +38,7 @@ describe('handler with a valid config', () => {
 
   beforeEach(() => {
     resolve = jest.spyOn(TableOverrideResolver.prototype, 'resolve').mockResolvedValue(RESOLVED);
-    flush = jest.spyOn(LoggerBuffer.prototype, 'flush');
+    flush   = jest.spyOn(LoggerBuffer.prototype, 'flush');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);

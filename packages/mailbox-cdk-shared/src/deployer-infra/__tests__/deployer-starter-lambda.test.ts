@@ -6,17 +6,19 @@
  * resource cannot start its workflow and CloudFormation waits out the service timeout.
  */
 
-import { Template } from 'aws-cdk-lib/assertions';
-import { DeployerStarterLambda } from '../deployer-starter-lambda';
-import { PollingCfnDeployerWorkflow } from '../polling-cfn-deployer-workflow';
-import { statementsForAction } from '../../cdk-test-support';
+import { Template }                               from 'aws-cdk-lib/assertions';
+
+import { statementsForAction }                    from '../../cdk-test-support';
+import { DeployerStarterLambda }                  from '../deployer-starter-lambda';
+import { PollingCfnDeployerWorkflow }             from '../polling-cfn-deployer-workflow';
+
 import { newDeployerTestStack, newWorkerStandIn } from './deployer-infra-helpers';
 
 const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:us-east-1:123456789012:stack/deployed-edge/*';
 
 function synthStarter() {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const workflow = new PollingCfnDeployerWorkflow(stack, 'workflow', {
+  const workflow                    = new PollingCfnDeployerWorkflow(stack, 'workflow', {
     handler: newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });

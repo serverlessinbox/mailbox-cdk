@@ -10,19 +10,20 @@
  * stays green in tsc and synth and only shows up on a live distribution.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { MailboxUi } from '../mailbox-ui';
-import type { MailboxUiProps } from '../mailbox-ui';
+import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys }                       from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                              from 'aws-cdk-lib/assertions';
+import * as acm                                         from 'aws-cdk-lib/aws-certificatemanager';
+import * as dynamodb                                    from 'aws-cdk-lib/aws-dynamodb';
+import * as iam                                         from 'aws-cdk-lib/aws-iam';
+import * as cdk                                         from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+
 import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI } from '../../auth/types';
-import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { DataTable } from '../../data/data-tables';
+import { DataTable }                                    from '../../data/data-tables';
+import { AuditEventsQueue }                             from '../../features/audit-writing/audit-events-queue';
+import { MailboxUi }                                    from '../mailbox-ui';
+import type { MailboxUiProps }                          from '../mailbox-ui';
 
 describe('MailboxUi', () => {
   let stack: cdk.Stack;
@@ -58,7 +59,7 @@ describe('MailboxUi', () => {
   }
 
   function distributionTags(): Record<string, string> {
-    const distribution = Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
+    const distribution                                = Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
     const tags: Array<{ Key: string; Value: string }> = distribution.Properties.Tags ?? [];
     return Object.fromEntries(tags.map((tag) => [tag.Key, tag.Value]));
   }
@@ -104,7 +105,7 @@ describe('MailboxUi', () => {
     it('serves /config/* uncached and read-only', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const behaviors = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
+      const behaviors      = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
       const configBehavior = behaviors.find((behavior) => behavior.PathPattern === '/config/*');
       expect(configBehavior).toMatchObject({
         // CloudFront's managed CachingDisabled policy.
@@ -116,7 +117,7 @@ describe('MailboxUi', () => {
     it('routes /auth/* over HTTPS only, uncached, with all methods and the forwarded-host function', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const behaviors = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
+      const behaviors    = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
       const authBehavior = behaviors.find((behavior) => behavior.PathPattern === '/auth/*');
       expect(authBehavior).toMatchObject({
         ViewerProtocolPolicy: 'https-only',
@@ -131,7 +132,7 @@ describe('MailboxUi', () => {
     it('lets CloudFront read objects and nothing else', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const template = Template.fromStack(stack);
+      const template  = Template.fromStack(stack);
       const bucketArn = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
       template.hasResourceProperties('AWS::S3::BucketPolicy', {
         PolicyDocument: {
@@ -180,7 +181,7 @@ describe('MailboxUi', () => {
     it('invalidates its own distribution', () => {
       new MailboxUi(stack, 'admin-ui', propsWith({ uiConfig: { apiUrl: 'https://api.example.com' } }));
 
-      const template = Template.fromStack(stack);
+      const template       = Template.fromStack(stack);
       const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
       template.hasResourceProperties('Custom::ContentInvalidation', { distributionId: { Ref: distributionId } });
     });
@@ -209,16 +210,16 @@ describe('MailboxUi', () => {
 
   describe('grantContentDeploy', () => {
     it('allows write and delete on content/ and config/ only, and listing of those prefixes only', () => {
-      const sut = new MailboxUi(stack, 'admin-ui', propsWith());
+      const sut  = new MailboxUi(stack, 'admin-ui', propsWith());
       const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
       sut.grantContentDeploy(role);
 
-      const template = Template.fromStack(stack);
-      const bucketArn = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
-      const objectsUnder = (prefix: string): unknown => ({ 'Fn::Join': ['', [bucketArn, `/${prefix}/*`]] });
+      const template       = Template.fromStack(stack);
+      const bucketArn      = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
+      const objectsUnder   = (prefix: string): unknown => ({ 'Fn::Join': ['', [bucketArn, `/${prefix}/*`]] });
       const writeAndDelete = ['s3:PutObject', 's3:DeleteObject'];
-      const listOnly = (prefix: string): unknown => Match.objectEquals({
+      const listOnly       = (prefix: string): unknown => Match.objectEquals({
         Action: 's3:ListBucket',
         Effect: 'Allow',
         Resource: bucketArn,

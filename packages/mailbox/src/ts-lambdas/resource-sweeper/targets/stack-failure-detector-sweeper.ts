@@ -4,12 +4,13 @@ import {
   RemoveTargetsCommand,
   DeleteRuleCommand,
 } from '@aws-sdk/client-eventbridge';
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
 import { IAMClient, ListRoleTagsCommand, DeleteRolePolicyCommand, DeleteRoleCommand } from '@aws-sdk/client-iam';
-import { CaughtError, parseArn, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { RootStackMembership } from '../root-stack-membership';
-import { TargetResults } from '../target-results';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }                    from '@aws-sdk/client-lambda';
+import { CaughtError, parseArn, type LoggerBuffer }                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper }         from '../removal';
+import { RootStackMembership }                                                        from '../root-stack-membership';
+import { TargetResults }                                                              from '../target-results';
 
 /**
  * Sweeps the stack-failure detector's rule, function and role as ONE removal, sequentially: rule,

@@ -6,16 +6,17 @@
  * that is never ours to delete.
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
-import { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { EdgeFunctionRemovalInput } from '../../removal';
-import { RootStackMembership } from '../../root-stack-membership';
-import { EdgeFunctionSweeper } from '../edge-function-sweeper';
+import { LoggerBuffer }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                              from 'aws-sdk-client-mock';
 
-const lambdaMock = mockClient(LambdaClient);
+import type { EdgeFunctionRemovalInput }                           from '../../removal';
+import { RootStackMembership }                                     from '../../root-stack-membership';
+import { EdgeFunctionSweeper }                                     from '../edge-function-sweeper';
+
+const lambdaMock      = mockClient(LambdaClient);
 const ROOT_STACK_NAME = 'test-stack';
-const EDGE_FN_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download';
+const EDGE_FN_ARN     = 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download';
 
 const INPUT: EdgeFunctionRemovalInput = { edgeFnArn: EDGE_FN_ARN, rootStackName: ROOT_STACK_NAME, rootStackId: 'guid-1' };
 

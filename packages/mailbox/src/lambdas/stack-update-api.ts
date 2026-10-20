@@ -1,10 +1,11 @@
-import { Duration } from 'aws-cdk-lib';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
-import { Construct } from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+import { Duration }                from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
+
+import type { IDataTable }         from '../data/data-tables';
+import type { IAuditEventsQueue }  from '../features/audit-writing/audit-events-queue';
 
 export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;

@@ -152,15 +152,15 @@ export class MailboxDomains implements IMailboxDomainNames {
 
     const { subdomainOverrides } = props;
 
-    this.ws = `${subdomainOverrides?.ws ?? 'ws'}.${base}`;
-    this.api = `${subdomainOverrides?.api ?? 'api'}.${base}`;
-    this.jmap = `${subdomainOverrides?.jmap ?? 'jmap'}.${base}`;
+    this.ws      = `${subdomainOverrides?.ws ?? 'ws'}.${base}`;
+    this.api     = `${subdomainOverrides?.api ?? 'api'}.${base}`;
+    this.jmap    = `${subdomainOverrides?.jmap ?? 'jmap'}.${base}`;
     this.webmail = `${subdomainOverrides?.webmail ?? 'webmail'}.${base}`;
-    this.admin = `${subdomainOverrides?.admin ?? 'admin'}.${base}`;
+    this.admin   = `${subdomainOverrides?.admin ?? 'admin'}.${base}`;
     // cdn, auth, mcp remain hardcoded — not exposed in MailboxOverrides.subdomains
-    this.cdn = `cdn.${base}`;
+    this.cdn  = `cdn.${base}`;
     this.auth = `auth.${base}`;
-    this.mcp = `mcp.${base}`;
+    this.mcp  = `mcp.${base}`;
 
     // Build relative record names (subdomain label + optional namespace, without the zone).
     // These are safe to pass as Route53 recordName — CDK will append the zone automatically.

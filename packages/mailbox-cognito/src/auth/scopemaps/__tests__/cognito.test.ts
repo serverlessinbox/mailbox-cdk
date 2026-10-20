@@ -4,7 +4,8 @@
  * time notices, so these tests pin that the tables stay inverse.
  */
 
-import { Permission } from '@serverlessinbox/mailbox';
+import { Permission }                                                        from '@serverlessinbox/mailbox';
+
 import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope } from '../cognito';
 
 describe('Cognito scope tables', () => {

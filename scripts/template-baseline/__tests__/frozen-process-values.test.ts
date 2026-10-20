@@ -19,7 +19,7 @@ describe('FrozenProcessValues', () => {
   });
 
   it('restores Date.now and Math.random after the work, including when it throws', () => {
-    const originalNow = Date.now;
+    const originalNow    = Date.now;
     const originalRandom = Math.random;
 
     expect(() => frozen.run(() => { throw new Error('boom'); })).toThrow('boom');

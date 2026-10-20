@@ -6,11 +6,12 @@
  */
 
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import { SweepTargetPlanner } from '../sweep-target-planner';
 
-const CERT_ARN_OLD = 'arn:aws:acm:us-west-2:123456789012:certificate/old-cert';
-const CERT_ARN_NEW = 'arn:aws:acm:us-west-2:123456789012:certificate/new-cert';
-const EDGE_FN_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn';
+import { SweepTargetPlanner }                     from '../sweep-target-planner';
+
+const CERT_ARN_OLD  = 'arn:aws:acm:us-west-2:123456789012:certificate/old-cert';
+const CERT_ARN_NEW  = 'arn:aws:acm:us-west-2:123456789012:certificate/new-cert';
+const EDGE_FN_ARN   = 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn';
 const SERVICE_TOKEN = 'arn:aws:lambda:us-west-2:123456789012:function:starter';
 
 const COMMON = {

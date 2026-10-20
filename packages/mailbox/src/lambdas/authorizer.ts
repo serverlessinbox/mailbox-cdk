@@ -1,11 +1,12 @@
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { IDataTable } from '../data/data-tables';
-import { Duration } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                             from '@serverlessinbox/mailbox-cdk-shared';
+import type { Pipeline }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                             from 'aws-cdk-lib';
+import { Construct }                            from 'constructs';
+
 import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
-import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import type { IDataTable }                      from '../data/data-tables';
+import type { IAuthKeyStoreTable }              from '../features/auth-key-store/auth-key-store-table';
 
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: IAuthKeyStoreTable;

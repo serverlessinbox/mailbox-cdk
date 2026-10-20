@@ -1,10 +1,11 @@
+import type { IArtifactResolver }                                                   from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Aws, Duration } from 'aws-cdk-lib';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
-import type { Granularity } from '../artifacts/resolvers/auto-updater';
+import type { RootStack }                                                           from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                          from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                                                            from 'aws-cdk-lib';
+import { Construct }                                                                from 'constructs';
+
+import type { Granularity }                                                         from '../artifacts/resolvers/auto-updater';
 
 export interface ArtifactUpdaterLambdaProps {
   artifactResolver: IArtifactResolver;

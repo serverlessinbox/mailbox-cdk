@@ -1,9 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { getOrCreateSharedGroup } from './shared-group';
-import { applyServerlessInboxComponentTag } from './serverless-inbox-tags';
-import { StackHelpersLambda } from './stack-helpers-lambda';
+import type { IArtifactResolver }              from '@serverlessinbox/artifact-registry-cdk';
+import * as cdk                                from 'aws-cdk-lib';
+import { Construct }                           from 'constructs';
+
+import { applyServerlessInboxComponentTag }    from './serverless-inbox-tags';
+import { getOrCreateSharedGroup }              from './shared-group';
+import { StackHelpersLambda }                  from './stack-helpers-lambda';
 import type { StackHelpersResourceProperties } from './ts-lambdas/stack-helpers/resource-properties';
 
 /**
@@ -50,9 +51,9 @@ export class StackHelpers extends Construct {
 
   /** One instance per stack, placed under the stack's shared group. */
   static getOrCreate(scope: Construct, artifactResolver: IArtifactResolver): StackHelpers {
-    const stack = cdk.Stack.of(scope);
+    const stack       = cdk.Stack.of(scope);
     const sharedGroup = getOrCreateSharedGroup(stack);
-    const existing = sharedGroup.node.tryFindChild('stack-helpers');
+    const existing    = sharedGroup.node.tryFindChild('stack-helpers');
     if (existing) {
       // cast: the id 'stack-helpers' under the shared group is only created by the line below.
       return existing as StackHelpers;

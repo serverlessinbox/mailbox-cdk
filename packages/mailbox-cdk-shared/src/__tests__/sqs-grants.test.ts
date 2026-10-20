@@ -1,9 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as kms                          from 'aws-cdk-lib/aws-kms';
+import * as sqs                          from 'aws-cdk-lib/aws-sqs';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as kms from 'aws-cdk-lib/aws-kms';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
+
 import { SqsActions, grantQueueActions } from '../sqs-grants';
 
 function createStack(): cdk.Stack {
@@ -24,12 +25,12 @@ describe('grantQueueActions', () => {
   it('send on an unencrypted queue grants exactly sqs:SendMessage on the queue ARN, no KMS', () => {
     const stack = createStack();
     const queue = new sqs.Queue(stack, 'TestQueue');
-    const role = createRole(stack);
+    const role  = createRole(stack);
 
     grantQueueActions(role, queue, SqsActions.send);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -48,12 +49,12 @@ describe('grantQueueActions', () => {
   it('consume on the same queue grants exactly the consume actions, no KMS', () => {
     const stack = createStack();
     const queue = new sqs.Queue(stack, 'TestQueue');
-    const role = createRole(stack);
+    const role  = createRole(stack);
 
     grantQueueActions(role, queue, SqsActions.consume);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -71,15 +72,15 @@ describe('grantQueueActions', () => {
 
   it('send on a customer-managed KMS key queue grants the SQS statement plus the exact send KMS statement', () => {
     const stack = createStack();
-    const key = new kms.Key(stack, 'TestKey');
+    const key   = new kms.Key(stack, 'TestKey');
     const queue = new sqs.Queue(stack, 'TestQueue', { encryptionMasterKey: key });
-    const role = createRole(stack);
+    const role  = createRole(stack);
 
     grantQueueActions(role, queue, SqsActions.send);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
-    const keyId = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
+    const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
@@ -102,15 +103,15 @@ describe('grantQueueActions', () => {
 
   it('consume on a customer-managed KMS key queue grants the SQS statement plus the exact consume KMS statement', () => {
     const stack = createStack();
-    const key = new kms.Key(stack, 'TestKey');
+    const key   = new kms.Key(stack, 'TestKey');
     const queue = new sqs.Queue(stack, 'TestQueue', { encryptionMasterKey: key });
-    const role = createRole(stack);
+    const role  = createRole(stack);
 
     grantQueueActions(role, queue, SqsActions.consume);
 
     const template = Template.fromStack(stack);
-    const queueId = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
-    const keyId = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
+    const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
+    const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),

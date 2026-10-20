@@ -1,11 +1,11 @@
 import type { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { LambdaClient } from '@aws-sdk/client-lambda';
+import type { LambdaClient }     from '@aws-sdk/client-lambda';
 import {
   GetResourcesCommand,
   type ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import type { S3Client } from '@aws-sdk/client-s3';
+import type { S3Client }                                 from '@aws-sdk/client-s3';
 import { ServerlessInboxTagKeys, toRegion, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** Lambda@Edge functions and the CloudFront API live in this region regardless of the deployment region. */
@@ -44,7 +44,7 @@ export class RootStackResources {
 
   /** Every resource of the given types in the region of `tagging` that belong to the root stack. */
   public async find(tagging: ResourceGroupsTaggingAPIClient, resourceTypeFilters: string[]): Promise<ResourceTagMapping[]> {
-    const taggedWithId = await this.listTagged(tagging, ServerlessInboxTagKeys.rootStackId, this.rootStackId, resourceTypeFilters);
+    const taggedWithId   = await this.listTagged(tagging, ServerlessInboxTagKeys.rootStackId, this.rootStackId, resourceTypeFilters);
     const taggedWithName = await this.listTagged(tagging, ServerlessInboxTagKeys.rootStack, this.rootStackName, resourceTypeFilters);
     return [...taggedWithId, ...taggedWithName.filter((mapping) => !this.hasIdTag(mapping))];
   }

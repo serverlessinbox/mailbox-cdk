@@ -1,8 +1,9 @@
-import type { LambdaClient } from '@aws-sdk/client-lambda';
-import { CaughtError, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { LambdaTarget } from './artifact-target';
-import type { SmokeTestVerdict } from './function-smoke-tester';
-import type { LambdaFunctionCode } from './lambda-function-code';
+import type { LambdaClient }                  from '@aws-sdk/client-lambda';
+import { CaughtError, type LoggerBuffer }     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+
+import type { LambdaTarget }                  from './artifact-target';
+import type { SmokeTestVerdict }              from './function-smoke-tester';
+import type { LambdaFunctionCode }            from './lambda-function-code';
 import type { ArtifactLocation, StaleTarget } from './release-artifacts';
 
 /**
@@ -15,7 +16,7 @@ export class LambdaCodeRollback {
 
   constructor(functionCode: LambdaFunctionCode, logger: LoggerBuffer) {
     this.functionCode = functionCode;
-    this.logger = logger;
+    this.logger       = logger;
   }
 
   /**

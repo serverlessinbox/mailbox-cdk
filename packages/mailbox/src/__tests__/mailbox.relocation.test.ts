@@ -12,14 +12,16 @@
  * which does not depend on logical IDs.
  */
 
-import * as cdk from 'aws-cdk-lib';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { Construct } from 'constructs';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
-import { CloudFormationResource } from './iam-test-helpers';
+import { Construct }                     from 'constructs';
+
+import { Permission }                    from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../auth/types';
+import { Mailbox }                       from '../mailbox';
+
+import { CloudFormationResource }        from './iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
@@ -81,8 +83,8 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 }
 
 function explicitNamesAfterSynth(underIntermediateConstruct: boolean): Set<string> {
-  const app = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
-  const stack = new cdk.Stack(app, 'TestRelocation', {
+  const app    = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
+  const stack  = new cdk.Stack(app, 'TestRelocation', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -90,7 +92,7 @@ function explicitNamesAfterSynth(underIntermediateConstruct: boolean): Set<strin
   new Mailbox(parent, 'mailbox', { authProvider: createMockAuthProvider() });
 
   const resources = (Template.fromStack(stack).toJSON() as { Resources: Record<string, CloudFormationResource> }).Resources;
-  const names = new Set<string>();
+  const names     = new Set<string>();
   for (const resource of Object.values(resources)) {
     if (DISPLAY_NAME_TYPES.includes(resource.Type)) {
       continue;
@@ -108,7 +110,7 @@ function explicitNamesAfterSynth(underIntermediateConstruct: boolean): Set<strin
 describe('Mailbox moved under an intermediate construct', () => {
   it('lists the resources whose explicit name does not change', () => {
     const before = explicitNamesAfterSynth(false);
-    const after = explicitNamesAfterSynth(true);
+    const after  = explicitNamesAfterSynth(true);
 
     const offenders = [...before].filter((name) => after.has(name)).sort();
 

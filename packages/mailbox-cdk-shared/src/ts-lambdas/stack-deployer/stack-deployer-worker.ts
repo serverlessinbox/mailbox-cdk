@@ -1,15 +1,17 @@
-import type { Stack } from '@aws-sdk/client-cloudformation';
-import { CaughtError } from '../shared/caught-error';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
-import type { CloudFormationStacks } from './cloudformation-stacks';
-import type { StackFailureAnswerer } from './failure-answerer';
+import type { Stack }                          from '@aws-sdk/client-cloudformation';
+
+import { CaughtError }                         from '../shared/caught-error';
+import type { LoggerBuffer }                   from '../shared/logger-buffer';
+
+import type { CfnReplyTarget, CfnResponder }   from './cfn-responder';
+import type { CloudFormationStacks }           from './cloudformation-stacks';
+import type { StackFailureAnswerer }           from './failure-answerer';
 import type { OperationInput, SfnInvokeEvent } from './stack-deployment';
-import { isSwitchedOn } from './stack-flag';
-import { StackOperationFailure } from './stack-operation-failure';
-import { StackStatus } from './stack-status';
-import type { UpdateRollbackAnswers } from './update-rollback-answerer';
-import { WorkerResult, type RetryCounts } from './worker-result';
+import { isSwitchedOn }                        from './stack-flag';
+import { StackOperationFailure }               from './stack-operation-failure';
+import { StackStatus }                         from './stack-status';
+import type { UpdateRollbackAnswers }          from './update-rollback-answerer';
+import { WorkerResult, type RetryCounts }      from './worker-result';
 
 // Polling stops so the worker answers CloudFormation before the 60 minute service timeout of the custom
 // resource, on every path including the retries of a DELETE_FAILED stack. The check at attempt N follows
@@ -34,10 +36,10 @@ export class StackDeployerWorker implements StackFailureAnswerer {
   private readonly logger: LoggerBuffer;
 
   constructor(stacks: CloudFormationStacks, responder: CfnResponder, rollback: UpdateRollbackAnswers, logger: LoggerBuffer) {
-    this.stacks = stacks;
+    this.stacks    = stacks;
     this.responder = responder;
-    this.rollback = rollback;
-    this.logger = logger;
+    this.rollback  = rollback;
+    this.logger    = logger;
   }
 
   /**
@@ -105,7 +107,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       deleteRetryCount: event.deleteRetryCount ?? 0,
       createRetryCount: event.createRetryCount ?? 0,
     };
-    const attempt = event.attempt ?? 0;
+    const attempt              = event.attempt ?? 0;
 
     const stack = await this.describeForCheck(event.op);
     if (event.op.requestType === 'Delete') {
@@ -137,7 +139,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
     if (status.isTerminalFailure()) {
       const failures = await this.stacks.describeRecentFailures(op);
-      const reason = stack.StackStatusReason ?? `Stack delete failed with status ${status.value}`;
+      const reason   = stack.StackStatusReason ?? `Stack delete failed with status ${status.value}`;
       await this.responder.succeed(target, { reason: `${reason}${this.eventsDetail(failures)}` });
       return WorkerResult.finished(retries);
     }
@@ -187,9 +189,9 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       outputCount: (stack.Outputs ?? []).length,
     });
 
-    const status = new StackStatus(stack.StackStatus);
+    const status   = new StackStatus(stack.StackStatus);
     const failures = await this.stacks.describeRecentFailures(op);
-    const detail = this.eventsDetail(failures);
+    const detail   = this.eventsDetail(failures);
 
     // A stack being torn down can never satisfy a create or an update, and polling it would not end.
     if (status.isDeleting()) {

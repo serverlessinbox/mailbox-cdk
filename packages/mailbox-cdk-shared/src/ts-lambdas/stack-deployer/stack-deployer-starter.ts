@@ -1,14 +1,16 @@
-import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient } from '@aws-sdk/client-sfn';
-import { formatArn, parseArn, type ParsedArn } from '../shared/arn';
-import { CaughtError } from '../shared/caught-error';
-import type { StackId } from '../shared/custom-resource-identifiers';
-import { ExpectedFailure } from '../shared/expected-failure';
-import type { LoggerBuffer } from '../shared/logger-buffer';
-import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
-import { StackOperationFailure } from './stack-operation-failure';
-import type { StackDeploymentEventReader } from './stack-deployment-event-reader';
-import type { CfnRequest, RequestType, WorkflowInput } from './stack-deployment';
+import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient }                              from '@aws-sdk/client-sfn';
+
+import { formatArn, parseArn, type ParsedArn }                                                          from '../shared/arn';
+import { CaughtError }                                                                                  from '../shared/caught-error';
+import type { StackId }                                                                                 from '../shared/custom-resource-identifiers';
+import { ExpectedFailure }                                                                              from '../shared/expected-failure';
+import type { LoggerBuffer }                                                                            from '../shared/logger-buffer';
+
+import type { CfnReplyTarget, CfnResponder }                                                            from './cfn-responder';
 import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn } from './deployer-identifiers';
+import type { StackDeploymentEventReader }                                                              from './stack-deployment-event-reader';
+import type { CfnRequest, RequestType, WorkflowInput }                                                  from './stack-deployment';
+import { StackOperationFailure }                                                                        from './stack-operation-failure';
 
 // CloudFormation truncates auto-generated physical names to 64 characters, and the names of the IAM roles
 // built from the root stack name need room beside it.
@@ -42,10 +44,10 @@ export class StackDeployerStarter {
     logger: LoggerBuffer,
   ) {
     this.stateMachineArn = stateMachineArn;
-    this.stepFunctions = stepFunctions;
-    this.events = events;
-    this.responder = responder;
-    this.logger = logger;
+    this.stepFunctions   = stepFunctions;
+    this.events          = events;
+    this.responder       = responder;
+    this.logger          = logger;
   }
 
   /**

@@ -10,14 +10,15 @@
  * the wiring that ships, not just that the pieces individually compile.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
 import { actionsOf, renderLiteralText, statementsOfDocument, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Mailbox } from '../mailbox';
-import type { IMailboxAuthProvider } from '../auth/types';
-import { Permission } from '../auth/jmap-scopes';
-import { SendStackFailuresMode } from '../features/stack-failure-detection';
+import { Template }                                                                    from 'aws-cdk-lib/assertions';
+import * as cdk                                                                        from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                               from 'aws-cdk-lib';
+
+import { Permission }                                                                  from '../auth/jmap-scopes';
+import type { IMailboxAuthProvider }                                                   from '../auth/types';
+import { SendStackFailuresMode }                                                       from '../features/stack-failure-detection';
+import { Mailbox }                                                                     from '../mailbox';
 
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
@@ -41,7 +42,7 @@ function createMockAuthProvider(): IMailboxAuthProvider {
 }
 
 function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Template {
-  const app = new App({
+  const app   = new App({
     context: {
       'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
@@ -79,7 +80,7 @@ describe('Mailbox: sweeper removal wiring', () => {
   });
 
   function sweeperDefinition(): string {
-    const machines = template.findResources('AWS::StepFunctions::StateMachine');
+    const machines        = template.findResources('AWS::StepFunctions::StateMachine');
     const sweeperMachines = Object.values(machines).filter((machine) =>
       renderLiteralText(machine.Properties?.StateMachineName).startsWith('mailbox-sweeper-'),
     );
@@ -92,7 +93,7 @@ describe('Mailbox: sweeper removal wiring', () => {
   });
 
   it('grants states:StartExecution nowhere except the sweeper starter\'s own policy', () => {
-    const policies = template.findResources('AWS::IAM::Policy');
+    const policies                            = template.findResources('AWS::IAM::Policy');
     const startExecutionPolicyNames: string[] = [];
     for (const [, policy] of Object.entries(policies)) {
       const grantsStartExecution = statementsOfDocument(policy.Properties?.PolicyDocument).some((stmt) =>
@@ -171,7 +172,7 @@ describe('Mailbox: sweeper removal wiring', () => {
     }
 
     // No env var on the detector Lambda carries a state-machine ARN either.
-    const fns = template.findResources('AWS::Lambda::Function');
+    const fns        = template.findResources('AWS::Lambda::Function');
     const detectorFn = Object.values(fns).find((fn) =>
       renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
     );
@@ -191,13 +192,13 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
   });
 
   it('synthesizes no detector resources at all — the all-or-nothing sweep-target property collapses to undefined', () => {
-    const fns = template.findResources('AWS::Lambda::Function');
+    const fns        = template.findResources('AWS::Lambda::Function');
     const detectorFn = Object.values(fns).find((fn) =>
       renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
     );
     expect(detectorFn).toBeUndefined();
 
-    const roles = template.findResources('AWS::IAM::Role');
+    const roles        = template.findResources('AWS::IAM::Role');
     const detectorRole = Object.values(roles).find((role) =>
       renderLiteralText(role.Properties?.RoleName).startsWith('mailbox-diag-role-'),
     );
@@ -211,8 +212,8 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
 
   it('registers no detector removal on the sweeper: no grace-wait/invoke steps and no "detector" key on the deferred-removal custom resource', () => {
     const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    const [sm] = Object.values(machines);
-    const def = renderLiteralText(sm.Properties.DefinitionString);
+    const [sm]     = Object.values(machines);
+    const def      = renderLiteralText(sm.Properties.DefinitionString);
     expect(def).not.toContain('"DetectorGraceWait"');
     expect(def).not.toContain('"DetectorInvoke"');
     expect(def).not.toContain('"DetectorWaitRetry"');

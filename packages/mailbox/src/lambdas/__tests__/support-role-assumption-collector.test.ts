@@ -9,15 +9,16 @@
  * modules/lambdas/support-role-assumption-collector/main.go, which reads both.
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import { Match, Template } from 'aws-cdk-lib/assertions';
-import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { SupportRoleAssumptionCollectorLambda } from '../support-role-assumption-collector';
+import { ArtifactZone, PinnedArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                                                          from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                                                     from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                                                     from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                            from 'aws-cdk-lib';
+
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../addons/support/support-roles-infra';
-import { DataTable } from '../../data/data-tables';
+import { DataTable }                                                                from '../../data/data-tables';
+import { SupportRoleAssumptionCollectorLambda }                                     from '../support-role-assumption-collector';
 
 describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
   let app: App;
@@ -35,7 +36,7 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
     const packages: Record<string, ArtifactPin> = {
       'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
-    artifactResolver = new PinnedArtifactResolver({
+    artifactResolver                            = new PinnedArtifactResolver({
       packages,
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,

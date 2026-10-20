@@ -1,8 +1,9 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient }                               from '@aws-sdk/client-dynamodb';
 import { ExpectedFailure, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { BlobDownloadAuthorizer } from './blob-download-authorizer';
-import { readOriginRequest } from './cloudfront-event';
-import { RegionBoundVerifiers } from './region-bound-verifiers';
+
+import { BlobDownloadAuthorizer }                       from './blob-download-authorizer';
+import { readOriginRequest }                            from './cloudfront-event';
+import { RegionBoundVerifiers }                         from './region-bound-verifiers';
 
 const verifiers = new RegionBoundVerifiers((region) => new DynamoDBClient({ region }));
 
@@ -12,7 +13,7 @@ const verifiers = new RegionBoundVerifiers((region) => new DynamoDBClient({ regi
  * The smoke-test probe is answered with no checks, because a Lambda@Edge function has no environment to check.
  */
 export const handler = withSmokeTest(async (event: unknown) => {
-  const logger = new LoggerBuffer();
+  const logger     = new LoggerBuffer();
   const authorizer = new BlobDownloadAuthorizer(logger, (region) => verifiers.get(region));
 
   try {

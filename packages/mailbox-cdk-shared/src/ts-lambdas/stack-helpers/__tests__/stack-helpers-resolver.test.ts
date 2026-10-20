@@ -9,18 +9,19 @@
  */
 
 import { GetHostedZoneCommand, Route53Client } from '@aws-sdk/client-route-53';
-import { mockClient } from 'aws-sdk-client-mock';
-import { toStackId } from '../../shared/custom-resource-identifiers';
-import type { StackId } from '../../shared/custom-resource-identifiers';
-import { ExpectedFailure } from '../../shared/expected-failure';
-import { LoggerBuffer } from '../../shared/logger-buffer';
+import { mockClient }                          from 'aws-sdk-client-mock';
+
+import { toStackId }                           from '../../shared/custom-resource-identifiers';
+import type { StackId }                        from '../../shared/custom-resource-identifiers';
+import { ExpectedFailure }                     from '../../shared/expected-failure';
+import { LoggerBuffer }                        from '../../shared/logger-buffer';
 import type { StackHelpersResourceProperties } from '../resource-properties';
-import { StackHelpersResolver } from '../stack-helpers-resolver';
+import { StackHelpersResolver }                from '../stack-helpers-resolver';
 
 describe('StackHelpersResolver', () => {
   const route53Mock = mockClient(Route53Client);
-  const resolver = new StackHelpersResolver(new Route53Client({}), new LoggerBuffer());
-  const stackId = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000001');
+  const resolver    = new StackHelpersResolver(new Route53Client({}), new LoggerBuffer());
+  const stackId     = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000001');
 
   function resolveFor(properties: unknown, forStackId: StackId = stackId) {
     return resolver.resolve(properties, forStackId);
@@ -140,10 +141,10 @@ describe('StackHelpersResolver', () => {
 
   describe('seeded number', () => {
     const otherStackId = toStackId('arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/4f1c2a9e-0000-4000-8000-000000000002');
-    const seeded = { Salt: 'first-purpose', Range: '1000' };
+    const seeded       = { Salt: 'first-purpose', Range: '1000' };
 
     it('is the same for the same stack id and salt', async () => {
-      const first = await resolveFor(seeded);
+      const first  = await resolveFor(seeded);
       const second = await resolveFor(seeded);
 
       expect(first.seededNumber).toBe(second.seededNumber);

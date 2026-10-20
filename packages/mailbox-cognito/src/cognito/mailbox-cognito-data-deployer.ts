@@ -1,11 +1,12 @@
-import { Aws, Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { MailboxCognitoDataStackRef } from './mailbox-cognito-data-stack-ref';
-import { MailboxCognitoDataDeployerWorker } from './mailbox-cognito-data-deployer-worker';
-import { cognitoDataStackName } from './mailbox-cognito-data-stack-name';
+import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
 import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Aws, Stack }                                                from 'aws-cdk-lib';
+import { Construct }                                                 from 'constructs';
+
+import { MailboxCognitoDataDeployerWorker }                          from './mailbox-cognito-data-deployer-worker';
+import { cognitoDataStackName }                                      from './mailbox-cognito-data-stack-name';
+import { MailboxCognitoDataStackRef }                                from './mailbox-cognito-data-stack-ref';
 
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
@@ -43,8 +44,8 @@ export class MailboxCognitoDataDeployer extends Construct {
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerProps) {
     super(scope, id);
 
-    const artifacts = props.artifactResolver;
-    const stackName = cognitoDataStackName();
+    const artifacts           = props.artifactResolver;
+    const stackName           = cognitoDataStackName();
     const cognitoDataStackArn = Stack.of(this).formatArn({
       service: 'cloudformation',
       partition: Aws.PARTITION,

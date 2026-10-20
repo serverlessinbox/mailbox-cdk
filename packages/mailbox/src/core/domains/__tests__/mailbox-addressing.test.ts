@@ -7,12 +7,13 @@
  * does not exist.
  */
 
+import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
-import { MailboxAddressing } from '../mailbox-addressing';
-import type { MailboxEnabledUis } from '../mailbox-addressing';
 
-const DOMAIN_NAME = 'example.com';
+import { MailboxAddressing }                    from '../mailbox-addressing';
+import type { MailboxEnabledUis }               from '../mailbox-addressing';
+
+const DOMAIN_NAME                 = 'example.com';
 const BOTH_UIS: MailboxEnabledUis = { adminUi: true, webmailUi: true };
 
 function newStack(): Stack {
@@ -49,7 +50,7 @@ describe('MailboxAddressing', () => {
   });
 
   it('omits the url of a disabled UI and keeps the API urls', () => {
-    const adminOnly = MailboxAddressing.resolve(newStack(), {}, DOMAIN_NAME, { adminUi: true, webmailUi: false });
+    const adminOnly   = MailboxAddressing.resolve(newStack(), {}, DOMAIN_NAME, { adminUi: true, webmailUi: false });
     const webmailOnly = MailboxAddressing.resolve(newStack(), {}, DOMAIN_NAME, { adminUi: false, webmailUi: true });
 
     expect(adminOnly.urls.adminUi).toBeDefined();

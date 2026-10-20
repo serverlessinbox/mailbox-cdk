@@ -3,7 +3,7 @@
 // it is constructed, and on IAM granting the union of the two statements: a resource tagged with the
 // stack's id, or a resource without an id tag whose name tag equals the stack's name. A resource whose
 // id tag names another stack must match neither.
-import { ServerlessInboxTagKeys } from '../serverless-inbox-tags';
+import { ServerlessInboxTagKeys }                                        from '../serverless-inbox-tags';
 import { rootStackRequestTagConditions, rootStackResourceTagConditions } from '../serverless-inbox-tags';
 
 const ROOT_STACK = { name: 'MyRootStack', id: 'guid-1' };
