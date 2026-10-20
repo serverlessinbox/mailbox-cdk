@@ -14,6 +14,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { BlobStore } from '../../../resources/blob-store';
 import { SesRules } from '../ses-rules';
 
 describe('SesRules', () => {
@@ -31,7 +32,6 @@ describe('SesRules', () => {
     sut = new SesRules(stack, 'ses-rules', {
       delivery: {
         blobStore,
-        bucketPrefix: 'incoming-emails/',
         artifactResolver: new PinnedArtifactResolver({
           packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
           location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
@@ -45,7 +45,7 @@ describe('SesRules', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::SES::ReceiptRule', {
       Rule: Match.objectLike({
         Actions: [
-          { S3Action: { BucketName: { Ref: stack.getLogicalId(blobStore.node.defaultChild as cdk.CfnResource) }, ObjectKeyPrefix: 'incoming-emails/' } },
+          { S3Action: { BucketName: { Ref: stack.getLogicalId(blobStore.node.defaultChild as cdk.CfnResource) }, ObjectKeyPrefix: BlobStore.INCOMING_EMAIL_PREFIX } },
           { LambdaAction: { FunctionArn: Match.anyValue(), InvocationType: 'Event' } },
         ],
       }),

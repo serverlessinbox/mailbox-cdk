@@ -3,6 +3,7 @@ import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy } from 'aws-cdk
 import { Lambda, LambdaInvocationType, S3 } from 'aws-cdk-lib/aws-ses-actions';
 import { Construct } from 'constructs';
 import { type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { BlobStore } from '../../resources/blob-store';
 import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
@@ -10,7 +11,6 @@ import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './emai
 /** Where received email is stored and how it is queued for processing. */
 export interface EmailDelivery {
   readonly blobStore: IBucket;
-  readonly bucketPrefix: string;
   readonly artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -59,7 +59,7 @@ export class SesRules extends Construct {
       actions: [
         new S3({
           bucket: props.delivery.blobStore,
-          objectKeyPrefix: 'incoming-emails/',
+          objectKeyPrefix: BlobStore.INCOMING_EMAIL_PREFIX,
         }),
         new Lambda({
           function: forwarder,

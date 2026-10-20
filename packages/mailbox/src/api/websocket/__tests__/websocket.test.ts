@@ -4,7 +4,9 @@
  * WebSocketPush tests: what the construct itself decides.
  *
  * Pins the exact IAM statement and endpoint URL it hands out through IWebSocketPushApi, which a
- * widened statement or a changed URL shape breaks without failing tsc or synth. Also pins the
+ * widened statement or a changed URL shape breaks without failing tsc or synth. Both are asserted
+ * in a stack with an explicit env, where a region, account or partition taken from the stack would
+ * render as a literal in the template instead of a Ref. Also pins the
  * custom-domain wiring (certificate required, domain deleted before the certificate), that only
  * `$connect` is behind the authorizer, the default subscription limit and the broadcaster handle.
  */
@@ -97,7 +99,10 @@ describe('WebSocketPush.grantManageConnections', () => {
             Action: 'execute-api:ManageConnections',
             Effect: 'Allow',
             Resource: {
-              'Fn::Join': ['', ['arn:aws:execute-api:us-west-2:123456789012:', { Ref: apiId }, '/*']],
+              'Fn::Join': ['', [
+                'arn:', { Ref: 'AWS::Partition' }, ':execute-api:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':',
+                { Ref: apiId }, '/*',
+              ]],
             },
           }),
         ]),
@@ -233,7 +238,7 @@ describe('WebSocketPush.managementEndpoint', () => {
     const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
     expect(stack.resolve(sut.managementEndpoint)).toEqual({
-      'Fn::Join': ['', ['https://', { Ref: apiId }, '.execute-api.us-west-2.amazonaws.com/prod']],
+      'Fn::Join': ['', ['https://', { Ref: apiId }, '.execute-api.', { Ref: 'AWS::Region' }, '.amazonaws.com/prod']],
     });
   });
 });

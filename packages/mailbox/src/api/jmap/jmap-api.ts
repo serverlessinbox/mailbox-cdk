@@ -47,9 +47,6 @@ export interface JMapApiProps {
   /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
   readonly allowedOrigins?: string[];
 
-  readonly webSocketUrl?: string;
-  readonly webSocketCapabilityDomain?: string;
-
   readonly artifactResolver: IArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
 

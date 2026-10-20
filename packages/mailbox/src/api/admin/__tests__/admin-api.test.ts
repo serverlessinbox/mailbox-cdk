@@ -25,7 +25,6 @@ import { AdminApi } from '../admin-api';
 import type { AdminApiProps } from '../admin-api';
 import type { IAdminApiAddon } from '../../addons';
 import type { IWebSocketBroadcastPublisher } from '../../websocket/websocket';
-import type { IMailboxAuthProvider } from '../../../auth/types';
 import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
 import { AuthKeyStoreTable } from '../../../features/auth-key-store/auth-key-store-table';
 import { EmailSendingQueue } from '../../../email/sending/email-sending-queue';
@@ -40,18 +39,6 @@ describe('AdminApi', () => {
   }
 
   function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
-    const authProvider: IMailboxAuthProvider = {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
-      provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
-    };
     return {
       configTable: dataTable('config-table'),
       itemTable: dataTable('item-table'),
@@ -70,7 +57,6 @@ describe('AdminApi', () => {
         location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      authProvider,
       identityProvisioner: LambdaFunction.fromFunctionArn(
         stack,
         'identity-provisioner-ref',

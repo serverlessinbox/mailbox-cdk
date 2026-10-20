@@ -80,6 +80,10 @@ describe('BaseQueue', () => {
     queueTemplate().hasResourceProperties('AWS::SQS::Queue', { KmsMasterKeyId: 'alias/aws/sqs' });
   });
 
+  it('encrypts with the SQS-managed KMS key when the caller passes encryption: undefined', () => {
+    queueTemplate({ encryption: undefined }).hasResourceProperties('AWS::SQS::Queue', { KmsMasterKeyId: 'alias/aws/sqs' });
+  });
+
   it('encrypts with the given KMS key when one is supplied', () => {
     queueTemplate({}, {}).hasResourceProperties('AWS::SQS::Queue', {
       KmsMasterKeyId: Match.objectLike({ 'Fn::GetAtt': [Match.stringLikeRegexp('^TestKey'), 'Arn'] }),

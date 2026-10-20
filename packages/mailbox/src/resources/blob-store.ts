@@ -45,13 +45,16 @@ export interface BlobStoreProps {
  * - S3-managed by default; customer-managed CMK supported via `encryptionKey` prop.
  */
 export class BlobStore extends StackNamedBucket {
+  /** Key prefix under which inbound mail is staged; the lifecycle rule, the SES write grant and the receipt rule all use it. */
+  public static readonly INCOMING_EMAIL_PREFIX = 'incoming-emails/';
+
   constructor(scope: Construct, props: BlobStoreProps = {}) {
     const dev = isDevelopmentMode(scope);
 
     const lifecycleRules: LifecycleRule[] = [
       {
         id: 'DeleteUnhandledIncomingEmails',
-        prefix: 'incoming-emails/',
+        prefix: BlobStore.INCOMING_EMAIL_PREFIX,
         enabled: true,
         expiration: Duration.days(7), // Delete emails after 7 days
       },
@@ -133,7 +136,7 @@ export class BlobStore extends StackNamedBucket {
         effect: Effect.ALLOW,
         principals: [new ServicePrincipal('ses.amazonaws.com')],
         actions: ['s3:PutObject'],
-        resources: [`${this.bucketArn}/incoming-emails/*`],
+        resources: [`${this.bucketArn}/${BlobStore.INCOMING_EMAIL_PREFIX}*`],
         conditions: {
           StringEquals: {
             'aws:Referer': Aws.ACCOUNT_ID,

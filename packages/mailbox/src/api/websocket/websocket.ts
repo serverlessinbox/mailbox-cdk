@@ -1,4 +1,4 @@
-import { Aws, CfnResource, Stack } from 'aws-cdk-lib';
+import { Aws, CfnResource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {
   WebSocketConnectLambda,
@@ -109,8 +109,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       autoDeploy: true,
     });
 
-    const stack = Stack.of(this);
-    this.managementEndpoint = `https://${this.api.apiId}.execute-api.${stack.region}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
+    this.managementEndpoint = `https://${this.api.apiId}.execute-api.${Aws.REGION}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
 
     if (props.domainName) {
       if (!props.certificate) {
@@ -202,11 +201,10 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
 
   /** Allows `execute-api:ManageConnections` on every connection of this API (`<apiId>/*`). */
   public grantManageConnections(grantee: IGrantable): void {
-    const stack = Stack.of(this);
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ['execute-api:ManageConnections'],
-      resources: [`arn:aws:execute-api:${stack.region}:${stack.account}:${this.api.apiId}/*`],
+      resources: [`arn:${Aws.PARTITION}:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${this.api.apiId}/*`],
     }));
   }
 }

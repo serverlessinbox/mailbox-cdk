@@ -396,7 +396,6 @@ export class Mailbox extends Construct {
     const sesRules = new SesRules(groups.email, 'ses-rules', {
       delivery: {
         blobStore: this.blobStoreBucket,
-        bucketPrefix: 'incoming-emails/',
         artifactResolver,
         queueProps: this.emailQueueProps,
       },
@@ -599,7 +598,6 @@ export class Mailbox extends Construct {
       auditEventsQueue: auditWriting.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver,
-      authProvider,
       identityProvisioner,
       vendorAccountIds,
       stackIdentityTagKey,

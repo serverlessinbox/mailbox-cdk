@@ -15,7 +15,7 @@ import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
 import type { IDataBlobStore } from '../../data/data-blob-store';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { AUTH_POLICY_ADMIN_API, IMailboxAuthProvider } from '../../auth/types';
+import { AUTH_POLICY_ADMIN_API } from '../../auth/types';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { IAdminApiAddon } from '../addons';
@@ -42,7 +42,6 @@ export interface AdminApiProps {
   /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
   readonly allowedOrigins?: string[];
   readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
   readonly identityProvisioner: IIdentityProvisioner;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
