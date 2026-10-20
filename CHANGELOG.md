@@ -4,6 +4,34 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.3.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.9...v0.3.0) (Mon Oct 19 2026)
+
+### fix
+
+* **shared** stack-helpers logs through a LoggerBuffer and drops the unused ListHostedZones grant ([952805e](https://github.com/serverlessinbox/mailbox-cdk/commit/952805e9e155447b0f42e88d636e81cb93aa8d3f))
+
+* **cognito** idp-users-api never leaves a half-created user ([364d11a](https://github.com/serverlessinbox/mailbox-cdk/commit/364d11afe5fc3eab185db23e0e3a41adc4b2d141))
+
+* the sweeper execution role holds only its named policy, and two shared runtime leftovers go ([02593e2](https://github.com/serverlessinbox/mailbox-cdk/commit/02593e2926052fc35a29391df8292e300591d8b6))
+
+* **mailbox** jmap-blob-download keeps verifiers per region and keys per table, and names a broken origin header ([256d425](https://github.com/serverlessinbox/mailbox-cdk/commit/256d42542dd44f499e2029558ab3224b3c36e2e1))
+
+* **mailbox** the CDN sends only the origin headers the authorizer reads, typed by the runtime's contract ([38a865f](https://github.com/serverlessinbox/mailbox-cdk/commit/38a865ffe46433598ba351f7ba95ca4793cb736f))
+
+### refactor
+
+* **shared** the parent-stack detector takes its CloudFormation client and a StackId ([f3c12ce](https://github.com/serverlessinbox/mailbox-cdk/commit/f3c12ce79025498124748f110881d0f1a219d403))
+
+* **mailbox** cdn-construct and the shared index follow the code skills ([f3ddd73](https://github.com/serverlessinbox/mailbox-cdk/commit/f3ddd7303518f235b2e7d1af7c895810a81c2351))
+
+* **mailbox** MailboxProps and the output types move out of mailbox.ts (CS5.1) ([9eaf961](https://github.com/serverlessinbox/mailbox-cdk/commit/9eaf961ae71d616029ab660d06bb0f8826d8e28c))
+
+### feat
+
+* **mailbox** jmap-blob-download verifies JWTs through jose ([652ef51](https://github.com/serverlessinbox/mailbox-cdk/commit/652ef511432967e0bfeb153f2784aa7eed480ad3))
+
+* **mailbox** OAuth clients are named by API kind and app; both UIs are optional ([326a0eb](https://github.com/serverlessinbox/mailbox-cdk/commit/326a0eb329cbc403281291152f8e74adf68d8fb1))
+
 ## [0.2.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.2.8...v0.2.9) (Fri Oct 16 2026)
 
 ### ci
