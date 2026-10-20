@@ -3,7 +3,7 @@ import { PolicyStatement }                from 'aws-cdk-lib/aws-iam';
 import { Duration }                       from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
-import { ServerlessInboxTagKeys }         from '../serverless-inbox-tags';
+import { ServerlessInboxTagKeys }         from '../tagging/serverless-inbox-tags';
 import { TypeScriptLambda }               from '../ts-lambda';
 
 import { parentStackStatusReadStatement } from './parent-stack-status-read';

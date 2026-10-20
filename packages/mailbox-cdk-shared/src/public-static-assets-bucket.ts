@@ -6,7 +6,7 @@ import { Construct }                  from 'constructs';
 
 import { BucketAutoEmpty }            from './bucket-auto-empty';
 import { StackNamedBucket }           from './named-bucket';
-import { getOrCreateSharedGroup }     from './shared-group';
+import { getOrCreateSharedGroup }     from './tagging/shared-group';
 
 /**
  * Singleton construct for a shared, public S3 bucket used to store small public static assets

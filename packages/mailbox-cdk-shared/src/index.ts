@@ -45,7 +45,7 @@ export {
   serverlessInboxSubStackTags,
   rootStackResourceTagConditions,
   rootStackRequestTagConditions,
-} from './serverless-inbox-tags';
+} from './tagging/serverless-inbox-tags';
 export type {
   RootStack,
   RootStackConditions,
@@ -53,7 +53,7 @@ export type {
   ApplyServerlessInboxTagsOptions,
   ApplyServerlessInboxEdgeTagsOptions,
   ServerlessInboxSubStackTagOptions,
-} from './serverless-inbox-tags';
+} from './tagging/serverless-inbox-tags';
 
 // Static content deployer
 export { StaticContentDeployer } from './content-deployer';
@@ -80,7 +80,7 @@ export { PositionHash } from './naming/position-hash';
 export { StackIdentity } from './naming/stack-identity';
 
 // Shared group
-export { getOrCreateSharedGroup } from './shared-group';
+export { getOrCreateSharedGroup } from './tagging/shared-group';
 
 // Stack helpers
 export { StackHelpers } from './stack-helpers';
@@ -106,20 +106,20 @@ export { makePhysicalName, slugifyLabel } from './naming/resource-names';
 export type { PhysicalNameOptions } from './naming/resource-names';
 
 // Resource group
-export { addServerlessInboxResourceGroup } from './resource-group';
-export type { ServerlessInboxResourceGroupProps } from './resource-group';
+export { addServerlessInboxResourceGroup } from './tagging/resource-group';
+export type { ServerlessInboxResourceGroupProps } from './tagging/resource-group';
 
 // DynamoDB least-privilege action sets & table grant helper
-export { DynamoDbActions, grantTableActions } from './dynamodb-grants';
+export { DynamoDbActions, grantTableActions } from './grants/dynamodb-grants';
 
 // SQS least-privilege action sets & queue grant helper
-export { SqsActions, grantQueueActions } from './sqs-grants';
+export { SqsActions, grantQueueActions } from './grants/sqs-grants';
 
 // S3 least-privilege object action sets & bucket grant helpers
-export { S3Actions, grantObjectActions, grantListBucket } from './s3-grants';
+export { S3Actions, grantObjectActions, grantListBucket } from './grants/s3-grants';
 
 // SSM Parameter Store least-privilege action set & parameter grant helper
-export { SsmActions, grantParameterActions } from './ssm-grants';
+export { SsmActions, grantParameterActions } from './grants/ssm-grants';
 
 // Sub-stack deployer scaffolding: worker and starter Lambdas and the polling Step Functions workflow
 export { DeployerInfra, DeployerWorkerLambda, DeployerStarterLambda, PollingCfnDeployerWorkflow } from './deployer-infra';

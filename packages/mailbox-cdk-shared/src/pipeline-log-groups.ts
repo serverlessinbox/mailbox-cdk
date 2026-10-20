@@ -7,7 +7,7 @@ import type { Construct, IConstruct } from 'constructs';
 
 import { StackIdentity }              from './naming/stack-identity';
 import type { Pipeline }              from './pipelines';
-import { getOrCreateSharedGroup }     from './shared-group';
+import { getOrCreateSharedGroup }     from './tagging/shared-group';
 
 /** Log retention, settable per pipeline. */
 const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
