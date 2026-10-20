@@ -42,14 +42,14 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       },
     });
 
-    const owner: RootStack = { name: props.rootStackTagValue, id: props.rootStackId };
+    const rootStack: RootStack = { name: props.rootStackTagValue, id: props.rootStackId };
     // No grant on UI buckets: S3 object writes cannot be scoped by tag, so a bucket's own ARN is the only scope.
     this.grantTagDiscovery();
-    this.grantLambdaManagementAccess(owner);
-    this.grantLambdaTagAccess(owner);
-    this.grantEdgeLambdaAccess(owner);
-    this.grantCloudFrontManagementAccess(owner);
-    this.grantCloudFrontTagAccess(owner);
+    this.grantLambdaManagementAccess(rootStack);
+    this.grantLambdaTagAccess(rootStack);
+    this.grantEdgeLambdaAccess(rootStack);
+    this.grantCloudFrontManagementAccess(rootStack);
+    this.grantCloudFrontTagAccess(rootStack);
     this.grantArtifactReleaseAccess(props.artifactBucketBase);
     this.grantParentStackStatusRead();
     this.grantSelfInvoke();
@@ -65,8 +65,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     );
   }
 
-  private grantLambdaManagementAccess(owner: RootStack): void {
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+  private grantLambdaManagementAccess(rootStack: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
@@ -77,13 +77,13 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     }
   }
 
-  private grantLambdaTagAccess(owner: RootStack): void {
-    this.grantArtifactVersionTagging('lambda:TagResource', ArtifactUpdaterLambda.anyFunctionArn, owner);
+  private grantLambdaTagAccess(rootStack: RootStack): void {
+    this.grantArtifactVersionTagging('lambda:TagResource', ArtifactUpdaterLambda.anyFunctionArn, rootStack);
   }
 
   /** Edge functions are always in us-east-1. */
-  private grantEdgeLambdaAccess(owner: RootStack): void {
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+  private grantEdgeLambdaAccess(rootStack: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
@@ -95,8 +95,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   }
 
   /** The CloudFront distribution resource type supports `aws:ResourceTag`, so distributions are scoped by the root-stack tags. */
-  private grantCloudFrontManagementAccess(owner: RootStack): void {
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+  private grantCloudFrontManagementAccess(rootStack: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
@@ -107,8 +107,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     }
   }
 
-  private grantCloudFrontTagAccess(owner: RootStack): void {
-    this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, owner);
+  private grantCloudFrontTagAccess(rootStack: RootStack): void {
+    this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, rootStack);
   }
 
   private grantArtifactReleaseAccess(artifactBucketBase: string): void {
@@ -141,8 +141,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
    * Tag writes are limited to the artifact-version key, so the role cannot rewrite the root-stack tags
    * that scope its other grants or inject tags another policy trusts.
    */
-  private grantArtifactVersionTagging(action: string, resourceArn: string, owner: RootStack): void {
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+  private grantArtifactVersionTagging(action: string, resourceArn: string, rootStack: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: [action],

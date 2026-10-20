@@ -149,31 +149,31 @@ export type RootStackConditions =Record<string, Record<string, string>>;
 
 /**
  * The conditions of the two statements that together admit the resources the root stack owns:
- * the first admits a resource whose RESOURCE tag `root-stack-id` equals the owner's id, the second a
- * resource that has no `root-stack-id` tag and whose `root-stack` tag equals the owner's name. IAM
+ * the first admits a resource whose RESOURCE tag `root-stack-id` equals the root stack's id, the second a
+ * resource that has no `root-stack-id` tag and whose `root-stack` tag equals the root stack's name. IAM
  * grants on the union of statements, so a caller adds one statement per element, spreading it into
  * its own conditions next to any keys under other operators.
  */
-export function rootStackResourceTagConditions(owner: RootStack): readonly [RootStackConditions, RootStackConditions] {
-  return rootStackConditions('aws:ResourceTag', owner);
+export function rootStackResourceTagConditions(rootStack: RootStack): readonly [RootStackConditions, RootStackConditions] {
+  return rootStackConditions('aws:ResourceTag', rootStack);
 }
 
 /**
  * The same two conditions over the REQUEST tag (the tags written by the current request, e.g. on
- * create or first tag-write): the request carries the owner's id, or carries no id and the owner's name.
+ * create or first tag-write): the request carries the root stack's id, or carries no id and the root stack's name.
  */
-export function rootStackRequestTagConditions(owner: RootStack): readonly [RootStackConditions, RootStackConditions] {
-  return rootStackConditions('aws:RequestTag', owner);
+export function rootStackRequestTagConditions(rootStack: RootStack): readonly [RootStackConditions, RootStackConditions] {
+  return rootStackConditions('aws:RequestTag', rootStack);
 }
 
 function rootStackConditions(
   keyPrefix: 'aws:ResourceTag' | 'aws:RequestTag',
-  owner: RootStack,
+  rootStack: RootStack,
 ): readonly [RootStackConditions, RootStackConditions] {
   const idKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStackId}`;
   const nameKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStack}`;
   return [
-    { StringEquals: { [idKey]: owner.id } },
-    { StringEquals: { [nameKey]: owner.name }, Null: { [idKey]: 'true' } },
+    { StringEquals: { [idKey]: rootStack.id } },
+    { StringEquals: { [nameKey]: rootStack.name }, Null: { [idKey]: 'true' } },
   ];
 }

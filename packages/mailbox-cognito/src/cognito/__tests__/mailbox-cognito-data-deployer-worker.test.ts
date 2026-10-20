@@ -16,8 +16,8 @@ import { newDeployerTestStack } from './cognito-deployer-helpers';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
 const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
 
-/** The tag source of an owner statement: 'id' when it matches the stack's guid, 'name' when it matches the name of a resource without an id tag. */
-function ownerOf(statement: PolicyStatementJson, tagSource: 'ResourceTag' | 'RequestTag'): 'id' | 'name' | undefined {
+/** The tag source of a root-stack statement: 'id' when it matches the stack's guid, 'name' when it matches the name of a resource without an id tag. */
+function tagSourceOf(statement: PolicyStatementJson, tagSource: 'ResourceTag' | 'RequestTag'): 'id' | 'name' | undefined {
   const idKey = `aws:${tagSource}/serverless-inbox:root-stack-id`;
   const nameKey = `aws:${tagSource}/serverless-inbox:root-stack`;
   if (statement.Condition?.StringEquals?.[idKey] !== undefined) {
@@ -29,8 +29,8 @@ function ownerOf(statement: PolicyStatementJson, tagSource: 'ResourceTag' | 'Req
   return undefined;
 }
 
-function ownersOf(statements: PolicyStatementJson[], tagSource: 'ResourceTag' | 'RequestTag'): Array<'id' | 'name' | undefined> {
-  return statements.map((statement) => ownerOf(statement, tagSource));
+function tagSourcesOf(statements: PolicyStatementJson[], tagSource: 'ResourceTag' | 'RequestTag'): Array<'id' | 'name' | undefined> {
+  return statements.map((statement) => tagSourceOf(statement, tagSource));
 }
 
 function synthWorker(): Template {
@@ -97,15 +97,15 @@ describe('MailboxCognitoDataDeployerWorker', () => {
 
       for (const action of lifecycleActions) {
         const stmts = statementsForAction(template, action);
-        expect(ownersOf(stmts, 'ResourceTag')).toEqual(['id', 'name']);
+        expect(tagSourcesOf(stmts, 'ResourceTag')).toEqual(['id', 'name']);
       }
     });
 
     it('splits TagResource into RequestTag-gated (create) and ResourceTag-gated (update) statements, each by id and by name', () => {
       const stmts = statementsForAction(template, 'cognito-idp:TagResource');
 
-      expect(ownersOf(stmts.slice(0, 2), 'RequestTag')).toEqual(['id', 'name']);
-      expect(ownersOf(stmts.slice(2), 'ResourceTag')).toEqual(['id', 'name']);
+      expect(tagSourcesOf(stmts.slice(0, 2), 'RequestTag')).toEqual(['id', 'name']);
+      expect(tagSourcesOf(stmts.slice(2), 'ResourceTag')).toEqual(['id', 'name']);
     });
 
     it('constrains every TagResource statement with ForAllValues:StringLike on aws:TagKeys (never plain StringEquals)', () => {
@@ -135,7 +135,7 @@ describe('MailboxCognitoDataDeployerWorker', () => {
 
       for (const action of tagGatedActions) {
         const stmts = statementsForAction(template, action);
-        expect(ownersOf(stmts, 'ResourceTag')).toEqual(['id', 'name']);
+        expect(tagSourcesOf(stmts, 'ResourceTag')).toEqual(['id', 'name']);
       }
     });
 

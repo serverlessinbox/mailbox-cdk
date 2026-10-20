@@ -6,11 +6,11 @@
 import { ServerlessInboxTagKeys } from '../serverless-inbox-tags';
 import { rootStackRequestTagConditions, rootStackResourceTagConditions } from '../serverless-inbox-tags';
 
-const OWNER = { name: 'MyRootStack', id: 'guid-1' };
+const ROOT_STACK = { name: 'MyRootStack', id: 'guid-1' };
 
 describe('rootStackResourceTagConditions', () => {
   it('renders one statement keyed on the id tag and one on the name tag that requires the id tag to be absent', () => {
-    expect(rootStackResourceTagConditions(OWNER)).toEqual([
+    expect(rootStackResourceTagConditions(ROOT_STACK)).toEqual([
       { StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`]: 'guid-1' } },
       {
         StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: 'MyRootStack' },
@@ -22,7 +22,7 @@ describe('rootStackResourceTagConditions', () => {
 
 describe('rootStackRequestTagConditions', () => {
   it('renders one statement keyed on the requested id tag and one on the requested name tag with the id tag absent from the request', () => {
-    expect(rootStackRequestTagConditions(OWNER)).toEqual([
+    expect(rootStackRequestTagConditions(ROOT_STACK)).toEqual([
       { StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'guid-1' } },
       {
         StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'MyRootStack' },

@@ -269,8 +269,8 @@ export class SupportRolesInfra extends Construct {
     if (actions.length === 0) {
       return [];
     }
-    const owner: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
-    return rootStackResourceTagConditions(owner).map(
+    const rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
+    return rootStackResourceTagConditions(rootStack).map(
       (conditions) =>
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,

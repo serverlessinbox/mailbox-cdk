@@ -102,7 +102,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
 
   /** Rules are auto-named and support `aws:ResourceTag` on delete actions, so the root-stack tags are the scope. */
   private grantRuleDeletion(): iam.PolicyStatement[] {
-    return this.ownerConditions().map(
+    return this.rootStackConditions().map(
       (conditions) =>
         new iam.PolicyStatement({
           actions: ['events:RemoveTargets', 'events:DeleteRule'],
@@ -121,7 +121,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   }
 
   private grantDetectorFunctionDeletion(): iam.PolicyStatement[] {
-    return this.ownerConditions().map(
+    return this.rootStackConditions().map(
       (conditions) =>
         new iam.PolicyStatement({
           actions: ['lambda:DeleteFunction'],
@@ -146,7 +146,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     });
   }
 
-  private ownerConditions(): readonly RootStackConditions[] {
+  private rootStackConditions(): readonly RootStackConditions[] {
     return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid });
   }
 }

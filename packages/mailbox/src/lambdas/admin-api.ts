@@ -1,4 +1,5 @@
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IDataTable } from '../data/data-tables';
 import type { IDataBlobStore } from '../data/data-blob-store';
@@ -60,6 +61,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
         STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+        ROOT_STACK_ID: StackIdentity.guid,
         SES_RULE_SET_NAME: props.sesRuleSetName,
       },
     });
@@ -123,18 +125,19 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
     // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
     // aws:TagKeys so this role can't ride along to write an unrelated tag key.
-    this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:TagResource'],
-      resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
-      conditions: {
-        StringEquals: {
-          [`aws:RequestTag/${stackIdentityTagKey}`]: Stack.of(this).stackName,
+    const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
+    for (const conditions of rootStackRequestTagConditions(rootStack)) {
+      this.addToRolePolicy(new PolicyStatement({
+        actions: ['ses:TagResource'],
+        resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+        conditions: {
+          ...conditions,
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': [stackIdentityTagKey, ServerlessInboxTagKeys.rootStackId],
+          },
         },
-        'ForAllValues:StringEquals': {
-          'aws:TagKeys': [stackIdentityTagKey],
-        },
-      },
-    }));
+      }));
+    }
   }
 
   private grantSesSending(sesConfigSetName: string): void {

@@ -26,7 +26,7 @@ export interface MailboxCognitoDataDeployerWorkerProps {
  * region resolve at deploy time.
  */
 export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
-  private readonly owner: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
+  private readonly rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
 
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerProps) {
     super(scope, id, {
@@ -64,7 +64,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   // These actions bind to the "userpool" resource type and act on a pool that already exists and
   // is already tagged, so aws:ResourceTag is satisfiable.
   private grantUserPoolLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.owner)) {
+    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -89,7 +89,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   private grantUserPoolTagging(): void {
     // On CREATE, CloudFormation sends the tags in the request against a still-untagged pool, so
     // aws:RequestTag matches and aws:ResourceTag cannot.
-    for (const conditions of rootStackRequestTagConditions(this.owner)) {
+    for (const conditions of rootStackRequestTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -99,10 +99,10 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
         }),
       );
     }
-    // On UPDATE, CloudFormation sends only the changed tags, so the owner tags may be absent from the
+    // On UPDATE, CloudFormation sends only the changed tags, so the root-stack tags may be absent from the
     // request, but the pool is already tagged and aws:ResourceTag matches. The request-tag and
     // resource-tag statements together cover both.
-    for (const conditions of rootStackResourceTagConditions(this.owner)) {
+    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -115,7 +115,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantUserPoolDomainLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.owner)) {
+    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -144,7 +144,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantResourceServerLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.owner)) {
+    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -162,7 +162,7 @@ export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
   }
 
   private grantGroupLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.owner)) {
+    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,

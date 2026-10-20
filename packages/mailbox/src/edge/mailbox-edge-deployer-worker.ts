@@ -57,9 +57,9 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     this.grantTaggingApi([ServerlessInboxTagKeys.edge, ServerlessInboxTagKeys.rootRegion]);
 
     // Grants for the resources of the edge stack
-    const owner: RootStack = { name: props.rootStack, id: props.rootStackId };
-    this.grantCertificateLifecycle(props.stack, owner);
-    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, owner);
+    const rootStack: RootStack = { name: props.rootStack, id: props.rootStackId };
+    this.grantCertificateLifecycle(props.stack, rootStack);
+    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, rootStack);
     this.grantExecutionRolePassage(props.jmapBlobDownloadRoleArn);
     this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
 
@@ -83,7 +83,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * - RemoveTagsFromCertificate is gated by aws:ResourceTag so only already-owned certs can be untagged.
    * - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
    */
-  private grantCertificateLifecycle(stack: Stack, owner: RootStack): void {
+  private grantCertificateLifecycle(stack: Stack, rootStack: RootStack): void {
     const certificateArnPrefix = stack.formatArn({
       service: 'acm',
       region: 'us-east-1',
@@ -107,7 +107,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         resources: [certificateArnPrefix],
       })
     );
-    for (const conditions of rootStackRequestTagConditions(owner)) {
+    for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: ['acm:AddTagsToCertificate'],
@@ -116,7 +116,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         })
       );
     }
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: ['acm:AddTagsToCertificate'],
@@ -153,7 +153,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
    * aws:TagKeys.
    */
-  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, owner: RootStack): void {
+  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, rootStack: RootStack): void {
     const edgeLambdaActions = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
@@ -189,7 +189,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         },
       })
     );
-    for (const conditions of rootStackResourceTagConditions(owner)) {
+    for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
           actions: [

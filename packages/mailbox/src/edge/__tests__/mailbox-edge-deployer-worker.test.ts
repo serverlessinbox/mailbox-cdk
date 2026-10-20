@@ -109,7 +109,7 @@ describe('MailboxEdgeDeployerWorker', () => {
       expect(resourceOf(template, 'acm:RequestCertificate')).toBe(CERTIFICATE_ARNS);
     });
 
-    it('adds tags on create when the request carries an owner tag, and on update when the certificate already has one', () => {
+    it('adds tags on create when the request carries a root-stack tag, and on update when the certificate already has one', () => {
       const statements = statementsForAction(template, 'acm:AddTagsToCertificate');
 
       expect(statements.map((statement) => statement.Condition)).toEqual([...ownedByRequestTag(), ...ownedByResourceTag()]);

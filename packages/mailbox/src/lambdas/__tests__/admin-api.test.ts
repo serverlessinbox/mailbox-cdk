@@ -21,7 +21,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { AdminApiLambda } from '../admin-api';
 import type { IWebSocketBroadcastPublisher } from '../../api/websocket/websocket';
 import { AuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
@@ -119,30 +119,37 @@ describe('AdminApiLambda IAM scoping', () => {
     });
   });
 
-  it('scopes ses:TagResource to its own statement gated by RequestTag and TagKeys', () => {
+  it('scopes ses:TagResource to its own pair of statements: a request carrying the root stack id, or only its name', () => {
     const template = Template.fromStack(stack);
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: 'ses:TagResource',
-            Resource: {
-              'Fn::Join': [
-                '',
-                ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
-              ],
-            },
-            Condition: {
-              StringEquals: {
-                [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack',
-              },
-              'ForAllValues:StringEquals': {
-                'aws:TagKeys': [ServerlessInboxTagKeys.rootStack],
-              },
-            },
-          }),
-        ]),
-      },
+    const identityArn = {
+      'Fn::Join': ['', ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
+    };
+    const tagKeys = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
+    const conditions = [
+      Match.objectEquals({
+        StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+        'ForAllValues:StringEquals': tagKeys,
+      }),
+      Match.objectEquals({
+        StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
+        Null: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
+        'ForAllValues:StringEquals': tagKeys,
+      }),
+    ];
+    for (const Condition of conditions) {
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({ Action: 'ses:TagResource', Resource: identityArn, Condition }),
+          ]),
+        },
+      });
+    }
+  });
+
+  it('sets ROOT_STACK_ID to the stack guid', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ ROOT_STACK_ID: stack.resolve(StackIdentity.guid) }) },
     });
   });
 

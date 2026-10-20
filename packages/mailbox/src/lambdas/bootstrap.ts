@@ -1,7 +1,8 @@
 import { Construct } from 'constructs';
 import type { IDataTable } from '../data/data-tables';
 import { Aws, Duration, Stack } from 'aws-cdk-lib';
-import { GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { IReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
@@ -46,6 +47,7 @@ export class BootstrapLambda extends GoLambda {
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
         STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+        ROOT_STACK_ID: StackIdentity.guid,
         SES_RULE_SET_NAME: props.sesRuleSet.receiptRuleSetName,
         ...(props.sesReceivingMode ? { SES_RECEIVING_MODE: props.sesReceivingMode } : {}),
         ...(props.sesSendEnabled ? { SES_SEND_ENABLED: 'on' } : {}),
@@ -142,19 +144,20 @@ export class BootstrapLambda extends GoLambda {
     // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
     // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
     // aws:TagKeys so this role can't ride along to write an unrelated tag key.
-    this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:TagResource'],
-      resources: [
-        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
-      ],
-      conditions: {
-        StringEquals: {
-          [`aws:RequestTag/${stackIdentityTagKey}`]: Stack.of(this).stackName,
+    const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
+    for (const conditions of rootStackRequestTagConditions(rootStack)) {
+      this.addToRolePolicy(new PolicyStatement({
+        actions: ['ses:TagResource'],
+        resources: [
+          `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
+        ],
+        conditions: {
+          ...conditions,
+          'ForAllValues:StringEquals': {
+            'aws:TagKeys': [stackIdentityTagKey, ServerlessInboxTagKeys.rootStackId],
+          },
         },
-        'ForAllValues:StringEquals': {
-          'aws:TagKeys': [stackIdentityTagKey],
-        },
-      },
-    }));
+      }));
+    }
   }
 }

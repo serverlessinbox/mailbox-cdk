@@ -15,7 +15,7 @@ import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { ReceiptRuleSet } from 'aws-cdk-lib/aws-ses';
-import { DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -97,6 +97,12 @@ describe('BootstrapLambda', () => {
         STACK_IDENTITY_TAG_KEY: ServerlessInboxTagKeys.rootStack,
         SES_RULE_SET_NAME: Match.anyValue(),
       });
+    });
+
+    it('sets ROOT_STACK_ID to the stack guid', () => {
+      const template = synthBootstrap();
+
+      hasEnvironment(template, { ROOT_STACK_ID: stack.resolve(StackIdentity.guid) });
     });
 
     it('omits SES_RECEIVING_MODE and SES_SEND_ENABLED when their props are not set', () => {
@@ -206,16 +212,26 @@ describe('BootstrapLambda', () => {
       });
     });
 
-    it('scopes ses:TagResource to the domain identity, gated by RequestTag and TagKeys', () => {
+    it('scopes ses:TagResource to the domain identity with one statement for a request carrying the root stack id and one for a request carrying only its name', () => {
       const template = synthBootstrap();
+      const tagKeys = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
 
       hasStatement(template, {
         Action: 'ses:TagResource',
         Resource: identityArn('example.com'),
-        Condition: {
+        Condition: Match.objectEquals({
+          StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+          'ForAllValues:StringEquals': tagKeys,
+        }),
+      });
+      hasStatement(template, {
+        Action: 'ses:TagResource',
+        Resource: identityArn('example.com'),
+        Condition: Match.objectEquals({
           StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
-          'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack] },
-        },
+          Null: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
+          'ForAllValues:StringEquals': tagKeys,
+        }),
       });
     });
   });
