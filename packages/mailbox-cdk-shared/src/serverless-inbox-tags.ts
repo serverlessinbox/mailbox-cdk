@@ -1,8 +1,8 @@
 import { Aws, Tags }                        from 'aws-cdk-lib';
 import type { IConstruct }                  from 'constructs';
 
-import { resolveDeployerType }              from './deployer-type';
-import type { ServerlessInboxDeployerType } from './deployer-type';
+import { resolveDeployerType }              from './context/deployer-type';
+import type { ServerlessInboxDeployerType } from './context/deployer-type';
 import { StackIdentity }                    from './naming/stack-identity';
 import { ServerlessInboxTagKeys }           from './ts-lambdas/shared/tag-keys';
 

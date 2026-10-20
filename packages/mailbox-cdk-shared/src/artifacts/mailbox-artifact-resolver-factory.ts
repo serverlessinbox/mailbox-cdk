@@ -4,7 +4,8 @@ import type { RegistryRecord }                                  from '@serverles
 import { Stack }                                                from 'aws-cdk-lib';
 import type { Construct }                                       from 'constructs';
 
-import { ARTIFACTS_CONTEXT_KEY, ARTIFACT_VERSIONS_CONTEXT_KEY } from './context-keys';
+import { ARTIFACTS_CONTEXT_KEY, ARTIFACT_VERSIONS_CONTEXT_KEY } from '../context/context-keys';
+
 import type { EmbeddedArtifactVersions }                        from './embedded-artifact-versions';
 
 /**

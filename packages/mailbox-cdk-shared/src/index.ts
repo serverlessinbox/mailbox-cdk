@@ -5,35 +5,35 @@ export {
   DEPLOYER_TYPE_CONTEXT_KEY as DEPLOYER_CONTEXT_KEY,
   DEVELOPMENT_CONTEXT_KEY,
   VENDOR_ACCOUNT_IDS_CONTEXT_KEY,
-} from './context-keys';
+} from './context/context-keys';
 
 // Artifact resolution: the resolver factory and the loaders of what a package ships
-export { MailboxArtifactResolverFactory } from './mailbox-artifact-resolver-factory';
-export { loadEmbeddedRegistryRecord } from './embedded-registry-record';
-export { loadEmbeddedArtifactVersions } from './embedded-artifact-versions';
-export type { EmbeddedArtifactVersions } from './embedded-artifact-versions';
+export { MailboxArtifactResolverFactory } from './artifacts/mailbox-artifact-resolver-factory';
+export { loadEmbeddedRegistryRecord } from './artifacts/embedded-registry-record';
+export { loadEmbeddedArtifactVersions } from './artifacts/embedded-artifact-versions';
+export type { EmbeddedArtifactVersions } from './artifacts/embedded-artifact-versions';
 export type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
 
 // CDK aspects & patterns
 export { GateOnConditionAspect } from './gate-on-condition-aspect';
 
 // Vendor account resolution
-export { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from './vendor-account';
+export { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from './context/vendor-account';
 
 // Deployer type resolution
-export { resolveDeployerType } from './deployer-type';
-export type { ServerlessInboxDeployerType } from './deployer-type';
+export { resolveDeployerType } from './context/deployer-type';
+export type { ServerlessInboxDeployerType } from './context/deployer-type';
 
 // Development mode
-export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjectsInDevelopment } from './development-mode';
+export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjectsInDevelopment } from './context/development-mode';
 
 // Lambda constructs & artifact tagging
 export { TypeScriptLambda } from './ts-lambda';
 export type { TypeScriptLambdaProps } from './ts-lambda';
 export { GoLambda } from './go-lambda';
 export type { GoLambda2Props } from './go-lambda';
-export { applyArtifactTags } from './apply-artifact-tags';
-export type { AutoUpdateType } from './apply-artifact-tags';
+export { applyArtifactTags } from './artifacts/apply-artifact-tags';
+export type { AutoUpdateType } from './artifacts/apply-artifact-tags';
 
 // Serverless Inbox tagging
 export {
