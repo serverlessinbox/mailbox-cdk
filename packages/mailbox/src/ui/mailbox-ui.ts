@@ -1,7 +1,7 @@
 import { Construct, IDependable } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { Fn, RemovalPolicy, Tags } from 'aws-cdk-lib';
+import { Aws, Fn, RemovalPolicy, Tags } from 'aws-cdk-lib';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import {
   AllowedMethods,
@@ -10,6 +10,7 @@ import {
   Function as CloudFrontFunction,
   FunctionCode,
   FunctionEventType,
+  IDistribution,
   OriginAccessIdentity,
   OriginRequestPolicy,
   ViewerProtocolPolicy,
@@ -20,10 +21,17 @@ import { AuthPolicyName, OAuthClientName } from '../auth/types';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 import type { Pipeline } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { BucketAutoEmpty, StaticContentDeployer, StaticContentSource, StackNamedBucket, S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox/mailbox-cdk-shared';
-import { Aws } from 'aws-cdk-lib';
-import { slugifyLabel } from '@serverlessinbox/mailbox-cdk-shared';
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  BucketAutoEmpty,
+  StaticContentDeployer,
+  StaticContentSource,
+  StackNamedBucket,
+  S3Actions,
+  grantObjectActions,
+  grantListBucket,
+  slugifyLabel,
+  ServerlessInboxTagKeys,
+} from '@serverlessinbox/mailbox-cdk-shared';
 import { IdpTokenExchangeApi } from './idp-token-exchange/api';
 
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
@@ -42,27 +50,27 @@ export interface MailboxUiConfig {
 
 /** Inputs of `MailboxUi`: the CloudFront domain, the token-exchange wiring behind `/auth/*`, and the optional static content to deploy. */
 export interface MailboxUiProps {
-  domainName: string;
+  readonly domainName: string;
 
   /**
    * Without a certificate the distribution is served on its default CloudFront domain and
    * `domainName` is not attached to it as an alias.
    */
-  certificate?: acm.ICertificate;
+  readonly certificate?: acm.ICertificate;
 
-  configTable: IDataTable;
+  readonly configTable: IDataTable;
 
-  authPolicyName: AuthPolicyName;
+  readonly authPolicyName: AuthPolicyName;
 
-  oauthClientName: OAuthClientName;
+  readonly oauthClientName: OAuthClientName;
 
-  auditEventsQueue: IAuditEventsQueue;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Used for the CloudFront comments, and slugified into the bucket's construct ID. */
-  label: string;
+  readonly label: string;
 
   /** SERVICE_NAME for the token-exchange lambda. */
-  tokenExchangeServiceName: string;
+  readonly tokenExchangeServiceName: string;
 
   readonly tokenExchangePipeline: Pipeline;
 
@@ -70,10 +78,10 @@ export interface MailboxUiProps {
   readonly tokenExchangeDependsOn?: IDependable[];
 
   /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
-  uiBundle?: UiBundleSource;
+  readonly uiBundle?: UiBundleSource;
 
   /** Optional UI runtime config written to `s3://<ui-bucket>/config/config.json` via custom resource. */
-  uiConfig?: MailboxUiConfig;
+  readonly uiConfig?: MailboxUiConfig;
 
   readonly artifactResolver: IArtifactResolver;
 }
@@ -82,18 +90,18 @@ export interface MailboxUiProps {
  * Static-content UI: an S3 bucket behind a CloudFront distribution, with a `/config/*` behavior
  * for runtime config and an `/auth/*` behavior routed to a token-exchange API.
  *
- * Creates:
- * - S3 bucket for static assets
- * - CloudFront distribution
- * - /auth/* behavior routed to token exchange API
+ * It deploys the UI bundle and config into the bucket when given them. It does not create the DNS
+ * record for `domainName`, and it does not decide which OAuth client the token exchange serves
+ * beyond passing `oauthClientName` through.
  */
 export class MailboxUi extends Construct {
-  private readonly bucket: Bucket;
-  readonly distribution: Distribution;
+  readonly distribution: IDistribution;
   readonly distributionDomainName: string;
 
-  /** Name of the static-content bucket, so subclasses can reference it without access to the bucket resource itself. */
+  /** Name of the static-content bucket; the bucket resource itself stays private. */
   protected readonly bucketName: string;
+
+  private readonly bucket: Bucket;
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
     super(scope, id);
@@ -133,7 +141,7 @@ export class MailboxUi extends Construct {
       originPath: '',
     });
 
-    this.distribution = new Distribution(this, 'distribution', {
+    const distribution = new Distribution(this, 'distribution', {
       comment: `Mailbox ${props.label}`,
       defaultRootObject: 'index.html',
       domainNames: props.certificate ? [props.domainName] : undefined,
@@ -149,43 +157,32 @@ export class MailboxUi extends Construct {
           httpStatus: 404,
           responseHttpStatus: 200,
           responsePagePath: '/index.html',
-          ttl: undefined,
         },
         {
           httpStatus: 403,
           responseHttpStatus: 200,
           responsePagePath: '/index.html',
-          ttl: undefined,
         },
       ],
     });
+    this.distribution = distribution;
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.
-    this.distribution.addBehavior('/config/*', configOrigin, {
+    distribution.addBehavior('/config/*', configOrigin, {
       viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       cachePolicy: CachePolicy.CACHING_DISABLED,
       compress: true,
       allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
     });
 
-    this.addAuthBehavior(
-      this.distribution,
-      artifacts,
-      props.configTable,
-      props.auditEventsQueue,
-      props.authPolicyName,
-      props.oauthClientName,
-      props.tokenExchangeServiceName,
-      props.tokenExchangePipeline,
-      props.tokenExchangeDependsOn,
-    );
+    this.addAuthBehavior(distribution, props);
 
     if (props.uiBundle || props.uiConfig) {
-      this.addUiDeployment(artifacts, props);
+      this.addUiDeployment(props);
     }
 
-    this.distributionDomainName = props.certificate ? props.domainName : this.distribution.distributionDomainName;
+    this.distributionDomainName = props.certificate ? props.domainName : distribution.distributionDomainName;
   }
 
   /**
@@ -205,7 +202,8 @@ export class MailboxUi extends Construct {
     grantListBucket(grantee, this.bucket, 'config/*');
   }
 
-  private addUiDeployment(artifacts: IArtifactResolver, props: MailboxUiProps): void {
+  private addUiDeployment(props: MailboxUiProps): void {
+    const artifacts = props.artifactResolver;
     const deployer = StaticContentDeployer.getOrCreate(this, artifacts);
 
     // Distribution tags: update type
@@ -252,26 +250,16 @@ export class MailboxUi extends Construct {
     });
   }
 
-  private addAuthBehavior(
-    distribution: Distribution,
-    artifactResolver: IArtifactResolver,
-    configTable: IDataTable,
-    auditEventsQueue: IAuditEventsQueue,
-    authPolicyName: AuthPolicyName,
-    oauthClientName: OAuthClientName,
-    tokenExchangeServiceName: string,
-    tokenExchangePipeline: Pipeline,
-    tokenExchangeDependsOn: IDependable[] | undefined,
-  ): void {
+  private addAuthBehavior(distribution: Distribution, props: MailboxUiProps): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
-      artifactResolver,
-      configTable,
-      auditEventsQueue,
-      authPolicyName,
-      oauthClientName,
-      dependsOn: tokenExchangeDependsOn,
-      serviceName: tokenExchangeServiceName,
-      pipeline: tokenExchangePipeline,
+      artifactResolver: props.artifactResolver,
+      configTable: props.configTable,
+      auditEventsQueue: props.auditEventsQueue,
+      authPolicyName: props.authPolicyName,
+      oauthClientName: props.oauthClientName,
+      dependsOn: props.tokenExchangeDependsOn,
+      serviceName: props.tokenExchangeServiceName,
+      pipeline: props.tokenExchangePipeline,
     });
 
     // Token exchange API is internal behind CloudFront.
@@ -301,5 +289,4 @@ export class MailboxUi extends Construct {
       allowedMethods: AllowedMethods.ALLOW_ALL,
     });
   }
-
 }

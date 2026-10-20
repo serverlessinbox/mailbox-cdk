@@ -10,12 +10,14 @@ import {
   EndpointType,
   HttpApi,
   HttpMethod,
+  IHttpApi,
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration, HttpUrlIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import type { IDataTable } from '../../data/data-tables';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Duration, Aws, CfnResource } from 'aws-cdk-lib';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { IDataBlobStore } from '../../data/data-blob-store';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
@@ -27,6 +29,11 @@ import type { IAuditEventsQueue } from '../../features/audit-writing/audit-event
 import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
 import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 
+/**
+ * Inputs of {@link JMapApi}: the tables, queues and blob store its handler Lambda works on, the
+ * addons that mount further routes, the optional custom domain and the optional OAuth issuer that
+ * switches on the protected-resource metadata document.
+ */
 export interface JMapApiProps {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
@@ -37,6 +44,7 @@ export interface JMapApiProps {
   readonly auditEventsQueue: IAuditEventsQueue;
 
   readonly cdnHost: string;
+  /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
   readonly allowedOrigins?: string[];
 
   readonly webSocketUrl?: string;
@@ -51,7 +59,7 @@ export interface JMapApiProps {
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
   readonly domainName?: string;
 
-  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
+  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). Required when domainName is set. */
   readonly certificate?: acm.ICertificate;
 
   /** Optional addon routes (e.g. OAuth DCR). */
@@ -66,19 +74,40 @@ export interface JMapApiProps {
   readonly vendorAccountIds: string[];
 }
 
+/** Per-route throttle settings, keyed PascalCase because CloudFormation receives them unmapped. */
+interface RouteThrottleSettings {
+  readonly ThrottlingBurstLimit: number;
+  readonly ThrottlingRateLimit: number;
+}
+
+/** The `RouteSettings` of an API Gateway stage, keyed by route key (`<METHOD> <path>`). */
+interface StageRouteSettings {
+  [routeKey: string]: RouteThrottleSettings;
+}
+
+/**
+ * The JMAP HTTP API: the JMAP session, API and upload routes behind a Lambda authorizer (the
+ * session route is anonymous), the routes its addons mount, an optional custom domain, and, when
+ * an OAuth issuer is given, the RFC 9728 protected-resource metadata document.
+ *
+ * It does not create the DNS record for the custom domain (it exposes `domainTarget` for that),
+ * and it does not decide who is authorized (the authorizer Lambda does).
+ */
 export class JMapApi extends Construct {
   /** RFC 9728 OAuth protected-resource well-known path (with leading slash for HTTP routes). */
   private static readonly OAUTH_PROTECTED_RESOURCE_PATH = '/.well-known/oauth-protected-resource';
 
-  url: string;
+  /** The API's base URL: `https://<domainName>` with a custom domain, the API Gateway endpoint otherwise. */
+  public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  authorizerLambda: AuthorizerLambda; // Exposed for reuse in WebSocket API
-  private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
-  /** Exposed for constructs that need the underlying IHttpApi (e.g. McpApi). */
-  public readonly httpApi: HttpApi;
+  /** The authorizer that protects this API's routes, for other APIs that authorize the same callers. */
+  public readonly authorizerLambda: IFunction;
+  /** The underlying HTTP API, for constructs that add routes to it. */
+  public readonly httpApi: IHttpApi;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
   public readonly domainCfnResource?: CfnResource;
+  private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
 
   constructor(scope: Construct, id: string, props: JMapApiProps) {
     super(scope, id);
@@ -167,7 +196,6 @@ export class JMapApi extends Construct {
       identitySource: [],
       resultsCacheTtl: Duration.seconds(0),
     });
-    this.authorizerLambda = lambdaAuthorizer;
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
 
@@ -190,67 +218,72 @@ export class JMapApi extends Construct {
       integration: httpLambdaIntegration,
     });
 
-    // Mount addon-provided routes (e.g. OAuth DCR)
     for (const addon of props.jmapApiAddons ?? []) {
       addon.addRoutes(api);
     }
 
-    // Mount RFC 9728 OAuth protected-resource well-known document (if enabled)
     if (props.oauthIssuerUrl) {
-      const protectedResourceDoc = {
-        resource: this.url,
-        authorization_servers: [props.oauthIssuerUrl],
-      };
-
-      // Deploy to the shared public-static-assets bucket
-      const bucket = PublicStaticAssetsBucket.getOrCreate(this, props.artifactResolver);
-      const deployer = StaticContentDeployer.getOrCreate(this, props.artifactResolver);
-
-      deployer.deploy(this, 'oauth-protected-resource', {
-        targetBucket: bucket,
-        source: StaticContentSource.data(
-          JMapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
-          JSON.stringify(protectedResourceDoc),
-          { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
-        ),
-      });
-
-      // Mount GET route via S3 proxy (zero Lambda invocation)
-      const protectedResourceIntegration = new HttpUrlIntegration(
-        'protected-resource',
-        `https://${bucket.bucketRegionalDomainName}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`,
-      );
-
-      const protectedResourceRoutes = api.addRoutes({
-        path: JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
-        methods: [HttpMethod.GET],
-        integration: protectedResourceIntegration,
-      });
-
-      // Apply per-route throttling via the L1 CfnStage (merge with any existing settings)
-      const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
-
-      // API Gateway rejects a RouteSettings entry whose route does not exist yet, and CloudFormation
-      // updates the Stage before creating the Route unless told otherwise:
-      //   "Unable to find Route by key ... within the provided RouteSettings"
-      protectedResourceRoutes.forEach((route) => {
-        cfnStage.addDependency(route.node.defaultChild as CfnResource);
-      });
-      const existingSettings = cfnStage.routeSettings as Record<string, any> || {};
-      const routeSettings: Record<string, any> = { ...existingSettings };
-
-      // Keys MUST be PascalCase — this map is passed through to CloudFormation unmapped, and
-      // camelCase fails the deploy with `Unrecognized field "throttlingBurstLimit"`.
-      routeSettings[`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`] = {
-        ThrottlingBurstLimit: 20,
-        ThrottlingRateLimit: 10,
-      };
-
-      cfnStage.routeSettings = routeSettings;
+      this.addOAuthProtectedResourceRoute(api, props.oauthIssuerUrl, props.artifactResolver);
     }
   }
 
+  /** Lets the handler Lambda publish through `broadcaster` to the WebSocket API at `webSocketUrl`. */
   public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, broadcaster);
+  }
+
+  /**
+   * Serves the RFC 9728 protected-resource metadata document straight from the shared public
+   * static-assets bucket through an HTTP URL integration, so the route costs no Lambda invocation,
+   * and throttles that route.
+   */
+  private addOAuthProtectedResourceRoute(api: HttpApi, oauthIssuerUrl: string, artifactResolver: IArtifactResolver): void {
+    const protectedResourceDoc = {
+      resource: this.url,
+      authorization_servers: [oauthIssuerUrl],
+    };
+
+    const bucket = PublicStaticAssetsBucket.getOrCreate(this, artifactResolver);
+    const deployer = StaticContentDeployer.getOrCreate(this, artifactResolver);
+
+    deployer.deploy(this, 'oauth-protected-resource', {
+      targetBucket: bucket,
+      source: StaticContentSource.data(
+        JMapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
+        JSON.stringify(protectedResourceDoc),
+        { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
+      ),
+    });
+
+    const protectedResourceIntegration = new HttpUrlIntegration(
+      'protected-resource',
+      `https://${bucket.bucketRegionalDomainName}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`,
+    );
+
+    const protectedResourceRoutes = api.addRoutes({
+      path: JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
+      methods: [HttpMethod.GET],
+      integration: protectedResourceIntegration,
+    });
+
+    const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
+
+    // API Gateway rejects a RouteSettings entry whose route does not exist yet, and CloudFormation
+    // updates the Stage before creating the Route unless told otherwise:
+    //   "Unable to find Route by key ... within the provided RouteSettings"
+    protectedResourceRoutes.forEach((route) => {
+      cfnStage.addDependency(route.node.defaultChild as CfnResource);
+    });
+
+    const existingSettings: StageRouteSettings | undefined = cfnStage.routeSettings;
+    const routeSettings: StageRouteSettings = {
+      ...existingSettings,
+      [`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`]: {
+        ThrottlingBurstLimit: 20,
+        ThrottlingRateLimit: 10,
+      },
+    };
+
+    cfnStage.routeSettings = routeSettings;
   }
 }

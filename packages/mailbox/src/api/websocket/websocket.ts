@@ -20,21 +20,21 @@ import type { IDataTable } from '../../data/data-tables';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Effect, IGrantable, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { WebSocketTable, IWebSocketTable } from './websocket-table';
 
+/** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */
 export interface IWebSocketBroadcastPublisher {
   readonly functionName: string;
   grantInvoke(grantee: IGrantable): void;
 }
 
-/** WebSocket push capability for lambdas that send WebSocket broadcasts (basic signature). */
+/** A Lambda that can be pointed at a WebSocket broadcaster; it needs no WebSocket URL. */
 export interface IWebSocketPushTarget extends IFunction {
   enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void;
 }
 
-/** WebSocket push capability for lambdas that need both a WebSocket URL and broadcast capability (e.g. JMAP API). */
+/** A Lambda that can be pointed at a WebSocket broadcaster and also needs the WebSocket URL. */
 export interface IWebSocketPushTargetWithUrl extends IFunction {
   enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void;
 }
@@ -50,30 +50,21 @@ export interface IWebSocketPushApi {
   readonly managementEndpoint: string;
 }
 
-class WebSocketBroadcastPublisherImpl implements IWebSocketBroadcastPublisher {
-  constructor(private readonly fn: lambda.IFunction) { }
-
-  public get functionName(): string {
-    return this.fn.functionName;
-  }
-
-  public grantInvoke(grantee: IGrantable): void {
-    this.fn.grantInvoke(grantee);
-  }
-}
-
+/** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
-  readonly authorizerLambda: lambda.IFunction; // Lambda function for WebSocket authorization
+  /** Authorizer Lambda for the `$connect` route. */
+  readonly authorizerLambda: IFunction;
   readonly artifactResolver: IArtifactResolver;
+  /** Maximum subscriptions per connection, handed to the message handler. Default: 10. */
   readonly maxSubscriptions?: number;
 
   /** Optional custom domain name (e.g. ws.example.com). When set, a domain mapping is created. */
   readonly domainName?: string;
 
-  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
+  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). Required when domainName is set. */
   readonly certificate?: acm.ICertificate;
 }
 
@@ -83,37 +74,36 @@ export interface WebSocketPushProps {
  * connections table, the route-handler/broadcast Lambdas, and the optional custom-domain mapping.
  * The underlying `WebSocketApi`/`WebSocketStage` never leave this construct — callers that need
  * to push messages or read the management endpoint go through `IWebSocketPushApi`.
+ *
+ * It does not create the DNS record for the custom domain (it exposes `domainTarget` for that).
  */
 export class WebSocketPush extends Construct implements IWebSocketPushApi {
   /** The single WebSocket stage this API is ever deployed to. */
   public static readonly STAGE_NAME = 'prod';
 
-  private readonly api: WebSocketApi;
-  private readonly stage: WebSocketStage;
   public readonly managementEndpoint: string;
   public readonly webSocketUrl: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
   public readonly webSocketTable: IWebSocketTable;
-  private readonly broadcastLambda: lambda.IFunction;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
   public readonly domainCfnResource?: CfnResource;
+  private readonly api: WebSocketApi;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
 
     const maxSubscriptions = props.maxSubscriptions ?? 10;
 
-    const webSocketTable = new WebSocketTable(this, 'connections-table');
-    this.webSocketTable = webSocketTable;
+    this.webSocketTable = new WebSocketTable(this, 'connections-table');
 
     this.api = new WebSocketApi(this, 'websocket-api', {
       apiName: `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
       description: 'WebSocket API for JMAP Push State notifications',
     });
 
-    this.stage = new WebSocketStage(this, 'websocket-stage', {
+    const stage = new WebSocketStage(this, 'websocket-stage', {
       webSocketApi: this.api,
       stageName: WebSocketPush.STAGE_NAME,
       autoDeploy: true,
@@ -122,7 +112,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     const stack = Stack.of(this);
     this.managementEndpoint = `https://${this.api.apiId}.execute-api.${stack.region}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
 
-    // Optional custom domain mapping.
     if (props.domainName) {
       if (!props.certificate) {
         throw new Error('WebSocketPush: certificate is required when domainName is provided');
@@ -140,17 +129,16 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
 
       this.domainCfnResource = domain.node.defaultChild as CfnResource;
 
-      // Preserve the existing stage-in-path URL shape.
       new ApiMapping(this, 'mapping', {
         api: this.api,
         domainName: domain,
-        stage: this.stage,
+        stage,
       });
 
       this.domainTarget = domain.regionalDomainName;
       this.webSocketUrl = `wss://${props.domainName}`;
     } else {
-      this.webSocketUrl = this.stage.url;
+      this.webSocketUrl = stage.url;
     }
 
     // Lambda: $connect
@@ -178,14 +166,19 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     });
 
     // Lambda: broadcast
-    this.broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
+    const broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.webSocketTable,
       configTable: props.configTable,
       webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });
 
-    this.broadcaster = new WebSocketBroadcastPublisherImpl(this.broadcastLambda);
+    this.broadcaster = {
+      functionName: broadcastLambda.functionName,
+      grantInvoke: (grantee) => {
+        broadcastLambda.grantInvoke(grantee);
+      },
+    };
 
     const authorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authorizerLambda, {
       identitySource: [
@@ -207,9 +200,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     });
   }
 
-  // Not CDK's WebSocketApi.grantManageConnections: it synthesizes a different resource ARN.
-  // This deliberately reproduces the ARN (`<apiId>/*`) the WebSocket Lambdas are granted today,
-  // so the grant stays permission-identical.
+  /** Allows `execute-api:ManageConnections` on every connection of this API (`<apiId>/*`). */
   public grantManageConnections(grantee: IGrantable): void {
     const stack = Stack.of(this);
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({

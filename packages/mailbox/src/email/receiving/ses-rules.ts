@@ -7,6 +7,7 @@ import { SesReceiptForwarderLambda } from '../../lambdas/ses-receipt-forwarder';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
 
+/** Where received email is stored and how it is queued for processing. */
 export interface EmailDelivery {
   readonly blobStore: IBucket;
   readonly bucketPrefix: string;
@@ -15,10 +16,17 @@ export interface EmailDelivery {
   readonly queueProps?: Partial<BaseQueueProps>;
 }
 
+/** Inputs of {@link SesRules}. */
 export interface SesRulesProps {
   readonly delivery: EmailDelivery;
 }
 
+/**
+ * The SES receiving side: a receipt rule set with one rule that stores each incoming email in S3
+ * and then notifies a forwarder Lambda, which enqueues it on the email-processing queue.
+ *
+ * It does not consume the queue it creates.
+ */
 export class SesRules extends Construct {
   /** The name of the SES receipt rule set created by this construct. */
   readonly ruleSetName: string;
@@ -30,28 +38,22 @@ export class SesRules extends Construct {
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
 
-    // SQS queue for email processing (with its DLQ); visibility timeout must exceed the
-    // email-processor Lambda's timeout (1 min).
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
       queueProps: props.delivery.queueProps,
     });
     this.emailProcessingQueue = emailProcessingQueue;
 
-    // Forwarder Lambda: receives the SES receipt notification and enqueues it on SQS.
-    // This replaces the SNS action which has a hard 150 KB inbound email size limit.
-    // SES invokes this asynchronously (InvocationType.EVENT) so a transient failure
-    // does NOT bounce the email — the MIME is already safely stored in S3.
+    // SES's SNS action has a hard 150 KB limit on the inbound email, so the notification goes
+    // through a forwarder Lambda that enqueues it on SQS instead.
     const forwarder = new SesReceiptForwarderLambda(this, 'ses-receipt-forwarder', {
       emailProcessorQueue: emailProcessingQueue,
       artifactResolver: props.delivery.artifactResolver,
     });
 
-    // SES receipt rule set
     const ruleSet = new ReceiptRuleSet(this, 'email-rule-set', {});
     this.ruleSetName = ruleSet.receiptRuleSetName;
     this.ruleSet = ruleSet;
 
-    // SES receipt rule: store email in S3, then notify via Lambda → SQS → email-processor
     new ReceiptRule(this, 'email-rule', {
       ruleSet: ruleSet,
       actions: [
@@ -61,17 +63,14 @@ export class SesRules extends Construct {
         }),
         new Lambda({
           function: forwarder,
-          invocationType: LambdaInvocationType.EVENT, // async — SES does not wait for the result
+          // Asynchronous, so SES does not wait for the result: a transient forwarder failure does
+          // not bounce the email, whose MIME is already stored in S3.
+          invocationType: LambdaInvocationType.EVENT,
         }),
       ],
       enabled: true,
       scanEnabled: true,
       tlsPolicy: TlsPolicy.REQUIRE,
     });
-
-    // Note: the SES bucket policy (allowing ses.amazonaws.com to s3:PutObject on incoming-emails/*)
-    // is applied directly on BlobStore in resources/blob-store.ts. The blob store is owned by
-    // MailboxDataStack and referenced here as an imported IBucket; addToResourcePolicy on imported
-    // buckets is a CDK no-op, so the policy must live on the owning construct instead.
   }
 }

@@ -25,6 +25,10 @@ import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue
 import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
 import type { IIdentityProvisioner } from '../../lambdas/identity-provisioner';
 
+/**
+ * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, the
+ * addons that mount further routes, and the optional custom domain.
+ */
 export interface AdminApiProps {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
@@ -35,6 +39,7 @@ export interface AdminApiProps {
   readonly blobStore: IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue: IAuditEventsQueue;
+  /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
   readonly allowedOrigins?: string[];
   readonly artifactResolver: IArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
@@ -46,7 +51,7 @@ export interface AdminApiProps {
   /** Optional custom domain name for this API (e.g. api.example.com). */
   readonly domainName?: string;
 
-  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). */
+  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). Required when domainName is set. */
   readonly certificate?: acm.ICertificate;
 
   /** Name of the SES receipt rule set. Passed to the handler for setup-flow SES readiness checks. */
@@ -61,13 +66,21 @@ export interface AdminApiProps {
   readonly stackIdentityTagKey: string;
 }
 
+/**
+ * The Admin HTTP API: one proxy route to the admin-api handler Lambda behind a Lambda authorizer,
+ * the routes its addons mount, and an optional custom domain.
+ *
+ * It does not create the DNS record for the custom domain (it exposes `domainTarget` for that),
+ * and it does not decide who is authorized (the authorizer Lambda does).
+ */
 export class AdminApi extends Construct {
+  /** The API's base URL: `https://<domainName>` with a custom domain, the API Gateway endpoint otherwise. */
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  private readonly apiHandlerLambda: IWebSocketPushTarget;
   /** L1 CfnDomainName for logical-ID pinning. Present only when domainName is provided. */
   public readonly domainCfnResource?: CfnResource;
+  private readonly apiHandlerLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -146,7 +159,6 @@ export class AdminApi extends Construct {
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
 
-    // Mount all addons at construction time
     for (const addon of props.addons ?? []) {
       addon.addRoutes(api, httpLambdaAuthorize);
     }
@@ -160,6 +172,7 @@ export class AdminApi extends Construct {
     });
   }
 
+  /** Lets the handler Lambda publish through `broadcaster` to connected WebSocket clients. */
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(broadcaster);
   }

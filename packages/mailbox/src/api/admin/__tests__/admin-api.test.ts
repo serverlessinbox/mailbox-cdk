@@ -1,0 +1,211 @@
+/// <reference types="jest" />
+
+/**
+ * AdminApi tests: what the construct itself decides.
+ *
+ * Pins the custom-domain wiring (certificate required, domain deleted only after the certificate
+ * is no longer needed, API mapped onto the domain), the CORS preflight switch, that every route is
+ * behind the Lambda authorizer, and that addons are mounted with that same authorizer. A route
+ * that loses its authorizer, or a domain that outlives the dependency on its certificate, stays
+ * green in tsc and synth, so these assertions are the only guard.
+ */
+
+import * as cdk from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Function as LambdaFunction } from 'aws-cdk-lib/aws-lambda';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { AdminApi } from '../admin-api';
+import type { AdminApiProps } from '../admin-api';
+import type { IAdminApiAddon } from '../../addons';
+import type { IWebSocketBroadcastPublisher } from '../../websocket/websocket';
+import type { IMailboxAuthProvider } from '../../../auth/types';
+import { AuditEventsQueue } from '../../../features/audit-writing/audit-events-queue';
+import { AuthKeyStoreTable } from '../../../features/auth-key-store/auth-key-store-table';
+import { EmailSendingQueue } from '../../../email/sending/email-sending-queue';
+import { DataTable } from '../../../data/data-tables';
+import { DataBlobStore } from '../../../data/data-blob-store';
+
+describe('AdminApi', () => {
+  let stack: cdk.Stack;
+
+  function dataTable(id: string): DataTable {
+    return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
+  }
+
+  function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
+    const authProvider: IMailboxAuthProvider = {
+      issuer: 'https://example.com/issuer',
+      tokenEndpoint: 'https://example.com/token',
+      authorizationEndpoint: 'https://example.com/authorize',
+      authMethod: 'header',
+      usePkce: false,
+      scopeMap: {},
+      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
+      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
+      createAdminApiAddons: () => [],
+    };
+    return {
+      configTable: dataTable('config-table'),
+      itemTable: dataTable('item-table'),
+      auditLogTable: dataTable('audit-log-table'),
+      changelogTable: dataTable('changelog-table'),
+      mailFeedbackTable: dataTable('mail-feedback-table'),
+      authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
+      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      artifactResolver: new PinnedArtifactResolver({
+        packages: {
+          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        },
+        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        deploymentRegion: stack.region,
+      }),
+      authProvider,
+      identityProvisioner: LambdaFunction.fromFunctionArn(
+        stack,
+        'identity-provisioner-ref',
+        'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+      ),
+      sesRuleSetName: 'test-rule-set',
+      sesConfigSetName: 'test-config-set',
+      systemSenderAddress: 'noreply@example.com',
+      vendorAccountIds: [VENDOR_ACCOUNT_ID],
+      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+      ...overrides,
+    };
+  }
+
+  function certificate(): acm.Certificate {
+    return new acm.Certificate(stack, 'certificate', {
+      domainName: 'api.example.com',
+      validation: acm.CertificateValidation.fromDns(),
+    });
+  }
+
+  beforeEach(() => {
+    stack = new cdk.Stack(new App(), 'TestStack', {
+      env: { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+  });
+
+  describe('without a custom domain', () => {
+    it('serves on the API Gateway endpoint and publishes no domain target', () => {
+      const sut = new AdminApi(stack, 'admin-api', propsWith());
+
+      const template = Template.fromStack(stack);
+      const apiId = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+
+      expect(stack.resolve(sut.url)).toEqual({ 'Fn::GetAtt': [apiId, 'ApiEndpoint'] });
+      expect(sut.domainTarget).toBeUndefined();
+      expect(sut.domainCfnResource).toBeUndefined();
+      template.resourceCountIs('AWS::ApiGatewayV2::DomainName', 0);
+      template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 0);
+    });
+  });
+
+  describe('with a custom domain', () => {
+    it('serves on the domain, maps the API onto it and publishes its regional target', () => {
+      const sut = new AdminApi(stack, 'admin-api', propsWith({ domainName: 'api.example.com', certificate: certificate() }));
+
+      const template = Template.fromStack(stack);
+
+      expect(sut.url).toBe('https://api.example.com');
+      expect(sut.domainTarget).toBeDefined();
+      template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
+        DomainName: 'api.example.com',
+        DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
+      });
+      template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
+    });
+
+    it('exposes the CfnDomainName for logical-id pinning', () => {
+      const sut = new AdminApi(stack, 'admin-api', propsWith({ domainName: 'api.example.com', certificate: certificate() }));
+
+      expect(sut.domainCfnResource?.cfnResourceType).toBe('AWS::ApiGatewayV2::DomainName');
+    });
+
+    it('makes the domain depend on the certificate so the domain is deleted first', () => {
+      const cert = certificate();
+      new AdminApi(stack, 'admin-api', propsWith({ domainName: 'api.example.com', certificate: cert }));
+
+      Template.fromStack(stack).hasResource('AWS::ApiGatewayV2::DomainName', {
+        DependsOn: Match.arrayWith([stack.getLogicalId(cert.node.defaultChild as cdk.CfnResource)]),
+      });
+    });
+
+    it('throws when the certificate is missing', () => {
+      expect(() => new AdminApi(stack, 'admin-api', propsWith({ domainName: 'api.example.com' })))
+        .toThrow('AdminApi: certificate is required when domainName is provided');
+    });
+  });
+
+  describe('CORS preflight', () => {
+    it('allows only POST and OPTIONS from the given origins', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ allowedOrigins: ['https://admin.example.com'] }));
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
+        CorsConfiguration: {
+          AllowOrigins: ['https://admin.example.com'],
+          AllowMethods: ['POST', 'OPTIONS'],
+          AllowHeaders: ['Content-Type', 'Authorization'],
+          AllowCredentials: true,
+          MaxAge: 3600,
+        },
+      });
+    });
+
+    it.each([[undefined], [[]]])('configures no CORS when allowedOrigins is %p', (allowedOrigins) => {
+      new AdminApi(stack, 'admin-api', propsWith({ allowedOrigins }));
+
+      const api = Object.values(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Api'))[0];
+
+      expect(api.Properties.CorsConfiguration).toBeUndefined();
+    });
+  });
+
+  describe('routes', () => {
+    it('routes every POST through the Lambda authorizer', () => {
+      new AdminApi(stack, 'admin-api', propsWith());
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
+        RouteKey: 'POST /{proxy+}',
+        AuthorizationType: 'CUSTOM',
+        AuthorizerId: Match.anyValue(),
+      });
+    });
+
+    it('mounts each addon with the API and the same authorizer', () => {
+      const first: IAdminApiAddon = { addRoutes: jest.fn() };
+      const second: IAdminApiAddon = { addRoutes: jest.fn() };
+
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [first, second] }));
+
+      for (const addon of [first, second]) {
+        expect(addon.addRoutes).toHaveBeenCalledTimes(1);
+        expect(addon.addRoutes).toHaveBeenCalledWith(expect.any(HttpApi), expect.any(HttpLambdaAuthorizer));
+      }
+    });
+  });
+
+  describe('enableWebSocketPublishing', () => {
+    it('lets the handler Lambda invoke the broadcaster', () => {
+      const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+      const sut = new AdminApi(stack, 'admin-api', propsWith());
+
+      sut.enableWebSocketPublishing(broadcaster);
+
+      expect(broadcaster.grantInvoke).toHaveBeenCalledTimes(1);
+    });
+  });
+});

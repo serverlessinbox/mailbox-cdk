@@ -5,28 +5,41 @@ import {
   EndpointType,
   HttpApi,
   HttpMethod,
+  IHttpApi,
   SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { Aws } from 'aws-cdk-lib';
-import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { McpApiLambda } from '../../lambdas/mcp-api';
 
+/** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */
 export interface McpApiProps {
-  jmapApiGateway: apigwv2.IHttpApi;
-  authorizerLambda: lambda.IFunction;
-  certificate: acm.ICertificate;
-  domainName: string;
-  scopeMap: Record<string, string[]>;
+  /** The JMAP API this MCP API fronts; handed to the MCP handler Lambda. */
+  readonly jmapApiGateway: IHttpApi;
+  /** Authorizer Lambda that protects every MCP route. */
+  readonly authorizerLambda: lambda.IFunction;
+  /** Regional ACM certificate that covers `mcp.<domainName>`, in the same region as the API. */
+  readonly certificate: acm.ICertificate;
+  /** Base domain; the API is served on `mcp.<domainName>`. */
+  readonly domainName: string;
+  readonly scopeMap: Record<string, string[]>;
   /** Artifact resolver for Lambda code resolution. */
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
 }
 
+/**
+ * The MCP (Model Context Protocol) HTTP API: one proxy route to the MCP handler Lambda behind a
+ * Lambda authorizer, served on a custom domain `mcp.<domainName>`.
+ *
+ * It does not create the DNS record for that domain (it exposes `domainTarget` for that), and it
+ * does not create the authorizer or the certificate it is given.
+ */
 export class McpApi extends Construct {
+  /** CNAME target to publish (API Gateway regional domain) for `mcp.<domainName>`. */
   public readonly domainTarget: string;
 
   constructor(scope: Construct, id: string, props: McpApiProps) {
