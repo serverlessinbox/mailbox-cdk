@@ -82,6 +82,18 @@ describe('jmap-oauth-dcr handler', () => {
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.UserPoolId).toBe('pool-1');
   });
 
+  it('answers 500 server_error, never a registration, when identity-provisioner reports a duplicate without a client', async () => {
+    mockIdentityProvisioner(lambdaMock, { dcrCheck: { status: 'dedup_hit', scope: 'openid email' } });
+
+    const answer = await handler(requestEvent({ redirect_uris: ['http://127.0.0.1/cb'] }));
+
+    expect(answer).toMatchObject({ statusCode: 500 });
+    expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', {
+      error: expect.stringContaining('identity-provisioner returned an unexpected shape'),
+    });
+    expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
+  });
+
   it('answers an unexpected failure with 500 server_error and writes the buffered trace that led to it', async () => {
     const failingHandler = loadHandlerWhoseRegistrationFails();
 

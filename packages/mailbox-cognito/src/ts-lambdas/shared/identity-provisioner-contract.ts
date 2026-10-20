@@ -64,12 +64,16 @@ export const isResolveTenantResponse = t.isObject({ tenantId: isTenantId });
 /** The tenant the request belongs to. */
 export type ResolveTenantResponse = t.InferType<typeof isResolveTenantResponse>;
 
-export const isDcrCheckResponse = t.isObject({
-  status: t.isEnum(['proceed', 'dedup_hit', 'cap_exceeded'] as const),
-  clientId: t.isOptional(isClientId),
+const isDcrProceedResponse = t.isObject({ status: t.isLiteral('proceed') });
+const isDcrDedupHitResponse = t.isObject({
+  status: t.isLiteral('dedup_hit'),
+  clientId: isClientId,
   scope: t.isOptional(t.isString()),
 });
-/** Whether the registration may proceed; a duplicate carries the client it duplicates and the scopes it was granted, separated by spaces. */
+const isDcrCapExceededResponse = t.isObject({ status: t.isLiteral('cap_exceeded') });
+
+export const isDcrCheckResponse = t.isOneOf([isDcrProceedResponse, isDcrDedupHitResponse, isDcrCapExceededResponse]);
+/** Whether the registration may proceed; a duplicate always carries the client it duplicates, and may carry the scopes it was granted, separated by spaces. */
 export type DcrCheckResponse = t.InferType<typeof isDcrCheckResponse>;
 
 export const isDcrPersistResponse = t.isObject({

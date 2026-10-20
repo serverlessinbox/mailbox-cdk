@@ -161,11 +161,11 @@ export class ClientRegistration {
     tenantId: TenantId,
     request: ClientRegistrationRequest,
     clientName: string,
-    clientId: ClientId | undefined,
+    clientId: ClientId,
     scope: string | undefined,
   ): APIGatewayProxyStructuredResultV2 {
     this.logger.info('jmap_oauth_dcr_dedup_hit', { tenantId, clientId });
-    return this.answerRegistered(request, clientId ?? '', scope ?? DEFAULT_SCOPE, clientName);
+    return this.answerRegistered(request, clientId, scope ?? DEFAULT_SCOPE, clientName);
   }
 
   // RFC 7591 §3.2.2: a registration error is HTTP 400. Cognito rejects a metadata value it will not accept
