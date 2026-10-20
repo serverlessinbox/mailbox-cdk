@@ -8283,7 +8283,7 @@ const RAW_RUNTIME_STATE =
     ]],\
     ["aws-sdk", [\
       ["npm:2.1693.0", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/aws-sdk-npm-2.1693.0-1e4ea9456e-10c0.zip/node_modules/aws-sdk/",\
+        "packageLocation": "./.yarn/unplugged/aws-sdk-npm-2.1693.0-1e4ea9456e/node_modules/aws-sdk/",\
         "packageDependencies": [\
           ["aws-sdk", "npm:2.1693.0"],\
           ["buffer", "npm:4.9.2"],\
@@ -9556,7 +9556,7 @@ const RAW_RUNTIME_STATE =
     ]],\
     ["esbuild", [\
       ["npm:0.27.1", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/esbuild-npm-0.27.1-1f2d625e1a-10c0.zip/node_modules/esbuild/",\
+        "packageLocation": "./.yarn/unplugged/esbuild-npm-0.27.1-1f2d625e1a/node_modules/esbuild/",\
         "packageDependencies": [\
           ["@esbuild/aix-ppc64", "npm:0.27.1"],\
           ["@esbuild/android-arm", "npm:0.27.1"],\
