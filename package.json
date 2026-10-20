@@ -10,8 +10,8 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "eslint packages/mailbox-bundler/src",
-    "lint:all": "eslint packages --max-warnings=-1",
+    "lint": "eslint --config eslint.gate.config.mjs --no-error-on-unmatched-pattern packages scripts",
+    "lint:all": "eslint packages scripts --max-warnings=-1",
     "resolve-artifacts": "artifact-registry resolve-artifacts --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --component mailbox-go:package:mailbox-go:regional --component mailbox-admin-ui:package:mailbox-admin-ui:regional --component mailbox-webmail-ui:package:mailbox-webmail-ui:regional",
     "bake-artifact-versions": "ts-node --project tsconfig.scripts.json scripts/bake-artifact-versions/bake-artifact-versions.ts",
     "template-baseline": "ts-node --project tsconfig.scripts.json scripts/template-baseline/template-baseline.ts",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1132.0",
+    "@eslint/compat": "^2.1.1",
     "@jwpkg/gitversion": "^1.4.0-pack-order.3",
     "@serverlessinbox/artifact-registry": "^0.3.0",
     "@serverlessinbox/artifact-registry-cdk": "^0.3.0",
@@ -30,7 +31,9 @@
     "aws-cdk-lib": "^2.261.0",
     "clipanion": "^4.0.0-rc.2",
     "constructs": "^10.5.0",
-    "eslint": "^9",
+    "eslint": "^10",
+    "eslint-plugin-align-assignments": "^1.1.2",
+    "eslint-plugin-arca": "^0.17.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.2",

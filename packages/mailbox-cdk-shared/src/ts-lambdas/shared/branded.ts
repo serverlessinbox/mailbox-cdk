@@ -5,9 +5,9 @@ import * as t from 'typanion';
  * brand exists in the type only; a value is branded by one factory per kind, and the cast to the brand sits in
  * that factory and nowhere else.
  */
-export type Branded<Kind extends string> = string & { readonly __brand: Kind };
+export type Branded<Kind extends string> = string & { readonly brand: Kind };
 
-type AnyBrand = { readonly __brand: string };
+type AnyBrand = { readonly brand: string };
 
 type PlainValue<Value> = Value extends AnyBrand ? string : Value;
 

@@ -5,8 +5,3 @@ tasks:
     desc: Type-check TypeScript sources
     cmds:
       - yarn exec tsc --noEmit
-
-  lint:
-    desc: Run ESLint
-    cmds:
-      - yarn exec eslint .
