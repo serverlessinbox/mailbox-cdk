@@ -1,8 +1,8 @@
 import {
-  createAdminApiHandler,
-  createServiceSpecFromRuntime,
-  extractAdminAuthContext,
+  AdminApiHandler,
+  AdminAuthExtractor,
   ServiceRegistry,
+  ServiceSpecBuilder,
   type AdminAuthContext,
   type ApiGatewayV2EventLike,
   type ApiGatewayV2ResultLike,
@@ -47,7 +47,8 @@ interface AuditActor {
  * audit event names as its actor.
  */
 export class IdpUsersAdminApi {
-  private readonly adminApiHandler: (event: ApiGatewayV2EventLike) => Promise<ApiGatewayV2ResultLike>;
+  private readonly authExtractor: AdminAuthExtractor;
+  private readonly adminApiHandler: AdminApiHandler<AdminAuthContext>;
 
   constructor(
     private readonly service: IdpUsersHandlers,
@@ -56,9 +57,10 @@ export class IdpUsersAdminApi {
     private readonly adminGroups: GroupName[] | undefined,
     private readonly userGroups: GroupName[] | undefined,
   ) {
-    this.adminApiHandler = createAdminApiHandler({
+    this.authExtractor   = new AdminAuthExtractor({ adminGroups: this.adminGroups, userGroups: this.userGroups });
+    this.adminApiHandler = new AdminApiHandler({
       registry: this.createRegistry(),
-      extractAuth: (event) => this.extractAuth(event),
+      extractAuth: (event) => this.authExtractor.extract(event),
       emitAuditEvent: (event) => this.auditEmitter.emit(event),
       getTenantId: (auth) => auth.tenantId,
       getActor: (auth) => this.actorOf(auth),
@@ -66,7 +68,7 @@ export class IdpUsersAdminApi {
   }
 
   public handle(event: ApiGatewayV2EventLike): Promise<ApiGatewayV2ResultLike> {
-    return this.adminApiHandler(event);
+    return this.adminApiHandler.handle(event);
   }
 
   private createRegistry(): ServiceRegistry<AdminAuthContext, AuditContext> {
@@ -82,15 +84,11 @@ export class IdpUsersAdminApi {
 
     const registry = new ServiceRegistry<AdminAuthContext, AuditContext>();
     registry.register(
-      createServiceSpecFromRuntime<AdminAuthContext, AuditContext>(IdpUsersServiceRuntime, this.service, {
+      new ServiceSpecBuilder<AdminAuthContext, AuditContext>(IdpUsersServiceRuntime, this.service, {
         getValidator: (methodName) => validators.get(methodName),
-      }),
+      }).build(),
     );
     return registry;
-  }
-
-  private extractAuth(event: ApiGatewayV2EventLike): AdminAuthContext {
-    return extractAdminAuthContext(event, { adminGroups: this.adminGroups, userGroups: this.userGroups });
   }
 
   private actorOf(auth: AdminAuthContext): AuditActor {

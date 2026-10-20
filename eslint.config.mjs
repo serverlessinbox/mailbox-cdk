@@ -110,6 +110,13 @@ export default [
     },
   },
   {
+    // Family files: classes of one topic share one file (L-247); list each by name.
+    files: ['packages/mailbox-admin-api/src/errors.ts'],
+    rules: {
+      'max-classes-per-file': 'off',
+    },
+  },
+  {
     files: ['**/__tests__/**', '**/*.test.ts'],
     rules: {
       'max-lines-per-function': 'off',

@@ -2,6 +2,6 @@ version: '3'
 
 tasks:
   build:
-    desc: Type-check TypeScript sources
+    desc: Type-check TypeScript sources with the build config
     cmds:
-      - yarn exec tsc --noEmit
+      - yarn tsc -p tsconfig.build.json

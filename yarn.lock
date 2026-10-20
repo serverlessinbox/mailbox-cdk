@@ -1995,6 +1995,10 @@ __metadata:
   resolution: "@serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.2.3"
+    "@types/jest": "npm:^29.0.0"
+    jest: "npm:^29.0.0"
+    ts-jest: "npm:^29.0.0"
+    typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"
   languageName: unknown
   linkType: soft
