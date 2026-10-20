@@ -62,11 +62,12 @@ export class DeployerInfra extends Construct {
 
   /**
    * Creates the custom resource that deploys one stack through this infrastructure, as `scope`'s
-   * child `'resource'`. The resource depends on the workflow, so the workflow outlives it and can
-   * still answer its delete.
+   * child `id`. The id is the caller's because it fixes the resource's logical ID, and so whether a
+   * deployer keeps its live resource or replaces it. The resource depends on the workflow, so the
+   * workflow outlives it and can still answer its delete.
    */
-  public deployStack(scope: Construct, resourceType: string, properties: StackDeployerProperties): CustomResource {
-    const resource = new CustomResource(scope, 'resource', {
+  public deployStack(scope: Construct, id: string, resourceType: string, properties: StackDeployerProperties): CustomResource {
+    const resource = new CustomResource(scope, id, {
       serviceToken: this.starterArn,
       resourceType,
       serviceTimeout: DEPLOY_STACK_SERVICE_TIMEOUT,

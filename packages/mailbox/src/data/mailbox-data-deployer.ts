@@ -75,7 +75,7 @@ export class MailboxDataDeployer extends Construct {
 
     const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
 
-    const resource = infra.deployStack(this, 'Custom::MailboxDataDeployer', {
+    const resource = infra.deployStack(this, 'resource', 'Custom::MailboxDataDeployer', {
       stackName: dataStackName,
       templateUrl: props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
       preserveOnDelete: true,

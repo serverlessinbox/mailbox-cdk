@@ -68,7 +68,7 @@ export class MailboxCognitoDataDeployer extends Construct {
 
     const productVersion = artifacts.getVersion('mailbox-cognito');
 
-    const resource = deployerInfra.deployStack(this, 'Custom::MailboxCognitoDataDeployer', {
+    const resource = deployerInfra.deployStack(this, 'resource', 'Custom::MailboxCognitoDataDeployer', {
       region: Aws.REGION,
       preserveOnDelete: true,
       stackName,

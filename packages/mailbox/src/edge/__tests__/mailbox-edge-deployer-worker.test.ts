@@ -17,7 +17,7 @@ import {
 } from '../../__tests__/deployer-test-helpers';
 
 const EDGE_REGION = 'us-east-1';
-const EDGE_STACK_ARN = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge/*';
+const EDGE_STACK_ARN = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge*/*';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
 const ARTIFACT_OBJECT_ARN = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
@@ -44,7 +44,7 @@ function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Templ
   new MailboxEdgeDeployerWorker(stack, 'worker', {
     artifactResolver,
     stack,
-    edgeStackName: 'test-stack-edge',
+    edgeStackNamePattern: 'test-stack-edge*',
     edgeStackArn: EDGE_STACK_ARN,
     rootStack: 'test-stack',
     rootStackId: 'test-guid',
@@ -125,15 +125,15 @@ describe('MailboxEdgeDeployerWorker', () => {
   });
 
   describe('Lambda function lifecycle', () => {
-    it('creates functions by the edge stack name, as an ARN prefix and as a function-name condition', () => {
+    it('creates functions by the edge stack name pattern, as an ARN and as a function-name condition', () => {
       const statements = statementsForAction(template, 'lambda:CreateFunction');
 
       expect(statements).toHaveLength(2);
       expect(resourceOf(template, 'lambda:CreateFunction', 0)).toBe(
-        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:test-stack-edge-*`,
+        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:test-stack-edge*`,
       );
       expect(statements[1].Resource).toBe('*');
-      expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge-*' } });
+      expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge*' } });
     });
 
     it('also manages existing functions the root stack owns, which survives name truncation', () => {
@@ -160,9 +160,9 @@ describe('MailboxEdgeDeployerWorker', () => {
       expect(statementsForAction(template, 'resource-groups:CreateGroup')[0].Resource).toBe('*');
     });
 
-    it('changes only the edge stack’s group', () => {
+    it('changes only the groups named after the edge stack name pattern', () => {
       expect(resourceOf(template, 'resource-groups:DeleteGroup')).toBe(
-        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-serverless-inbox`,
+        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge*-serverless-inbox`,
       );
     });
   });

@@ -72,21 +72,21 @@ describe('DeployerInfra', () => {
   });
 
   describe('deployStack', () => {
-    it('creates the typed custom resource as the given scope’s child "resource", passing the properties through', () => {
+    it('creates the typed custom resource as the given scope’s child with the given id, passing the properties through', () => {
       const { stack, infra } = newInfra();
       const deployer = new Construct(stack, 'deployer');
 
-      infra.deployStack(deployer, 'Custom::TestDeployer', DEPLOYMENT);
+      infra.deployStack(deployer, 'sub-stack', 'Custom::TestDeployer', DEPLOYMENT);
 
       const resources = Template.fromStack(stack).findResources('Custom::TestDeployer');
-      expect(Object.keys(resources)).toEqual([expect.stringMatching(/^deployerresource[0-9A-F]{8}$/)]);
+      expect(Object.keys(resources)).toEqual([expect.stringMatching(/^deployersubstack[0-9A-F]{8}$/)]);
       expect(Object.values(resources)[0].Properties).toMatchObject(DEPLOYMENT);
     });
 
     it('is served by the starter Lambda, with a one hour service timeout', () => {
       const { stack, infra } = newInfra();
 
-      infra.deployStack(new Construct(stack, 'deployer'), 'Custom::TestDeployer', DEPLOYMENT);
+      infra.deployStack(new Construct(stack, 'deployer'), 'resource', 'Custom::TestDeployer', DEPLOYMENT);
 
       const template = Template.fromStack(stack);
       const starter = Object.keys(template.findResources('AWS::Lambda::Function', {
@@ -101,7 +101,7 @@ describe('DeployerInfra', () => {
     it('depends on the state machine, so the workflow outlives the resource', () => {
       const { stack, infra } = newInfra();
 
-      infra.deployStack(new Construct(stack, 'deployer'), 'Custom::TestDeployer', DEPLOYMENT);
+      infra.deployStack(new Construct(stack, 'deployer'), 'resource', 'Custom::TestDeployer', DEPLOYMENT);
 
       const template = Template.fromStack(stack);
       template.hasResource('Custom::TestDeployer', {

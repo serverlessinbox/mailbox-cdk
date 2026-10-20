@@ -6,7 +6,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import { Construct } from 'constructs';
 import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IDataTable } from '../data/data-tables';
 import { MailboxEdgeDeployerWorker } from './mailbox-edge-deployer-worker';
 
@@ -63,6 +63,8 @@ export class MailboxEdgeDeployer extends Construct {
 
   public readonly jmapBlobDownloadRole: iam.IRole;
 
+  private static readonly EDGE_STACK_RESOURCE_ID = 'edge-stack';
+
   private readonly resource: CustomResource;
 
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerProps) {
@@ -73,13 +75,18 @@ export class MailboxEdgeDeployer extends Construct {
     this.jmapBlobDownloadRole = this.createJmapBlobDownloadRole(props.authKeyStoreTable);
 
     // The deployed CloudFormation stack name, not the CDK logical stack id, so the template also
-    // behaves correctly when deployed through plain CloudFormation.
-    const edgeStackName = `${Aws.STACK_NAME}-edge`;
+    // behaves correctly when deployed through plain CloudFormation. The position hash makes a moved
+    // deployer deploy a new stack, so the delete of the old resource removes only the old stack.
+    const edgeStackName = `${Aws.STACK_NAME}-edge-${PositionHash.ofChild(this, MailboxEdgeDeployer.EDGE_STACK_RESOURCE_ID)}`;
+
+    // Matches the name above and the unhashed `${Aws.STACK_NAME}-edge` that earlier installs deployed,
+    // whose resource is deleted with this policy in force.
+    const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
     const edgeStackArn = stack.formatArn({
       service: 'cloudformation',
       region: 'us-east-1',
       resource: 'stack',
-      resourceName: `${edgeStackName}/*`,
+      resourceName: `${edgeStackNamePattern}/*`,
     });
 
     const infra = new DeployerInfra(this, 'infra', {
@@ -90,7 +97,7 @@ export class MailboxEdgeDeployer extends Construct {
       createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorker(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
-        edgeStackName,
+        edgeStackNamePattern,
         edgeStackArn,
         rootStack: Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
@@ -103,7 +110,7 @@ export class MailboxEdgeDeployer extends Construct {
       }),
     });
 
-    this.resource = infra.deployStack(this, 'Custom::MailboxEdgeDeployer', {
+    this.resource = infra.deployStack(this, MailboxEdgeDeployer.EDGE_STACK_RESOURCE_ID, 'Custom::MailboxEdgeDeployer', {
       stackName: edgeStackName,
       templateUrl: props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
       parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),

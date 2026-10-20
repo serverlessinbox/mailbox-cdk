@@ -13,8 +13,12 @@ import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 export interface MailboxEdgeDeployerWorkerProps {
   readonly artifactResolver: IArtifactResolver;
   readonly stack: Stack;
-  /** Deployed CloudFormation stack name of the edge stack (`${AWS::StackName}-edge`). */
-  readonly edgeStackName: string;
+  /**
+   * Wildcard over the names the edge stack has had (`${AWS::StackName}-edge*`). Scopes the grants on the
+   * stack's Lambda functions and resource group, which are named after the stack.
+   */
+  readonly edgeStackNamePattern: string;
+  /** ARN pattern of the edge stack, built from the same `edgeStackNamePattern`. */
   readonly edgeStackArn: string;
   readonly rootStack: string;
   /** The guid of the root stack, tagged as `serverless-inbox:root-stack-id`. */
@@ -59,9 +63,9 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
     // Grants for the resources of the edge stack
     const rootStack: RootStack = { name: props.rootStack, id: props.rootStackId };
     this.grantCertificateLifecycle(props.stack, rootStack);
-    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackName, rootStack);
+    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackNamePattern, rootStack);
     this.grantExecutionRolePassage(props.jmapBlobDownloadRoleArn);
-    this.grantResourceGroupLifecycle(props.stack, props.edgeStackName);
+    this.grantResourceGroupLifecycle(props.stack, props.edgeStackNamePattern);
 
     if (props.hostedZoneId !== undefined) {
       this.grantDnsValidationAccess(props.hostedZoneId);
@@ -153,7 +157,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
    * aws:TagKeys.
    */
-  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackName: string, rootStack: RootStack): void {
+  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackNamePattern: string, rootStack: RootStack): void {
     const edgeLambdaActions = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
@@ -169,7 +173,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
       service: 'lambda',
       region: 'us-east-1',
       resource: 'function',
-      resourceName: `${edgeStackName}-*`,
+      resourceName: edgeStackNamePattern,
       arnFormat: ArnFormat.COLON_RESOURCE_NAME,
     });
     this.addToRolePolicy(
@@ -184,7 +188,7 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
         resources: ['*'],
         conditions: {
           StringLike: {
-            'lambda:FunctionName': `${edgeStackName}-*`,
+            'lambda:FunctionName': edgeStackNamePattern,
           },
         },
       })
@@ -230,12 +234,12 @@ export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
    * is scoped to it. CreateGroup stays on `*`: group-ARN scoping for it is unverified, and a wrongly scoped
    * create fails the whole edge deployment.
    */
-  private grantResourceGroupLifecycle(stack: Stack, edgeStackName: string): void {
+  private grantResourceGroupLifecycle(stack: Stack, edgeStackNamePattern: string): void {
     const edgeResourceGroupArn = stack.formatArn({
       service: 'resource-groups',
       region: 'us-east-1',
       resource: 'group',
-      resourceName: `${edgeStackName}-serverless-inbox`,
+      resourceName: `${edgeStackNamePattern}-serverless-inbox`,
     });
     this.addToRolePolicy(
       new PolicyStatement({

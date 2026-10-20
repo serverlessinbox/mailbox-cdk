@@ -11,6 +11,7 @@ import { Stack, Token } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import { Construct } from 'constructs';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { DataTable } from '../../data/data-tables';
 import { MailboxEdgeDeployer } from '../mailbox-edge-deployer';
@@ -24,8 +25,8 @@ import {
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxEdgeDeployer';
 const STACK_NAME_REF = { Ref: 'AWS::StackName' };
 const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const EDGE_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, '-edge']] };
-const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^edgedeployerresource/);
+const EDGE_STACK_NAME = { 'Fn::Join': ['', [STACK_NAME_REF, Match.stringLikeRegexp('^-edge-[0-9a-f]{8}$')]] };
+const DEPLOYER_RESOURCE_ID = expect.stringMatching(/^edgedeployeredgestack/);
 const ITEM_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
 const CONFIG_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
 const AUTH_KEY_STORE_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/auth-keys';
@@ -41,9 +42,13 @@ function dataTable(stack: Stack, id: string, tableArn: string): DataTable {
   return new DataTable(Table.fromTableArn(stack, id, tableArn));
 }
 
-function synthDeployer(extraProps: (stack: Stack) => Partial<MailboxEdgeDeployerProps> = () => ({})): SynthesizedDeployer {
+function synthDeployer(
+  extraProps: (stack: Stack) => Partial<MailboxEdgeDeployerProps> = () => ({}),
+  parentId?: string,
+): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const deployer = new MailboxEdgeDeployer(stack, 'edge-deployer', {
+  const parent = parentId === undefined ? stack : new Construct(stack, parentId);
+  const deployer = new MailboxEdgeDeployer(parent, 'edge-deployer', {
     artifactResolver,
     domainName: 'example.com',
     itemTable: dataTable(stack, 'item-table', ITEM_TABLE_ARN),
@@ -77,6 +82,24 @@ describe('MailboxEdgeDeployer', () => {
         region: 'us-east-1',
         terminationProtection: false,
       });
+    });
+
+    it('is created as the deployer’s child "edge-stack"', () => {
+      const { template } = synthDeployer();
+
+      expect(Object.keys(template.findResources(DEPLOYER_RESOURCE_TYPE))).toEqual([
+        expect.stringMatching(/^edgedeployeredgestack[0-9A-F]{8}$/),
+      ]);
+    });
+
+    it('names the stack after the position of the deployer, so a moved deployer deploys a new stack', () => {
+      const stackNameOf = ({ template }: SynthesizedDeployer): string =>
+        JSON.stringify(Object.values(template.findResources(DEPLOYER_RESOURCE_TYPE))[0].Properties.stackName);
+
+      const atTheRoot = stackNameOf(synthDeployer());
+      const underAParent = stackNameOf(synthDeployer(() => ({}), 'moved-here'));
+
+      expect(underAParent).not.toEqual(atTheRoot);
     });
 
     it('turns termination protection on when asked', () => {
@@ -188,13 +211,32 @@ describe('MailboxEdgeDeployer', () => {
   });
 
   describe('worker', () => {
-    it('manages the edge stack in us-east-1 under the name the custom resource deploys', () => {
+    it('manages edge stacks in us-east-1 under every name the custom resource has deployed, hashed or not', () => {
       const { template } = synthDeployer();
 
       const statements = statementsForAction(template, 'cloudformation:CreateStack');
       expect(statements).toHaveLength(1);
       expect(renderWithTokens(statements[0].Resource)).toBe(
-        `arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge/*`,
+        `arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge*/*`,
+      );
+    });
+
+    it('lets the starter read the same edge stacks', () => {
+      const { template } = synthDeployer();
+
+      const describing = statementsForAction(template, 'cloudformation:DescribeStacks')
+        .map((statement) => renderWithTokens(statement.Resource));
+      expect(describing).toContain(`arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge*/*`);
+    });
+
+    it('scopes the Lambda@Edge functions and the resource group to the same name pattern', () => {
+      const { template } = synthDeployer();
+
+      expect(renderWithTokens(statementsForAction(template, 'lambda:CreateFunction')[0].Resource)).toBe(
+        `arn:<token>:lambda:us-east-1:${TEST_ACCOUNT}:function:<token>-edge*`,
+      );
+      expect(renderWithTokens(statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource)).toBe(
+        `arn:<token>:resource-groups:us-east-1:${TEST_ACCOUNT}:group/<token>-edge*-serverless-inbox`,
       );
     });
 
