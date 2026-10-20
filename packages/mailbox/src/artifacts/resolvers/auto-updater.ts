@@ -3,7 +3,7 @@ import { Aws, Duration, Fn, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { MailboxArtifactResolverFactory, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { MailboxArtifactResolverFactory, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver, RegistryLocation, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { loadMailboxRegistryRecord } from '../../mailbox-registry-record';
 import { loadMailboxArtifactVersions } from '../../mailbox-artifact-versions';
@@ -123,6 +123,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       distTag: props.distTag ?? 'stable',
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
+      rootStackId: StackIdentity.guid,
     });
     this.updaterFunction = updater;
     this.grantPrincipal = updater.grantPrincipal;

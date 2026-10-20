@@ -94,7 +94,10 @@ describe('AutoUpdater', () => {
     it('scopes the updater to the stack it is deployed in', () => {
       const { resource } = updaterOf(Template.fromStack(build().stack));
 
-      expect(resource.Properties.Environment?.Variables).toMatchObject({ ROOT_STACK_TAG_VALUE: { Ref: 'AWS::StackName' } });
+      expect(resource.Properties.Environment?.Variables).toMatchObject({
+        ROOT_STACK_TAG_VALUE: { Ref: 'AWS::StackName' },
+        ROOT_STACK_ID: { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] },
+      });
     });
 
     it('tags the updater so it is left out of its own scan', () => {

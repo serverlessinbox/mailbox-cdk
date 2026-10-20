@@ -18,6 +18,7 @@ const ENVIRONMENT = {
   GRANULARITY: 'major',
   ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
   ROOT_STACK_TAG_VALUE: 'my-stack',
+  ROOT_STACK_ID: 'guid-1',
 };
 
 describe('artifact-updater config', () => {
@@ -43,6 +44,7 @@ describe('artifact-updater config', () => {
       granularity: 'major',
       artifactBucketBase: 'mailbox-artifacts',
       rootStackTagValue: 'my-stack',
+      rootStackId: 'guid-1',
     });
   });
 
@@ -54,6 +56,7 @@ describe('artifact-updater config', () => {
     'GRANULARITY',
     'ARTIFACT_BUCKET_BASE',
     'ROOT_STACK_TAG_VALUE',
+    'ROOT_STACK_ID',
   ])('reports %s as missing when it is the only variable not set', (variable) => {
     delete process.env[variable];
 

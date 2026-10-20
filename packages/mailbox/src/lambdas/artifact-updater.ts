@@ -1,4 +1,5 @@
-import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagCondition } from '@serverlessinbox/mailbox-cdk-shared';
+import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Aws, Duration } from 'aws-cdk-lib';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -10,6 +11,7 @@ export interface ArtifactUpdaterLambdaProps {
   distTag: string;
   granularity: Granularity;
   rootStackTagValue: string;
+  rootStackId: string;
   artifactBucketBase: string;
 }
 
@@ -36,16 +38,18 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         GRANULARITY: props.granularity,
         PROJECT: ArtifactUpdaterLambda.project,
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
+        ROOT_STACK_ID: props.rootStackId,
       },
     });
 
+    const owner: RootStack = { name: props.rootStackTagValue, id: props.rootStackId };
     // No grant on UI buckets: S3 object writes cannot be scoped by tag, so a bucket's own ARN is the only scope.
     this.grantTagDiscovery();
-    this.grantLambdaManagementAccess(props.rootStackTagValue);
-    this.grantLambdaTagAccess(props.rootStackTagValue);
-    this.grantEdgeLambdaAccess(props.rootStackTagValue);
-    this.grantCloudFrontManagementAccess(props.rootStackTagValue);
-    this.grantCloudFrontTagAccess(props.rootStackTagValue);
+    this.grantLambdaManagementAccess(owner);
+    this.grantLambdaTagAccess(owner);
+    this.grantEdgeLambdaAccess(owner);
+    this.grantCloudFrontManagementAccess(owner);
+    this.grantCloudFrontTagAccess(owner);
     this.grantArtifactReleaseAccess(props.artifactBucketBase);
     this.grantParentStackStatusRead();
     this.grantSelfInvoke();
@@ -61,50 +65,50 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     );
   }
 
-  private grantLambdaManagementAccess(rootStackTagValue: string): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
-        resources: [ArtifactUpdaterLambda.anyFunctionArn],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-        },
-      }),
-    );
+  private grantLambdaManagementAccess(owner: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
+          resources: [ArtifactUpdaterLambda.anyFunctionArn],
+          conditions,
+        }),
+      );
+    }
   }
 
-  private grantLambdaTagAccess(rootStackTagValue: string): void {
-    this.grantArtifactVersionTagging('lambda:TagResource', ArtifactUpdaterLambda.anyFunctionArn, rootStackTagValue);
+  private grantLambdaTagAccess(owner: RootStack): void {
+    this.grantArtifactVersionTagging('lambda:TagResource', ArtifactUpdaterLambda.anyFunctionArn, owner);
   }
 
   /** Edge functions are always in us-east-1. */
-  private grantEdgeLambdaAccess(rootStackTagValue: string): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
-        resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-        },
-      }),
-    );
+  private grantEdgeLambdaAccess(owner: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
+          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
+          conditions,
+        }),
+      );
+    }
   }
 
-  /** The CloudFront distribution resource type supports `aws:ResourceTag`, so distributions are scoped by the root-stack tag. */
-  private grantCloudFrontManagementAccess(rootStackTagValue: string): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
-        resources: [ArtifactUpdaterLambda.anyDistributionArn],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-        },
-      }),
-    );
+  /** The CloudFront distribution resource type supports `aws:ResourceTag`, so distributions are scoped by the root-stack tags. */
+  private grantCloudFrontManagementAccess(owner: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+          resources: [ArtifactUpdaterLambda.anyDistributionArn],
+          conditions,
+        }),
+      );
+    }
   }
 
-  private grantCloudFrontTagAccess(rootStackTagValue: string): void {
-    this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, rootStackTagValue);
+  private grantCloudFrontTagAccess(owner: RootStack): void {
+    this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, owner);
   }
 
   private grantArtifactReleaseAccess(artifactBucketBase: string): void {
@@ -134,21 +138,23 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   }
 
   /**
-   * Tag writes are limited to the artifact-version key, so the role cannot rewrite the root-stack tag
-   * that scopes its other grants or inject tags another policy trusts.
+   * Tag writes are limited to the artifact-version key, so the role cannot rewrite the root-stack tags
+   * that scope its other grants or inject tags another policy trusts.
    */
-  private grantArtifactVersionTagging(action: string, resourceArn: string, rootStackTagValue: string): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions: [action],
-        resources: [resourceArn],
-        conditions: {
-          StringEquals: rootStackResourceTagCondition(rootStackTagValue),
-          'ForAllValues:StringEquals': {
-            'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
+  private grantArtifactVersionTagging(action: string, resourceArn: string, owner: RootStack): void {
+    for (const conditions of rootStackResourceTagConditions(owner)) {
+      this.addToRolePolicy(
+        new PolicyStatement({
+          actions: [action],
+          resources: [resourceArn],
+          conditions: {
+            ...conditions,
+            'ForAllValues:StringEquals': {
+              'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion],
+            },
           },
-        },
-      }),
-    );
+        }),
+      );
+    }
   }
 }

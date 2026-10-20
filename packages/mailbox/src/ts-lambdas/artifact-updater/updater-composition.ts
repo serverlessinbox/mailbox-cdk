@@ -19,7 +19,7 @@ import { ScheduledTrigger } from './scheduled-trigger';
 import type { TriggerBuilder } from './trigger-detector';
 import { UiBucketUpdater } from './ui-bucket-updater';
 import { UpdateCycle } from './update-cycle';
-import { EDGE_REGION, type RegionClients, type UpdaterClients } from './updater-clients';
+import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from './updater-clients';
 import type { HttpTriggerEvent } from './updater-event';
 import type { ReadyUpdater, UpdaterRuntime } from './updater-runtime';
 
@@ -80,15 +80,17 @@ export class UpdaterComposition implements TriggerBuilder {
     const functionCode = new LambdaFunctionCode(sleep);
     const smokeTester = new FunctionSmokeTester(this.logger);
     const rollback = new LambdaCodeRollback(functionCode, this.logger);
+    const rootStackResources = new RootStackResources(config.rootStackTagValue, config.rootStackId);
     return new UpdateCycle(
       config,
       clients,
+      rootStackResources,
       this.logger,
       new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, this.logger),
       new EdgeLambdaUpdater(
         clients.edge,
         clients.cloudFront,
-        config.rootStackTagValue,
+        rootStackResources,
         releases,
         functionCode,
         smokeTester,

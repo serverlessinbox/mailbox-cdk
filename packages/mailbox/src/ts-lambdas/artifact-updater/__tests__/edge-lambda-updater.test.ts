@@ -42,6 +42,7 @@ import {
   lambdaTarget,
   noSleep,
   testConfig,
+  testRootStackResources,
   type RegistryMocks,
 } from './updater-helpers';
 
@@ -103,7 +104,7 @@ describe('EdgeLambdaUpdater', () => {
     return new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
-      testConfig.rootStackTagValue,
+      testRootStackResources(),
       new ReleaseArtifacts(clients.registryS3, testConfig, logger),
       functionCode,
       new FunctionSmokeTester(logger),
@@ -115,7 +116,10 @@ describe('EdgeLambdaUpdater', () => {
 
   function taggedDistributions(...ids: string[]): void {
     taggingMock.on(GetResourcesCommand).resolves({
-      ResourceTagMappingList: ids.map((id) => ({ ResourceARN: distributionArn(id) })),
+      ResourceTagMappingList: ids.map((id) => ({
+        ResourceARN: distributionArn(id),
+        Tags: [{ Key: 'serverless-inbox:root-stack-id', Value: 'guid-1' }],
+      })),
     });
   }
 
@@ -187,30 +191,26 @@ describe('EdgeLambdaUpdater', () => {
     });
   });
 
-  it('looks for the distribution among those that carry the root stack tag of this install', async () => {
+  it('looks for the distribution among those the root stack of this install owns, by id and by name', async () => {
     taggedDistributions('DIST123');
     distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
 
     await newUpdater().advanceIfStale(target);
 
-    expect(taggingMock.commandCalls(GetResourcesCommand)[0].args[0].input).toEqual({
-      TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
-      ResourceTypeFilters: ['cloudfront:distribution'],
-      PaginationToken: undefined,
-    });
+    const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input.TagFilters);
+    expect(filters).toEqual([
+      [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
+      [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+    ]);
   });
 
-  it('repoints the tagged distribution that associates the function, not another tagged one, and follows the pagination token', async () => {
-    taggingMock
-      .on(GetResourcesCommand)
-      .resolvesOnce({ ResourceTagMappingList: [{ ResourceARN: distributionArn('DIST_UI') }], PaginationToken: 'page-2' })
-      .resolvesOnce({ ResourceTagMappingList: [{ ResourceARN: distributionArn('DIST_BLOB') }] });
+  it('repoints the root stack distribution that associates the function, not another root stack one', async () => {
+    taggedDistributions('DIST_UI', 'DIST_BLOB');
     distributionConfigOf('DIST_UI', distributionConfig([association(`${OTHER_ARN}:1`, 'origin-request')]));
     distributionConfigOf('DIST_BLOB', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
 
     await newUpdater().advanceIfStale(target);
 
-    expect(taggingMock.commandCalls(GetResourcesCommand)[1].args[0].input.PaginationToken).toBe('page-2');
     expect(cloudFrontMock.commandCalls(UpdateDistributionCommand).map((call) => call.args[0].input.Id)).toEqual(['DIST_BLOB']);
   });
 

@@ -38,6 +38,7 @@ const GOOD_ENVIRONMENT = {
   GRANULARITY: 'major',
   ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
   ROOT_STACK_TAG_VALUE: 'my-stack',
+  ROOT_STACK_ID: 'guid-1',
 };
 
 describe('UpdaterComposition', () => {

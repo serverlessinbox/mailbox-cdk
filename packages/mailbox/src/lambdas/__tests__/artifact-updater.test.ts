@@ -23,8 +23,11 @@ import { load } from '../../ts-lambdas/artifact-updater/config';
 
 const ROOT_STACK = 'my-root-stack';
 const BUCKET_BASE = 'test-artifacts';
+const ROOT_STACK_ID = 'guid-1';
 const ROOT_STACK_TAG_KEY = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-const ROOT_STACK_CONDITION = { StringEquals: { [ROOT_STACK_TAG_KEY]: ROOT_STACK } };
+const ROOT_STACK_ID_TAG_KEY = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+const OWNED_BY_ID = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT_STACK_ID } };
+const OWNED_BY_NAME_WITHOUT_ID = { StringEquals: { [ROOT_STACK_TAG_KEY]: ROOT_STACK }, Null: { [ROOT_STACK_ID_TAG_KEY]: 'true' } };
 const ARTIFACT_VERSION_ONLY = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
 
 function accountArn(prefix: string, suffix: string): unknown {
@@ -62,6 +65,7 @@ describe('ArtifactUpdaterLambda', () => {
       distTag: 'stable',
       granularity: 'minor',
       rootStackTagValue: ROOT_STACK,
+      rootStackId: ROOT_STACK_ID,
       artifactBucketBase: BUCKET_BASE,
     });
 
@@ -86,6 +90,7 @@ describe('ArtifactUpdaterLambda', () => {
         GRANULARITY: 'minor',
         PROJECT: 'serverlessinbox',
         ROOT_STACK_TAG_VALUE: ROOT_STACK,
+        ROOT_STACK_ID,
       });
     });
 
@@ -111,53 +116,45 @@ describe('ArtifactUpdaterLambda', () => {
   });
 
   describe('role statements', () => {
+    /** A statement owned by the root stack: one statement for a resource tagged with its id, one for a resource without an id tag. */
+    function ownedStatements(
+      name: string,
+      statement: { Action: string | string[]; Effect: 'Allow'; Resource: unknown },
+      extraCondition = {},
+    ): Array<[string, PolicyStatementJson]> {
+      return [
+        [`${name} by id`, { ...statement, Condition: { ...OWNED_BY_ID, ...extraCondition } }],
+        [`${name} by name when the resource has no id tag`, { ...statement, Condition: { ...OWNED_BY_NAME_WITHOUT_ID, ...extraCondition } }],
+      ];
+    }
+
     const expectedStatements: Array<[string, PolicyStatementJson]> = [
       ['tag discovery, unscoped', { Action: 'tag:GetResources', Effect: 'Allow', Resource: '*' }],
-      [
-        'function management in the root stack',
-        {
-          Action: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
-          Condition: ROOT_STACK_CONDITION,
-          Effect: 'Allow',
-          Resource: accountArn('arn:aws:lambda:*:', ':function:*'),
-        },
-      ],
-      [
+      ...ownedStatements('function management in the root stack', {
+        Action: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
+        Effect: 'Allow',
+        Resource: accountArn('arn:aws:lambda:*:', ':function:*'),
+      }),
+      ...ownedStatements(
         'function tagging limited to the artifact-version key',
-        {
-          Action: 'lambda:TagResource',
-          Condition: { ...ROOT_STACK_CONDITION, ...ARTIFACT_VERSION_ONLY },
-          Effect: 'Allow',
-          Resource: accountArn('arn:aws:lambda:*:', ':function:*'),
-        },
-      ],
-      [
-        'edge function publishing in us-east-1',
-        {
-          Action: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
-          Condition: ROOT_STACK_CONDITION,
-          Effect: 'Allow',
-          Resource: accountArn('arn:aws:lambda:us-east-1:', ':function:*'),
-        },
-      ],
-      [
-        'distribution management in the root stack',
-        {
-          Action: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
-          Condition: ROOT_STACK_CONDITION,
-          Effect: 'Allow',
-          Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
-        },
-      ],
-      [
+        { Action: 'lambda:TagResource', Effect: 'Allow', Resource: accountArn('arn:aws:lambda:*:', ':function:*') },
+        ARTIFACT_VERSION_ONLY,
+      ),
+      ...ownedStatements('edge function publishing in us-east-1', {
+        Action: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
+        Effect: 'Allow',
+        Resource: accountArn('arn:aws:lambda:us-east-1:', ':function:*'),
+      }),
+      ...ownedStatements('distribution management in the root stack', {
+        Action: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+        Effect: 'Allow',
+        Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
+      }),
+      ...ownedStatements(
         'distribution tagging limited to the artifact-version key',
-        {
-          Action: 'cloudfront:TagResource',
-          Condition: { ...ROOT_STACK_CONDITION, ...ARTIFACT_VERSION_ONLY },
-          Effect: 'Allow',
-          Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
-        },
-      ],
+        { Action: 'cloudfront:TagResource', Effect: 'Allow', Resource: accountArn('arn:aws:cloudfront::', ':distribution/*') },
+        ARTIFACT_VERSION_ONLY,
+      ),
       [
         'release artifact download from the registry buckets',
         {

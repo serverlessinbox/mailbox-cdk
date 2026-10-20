@@ -1,15 +1,11 @@
-import {
-  GetResourcesCommand,
-  type ResourceTagMapping,
-  type Tag,
-} from '@aws-sdk/client-resource-groups-tagging-api';
+import type { ResourceTagMapping, Tag } from '@aws-sdk/client-resource-groups-tagging-api';
 import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { LambdaTarget, UiTarget } from './artifact-target';
 import type { Config } from './config';
 import type { EdgeLambdaUpdater } from './edge-lambda-updater';
 import type { LambdaCodeUpdater } from './lambda-code-updater';
 import type { UiBucketUpdater } from './ui-bucket-updater';
-import { EDGE_REGION, type RegionClients, type UpdaterClients } from './updater-clients';
+import { EDGE_REGION, type RegionClients, type RootStackResources, type UpdaterClients } from './updater-clients';
 import {
   toArtifactName,
   toArtifactPackageName,
@@ -18,12 +14,6 @@ import {
   toDistributionArn,
   toLambdaFunctionArn,
 } from './updater-identifiers';
-
-/** One page of the resources that carry the root stack tag, and the token of the next page when there is one. */
-interface TaggedResourcePage {
-  readonly resources: ResourceTagMapping[];
-  readonly nextToken: string | undefined;
-}
 
 /**
  * A managed resource that opted in to automatic updates and carries the tags that say what it was deployed
@@ -40,14 +30,15 @@ interface UpdatableResource {
 }
 
 /**
- * One scan of the stack's tagged Lambda functions and CloudFront distributions in the deployment region and
- * the edge region, advancing each one that opted in to the update path its auto-update-type names. A resource
+ * One scan of the Lambda functions and CloudFront distributions the root stack owns in the deployment region
+ * and the edge region, advancing each one that opted in to the update path its auto-update-type names. A resource
  * whose update fails is logged and does not stop the scan of the others; the cycle as a whole fails only when
  * every resource it tried failed.
  */
 export class UpdateCycle {
   private readonly config: Config;
   private readonly clients: UpdaterClients;
+  private readonly rootStackResources: RootStackResources;
   private readonly logger: LoggerBuffer;
   private readonly codeUpdater: LambdaCodeUpdater;
   private readonly edgeUpdater: EdgeLambdaUpdater;
@@ -58,6 +49,7 @@ export class UpdateCycle {
   constructor(
     config: Config,
     clients: UpdaterClients,
+    rootStackResources: RootStackResources,
     logger: LoggerBuffer,
     codeUpdater: LambdaCodeUpdater,
     edgeUpdater: EdgeLambdaUpdater,
@@ -65,6 +57,7 @@ export class UpdateCycle {
   ) {
     this.config = config;
     this.clients = clients;
+    this.rootStackResources = rootStackResources;
     this.logger = logger;
     this.codeUpdater = codeUpdater;
     this.edgeUpdater = edgeUpdater;
@@ -97,6 +90,7 @@ export class UpdateCycle {
 
     this.logger.info('artifact update cycle started', {
       rootStackTag: this.config.rootStackTagValue,
+      rootStackId: this.config.rootStackId,
       regions: scanTargets.map((target) => target.region),
       granularity: this.config.granularity,
     });
@@ -115,26 +109,10 @@ export class UpdateCycle {
   }
 
   private async scanRegion(scan: RegionClients): Promise<void> {
-    let nextToken: string | undefined;
-
-    do {
-      const page = await this.fetchTaggedResources(scan, nextToken);
-      for (const mapping of page.resources) {
-        await this.updateResource(scan, mapping);
-      }
-      nextToken = page.nextToken;
-    } while (nextToken);
-  }
-
-  private async fetchTaggedResources(scan: RegionClients, paginationToken: string | undefined): Promise<TaggedResourcePage> {
-    const response = await scan.tagging.send(
-      new GetResourcesCommand({
-        TagFilters: [{ Key: ServerlessInboxTagKeys.rootStack, Values: [this.config.rootStackTagValue] }],
-        ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-        PaginationToken: paginationToken,
-      }),
-    );
-    return { resources: response.ResourceTagMappingList ?? [], nextToken: response.PaginationToken };
+    const resources = await this.rootStackResources.find(scan.tagging, ['lambda:function', 'cloudfront:distribution']);
+    for (const mapping of resources) {
+      await this.updateResource(scan, mapping);
+    }
   }
 
   private async updateResource(scan: RegionClients, mapping: ResourceTagMapping): Promise<void> {

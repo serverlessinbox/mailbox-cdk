@@ -18,7 +18,7 @@ import { ReleaseArtifacts } from '../release-artifacts';
 import type { HttpTriggerEvent } from '../updater-event';
 import { UiBucketUpdater } from '../ui-bucket-updater';
 import { UpdateCycle } from '../update-cycle';
-import { EDGE_REGION, type RegionClients, type UpdaterClients } from '../updater-clients';
+import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from '../updater-clients';
 import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
 import type { NewUpdateCycle } from '../updater-trigger';
 import {
@@ -66,7 +66,13 @@ export const testConfig: Config = {
   granularity: 'major',
   artifactBucketBase: 'mailbox-artifacts',
   rootStackTagValue: 'my-stack',
+  rootStackId: 'guid-1',
 };
+
+/** The resources of the root stack the updater tests run against. */
+export function testRootStackResources(): RootStackResources {
+  return new RootStackResources(testConfig.rootStackTagValue, testConfig.rootStackId);
+}
 
 /** Resolves at once, so a test does not wait out a poll interval or a retry delay. */
 export const noSleep: Sleep = async () => undefined;
@@ -117,15 +123,17 @@ export function newUpdateCycle(): UpdateCycle {
   const functionCode = new LambdaFunctionCode(noSleep);
   const smokeTester = new FunctionSmokeTester(logger);
   const rollback = new LambdaCodeRollback(functionCode, logger);
+  const rootStackResources = testRootStackResources();
   return new UpdateCycle(
     testConfig,
     clients,
+    rootStackResources,
     logger,
     new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger),
     new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
-      testConfig.rootStackTagValue,
+      rootStackResources,
       releases,
       functionCode,
       smokeTester,

@@ -52,6 +52,7 @@ const GOOD_ENVIRONMENT = {
   GRANULARITY: 'major',
   ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
   ROOT_STACK_TAG_VALUE: 'my-stack',
+  ROOT_STACK_ID: 'guid-1',
 };
 const BAD_ENVIRONMENT = { ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
 
@@ -186,7 +187,7 @@ describe('artifact-updater handler', () => {
         arranged.tagging.on(arranged.taggingSdk.GetResourcesCommand).resolves({ ResourceTagMappingList: [] }),
       );
 
-      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(1);
+      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(2);
       expect(response.Status).toBe('SUCCESS');
       expect(console.info).not.toHaveBeenCalledWith(...tracedStart());
     });
@@ -257,7 +258,7 @@ describe('artifact-updater handler', () => {
       );
 
       expect(failure).toBeUndefined();
-      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(1);
+      expect(fakes.tagging.commandCalls(fakes.taggingSdk.GetResourcesCommand)).toHaveLength(2);
       expect(console.info).not.toHaveBeenCalledWith(...tracedStart());
     });
 

@@ -6,11 +6,9 @@ import {
   type DistributionConfig,
   type LambdaFunctionAssociation,
 } from '@aws-sdk/client-cloudfront';
-import { GetResourcesCommand } from '@aws-sdk/client-resource-groups-tagging-api';
 import {
   CaughtError,
   parseArn,
-  ServerlessInboxTagKeys,
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { LambdaTarget } from './artifact-target';
@@ -18,7 +16,7 @@ import type { FunctionSmokeTester, SmokeTestVerdict } from './function-smoke-tes
 import type { LambdaCodeRollback } from './lambda-code-rollback';
 import type { LambdaFunctionCode, Sleep } from './lambda-function-code';
 import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients } from './updater-clients';
+import type { RegionClients, RootStackResources } from './updater-clients';
 import { toLambdaFunctionArn, type LambdaFunctionArn } from './updater-identifiers';
 
 const CONFLICT_RETRY_DELAYS_MS = [3000, 6000];
@@ -42,7 +40,7 @@ interface DistributionOfFunction {
 export class EdgeLambdaUpdater {
   private readonly edge: RegionClients;
   private readonly cloudFront: CloudFrontClient;
-  private readonly rootStackTagValue: string;
+  private readonly rootStackResources: RootStackResources;
   private readonly releases: ReleaseArtifacts;
   private readonly functionCode: LambdaFunctionCode;
   private readonly smokeTester: FunctionSmokeTester;
@@ -53,7 +51,7 @@ export class EdgeLambdaUpdater {
   constructor(
     edge: RegionClients,
     cloudFront: CloudFrontClient,
-    rootStackTagValue: string,
+    rootStackResources: RootStackResources,
     releases: ReleaseArtifacts,
     functionCode: LambdaFunctionCode,
     smokeTester: FunctionSmokeTester,
@@ -63,7 +61,7 @@ export class EdgeLambdaUpdater {
   ) {
     this.edge = edge;
     this.cloudFront = cloudFront;
-    this.rootStackTagValue = rootStackTagValue;
+    this.rootStackResources = rootStackResources;
     this.releases = releases;
     this.functionCode = functionCode;
     this.smokeTester = smokeTester;
@@ -194,27 +192,15 @@ export class EdgeLambdaUpdater {
     throw this.noDistributionFound(target);
   }
 
-  /** The ids of the distributions that carry the root stack tag of this install, looked up in the edge region. */
+  /** The ids of the distributions of this install, looked up in the edge region. */
   private async findTaggedDistributionIds(): Promise<string[]> {
+    const distributions = await this.rootStackResources.find(this.edge.tagging, ['cloudfront:distribution']);
     const distributionIds: string[] = [];
-    let paginationToken: string | undefined;
-
-    do {
-      const page = await this.edge.tagging.send(
-        new GetResourcesCommand({
-          TagFilters: [{ Key: ServerlessInboxTagKeys.rootStack, Values: [this.rootStackTagValue] }],
-          ResourceTypeFilters: ['cloudfront:distribution'],
-          PaginationToken: paginationToken,
-        }),
-      );
-      for (const mapping of page.ResourceTagMappingList ?? []) {
-        if (mapping.ResourceARN) {
-          distributionIds.push(parseArn(mapping.ResourceARN).resourceId);
-        }
+    for (const mapping of distributions) {
+      if (mapping.ResourceARN) {
+        distributionIds.push(parseArn(mapping.ResourceARN).resourceId);
       }
-      paginationToken = page.PaginationToken;
-    } while (paginationToken);
-
+    }
     return distributionIds;
   }
 

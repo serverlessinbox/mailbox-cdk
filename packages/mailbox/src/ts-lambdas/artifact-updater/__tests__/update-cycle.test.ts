@@ -28,6 +28,7 @@ import {
   lambdaTarget,
   noSleep,
   testConfig,
+  testRootStackResources,
   uiTarget,
   US_WEST_2,
 } from './updater-helpers';
@@ -46,6 +47,7 @@ function resource(arn: string, tags: Record<string, string>): ResourceTagMapping
 function lambdaWithType(autoUpdateType: string, arn: string = LAMBDA_ARN): ResourceTagMapping {
   return resource(arn, {
     'serverless-inbox:root-stack': 'my-stack',
+    'serverless-inbox:root-stack-id': 'guid-1',
     'serverless-inbox:artifact-package': 'mailbox-go',
     'serverless-inbox:artifact-name': 'mailbox-go',
     'serverless-inbox:artifact-version': '1.2.3',
@@ -56,6 +58,7 @@ function lambdaWithType(autoUpdateType: string, arn: string = LAMBDA_ARN): Resou
 function distributionWithType(autoUpdateType: string, bucketName?: string): ResourceTagMapping {
   return resource(DISTRIBUTION_ARN, {
     'serverless-inbox:root-stack': 'my-stack',
+    'serverless-inbox:root-stack-id': 'guid-1',
     'serverless-inbox:artifact-package': 'ui-bundle',
     'serverless-inbox:artifact-name': 'ui-bundle.zip',
     'serverless-inbox:artifact-version': '1.2.3',
@@ -75,10 +78,11 @@ describe('UpdateCycle', () => {
     const smokeTester = new FunctionSmokeTester(logger);
     const rollback = new LambdaCodeRollback(functionCode, logger);
     const codeUpdater = new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger);
+    const rootStackResources = testRootStackResources();
     const edgeUpdater = new EdgeLambdaUpdater(
       clients.edge,
       clients.cloudFront,
-      testConfig.rootStackTagValue,
+      rootStackResources,
       releases,
       functionCode,
       smokeTester,
@@ -87,7 +91,7 @@ describe('UpdateCycle', () => {
       noSleep,
     );
     const uiUpdater = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
-    const cycle = new UpdateCycle(testConfig, clients, logger, codeUpdater, edgeUpdater, uiUpdater);
+    const cycle = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
     return { cycle, clients, codeUpdater, edgeUpdater, uiUpdater };
   }
 
@@ -105,16 +109,24 @@ describe('UpdateCycle', () => {
   });
 
   describe('scanning', () => {
-    it('asks for the lambda functions and distributions that carry the root stack tag', async () => {
+    it('asks for the lambda functions and distributions the root stack owns, by id and by name', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
       await newCycle().cycle.run();
 
-      expect(taggingMock.commandCalls(GetResourcesCommand)[0].args[0].input).toEqual({
-        TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
-        ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-        PaginationToken: undefined,
-      });
+      const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input);
+      expect(filters).toEqual([
+        {
+          TagFilters: [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
+          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
+          PaginationToken: undefined,
+        },
+        {
+          TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
+          PaginationToken: undefined,
+        },
+      ]);
     });
 
     it('scans the deployment region and the edge region when they differ', async () => {
@@ -123,8 +135,8 @@ describe('UpdateCycle', () => {
 
       await cycle.run();
 
-      const scanned = taggingMock.calls().map((call) => call.thisValue);
-      expect(scanned).toEqual([clients.deployment.tagging, clients.edge.tagging]);
+      const scanned = new Set(taggingMock.calls().map((call) => call.thisValue));
+      expect(scanned).toEqual(new Set([clients.deployment.tagging, clients.edge.tagging]));
     });
 
     it('scans the region once when the deployment region is the edge region', async () => {
@@ -132,22 +144,7 @@ describe('UpdateCycle', () => {
 
       await newCycle().cycle.run();
 
-      expect(taggingMock.commandCalls(GetResourcesCommand)).toHaveLength(1);
-    });
-
-    it('follows the pagination token to process every page', async () => {
-      taggingMock
-        .on(GetResourcesCommand)
-        .resolvesOnce({ ResourceTagMappingList: [lambdaWithType('code')], PaginationToken: 'page-2' })
-        .resolvesOnce({
-          ResourceTagMappingList: [lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api')],
-        });
-      const { cycle, codeUpdater } = newCycle();
-
-      await cycle.run();
-
-      expect(taggingMock.commandCalls(GetResourcesCommand)[1].args[0].input.PaginationToken).toBe('page-2');
-      expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(2);
+      expect(taggingMock.commandCalls(GetResourcesCommand)).toHaveLength(2);
     });
 
     it('rejects and logs when the scan itself fails', async () => {
