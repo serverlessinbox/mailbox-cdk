@@ -7,7 +7,6 @@ import * as awslambda                                                           
 import { IBucket }                                                                                             from 'aws-cdk-lib/aws-s3';
 import { Fn }                                                                                                  from 'aws-cdk-lib';
 import * as cdk                                                                                                from 'aws-cdk-lib';
-import { Aws }                                                                                                 from 'aws-cdk-lib';
 import { Construct, DependencyGroup }                                                                          from 'constructs';
 
 import { AdminApi }                                                                                            from './core/apis/admin-api';
@@ -19,13 +18,11 @@ import type { IMailboxAuthProvider }                                            
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
 import type { IDataTable }                                                                                     from './resources/tables/data-tables';
-import { MailboxDataDeployer }                                                                                 from './core/data/delivery/mailbox-data-deployer';
+import { DataSection }                                                                                         from './core/data/data-section';
+import { EmailSection }                                                                                        from './core/email/email-section';
+import { SearchSection }                                                                                       from './core/search/search-section';
 import { MailboxDns }                                                                                          from './core/domains/mailbox-dns';
 import { MailboxEdgeDeployer }                                                                                 from './core/edge/mailbox-edge-deployer';
-import { SesRules }                                                                                            from './core/email/ses-rules';
-import { EmailSending }                                                                                        from './core/email/email-sending';
-import { SESEventProcessing }                                                                                  from './core/email/ses-event-processing';
-import { AuditWriting }                                                                                        from './core/data/audit-writing';
 import { AuthKeyStore }                                                                                        from './core/auth/auth-key-store';
 import { Bootstrap }                                                                                           from './core/auth/bootstrap';
 import { Cdn, type CdnCustomDomain }                                                                           from './core/ui/cdn-construct';
@@ -37,16 +34,13 @@ import { CertificateRemoval }                                                   
 import { EdgeFunctionRemoval }                                                                                 from './platform/ops/sweeper/edge-function-removal';
 import { StackFailureDetectorRemoval }                                                                         from './platform/ops/sweeper/stack-failure-detector-removal';
 import type { IResourceRemoval }                                                                               from './platform/ops/sweeper/removal';
-import { EmailProcessorLambda }                                                                                from './resources/lambdas/email-processor-lambda';
 import { IdentityProvisionerLambda }                                                                           from './resources/lambdas/identity-provisioner-lambda';
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
 import type { MailboxProps }                                                                                   from './mailbox-props';
-import { TantivySearch }                                                                                       from './core/search/tantivy-search';
 import { AdminUi }                                                                                             from './core/ui/admin-ui';
 import type { MailboxUi }                                                                                      from './core/ui/mailbox-ui';
 import { WebmailUi }                                                                                           from './core/ui/webmail-ui';
-import { resolveMailboxEncryptionPlan }                                                                        from './core/mailbox-encryption';
 import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
 
 /**
@@ -66,9 +60,7 @@ export class Mailbox extends Construct {
    * surface cannot provide.
    */
   private readonly blobStoreBucket: IBucket;
-  private readonly emailProcessorLambda: EmailProcessorLambda;
   private readonly configTable: IDataTable;
-  private readonly emailQueueProps: ReturnType<typeof resolveMailboxEncryptionPlan>['queues'];
 
   private readonly jmapApi: JMapApi;
 
@@ -93,45 +85,56 @@ export class Mailbox extends Construct {
     const context                                                                                                 = MailboxContext.resolve(this, props);
     const { artifactResolver, stackVersion, deployerType, vendorAccountIds, stackIdentityTagKey, encryptionPlan } = context;
 
-    // --- Group nodes (8 intermediate constructs for construct-tree grouping) ---
+    // --- Sections (data, email) and group nodes (the other intermediate constructs) ---
+    const data = new DataSection(this, 'data', {
+      artifactResolver,
+      deployerType,
+      stackHelpers: StackHelpers.getOrCreate(this, artifactResolver),
+      hostedZoneId: props.hostedZoneId,
+      queueProps: encryptionPlan.queues,
+    });
+
+    const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = data;
+
+    const email = new EmailSection(this, 'email', {
+      artifactResolver,
+      configTable,
+      itemTable,
+      changelogTable,
+      mailFeedbackTable,
+      blobStore: data.blobStore,
+      blobStoreBucket: data.blobStoreBucket,
+      auditEventsQueue: data.auditEventsQueue,
+      queueProps: encryptionPlan.queues,
+    });
+
     const groups = {
-      data:   new Construct(this, 'data'),
       auth:   new Construct(this, 'auth'),
       edge:   new Construct(this, 'edge'),
       ui:     new Construct(this, 'ui'),
-      email:  new Construct(this, 'email'),
       apis:   new Construct(this, 'apis'),
-      search: new Construct(this, 'search'),
       ops:    new Construct(this, 'ops'),
     };
 
+    new SearchSection(this, 'search', {
+      artifactResolver,
+      configTable,
+      itemTable,
+      changelogTable,
+      blobStore: data.blobStore,
+      queueProps: encryptionPlan.queues,
+    });
+
     // Component tags on each group — CDK propagates to the whole subtree.
-    applyServerlessInboxComponentTag(groups.data,   'data');
     applyServerlessInboxComponentTag(groups.auth,   'auth');
     applyServerlessInboxComponentTag(groups.edge,   'edge');
     applyServerlessInboxComponentTag(groups.ui,     'ui');
-    applyServerlessInboxComponentTag(groups.email,  'email');
     applyServerlessInboxComponentTag(groups.apis,   'api');
-    applyServerlessInboxComponentTag(groups.search, 'search');
     applyServerlessInboxComponentTag(groups.ops,    'ops');
 
-    // Derive domain name and S3-safe stack name from hosted zone at deploy time.
-    const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
+    setStackNameBase(this, data.mainStackNameBase);
 
-    const stackHelpers                                      = StackHelpers.getOrCreate(this, artifactResolver);
-    const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
-      groups.data, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
-    );
-
-    // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)
-    const { derivedS3SafeDataStackName: mainStackNameBase } = stackHelpers.resolveMailboxData(
-      groups.data, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
-    );
-
-    setStackNameBase(this, mainStackNameBase);
-
-    const domainName: string = derivedDomainName;
-    const nameBase: string   = derivedS3SafeDataStackName;
+    const domainName: string = data.derivedDomainName;
 
     const enableAdminUi   = props.enableAdminUi ?? true;
     const enableWebmailUi = props.enableWebmailUi ?? true;
@@ -140,27 +143,9 @@ export class Mailbox extends Construct {
     const { zone: hostedZone, domains: mailboxDomains, edgePrefix } = addressing;
     this.urls                                                       = addressing.urls;
 
-    this.emailQueueProps = encryptionPlan.queues;
-
-    // Retained data resources come from the auto-deployed data stack. Every field on `dataRef` is
-    // an `IDataTable` grant interface; no raw `ITable` reaches this scope.
-    const dataRef = new MailboxDataDeployer(groups.data, 'data-deployer', {
-      artifactResolver,
-      nameBase,
-      deployerType,
-    });
-
-    this.blobStoreBucket = dataRef.blobStoreBucket;
-    this.blobStoreHandle = dataRef.blobStore;
-
-    const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
-    this.configTable                                                                   = configTable;
-
-    const auditWriting = new AuditWriting(groups.data, 'audit-writing', {
-      auditLogTable,
-      artifactResolver,
-      queueProps: encryptionPlan.queues,
-    });
+    this.blobStoreBucket = data.blobStoreBucket;
+    this.blobStoreHandle = data.blobStore;
+    this.configTable     = configTable;
 
     const authKeyStore = new AuthKeyStore(groups.auth, 'auth-key-store', {
       issuers: [authProvider.issuer],
@@ -172,8 +157,8 @@ export class Mailbox extends Construct {
       artifactResolver,
       prefix: edgePrefix,
       hostedZone: props.hostedZoneId ? hostedZone : undefined,
-      itemTable: dataRef.itemTable,
-      configTable: dataRef.configTable,
+      itemTable,
+      configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       productVersion: stackVersion,
       deployerType,
@@ -245,37 +230,16 @@ export class Mailbox extends Construct {
     // The webmail token exchange waits on this group; the bootstrap resource joins it once built.
     const oauthClientsProvisioned = new DependencyGroup();
 
-    const sesEventProcessing = new SESEventProcessing(groups.email, 'ses-event-processing', {
-      itemTable,
-      mailFeedbackTable,
-      changelogTable,
-      configTable,
-      blobStore: this.blobStoreHandle,
-      auditEventsQueue: auditWriting.auditEventsQueue,
-      artifactResolver,
-      queueProps: encryptionPlan.queues,
-    });
-
-    const emailSending = new EmailSending(groups.email, 'email-sending', {
-      configTable,
-      itemTable,
-      changelogTable,
-      blobStore: this.blobStoreHandle,
-      artifactResolver,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
-      queueProps: encryptionPlan.queues,
-    });
-
     const identityProvisioner = new IdentityProvisionerLambda(groups.auth, 'identity-provisioner', {
       configTable,
       itemTable,
       changelogTable,
-      auditEventsQueue: auditWriting.auditEventsQueue,
+      auditEventsQueue: data.auditEventsQueue,
       artifactResolver,
       adminUIURL: this.urls.adminUi,
       blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: emailSending.submissionQueue,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      emailSubmissionQueue: email.submissionQueue,
+      sesConfigSetName: email.sesConfigSetName,
       systemSenderAddress: `noreply@${domainName}`,
       vendorAccountIds,
     });
@@ -286,7 +250,7 @@ export class Mailbox extends Construct {
       const addons: IAdminApiAddon[] = [];
 
       const ctx: AdminApiAddonContext = {
-        auditEventsQueue: auditWriting.auditEventsQueue,
+        auditEventsQueue: data.auditEventsQueue,
         configTable,
         auditLogTable,
         identityProvisioner,
@@ -341,7 +305,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.admin,
         certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
         configTable: this.configTable,
-        auditEventsQueue: auditWriting.auditEventsQueue,
+        auditEventsQueue: data.auditEventsQueue,
         authProvider,
         apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
         webmailUrl: enableWebmailUi && (props.overrides?.certificates?.webmailUi ?? defaultUiCertificate)
@@ -362,7 +326,7 @@ export class Mailbox extends Construct {
         domainName: mailboxDomains.webmail,
         certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
         configTable: this.configTable,
-        auditEventsQueue: auditWriting.auditEventsQueue,
+        auditEventsQueue: data.auditEventsQueue,
         authProvider,
         apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
         uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
@@ -397,32 +361,13 @@ export class Mailbox extends Construct {
       vendorAccountIds,
     });
 
-    // SES receipt rules and the email-processing queue they feed. Built before the email-processor
-    // Lambda so its own event source mapping can reference the queue at construction time.
-    const sesRules = new SesRules(groups.email, 'ses-rules', {
-      delivery: {
-        blobStore: this.blobStoreBucket,
-        artifactResolver,
-        queueProps: this.emailQueueProps,
-      },
-    });
-
-    this.emailProcessorLambda = new EmailProcessorLambda(groups.email, 'email-processor-lambda', {
-      configTable,
-      itemTable,
-      changelogTable,
-      blobStore: this.blobStoreHandle,
-      emailProcessingQueue: sesRules.emailProcessingQueue,
-      artifactResolver,
-    });
-
     const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
       domain: domainName,
       oidcIssuer: authProvider.issuer,
       configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       artifactResolver,
-      sesRuleSet: sesRules.ruleSet,
+      sesRuleSet: email.sesRuleSet,
       sesReceivingMode: props.enableReceiving,
       sesSendEnabled: true,
       hostedZone: hasHostedZone ? hostedZone : undefined,
@@ -542,17 +487,6 @@ export class Mailbox extends Construct {
 
     // DNS is created later, once all endpoint targets are known.
 
-    const tantivySearch = new TantivySearch(groups.search, 'tantivy-search', {
-      indexBucket: this.blobStoreHandle,
-      itemTable,
-      configTable,
-      changelogTable,
-      artifactResolver,
-      queueProps: encryptionPlan.queues,
-    });
-    // tantivySearch is used for side-effects only at this level.
-    void tantivySearch;
-
     this.jmapApi  = new JMapApi(groups.apis, 'jmap-api', {
       configTable,
       itemTable,
@@ -561,8 +495,8 @@ export class Mailbox extends Construct {
       cdnHost: cdnConstruct.host,
       allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
       blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: emailSending.submissionQueue,
-      auditEventsQueue: auditWriting.auditEventsQueue,
+      emailSubmissionQueue: email.submissionQueue,
+      auditEventsQueue: data.auditEventsQueue,
       artifactResolver,
       authProvider,
       identityProvisioner,
@@ -600,8 +534,8 @@ export class Mailbox extends Construct {
       mailFeedbackTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: emailSending.submissionQueue,
-      auditEventsQueue: auditWriting.auditEventsQueue,
+      emailSubmissionQueue: email.submissionQueue,
+      auditEventsQueue: data.auditEventsQueue,
       allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
       artifactResolver,
       identityProvisioner,
@@ -613,8 +547,8 @@ export class Mailbox extends Construct {
       domainName: apiCertificate ? mailboxDomains.api : undefined,
       certificate: apiCertificate,
 
-      sesRuleSetName: sesRules.ruleSetName,
-      sesConfigSetName: sesEventProcessing.sesConfigSetName,
+      sesRuleSetName: email.sesRuleSetName,
+      sesConfigSetName: email.sesConfigSetName,
       systemSenderAddress: `noreply@${domainName}`,
     });
 
@@ -630,10 +564,7 @@ export class Mailbox extends Construct {
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
 
-    // Enable WebSocket push emission from the ChangeTracker in each Lambda that records changelog state.
-    this.emailProcessorLambda.enableWebSocketPublishing(webSocketPush.broadcaster);
-    emailSending.enableWebSocketPublishing(webSocketPush.broadcaster);
-    sesEventProcessing.enableWebSocketPublishing(webSocketPush.broadcaster);
+    email.enableWebSocketPublishing(webSocketPush.broadcaster);
 
     // --- Pin logical IDs to survive reparenting ---
     // API Gateway custom domain names are globally unique per account/region; a reparented
