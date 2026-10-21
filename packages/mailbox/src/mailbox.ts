@@ -6,11 +6,7 @@ import { IBucket }                                                              
 import * as cdk                                                                                               from 'aws-cdk-lib';
 import { Construct, DependencyGroup }                                                                          from 'constructs';
 
-import { AdminApi }                                                                                            from './core/apis/admin-api';
-import { JMapApi }                                                                                             from './core/apis/jmap-api';
-import { McpApi }                                                                                              from './core/apis/mcp-api';
-import { WebSocketPush }                                                                                       from './core/apis/websocket';
-import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './core/apis/addons';
+import { ApisSection }                                                                                        from './core/apis/apis-section';
 import type { IMailboxAuthProvider }                                                                           from './core/auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
@@ -50,8 +46,6 @@ export class Mailbox extends Construct {
    */
   private readonly blobStoreBucket: IBucket;
   private readonly configTable: IDataTable;
-
-  private readonly jmapApi: JMapApi;
 
   /**
    * The OAuth clients this Mailbox created for its UIs. A client is present only when its UI is
@@ -100,7 +94,6 @@ export class Mailbox extends Construct {
     const groups = {
       auth:   new Construct(this, 'auth'),
       ui:     new Construct(this, 'ui'),
-      apis:   new Construct(this, 'apis'),
     };
 
     new SearchSection(this, 'search', {
@@ -115,7 +108,6 @@ export class Mailbox extends Construct {
     // Component tags on each group — CDK propagates to the whole subtree.
     applyServerlessInboxComponentTag(groups.auth,   'auth');
     applyServerlessInboxComponentTag(groups.ui,     'ui');
-    applyServerlessInboxComponentTag(groups.apis,   'api');
 
     setStackNameBase(this, data.mainStackNameBase);
 
@@ -213,39 +205,27 @@ export class Mailbox extends Construct {
       vendorAccountIds,
     });
 
-    // Build admin API addons early from all providers (auth provider + optional additional providers).
-    // All addons are known at construction time, so uiConfig merge is eager.
-    const adminApiAddons: IAdminApiAddon[] = (() => {
-      const addons: IAdminApiAddon[] = [];
-
-      const ctx: AdminApiAddonContext = {
-        auditEventsQueue: data.auditEventsQueue,
-        configTable,
-        auditLogTable,
-        identityProvisioner,
-        artifactResolver,
-      };
-
-      addons.push(...authProvider.createAdminApiAddons(groups.apis, ctx));
-
-      for (const provider of props.adminApiAddonProviders ?? []) {
-        addons.push(...provider.createAdminApiAddons(groups.apis, ctx));
-      }
-
-      return addons;
-    })();
-
-    const jmapApiAddonContext: JmapApiAddonContext = {
-      apiBaseUrl: this.urls.jmapApi,
+    const apis = new ApisSection(this, 'apis', {
+      artifactResolver,
+      authProvider,
+      adminApiAddonProviders: props.adminApiAddonProviders,
+      configTable,
+      itemTable,
+      changelogTable,
+      auditLogTable,
+      mailFeedbackTable,
+      authKeyStoreTable: authKeyStore.authKeyStoreTable,
+      blobStore: this.blobStoreHandle,
+      emailSubmissionQueue: email.submissionQueue,
+      auditEventsQueue: data.auditEventsQueue,
       identityProvisioner,
-    };
-
-    const jmapApiAddons: IJmapApiAddon[] = (() => {
-      if (typeof authProvider.createJmapApiAddons !== 'function') {return [];}
-      return authProvider.createJmapApiAddons(groups.apis, jmapApiAddonContext);
-    })();
-
-    const jmapOAuthIssuerUrl = authProvider.jmapOAuthIssuerUrl?.();
+      vendorAccountIds,
+      stackIdentityTagKey,
+      sesRuleSetName: email.sesRuleSetName,
+      sesConfigSetName: email.sesConfigSetName,
+      domainName,
+      jmapApiBaseUrl: this.urls.jmapApi,
+    });
 
     if (enableAdminUi) {
       const providerAuthz = authProvider.authorizationConfig?.();
@@ -264,7 +244,7 @@ export class Mailbox extends Construct {
           : {}),
       };
 
-      for (const addon of adminApiAddons) {
+      for (const addon of apis.adminApiAddons) {
         if (addon.uiConfig) {
           Object.assign(mergedAdminUiConfig, addon.uiConfig);
         }
@@ -400,103 +380,29 @@ export class Mailbox extends Construct {
 
     // DNS is created later, once all endpoint targets are known.
 
-    this.jmapApi  = new JMapApi(groups.apis, 'jmap-api', {
-      configTable,
-      itemTable,
-      changelogTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
+    const endpoints = apis.addEndpoints({
       cdnHost: cdnConstruct.host,
-      allowedOrigins: allowedOriginsForJmapApi.length > 0 ? allowedOriginsForJmapApi : undefined,
-      blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: email.submissionQueue,
-      auditEventsQueue: data.auditEventsQueue,
-      artifactResolver,
-      authProvider,
-      identityProvisioner,
-
-      domainName: jmapCertificate ? mailboxDomains.jmap : undefined,
-      certificate: jmapCertificate,
-
-      jmapApiAddons,
-      oauthIssuerUrl: jmapOAuthIssuerUrl,
-      vendorAccountIds,
-
-      // WebSocket URL will be passed via environment variable, not here
-    });
-    const jmapApi = this.jmapApi;
-
-    // Created after the JMAP API because it reuses that API's authorizer Lambda.
-    const webSocketPush = new WebSocketPush(groups.apis, 'websocket-push', {
-      configTable,
-      itemTable,
-      changelogTable,
-      authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
-      artifactResolver,
-      maxSubscriptions: 10,
-
-      domainName: (hasHostedZone && wsCertificate) ? mailboxDomains.ws : undefined,
-      certificate: hasHostedZone ? wsCertificate : undefined,
-    });
-    // Keep a deeper messaging override — websocket-push overrides the apis group tag.
-    applyServerlessInboxComponentTag(webSocketPush, 'messaging');
-    const adminApi = new AdminApi(groups.apis, 'admin-api', {
-      configTable,
-      itemTable,
-      auditLogTable,
-      changelogTable,
-      mailFeedbackTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
-      blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: email.submissionQueue,
-      auditEventsQueue: data.auditEventsQueue,
-      allowedOrigins: allowedOriginsForAdminApi.length > 0 ? allowedOriginsForAdminApi : undefined,
-      artifactResolver,
-      identityProvisioner,
-      vendorAccountIds,
-      stackIdentityTagKey,
-
-      addons: adminApiAddons,
-
-      domainName: apiCertificate ? mailboxDomains.api : undefined,
-      certificate: apiCertificate,
-
-      sesRuleSetName: email.sesRuleSetName,
-      sesConfigSetName: email.sesConfigSetName,
-      systemSenderAddress: `noreply@${domainName}`,
+      mailboxDomains,
+      hasHostedZone,
+      adminApiAllowedOrigins: allowedOriginsForAdminApi,
+      jmapApiAllowedOrigins: allowedOriginsForJmapApi,
+      apiCertificate,
+      jmapCertificate,
+      wsCertificate,
+      mcp: props.enableMcp ? { regionalCertificate: this.certificates.regional! } : undefined,
     });
 
-    const mcpApi = props.enableMcp ? new McpApi(groups.apis, 'mcp-api', {
-      jmapApiGateway: this.jmapApi.httpApi,
-      authorizerLambda: this.jmapApi.authorizerLambda,
-      certificate: this.certificates.regional!,
-      domainName: domainName,
-      scopeMap: props.authProvider.scopeMap as Record<string, string[]>,
-      artifactResolver,
-    }) : undefined;
-
-    jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
-    adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
-
-    email.enableWebSocketPublishing(webSocketPush.broadcaster);
-
-    // --- Pin logical IDs to survive reparenting ---
-    // API Gateway custom domain names are globally unique per account/region; a reparented
-    // construct cannot create the replacement alongside the still-existing original, so
-    // create-before-delete would fail on a name collision. Pinning the logical ID keeps
-    // CloudFormation updating the same domain name in place instead of replacing it.
-    adminApi.domainCfnResource?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
-    jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
-    webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
+    email.enableWebSocketPublishing(endpoints.broadcaster);
 
     if (hasHostedZone) {
       edge.addDns({
         admin: adminUiCnameTarget,
         webmail: webmailUiCnameTarget,
         cdn: cdnConstruct.distributionDomainName,
-        api: adminApi.domainTarget,
-        jmap: jmapApi.domainTarget,
-        ws: webSocketPush.domainTarget,
-        mcp: mcpApi?.domainTarget,
+        api: endpoints.adminApiDomainTarget,
+        jmap: endpoints.jmapApiDomainTarget,
+        ws: endpoints.webSocketDomainTarget,
+        mcp: endpoints.mcpApiDomainTarget,
       });
     }
 
