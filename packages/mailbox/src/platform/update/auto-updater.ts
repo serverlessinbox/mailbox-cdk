@@ -6,7 +6,7 @@ import { Aws, Duration, Fn, Tags }                                              
 import * as cdk                                                                  from 'aws-cdk-lib';
 import { Construct, IConstruct }                                                 from 'constructs';
 
-import { ArtifactUpdaterAddon }                                                  from '../../addons/artifact-updater/artifact-updater-addon';
+import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../api/addons';
 import { ArtifactUpdaterLambda }                                                 from '../../lambdas/artifact-updater';
 import { loadMailboxArtifactVersions }                                           from '../../mailbox-artifact-versions';

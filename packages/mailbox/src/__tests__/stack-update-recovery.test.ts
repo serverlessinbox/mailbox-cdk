@@ -23,7 +23,7 @@ import * as dynamodb                                 from 'aws-cdk-lib/aws-dynam
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
-import { StackUpdateAddon }                          from '../addons/stack-update/stack-update-addon';
+import { StackUpdateAddon }                          from '../platform/update/stack-update-addon';
 import { DataTable }                                 from '../data/data-tables';
 import { AuditEventsQueue }                          from '../features/audit-writing/audit-events-queue';
 

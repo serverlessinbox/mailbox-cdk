@@ -61,11 +61,11 @@ export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJma
 export type { IAuditEventsQueue } from './features/audit-writing/audit-events-queue';
 export type { IIdentityProvisioner } from './lambdas/identity-provisioner';
 export type { IDataTable } from './data/data-tables';
-export { StackUpdateAddonProvider } from './addons/stack-update/stack-update-addon';
-export type { StackUpdateAddonProviderProps } from './addons/stack-update/stack-update-addon';
-export { SupportMode } from './addons/support/support-addon';
-export { SupportAddonProvider } from './addons/support/support-addon-provider';
-export type { SupportAddonProviderProps } from './addons/support/support-addon-provider';
+export { StackUpdateAddonProvider } from './platform/update/stack-update-addon';
+export type { StackUpdateAddonProviderProps } from './platform/update/stack-update-addon';
+export { SupportMode } from './platform/support/support-addon';
+export { SupportAddonProvider } from './platform/support/support-addon-provider';
+export type { SupportAddonProviderProps } from './platform/support/support-addon-provider';
 
 // Utils — tagging & correlation (re-exported from mailbox-cdk-shared)
 export {
@@ -92,6 +92,6 @@ export type {
 } from './utils/kms';
 
 // Artifact resolution — the auto-updating resolver and its settings
-export { AutoUpdater } from './artifacts/resolvers';
-export type { AutoUpdaterProps, Granularity } from './artifacts/resolvers';
+export { AutoUpdater } from './platform/update/auto-updater';
+export type { AutoUpdaterProps, Granularity } from './platform/update/auto-updater';
 

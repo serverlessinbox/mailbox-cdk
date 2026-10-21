@@ -6,7 +6,7 @@ import { Construct }               from 'constructs';
 
 import {
   buildSupportTierEnvironment,
-} from '../addons/support/support-roles-infra';
+} from '../platform/support/support-roles-infra';
 import type { IDataTable } from '../data/data-tables';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {

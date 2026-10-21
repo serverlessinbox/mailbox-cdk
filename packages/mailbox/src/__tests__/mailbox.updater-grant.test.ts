@@ -18,7 +18,7 @@ import { Template }                                 from 'aws-cdk-lib/assertions
 import * as cdk                                     from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }            from 'aws-cdk-lib';
 
-import { AutoUpdater }                              from '../artifacts';
+import { AutoUpdater }                              from '../platform/update/auto-updater';
 import { Permission }                               from '../auth/jmap-scopes';
 import type { IMailboxAuthProvider }                from '../auth/types';
 import { loadMailboxArtifactVersions }              from '../mailbox-artifact-versions';
