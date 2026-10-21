@@ -17,7 +17,7 @@ import { Construct }                                                 from 'const
 import { SweeperWorkflow }                                           from '../sweeper-workflow';
 import type { SweeperWorkflowProps }                                 from '../sweeper-workflow';
 
-import { newRemovals, newTestStack, newWorkerFunction, stateBodyOf } from './sweeper-helpers';
+import { newRemovals, newTestStack, newWorkerFunction, stateBodyOf } from '../../../platform/ops/sweeper/__tests__/sweeper-helpers';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper-machine';
 

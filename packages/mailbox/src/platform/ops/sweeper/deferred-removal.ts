@@ -2,7 +2,7 @@ import { IFunction }                      from 'aws-cdk-lib/aws-lambda';
 import * as cdk                           from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
-import type { RemovalId, RemovalTargets } from '../../runtime/resource-sweeper/removal';
+import type { RemovalId, RemovalTargets } from '../../../runtime/resource-sweeper/removal';
 
 import type { IResourceRemoval }          from './removal';
 

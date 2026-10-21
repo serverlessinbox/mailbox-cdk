@@ -8,7 +8,7 @@
  * that no removal's PolicyStatement is constructed outside the sweeper feature directory.
  *
  * Implementation approach: a regular-expression scan of the source text of every file outside
- * `features/sweeper/` for a class implementing `IResourceRemoval`, or a `grantStatements()` method
+ * `platform/ops/sweeper/` for a class implementing `IResourceRemoval`, or a `grantStatements()` method
  * next to a `PolicyStatement`.
  *
  * Blind spot accepted: if a removal were to construct statements dynamically (e.g., in a factory
@@ -22,8 +22,8 @@ import * as path from 'path';
 describe('Sweeper removal boundary guard', () => {
   it('no PolicyStatement is constructed outside the sweeper feature directory for removal implementations', () => {
     // Locate the mailbox package root
-    const packageRoot = path.resolve(__dirname, '../../../');
-    const sweeperDir  = path.resolve(packageRoot, 'features/sweeper');
+    const packageRoot = path.resolve(__dirname, '../../../../');
+    const sweeperDir  = path.resolve(packageRoot, 'platform/ops/sweeper');
 
     // Scan all TypeScript source files in the mailbox package
     const sourceFiles              = scanDirForTypeScriptFiles(packageRoot);

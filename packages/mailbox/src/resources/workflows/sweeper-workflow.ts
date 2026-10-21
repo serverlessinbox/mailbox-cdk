@@ -7,8 +7,8 @@ import { Construct }                                  from 'constructs';
 
 import { defaultCfnResource, retainOnUpdateOrDelete } from '../../utils/cfn-resource';
 
-import type { IResourceRemoval }                      from './removal';
-import { SweeperPolicyNames }                         from './sweeper-names';
+import type { IResourceRemoval }                      from '../../platform/ops/sweeper/removal';
+import { SweeperPolicyNames }                         from '../../platform/ops/sweeper/sweeper-names';
 
 export interface SweeperWorkflowProps {
   /** The role the state machine runs as. */

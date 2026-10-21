@@ -5,13 +5,13 @@ import { IFunction }                                                 from 'aws-c
 import { ArnFormat, Aws, Fn, Stack }                                 from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
-import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../lambdas';
-import { retainOnUpdateOrDelete }                                    from '../../utils/cfn-resource';
+import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../../lambdas';
+import { retainOnUpdateOrDelete }                                    from '../../../utils/cfn-resource';
 
 import type { IResourceRemoval }                                     from './removal';
 import { SweeperExecutionGrants }                                    from './sweeper-execution-grants';
 import { SweeperPolicyNames }                                        from './sweeper-names';
-import { SweeperWorkflow }                                           from './sweeper-workflow';
+import { SweeperWorkflow }                                           from '../../../resources/workflows/sweeper-workflow';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;

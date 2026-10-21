@@ -30,8 +30,12 @@ import { Bootstrap }                                                            
 import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';
 import { LicenseRefresh }                                                                                      from './platform/ops/license-refresh';
 import { StackFailureDetection, SendStackFailuresMode }                                                        from './platform/ops/stack-failure-detection';
-import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
-import type { IResourceRemoval }                                                                               from './features/sweeper';
+import { DeferredRemoval }                                                                                  from './platform/ops/sweeper/deferred-removal';
+import { SweeperInfra }                                                                                        from './platform/ops/sweeper/sweeper-infra';
+import { CertificateRemoval }                                                                                  from './platform/ops/sweeper/certificate-removal';
+import { EdgeFunctionRemoval }                                                                                 from './platform/ops/sweeper/edge-function-removal';
+import { StackFailureDetectorRemoval }                                                                         from './platform/ops/sweeper/stack-failure-detector-removal';
+import type { IResourceRemoval }                                                                               from './platform/ops/sweeper/removal';
 import { EmailProcessorLambda }                                                                                from './resources/lambdas/email-processor-lambda';
 import { IdentityProvisionerLambda }                                                                           from './resources/lambdas/identity-provisioner-lambda';
 import { MailboxContext }                                                                                      from './mailbox-context';

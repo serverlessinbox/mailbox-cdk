@@ -5,7 +5,7 @@ import * as sfn                                        from 'aws-cdk-lib/aws-ste
 import { Duration }                                    from 'aws-cdk-lib';
 import { Construct }                                   from 'constructs';
 
-import type { RemovalId, RemovalTargets, WorkerInput } from '../../runtime/resource-sweeper/removal';
+import type { RemovalId, RemovalTargets, WorkerInput } from '../../../runtime/resource-sweeper/removal';
 
 /**
  * Contract for registering a resource type with the sweeper. An implementation owns its own target
