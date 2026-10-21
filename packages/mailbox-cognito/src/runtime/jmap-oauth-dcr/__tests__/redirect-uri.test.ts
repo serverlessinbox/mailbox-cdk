@@ -6,7 +6,7 @@
  * schemes that execute or expose content must stay denied.
  */
 
-import { toRedirectUri }     from '../../../runtime/shared/identity-identifiers';
+import { toRedirectUri }     from '../../shared/identity-identifiers';
 import { RedirectUriPolicy } from '../redirect-uri';
 
 describe('RedirectUriPolicy', () => {

@@ -1,6 +1,6 @@
 import type { TenantId }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { UserPoolId } from '../../runtime/shared/cognito-identifiers';
+import type { UserPoolId } from '../shared/cognito-identifiers';
 
 /**
  * Resolves the Cognito user pool in which the dynamically registered clients of a tenant are created. The

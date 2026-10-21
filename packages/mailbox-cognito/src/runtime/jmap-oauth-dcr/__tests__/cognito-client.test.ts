@@ -13,8 +13,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { mockClient }                   from 'aws-sdk-client-mock';
 
-import { toClientId, toUserPoolId }     from '../../../runtime/shared/cognito-identifiers';
-import { toRedirectUri, toScope }       from '../../../runtime/shared/identity-identifiers';
+import { toClientId, toUserPoolId }     from '../../shared/cognito-identifiers';
+import { toRedirectUri, toScope }       from '../../shared/identity-identifiers';
 import { CognitoUserPoolClientManager } from '../cognito-client';
 
 const USER_POOL_ID = toUserPoolId('pool-1');

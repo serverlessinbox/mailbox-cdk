@@ -54,13 +54,13 @@ tasks:
   bundle:jmap-oauth-dcr:
     desc: Bundle RFC 7591 dynamic client registration lambda zip to dist/lambdas
     sources:
-      - src/ts-lambdas/jmap-oauth-dcr/**/*.ts
+      - src/runtime/jmap-oauth-dcr/**/*.ts
       - src/runtime/shared/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/jmap-oauth-dcr/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/jmap-oauth-dcr/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip
 
   bundle:
     desc: Bundle all cognito lambdas to dist/lambdas/*.zip

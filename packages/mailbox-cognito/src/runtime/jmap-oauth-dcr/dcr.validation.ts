@@ -1,6 +1,6 @@
 import * as t            from 'typanion';
 
-import { isRedirectUri } from '../../runtime/shared/identity-identifiers';
+import { isRedirectUri } from '../shared/identity-identifiers';
 
 export const isClientRegistrationRequest = t.isPartial({
   redirect_uris: t.cascade(t.isArray(isRedirectUri), [t.hasMinLength(1)]),

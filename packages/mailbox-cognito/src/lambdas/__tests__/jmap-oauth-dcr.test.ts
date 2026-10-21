@@ -15,7 +15,7 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import * as t                                   from 'typanion';
 
-import { load }                                 from '../../ts-lambdas/jmap-oauth-dcr/config';
+import { load }                                 from '../../runtime/jmap-oauth-dcr/config';
 import { JmapOAuthDcrLambda }                   from '../jmap-oauth-dcr';
 
 const USER_POOL_ID  = 'us-west-2_abcdefgh';

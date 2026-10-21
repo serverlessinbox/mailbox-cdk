@@ -16,8 +16,8 @@ import { InvokeCommand, LambdaClient }                                          
 import { LoggerBuffer, toFunctionName }                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                                                   from 'aws-sdk-client-mock';
 
-import { toUserPoolId }                                                                 from '../../../runtime/shared/cognito-identifiers';
-import { IdentityProvisionerClient }                                                    from '../../../runtime/shared/identity-provisioner-client';
+import { toUserPoolId }                                                                 from '../../shared/cognito-identifiers';
+import { IdentityProvisionerClient }                                                    from '../../shared/identity-provisioner-client';
 import { ClientRegistration }                                                           from '../client-registration';
 import { CognitoUserPoolClientManager }                                                 from '../cognito-client';
 import { PoolResolver }                                                                 from '../pool-resolver';

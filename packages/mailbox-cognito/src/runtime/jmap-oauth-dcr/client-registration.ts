@@ -1,10 +1,10 @@
 import { CaughtError, type LoggerBuffer, type TenantId }                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
-import type { ClientId, UserPoolId }                                      from '../../runtime/shared/cognito-identifiers';
-import { toScope, type Scope }                                            from '../../runtime/shared/identity-identifiers';
-import type { IdentityProvisionerClient }                                 from '../../runtime/shared/identity-provisioner-client';
-import type { DcrPersistResponse }                                        from '../../runtime/shared/identity-provisioner-contract';
+import type { ClientId, UserPoolId }                                      from '../shared/cognito-identifiers';
+import { toScope, type Scope }                                            from '../shared/identity-identifiers';
+import type { IdentityProvisionerClient }                                 from '../shared/identity-provisioner-client';
+import type { DcrPersistResponse }                                        from '../shared/identity-provisioner-contract';
 
 import type { CognitoUserPoolClientManager }                              from './cognito-client';
 import { isClientRegistrationRequest, type ClientRegistrationRequest }    from './dcr.validation';
