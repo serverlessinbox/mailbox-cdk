@@ -39,8 +39,7 @@
     },
     "excludeTypescript": [
       "src/lambdas/**",
-      "src/runtime/**",
-      "src/ts-lambdas/**"
+      "src/runtime/**"
     ]
   },
   "peerDependencies": {

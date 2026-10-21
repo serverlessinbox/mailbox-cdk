@@ -6,7 +6,7 @@ import * as sfn                                                       from 'aws-
 import { Aws, Duration, Stack }                                       from 'aws-cdk-lib';
 import { Construct }                                                  from 'constructs';
 
-import type { CertRemovalTarget, CertWorkerInput }                    from '../../ts-lambdas/resource-sweeper/removal';
+import type { CertRemovalTarget, CertWorkerInput }                    from '../../runtime/resource-sweeper/removal';
 
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval }                                      from './removal';

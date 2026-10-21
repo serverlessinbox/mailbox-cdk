@@ -9,7 +9,7 @@ import { Construct }                                     from 'constructs';
 import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
-} from '../../ts-lambdas/resource-sweeper/removal';
+} from '../../runtime/resource-sweeper/removal';
 import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
 
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';

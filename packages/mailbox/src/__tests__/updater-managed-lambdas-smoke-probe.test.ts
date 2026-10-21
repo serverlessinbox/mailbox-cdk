@@ -33,7 +33,6 @@ const GO_PACKAGE = 'mailbox-go';
 
 /** The source folders that hold the TypeScript handlers of the Lambdas of this repository, by bundle entry. */
 const TS_LAMBDA_ROOTS = [
-  path.join(__dirname, '..', 'ts-lambdas'),
   path.join(__dirname, '..', 'runtime'),
   path.join(__dirname, '..', '..', '..', 'mailbox-cdk-shared', 'src', 'runtime'),
   path.join(__dirname, '..', '..', '..', 'mailbox-cognito', 'src', 'ts-lambdas'),
