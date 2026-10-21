@@ -12,7 +12,7 @@ import { actionsOf, resourcesOf, statementsForAction } from '@serverlessinbox/ma
 import { Template }                                    from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack }        from 'aws-cdk-lib';
 
-import { CognitoBootstrapUserLambda }                  from '../cognito-bootstrap-user';
+import { CognitoBootstrapUserLambda }                  from '../bootstrap-user-lambda';
 
 const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_AbCdEfGhI';
 

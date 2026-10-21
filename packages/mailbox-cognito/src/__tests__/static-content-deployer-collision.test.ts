@@ -25,7 +25,7 @@ import * as s3                                                                  
 import * as cdk                                                                       from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                              from 'aws-cdk-lib';
 
-import { MailboxUserPool }                                                            from '../auth/mailbox-user-pool';
+import { MailboxUserPool }                                                            from '../user-pool/mailbox-user-pool';
 import { loadMailboxCognitoArtifactVersions }                                         from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                           from '../mailbox-cognito-registry-record';
 

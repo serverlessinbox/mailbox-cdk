@@ -12,9 +12,9 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { MailboxUserPool }                              from '../auth/mailbox-user-pool';
-import { MailboxCognitoDataDeployerWorker }             from '../cognito/mailbox-cognito-data-deployer-worker';
-import { MailboxCognitoDataStack }                      from '../cognito/mailbox-cognito-data-stack';
+import { MailboxUserPool }                              from '../user-pool/mailbox-user-pool';
+import { MailboxCognitoDataDeployerWorker }             from '../data-stack/mailbox-cognito-data-deployer-worker';
+import { MailboxCognitoDataStack }                      from '../data-stack/mailbox-cognito-data-stack';
 import { loadMailboxCognitoArtifactVersions }           from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }             from '../mailbox-cognito-registry-record';
 

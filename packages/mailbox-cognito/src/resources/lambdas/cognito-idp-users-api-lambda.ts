@@ -4,8 +4,8 @@ import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/m
 import { Duration }                                     from 'aws-cdk-lib';
 import { Construct }                                    from 'constructs';
 
-import type { ICognitoIdpUsersPoolConfig }              from '../api/cognito-idp-users-addon';
-import { COGNITO_ARTIFACT_PACKAGE }                     from '../index';
+import type { ICognitoIdpUsersPoolConfig }              from '../../cognito-idp-users-addon';
+import { COGNITO_ARTIFACT_PACKAGE }                     from '../../index';
 
 /** What `CognitoIdpUsersApiLambda` needs to resolve its code and to reach the pool, queue and Lambda it works with. */
 export interface CognitoIdpUsersApiLambdaProps {

@@ -2,7 +2,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as fs                           from 'node:fs';
 import * as path                         from 'node:path';
 
-import { MailboxCognitoDataStack }       from '../src/cognito/mailbox-cognito-data-stack';
+import { MailboxCognitoDataStack }       from '../src/data-stack/mailbox-cognito-data-stack';
 
 import { parseArgs, writeJson }          from './_common';
 

@@ -3,8 +3,8 @@
  */
 
 // Auth — user pool construct
-export { MailboxUserPool } from './auth/mailbox-user-pool';
-export { DynamicClientRegistrationMode } from './auth/dynamic-client-registration-mode';
+export { MailboxUserPool } from './user-pool/mailbox-user-pool';
+export { DynamicClientRegistrationMode } from './user-pool/dynamic-client-registration-mode';
 export type {
   MailboxUserPoolProps,
   MailboxUserPoolDomainConfig,
@@ -15,7 +15,7 @@ export type {
   ProvisionHeadlessClientConfig,
   BootstrapUserConfig,
   IBootstrapUserHandle,
-} from './auth/mailbox-user-pool';
+} from './user-pool/mailbox-user-pool';
 
 
 
@@ -23,7 +23,7 @@ export type {
 export type {
   CognitoIdpUsersAuthorizationConfig,
   ICognitoIdpUsersPoolConfig,
-} from './api/cognito-idp-users-addon';
+} from './cognito-idp-users-addon';
 
 
 // Artifacts

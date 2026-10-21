@@ -2,9 +2,9 @@ import { Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { DynamicClientRegistrationMode } from '../../packages/mailbox-cognito/src/auth/dynamic-client-registration-mode';
-import { MailboxUserPool }               from '../../packages/mailbox-cognito/src/auth/mailbox-user-pool';
-import { MailboxCognitoDataStack }       from '../../packages/mailbox-cognito/src/cognito/mailbox-cognito-data-stack';
+import { DynamicClientRegistrationMode } from '../../packages/mailbox-cognito/src/user-pool/dynamic-client-registration-mode';
+import { MailboxUserPool }               from '../../packages/mailbox-cognito/src/user-pool/mailbox-user-pool';
+import { MailboxCognitoDataStack }       from '../../packages/mailbox-cognito/src/data-stack/mailbox-cognito-data-stack';
 import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/addons/stack-update/stack-update-addon';
 import { SupportAddonProvider }          from '../../packages/mailbox/src/addons/support/support-addon-provider';
 import { SupportMode }                   from '../../packages/mailbox/src/addons/support/support-addon';

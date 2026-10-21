@@ -13,7 +13,7 @@ import * as cdk                      from 'aws-cdk-lib';
 import { Aws, Fn, RemovalPolicy }    from 'aws-cdk-lib';
 import { Construct }                 from 'constructs';
 
-import { CognitoScopeToPermissions } from '../auth/scopemaps/cognito';
+import { CognitoScopeToPermissions } from '../user-pool/cognito-scopemap';
 
 /**
  * CDK Stack that creates and owns all retained Serverless Inbox Cognito resources:

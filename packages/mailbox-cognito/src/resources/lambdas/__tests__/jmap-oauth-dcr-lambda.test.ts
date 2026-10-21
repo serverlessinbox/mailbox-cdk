@@ -15,8 +15,8 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import * as t                                   from 'typanion';
 
-import { load }                                 from '../../runtime/jmap-oauth-dcr/config';
-import { JmapOAuthDcrLambda }                   from '../jmap-oauth-dcr';
+import { load }                                 from '../../../runtime/jmap-oauth-dcr/config';
+import { JmapOAuthDcrLambda }                   from '../jmap-oauth-dcr-lambda';
 
 const USER_POOL_ID  = 'us-west-2_abcdefgh';
 const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';

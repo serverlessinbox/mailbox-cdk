@@ -12,8 +12,8 @@ import type { IAuditEventsQueue, IIdentityProvisioner }                 from '@s
 import { Template }                                                     from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack }                         from 'aws-cdk-lib';
 
-import type { ICognitoIdpUsersPoolConfig }                              from '../../api/cognito-idp-users-addon';
-import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '../cognito-idp-users-api';
+import type { ICognitoIdpUsersPoolConfig }                              from '../../../cognito-idp-users-addon';
+import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '../cognito-idp-users-api-lambda';
 
 describe('CognitoIdpUsersApiLambda', () => {
   const pool: ICognitoIdpUsersPoolConfig          = { userPoolId: 'us-west-2_abcdefgh', grantAdminAccess: jest.fn() };

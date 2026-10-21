@@ -8,8 +8,8 @@ import { IBucket }                                                              
 import * as cdk                                                                                        from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
-import { DynamicClientRegistrationMode }                                                               from '../auth/dynamic-client-registration-mode';
-import { JmapOAuthDcrLambda }                                                                          from '../lambdas/jmap-oauth-dcr';
+import { DynamicClientRegistrationMode }                                                               from './user-pool/dynamic-client-registration-mode';
+import { JmapOAuthDcrLambda }                                                                          from './resources/lambdas/jmap-oauth-dcr-lambda';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH      = '/oauth/register';

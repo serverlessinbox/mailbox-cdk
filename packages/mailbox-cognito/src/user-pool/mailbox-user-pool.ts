@@ -19,16 +19,16 @@ import * as lambda                                                              
 import { Aws, CustomResource, Duration, SecretValue }                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                             from 'constructs';
 
-import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig }                                      from '../api/cognito-idp-users-addon';
-import { JmapOAuthAddon }                                                                                        from '../api/jmap-oauth-addon';
-import { MailboxCognitoDataDeployer }                                                                            from '../cognito/mailbox-cognito-data-deployer';
-import { CognitoBootstrapUserLambda }                                                                            from '../lambdas/cognito-bootstrap-user';
+import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig }                                      from '../cognito-idp-users-addon';
+import { JmapOAuthAddon }                                                                                        from '../jmap-oauth-addon';
+import { MailboxCognitoDataDeployer }                                                                            from '../data-stack/mailbox-cognito-data-deployer';
+import { CognitoBootstrapUserLambda }                                                                            from '../resources/lambdas/bootstrap-user-lambda';
 import { loadMailboxCognitoArtifactVersions }                                                                    from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                                                      from '../mailbox-cognito-registry-record';
 import type { BootstrapUserProperties }                                                                          from '../runtime/bootstrap-user/properties';
 
 import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
-import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './scopemaps/cognito';
+import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './cognito-scopemap';
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.

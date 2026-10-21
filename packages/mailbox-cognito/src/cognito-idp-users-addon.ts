@@ -6,7 +6,7 @@ import { HttpApi, HttpMethod }                                               fro
 import type { IFunction }                                                    from 'aws-cdk-lib/aws-lambda';
 import { Construct }                                                         from 'constructs';
 
-import { CognitoIdpUsersApiLambda }                                          from '../lambdas/cognito-idp-users-api';
+import { CognitoIdpUsersApiLambda }                                          from './resources/lambdas/cognito-idp-users-api-lambda';
 
 /**
  * The Cognito groups that mark admins and regular users for the users API. Pass the names of the groups you

@@ -6,7 +6,7 @@
 
 import { Permission }                                                        from '@serverlessinbox/mailbox';
 
-import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope } from '../cognito';
+import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope } from '../cognito-scopemap';
 
 describe('Cognito scope tables', () => {
   it.each(Object.values(Permission))('maps permission %s to a scope that grants exactly that permission', (permission) => {

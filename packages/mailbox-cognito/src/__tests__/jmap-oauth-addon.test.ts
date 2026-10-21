@@ -26,10 +26,10 @@ import * as lambda                            from 'aws-cdk-lib/aws-lambda';
 import * as cdk                               from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
 
-import { DynamicClientRegistrationMode }      from '../../auth/dynamic-client-registration-mode';
-import { MailboxUserPool }                    from '../../auth/mailbox-user-pool';
-import { loadMailboxCognitoArtifactVersions } from '../../mailbox-cognito-artifact-versions';
-import { loadMailboxCognitoRegistryRecord }   from '../../mailbox-cognito-registry-record';
+import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
+import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
+import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
 import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
 
 const API_BASE_URL           = 'https://api.example.com';
