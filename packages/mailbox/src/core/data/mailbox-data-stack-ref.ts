@@ -40,7 +40,7 @@ export class MailboxDataStackRef extends Construct {
   /**
    * The raw imported bucket, exposed only because two consumers write a bucket *resource policy*
    * rather than an identity grant and so cannot go through `IDataBlobStore`'s method-only surface:
-   * `features/cdn/cdn-construct.ts` (`S3BucketOrigin.withOriginAccessControl` needs the bucket
+   * `core/ui/cdn-construct.ts` (`S3BucketOrigin.withOriginAccessControl` needs the bucket
    * object) and `core/email/ses-rules.ts` (`aws-ses-actions.S3`'s `bucket:` prop). Do not use
    * this for a grant — use `blobStore` instead.
    */

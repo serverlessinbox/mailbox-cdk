@@ -9,7 +9,7 @@ import { addServerlessInboxResourceGroup }                      from '@serverles
 import * as cdk                                                 from 'aws-cdk-lib';
 import { Construct }                                            from 'constructs';
 
-import { MailboxResourceDescriptions }                          from '../utils/resource-descriptions';
+import { MailboxResourceDescriptions }                          from '../../utils/resource-descriptions';
 
 import { MailboxEdgeConstruct, type MailboxEdgeConstructProps } from './mailbox-edge-construct';
 

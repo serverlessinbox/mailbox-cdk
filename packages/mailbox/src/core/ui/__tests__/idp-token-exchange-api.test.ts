@@ -14,10 +14,10 @@ import * as dynamodb                                     from 'aws-cdk-lib/aws-d
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../../core/auth/types';
+import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../auth/types';
 import { DataTable }                                     from '../../../resources/tables/data-tables';
 import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
-import { IdpTokenExchangeApi }                           from '../api';
+import { IdpTokenExchangeApi }                           from '../idp-token-exchange-api';
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };

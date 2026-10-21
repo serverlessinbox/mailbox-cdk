@@ -8,7 +8,7 @@ import * as route53                                                             
 import { Aws, CustomResource, Stack, Token }                                       from 'aws-cdk-lib';
 import { Construct }                                                               from 'constructs';
 
-import type { IDataTable }                                                         from '../resources/tables/data-tables';
+import type { IDataTable }                                                         from '../../resources/tables/data-tables';
 
 import { MailboxEdgeDeployerWorker }                                               from './mailbox-edge-deployer-worker';
 

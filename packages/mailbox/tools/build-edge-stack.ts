@@ -2,7 +2,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as fs                           from 'node:fs';
 import * as path                         from 'node:path';
 
-import { MailboxEdgeStack }              from '../src/edge/mailbox-edge-stack';
+import { MailboxEdgeStack }              from '../src/core/edge/mailbox-edge-stack';
 
 import {
   parseArgs,

@@ -26,7 +26,7 @@ import * as path                         from 'node:path';
 
 import { Permission }                    from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }     from '../core/auth/types';
-import { MailboxEdgeStack }              from '../edge/mailbox-edge-stack';
+import { MailboxEdgeStack }              from '../core/edge/mailbox-edge-stack';
 import { Mailbox }                       from '../mailbox';
 
 const GO_PACKAGE = 'mailbox-go';

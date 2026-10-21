@@ -30,11 +30,11 @@ import { Bucket, BlockPublicAccess }       from 'aws-cdk-lib/aws-s3';
 import { Aws, Fn, RemovalPolicy, Tags }    from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../core/auth/types';
-import type { IDataTable }                 from '../resources/tables/data-tables';
-import type { IAuditEventsQueue }          from '../resources/queues/audit-events-queue';
+import { AuthPolicyName, OAuthClientName } from '../auth/types';
+import type { IDataTable }                 from '../../resources/tables/data-tables';
+import type { IAuditEventsQueue }          from '../../resources/queues/audit-events-queue';
 
-import { IdpTokenExchangeApi }             from './idp-token-exchange/api';
+import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
 
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {

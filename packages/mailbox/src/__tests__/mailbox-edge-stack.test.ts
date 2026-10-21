@@ -17,8 +17,8 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { MailboxEdgeDeployerWorker }                    from '../edge/mailbox-edge-deployer-worker';
-import { MailboxEdgeStack }                             from '../edge/mailbox-edge-stack';
+import { MailboxEdgeDeployerWorker }                    from '../core/edge/mailbox-edge-deployer-worker';
+import { MailboxEdgeStack }                             from '../core/edge/mailbox-edge-stack';
 
 import {
   CloudFormationResource,

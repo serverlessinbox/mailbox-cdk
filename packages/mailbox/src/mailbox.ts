@@ -21,14 +21,14 @@ import type { IDataBlobStore }                                                  
 import type { IDataTable }                                                                                     from './resources/tables/data-tables';
 import { MailboxDataDeployer }                                                                                 from './core/data/delivery/mailbox-data-deployer';
 import { MailboxDns }                                                                                          from './core/domains/mailbox-dns';
-import { MailboxEdgeDeployer }                                                                                 from './edge';
+import { MailboxEdgeDeployer }                                                                                 from './core/edge/mailbox-edge-deployer';
 import { SesRules }                                                                                            from './core/email/ses-rules';
 import { EmailSending }                                                                                        from './core/email/email-sending';
 import { SESEventProcessing }                                                                                  from './core/email/ses-event-processing';
 import { AuditWriting }                                                                                        from './core/data/audit-writing';
 import { AuthKeyStore }                                                                                        from './core/auth/auth-key-store';
 import { Bootstrap }                                                                                           from './core/auth/bootstrap';
-import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';
+import { Cdn, type CdnCustomDomain }                                                                           from './core/ui/cdn-construct';
 import { LicenseRefresh }                                                                                      from './platform/ops/license-refresh';
 import { StackFailureDetection, SendStackFailuresMode }                                                        from './platform/ops/stack-failure-detection';
 import { DeferredRemoval }                                                                                  from './platform/ops/sweeper/deferred-removal';
@@ -43,9 +43,9 @@ import { MailboxContext }                                                       
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
 import type { MailboxProps }                                                                                   from './mailbox-props';
 import { TantivySearch }                                                                                       from './core/search/tantivy-search';
-import { AdminUi }                                                                                             from './ui/admin-ui';
-import type { MailboxUi }                                                                                      from './ui/mailbox-ui';
-import { WebmailUi }                                                                                           from './ui/webmail-ui';
+import { AdminUi }                                                                                             from './core/ui/admin-ui';
+import type { MailboxUi }                                                                                      from './core/ui/mailbox-ui';
+import { WebmailUi }                                                                                           from './core/ui/webmail-ui';
 import { resolveMailboxEncryptionPlan }                                                                        from './core/mailbox-encryption';
 import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
 

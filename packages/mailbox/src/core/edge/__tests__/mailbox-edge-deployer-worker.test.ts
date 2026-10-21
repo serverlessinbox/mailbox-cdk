@@ -13,7 +13,7 @@ import { Template }                                                             
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-} from '../../__tests__/deployer-test-helpers';
+} from '../../../__tests__/deployer-test-helpers';
 import { MailboxEdgeDeployerWorker }           from '../mailbox-edge-deployer-worker';
 import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
 

@@ -13,9 +13,9 @@ import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IMailboxAuthProvider }            from '../../core/auth/types';
-import { DataTable }                            from '../../resources/tables/data-tables';
-import { AuditEventsQueue }                     from '../../resources/queues/audit-events-queue';
+import type { IMailboxAuthProvider }            from '../../auth/types';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { AdminUi }                              from '../admin-ui';
 
 describe('AdminUi', () => {
