@@ -1,10 +1,10 @@
 import type { LambdaClient }                  from '@aws-sdk/client-lambda';
 import { CaughtError, type LoggerBuffer }     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { LambdaTarget }                  from './artifact-target';
+import type { LambdaTarget }                  from '../artifact-target';
 import type { SmokeTestVerdict }              from './function-smoke-tester';
 import type { LambdaFunctionCode }            from './lambda-function-code';
-import type { ArtifactLocation, StaleTarget } from './release-artifacts';
+import type { ArtifactLocation, StaleTarget } from '../release-artifacts';
 
 /**
  * Puts a Lambda function back on the code it was deployed with after new code did not pass the smoke test.

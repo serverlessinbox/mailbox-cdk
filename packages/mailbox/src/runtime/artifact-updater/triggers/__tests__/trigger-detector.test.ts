@@ -20,7 +20,7 @@ import {
   fakeCloudFormationClient,
   fakeLambdaContext,
   httpApiEvent,
-} from './updater-helpers';
+} from '../../__tests__/updater-helpers';
 
 describe('TriggerDetector', () => {
   const context          = fakeLambdaContext();

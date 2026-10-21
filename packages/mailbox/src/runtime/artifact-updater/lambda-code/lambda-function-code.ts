@@ -6,8 +6,8 @@ import {
 } from '@aws-sdk/client-lambda';
 import { ServerlessInboxTagKeys }                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { ArtifactLocation }                   from './release-artifacts';
-import type { ArtifactVersion, LambdaFunctionArn } from './updater-identifiers';
+import type { ArtifactLocation }                   from '../release-artifacts';
+import type { ArtifactVersion, LambdaFunctionArn } from '../updater-identifiers';
 
 const MAX_POLL_ATTEMPTS = 30;
 const POLL_INTERVAL_MS  = 2000;

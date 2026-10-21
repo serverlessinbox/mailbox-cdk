@@ -10,10 +10,10 @@ import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context
 import type { LambdaTarget, UiTarget }                                              from '../artifact-target';
 import type { Config }                                                              from '../config';
 import { EdgeLambdaUpdater }                                                        from '../edge-lambda-updater';
-import { FunctionSmokeTester }                                                      from '../function-smoke-tester';
-import { LambdaCodeRollback }                                                       from '../lambda-code-rollback';
-import { LambdaCodeUpdater }                                                        from '../lambda-code-updater';
-import { LambdaFunctionCode, type Sleep }                                           from '../lambda-function-code';
+import { FunctionSmokeTester }                                                      from '../lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }                                                       from '../lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }                                                        from '../lambda-code/lambda-code-updater';
+import { LambdaFunctionCode, type Sleep }                                           from '../lambda-code/lambda-function-code';
 import { ReleaseArtifacts }                                                         from '../release-artifacts';
 import { UiBucketUpdater }                                                          from '../ui-bucket-updater';
 import { UpdateCycle }                                                              from '../update-cycle';
@@ -29,7 +29,7 @@ import {
   toLambdaFunctionArn,
 } from '../updater-identifiers';
 import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
-import type { NewUpdateCycle }              from '../updater-trigger';
+import type { NewUpdateCycle }              from '../triggers/updater-trigger';
 
 /** The functions of the faked release registry package, which a suite sets up per test. */
 export interface RegistryMocks {

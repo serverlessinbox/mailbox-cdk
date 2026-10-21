@@ -33,9 +33,9 @@ import { LoggerBuffer }                                        from '@serverless
 import { mockClient }                                          from 'aws-sdk-client-mock';
 
 import { EdgeLambdaUpdater }                                   from '../edge-lambda-updater';
-import { FunctionSmokeTester }                                 from '../function-smoke-tester';
-import { LambdaCodeRollback }                                  from '../lambda-code-rollback';
-import { LambdaFunctionCode }                                  from '../lambda-function-code';
+import { FunctionSmokeTester }                                 from '../lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }                                  from '../lambda-code/lambda-code-rollback';
+import { LambdaFunctionCode }                                  from '../lambda-code/lambda-function-code';
 import { ReleaseArtifacts }                                    from '../release-artifacts';
 
 import {

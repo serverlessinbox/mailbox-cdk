@@ -19,9 +19,9 @@ import { SemVer }                                                          from 
 
 import { LambdaCodeRollback }                                              from '../lambda-code-rollback';
 import { LambdaFunctionCode }                                              from '../lambda-function-code';
-import type { ArtifactLocation, StaleTarget }                              from '../release-artifacts';
+import type { ArtifactLocation, StaleTarget }                              from '../../release-artifacts';
 
-import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from './updater-helpers';
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from '../../__tests__/updater-helpers';
 
 describe('LambdaCodeRollback', () => {
   const lambdaMock                         = mockClient(LambdaClient);

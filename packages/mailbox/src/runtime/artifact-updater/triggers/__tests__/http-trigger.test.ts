@@ -11,9 +11,9 @@ import { LoggerBuffer }                   from '@serverlessinbox/mailbox-cdk-sha
 import { mockClient }                     from 'aws-sdk-client-mock';
 
 import { HttpTrigger }                    from '../http-trigger';
-import type { HttpTriggerEvent }          from '../updater-event';
+import type { HttpTriggerEvent }          from '../../updater-event';
 
-import { BAD_CONFIG_ERROR, httpApiEvent } from './updater-helpers';
+import { BAD_CONFIG_ERROR, httpApiEvent } from '../../__tests__/updater-helpers';
 
 describe('HttpTrigger', () => {
   const lambdaMock = mockClient(LambdaClient);

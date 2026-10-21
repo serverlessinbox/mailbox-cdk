@@ -15,10 +15,10 @@ import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/l
 import { mockClient }                from 'aws-sdk-client-mock';
 
 import { EdgeLambdaUpdater }         from '../edge-lambda-updater';
-import { FunctionSmokeTester }       from '../function-smoke-tester';
-import { LambdaCodeRollback }        from '../lambda-code-rollback';
-import { LambdaCodeUpdater }         from '../lambda-code-updater';
-import { LambdaFunctionCode }        from '../lambda-function-code';
+import { FunctionSmokeTester }       from '../lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }        from '../lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }         from '../lambda-code/lambda-code-updater';
+import { LambdaFunctionCode }        from '../lambda-code/lambda-function-code';
 import { ReleaseArtifacts }          from '../release-artifacts';
 import { UiBucketUpdater }           from '../ui-bucket-updater';
 import { UpdateCycle }               from '../update-cycle';
@@ -35,7 +35,7 @@ import {
   US_WEST_2,
 } from './updater-helpers';
 
-jest.mock('../lambda-code-updater');
+jest.mock('../lambda-code/lambda-code-updater');
 jest.mock('../edge-lambda-updater');
 jest.mock('../ui-bucket-updater');
 

@@ -1,7 +1,7 @@
 import { InvokeCommand, type LambdaClient }          from '@aws-sdk/client-lambda';
 import { CaughtError, type LoggerBuffer }            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { hasHttpRequestLine, type HttpTriggerEvent } from './updater-event';
+import { hasHttpRequestLine, type HttpTriggerEvent } from '../updater-event';
 import type { UpdaterTrigger }                       from './updater-trigger';
 
 /** The response to an HTTP API request. */

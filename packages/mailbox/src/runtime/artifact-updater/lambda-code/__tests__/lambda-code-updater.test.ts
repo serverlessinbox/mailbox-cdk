@@ -21,7 +21,7 @@ import { FunctionSmokeTester } from '../function-smoke-tester';
 import { LambdaCodeRollback }  from '../lambda-code-rollback';
 import { LambdaCodeUpdater }   from '../lambda-code-updater';
 import { LambdaFunctionCode }  from '../lambda-function-code';
-import { ReleaseArtifacts }    from '../release-artifacts';
+import { ReleaseArtifacts }    from '../../release-artifacts';
 
 import {
   EU_WEST_1,
@@ -31,7 +31,7 @@ import {
   noSleep,
   testConfig,
   type RegistryMocks,
-} from './updater-helpers';
+} from '../../__tests__/updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack: jest.fn(),

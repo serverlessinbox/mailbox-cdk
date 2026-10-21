@@ -12,7 +12,7 @@ import { mockClient }                   from 'aws-sdk-client-mock';
 
 import { FunctionSmokeTester }          from '../function-smoke-tester';
 
-import { invokeResponse, lambdaTarget } from './updater-helpers';
+import { invokeResponse, lambdaTarget } from '../../__tests__/updater-helpers';
 
 describe('FunctionSmokeTester', () => {
   const lambdaMock  = mockClient(LambdaClient);

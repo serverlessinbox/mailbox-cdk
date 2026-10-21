@@ -13,9 +13,9 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { LambdaTarget }                                    from './artifact-target';
-import type { FunctionSmokeTester, SmokeTestVerdict }           from './function-smoke-tester';
-import type { LambdaCodeRollback }                              from './lambda-code-rollback';
-import type { LambdaFunctionCode, Sleep }                       from './lambda-function-code';
+import type { FunctionSmokeTester, SmokeTestVerdict }           from './lambda-code/function-smoke-tester';
+import type { LambdaCodeRollback }                              from './lambda-code/lambda-code-rollback';
+import type { LambdaFunctionCode, Sleep }                       from './lambda-code/lambda-function-code';
 import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-artifacts';
 import type { RegionClients, RootStackResources }               from './updater-clients';
 import { toLambdaFunctionArn, type LambdaFunctionArn }          from './updater-identifiers';

@@ -1,4 +1,4 @@
-import type { UpdateCycle } from './update-cycle';
+import type { UpdateCycle } from '../update-cycle';
 
 /** Builds the update cycle of the invocation; it throws the configuration error when the configuration failed to load. */
 export type NewUpdateCycle = () => UpdateCycle;

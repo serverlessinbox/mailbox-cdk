@@ -7,17 +7,17 @@ import { env, LoggerBuffer, type Region }                                       
 import type { CloudFormationCustomResourceEvent, Context }                          from 'aws-lambda';
 import { setTimeout as sleep }                                                      from 'node:timers/promises';
 
-import { CfnTrigger }                                                               from './cfn-trigger';
+import { CfnTrigger }                                                               from './triggers/cfn-trigger';
 import { load }                                                                     from './config';
 import { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
-import { FunctionSmokeTester }                                                      from './function-smoke-tester';
-import { HttpTrigger }                                                              from './http-trigger';
-import { LambdaCodeRollback }                                                       from './lambda-code-rollback';
-import { LambdaCodeUpdater }                                                        from './lambda-code-updater';
-import { LambdaFunctionCode }                                                       from './lambda-function-code';
+import { FunctionSmokeTester }                                                      from './lambda-code/function-smoke-tester';
+import { HttpTrigger }                                                              from './triggers/http-trigger';
+import { LambdaCodeRollback }                                                       from './lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }                                                        from './lambda-code/lambda-code-updater';
+import { LambdaFunctionCode }                                                       from './lambda-code/lambda-function-code';
 import { ReleaseArtifacts }                                                         from './release-artifacts';
-import { ScheduledTrigger }                                                         from './scheduled-trigger';
-import type { TriggerBuilder }                                                      from './trigger-detector';
+import { ScheduledTrigger }                                                         from './triggers/scheduled-trigger';
+import type { TriggerBuilder }                                                      from './triggers/trigger-detector';
 import { UiBucketUpdater }                                                          from './ui-bucket-updater';
 import { UpdateCycle }                                                              from './update-cycle';
 import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from './updater-clients';

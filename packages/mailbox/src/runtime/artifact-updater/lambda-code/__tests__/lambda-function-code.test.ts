@@ -16,7 +16,7 @@ import { mockClient }                                             from 'aws-sdk-
 
 import { LambdaFunctionCode }                                     from '../lambda-function-code';
 
-import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION } from './updater-helpers';
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION } from '../../__tests__/updater-helpers';
 
 describe('LambdaFunctionCode', () => {
   const lambdaMock   = mockClient(LambdaClient);

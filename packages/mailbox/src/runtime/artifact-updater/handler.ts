@@ -1,8 +1,8 @@
 import { ExpectedFailure }          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { Context }             from 'aws-lambda';
 
-import type { HttpTriggerResponse } from './http-trigger';
-import { TriggerDetector }          from './trigger-detector';
+import type { HttpTriggerResponse } from './triggers/http-trigger';
+import { TriggerDetector }          from './triggers/trigger-detector';
 import { UpdaterComposition }       from './updater-composition';
 
 const runtime = UpdaterComposition.loadRuntime();

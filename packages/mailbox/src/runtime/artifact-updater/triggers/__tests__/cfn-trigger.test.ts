@@ -17,7 +17,7 @@ import * as https                                                        from 'h
 import { Writable }                                                      from 'stream';
 
 import { CfnTrigger }                                                    from '../cfn-trigger';
-import { UpdateCycle }                                                   from '../update-cycle';
+import { UpdateCycle }                                                   from '../../update-cycle';
 
 import {
   BAD_CONFIG_ERROR,
@@ -26,9 +26,9 @@ import {
   fakeCloudFormationClient,
   fakeLambdaContext,
   newUpdateCycle,
-} from './updater-helpers';
+} from '../../__tests__/updater-helpers';
 
-jest.mock('../update-cycle');
+jest.mock('../../update-cycle');
 jest.mock('https', () => ({
   request: jest.fn(),
 }));

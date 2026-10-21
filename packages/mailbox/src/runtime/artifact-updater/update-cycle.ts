@@ -4,7 +4,7 @@ import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer }     
 import type { LambdaTarget, UiTarget }                                                   from './artifact-target';
 import type { Config }                                                                   from './config';
 import type { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
-import type { LambdaCodeUpdater }                                                        from './lambda-code-updater';
+import type { LambdaCodeUpdater }                                                        from './lambda-code/lambda-code-updater';
 import type { UiBucketUpdater }                                                          from './ui-bucket-updater';
 import { EDGE_REGION, type RegionClients, type RootStackResources, type UpdaterClients } from './updater-clients';
 import {

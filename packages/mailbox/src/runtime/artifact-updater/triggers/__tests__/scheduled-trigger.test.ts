@@ -7,11 +7,11 @@
  */
 
 import { ScheduledTrigger }                                 from '../scheduled-trigger';
-import { UpdateCycle }                                      from '../update-cycle';
+import { UpdateCycle }                                      from '../../update-cycle';
 
-import { BAD_CONFIG_ERROR, badConfigCycle, newUpdateCycle } from './updater-helpers';
+import { BAD_CONFIG_ERROR, badConfigCycle, newUpdateCycle } from '../../__tests__/updater-helpers';
 
-jest.mock('../update-cycle');
+jest.mock('../../update-cycle');
 
 describe('ScheduledTrigger', () => {
   const cycleRuns = () => jest.mocked(UpdateCycle.prototype.run);

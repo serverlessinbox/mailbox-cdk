@@ -1,11 +1,11 @@
 import { CaughtError, type LoggerBuffer }                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { LambdaTarget }                                    from './artifact-target';
+import type { LambdaTarget }                                    from '../artifact-target';
 import type { FunctionSmokeTester, SmokeTestVerdict }           from './function-smoke-tester';
 import type { LambdaCodeRollback }                              from './lambda-code-rollback';
 import type { LambdaFunctionCode }                              from './lambda-function-code';
-import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients }                                   from './updater-clients';
+import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from '../release-artifacts';
+import type { RegionClients }                                   from '../updater-clients';
 
 /**
  * Advances a Lambda function to the newer release of its code, when there is one. The new code is probed with
