@@ -1,7 +1,7 @@
-import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
-import { PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }                                                 from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration, HttpUrlIntegration }                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { IArtifactResolver }                                                                     from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                                                       from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration, HttpUrlIntegration }                                                  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -18,16 +18,17 @@ import type { IFunction }                                                 from '
 import { Duration, Aws, CfnResource }                                     from 'aws-cdk-lib';
 import { Construct }                                                      from 'constructs';
 
-import { IMailboxAuthProvider }                                           from '../auth/types';
 import type { IDataBlobStore }                                            from '../../resources/buckets/data-blob-store';
-import type { IDataTable }                                                from '../../resources/tables/data-tables';
-import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';
-import type { IAuditEventsQueue }                                         from '../../resources/queues/audit-events-queue';
-import type { IAuthKeyStoreTable }                                        from '../../resources/tables/auth-key-store-table';
+import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
 import type { IIdentityProvisioner }                                      from '../../resources/lambdas/identity-provisioner-lambda';
 import type { JmapOAuthHandlerConfig }                                    from '../../resources/lambdas/jmap-api-lambda';
 import { ApiHandlerLambda }                                               from '../../resources/lambdas/jmap-api-lambda';
-import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
+import type { IAuditEventsQueue }                                         from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                        from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                from '../../resources/tables/data-tables';
+import { IMailboxAuthProvider }                                           from '../auth/types';
+
 import type { IJmapApiAddon }                                             from './addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
 
@@ -110,6 +111,7 @@ export class JMapApi extends Construct {
 
   constructor(scope: Construct, id: string, props: JMapApiProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'JMAP protocol API — the mail client endpoint for sync, query and message submission.');
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,

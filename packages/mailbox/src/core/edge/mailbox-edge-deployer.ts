@@ -1,16 +1,16 @@
-import type { IArtifactResolver, ResolvedArtifact }                                from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                        from '@serverlessinbox/mailbox-cdk-shared';
-import { DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                    from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                                                                    from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                                 from 'aws-cdk-lib/aws-lambda';
-import * as route53                                                                from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Stack, Token }                                       from 'aws-cdk-lib';
-import { Construct }                                                               from 'constructs';
+import type { IArtifactResolver, ResolvedArtifact }                                                      from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                                              from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                                          from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                                                          from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                                                       from 'aws-cdk-lib/aws-lambda';
+import * as route53                                                                                      from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Stack, Token }                                                             from 'aws-cdk-lib';
+import { Construct }                                                                                     from 'constructs';
 
-import type { IDataTable }                                                         from '../../resources/tables/data-tables';
+import type { IDataTable }                                                                               from '../../resources/tables/data-tables';
 
-import { MailboxEdgeDeployerWorker }                                               from './mailbox-edge-deployer-worker';
+import { MailboxEdgeDeployerWorker }                                                                     from './mailbox-edge-deployer-worker';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -71,6 +71,7 @@ export class MailboxEdgeDeployer extends Construct {
 
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Deploys the us-east-1 edge stack (Lambda@Edge / CloudFront Functions) needed for CDN auth and routing.');
 
     const stack = Stack.of(this);
 

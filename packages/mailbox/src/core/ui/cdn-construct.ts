@@ -1,14 +1,14 @@
-import { ServerlessInboxTagKeys }         from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                           from 'aws-cdk-lib/aws-certificatemanager';
-import * as origins                       from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as cloudfront                    from 'aws-cdk-lib/aws-cloudfront';
-import * as lambda                        from 'aws-cdk-lib/aws-lambda';
-import { IBucket }                        from 'aws-cdk-lib/aws-s3';
-import * as cdk                           from 'aws-cdk-lib';
-import { Construct }                      from 'constructs';
+import { ComponentDescription, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                         from 'aws-cdk-lib/aws-certificatemanager';
+import * as origins                                     from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as cloudfront                                  from 'aws-cdk-lib/aws-cloudfront';
+import * as lambda                                      from 'aws-cdk-lib/aws-lambda';
+import { IBucket }                                      from 'aws-cdk-lib/aws-s3';
+import * as cdk                                         from 'aws-cdk-lib';
+import { Construct }                                    from 'constructs';
 
-import type { BlobDownloadOriginHeaders } from '../../runtime/jmap-blob-download/cloudfront/origin-headers';
-import type { IAuthKeyStoreTable }        from '../../resources/tables/auth-key-store-table';
+import type { IAuthKeyStoreTable }                      from '../../resources/tables/auth-key-store-table';
+import type { BlobDownloadOriginHeaders }               from '../../runtime/jmap-blob-download/cloudfront/origin-headers';
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
 export interface CdnCustomDomain {
@@ -43,6 +43,7 @@ export class Cdn extends Construct {
 
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'CloudFront CDN serving authenticated blob and attachment downloads, authorized at the edge.');
 
     this.distribution = this.createDistribution(props);
     cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');

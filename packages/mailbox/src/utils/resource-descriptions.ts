@@ -1,61 +1,14 @@
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import * as apigatewayv2          from 'aws-cdk-lib/aws-apigatewayv2';
-import * as cloudfront            from 'aws-cdk-lib/aws-cloudfront';
-import * as events                from 'aws-cdk-lib/aws-events';
-import * as iam                   from 'aws-cdk-lib/aws-iam';
-import * as lambda                from 'aws-cdk-lib/aws-lambda';
-import * as cdk                   from 'aws-cdk-lib';
-import { IConstruct }             from 'constructs';
+import { ComponentDescription, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import * as apigatewayv2                                from 'aws-cdk-lib/aws-apigatewayv2';
+import * as cloudfront                                  from 'aws-cdk-lib/aws-cloudfront';
+import * as events                                      from 'aws-cdk-lib/aws-events';
+import * as iam                                         from 'aws-cdk-lib/aws-iam';
+import * as lambda                                      from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                         from 'aws-cdk-lib';
+import { IConstruct }                                   from 'constructs';
 
 /** AWS tag-value maximum length. */
 const MAX_TAG_VALUE_LENGTH = 256;
-
-/**
- * Maps the construct-tree group name (segment immediately under Mailbox) to the
- * serverless-inbox:component value used in the fallback description text.
- */
-const GROUP_TO_COMPONENT: Record<string, string> = {
-  data:   'data',
-  auth:   'auth',
-  edge:   'edge',
-  ui:     'ui',
-  email:  'email',
-  apis:   'api',
-  search: 'search',
-  ops:    'ops',
-};
-
-/**
- * One sentence per component, keyed by the construct id (the path segment after the group).
- * Propagated to every resource in that component's subtree; the resource's structural role
- * is appended for the description tag. Draft copy — do not rewrite (owner refines later).
- */
-const COMPONENT_DESCRIPTIONS: Record<string, string> = {
-  'data-deployer': 'Provisions and retains the data tier (DynamoDB tables + S3 blob store) as a separate stack so mailbox data survives app-stack replacement.',
-  'auth-key-store': 'Stores OIDC signing keys (JWKS) in DynamoDB for the Lambda@Edge authorizer to validate JWTs at the CDN edge.',
-  'bootstrap': 'Runs one-time deploy-time setup: SES identity/receipt config, OIDC/OAuth client registration, and config/DNS seeding.',
-  'stack-deployer': 'Deploys the us-east-1 edge stack (Lambda@Edge / CloudFront Functions) needed for CDN auth and routing.',
-  'blob-cdn': 'CloudFront CDN serving authenticated blob and attachment downloads, authorized at the edge.',
-  'regional-api-certificate': 'Regional ACM certificate covering the api, jmap, ws and mcp endpoints.',
-  'cert-waiter-lambda': 'On stack deletion, waits until the regional certificate is no longer in use before removal, avoiding CloudFormation delete failures.',
-  'regional-cert-waiter': 'Custom resource that blocks certificate deletion until ACM reports it unused.',
-  'dns': 'Route 53 records mapping the admin, webmail, api, jmap, ws and cdn subdomains to their endpoints.',
-  'admin-ui': 'Admin web console — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).',
-  'webmail-ui': 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).',
-  'email-processor-lambda': 'Inbound email processing — parses MIME, stores raw content to S3, and indexes messages into the mailbox.',
-  'ses-rules': 'SES receipt rules that deliver inbound mail to S3 and enqueue it for processing.',
-  'ses-event-processing': 'Handles SES delivery, bounce and complaint notifications and records sender feedback.',
-  'email-sending': 'Outbound email submission — queues messages and sends them via SES.',
-  'jmap-api': 'JMAP protocol API — the mail client endpoint for sync, query and message submission.',
-  'admin-api': 'Administrative API for managing domains, users, configuration and audit.',
-  'mcp-api': 'Model Context Protocol (MCP) endpoint exposing mailbox tools to AI clients.',
-  'websocket-push': 'WebSocket push service delivering real-time JMAP state changes to connected clients.',
-  'tantivy-search': 'Full-text search — Tantivy (Rust) indexer Lambdas maintaining a search index in S3.',
-  'stack-helpers': 'Deploy-time helper custom resources (e.g. deriving the domain name from the hosted zone).',
-  'audit-writing': 'Audit logging pipeline — buffers audit events via SQS and writes them to the audit DynamoDB table.',
-  'license-refresh': 'Periodically refreshes the product license from the license server.',
-  'identity-provisioner': 'Provisions new mailbox users — creates their mailbox structure and initial state.',
-};
 
 /**
  * Returns the path tail starting from the segment after the given anchor segment.
@@ -67,15 +20,6 @@ function pathTailAfter(node: IConstruct, anchor: string): string {
   const idx   = parts.indexOf(anchor);
   if (idx === -1 || idx === parts.length - 1) {return node.node.path;}
   return parts.slice(idx + 1).join('/');
-}
-
-/**
- * Returns the fallback component label by reading the group segment (one level under the anchor).
- * e.g. path tail 'apis/jmap-api/handler' → group 'apis' → 'api'
- */
-function fallbackComponentFromPath(tail: string): string {
-  const group = tail.split('/')[0];
-  return GROUP_TO_COMPONENT[group] ?? group;
 }
 
 /**
@@ -185,8 +129,8 @@ function sanitizeDescription(s: string): string {
  */
 export interface MailboxResourceDescriptionsOptions {
   /**
-   * Component sentence used whenever the COMPONENT_DESCRIPTIONS lookup misses (e.g. sub-stack
-   * resources whose ids aren't in the main-stack component map). Defaults to a path-derived string.
+   * Component sentence used for resources under no described construct (e.g. sub-stack
+   * resources). Defaults to a path-derived string.
    */
   readonly fallbackDescription?: string;
 }
@@ -209,11 +153,10 @@ export class MailboxResourceDescriptions implements cdk.IAspect {
 
     const tail = pathTailAfter(node, this.anchorId);
 
-    // Component id = the path segment after the group (tail = `<group>/<component>/...`).
-    const componentId       = tail.split('/')[1];
-    const componentSentence = (componentId && COMPONENT_DESCRIPTIONS[componentId])
+    const group             = tail.split('/')[0];
+    const componentSentence = ComponentDescription.nearest(node)
       ?? this.fallbackDescription
-      ?? `ServerlessInbox · ${fallbackComponentFromPath(tail)} · ${tail}`;
+      ?? `ServerlessInbox · ${group} · ${tail}`;
 
     const role = structuralRole(node.cfnResourceType, node.node.id);
     // Tag values can't contain parentheses/commas/etc., so use a hyphen delimiter and sanitize

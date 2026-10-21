@@ -1,16 +1,15 @@
-import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
-import { type BaseQueueProps }        from '@serverlessinbox/mailbox-cdk-shared';
-import * as targets                   from 'aws-cdk-lib/aws-events-targets';
-import * as events                    from 'aws-cdk-lib/aws-events';
-import * as lambda                    from 'aws-cdk-lib/aws-lambda';
-import * as cdk                       from 'aws-cdk-lib';
-import { Construct }                  from 'constructs';
+import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import * as targets                                  from 'aws-cdk-lib/aws-events-targets';
+import * as events                                   from 'aws-cdk-lib/aws-events';
+import * as lambda                                   from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                      from 'aws-cdk-lib';
+import { Construct }                                 from 'constructs';
 
-import type { IDataBlobStore }        from '../../resources/buckets/data-blob-store';
-import type { IDataTable }            from '../../resources/tables/data-tables';
-import { TantivyIndexerLambda }       from '../../resources/lambdas/tantivy-indexer-lambda';
-
-import { TantivyIndexingScheduleDlq } from '../../resources/queues/tantivy-indexing-schedule-dlq';
+import type { IDataBlobStore }                       from '../../resources/buckets/data-blob-store';
+import { TantivyIndexerLambda }                      from '../../resources/lambdas/tantivy-indexer-lambda';
+import { TantivyIndexingScheduleDlq }                from '../../resources/queues/tantivy-indexing-schedule-dlq';
+import type { IDataTable }                           from '../../resources/tables/data-tables';
 
 export interface TantivySearchProps {
   /**
@@ -53,6 +52,7 @@ export class TantivySearch extends Construct {
 
   constructor(scope: Construct, id: string, props: TantivySearchProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Full-text search — Tantivy (Rust) indexer Lambdas maintaining a search index in S3.');
 
     // Create Tantivy Indexer Lambda
     // Queries DynamoDB for all emails in an account, builds Tantivy index, uploads to S3

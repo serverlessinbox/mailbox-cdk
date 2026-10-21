@@ -1,22 +1,22 @@
-import type { IArtifactResolver }                             from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                   from '@serverlessinbox/mailbox-cdk-shared';
-import { PipelineLogGroup, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                               from 'aws-cdk-lib/aws-certificatemanager';
-import type * as route53                                      from 'aws-cdk-lib/aws-route53';
-import type { IBucket }                                       from 'aws-cdk-lib/aws-s3';
-import * as cdk                                               from 'aws-cdk-lib';
-import { Construct }                                          from 'constructs';
+import type { IArtifactResolver }                                                   from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                         from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, PipelineLogGroup, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                     from 'aws-cdk-lib/aws-certificatemanager';
+import type * as route53                                                            from 'aws-cdk-lib/aws-route53';
+import type { IBucket }                                                             from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                                     from 'aws-cdk-lib';
+import { Construct }                                                                from 'constructs';
 
-import type { MailboxCertificateOverrides }                   from '../../mailbox-props';
-import type { IAuthKeyStoreTable }                            from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                    from '../../resources/tables/data-tables';
-import { MailboxDns }                                         from '../domains/mailbox-dns';
-import type { MailboxDnsCnameTargets }                        from '../domains/mailbox-dns';
-import type { IMailboxDomainNames }                           from '../domains/mailbox-domains';
-import { Cdn }                                                from '../ui/cdn-construct';
-import type { CdnCustomDomain }                               from '../ui/cdn-construct';
+import type { MailboxCertificateOverrides }                                         from '../../mailbox-props';
+import type { IAuthKeyStoreTable }                                                  from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                          from '../../resources/tables/data-tables';
+import { MailboxDns }                                                               from '../domains/mailbox-dns';
+import type { MailboxDnsCnameTargets }                                              from '../domains/mailbox-dns';
+import type { IMailboxDomainNames }                                                 from '../domains/mailbox-domains';
+import { Cdn }                                                                      from '../ui/cdn-construct';
+import type { CdnCustomDomain }                                                     from '../ui/cdn-construct';
 
-import { MailboxEdgeDeployer }                                from './mailbox-edge-deployer';
+import { MailboxEdgeDeployer }                                                      from './mailbox-edge-deployer';
 
 /** What {@link EdgeSection} uses of the data section. */
 export interface IEdgeDataInputs {
@@ -174,6 +174,7 @@ export class EdgeSection extends Construct {
           { domainName: `mcp.${props.data.derivedDomainName}`, hostedZoneId: props.hostedZoneId },
         ],
       });
+      ComponentDescription.describe(cfnCert, 'Regional ACM certificate covering the api, jmap, ws and mcp endpoints.');
       cfnCert.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
       regionalSanCertificate = acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', cfnCert.ref);
     }

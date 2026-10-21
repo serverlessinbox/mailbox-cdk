@@ -1,11 +1,12 @@
 import type { IArtifactResolver }                                                                from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm                                                                                  from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct, IDependable }                                                                from 'constructs';
 
+import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
 import { Permission }                                                                            from '../auth/jmap-scopes';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../auth/types';
-import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
 
 import { MailboxUi, UiBundleSource }                                                             from './mailbox-ui';
 
@@ -65,6 +66,7 @@ export class WebmailUi extends MailboxUi {
       uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
       artifactResolver: props.artifactResolver,
     });
+    ComponentDescription.describe(this, 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');
 
     const uiHost         = this.distributionDomainName;
     const allPermissions = Object.values(Permission);

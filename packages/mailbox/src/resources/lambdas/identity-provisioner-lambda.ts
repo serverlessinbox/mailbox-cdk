@@ -1,14 +1,14 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }         from 'aws-cdk-lib/aws-iam';
-import { PolicyStatement }         from 'aws-cdk-lib/aws-iam';
-import { Duration }                from 'aws-cdk-lib';
-import { Construct }               from 'constructs';
+import type { IArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement }                from 'aws-cdk-lib/aws-iam';
+import { Duration }                       from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
 
-import type { IDataBlobStore }     from '../buckets/data-blob-store';
-import type { IDataTable }         from '../tables/data-tables';
-import type { IEmailSendingQueue } from '../queues/email-sending-queue';
-import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
+import type { IDataBlobStore }            from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }         from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }        from '../queues/email-sending-queue';
+import type { IDataTable }                from '../tables/data-tables';
 
 /**
  * Narrow, provider-agnostic handle to the `identity-provisioner` Lambda: just enough for an
@@ -63,6 +63,7 @@ export class IdentityProvisionerLambda extends GoLambda implements IIdentityProv
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
       },
     });
+    ComponentDescription.describe(this, 'Provisions new mailbox users — creates their mailbox structure and initial state.');
 
     // Needs to create user/account/alias/idp-mapping in config table and mailboxes in item table
     props.configTable.grantReadWrite(this);

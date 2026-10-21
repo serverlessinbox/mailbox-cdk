@@ -1,11 +1,11 @@
 import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { LambdaFunction }                        from 'aws-cdk-lib/aws-events-targets';
 import { Rule, Schedule }                        from 'aws-cdk-lib/aws-events';
 import { Duration, Stack }                       from 'aws-cdk-lib';
 import { Construct }                             from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda }             from '../../resources/lambdas/auth-key-store-updater-lambda';
-
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from '../../resources/tables/auth-key-store-table';
 
 export interface AuthKeyStoreProps {
@@ -21,6 +21,8 @@ export class AuthKeyStore extends Construct {
 
   constructor(scope: Construct, id: string, props: AuthKeyStoreProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Stores OIDC signing keys (JWKS) in DynamoDB for the Lambda@Edge authorizer to validate JWTs at the CDN edge.');
+
     const authKeyStoreTable = new AuthKeyStoreTable(this, 'table');
 
     const handler = new AuthKeyStoreUpdaterLambda(this, 'handler', {

@@ -1,4 +1,5 @@
 import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                      from '@serverlessinbox/mailbox-cdk-shared';
 import type { VendorLink }                           from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
 import * as route53                                  from 'aws-cdk-lib/aws-route53';
@@ -57,6 +58,7 @@ export class Bootstrap extends Construct {
 
   constructor(scope: Construct, id: string, props: BootstrapProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Runs one-time deploy-time setup: SES identity/receipt config, OIDC/OAuth client registration, and config/DNS seeding.');
 
     this.handler = new BootstrapLambda(this, 'handler', {
       configTable: props.configTable,

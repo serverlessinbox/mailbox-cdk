@@ -1,4 +1,5 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }   from '@serverlessinbox/mailbox-cdk-shared';
 import type { VendorLink }        from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
@@ -84,6 +85,7 @@ export class AdminApi extends Construct {
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Administrative API for managing domains, users, configuration and audit.');
 
     const api = new HttpApi(this, 'admin-api', {
       apiName: `Mailbox ${Aws.STACK_NAME} Admin API`,

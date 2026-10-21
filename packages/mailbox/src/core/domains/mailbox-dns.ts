@@ -1,3 +1,4 @@
+import { ComponentDescription }                                    from '@serverlessinbox/mailbox-cdk-shared';
 import * as route53                                                from 'aws-cdk-lib/aws-route53';
 import * as cdk                                                    from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
@@ -49,6 +50,7 @@ export class MailboxDns extends Construct {
 
   constructor(scope: Construct, id: string, props: MailboxDnsProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Route 53 records mapping the admin, webmail, api, jmap, ws and cdn subdomains to their endpoints.');
 
     const ttl = props.ttl ?? cdk.Duration.minutes(5);
 

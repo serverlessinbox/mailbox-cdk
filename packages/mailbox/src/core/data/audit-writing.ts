@@ -1,12 +1,11 @@
-import type { IArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
-import { type BaseQueueProps }                      from '@serverlessinbox/mailbox-cdk-shared';
-import * as lambda                                  from 'aws-cdk-lib/aws-lambda';
-import { Construct }                                from 'constructs';
+import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import * as lambda                                   from 'aws-cdk-lib/aws-lambda';
+import { Construct }                                 from 'constructs';
 
-import type { IDataTable }                          from '../../resources/tables/data-tables';
-import { AuditWriterLambda }                        from '../../resources/lambdas/audit-writer-lambda';
-
-import { AuditEventsQueue, type IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
+import { AuditWriterLambda }                         from '../../resources/lambdas/audit-writer-lambda';
+import { AuditEventsQueue, type IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                           from '../../resources/tables/data-tables';
 
 export interface AuditWritingProps {
   readonly auditLogTable: IDataTable;
@@ -28,6 +27,7 @@ export class AuditWriting extends Construct {
 
   constructor(scope: Construct, id: string, props: AuditWritingProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Audit logging pipeline — buffers audit events via SQS and writes them to the audit DynamoDB table.');
 
     const auditEventsQueue = new AuditEventsQueue(this, 'audit-events-queue', {
       queueProps: props.queueProps,

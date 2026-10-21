@@ -1,4 +1,5 @@
 import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }       from '@serverlessinbox/mailbox-cdk-shared';
 import { WebSocketLambdaAuthorizer }  from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
@@ -15,13 +16,12 @@ import type { IFunction }                      from 'aws-cdk-lib/aws-lambda';
 import { Aws, CfnResource }                    from 'aws-cdk-lib';
 import { Construct }                           from 'constructs';
 
+import { WebSocketBroadcastLambda }            from '../../resources/lambdas/websocket-broadcast-lambda';
+import { WebSocketConnectLambda }              from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda }           from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda }              from '../../resources/lambdas/websocket-message-lambda';
 import type { IDataTable }                     from '../../resources/tables/data-tables';
-import { WebSocketBroadcastLambda } from '../../resources/lambdas/websocket-broadcast-lambda';
-import { WebSocketConnectLambda } from '../../resources/lambdas/websocket-connect-lambda';
-import { WebSocketDisconnectLambda } from '../../resources/lambdas/websocket-disconnect-lambda';
-import { WebSocketMessageLambda } from '../../resources/lambdas/websocket-message-lambda';
-
-import { WebSocketTable, IWebSocketTable } from '../../resources/tables/websocket-table';
+import { WebSocketTable, IWebSocketTable }     from '../../resources/tables/websocket-table';
 
 /** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */
 export interface IWebSocketBroadcastPublisher {
@@ -93,6 +93,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'WebSocket push service delivering real-time JMAP state changes to connected clients.');
 
     const maxSubscriptions = props.maxSubscriptions ?? 10;
 

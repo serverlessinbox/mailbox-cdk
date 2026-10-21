@@ -1,7 +1,7 @@
 import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
 import type { BaseQueueProps, ServerlessInboxDeployerType }                    from '@serverlessinbox/mailbox-cdk-shared';
 import type { StackHelpersMailboxData, StackHelpersMailboxDataProps }          from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                                from 'aws-cdk-lib';
 import { Aws }                                                                 from 'aws-cdk-lib';
@@ -54,6 +54,10 @@ export class DataSection extends Construct {
 
     const { derivedDomainName, derivedS3SafeDataStackName } = props.stackHelpers.resolveMailboxData(
       this, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
+    );
+    ComponentDescription.describe(
+      this.node.findChild('stack-helpers'),
+      'Deploy-time helper custom resources (e.g. deriving the domain name from the hosted zone).',
     );
 
     // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)

@@ -1,13 +1,13 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { StackHelpers }           from '@serverlessinbox/mailbox-cdk-shared';
-import { LambdaFunction }         from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule }         from 'aws-cdk-lib/aws-events';
-import * as lambda                from 'aws-cdk-lib/aws-lambda';
-import { Stack }                  from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import { LambdaFunction }                     from 'aws-cdk-lib/aws-events-targets';
+import { Rule, Schedule }                     from 'aws-cdk-lib/aws-events';
+import * as lambda                            from 'aws-cdk-lib/aws-lambda';
+import { Stack }                              from 'aws-cdk-lib';
+import { Construct }                          from 'constructs';
 
-import type { IDataTable }        from '../../resources/tables/data-tables';
-import { LicenseRefresherLambda } from '../../resources/lambdas/license-refresher-lambda';
+import { LicenseRefresherLambda }             from '../../resources/lambdas/license-refresher-lambda';
+import type { IDataTable }                    from '../../resources/tables/data-tables';
 
 /** Inputs of the license refresher Lambda and of the rules that invoke it. */
 export interface LicenseRefreshProps {
@@ -28,6 +28,7 @@ export class LicenseRefresh extends Construct {
 
   constructor(scope: Construct, id: string, props: LicenseRefreshProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Periodically refreshes the product license from the license server.');
 
     const handler = new LicenseRefresherLambda(this, 'handler', {
       configTable: props.configTable,

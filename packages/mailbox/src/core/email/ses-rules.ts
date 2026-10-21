@@ -1,13 +1,12 @@
 import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
-import { type BaseQueueProps }                                      from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type BaseQueueProps }                from '@serverlessinbox/mailbox-cdk-shared';
 import { IBucket }                                                  from 'aws-cdk-lib/aws-s3';
 import { Lambda, LambdaInvocationType, S3 }                         from 'aws-cdk-lib/aws-ses-actions';
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy }  from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                from 'constructs';
 
-import { SesReceiptForwarderLambda }                                from '../../resources/lambdas/ses-receipt-forwarder-lambda';
 import { BlobStore }                                                from '../../resources/buckets/blob-store';
-
+import { SesReceiptForwarderLambda }                                from '../../resources/lambdas/ses-receipt-forwarder-lambda';
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from '../../resources/queues/email-processing-queue';
 
 /** Where received email is stored and how it is queued for processing. */
@@ -39,6 +38,7 @@ export class SesRules extends Construct {
 
   constructor(scope: Construct, id: string, props: SesRulesProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'SES receipt rules that deliver inbound mail to S3 and enqueue it for processing.');
 
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
       queueProps: props.delivery.queueProps,

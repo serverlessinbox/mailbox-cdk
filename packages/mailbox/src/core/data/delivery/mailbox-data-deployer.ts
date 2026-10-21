@@ -1,15 +1,16 @@
-import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                          from '@serverlessinbox/mailbox-cdk-shared';
-import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import { IBucket }                                                   from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn, Stack }                                            from 'aws-cdk-lib';
-import { Construct }                                                 from 'constructs';
+import type { IArtifactResolver }                                                          from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                                from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { IBucket }                                                                         from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn, Stack }                                                                  from 'aws-cdk-lib';
+import { Construct }                                                                       from 'constructs';
 
-import type { IDataBlobStore }                                       from '../../../resources/buckets/data-blob-store';
-import type { IDataTable }                                           from '../../../resources/tables/data-tables';
-import { MailboxDataStackRef }                                       from '../mailbox-data-stack-ref';
-import { MailboxDataDeployerWorker }                                 from './mailbox-data-deployer-worker';
-import { MailboxDataOverrideResolver }                               from './mailbox-data-override-resolver';
+import type { IDataBlobStore }                                                             from '../../../resources/buckets/data-blob-store';
+import type { IDataTable }                                                                 from '../../../resources/tables/data-tables';
+import { MailboxDataStackRef }                                                             from '../mailbox-data-stack-ref';
+
+import { MailboxDataDeployerWorker }                                                       from './mailbox-data-deployer-worker';
+import { MailboxDataOverrideResolver }                                                     from './mailbox-data-override-resolver';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {
@@ -50,6 +51,7 @@ export class MailboxDataDeployer extends Construct {
 
   constructor(scope: Construct, id: string, props: MailboxDataDeployerProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Provisions and retains the data tier (DynamoDB tables + S3 blob store) as a separate stack so mailbox data survives app-stack replacement.');
 
     const stack         = Stack.of(this);
     const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);

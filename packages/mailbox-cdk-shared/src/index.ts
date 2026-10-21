@@ -110,6 +110,9 @@ export type { PhysicalNameOptions } from './naming/resource-names';
 export { addServerlessInboxResourceGroup } from './tagging/resource-group';
 export type { ServerlessInboxResourceGroupProps } from './tagging/resource-group';
 
+// Component description
+export { ComponentDescription } from './tagging/component-description';
+
 // DynamoDB least-privilege action sets & table grant helper
 export { DynamoDbActions, grantTableActions } from './grants/dynamodb-grants';
 

@@ -1,4 +1,5 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }   from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
@@ -45,6 +46,7 @@ export class McpApi extends Construct {
 
   constructor(scope: Construct, id: string, props: McpApiProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Model Context Protocol (MCP) endpoint exposing mailbox tools to AI clients.');
 
     const api = new HttpApi(this, 'mcp-api', {
       apiName: `Mailbox ${Aws.STACK_NAME} MCP API`,

@@ -1,13 +1,12 @@
 import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type BaseQueueProps }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';
-
 import { EmailSendingQueue, type IEmailSendingQueue }              from '../../resources/queues/email-sending-queue';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 
 /** Props of {@link EmailSending}. */
 export interface EmailSendingProps {
@@ -35,6 +34,7 @@ export class EmailSending extends Construct {
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Outbound email submission — queues messages and sends them via SES.');
 
     const submissionQueue = new EmailSendingQueue(this, 'email-submissions-queue', {
       queueProps: props.queueProps,

@@ -1,10 +1,11 @@
 import type { IArtifactResolver }                                                               from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                                                 from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm                                                                                 from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct }                                                                            from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from '../auth/types';
-import type { IDataTable }                                                                      from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                               from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                                      from '../../resources/tables/data-tables';
+import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from '../auth/types';
 
 import { MailboxUi }                                                                            from './mailbox-ui';
 
@@ -99,6 +100,7 @@ export class AdminUi extends MailboxUi {
       uiConfig: staticUiConfig,
       artifactResolver: props.artifactResolver,
     });
+    ComponentDescription.describe(this, 'Admin web console — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');
 
     const uiHost     = this.distributionDomainName;
     this.oauthClient = props.authProvider.provisionAdminApiClient({

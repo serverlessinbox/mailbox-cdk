@@ -1,16 +1,15 @@
-import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
-import { makePhysicalName, type BaseQueueProps }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
-import { Construct }                                                from 'constructs';
+import type { IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, makePhysicalName, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws-cdk-lib/aws-ses';
+import { Construct }                                                   from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../apis/websocket';
-import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
-import type { IDataTable }                                          from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';
-import { SESEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
-
-import { SesEventQueue, type ISesEventQueue }                       from '../../resources/queues/ses-event-queue';
-import { SesEventTopic, type ISesEventTopic }                       from '../../resources/topics/ses-event-topic';
+import type { IDataBlobStore }                                         from '../../resources/buckets/data-blob-store';
+import { SESEventProcessorLambda }                                     from '../../resources/lambdas/ses-event-processor-lambda';
+import type { IAuditEventsQueue }                                      from '../../resources/queues/audit-events-queue';
+import { SesEventQueue, type ISesEventQueue }                          from '../../resources/queues/ses-event-queue';
+import type { IDataTable }                                             from '../../resources/tables/data-tables';
+import { SesEventTopic, type ISesEventTopic }                          from '../../resources/topics/ses-event-topic';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../apis/websocket';
 
 /** Props of {@link SESEventProcessing}. */
 export interface SESEventProcessingProps {
@@ -41,6 +40,7 @@ export class SESEventProcessing extends Construct {
 
   constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
     super(scope, id);
+    ComponentDescription.describe(this, 'Handles SES delivery, bounce and complaint notifications and records sender feedback.');
 
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
     this.sesEventTopic  = sesEventTopic;
