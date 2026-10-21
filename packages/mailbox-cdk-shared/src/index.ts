@@ -66,11 +66,11 @@ export type { StaticContentSourceSpec } from './ts-lambdas/content-deployer/reso
 export { BucketAutoEmpty } from './resources/lambdas/bucket-auto-empty';
 
 // Public static assets bucket
-export { PublicStaticAssetsBucket } from './public-static-assets-bucket';
+export { PublicStaticAssetsBucket } from './resources/buckets/public-static-assets-bucket';
 
 // Named bucket
-export { StackNamedBucket } from './named-bucket';
-export type { INamedBucket, StackNamedBucketProps } from './named-bucket';
+export { StackNamedBucket } from './resources/buckets/named-bucket';
+export type { INamedBucket, StackNamedBucketProps } from './resources/buckets/named-bucket';
 
 // Stack name sanitizing
 export { sanitizeStackName } from './naming/sanitize-name';
@@ -95,11 +95,11 @@ export { PipelineLogGroup } from './resources/lambdas/pipeline-log-groups';
 export type { IPipelineLogGroup } from './resources/lambdas/pipeline-log-groups';
 
 // Table & Queue constructs
-export { BaseTable } from './base-table';
-export { BaseQueue } from './base-queue';
-export type { BaseQueueProps } from './base-queue';
-export { StackNamedTable } from './named-table';
-export type { INamedTable, StackNamedTableProps } from './named-table';
+export { BaseTable } from './resources/tables/base-table';
+export { BaseQueue } from './resources/queues/base-queue';
+export type { BaseQueueProps } from './resources/queues/base-queue';
+export { StackNamedTable } from './resources/tables/named-table';
+export type { INamedTable, StackNamedTableProps } from './resources/tables/named-table';
 
 // Resource naming
 export { makePhysicalName, slugifyLabel } from './naming/resource-names';

@@ -13,10 +13,10 @@ import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Construct }                     from 'constructs';
 
+import { PositionHash }                  from '../../../naming/position-hash';
+import { StackIdentity }                 from '../../../naming/stack-identity';
 import { StackNamedTable }               from '../named-table';
 import type { StackNamedTableProps }     from '../named-table';
-import { PositionHash }                  from '../naming/position-hash';
-import { StackIdentity }                 from '../naming/stack-identity';
 
 const accountRef   = { Ref: 'AWS::AccountId' };
 const stackNameRef = { Ref: 'AWS::StackName' };

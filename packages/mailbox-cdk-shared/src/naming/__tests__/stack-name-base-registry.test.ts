@@ -2,7 +2,7 @@ import { Template }                           from 'aws-cdk-lib/assertions';
 import * as cdk                               from 'aws-cdk-lib';
 import { BootstraplessSynthesizer }           from 'aws-cdk-lib';
 
-import { StackNamedBucket }                   from '../../named-bucket';
+import { StackNamedBucket }                   from '../../resources/buckets/named-bucket';
 import { setStackNameBase, getStackNameBase } from '../stack-name-base-registry';
 
 /**

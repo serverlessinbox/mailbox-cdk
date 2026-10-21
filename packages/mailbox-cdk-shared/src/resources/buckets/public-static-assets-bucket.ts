@@ -4,9 +4,10 @@ import { IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { Stack, RemovalPolicy }       from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
+import { getOrCreateSharedGroup }     from '../../tagging/shared-group';
+import { BucketAutoEmpty }            from '../lambdas/bucket-auto-empty';
+
 import { StackNamedBucket }           from './named-bucket';
-import { BucketAutoEmpty }            from './resources/lambdas/bucket-auto-empty';
-import { getOrCreateSharedGroup }     from './tagging/shared-group';
 
 /**
  * Singleton construct for a shared, public S3 bucket used to store small public static assets

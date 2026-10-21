@@ -2,9 +2,10 @@ import { ITable, TableProps } from 'aws-cdk-lib/aws-dynamodb';
 import { Aws, IResolvable }   from 'aws-cdk-lib';
 import { Construct }          from 'constructs';
 
+import { PositionHash }       from '../../naming/position-hash';
+import { StackIdentity }      from '../../naming/stack-identity';
+
 import { BaseTable }          from './base-table';
-import { PositionHash }       from './naming/position-hash';
-import { StackIdentity }      from './naming/stack-identity';
 
 /** A table whose explicit physical name is known at synth time, so a holder can reuse the name without a `Ref`. */
 export interface INamedTable extends ITable {

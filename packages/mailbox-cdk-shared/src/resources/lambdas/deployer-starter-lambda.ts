@@ -4,7 +4,7 @@ import { Duration }                         from 'aws-cdk-lib';
 import { Construct }                        from 'constructs';
 
 import { parentStackStatusReadStatement }   from '../../deployer-infra/parent-stack-status-read';
-import type { IPollingCfnDeployerWorkflow } from '../../deployer-infra/polling-cfn-deployer-workflow';
+import type { IPollingCfnDeployerWorkflow } from '../workflows/polling-cfn-deployer-workflow';
 
 import { TypeScriptLambda }                 from './ts-lambda';
 

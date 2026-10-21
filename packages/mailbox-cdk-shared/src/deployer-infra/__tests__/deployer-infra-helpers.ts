@@ -8,7 +8,7 @@ import * as t                                   from 'typanion';
 
 import { renderWithTokens }                     from '../../cdk-test-support';
 import { DeployerStarterLambda }                from '../../resources/lambdas/deployer-starter-lambda';
-import { PollingCfnDeployerWorkflow }           from '../polling-cfn-deployer-workflow';
+import { PollingCfnDeployerWorkflow }           from '../../resources/workflows/polling-cfn-deployer-workflow';
 
 export const TEST_ACCOUNT = '123456789012';
 export const TEST_REGION = 'us-west-2';

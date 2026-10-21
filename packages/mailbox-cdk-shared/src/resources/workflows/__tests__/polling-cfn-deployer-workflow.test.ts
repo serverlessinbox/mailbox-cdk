@@ -9,10 +9,7 @@
 import { Match, Template }                       from 'aws-cdk-lib/assertions';
 import { CfnResource, Duration, Stack }          from 'aws-cdk-lib';
 
-import { renderWithTokens, statementsForAction } from '../../cdk-test-support';
-import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
-import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
-
+import { renderWithTokens, statementsForAction } from '../../../cdk-test-support';
 import {
   TEST_ACCOUNT,
   TEST_REGION,
@@ -20,7 +17,9 @@ import {
   newWorkerStandIn,
   stateMachineDefinition,
   stateMachineLogicalId,
-} from './deployer-infra-helpers';
+} from '../../../deployer-infra/__tests__/deployer-infra-helpers';
+import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
+import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
 
 interface SynthesizedWorkflow {
   readonly stack: Stack;

@@ -13,9 +13,9 @@ import * as lambda                         from 'aws-cdk-lib/aws-lambda';
 import * as cdk                            from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }   from 'aws-cdk-lib';
 
+import { actionsOf, statementsOfDocument } from '../../../cdk-test-support';
+import type { PolicyStatementJson }        from '../../../cdk-test-support';
 import { BaseTable }                       from '../base-table';
-import { actionsOf, statementsOfDocument } from '../cdk-test-support';
-import type { PolicyStatementJson }        from '../cdk-test-support';
 
 /**
  * Normalize resources into an array for consistent checking.

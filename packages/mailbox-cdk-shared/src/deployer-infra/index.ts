@@ -7,5 +7,5 @@ export type { DeployerWorkerLambdaProps } from '../resources/lambdas/deployer-wo
 export { DeployerStarterLambda } from '../resources/lambdas/deployer-starter-lambda';
 export type { DeployerStarterLambdaProps } from '../resources/lambdas/deployer-starter-lambda';
 
-export { PollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
-export type { PollingCfnDeployerWorkflowProps } from './polling-cfn-deployer-workflow';
+export { PollingCfnDeployerWorkflow } from '../resources/workflows/polling-cfn-deployer-workflow';
+export type { PollingCfnDeployerWorkflowProps } from '../resources/workflows/polling-cfn-deployer-workflow';

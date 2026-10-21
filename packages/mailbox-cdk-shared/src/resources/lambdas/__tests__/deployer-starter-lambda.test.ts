@@ -10,7 +10,7 @@ import { Template }                               from 'aws-cdk-lib/assertions';
 
 import { statementsForAction }                    from '../../../cdk-test-support';
 import { newDeployerTestStack, newWorkerStandIn } from '../../../deployer-infra/__tests__/deployer-infra-helpers';
-import { PollingCfnDeployerWorkflow }             from '../../../deployer-infra/polling-cfn-deployer-workflow';
+import { PollingCfnDeployerWorkflow }             from '../../workflows/polling-cfn-deployer-workflow';
 import { DeployerStarterLambda }                  from '../deployer-starter-lambda';
 
 const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:us-east-1:123456789012:stack/deployed-edge/*';

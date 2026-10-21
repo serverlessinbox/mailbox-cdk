@@ -12,10 +12,10 @@ import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
 import { Construct }                               from 'constructs';
 
+import { PositionHash }                            from '../../../naming/position-hash';
+import { StackIdentity }                           from '../../../naming/stack-identity';
 import { BaseQueue }                               from '../base-queue';
 import type { BaseQueueProps }                     from '../base-queue';
-import { PositionHash }                            from '../naming/position-hash';
-import { StackIdentity }                           from '../naming/stack-identity';
 
 function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Template {
   const stack               = new cdk.Stack(new App(), 'TestStack', {
