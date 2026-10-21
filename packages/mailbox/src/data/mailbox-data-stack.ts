@@ -4,12 +4,12 @@ import type { ServerlessInboxDeployerType }                                     
 import * as cdk                                                                           from 'aws-cdk-lib';
 import { Construct }                                                                      from 'constructs';
 
-import { AuditLogTable }                                                                  from '../resources/auditlog-table';
+import { AuditLogTable }                                                                  from '../resources/tables/auditlog-table';
 import { BlobStore }                                                                      from '../resources/blob-store';
-import { ChangelogTable }                                                                 from '../resources/changelog-table';
-import { ConfigTable }                                                                    from '../resources/config-table';
-import { ItemTable }                                                                      from '../resources/item-table';
-import { MailFeedbackTable }                                                              from '../resources/mailfeedback-table';
+import { ChangelogTable }                                                                 from '../resources/tables/changelog-table';
+import { ConfigTable }                                                                    from '../resources/tables/config-table';
+import { ItemTable }                                                                      from '../resources/tables/item-table';
+import { MailFeedbackTable }                                                              from '../resources/tables/mailfeedback-table';
 import { MailboxKmsConfig }                                                               from '../utils/kms';
 import { resolveMailboxEncryptionPlan }                                                   from '../utils/mailbox-encryption';
 import { MailboxResourceDescriptions }                                                    from '../utils/resource-descriptions';

@@ -4,7 +4,7 @@ import { QueueEncryption }                                                      
 import { Construct }                                                                                         from 'constructs';
 
 import type { BlobStoreProps }                                                                               from '../resources/blob-store';
-import type { DynamoTableEncryptionProps }                                                                   from '../resources/data-table-props';
+import type { DynamoTableEncryptionProps }                                                                   from '../resources/tables/data-table-props';
 
 import type { MailboxKmsConfig }                                                                             from './kms';
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';

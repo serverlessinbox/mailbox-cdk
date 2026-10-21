@@ -6,7 +6,7 @@ import * as s3                           from 'aws-cdk-lib/aws-s3';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import type { IAuthKeyStoreTable }       from '../../auth-key-store/auth-key-store-table';
+import type { IAuthKeyStoreTable }       from '../../../resources/tables/auth-key-store-table';
 import { Cdn, type CdnProps }            from '../cdn-construct';
 
 /*

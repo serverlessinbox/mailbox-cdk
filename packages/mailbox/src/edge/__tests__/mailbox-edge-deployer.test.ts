@@ -19,7 +19,7 @@ import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../__tests__/deployer-test-helpers';
-import { DataTable }                     from '../../data/data-tables';
+import { DataTable }                     from '../../resources/tables/data-tables';
 import { MailboxEdgeDeployer }           from '../mailbox-edge-deployer';
 import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
 

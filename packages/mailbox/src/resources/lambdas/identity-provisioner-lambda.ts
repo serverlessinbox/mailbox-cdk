@@ -6,7 +6,7 @@ import { Duration }                from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
 import type { IDataBlobStore }     from '../../data/data-blob-store';
-import type { IDataTable }         from '../../data/data-tables';
+import type { IDataTable }         from '../tables/data-tables';
 import type { IEmailSendingQueue } from '../../email/sending/email-sending-queue';
 import type { IAuditEventsQueue }  from '../../features/audit-writing/audit-events-queue';
 

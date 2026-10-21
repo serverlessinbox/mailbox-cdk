@@ -23,10 +23,10 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import type { IMailboxAuthProvider }            from '../../../auth/types';
 import { DataBlobStore }                        from '../../../data/data-blob-store';
-import { DataTable }                            from '../../../data/data-tables';
+import { DataTable }                            from '../../../resources/tables/data-tables';
 import { EmailSendingQueue }                    from '../../../email/sending/email-sending-queue';
 import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
-import { AuthKeyStoreTable }                    from '../../../features/auth-key-store/auth-key-store-table';
+import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
 import type { IJmapApiAddon }                   from '../../addons';
 import type { IWebSocketBroadcastPublisher }    from '../../websocket/websocket';
 import { JMapApi }                              from '../jmap-api';

@@ -17,8 +17,8 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../../api/websocket/websocket-table';
-import { DataTable }                            from '../../../data/data-tables';
+import { WebSocketTable }                       from '../../tables/websocket-table';
+import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
 
 describe('WebSocketConnectLambda connections-table grant', () => {

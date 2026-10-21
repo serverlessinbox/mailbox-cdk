@@ -3,7 +3,7 @@ import * as acm                                                                 
 import { Construct }                                                                            from 'constructs';
 
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from '../auth/types';
-import type { IDataTable }                                                                      from '../data/data-tables';
+import type { IDataTable }                                                                      from '../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                               from '../features/audit-writing/audit-events-queue';
 
 import { MailboxUi }                                                                            from './mailbox-ui';

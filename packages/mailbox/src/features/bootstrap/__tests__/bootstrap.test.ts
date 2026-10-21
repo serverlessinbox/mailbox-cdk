@@ -18,8 +18,8 @@ import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import type { OAuthAuthorizationCodeClientConfig }   from '../../../auth/types';
-import { DataTable }                                 from '../../../data/data-tables';
-import { AuthKeyStoreTable }                         from '../../auth-key-store/auth-key-store-table';
+import { DataTable }                                 from '../../../resources/tables/data-tables';
+import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
 import { Bootstrap }                                 from '../bootstrap';
 import type { BootstrapProps }                       from '../bootstrap';
 

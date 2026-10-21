@@ -24,7 +24,7 @@ import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import { StackUpdateAddon }                          from '../platform/update/stack-update-addon';
-import { DataTable }                                 from '../data/data-tables';
+import { DataTable }                                 from '../resources/tables/data-tables';
 import { AuditEventsQueue }                          from '../features/audit-writing/audit-events-queue';
 
 const TEST_ACCOUNT = '123456789012';

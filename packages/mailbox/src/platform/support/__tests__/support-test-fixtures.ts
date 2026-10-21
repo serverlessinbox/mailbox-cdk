@@ -9,7 +9,7 @@ import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
 import type { AdminApiAddonContext }                    from '../../../api/addons';
-import { DataTable }                                    from '../../../data/data-tables';
+import { DataTable }                                    from '../../../resources/tables/data-tables';
 import { AuditEventsQueue }                             from '../../../features/audit-writing/audit-events-queue';
 import type { IIdentityProvisioner }                    from '../../../resources/lambdas/identity-provisioner-lambda';
 

@@ -17,10 +17,10 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../api/websocket/websocket-table';
+import { WebSocketTable }                       from '../resources/tables/websocket-table';
 import { MailboxDataDeployerWorker }            from '../data/mailbox-data-deployer-worker';
 import { MailboxDataStack }                     from '../data/mailbox-data-stack';
-import { AuthKeyStoreTable }                    from '../features/auth-key-store/auth-key-store-table';
+import { AuthKeyStoreTable }                    from '../resources/tables/auth-key-store-table';
 
 import {
   CloudFormationResource,

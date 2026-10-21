@@ -8,7 +8,7 @@ import * as cdk                           from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
 import type { BlobDownloadOriginHeaders } from '../../runtime/jmap-blob-download/origin-headers';
-import type { IAuthKeyStoreTable }        from '../auth-key-store/auth-key-store-table';
+import type { IAuthKeyStoreTable }        from '../../resources/tables/auth-key-store-table';
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
 export interface CdnCustomDomain {

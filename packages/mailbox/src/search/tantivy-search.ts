@@ -7,7 +7,7 @@ import * as cdk                       from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
 import type { IDataBlobStore }        from '../data/data-blob-store';
-import type { IDataTable }            from '../data/data-tables';
+import type { IDataTable }            from '../resources/tables/data-tables';
 import { TantivyIndexerLambda }       from '../resources/lambdas/tantivy-indexer-lambda';
 
 import { TantivyIndexingScheduleDlq } from './tantivy-indexing-schedule-dlq';

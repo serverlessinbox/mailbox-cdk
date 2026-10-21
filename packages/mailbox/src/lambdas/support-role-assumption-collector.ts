@@ -7,7 +7,7 @@ import { Construct }               from 'constructs';
 import {
   buildSupportTierEnvironment,
 } from '../platform/support/support-roles-infra';
-import type { IDataTable } from '../data/data-tables';
+import type { IDataTable } from '../resources/tables/data-tables';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */

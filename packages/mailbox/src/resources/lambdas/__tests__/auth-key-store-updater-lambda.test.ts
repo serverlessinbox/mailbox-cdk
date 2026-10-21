@@ -17,7 +17,7 @@ import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { AuthKeyStoreTable }                    from '../../../features/auth-key-store/auth-key-store-table';
+import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
 import { AuthKeyStoreUpdaterLambda }            from '../auth-key-store-updater-lambda';
 
 describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {

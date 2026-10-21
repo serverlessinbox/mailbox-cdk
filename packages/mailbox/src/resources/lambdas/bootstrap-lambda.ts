@@ -8,8 +8,8 @@ import { Aws, Duration, Stack }                                                 
 import { Construct }                                                                      from 'constructs';
 
 import type { SesReceivingMode }                                                          from '../../core/email/ses-receiving-mode';
-import type { IDataTable }                                                                from '../../data/data-tables';
-import type { IAuthKeyStoreTable }                                                        from '../../features/auth-key-store/auth-key-store-table';
+import type { IDataTable }                                                                from '../tables/data-tables';
+import type { IAuthKeyStoreTable }                                                        from '../tables/auth-key-store-table';
 
 export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
 

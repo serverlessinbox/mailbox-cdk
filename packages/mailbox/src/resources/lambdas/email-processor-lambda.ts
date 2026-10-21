@@ -5,7 +5,7 @@ import { Construct }                          from 'constructs'
 
 import type { IWebSocketBroadcastPublisher }  from '../../api/websocket/websocket';
 import type { IDataBlobStore }                from '../../data/data-blob-store';
-import type { IDataTable }                    from '../../data/data-tables';
+import type { IDataTable }                    from '../tables/data-tables';
 import type { IEmailProcessingQueueConsumer } from '../../email/receiving/email-processing-queue';
 
 export interface EmailProcessorLambdaProps {

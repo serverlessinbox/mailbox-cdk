@@ -21,7 +21,7 @@ import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../../data/data-tables';
+import { DataTable }                            from '../../../resources/tables/data-tables';
 import { WebSocketPush }                        from '../websocket';
 import type { WebSocketPushProps }              from '../websocket';
 

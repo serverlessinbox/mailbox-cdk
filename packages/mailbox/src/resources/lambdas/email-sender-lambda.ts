@@ -6,7 +6,7 @@ import { Construct }                                               from 'constru
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import type { IDataBlobStore }                                     from '../../data/data-blob-store';
-import type { IDataTable }                                         from '../../data/data-tables';
+import type { IDataTable }                                         from '../tables/data-tables';
 import type { IEmailSendingQueueConsumer }                         from '../../email/sending/email-sending-queue';
 
 export interface EmailSenderLambdaProps {

@@ -4,7 +4,7 @@ import { Construct }                                               from 'constru
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import type { IDataBlobStore }                                     from '../../data/data-blob-store';
-import type { IDataTable }                                         from '../../data/data-tables';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';
 
 import { EmailSendingQueue, type IEmailSendingQueue }              from './email-sending-queue';

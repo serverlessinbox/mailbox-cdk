@@ -6,7 +6,7 @@ import { Construct }                             from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda }             from '../../resources/lambdas/auth-key-store-updater-lambda';
 
-import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
+import { AuthKeyStoreTable, IAuthKeyStoreTable } from '../../resources/tables/auth-key-store-table';
 
 export interface AuthKeyStoreProps {
   readonly issuers: string[];

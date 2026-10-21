@@ -14,7 +14,7 @@ import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }       from '../../../api/websocket/websocket';
 import { DataBlobStore }                           from '../../../data/data-blob-store';
-import { DataTable }                               from '../../../data/data-tables';
+import { DataTable }                               from '../../../resources/tables/data-tables';
 import { EmailSending, type EmailSendingProps }    from '../email-sending';
 
 function createStack(): cdk.Stack {

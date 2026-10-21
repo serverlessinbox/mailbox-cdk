@@ -2,7 +2,7 @@ import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk'
 import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }               from 'constructs';
 
-import type { IAuthKeyStoreTable } from '../../features/auth-key-store/auth-key-store-table';
+import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
 
 export interface AuthKeyStoreUpdaterLambdaProps {
   issuers: string[];

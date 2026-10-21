@@ -15,13 +15,13 @@ import type { IFunction }                      from 'aws-cdk-lib/aws-lambda';
 import { Aws, CfnResource }                    from 'aws-cdk-lib';
 import { Construct }                           from 'constructs';
 
-import type { IDataTable }                     from '../../data/data-tables';
+import type { IDataTable }                     from '../../resources/tables/data-tables';
 import { WebSocketBroadcastLambda } from '../../resources/lambdas/websocket-broadcast-lambda';
 import { WebSocketConnectLambda } from '../../resources/lambdas/websocket-connect-lambda';
 import { WebSocketDisconnectLambda } from '../../resources/lambdas/websocket-disconnect-lambda';
 import { WebSocketMessageLambda } from '../../resources/lambdas/websocket-message-lambda';
 
-import { WebSocketTable, IWebSocketTable } from './websocket-table';
+import { WebSocketTable, IWebSocketTable } from '../../resources/tables/websocket-table';
 
 /** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */
 export interface IWebSocketBroadcastPublisher {

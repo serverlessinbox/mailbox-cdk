@@ -6,7 +6,7 @@ import { Aws, Fn, Stack }                                            from 'aws-c
 import { Construct }                                                 from 'constructs';
 
 import type { IDataBlobStore }                                       from './data-blob-store';
-import type { IDataTable }                                           from './data-tables';
+import type { IDataTable }                                           from '../resources/tables/data-tables';
 import { MailboxDataDeployerWorker }                                 from './mailbox-data-deployer-worker';
 import { MailboxDataOverrideResolver }                               from './mailbox-data-override-resolver';
 import { MailboxDataStackRef }                                       from './mailbox-data-stack-ref';

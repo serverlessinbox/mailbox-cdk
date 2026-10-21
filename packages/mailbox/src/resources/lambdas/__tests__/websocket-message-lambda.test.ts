@@ -20,9 +20,9 @@ import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../../api/websocket/websocket-table';
+import { WebSocketTable }                       from '../../tables/websocket-table';
 import type { IWebSocketPushApi }               from '../../../api/websocket/websocket';
-import { DataTable }                            from '../../../data/data-tables';
+import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketMessageLambda }               from '../websocket-message-lambda';
 
 class FakeWebSocketPushApi implements IWebSocketPushApi {

@@ -27,10 +27,10 @@ import { McpApi }                                     from '../api/mcp/mcp-api';
 import { Permission }                                 from '../auth/jmap-scopes';
 import type { IMailboxAuthProvider }                  from '../auth/types';
 import { DataBlobStore, type IDataBlobStore }         from '../data/data-blob-store';
-import { DataTable, type IDataTable }                 from '../data/data-tables';
+import { DataTable, type IDataTable }                 from '../resources/tables/data-tables';
 import { EmailSendingQueue, type IEmailSendingQueue } from '../email/sending/email-sending-queue';
 import { AuditEventsQueue, type IAuditEventsQueue }   from '../features/audit-writing/audit-events-queue';
-import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../features/auth-key-store/auth-key-store-table';
+import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../resources/tables/auth-key-store-table';
 
 import {
   CloudFormationResource,

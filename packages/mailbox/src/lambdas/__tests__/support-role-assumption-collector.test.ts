@@ -17,7 +17,7 @@ import * as cdk                                                                 
 import { App, BootstraplessSynthesizer }                                            from 'aws-cdk-lib';
 
 import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../platform/support/support-roles-infra';
-import { DataTable }                                                                from '../../data/data-tables';
+import { DataTable }                                                                from '../../resources/tables/data-tables';
 import { SupportRoleAssumptionCollectorLambda }                                     from '../support-role-assumption-collector';
 
 describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {

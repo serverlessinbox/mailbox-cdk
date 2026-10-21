@@ -7,7 +7,7 @@ import * as cdk                                                                 
 import { Construct }                                                                           from 'constructs';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../api/addons';
-import type { IDataTable }                                                                     from '../../data/data-tables';
+import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                              from '../../features/audit-writing/audit-events-queue';
 import { StackUpdateApiLambda }                                                                from '../../lambdas/stack-update-api';
 

@@ -7,7 +7,7 @@ import { Construct }               from 'constructs';
 import {
   buildSupportTierEnvironment,
 } from '../platform/support/support-roles-infra';
-import type { IDataTable }        from '../data/data-tables';
+import type { IDataTable }        from '../resources/tables/data-tables';
 import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
 
 export interface SupportApiLambdaProps {

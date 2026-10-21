@@ -5,7 +5,7 @@ import { Construct }                                               from 'constru
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
 import type { IDataBlobStore }                                     from '../../data/data-blob-store';
-import type { IDataTable }                                         from '../../data/data-tables';
+import type { IDataTable }                                         from '../tables/data-tables';
 import type { ISesEventQueue }                                     from '../../email/ses-events/ses-event-queue';
 import type { IAuditEventsQueue }                                  from '../../features/audit-writing/audit-events-queue';
 

@@ -18,7 +18,7 @@ import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonC
 import type { IMailboxAuthProvider }                                                                           from './auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './data/data-blob-store';
-import type { IDataTable }                                                                                     from './data/data-tables';
+import type { IDataTable }                                                                                     from './resources/tables/data-tables';
 import { MailboxDataDeployer }                                                                                 from './data';
 import { MailboxDns }                                                                                          from './domains';
 import { MailboxEdgeDeployer }                                                                                 from './edge';

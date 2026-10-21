@@ -25,7 +25,7 @@ import { App, BootstraplessSynthesizer }                            from 'aws-cd
 
 import type { IWebSocketBroadcastPublisher }                        from '../../../api/websocket/websocket';
 import { DataBlobStore }                                            from '../../../data/data-blob-store';
-import { DataTable }                                                from '../../../data/data-tables';
+import { DataTable }                                                from '../../tables/data-tables';
 import { EmailSendingQueue }                                        from '../../../email/sending/email-sending-queue';
 import { AuditEventsQueue }                                         from '../../../features/audit-writing/audit-events-queue';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
