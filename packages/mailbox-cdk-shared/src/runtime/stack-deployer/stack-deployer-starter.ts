@@ -6,11 +6,11 @@ import { ExpectedFailure }                                                      
 import { formatArn, parseArn, type ParsedArn }                                                          from '../../runtime/handler-kit/arn';
 import type { LoggerBuffer }                                                                            from '../../runtime/handler-kit/logger-buffer';
 
-import type { CfnReplyTarget, CfnResponder }                                                            from './cfn-responder';
+import type { CfnReplyTarget, CfnResponder }                                                            from './answers/cfn-responder';
 import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn } from './deployer-identifiers';
-import type { StackDeploymentEventReader }                                                              from './stack-deployment-event-reader';
-import type { CfnRequest, RequestType, WorkflowInput }                                                  from './stack-deployment';
-import { StackOperationFailure }                                                                        from './stack-operation-failure';
+import type { StackDeploymentEventReader }                                                              from './stack/stack-deployment-event-reader';
+import type { CfnRequest, RequestType, WorkflowInput }                                                  from './stack/stack-deployment';
+import { StackOperationFailure }                                                                        from './stack/stack-operation-failure';
 
 // CloudFormation truncates auto-generated physical names to 64 characters, and the names of the IAM roles
 // built from the root stack name need room beside it.

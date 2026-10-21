@@ -5,7 +5,7 @@ import * as sfn                               from 'aws-cdk-lib/aws-stepfunction
 import { ArnFormat, Duration, Fn, Stack }     from 'aws-cdk-lib';
 import { Construct, IDependable }             from 'constructs';
 
-import type { SfnInvokeEvent, WorkflowInput } from '../../runtime/stack-deployer/stack-deployment';
+import type { SfnInvokeEvent, WorkflowInput } from '../../runtime/stack-deployer/stack/stack-deployment';
 import type { RetryCounts, WorkerResult }     from '../../runtime/stack-deployer/worker-result';
 
 const CFN_FIELD            = 'cfn' satisfies keyof WorkflowInput;

@@ -1,12 +1,12 @@
-import { toPhysicalResourceId }                       from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                            from '../../../runtime/handler-kit/errors/expected-failure';
+import { toPhysicalResourceId }                       from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                            from '../../../../runtime/handler-kit/errors/expected-failure';
+import { StackDeploymentEventReader }                 from '../../stack/stack-deployment-event-reader';
+import { StackOperationFailure }                      from '../../stack/stack-operation-failure';
+import { WorkerResult }                               from '../../worker-result';
 import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
 import { CfnResponder }                               from '../cfn-responder';
 import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';
-import { StackDeploymentEventReader }                 from '../stack-deployment-event-reader';
-import { StackOperationFailure }                      from '../stack-operation-failure';
 import type { UpdateRollbackAnswers }                 from '../update-rollback-answerer';
-import { WorkerResult }                               from '../worker-result';
 
 import {
   awsError,
@@ -24,7 +24,7 @@ import {
   US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from './stack-deployer-helpers';
+} from '../../__tests__/stack-deployer-helpers';
 
 /**
  * Pins that every failure of a deployer invocation is answered to CloudFormation exactly once, from whatever

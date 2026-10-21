@@ -9,11 +9,12 @@ import {
   isStackName,
   type PhysicalResourceId,
   type StackName,
-} from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { isRegion, type Region } from '../../runtime/handler-kit/aws-identifiers';
-import type { Unbranded }        from '../../runtime/handler-kit/branded';
+} from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { isRegion, type Region } from '../../../runtime/handler-kit/aws-identifiers';
+import type { Unbranded }        from '../../../runtime/handler-kit/branded';
 
-import { isTemplateUrl }         from './deployer-identifiers';
+import { isTemplateUrl }         from '../deployer-identifiers';
+
 import { isStackFlag }           from './stack-flag';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);

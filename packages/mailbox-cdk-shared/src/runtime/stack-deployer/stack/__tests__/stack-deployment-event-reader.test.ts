@@ -1,4 +1,4 @@
-import { ExpectedFailure }            from '../../../runtime/handler-kit/errors/expected-failure';
+import { ExpectedFailure }            from '../../../../runtime/handler-kit/errors/expected-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
 
 import {
@@ -15,7 +15,7 @@ import {
   STACK_NAME,
   stackDeployerProperties,
   US_EAST_1,
-} from './stack-deployer-helpers';
+} from '../../__tests__/stack-deployer-helpers';
 
 /**
  * Pins what the deployer Lambdas accept as input. The properties and the workflow input come from the CDK

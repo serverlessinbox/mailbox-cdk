@@ -1,13 +1,14 @@
-import { CaughtError }                          from '../../runtime/handler-kit/errors/caught-error';
-import { ExpectedFailure }                      from '../../runtime/handler-kit/errors/expected-failure';
+import { CaughtError }                          from '../../../runtime/handler-kit/errors/caught-error';
+import { ExpectedFailure }                      from '../../../runtime/handler-kit/errors/expected-failure';
+
+import type { StackDeploymentEventReader }      from '../stack/stack-deployment-event-reader';
+import type { AnswerableEvent, OperationInput } from '../stack/stack-deployment';
+import { StackOperationFailure }                from '../stack/stack-operation-failure';
+import { WorkerResult }                         from '../worker-result';
 
 import { AnswerDeliveryFailure }                from './answer-delivery-failure';
 import type { CfnReplyTarget, CfnResponder }    from './cfn-responder';
-import type { StackDeploymentEventReader }      from './stack-deployment-event-reader';
-import type { AnswerableEvent, OperationInput } from './stack-deployment';
-import { StackOperationFailure }                from './stack-operation-failure';
 import type { UpdateRollbackAnswers }           from './update-rollback-answerer';
-import { WorkerResult }                         from './worker-result';
 
 /** Answers CloudFormation for a stack operation that failed, with the detail only the stack operation can add. */
 export interface StackFailureAnswerer {

@@ -2,11 +2,11 @@ import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws
 import { mockClient }                                                 from 'aws-sdk-client-mock';
 
 import { ExpectedFailure }                                            from '../../../runtime/handler-kit/errors/expected-failure';
-import { CfnResponder }                                               from '../cfn-responder';
+import { CfnResponder }                                               from '../answers/cfn-responder';
 import { toStateMachineArn, type StateMachineArn }                    from '../deployer-identifiers';
+import { StackDeploymentEventReader }                                 from '../stack/stack-deployment-event-reader';
+import { StackOperationFailure }                                      from '../stack/stack-operation-failure';
 import { StackDeployerStarter }                                       from '../stack-deployer-starter';
-import { StackDeploymentEventReader }                                 from '../stack-deployment-event-reader';
-import { StackOperationFailure }                                      from '../stack-operation-failure';
 
 import {
   BUCKET_ARN_AS_STACK_ID,

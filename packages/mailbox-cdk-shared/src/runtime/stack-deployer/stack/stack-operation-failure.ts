@@ -1,4 +1,4 @@
-import { CaughtError } from '../../runtime/handler-kit/errors/caught-error';
+import { CaughtError } from '../../../runtime/handler-kit/errors/caught-error';
 
 /**
  * An AWS call failed while carrying out one step of a stack operation, or while starting its execution. The

@@ -12,10 +12,10 @@ import {
 } from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { toRegion }                                                                        from '../../../runtime/handler-kit/aws-identifiers';
 import { LoggerBuffer }                                                                    from '../../../runtime/handler-kit/logger-buffer';
-import type { CfnReplyTarget }                                                             from '../cfn-responder';
+import type { CfnReplyTarget }                                                             from '../answers/cfn-responder';
+import type { UpdateRollbackAnswers }                                                      from '../answers/update-rollback-answerer';
 import { toStateMachineArn, toTemplateUrl }                                                from '../deployer-identifiers';
-import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack-deployment';
-import type { UpdateRollbackAnswers }                                                      from '../update-rollback-answerer';
+import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack/stack-deployment';
 
 export const RESPONSE_URL = toResponseUrl('https://example.com/cfn-response');
 export const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid');

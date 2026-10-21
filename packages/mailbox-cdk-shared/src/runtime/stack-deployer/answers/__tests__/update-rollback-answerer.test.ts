@@ -1,9 +1,9 @@
 import { CloudFormationClient, DescribeStacksCommand }                      from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                       from 'aws-sdk-client-mock';
 
-import { toPhysicalResourceId }                                             from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { toPhysicalResourceId }                                             from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import type { OperationInput }                                              from '../../stack/stack-deployment';
 import { CfnResponder }                                                     from '../cfn-responder';
-import type { OperationInput }                                              from '../stack-deployment';
 import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';
 
 import {
@@ -18,7 +18,7 @@ import {
   US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from './stack-deployer-helpers';
+} from '../../__tests__/stack-deployer-helpers';
 
 const OLD_OUTPUTS           = { TableName: 'items-old' };
 const FAILURE               = 'Stack deployer check failed';

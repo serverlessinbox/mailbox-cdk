@@ -14,9 +14,9 @@ import { CaughtError }         from '../../runtime/handler-kit/errors/caught-err
 import type { Region }         from '../../runtime/handler-kit/aws-identifiers';
 import type { LoggerBuffer }   from '../../runtime/handler-kit/logger-buffer';
 
-import type { OperationInput } from './stack-deployment';
-import { isSwitchedOn }        from './stack-flag';
-import { StackStatus }         from './stack-status';
+import type { OperationInput } from './stack/stack-deployment';
+import { isSwitchedOn }        from './stack/stack-flag';
+import { StackStatus }         from './stack/stack-status';
 
 const STACK_CAPABILITIES: Capability[] = ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'];
 

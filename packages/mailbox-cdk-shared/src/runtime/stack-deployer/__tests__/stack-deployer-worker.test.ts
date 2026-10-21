@@ -9,13 +9,13 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import { mockClient }                 from 'aws-sdk-client-mock';
 
-import { AnswerDeliveryFailure }      from '../answer-delivery-failure';
-import { CfnResponder }               from '../cfn-responder';
+import { AnswerDeliveryFailure }      from '../answers/answer-delivery-failure';
+import { CfnResponder }               from '../answers/cfn-responder';
+import type { UpdateRollbackAnswers } from '../answers/update-rollback-answerer';
 import { CloudFormationStacks }       from '../cloudformation-stacks';
+import type { OperationInput }        from '../stack/stack-deployment';
+import { StackOperationFailure }      from '../stack/stack-operation-failure';
 import { StackDeployerWorker }        from '../stack-deployer-worker';
-import type { OperationInput }        from '../stack-deployment';
-import { StackOperationFailure }      from '../stack-operation-failure';
-import type { UpdateRollbackAnswers } from '../update-rollback-answerer';
 
 import {
   awsError,

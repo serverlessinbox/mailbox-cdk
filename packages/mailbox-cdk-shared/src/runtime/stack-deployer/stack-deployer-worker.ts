@@ -3,14 +3,14 @@ import type { Stack }                          from '@aws-sdk/client-cloudformat
 import { CaughtError }                         from '../../runtime/handler-kit/errors/caught-error';
 import type { LoggerBuffer }                   from '../../runtime/handler-kit/logger-buffer';
 
-import type { CfnReplyTarget, CfnResponder }   from './cfn-responder';
+import type { CfnReplyTarget, CfnResponder }   from './answers/cfn-responder';
+import type { StackFailureAnswerer }           from './answers/failure-answerer';
+import type { UpdateRollbackAnswers }          from './answers/update-rollback-answerer';
 import type { CloudFormationStacks }           from './cloudformation-stacks';
-import type { StackFailureAnswerer }           from './failure-answerer';
-import type { OperationInput, SfnInvokeEvent } from './stack-deployment';
-import { isSwitchedOn }                        from './stack-flag';
-import { StackOperationFailure }               from './stack-operation-failure';
-import { StackStatus }                         from './stack-status';
-import type { UpdateRollbackAnswers }          from './update-rollback-answerer';
+import type { OperationInput, SfnInvokeEvent } from './stack/stack-deployment';
+import { isSwitchedOn }                        from './stack/stack-flag';
+import { StackOperationFailure }               from './stack/stack-operation-failure';
+import { StackStatus }                         from './stack/stack-status';
 import { WorkerResult, type RetryCounts }      from './worker-result';
 
 // Polling stops so the worker answers CloudFormation before the 60 minute service timeout of the custom

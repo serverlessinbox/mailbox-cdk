@@ -8,14 +8,14 @@ import type { Region }                from '../../runtime/handler-kit/aws-identi
 import { LoggerBuffer }               from '../../runtime/handler-kit/logger-buffer';
 import { withSmokeTest }              from '../../runtime/handler-kit/with-smoke-test';
 
-import { CfnResponder }               from './cfn-responder';
+import { CfnResponder }               from './answers/cfn-responder';
+import { FailureAnswerer }            from './answers/failure-answerer';
+import { UpdateRollbackAnswerer }     from './answers/update-rollback-answerer';
 import { CloudFormationStacks }       from './cloudformation-stacks';
 import { loadStarter, loadWorker }    from './config';
-import { FailureAnswerer }            from './failure-answerer';
+import { StackDeploymentEventReader } from './stack/stack-deployment-event-reader';
 import { StackDeployerStarter }       from './stack-deployer-starter';
 import { StackDeployerWorker }        from './stack-deployer-worker';
-import { StackDeploymentEventReader } from './stack-deployment-event-reader';
-import { UpdateRollbackAnswerer }     from './update-rollback-answerer';
 import type { WorkerResult }          from './worker-result';
 
 /** The part of the Lambda context both handlers read: the log stream that a response to CloudFormation points to. */
