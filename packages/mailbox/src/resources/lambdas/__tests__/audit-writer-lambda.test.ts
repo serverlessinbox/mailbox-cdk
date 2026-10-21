@@ -16,9 +16,9 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../data/data-tables';
-import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
-import { AuditWriterLambda }                    from '../audit-writer';
+import { DataTable }                            from '../../../data/data-tables';
+import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { AuditWriterLambda }                    from '../audit-writer-lambda';
 
 describe('AuditWriterLambda event-source wiring', () => {
   let stack: cdk.Stack;

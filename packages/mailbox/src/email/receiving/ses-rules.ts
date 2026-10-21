@@ -5,7 +5,7 @@ import { Lambda, LambdaInvocationType, S3 }                         from 'aws-cd
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy }  from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                from 'constructs';
 
-import { SesReceiptForwarderLambda }                                from '../../lambdas/ses-receipt-forwarder';
+import { SesReceiptForwarderLambda }                                from '../../resources/lambdas/ses-receipt-forwarder-lambda';
 import { BlobStore }                                                from '../../resources/blob-store';
 
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';

@@ -20,10 +20,10 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataBlobStore }                        from '../../data/data-blob-store';
-import { DataTable }                            from '../../data/data-tables';
-import { EmailSendingQueue }                    from '../../email/sending/email-sending-queue';
-import { EmailSenderLambda }                    from '../email-sender';
+import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataTable }                            from '../../../data/data-tables';
+import { EmailSendingQueue }                    from '../../../email/sending/email-sending-queue';
+import { EmailSenderLambda }                    from '../email-sender-lambda';
 
 describe('EmailSenderLambda IAM scoping', () => {
   let app: App;

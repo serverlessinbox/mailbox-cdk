@@ -7,7 +7,7 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../
 import type { IDataBlobStore }                                      from '../../data/data-blob-store';
 import type { IDataTable }                                          from '../../data/data-tables';
 import type { IAuditEventsQueue }                                   from '../../features/audit-writing/audit-events-queue';
-import { SESEventProcessorLambda }                                  from '../../lambdas';
+import { SESEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
 
 import { SesEventQueue, type ISesEventQueue }                       from './ses-event-queue';
 import { SesEventTopic, type ISesEventTopic }                       from './ses-event-topic';

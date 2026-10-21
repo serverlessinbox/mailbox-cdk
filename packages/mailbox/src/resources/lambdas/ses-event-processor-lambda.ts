@@ -3,11 +3,11 @@ import { GoLambda }                                                from '@server
 import { Duration }                                                from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
-import type { IDataBlobStore }                                     from '../data/data-blob-store';
-import type { IDataTable }                                         from '../data/data-tables';
-import type { ISesEventQueue }                                     from '../email/ses-events/ses-event-queue';
-import type { IAuditEventsQueue }                                  from '../features/audit-writing/audit-events-queue';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import type { IDataBlobStore }                                     from '../../data/data-blob-store';
+import type { IDataTable }                                         from '../../data/data-tables';
+import type { ISesEventQueue }                                     from '../../email/ses-events/ses-event-queue';
+import type { IAuditEventsQueue }                                  from '../../features/audit-writing/audit-events-queue';
 
 export interface SESEventProcessorLambdaProps {
   itemTable: IDataTable;

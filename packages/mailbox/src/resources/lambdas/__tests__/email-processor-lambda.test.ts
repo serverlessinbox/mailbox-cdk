@@ -17,10 +17,10 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataBlobStore }                        from '../../data/data-blob-store';
-import { DataTable }                            from '../../data/data-tables';
-import { EmailProcessingQueue }                 from '../../email/receiving/email-processing-queue';
-import { EmailProcessorLambda }                 from '../email-processor';
+import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataTable }                            from '../../../data/data-tables';
+import { EmailProcessingQueue }                 from '../../../email/receiving/email-processing-queue';
+import { EmailProcessorLambda }                 from '../email-processor-lambda';
 
 describe('EmailProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;

@@ -32,7 +32,7 @@ import { LicenseRefresh }                                                       
 import { StackFailureDetection, SendStackFailuresMode }                                                        from './features/stack-failure-detection';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
 import type { IResourceRemoval }                                                                               from './features/sweeper';
-import { EmailProcessorLambda }                                                                                from './lambdas/email-processor';
+import { EmailProcessorLambda }                                                                                from './resources/lambdas/email-processor-lambda';
 import { IdentityProvisionerLambda }                                                                           from './lambdas';
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';

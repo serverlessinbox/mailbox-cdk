@@ -4,7 +4,7 @@ import * as lambda                                  from 'aws-cdk-lib/aws-lambda
 import { Construct }                                from 'constructs';
 
 import type { IDataTable }                          from '../../data/data-tables';
-import { AuditWriterLambda }                        from '../../lambdas';
+import { AuditWriterLambda }                        from '../../resources/lambdas/audit-writer-lambda';
 
 import { AuditEventsQueue, type IAuditEventsQueue } from './audit-events-queue';
 

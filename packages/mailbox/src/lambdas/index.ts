@@ -11,9 +11,6 @@
  * - Centralized memory/timeout settings
  */
 
-export { EmailProcessorLambda } from './email-processor';
-export type { EmailProcessorLambdaProps } from './email-processor';
-
 export { ApiHandlerLambda } from './jmap-api';
 export type { ApiHandlerLambdaProps } from './jmap-api';
 
@@ -38,20 +35,8 @@ export type { WebSocketMessageLambdaProps } from './websocket-message';
 export { WebSocketBroadcastLambda } from './websocket-broadcast';
 export type { WebSocketBroadcastLambdaProps } from './websocket-broadcast';
 
-export { SESEventProcessorLambda } from './ses-event-processor';
-export type { SESEventProcessorLambdaProps } from './ses-event-processor';
-
-export { EmailSenderLambda } from './email-sender';
-export type { EmailSenderLambdaProps } from './email-sender';
-
-export { TantivyIndexerLambda } from './tantivy-indexer';
-export type { TantivyIndexerLambdaProps } from './tantivy-indexer';
-
 export { AuthKeyStoreUpdaterLambda } from './auth-key-store-updater';
 export type { AuthKeyStoreUpdaterLambdaProps } from './auth-key-store-updater';
-
-export { AuditWriterLambda } from './audit-writer';
-export type { AuditWriterLambdaProps } from './audit-writer';
 
 export { BootstrapLambda } from './bootstrap';
 export type { BootstrapLambdaProps } from './bootstrap';
@@ -82,6 +67,3 @@ export type { StackFailureDetectorLambdaProps } from './stack-failure-detector';
 
 export { McpApiLambda } from './mcp-api';
 export type { McpApiLambdaProps } from './mcp-api';
-
-export { DataOverrideResolverLambda } from './data-override-resolver';
-export type { DataOverrideResolverLambdaProps } from './data-override-resolver';

@@ -18,11 +18,11 @@ import { Topic }                                from 'aws-cdk-lib/aws-sns';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataBlobStore }                        from '../../data/data-blob-store';
-import { DataTable }                            from '../../data/data-tables';
-import { SesEventQueue }                        from '../../email/ses-events/ses-event-queue';
-import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
-import { SESEventProcessorLambda }              from '../ses-event-processor';
+import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataTable }                            from '../../../data/data-tables';
+import { SesEventQueue }                        from '../../../email/ses-events/ses-event-queue';
+import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { SESEventProcessorLambda }              from '../ses-event-processor-lambda';
 
 describe('SESEventProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;

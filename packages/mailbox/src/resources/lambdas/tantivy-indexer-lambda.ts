@@ -3,8 +3,8 @@ import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import type { IDataBlobStore }    from '../data/data-blob-store';
-import type { IDataTable }        from '../data/data-tables';
+import type { IDataBlobStore }    from '../../data/data-blob-store';
+import type { IDataTable }        from '../../data/data-tables';
 
 export interface TantivyIndexerLambdaProps {
   indexBucket: IDataBlobStore;

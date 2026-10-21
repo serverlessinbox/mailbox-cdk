@@ -12,7 +12,7 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataOverrideResolverLambda }           from '../data-override-resolver';
+import { DataOverrideResolverLambda }           from '../data-override-resolver-lambda';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {

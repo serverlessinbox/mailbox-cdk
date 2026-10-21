@@ -4,10 +4,10 @@ import { Effect, PolicyStatement }                                 from 'aws-cdk
 import { Aws, Duration }                                           from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../api/websocket/websocket';
-import type { IDataBlobStore }                                     from '../data/data-blob-store';
-import type { IDataTable }                                         from '../data/data-tables';
-import type { IEmailSendingQueueConsumer }                         from '../email/sending/email-sending-queue';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import type { IDataBlobStore }                                     from '../../data/data-blob-store';
+import type { IDataTable }                                         from '../../data/data-tables';
+import type { IEmailSendingQueueConsumer }                         from '../../email/sending/email-sending-queue';
 
 export interface EmailSenderLambdaProps {
   configTable: IDataTable;

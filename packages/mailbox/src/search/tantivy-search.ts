@@ -8,7 +8,7 @@ import { Construct }                  from 'constructs';
 
 import type { IDataBlobStore }        from '../data/data-blob-store';
 import type { IDataTable }            from '../data/data-tables';
-import { TantivyIndexerLambda }       from '../lambdas';
+import { TantivyIndexerLambda }       from '../resources/lambdas/tantivy-indexer-lambda';
 
 import { TantivyIndexingScheduleDlq } from './tantivy-indexing-schedule-dlq';
 

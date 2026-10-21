@@ -3,7 +3,7 @@ import { GoLambda }                   from '@serverlessinbox/mailbox-cdk-shared'
 import { Duration }                   from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
-import type { IEmailProcessingQueue } from '../email/receiving/email-processing-queue';
+import type { IEmailProcessingQueue } from '../../email/receiving/email-processing-queue';
 
 export interface SesReceiptForwarderLambdaProps {
   emailProcessorQueue: IEmailProcessingQueue;
