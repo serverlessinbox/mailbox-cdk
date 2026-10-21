@@ -20,8 +20,8 @@ import { ReceiptRuleSet }                                                       
 import * as cdk                                                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                             from 'aws-cdk-lib';
 
-import { DataTable }                                                                 from '../../tables/data-tables';
 import { AuthKeyStoreTable }                                                         from '../../tables/auth-key-store-table';
+import { DataTable }                                                                 from '../../tables/data-tables';
 import { BootstrapLambda }                                                           from '../bootstrap-lambda';
 import type { BootstrapLambdaProps }                                                 from '../bootstrap-lambda';
 
@@ -61,8 +61,7 @@ describe('BootstrapLambda', () => {
       artifactResolver,
       domain: 'example.com',
       sesRuleSet,
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     });
 

@@ -19,6 +19,7 @@ export { GateOnConditionAspect } from './gate-on-condition-aspect';
 
 // Vendor account resolution
 export { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from './context/vendor-account';
+export type { VendorLink } from './context/vendor-account';
 
 // Deployer type resolution
 export { resolveDeployerType } from './context/deployer-type';

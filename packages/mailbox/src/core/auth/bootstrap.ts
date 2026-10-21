@@ -1,9 +1,15 @@
-import type { IArtifactResolver }   from '@serverlessinbox/artifact-registry-cdk';
-import type { IFunction }           from 'aws-cdk-lib/aws-lambda';
-import * as route53                 from 'aws-cdk-lib/aws-route53';
-import { IReceiptRuleSet }          from 'aws-cdk-lib/aws-ses';
-import { CustomResource, Duration } from 'aws-cdk-lib';
-import { Construct, IDependable }   from 'constructs';
+import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import type { VendorLink }                           from '@serverlessinbox/mailbox-cdk-shared';
+import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
+import * as route53                                  from 'aws-cdk-lib/aws-route53';
+import { IReceiptRuleSet }                           from 'aws-cdk-lib/aws-ses';
+import { CustomResource, Duration }                  from 'aws-cdk-lib';
+import { Construct, IDependable }                    from 'constructs';
+
+import { BOOTSTRAP_LAMBDA_TIMEOUT, BootstrapLambda } from '../../resources/lambdas/bootstrap-lambda';
+import type { IAuthKeyStoreTable }                   from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                           from '../../resources/tables/data-tables';
+import type { SesReceivingMode }                     from '../email/ses-receiving-mode';
 
 import type {
   AuthPoliciesConfig,
@@ -11,10 +17,6 @@ import type {
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
 } from './types';
-import type { SesReceivingMode }    from '../email/ses-receiving-mode';
-import type { IDataTable }          from '../../resources/tables/data-tables';
-import { BOOTSTRAP_LAMBDA_TIMEOUT, BootstrapLambda } from '../../resources/lambdas/bootstrap-lambda';
-import type { IAuthKeyStoreTable }  from '../../resources/tables/auth-key-store-table';
 
 const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);
 
@@ -39,10 +41,8 @@ export interface BootstrapProps {
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
   readonly hostedZone?: route53.IHostedZone;
-  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
-  readonly vendorAccountIds: string[];
-  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
-  readonly stackIdentityTagKey: string;
+  /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources, resolved by the caller. */
+  readonly vendorLink: VendorLink;
 }
 
 /**
@@ -67,8 +67,7 @@ export class Bootstrap extends Construct {
       sesReceivingMode: props.sesReceivingMode,
       sesSendEnabled: props.sesSendEnabled,
       hostedZone: props.hostedZone,
-      vendorAccountIds: props.vendorAccountIds,
-      stackIdentityTagKey: props.stackIdentityTagKey,
+      vendorLink: props.vendorLink,
     });
 
     const bootstrapResource      = new CustomResource(this, 'resource', {

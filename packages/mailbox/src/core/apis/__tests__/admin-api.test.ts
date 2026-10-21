@@ -23,14 +23,14 @@ import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import { DataBlobStore }                             from '../../../resources/buckets/data-blob-store';
-import { DataTable }                                 from '../../../resources/tables/data-tables';
-import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
 import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                 from '../../../resources/tables/data-tables';
 import type { IAdminApiAddon }                       from '../addons';
-import type { IWebSocketBroadcastPublisher }         from '../websocket';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
+import type { IWebSocketBroadcastPublisher }         from '../websocket';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;
@@ -66,8 +66,7 @@ describe('AdminApi', () => {
       sesRuleSetName: 'test-rule-set',
       sesConfigSetName: 'test-config-set',
       systemSenderAddress: 'noreply@example.com',
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     };
   }

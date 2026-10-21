@@ -1,5 +1,6 @@
 import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
 import { applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                               from '@serverlessinbox/mailbox-cdk-shared';
 import type * as route53                                 from 'aws-cdk-lib/aws-route53';
 import type { IReceiptRuleSet }                          from 'aws-cdk-lib/aws-ses';
 import { Construct, DependencyGroup }                    from 'constructs';
@@ -61,7 +62,7 @@ export interface AuthSectionProps {
   readonly authProvider: IMailboxAuthProvider;
   readonly data: IAuthDataInputs;
   readonly email: IAuthEmailInputs;
-  readonly vendorAccountIds: string[];
+  readonly vendorLink: VendorLink;
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
   readonly adminUiUrl?: string;
 }
@@ -72,7 +73,6 @@ export interface AuthBootstrapProps {
   readonly ui: IAuthBootstrapUiInputs;
   readonly edge: IAuthBootstrapEdgeInputs;
   readonly sesReceivingMode?: SesReceivingMode;
-  readonly stackIdentityTagKey: string;
 }
 
 /** The auth key store, the identity provisioner and, once the UIs exist, the bootstrap. */
@@ -113,7 +113,7 @@ export class AuthSection extends Construct {
       emailSubmissionQueue: props.email.submissionQueue,
       sesConfigSetName: props.email.sesConfigSetName,
       systemSenderAddress: `noreply@${props.data.derivedDomainName}`,
-      vendorAccountIds: props.vendorAccountIds,
+      vendorAccountIds: props.vendorLink.vendorAccountIds,
     });
   }
 
@@ -135,8 +135,7 @@ export class AuthSection extends Construct {
       sesReceivingMode: props.sesReceivingMode,
       sesSendEnabled: true,
       hostedZone: props.edge.hostedZone,
-      vendorAccountIds: this.props.vendorAccountIds,
-      stackIdentityTagKey: props.stackIdentityTagKey,
+      vendorLink: this.props.vendorLink,
 
       oidcProvider: {
         tokenEndpoint: authProvider.tokenEndpoint,

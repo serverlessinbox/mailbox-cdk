@@ -1,4 +1,5 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { VendorLink }        from '@serverlessinbox/mailbox-cdk-shared';
 import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
@@ -14,15 +15,16 @@ import * as acm                                                    from 'aws-cdk
 import { Duration, Aws, CfnResource }                              from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API }                                   from '../auth/types';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
-import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
-import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
-import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
 import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
 import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import { AUTH_POLICY_ADMIN_API }                                   from '../auth/types';
+
 import type { IAdminApiAddon }                                     from './addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from './websocket';
 
@@ -60,10 +62,8 @@ export interface AdminApiProps {
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
-  /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
-  readonly vendorAccountIds: string[];
-  /** IAM tag key used to identify resources belonging to this stack, sourced from the tag-key registry. */
-  readonly stackIdentityTagKey: string;
+  /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources, resolved by the caller. */
+  readonly vendorLink: VendorLink;
 }
 
 /**
@@ -143,8 +143,7 @@ export class AdminApi extends Construct {
       sesConfigSetName: props.sesConfigSetName,
       identityProvisioner: props.identityProvisioner,
       systemSenderAddress: props.systemSenderAddress,
-      vendorAccountIds: props.vendorAccountIds,
-      stackIdentityTagKey: props.stackIdentityTagKey,
+      vendorLink: props.vendorLink,
     });
     this.apiHandlerLambda  = apiHandlerLambda;
 

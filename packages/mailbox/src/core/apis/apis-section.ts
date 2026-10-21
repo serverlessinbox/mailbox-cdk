@@ -1,5 +1,6 @@
 import type { IArtifactResolver }                                                           from '@serverlessinbox/artifact-registry-cdk';
 import { applyServerlessInboxComponentTag }                                                 from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
 import type * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
 import type * as route53                                                                    from 'aws-cdk-lib/aws-route53';
 import { Construct }                                                                        from 'constructs';
@@ -74,8 +75,7 @@ export interface ApisSectionProps {
   readonly data: IApisDataInputs;
   readonly auth: IApisAuthInputs;
   readonly email: IApisEmailInputs;
-  readonly vendorAccountIds: string[];
-  readonly stackIdentityTagKey: string;
+  readonly vendorLink: VendorLink;
   /** The JMAP API's base URL as the JMAP addons see it. */
   readonly jmapApiBaseUrl: string;
 }
@@ -208,7 +208,7 @@ export class ApisSection extends Construct {
 
       jmapApiAddons: this.jmapApiAddons,
       oauthIssuerUrl: this.props.authProvider.jmapOAuthIssuerUrl?.(),
-      vendorAccountIds: this.props.vendorAccountIds,
+      vendorAccountIds: this.props.vendorLink.vendorAccountIds,
 
       // WebSocket URL will be passed via environment variable, not here
     });
@@ -252,8 +252,7 @@ export class ApisSection extends Construct {
       allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : undefined,
       artifactResolver: this.props.artifactResolver,
       identityProvisioner: auth.identityProvisioner,
-      vendorAccountIds: this.props.vendorAccountIds,
-      stackIdentityTagKey: this.props.stackIdentityTagKey,
+      vendorLink: this.props.vendorLink,
 
       addons: this.adminApiAddons,
 

@@ -6,15 +6,15 @@ import {
   resolveDeployerType,
   resolveVendorAccountIds,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import { Aws }                              from 'aws-cdk-lib';
-import type { Construct }                   from 'constructs';
+import type { ServerlessInboxDeployerType, VendorLink } from '@serverlessinbox/mailbox-cdk-shared';
+import { Aws }                                          from 'aws-cdk-lib';
+import type { Construct }                               from 'constructs';
 
-import { loadMailboxArtifactVersions }      from './mailbox-artifact-versions';
-import type { MailboxProps }                from './mailbox-props';
-import { loadMailboxRegistryRecord }        from './mailbox-registry-record';
-import { resolveMailboxEncryptionPlan }     from './core/mailbox-encryption';
-import type { MailboxEncryptionPlan }       from './core/mailbox-encryption';
+import { resolveMailboxEncryptionPlan }                 from './core/mailbox-encryption';
+import type { MailboxEncryptionPlan }                   from './core/mailbox-encryption';
+import { loadMailboxArtifactVersions }                  from './mailbox-artifact-versions';
+import type { MailboxProps }                            from './mailbox-props';
+import { loadMailboxRegistryRecord }                    from './mailbox-registry-record';
 
 /** The `MailboxProps` fields the foundation is resolved from. */
 type MailboxContextProps = Pick<MailboxProps, 'artifactResolver' | 'kms'>;
@@ -32,15 +32,17 @@ export class MailboxContext {
     public readonly artifactResolver: IArtifactResolver,
     public readonly stackVersion: string,
     public readonly deployerType: ServerlessInboxDeployerType,
-    public readonly vendorAccountIds: string[],
-    public readonly stackIdentityTagKey: string,
+    public readonly vendorLink: VendorLink,
     public readonly encryptionPlan: MailboxEncryptionPlan,
   ) {}
 
   /** Resolves the foundation under `scope` and applies the base tags to it. */
   public static resolve(scope: Construct, props: MailboxContextProps): MailboxContext {
-    const deployerType     = resolveDeployerType(scope);
-    const vendorAccountIds = resolveVendorAccountIds(scope);
+    const deployerType           = resolveDeployerType(scope);
+    const vendorLink: VendorLink = {
+      vendorAccountIds: resolveVendorAccountIds(scope),
+      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+    };
 
     // The supplied resolver wins; otherwise one is pinned from the package's baked versions,
     // overridden by CDK context.
@@ -62,8 +64,7 @@ export class MailboxContext {
       artifactResolver,
       stackVersion,
       deployerType,
-      vendorAccountIds,
-      ServerlessInboxTagKeys.rootStack,
+      vendorLink,
       encryptionPlan,
     );
   }

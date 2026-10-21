@@ -17,11 +17,11 @@ import { ReceiptRuleSet }                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
-import type { OAuthAuthorizationCodeClientConfig }   from '../types';
-import { DataTable }                                 from '../../../resources/tables/data-tables';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                 from '../../../resources/tables/data-tables';
 import { Bootstrap }                                 from '../bootstrap';
 import type { BootstrapProps }                       from '../bootstrap';
+import type { OAuthAuthorizationCodeClientConfig }   from '../types';
 
 describe('Bootstrap', () => {
   let stack: cdk.Stack;
@@ -44,8 +44,7 @@ describe('Bootstrap', () => {
       domain: 'example.com',
       oidcIssuer: 'https://example.com/issuer',
       sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}),
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     });
   }

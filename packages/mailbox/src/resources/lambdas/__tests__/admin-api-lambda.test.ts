@@ -25,9 +25,9 @@ import { App, BootstraplessSynthesizer }                            from 'aws-cd
 
 import type { IWebSocketBroadcastPublisher }                        from '../../../core/apis/websocket';
 import { DataBlobStore }                                            from '../../buckets/data-blob-store';
-import { DataTable }                                                from '../../tables/data-tables';
-import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';
 import { AuditEventsQueue }                                         from '../../queues/audit-events-queue';
+import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';
+import { DataTable }                                                from '../../tables/data-tables';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
 
 describe('AdminApiLambda IAM scoping', () => {
@@ -91,8 +91,7 @@ describe('AdminApiLambda IAM scoping', () => {
       sesRuleSetName: 'test-rule-set',
       sesConfigSetName: 'test-config-set',
       systemSenderAddress: 'noreply@example.com',
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
     });
   });
 

@@ -3,6 +3,15 @@ import { Construct }                      from 'constructs';
 import { VENDOR_ACCOUNT_IDS_CONTEXT_KEY } from './context-keys';
 
 /**
+ * The vendor-side values a stack is wired to: the vendor AWS accounts that may call into it, and
+ * the tag key that identifies the stack in their policies. They are always supplied together.
+ */
+export interface VendorLink {
+  readonly vendorAccountIds: string[];
+  readonly stackIdentityTagKey: string;
+}
+
+/**
  * Built-in ServerlessInbox production vendor AWS account ID.
  * It appears in the support-hop role's static trust policy (as a :root principal) and is
  * customer-readable in the template. Overridden via the VENDOR_ACCOUNT_IDS_CONTEXT_KEY CDK

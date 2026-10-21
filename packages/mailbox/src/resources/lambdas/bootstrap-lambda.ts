@@ -1,15 +1,15 @@
-import type { IArtifactResolver }                                                         from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                                                 from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                                from 'aws-cdk-lib/aws-iam';
-import type { IHostedZone }                                                               from 'aws-cdk-lib/aws-route53';
-import type { IReceiptRuleSet }                                                           from 'aws-cdk-lib/aws-ses';
-import { Aws, Duration, Stack }                                                           from 'aws-cdk-lib';
-import { Construct }                                                                      from 'constructs';
+import type { IArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                                          from 'aws-cdk-lib/aws-iam';
+import type { IHostedZone }                                                                         from 'aws-cdk-lib/aws-route53';
+import type { IReceiptRuleSet }                                                                     from 'aws-cdk-lib/aws-ses';
+import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
+import { Construct }                                                                                from 'constructs';
 
-import type { SesReceivingMode }                                                          from '../../core/email/ses-receiving-mode';
-import type { IDataTable }                                                                from '../tables/data-tables';
-import type { IAuthKeyStoreTable }                                                        from '../tables/auth-key-store-table';
+import type { SesReceivingMode }                                                                    from '../../core/email/ses-receiving-mode';
+import type { IAuthKeyStoreTable }                                                                  from '../tables/auth-key-store-table';
+import type { IDataTable }                                                                          from '../tables/data-tables';
 
 export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
 
@@ -25,10 +25,8 @@ export interface BootstrapLambdaProps {
   readonly sesSendEnabled?: boolean;
   /** When present, the bootstrap role may manage records in this hosted zone. */
   readonly hostedZone?: IHostedZone;
-  /** AWS account IDs hosting the vendor service API. Scopes the execute-api:Invoke permission. */
-  readonly vendorAccountIds: string[];
-  /** IAM tag key identifying this stack's resources. Set as STACK_IDENTITY_TAG_KEY and used in the ses:TagResource condition. */
-  readonly stackIdentityTagKey: string;
+  /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources (set as STACK_IDENTITY_TAG_KEY, used in the ses:TagResource condition). */
+  readonly vendorLink: VendorLink;
 }
 
 /**
@@ -47,7 +45,7 @@ export class BootstrapLambda extends GoLambda {
         CONFIG_TABLE_NAME: props.configTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
-        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+        STACK_IDENTITY_TAG_KEY: props.vendorLink.stackIdentityTagKey,
         ROOT_STACK_ID: StackIdentity.guid,
         SES_RULE_SET_NAME: props.sesRuleSet.receiptRuleSetName,
         ...(props.sesReceivingMode ? { SES_RECEIVING_MODE: props.sesReceivingMode } : {}),
@@ -60,7 +58,7 @@ export class BootstrapLambda extends GoLambda {
     props.configTable.grantReadWrite(this);
     props.authKeyStoreTable.grantReadWrite(this);
 
-    this.grantLicenseApiAccess(props.vendorAccountIds);
+    this.grantLicenseApiAccess(props.vendorLink.vendorAccountIds);
     this.grantSesReceiptRuleSetActivation();
 
     if (props.hostedZone) {
@@ -68,7 +66,7 @@ export class BootstrapLambda extends GoLambda {
     }
 
     this.grantSesEmailIdentityRegistration(props.domain);
-    this.grantSesEmailIdentityStackTagging(props.domain, props.stackIdentityTagKey);
+    this.grantSesEmailIdentityStackTagging(props.domain, props.vendorLink.stackIdentityTagKey);
     this.grantOwnStackStatusRead();
   }
 

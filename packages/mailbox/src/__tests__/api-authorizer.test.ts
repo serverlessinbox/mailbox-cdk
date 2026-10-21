@@ -27,10 +27,10 @@ import { McpApi }                                     from '../core/apis/mcp-api
 import { Permission }                                 from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }                  from '../core/auth/types';
 import { DataBlobStore, type IDataBlobStore }         from '../resources/buckets/data-blob-store';
-import { DataTable, type IDataTable }                 from '../resources/tables/data-tables';
-import { EmailSendingQueue, type IEmailSendingQueue } from '../resources/queues/email-sending-queue';
 import { AuditEventsQueue, type IAuditEventsQueue }   from '../resources/queues/audit-events-queue';
+import { EmailSendingQueue, type IEmailSendingQueue } from '../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../resources/tables/auth-key-store-table';
+import { DataTable, type IDataTable }                 from '../resources/tables/data-tables';
 
 import {
   CloudFormationResource,
@@ -217,8 +217,7 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorAccountIds: ['123456789012'],
-        stackIdentityTagKey: 'serverless-inbox:root-stack',
+        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template  = Template.fromStack(stack);
@@ -263,8 +262,7 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorAccountIds: ['123456789012'],
-        stackIdentityTagKey: 'serverless-inbox:root-stack',
+        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template  = Template.fromStack(stack);
@@ -296,8 +294,7 @@ describe('API Authorizer Wiring', () => {
         sesRuleSetName: 'test-rule-set',
         sesConfigSetName: 'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorAccountIds: ['123456789012'],
-        stackIdentityTagKey: 'serverless-inbox:root-stack',
+        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template = Template.fromStack(stack);

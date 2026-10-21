@@ -87,8 +87,7 @@ describe('ApisSection', () => {
         sesRuleSetName: 'rule-set',
         sesConfigSetName: 'config-set',
       },
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      stackIdentityTagKey: 'serverless-inbox:stack',
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
       jmapApiBaseUrl: 'https://jmap.example.com',
     });
   }

@@ -1,17 +1,17 @@
-import type { IArtifactResolver }                                                         from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                                                 from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, Effect }                                                        from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration, Stack }                                                           from 'aws-cdk-lib';
-import { Construct }                                                                      from 'constructs';
+import type { IArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement, Effect }                                                                  from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
+import { Construct }                                                                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                        from '../../core/apis/websocket';
-import type { IDataBlobStore }                                                            from '../buckets/data-blob-store';
-import type { IDataTable }                                                                from '../tables/data-tables';
-import type { IEmailSendingQueue }                                                        from '../queues/email-sending-queue';
-import type { IAuditEventsQueue }                                                         from '../queues/audit-events-queue';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../core/apis/websocket';
+import type { IDataBlobStore }                                                                      from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                                                   from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                                                  from '../queues/email-sending-queue';
+import type { IDataTable }                                                                          from '../tables/data-tables';
 
-import type { IIdentityProvisioner }                                                      from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
 
 export interface AdminApiLambdaProps {
   readonly configTable: IDataTable;
@@ -30,10 +30,8 @@ export interface AdminApiLambdaProps {
   readonly sesConfigSetName: string;
   /** System sender email address (e.g. noreply@example.com). Used for sending system emails. */
   readonly systemSenderAddress: string;
-  /** AWS account IDs hosting the vendor service API. Scopes the execute-api:Invoke permission. */
-  readonly vendorAccountIds: string[];
-  /** IAM tag key identifying this stack's resources. Set as STACK_IDENTITY_TAG_KEY and used in the ses:TagResource condition. */
-  readonly stackIdentityTagKey: string;
+  /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources (set as STACK_IDENTITY_TAG_KEY, used in the ses:TagResource condition). */
+  readonly vendorLink: VendorLink;
 }
 
 /**
@@ -62,7 +60,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
         STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
-        STACK_IDENTITY_TAG_KEY: props.stackIdentityTagKey,
+        STACK_IDENTITY_TAG_KEY: props.vendorLink.stackIdentityTagKey,
         ROOT_STACK_ID: StackIdentity.guid,
         SES_RULE_SET_NAME: props.sesRuleSetName,
       },
@@ -70,7 +68,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
     this.grantStatusAccess();
     this.grantSesIdentityManagement();
-    this.grantSesIdentityStackTagging(props.stackIdentityTagKey);
+    this.grantSesIdentityStackTagging(props.vendorLink.stackIdentityTagKey);
     this.grantSesSending(props.sesConfigSetName);
     this.grantSesAccountReads();
     this.grantDkimAndDmarcRecordWrites();
@@ -79,7 +77,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.grantHostedZoneLookup();
     this.denyAcmeChallengeRecordWrites();
     this.grantServiceQuotasAccess();
-    this.grantLicenseApiAccess(props.vendorAccountIds);
+    this.grantLicenseApiAccess(props.vendorLink.vendorAccountIds);
     this.grantSesReceivingAccess();
 
     props.auditLogTable.grantRead(this);

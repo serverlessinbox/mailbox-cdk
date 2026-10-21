@@ -42,10 +42,10 @@ export class Mailbox extends Construct {
     super(scope, id);
 
     // Resolved once here, as the composition root, and threaded down as props.
-    const context                                                                   = MailboxContext.resolve(this, props);
-    const { artifactResolver, deployerType, vendorAccountIds, stackIdentityTagKey } = context;
-    const queueProps                                                                = context.encryptionPlan.queues;
-    const enabledUis                                                                = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
+    const context                                        = MailboxContext.resolve(this, props);
+    const { artifactResolver, deployerType, vendorLink } = context;
+    const queueProps                                     = context.encryptionPlan.queues;
+    const enabledUis                                     = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
     const data = new DataSection(this, 'data', {
       artifactResolver,
@@ -65,7 +65,7 @@ export class Mailbox extends Construct {
       authProvider: props.authProvider,
       data,
       email,
-      vendorAccountIds,
+      vendorLink,
       adminUiUrl: addressing.urls.adminUi,
     });
 
@@ -87,8 +87,7 @@ export class Mailbox extends Construct {
       data,
       auth,
       email,
-      vendorAccountIds,
-      stackIdentityTagKey,
+      vendorLink,
       jmapApiBaseUrl: addressing.urls.jmapApi,
     });
 
@@ -120,11 +119,11 @@ export class Mailbox extends Construct {
 
     edge.addDns({ ui, blobCdn, apis: endpoints });
 
-    auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving, stackIdentityTagKey });
+    auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });
 
     new SearchSection(this, 'search', { artifactResolver, data, queueProps });
 
-    new OpsSection(this, 'ops', { artifactResolver, vendorAccountIds, sendStackFailures: props.sendStackFailures, data, edge });
+    new OpsSection(this, 'ops', { artifactResolver, vendorAccountIds: vendorLink.vendorAccountIds, sendStackFailures: props.sendStackFailures, data, edge });
 
     this.urls         = addressing.urls;
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };

@@ -64,7 +64,7 @@ describe('AuthSection', () => {
         submissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
         sesConfigSetName: 'config-set',
       },
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
     });
   }
 
@@ -81,7 +81,6 @@ describe('AuthSection', () => {
       email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
       ui: {},
       edge: {},
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     });
 
     Template.fromStack(stack);
@@ -109,7 +108,6 @@ describe('AuthSection', () => {
       email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
       ui: {},
       edge: {},
-      stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     });
 
     expect(section.node.tryFindChild('bootstrap')).toBeDefined();
