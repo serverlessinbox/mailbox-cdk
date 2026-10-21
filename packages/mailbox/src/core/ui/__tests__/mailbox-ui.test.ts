@@ -132,15 +132,26 @@ describe('MailboxUi', () => {
     it('lets CloudFront read objects and nothing else', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const template  = Template.fromStack(stack);
-      const bucketArn = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
+      const template       = Template.fromStack(stack);
+      const bucketArn      = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
+      const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
       template.hasResourceProperties('AWS::S3::BucketPolicy', {
         PolicyDocument: {
           Statement: Match.arrayEquals([
             Match.objectEquals({
               Action: 's3:GetObject',
               Effect: 'Allow',
-              Principal: { CanonicalUser: Match.anyValue() },
+              Principal: { Service: 'cloudfront.amazonaws.com' },
+              Condition: {
+                StringEquals: {
+                  'AWS:SourceArn': {
+                    'Fn::Join': ['', [
+                      'arn:', { Ref: 'AWS::Partition' }, ':cloudfront::', { Ref: 'AWS::AccountId' },
+                      ':distribution/', { Ref: distributionId },
+                    ]],
+                  },
+                },
+              },
               Resource: { 'Fn::Join': ['', [bucketArn, '/*']] },
             }),
           ]),

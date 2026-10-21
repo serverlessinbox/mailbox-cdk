@@ -4,14 +4,11 @@ import {
   BucketAutoEmpty,
   StaticContentDeployer,
   StaticContentSource,
-  S3Actions,
-  grantObjectActions,
-  grantListBucket,
   slugifyLabel,
   ServerlessInboxTagKeys,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm                       from 'aws-cdk-lib/aws-certificatemanager';
-import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { HttpOrigin }                 from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   AllowedMethods,
   CachePolicy,
@@ -20,12 +17,11 @@ import {
   FunctionCode,
   FunctionEventType,
   IDistribution,
-  OriginAccessIdentity,
   OriginRequestPolicy,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import * as iam                            from 'aws-cdk-lib/aws-iam';
-import { Aws, Fn, Tags }                   from 'aws-cdk-lib';
+import { Fn, Tags }                        from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
 import { UiBucket }                        from '../../resources/buckets/ui-bucket';
@@ -114,31 +110,13 @@ export class MailboxUi extends Construct {
 
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
-    const originAccessIdentity = new OriginAccessIdentity(this, 'origin-access-identity', {
-      comment: `Mailbox ${Aws.STACK_NAME} ${props.label} OAI`,
-    });
-
-    // The OAI only fetches individual objects: defaultRootObject and both custom error-page paths
-    // resolve to specific keys, never a listing. s3:GetObject is therefore the whole grant.
-    this.bucket.grantObjectReadTo(originAccessIdentity.grantPrincipal);
-
-    const contentOrigin = S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
-      originAccessIdentity,
-      originPath: '/content',
-    });
-
-    const configOrigin = S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
-      originAccessIdentity,
-      originPath: '',
-    });
-
     const distribution = new Distribution(this, 'distribution', {
       comment: `Mailbox ${props.label}`,
       defaultRootObject: 'index.html',
       domainNames: props.certificate ? [props.domainName] : undefined,
       certificate: props.certificate,
       defaultBehavior: {
-        origin: contentOrigin,
+        origin: this.bucket.contentOrigin(),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
         compress: true,
@@ -160,7 +138,7 @@ export class MailboxUi extends Construct {
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.
-    distribution.addBehavior('/config/*', configOrigin, {
+    distribution.addBehavior('/config/*', this.bucket.configOrigin(), {
       viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       cachePolicy: CachePolicy.CACHING_DISABLED,
       compress: true,
@@ -187,10 +165,7 @@ export class MailboxUi extends Construct {
    * resource type. A tag condition on these actions therefore denies the write.
    */
   grantContentDeploy(grantee: iam.IGrantable): void {
-    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'content/*');
-    grantObjectActions(grantee, this.bucket, [...S3Actions.write, ...S3Actions.delete], 'config/*');
-    grantListBucket(grantee, this.bucket, 'content/*');
-    grantListBucket(grantee, this.bucket, 'config/*');
+    this.bucket.grantContentDeploy(grantee);
   }
 
   private addUiDeployment(props: MailboxUiProps): void {

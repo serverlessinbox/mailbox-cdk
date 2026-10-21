@@ -1,5 +1,5 @@
 import { ServerlessInboxTagKeys }        from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }               from 'aws-cdk-lib/assertions';
+import { Capture, Match, Template }      from 'aws-cdk-lib/assertions';
 import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda                       from 'aws-cdk-lib/aws-lambda';
 import * as s3                           from 'aws-cdk-lib/aws-s3';
@@ -119,6 +119,17 @@ describe('Cdn', () => {
       });
       expect(JSON.stringify(stack.resolve(cdn.host))).toContain('DomainName');
     });
+  });
+
+  it('names the Origin Access Control with the install id', () => {
+    const { template } = synthesizeCdn();
+    const name         = new Capture();
+
+    template.hasResourceProperties('AWS::CloudFront::OriginAccessControl', {
+      OriginAccessControlConfig: Match.objectLike({ Name: name }),
+    });
+
+    expect(JSON.stringify(name.asObject())).toContain('"Ref":"AWS::StackId"');
   });
 
   it('runs the given Lambda@Edge version at origin-request', () => {

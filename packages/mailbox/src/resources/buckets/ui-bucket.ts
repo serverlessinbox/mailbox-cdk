@@ -1,34 +1,73 @@
-import { StackNamedBucket }            from '@serverlessinbox/mailbox-cdk-shared';
-import { IPrincipal, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { BlockPublicAccess }           from 'aws-cdk-lib/aws-s3';
-import { RemovalPolicy }               from 'aws-cdk-lib';
-import { Construct }                   from 'constructs';
+import {
+  StackNamedBucket,
+  S3Actions,
+  makePhysicalName,
+  grantObjectActions,
+  grantListBucket,
+} from '@serverlessinbox/mailbox-cdk-shared';
+import { S3BucketOrigin }    from 'aws-cdk-lib/aws-cloudfront-origins';
+import {
+  IOrigin,
+  IOriginAccessControl,
+  S3OriginAccessControl,
+} from 'aws-cdk-lib/aws-cloudfront';
+import { IGrantable }        from 'aws-cdk-lib/aws-iam';
+import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { RemovalPolicy }     from 'aws-cdk-lib';
+import { Construct }         from 'constructs';
 
 /**
  * The static-content bucket behind one UI's CloudFront distribution.
  *
- * Fully private, destroyed with the stack, and created with ABAC enabled.
+ * Fully private, destroyed with the stack, and created with ABAC enabled. It is the S3 side of the
+ * UI's distribution: it hands out the two origins that read it through Origin Access Control and the
+ * grant that lets a deployer write the static content.
  */
 export class UiBucket extends StackNamedBucket {
+  private readonly originAccessControl: IOriginAccessControl;
+
   constructor(scope: Construct, id: string) {
     super(scope, id, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
       abacStatus: true,
     });
+
+    this.originAccessControl = new S3OriginAccessControl(this, 'origin-access-control', {
+      originAccessControlName: makePhysicalName(this, 'origin-access-control', { maxLength: 64 }),
+    });
+  }
+
+  /** The origin serving the UI bundle from the `/content` prefix. */
+  contentOrigin(): IOrigin {
+    return S3BucketOrigin.withOriginAccessControl(this, {
+      originAccessControl: this.originAccessControl,
+      originPath: '/content',
+    });
+  }
+
+  /** The origin serving the runtime config from the bucket root, so `/config/*` maps to the `config/` prefix. */
+  configOrigin(): IOrigin {
+    return S3BucketOrigin.withOriginAccessControl(this, {
+      originAccessControl: this.originAccessControl,
+      originPath: '',
+    });
   }
 
   /**
-   * Allows `principal` to read individual objects through the bucket's resource policy. `s3:GetObject`
-   * only: listing the bucket is not granted.
+   * Grants `grantee` exactly the S3 actions needed to deploy static content into this bucket:
+   * `s3:PutObject`/`s3:DeleteObject` on the `content/` and `config/` prefixes, and `s3:ListBucket`
+   * scoped to list only those prefixes.
+   *
+   * The grant is scoped by this bucket's ARN and key patterns, never by tag: `aws:ResourceTag`
+   * reads the still-untagged object being written, and `s3:BucketTag` is not honored for
+   * `PutObject` even though it is listed as a supported condition key on the S3 `object`
+   * resource type. A tag condition on these actions therefore denies the write.
    */
-  grantObjectReadTo(principal: IPrincipal): void {
-    this.addToResourcePolicy(
-      new PolicyStatement({
-        actions: ['s3:GetObject'],
-        resources: [this.arnForObjects('*')],
-        principals: [principal],
-      }),
-    );
+  grantContentDeploy(grantee: IGrantable): void {
+    grantObjectActions(grantee, this, [...S3Actions.write, ...S3Actions.delete], 'content/*');
+    grantObjectActions(grantee, this, [...S3Actions.write, ...S3Actions.delete], 'config/*');
+    grantListBucket(grantee, this, 'content/*');
+    grantListBucket(grantee, this, 'config/*');
   }
 }
