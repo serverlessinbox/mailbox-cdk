@@ -120,13 +120,7 @@ export class MailboxUi extends Construct {
 
     // The OAI only fetches individual objects: defaultRootObject and both custom error-page paths
     // resolve to specific keys, never a listing. s3:GetObject is therefore the whole grant.
-    this.bucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject'],
-        resources: [this.bucket.arnForObjects('*')],
-        principals: [originAccessIdentity.grantPrincipal],
-      }),
-    );
+    this.bucket.grantObjectReadTo(originAccessIdentity.grantPrincipal);
 
     const contentOrigin = S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
       originAccessIdentity,
