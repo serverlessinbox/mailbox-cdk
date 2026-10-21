@@ -7,7 +7,7 @@ import { Stack }                  from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
 import type { IDataTable }        from '../../resources/tables/data-tables';
-import { LicenseRefresherLambda } from '../../lambdas';
+import { LicenseRefresherLambda } from '../../resources/lambdas/license-refresher-lambda';
 
 /** Inputs of the license refresher Lambda and of the rules that invoke it. */
 export interface LicenseRefreshProps {

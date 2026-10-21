@@ -1,26 +1,26 @@
 /// <reference types="jest" />
 
 /**
- * SupportRoleAssumptionCollectorLambda tag-key env var tests.
+ * SupportApiLambda tag-key env var tests.
  *
- * The Go handler resolves both tier tag keys (diag and config-read) to build the recomputed
- * tag set for the hop role, so both must be present — even though the ses-identity-ownership
- * plan's table only lists SUPPORT_CONFIG_READ_TAG_KEY for this construct; verified against
- * modules/lambdas/support-role-assumption-collector/main.go, which reads both.
+ * Verifies SUPPORT_DIAG_TAG_KEY and SUPPORT_CONFIG_READ_TAG_KEY are set from the support-tier
+ * registry (support-roles-infra.ts) rather than a Go-side literal.
  */
 
 import { ArtifactZone, PinnedArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
+import { VENDOR_ACCOUNT_ID }                                                        from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                                          from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                                     from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                                                     from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                            from 'aws-cdk-lib';
 
-import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../platform/support/support-roles-infra';
-import { DataTable }                                                                from '../../resources/tables/data-tables';
-import { SupportRoleAssumptionCollectorLambda }                                     from '../support-role-assumption-collector';
+import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../../platform/support/support-roles-infra';
+import { DataTable }                                                                from '../../tables/data-tables';
+import { AuditEventsQueue }                                                         from '../../../features/audit-writing/audit-events-queue';
+import { SupportApiLambda }                                                         from '../support-api-lambda';
 
-describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
+describe('SupportApiLambda tag-key env vars', () => {
   let app: App;
   let stack: cdk.Stack;
   let artifactResolver: IArtifactResolver;
@@ -42,18 +42,21 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable      = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
+    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
 
-    new SupportRoleAssumptionCollectorLambda(stack, 'support-role-assumption-collector', {
+    new SupportApiLambda(stack, 'support-api', {
       supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
       tierRoleArns: {
         'support-diag': 'arn:aws:iam::123456789012:role/support-diag',
         'support-config-read': 'arn:aws:iam::123456789012:role/support-config-read',
       },
       configTable,
+      auditEventsQueue,
       artifactResolver,
+      vendorAccountIds: [VENDOR_ACCOUNT_ID],
       supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
       supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
       supportTierTagKeys: getSupportTierTagKeys(),

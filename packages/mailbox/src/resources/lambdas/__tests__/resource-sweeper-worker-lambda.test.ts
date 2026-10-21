@@ -14,7 +14,7 @@ import { Template }                                       from 'aws-cdk-lib/asse
 import * as iam                                           from 'aws-cdk-lib/aws-iam';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 
-import { ResourceSweeperWorkerLambda }                    from '../resource-sweeper-worker';
+import { ResourceSweeperWorkerLambda }                    from '../resource-sweeper-worker-lambda';
 
 describe('ResourceSweeperWorkerLambda', () => {
   function newStack(id: string): Stack {

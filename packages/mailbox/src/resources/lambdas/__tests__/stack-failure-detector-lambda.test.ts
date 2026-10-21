@@ -14,7 +14,7 @@ import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { StackFailureDetectorLambda }           from '../stack-failure-detector';
+import { StackFailureDetectorLambda }           from '../stack-failure-detector-lambda';
 
 function createDetector(): { stack: cdk.Stack; role: iam.Role } {
   const stack            = new cdk.Stack(new App(), 'TestStack', {

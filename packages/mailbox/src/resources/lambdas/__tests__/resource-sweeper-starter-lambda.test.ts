@@ -19,8 +19,8 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { loadStarter }                          from '../../runtime/resource-sweeper/config';
-import { ResourceSweeperStarterLambda }         from '../resource-sweeper-starter';
+import { loadStarter }                          from '../../../runtime/resource-sweeper/config';
+import { ResourceSweeperStarterLambda }         from '../resource-sweeper-starter-lambda';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper';
 

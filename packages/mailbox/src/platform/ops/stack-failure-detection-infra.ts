@@ -8,7 +8,7 @@ import { Fn, Stack, Aws, RemovalPolicy, CfnResource }    from 'aws-cdk-lib';
 import { Construct }                                     from 'constructs';
 import type { IConstruct }                               from 'constructs';
 
-import { StackFailureDetectorLambda }                    from '../../lambdas';
+import { StackFailureDetectorLambda }                    from '../../resources/lambdas/stack-failure-detector-lambda';
 
 /** Inputs of the stack-failure detection resources. */
 export interface StackFailureDetectionInfraProps {

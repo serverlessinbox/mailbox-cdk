@@ -5,7 +5,7 @@ import { PolicyStatement }                                                      
 import { Aws, Duration }                                                            from 'aws-cdk-lib';
 import { Construct }                                                                from 'constructs';
 
-import type { Granularity }                                                         from '../platform/update/auto-updater';
+import type { Granularity }                                                         from '../../platform/update/auto-updater';
 
 export interface ArtifactUpdaterLambdaProps {
   artifactResolver: IArtifactResolver;

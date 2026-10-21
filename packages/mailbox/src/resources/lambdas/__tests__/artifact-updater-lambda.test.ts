@@ -19,8 +19,8 @@ import { ServerlessInboxTagKeys }                         from '@serverlessinbox
 import { Template }                                       from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 
-import { load }                                           from '../../runtime/artifact-updater/config';
-import { ArtifactUpdaterLambda }                          from '../artifact-updater';
+import { load }                                           from '../../../runtime/artifact-updater/config';
+import { ArtifactUpdaterLambda }                          from '../artifact-updater-lambda';
 
 const ROOT_STACK               = 'my-root-stack';
 const BUCKET_BASE              = 'test-artifacts';

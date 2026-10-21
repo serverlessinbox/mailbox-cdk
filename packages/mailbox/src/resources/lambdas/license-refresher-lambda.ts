@@ -4,7 +4,7 @@ import { PolicyStatement }        from 'aws-cdk-lib/aws-iam';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import type { IDataTable }        from '../resources/tables/data-tables';
+import type { IDataTable }        from '../tables/data-tables';
 
 export interface LicenseRefresherLambdaProps {
   configTable: IDataTable;

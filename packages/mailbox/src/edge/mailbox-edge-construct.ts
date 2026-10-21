@@ -114,7 +114,7 @@ export class MailboxEdgeConstruct extends Construct {
     // The key here is already the full path (artifact prefix included)
     // This is pre-calculated by the deployer
     //
-    // NOTE: Lambda@Edge function created inline (not wrapped in src/lambdas/).
+    // NOTE: Lambda@Edge function created inline (not wrapped in resources/lambdas/).
     // Constraints:
     // 1. Uses pre-resolved S3 reference (deployer-calculated key) rather than artifact resolver
     // 2. Lambda@Edge hard restrictions: must live in us-east-1, cannot have environment variables,

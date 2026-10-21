@@ -9,7 +9,7 @@ import { Construct }                                                            
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../api/addons';
 import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                              from '../../features/audit-writing/audit-events-queue';
-import { StackUpdateApiLambda }                                                                from '../../lambdas/stack-update-api';
+import { StackUpdateApiLambda }                                                                from '../../resources/lambdas/stack-update-api-lambda';
 
 import { TemplateVersionParam, type ITemplateVersionParam }                                    from './template-version-param';
 

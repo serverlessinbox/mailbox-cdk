@@ -8,7 +8,7 @@ import { Construct, IConstruct }                                                
 
 import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../api/addons';
-import { ArtifactUpdaterLambda }                                                 from '../../lambdas/artifact-updater';
+import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
 import { loadMailboxArtifactVersions }                                           from '../../mailbox-artifact-versions';
 import { loadMailboxRegistryRecord }                                             from '../../mailbox-registry-record';
 

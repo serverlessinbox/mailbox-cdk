@@ -6,9 +6,9 @@ import { Construct }               from 'constructs';
 
 import {
   buildSupportTierEnvironment,
-} from '../platform/support/support-roles-infra';
-import type { IDataTable }        from '../resources/tables/data-tables';
-import type { IAuditEventsQueue } from '../features/audit-writing/audit-events-queue';
+} from '../../platform/support/support-roles-infra';
+import type { IDataTable }        from '../tables/data-tables';
+import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
 
 export interface SupportApiLambdaProps {
   /** Support-hop role ARN — scoped for tag-based access control. */

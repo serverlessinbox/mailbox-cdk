@@ -14,8 +14,8 @@ import { Construct }                                                            
 import { IAdminApiAddon }                                                                              from '../../api/addons';
 import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                                      from '../../features/audit-writing/audit-events-queue';
-import { SupportApiLambda }                                                                            from '../../lambdas/support-api';
-import { SupportRoleAssumptionCollectorLambda }                                                        from '../../lambdas/support-role-assumption-collector';
+import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';
+import { SupportRoleAssumptionCollectorLambda }                                                        from '../../resources/lambdas/support-role-assumption-collector-lambda';
 
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
 

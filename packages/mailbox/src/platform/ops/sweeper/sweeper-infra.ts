@@ -5,7 +5,8 @@ import { IFunction }                                                 from 'aws-c
 import { ArnFormat, Aws, Fn, Stack }                                 from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
-import { ResourceSweeperStarterLambda, ResourceSweeperWorkerLambda } from '../../../lambdas';
+import { ResourceSweeperStarterLambda }                              from '../../../resources/lambdas/resource-sweeper-starter-lambda';
+import { ResourceSweeperWorkerLambda }                               from '../../../resources/lambdas/resource-sweeper-worker-lambda';
 import { retainOnUpdateOrDelete }                                    from '../../../utils/cfn-resource';
 
 import type { IResourceRemoval }                                     from './removal';
