@@ -1,12 +1,9 @@
 import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
-import { PipelineLogGroup, applyServerlessInboxComponentTag, setStackNameBase }                                from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag, setStackNameBase }                                                  from '@serverlessinbox/mailbox-cdk-shared';
 import { addServerlessInboxResourceGroup, StackHelpers }                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                                from 'aws-cdk-lib/aws-certificatemanager';
 import type { IGrantable }                                                                                     from 'aws-cdk-lib/aws-iam';
-import * as awslambda                                                                                          from 'aws-cdk-lib/aws-lambda';
 import { IBucket }                                                                                             from 'aws-cdk-lib/aws-s3';
-import { Fn }                                                                                                  from 'aws-cdk-lib';
-import * as cdk                                                                                                from 'aws-cdk-lib';
+import * as cdk                                                                                               from 'aws-cdk-lib';
 import { Construct, DependencyGroup }                                                                          from 'constructs';
 
 import { AdminApi }                                                                                            from './core/apis/admin-api';
@@ -21,19 +18,11 @@ import type { IDataTable }                                                      
 import { DataSection }                                                                                         from './core/data/data-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
 import { SearchSection }                                                                                       from './core/search/search-section';
-import { MailboxDns }                                                                                          from './core/domains/mailbox-dns';
-import { MailboxEdgeDeployer }                                                                                 from './core/edge/mailbox-edge-deployer';
+import { EdgeSection }                                                                                         from './core/edge/edge-section';
 import { AuthKeyStore }                                                                                        from './core/auth/auth-key-store';
 import { Bootstrap }                                                                                           from './core/auth/bootstrap';
-import { Cdn, type CdnCustomDomain }                                                                           from './core/ui/cdn-construct';
-import { LicenseRefresh }                                                                                      from './platform/ops/license-refresh';
-import { StackFailureDetection, SendStackFailuresMode }                                                        from './platform/ops/stack-failure-detection';
-import { DeferredRemoval }                                                                                  from './platform/ops/sweeper/deferred-removal';
-import { SweeperInfra }                                                                                        from './platform/ops/sweeper/sweeper-infra';
-import { CertificateRemoval }                                                                                  from './platform/ops/sweeper/certificate-removal';
-import { EdgeFunctionRemoval }                                                                                 from './platform/ops/sweeper/edge-function-removal';
-import { StackFailureDetectorRemoval }                                                                         from './platform/ops/sweeper/stack-failure-detector-removal';
-import type { IResourceRemoval }                                                                               from './platform/ops/sweeper/removal';
+import type { CdnCustomDomain }                                                                                from './core/ui/cdn-construct';
+import { OpsSection }                                                                                          from './platform/ops/ops-section';
 import { IdentityProvisionerLambda }                                                                           from './resources/lambdas/identity-provisioner-lambda';
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
@@ -110,10 +99,8 @@ export class Mailbox extends Construct {
 
     const groups = {
       auth:   new Construct(this, 'auth'),
-      edge:   new Construct(this, 'edge'),
       ui:     new Construct(this, 'ui'),
       apis:   new Construct(this, 'apis'),
-      ops:    new Construct(this, 'ops'),
     };
 
     new SearchSection(this, 'search', {
@@ -127,10 +114,8 @@ export class Mailbox extends Construct {
 
     // Component tags on each group — CDK propagates to the whole subtree.
     applyServerlessInboxComponentTag(groups.auth,   'auth');
-    applyServerlessInboxComponentTag(groups.edge,   'edge');
     applyServerlessInboxComponentTag(groups.ui,     'ui');
     applyServerlessInboxComponentTag(groups.apis,   'api');
-    applyServerlessInboxComponentTag(groups.ops,    'ops');
 
     setStackNameBase(this, data.mainStackNameBase);
 
@@ -152,20 +137,29 @@ export class Mailbox extends Construct {
       artifactResolver,
     });
 
-    const edgeStack = new MailboxEdgeDeployer(groups.edge, 'stack-deployer', {
-      domainName,
+    // Regional ACM certificates for regional services (API Gateway).
+    // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
+    const providedApiCertificate  = props.overrides?.certificates?.api;
+    const providedJmapCertificate = props.overrides?.certificates?.jmap;
+    const providedWsCertificate   = props.overrides?.certificates?.ws;
+
+    const edge = new EdgeSection(this, 'edge', {
       artifactResolver,
-      prefix: edgePrefix,
-      hostedZone: props.hostedZoneId ? hostedZone : undefined,
+      deployerType,
+      domainName,
+      mailboxDomains,
+      edgePrefix,
+      hostedZone,
+      hostedZoneId: props.hostedZoneId,
+      providedApiCertificate,
+      providedJmapCertificate,
       itemTable,
       configTable,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       productVersion: stackVersion,
-      deployerType,
-      logGroupName: PipelineLogGroup.getOrCreate(groups.edge, 'jmap').logGroupName,
     });
 
-    const edgeCertificate = edgeStack.edgeCertificate;
+    const edgeCertificate = edge.edgeCertificate;
 
     const hasHostedZone      = Boolean(props.hostedZoneId);
     const useCustomCdnDomain = Boolean(props.overrides?.certificates?.cloudFront || hasHostedZone);
@@ -175,33 +169,8 @@ export class Mailbox extends Construct {
       throw new Error('hostedZone was provided but edge certificate was not created');
     }
 
-    // Regional ACM certificates for regional services (API Gateway).
-    // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
-    const providedApiCertificate  = props.overrides?.certificates?.api;
-    const providedJmapCertificate = props.overrides?.certificates?.jmap;
-    const providedWsCertificate   = props.overrides?.certificates?.ws;
-
-    // If either API certificate is missing and there is a hosted zone, one SAN certificate covers
-    // the api, jmap, ws and mcp names and fills the gaps.
-    let regionalSanCertificate: acm.ICertificate | undefined;
-    let cfnCert: acm.CfnCertificate | undefined;
-    if (hasHostedZone && (!providedApiCertificate || !providedJmapCertificate)) {
-      cfnCert = new acm.CfnCertificate(groups.edge, 'regional-api-certificate', {
-        domainName: mailboxDomains.api,
-        subjectAlternativeNames: [mailboxDomains.jmap, mailboxDomains.ws, `mcp.${domainName}`],
-        validationMethod: 'DNS',
-        domainValidationOptions: [
-          { domainName: mailboxDomains.api, hostedZoneId: props.hostedZoneId! },
-          { domainName: mailboxDomains.jmap, hostedZoneId: props.hostedZoneId! },
-          { domainName: mailboxDomains.ws, hostedZoneId: props.hostedZoneId! },
-          { domainName: `mcp.${domainName}`, hostedZoneId: props.hostedZoneId! },
-        ],
-      });
-      cfnCert.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-      regionalSanCertificate = acm.Certificate.fromCertificateArn(groups.edge, 'regional-api-certificate-ref', cfnCert.ref);
-    }
-
-    const regionalCertificate = regionalSanCertificate;
+    const regionalSanCertificate = edge.regionalCertificate;
+    const regionalCertificate    = regionalSanCertificate;
 
     this.certificates = {
       edge:     edgeCertificate,
@@ -354,11 +323,14 @@ export class Mailbox extends Construct {
       ?? this.oauthClients.adminUi?.groups
       ?? undefined;
 
-    new LicenseRefresh(groups.ops, 'license-refresh', {
-      configTable,
+    new OpsSection(this, 'ops', {
       artifactResolver,
-      coreDomain: domainName,
+      configTable,
+      domainName,
       vendorAccountIds,
+      sendStackFailures: props.sendStackFailures,
+      jmapBlobDownloadVersionArn: edge.jmapBlobDownloadVersionArn,
+      regionalCertificate: regionalSanCertificate,
     });
 
     const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
@@ -416,72 +388,13 @@ export class Mailbox extends Construct {
     });
     oauthClientsProvisioned.add(bootstrap.oauthClientsProvisioned);
 
-    // Stack-failure detector: watches the root stack's own terminal `CloudFormation Stack
-    // Status Change` events. A terminal stack status is emitted only after the whole operation
-    // concludes, so the detector has no ordering requirement relative to its ops-group siblings.
-    // Consent defaults to ENABLED; `disabled` synthesizes zero detector resources (see
-    // StackFailureDetection for the CfnCondition gating). Built before SweeperInfra: its retained
-    // rule/function/role are registered below as one removal, and the sweeper's worker IAM policy
-    // is assembled from the registered removals.
-    const stackFailureDetection = new StackFailureDetection(groups.ops, 'stack-failure-detection', {
-      mode: props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
-      artifactResolver,
-      vendorAccountIds,
-    });
-
-    // Extract the edge jmap-blob-download Lambda ARN (strip version qualifier).
-    // Version ARN:  arn:aws:lambda:us-east-1:<acct>:function:<name>:<version>
-    // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
-    const versionArn      = edgeStack.getOutput('jmapBlobDownloadVersionArn');
-    const fnArnParts      = Fn.split(':', versionArn);
-    const edgeFunctionArn = Fn.join(':', [
-      Fn.select(0, fnArnParts), // arn
-      Fn.select(1, fnArnParts), // aws
-      Fn.select(2, fnArnParts), // lambda
-      Fn.select(3, fnArnParts), // us-east-1
-      Fn.select(4, fnArnParts), // account
-      Fn.select(5, fnArnParts), // function
-      Fn.select(6, fnArnParts), // <function-name>
-      // Fn.select(7, ...) is the version number — intentionally dropped
-    ]);
-    // Imported by ARN: the JMAP blob download function lives in the separate edge sub-stack, so there is no
-    // construct reference to it.
-    const edgeFunction = awslambda.Function.fromFunctionArn(groups.ops, 'edge-fn-removal-target', edgeFunctionArn);
-
-    // Each retained resource is registered as its own removal.
-    const removals: IResourceRemoval[] = [];
-    if (regionalSanCertificate) {
-      removals.push(new CertificateRemoval(groups.ops, 'cert-removal', { certificate: regionalSanCertificate }));
-    }
-    removals.push(new EdgeFunctionRemoval(groups.ops, 'edge-fn-removal', { function: edgeFunction }));
-    if (stackFailureDetection.sweepTargets) {
-      removals.push(new StackFailureDetectorRemoval(groups.ops, 'stack-failure-detector-removal', stackFailureDetection.sweepTargets));
-    }
-
-    // Resource sweeper (Step Functions + worker Lambda): asynchronous cleanup of the retained
-    // resources after stack deletion.
-    const sweeperInfra = new SweeperInfra(groups.ops, 'sweeper-infra', {
-      artifactResolver,
-      removals,
-    });
-
-    // Fires the sweeper's starter Lambda on stack Delete or Update. CloudFormation supplies
-    // `OldResourceProperties` on Update, so the starter can sweep only what changed; on Delete it
-    // sweeps everything present.
-    new DeferredRemoval(groups.ops, 'deferred-removal', {
-      sweeperStarter: sweeperInfra.starter,
-      removals,
-    });
-
     const cdnCertificate                               = hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront;
     const cdnCustomDomain: CdnCustomDomain | undefined =
       useCustomCdnDomain && cdnCertificate ? { name: mailboxDomains.cdn, certificate: cdnCertificate } : undefined;
 
-    const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
+    const cdnConstruct = edge.addBlobCdn({
       blobStore: this.blobStoreBucket,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
-      jmapBlobDownloadVersion: edgeStack.jmapBlobDownloadVersion,
       customDomain: cdnCustomDomain,
     });
 
@@ -576,21 +489,15 @@ export class Mailbox extends Construct {
     webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     if (hasHostedZone) {
-      const dns = new MailboxDns(groups.edge, 'dns', {
-        names: mailboxDomains,
-        hostedZone: hostedZone,
-        cnameTargets: {
-          admin: adminUiCnameTarget,
-          webmail: webmailUiCnameTarget,
-          cdn: cdnConstruct.distribution.distributionDomainName,
-          api: adminApi.domainTarget,
-          jmap: jmapApi.domainTarget,
-          ws: webSocketPush.domainTarget,
-          mcp: mcpApi?.domainTarget,
-        },
+      edge.addDns({
+        admin: adminUiCnameTarget,
+        webmail: webmailUiCnameTarget,
+        cdn: cdnConstruct.distributionDomainName,
+        api: adminApi.domainTarget,
+        jmap: jmapApi.domainTarget,
+        ws: webSocketPush.domainTarget,
+        mcp: mcpApi?.domainTarget,
       });
-      // dns is used for side-effects only at this level.
-      void dns;
     }
 
     // Adds Name tags and native descriptions to every L1 resource under this construct.
