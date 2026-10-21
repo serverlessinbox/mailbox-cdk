@@ -261,7 +261,7 @@ export class Mailbox extends Construct {
       queueProps: encryptionPlan.queues,
     });
 
-    const identityProvisioner = new IdentityProvisionerLambda(groups.ops, 'identity-provisioner', {
+    const identityProvisioner = new IdentityProvisionerLambda(groups.auth, 'identity-provisioner', {
       configTable,
       itemTable,
       changelogTable,
