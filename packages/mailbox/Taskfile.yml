@@ -42,12 +42,12 @@ tasks:
   bundle:artifact-updater:
     desc: Bundle artifact-updater lambda zip to dist/lambdas
     sources:
-      - src/ts-lambdas/artifact-updater/**/*.ts
+      - src/runtime/artifact-updater/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
 
   bundle:data-override-resolver:
     desc: Bundle data-override-resolver lambda zip to dist/lambdas
@@ -96,7 +96,7 @@ tasks:
     desc: Publish regional ts-lambdas to dev channel
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/resource-sweeper/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/data-override-resolver/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/data-override-resolver.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/resource-sweeper.zip
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object lambdas/artifact-updater.zip
