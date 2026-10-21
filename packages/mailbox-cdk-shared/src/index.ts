@@ -60,7 +60,7 @@ export { StaticContentDeployer } from './resources/lambdas/content-deployer';
 export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './resources/lambdas/content-deployer';
 export { StaticContentSource } from './static-content-source';
 export type { IStaticContentSource, StaticContentWriteOptions, StaticContentZipOptions } from './static-content-source';
-export type { StaticContentSourceSpec } from './ts-lambdas/content-deployer/resource-properties';
+export type { StaticContentSourceSpec } from './runtime/content-deployer/resource-properties';
 
 // Bucket auto-empty
 export { BucketAutoEmpty } from './resources/lambdas/bucket-auto-empty';

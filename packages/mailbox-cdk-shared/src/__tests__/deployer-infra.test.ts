@@ -15,7 +15,7 @@ import { Construct }                                                            
 import { DeployerInfra }                                                                     from '../deployer-infra';
 import { PositionHash }                                                                      from '../naming/position-hash';
 import { StackIdentity }                                                                     from '../naming/stack-identity';
-import type { StackDeployerProperties }                                                      from '../ts-lambdas/stack-deployer/stack-deployment';
+import type { StackDeployerProperties }                                                      from '../runtime/stack-deployer/stack-deployment';
 
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 

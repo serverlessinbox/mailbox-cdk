@@ -10,7 +10,7 @@ import { getOrCreateSharedGroup }                                    from '../..
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
-} from '../../ts-lambdas/content-deployer/resource-properties';
+} from '../../runtime/content-deployer/resource-properties';
 
 import { TypeScriptLambda } from './ts-lambda';
 

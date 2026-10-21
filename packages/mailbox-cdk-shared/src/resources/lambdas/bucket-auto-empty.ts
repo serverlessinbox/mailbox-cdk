@@ -5,7 +5,7 @@ import { Duration, CustomResource, Stack }        from 'aws-cdk-lib';
 import { Construct }                              from 'constructs';
 
 import { getOrCreateSharedGroup }                 from '../../tagging/shared-group';
-import type { BucketAutoEmptyResourceProperties } from '../../ts-lambdas/bucket-auto-empty/resource-properties';
+import type { BucketAutoEmptyResourceProperties } from '../../runtime/bucket-auto-empty/resource-properties';
 
 import { TypeScriptLambda }                       from './ts-lambda';
 
