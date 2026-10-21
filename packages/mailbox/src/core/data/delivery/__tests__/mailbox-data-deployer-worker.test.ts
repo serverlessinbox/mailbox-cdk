@@ -14,7 +14,7 @@ import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
-} from '../../__tests__/deployer-test-helpers';
+} from '../../../../__tests__/deployer-test-helpers';
 import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
 
 const DATA_STACK_ARN      = 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*';

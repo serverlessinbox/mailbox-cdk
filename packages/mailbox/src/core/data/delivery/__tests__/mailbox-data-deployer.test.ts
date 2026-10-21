@@ -19,8 +19,8 @@ import {
   TEST_ARTIFACT_VERSION,
   TEST_REGION,
   newDeployerTestStack,
-} from '../../__tests__/deployer-test-helpers';
-import type { TableRole }                from '../../runtime/data-override-resolver/resource-properties';
+} from '../../../../__tests__/deployer-test-helpers';
+import type { TableRole }                from '../../../../runtime/data-override-resolver/resource-properties';
 import { MailboxDataDeployer }           from '../mailbox-data-deployer';
 import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
 

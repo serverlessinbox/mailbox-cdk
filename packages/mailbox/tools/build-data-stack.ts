@@ -2,7 +2,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as fs                           from 'node:fs';
 import * as path                         from 'node:path';
 
-import { MailboxDataStack }              from '../src/data/mailbox-data-stack';
+import { MailboxDataStack }              from '../src/core/data/mailbox-data-stack';
 
 import { parseArgs, writeJson }          from './_common';
 

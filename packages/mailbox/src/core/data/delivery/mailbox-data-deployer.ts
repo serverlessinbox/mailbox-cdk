@@ -5,11 +5,11 @@ import { IBucket }                                                   from 'aws-c
 import { Aws, Fn, Stack }                                            from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
-import type { IDataBlobStore }                                       from '../resources/buckets/data-blob-store';
-import type { IDataTable }                                           from '../resources/tables/data-tables';
+import type { IDataBlobStore }                                       from '../../../resources/buckets/data-blob-store';
+import type { IDataTable }                                           from '../../../resources/tables/data-tables';
+import { MailboxDataStackRef }                                       from '../mailbox-data-stack-ref';
 import { MailboxDataDeployerWorker }                                 from './mailbox-data-deployer-worker';
 import { MailboxDataOverrideResolver }                               from './mailbox-data-override-resolver';
-import { MailboxDataStackRef }                                       from './mailbox-data-stack-ref';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {

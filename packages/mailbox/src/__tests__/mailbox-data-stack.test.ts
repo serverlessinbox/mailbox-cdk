@@ -16,8 +16,8 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { MailboxDataDeployerWorker }                    from '../data/mailbox-data-deployer-worker';
-import { MailboxDataStack }                             from '../data/mailbox-data-stack';
+import { MailboxDataDeployerWorker }                    from '../core/data/delivery/mailbox-data-deployer-worker';
+import { MailboxDataStack }                             from '../core/data/mailbox-data-stack';
 
 import {
   CloudFormationResource,

@@ -2,8 +2,8 @@ import { Table }                         from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket, Bucket }               from 'aws-cdk-lib/aws-s3';
 import { Construct }                     from 'constructs';
 
-import { DataBlobStore, IDataBlobStore } from '../resources/buckets/data-blob-store';
-import { DataTable, IDataTable }         from '../resources/tables/data-tables';
+import { DataBlobStore, IDataBlobStore } from '../../resources/buckets/data-blob-store';
+import { DataTable, IDataTable }         from '../../resources/tables/data-tables';
 
 /**
  * Keys identifying each of the data sub-stack's DynamoDB tables. Drives the mapped type below so
@@ -41,7 +41,7 @@ export class MailboxDataStackRef extends Construct {
    * The raw imported bucket, exposed only because two consumers write a bucket *resource policy*
    * rather than an identity grant and so cannot go through `IDataBlobStore`'s method-only surface:
    * `features/cdn/cdn-construct.ts` (`S3BucketOrigin.withOriginAccessControl` needs the bucket
-   * object) and `email/receiving/ses-rules.ts` (`aws-ses-actions.S3`'s `bucket:` prop). Do not use
+   * object) and `core/email/ses-rules.ts` (`aws-ses-actions.S3`'s `bucket:` prop). Do not use
    * this for a grant — use `blobStore` instead.
    */
   public readonly blobStoreBucket: IBucket;

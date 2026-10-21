@@ -3,8 +3,8 @@ import * as ssm                               from 'aws-cdk-lib/aws-ssm';
 import * as cdk                               from 'aws-cdk-lib';
 import { Construct }                          from 'constructs';
 
-import { DataOverrideResolverLambda }         from '../resources/lambdas/data-override-resolver-lambda';
-import type { ResourceProperties, TableRole } from '../runtime/data-override-resolver/resource-properties';
+import { DataOverrideResolverLambda }         from '../../../resources/lambdas/data-override-resolver-lambda';
+import type { ResourceProperties, TableRole } from '../../../runtime/data-override-resolver/resource-properties';
 
 /** Incoming data table ARNs, one per table role, and the artifact resolver for the resolver Lambda's code. */
 export interface MailboxDataOverrideResolverProps {

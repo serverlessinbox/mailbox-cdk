@@ -19,12 +19,13 @@ import type { IMailboxAuthProvider }                                            
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
 import type { IDataTable }                                                                                     from './resources/tables/data-tables';
-import { MailboxDataDeployer }                                                                                 from './data';
+import { MailboxDataDeployer }                                                                                 from './core/data/delivery/mailbox-data-deployer';
 import { MailboxDns }                                                                                          from './domains';
 import { MailboxEdgeDeployer }                                                                                 from './edge';
-import { SesRules }                                                                                            from './email/receiving/ses-rules';
-import { EmailSending, SESEventProcessing }                                                                    from './email';
-import { AuditWriting }                                                                                        from './features/audit-writing/audit-writing';
+import { SesRules }                                                                                            from './core/email/ses-rules';
+import { EmailSending }                                                                                        from './core/email/email-sending';
+import { SESEventProcessing }                                                                                  from './core/email/ses-event-processing';
+import { AuditWriting }                                                                                        from './core/data/audit-writing';
 import { AuthKeyStore }                                                                                        from './features/auth-key-store/auth-key-store';
 import { Bootstrap }                                                                                           from './features/bootstrap/bootstrap';
 import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';

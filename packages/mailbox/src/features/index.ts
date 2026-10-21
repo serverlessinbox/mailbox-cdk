@@ -1,5 +1,5 @@
-export { AuditWriting } from './audit-writing/audit-writing';
-export type { AuditWritingProps } from './audit-writing/audit-writing';
+export { AuditWriting } from '../core/data/audit-writing';
+export type { AuditWritingProps } from '../core/data/audit-writing';
 
 export { Bootstrap } from './bootstrap/bootstrap';
 export type { BootstrapProps } from './bootstrap/bootstrap';

@@ -22,7 +22,7 @@
  */
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { MailboxDataStack }              from '../data/mailbox-data-stack';
+import { MailboxDataStack }              from '../core/data/mailbox-data-stack';
 import { MailboxEdgeStack }              from '../edge/mailbox-edge-stack';
 
 // Stand-in for "a real customer account leaked into a published template" — distinctive so it can

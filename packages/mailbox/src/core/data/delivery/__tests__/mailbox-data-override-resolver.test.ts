@@ -11,7 +11,7 @@ import { Template, Match }                      from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { ResourceProperties, TableRole }   from '../../runtime/data-override-resolver/resource-properties';
+import type { ResourceProperties, TableRole }   from '../../../../runtime/data-override-resolver/resource-properties';
 import { MailboxDataOverrideResolver }          from '../mailbox-data-override-resolver';
 
 const ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];

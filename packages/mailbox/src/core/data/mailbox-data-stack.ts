@@ -4,15 +4,15 @@ import type { ServerlessInboxDeployerType }                                     
 import * as cdk                                                                           from 'aws-cdk-lib';
 import { Construct }                                                                      from 'constructs';
 
-import { AuditLogTable }                                                                  from '../resources/tables/auditlog-table';
-import { BlobStore }                                                                      from '../resources/buckets/blob-store';
-import { ChangelogTable }                                                                 from '../resources/tables/changelog-table';
-import { ConfigTable }                                                                    from '../resources/tables/config-table';
-import { ItemTable }                                                                      from '../resources/tables/item-table';
-import { MailFeedbackTable }                                                              from '../resources/tables/mailfeedback-table';
-import { MailboxKmsConfig }                                                               from '../utils/kms';
-import { resolveMailboxEncryptionPlan }                                                   from '../utils/mailbox-encryption';
-import { MailboxResourceDescriptions }                                                    from '../utils/resource-descriptions';
+import { AuditLogTable }                                                                  from '../../resources/tables/auditlog-table';
+import { BlobStore }                                                                      from '../../resources/buckets/blob-store';
+import { ChangelogTable }                                                                 from '../../resources/tables/changelog-table';
+import { ConfigTable }                                                                    from '../../resources/tables/config-table';
+import { ItemTable }                                                                      from '../../resources/tables/item-table';
+import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
+import { MailboxKmsConfig }                                                               from '../../utils/kms';
+import { resolveMailboxEncryptionPlan }                                                   from '../../utils/mailbox-encryption';
+import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
