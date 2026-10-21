@@ -151,7 +151,7 @@ export class Mailbox extends Construct {
     const { configTable, itemTable, changelogTable, auditLogTable, mailFeedbackTable } = dataRef;
     this.configTable                                                                   = configTable;
 
-    const auditWriting = new AuditWriting(groups.ops, 'audit-writing', {
+    const auditWriting = new AuditWriting(groups.data, 'audit-writing', {
       auditLogTable,
       artifactResolver,
       queueProps: encryptionPlan.queues,
