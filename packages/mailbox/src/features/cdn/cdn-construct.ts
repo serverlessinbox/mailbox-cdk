@@ -45,17 +45,10 @@ export class Cdn extends Construct {
     super(scope, id);
 
     this.distribution = this.createDistribution(props);
-    this.pinDistributionLogicalId();
     cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
     this.host           = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
     this.distributionId = this.distribution.distributionId;
-  }
-
-  /** An aliased distribution cannot be created beside its old self, so it keeps the logical ID it had before the construct moved. */
-  private pinDistributionLogicalId(): void {
-    const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
-    cfnDistribution.overrideLogicalId('mailboxedgeblobcdnblobdistribution8EDBE4E4');
   }
 
   private createDistribution(props: CdnProps): cloudfront.Distribution {

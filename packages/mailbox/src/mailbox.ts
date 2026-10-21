@@ -531,7 +531,7 @@ export class Mailbox extends Construct {
     const cdnCustomDomain: CdnCustomDomain | undefined =
       useCustomCdnDomain && cdnCertificate ? { name: mailboxDomains.cdn, certificate: cdnCertificate } : undefined;
 
-    const cdnConstruct = new Cdn(groups.ui, 'blob-cdn', {
+    const cdnConstruct = new Cdn(groups.edge, 'blob-cdn', {
       blobStore: this.blobStoreBucket,
       authKeyStoreTable: authKeyStore.authKeyStoreTable,
       allowedOrigins: allowedOriginsForCdn.length > 0 ? allowedOriginsForCdn : undefined,
