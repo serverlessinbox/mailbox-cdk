@@ -1,6 +1,7 @@
 import type { IArtifactResolver }                                                           from '@serverlessinbox/artifact-registry-cdk';
 import { applyServerlessInboxComponentTag }                                                 from '@serverlessinbox/mailbox-cdk-shared';
 import type * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
+import type * as route53                                                                    from 'aws-cdk-lib/aws-route53';
 import { Construct }                                                                        from 'constructs';
 
 import type { IDataBlobStore }                                                              from '../../resources/buckets/data-blob-store';
@@ -19,27 +20,62 @@ import { McpApi }                                                               
 import { WebSocketPush }                                                                    from './websocket';
 import type { IWebSocketBroadcastPublisher }                                                from './websocket';
 
+/** What {@link ApisSection} uses of the data section. */
+export interface IApisDataInputs {
+  readonly configTable: IDataTable;
+  readonly itemTable: IDataTable;
+  readonly changelogTable: IDataTable;
+  readonly auditLogTable: IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly blobStore: IDataBlobStore;
+  readonly auditEventsQueue: IAuditEventsQueue;
+  /** The domain name of the hosted zone, a deploy-time token. */
+  readonly derivedDomainName: string;
+}
+
+/** What {@link ApisSection} uses of the auth section. */
+export interface IApisAuthInputs {
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
+  readonly identityProvisioner: IIdentityProvisioner;
+}
+
+/** What {@link ApisSection} uses of the email section. */
+export interface IApisEmailInputs {
+  readonly submissionQueue: IEmailSendingQueue;
+  readonly sesRuleSetName: string;
+  readonly sesConfigSetName: string;
+}
+
+/** What {@link ApisSection.addEndpoints} uses of the edge section. */
+export interface IApisEdgeInputs {
+  /** Present when the mailbox has a hosted zone: the WebSocket and MCP APIs get custom domains only then. */
+  readonly hostedZone?: route53.IHostedZone;
+  readonly apiCertificate?: acm.ICertificate;
+  readonly jmapCertificate?: acm.ICertificate;
+  readonly wsCertificate?: acm.ICertificate;
+  /** The certificate the MCP API is served with; absent when the edge section created none. */
+  readonly regionalCertificate?: acm.ICertificate;
+}
+
+/** What {@link ApisSection.addEndpoints} uses of the ui section. */
+export interface IApisUiInputs {
+  /** Origins the Admin UI is served from; empty when it is disabled. */
+  readonly adminUiOrigins: string[];
+  /** Origins the Webmail UI is served from; empty when it is disabled. */
+  readonly webmailUiOrigins: string[];
+}
+
 /** Props of {@link ApisSection}: what the addons and the API endpoints are built from. */
 export interface ApisSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly authProvider: IMailboxAuthProvider;
   /** Further providers of admin-api addons, after the auth provider's own. */
   readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly auditLogTable: IDataTable;
-  readonly mailFeedbackTable: IDataTable;
-  readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly blobStore: IDataBlobStore;
-  readonly emailSubmissionQueue: IEmailSendingQueue;
-  readonly auditEventsQueue: IAuditEventsQueue;
-  readonly identityProvisioner: IIdentityProvisioner;
+  readonly data: IApisDataInputs;
+  readonly auth: IApisAuthInputs;
+  readonly email: IApisEmailInputs;
   readonly vendorAccountIds: string[];
   readonly stackIdentityTagKey: string;
-  readonly sesRuleSetName: string;
-  readonly sesConfigSetName: string;
-  readonly domainName: string;
   /** The JMAP API's base URL as the JMAP addons see it. */
   readonly jmapApiBaseUrl: string;
 }
@@ -49,22 +85,12 @@ export interface ApisEndpointsProps {
   /** The base URL of the blob CDN, with protocol. */
   readonly cdnHost: string;
   readonly mailboxDomains: IMailboxDomainNames;
-  readonly hasHostedZone: boolean;
-  /** Origins allowed to call the admin API cross-origin. */
-  readonly adminApiAllowedOrigins: string[];
-  /** Origins allowed to call the JMAP API cross-origin. */
-  readonly jmapApiAllowedOrigins: string[];
-  readonly apiCertificate?: acm.ICertificate;
-  readonly jmapCertificate?: acm.ICertificate;
-  readonly wsCertificate?: acm.ICertificate;
-  /** Present when the MCP API is enabled. */
-  readonly mcp?: McpEndpointProps;
-}
-
-/** What the MCP API is built from. */
-export interface McpEndpointProps {
-  /** The regional certificate the MCP API is served with. */
-  readonly regionalCertificate: acm.ICertificate;
+  readonly edge: IApisEdgeInputs;
+  readonly ui: IApisUiInputs;
+  /** Origins allowed to call the admin API and the JMAP API cross-origin, besides the UIs'. */
+  readonly extraAllowedOrigins?: string[];
+  /** Whether to add the MCP API; it needs the edge section's regional certificate. */
+  readonly enableMcp?: boolean;
 }
 
 /** What the endpoints built by {@link ApisSection.addEndpoints} offer to the rest of the mail server. */
@@ -106,10 +132,10 @@ export class ApisSection extends Construct {
       const addons: IAdminApiAddon[] = [];
 
       const ctx: AdminApiAddonContext = {
-        auditEventsQueue: props.auditEventsQueue,
-        configTable: props.configTable,
-        auditLogTable: props.auditLogTable,
-        identityProvisioner: props.identityProvisioner,
+        auditEventsQueue: props.data.auditEventsQueue,
+        configTable: props.data.configTable,
+        auditLogTable: props.data.auditLogTable,
+        identityProvisioner: props.auth.identityProvisioner,
         artifactResolver: props.artifactResolver,
       };
 
@@ -126,7 +152,7 @@ export class ApisSection extends Construct {
       if (typeof props.authProvider.createJmapApiAddons !== 'function') {return [];}
       return props.authProvider.createJmapApiAddons(this, {
         apiBaseUrl: props.jmapApiBaseUrl,
-        identityProvisioner: props.identityProvisioner,
+        identityProvisioner: props.auth.identityProvisioner,
       });
     })();
   }
@@ -160,22 +186,25 @@ export class ApisSection extends Construct {
   }
 
   private addJmapApi(props: ApisEndpointsProps): JMapApi {
+    const { data, auth, email } = this.props;
+    const allowedOrigins        = [...props.ui.webmailUiOrigins, ...(props.extraAllowedOrigins ?? [])];
+
     return new JMapApi(this, 'jmap-api', {
-      configTable: this.props.configTable,
-      itemTable: this.props.itemTable,
-      changelogTable: this.props.changelogTable,
-      authKeyStoreTable: this.props.authKeyStoreTable,
+      configTable: data.configTable,
+      itemTable: data.itemTable,
+      changelogTable: data.changelogTable,
+      authKeyStoreTable: auth.authKeyStoreTable,
       cdnHost: props.cdnHost,
-      allowedOrigins: props.jmapApiAllowedOrigins.length > 0 ? props.jmapApiAllowedOrigins : undefined,
-      blobStore: this.props.blobStore,
-      emailSubmissionQueue: this.props.emailSubmissionQueue,
-      auditEventsQueue: this.props.auditEventsQueue,
+      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : undefined,
+      blobStore: data.blobStore,
+      emailSubmissionQueue: email.submissionQueue,
+      auditEventsQueue: data.auditEventsQueue,
       artifactResolver: this.props.artifactResolver,
       authProvider: this.props.authProvider,
-      identityProvisioner: this.props.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
 
-      domainName: props.jmapCertificate ? props.mailboxDomains.jmap : undefined,
-      certificate: props.jmapCertificate,
+      domainName: props.edge.jmapCertificate ? props.mailboxDomains.jmap : undefined,
+      certificate: props.edge.jmapCertificate,
 
       jmapApiAddons: this.jmapApiAddons,
       oauthIssuerUrl: this.props.authProvider.jmapOAuthIssuerUrl?.(),
@@ -187,16 +216,18 @@ export class ApisSection extends Construct {
 
   private addWebSocketPush(props: ApisEndpointsProps, jmapApi: JMapApi): WebSocketPush {
     // Created after the JMAP API because it reuses that API's authorizer Lambda.
+    const { data } = this.props;
+
     const webSocketPush = new WebSocketPush(this, 'websocket-push', {
-      configTable: this.props.configTable,
-      itemTable: this.props.itemTable,
-      changelogTable: this.props.changelogTable,
+      configTable: data.configTable,
+      itemTable: data.itemTable,
+      changelogTable: data.changelogTable,
       authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
       artifactResolver: this.props.artifactResolver,
       maxSubscriptions: 10,
 
-      domainName: (props.hasHostedZone && props.wsCertificate) ? props.mailboxDomains.ws : undefined,
-      certificate: props.hasHostedZone ? props.wsCertificate : undefined,
+      domainName: (props.edge.hostedZone && props.edge.wsCertificate) ? props.mailboxDomains.ws : undefined,
+      certificate: props.edge.hostedZone ? props.edge.wsCertificate : undefined,
     });
     // Keep a deeper messaging override — websocket-push overrides the apis group tag.
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
@@ -205,41 +236,51 @@ export class ApisSection extends Construct {
   }
 
   private addAdminApi(props: ApisEndpointsProps): AdminApi {
+    const { data, auth, email } = this.props;
+    const allowedOrigins        = [...props.ui.adminUiOrigins, ...(props.extraAllowedOrigins ?? [])];
+
     return new AdminApi(this, 'admin-api', {
-      configTable: this.props.configTable,
-      itemTable: this.props.itemTable,
-      auditLogTable: this.props.auditLogTable,
-      changelogTable: this.props.changelogTable,
-      mailFeedbackTable: this.props.mailFeedbackTable,
-      authKeyStoreTable: this.props.authKeyStoreTable,
-      blobStore: this.props.blobStore,
-      emailSubmissionQueue: this.props.emailSubmissionQueue,
-      auditEventsQueue: this.props.auditEventsQueue,
-      allowedOrigins: props.adminApiAllowedOrigins.length > 0 ? props.adminApiAllowedOrigins : undefined,
+      configTable: data.configTable,
+      itemTable: data.itemTable,
+      auditLogTable: data.auditLogTable,
+      changelogTable: data.changelogTable,
+      mailFeedbackTable: data.mailFeedbackTable,
+      authKeyStoreTable: auth.authKeyStoreTable,
+      blobStore: data.blobStore,
+      emailSubmissionQueue: email.submissionQueue,
+      auditEventsQueue: data.auditEventsQueue,
+      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : undefined,
       artifactResolver: this.props.artifactResolver,
-      identityProvisioner: this.props.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
       vendorAccountIds: this.props.vendorAccountIds,
       stackIdentityTagKey: this.props.stackIdentityTagKey,
 
       addons: this.adminApiAddons,
 
-      domainName: props.apiCertificate ? props.mailboxDomains.api : undefined,
-      certificate: props.apiCertificate,
+      domainName: props.edge.apiCertificate ? props.mailboxDomains.api : undefined,
+      certificate: props.edge.apiCertificate,
 
-      sesRuleSetName: this.props.sesRuleSetName,
-      sesConfigSetName: this.props.sesConfigSetName,
-      systemSenderAddress: `noreply@${this.props.domainName}`,
+      sesRuleSetName: email.sesRuleSetName,
+      sesConfigSetName: email.sesConfigSetName,
+      systemSenderAddress: `noreply@${data.derivedDomainName}`,
     });
   }
 
   private addMcpApi(props: ApisEndpointsProps, jmapApi: JMapApi): McpApi | undefined {
-    return props.mcp ? new McpApi(this, 'mcp-api', {
+    if (!props.enableMcp) {
+      return undefined;
+    }
+    if (!props.edge.regionalCertificate) {
+      throw new Error('enableMcp needs the regional certificate: set hostedZoneId and leave overrides.certificates without both api and jmap');
+    }
+
+    return new McpApi(this, 'mcp-api', {
       jmapApiGateway: jmapApi.httpApi,
       authorizerLambda: jmapApi.authorizerLambda,
-      certificate: props.mcp.regionalCertificate,
-      domainName: this.props.domainName,
+      certificate: props.edge.regionalCertificate,
+      domainName: this.props.data.derivedDomainName,
       scopeMap: this.props.authProvider.scopeMap as Record<string, string[]>,
       artifactResolver: this.props.artifactResolver,
-    }) : undefined;
+    });
   }
 }

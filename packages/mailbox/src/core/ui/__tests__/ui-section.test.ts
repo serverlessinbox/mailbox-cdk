@@ -50,13 +50,16 @@ describe('UiSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       enableAdminUi: true,
       enableWebmailUi: true,
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
-      adminApiAddons: [],
-      oauthClientsProvisioned: new DependencyGroup(),
+      data: {
+        configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      },
+      auth: { oauthClientsProvisioned: new DependencyGroup() },
+      apis: { adminApiAddons: [] },
+      edge: {},
       ...overrides,
     });
   }

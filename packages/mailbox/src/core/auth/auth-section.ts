@@ -19,18 +19,48 @@ import { AuthKeyStore }                                  from './auth-key-store'
 import { Bootstrap }                                     from './bootstrap';
 import type { IMailboxAuthProvider, OAuthClientsConfig } from './types';
 
-/** Props of {@link AuthSection}: what the auth key store and the identity provisioner are built from. */
-export interface AuthSectionProps {
-  readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
+/** What {@link AuthSection} uses of the data section. */
+export interface IAuthDataInputs {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly blobStore: IDataBlobStore;
-  readonly emailSubmissionQueue: IEmailSendingQueue;
+  /** The domain name of the hosted zone, a deploy-time token. */
+  readonly derivedDomainName: string;
+}
+
+/** What {@link AuthSection} uses of the email section. */
+export interface IAuthEmailInputs {
+  readonly submissionQueue: IEmailSendingQueue;
   readonly sesConfigSetName: string;
-  readonly domainName: string;
+}
+
+/** What {@link AuthSection.addBootstrap} uses of the email section. */
+export interface IAuthBootstrapEmailInputs {
+  readonly sesRuleSet: IReceiptRuleSet;
+}
+
+/** What {@link AuthSection.addBootstrap} uses of the ui section. */
+export interface IAuthBootstrapUiInputs {
+  /** The Admin UI, when enabled. */
+  readonly adminUi?: IOAuthUi;
+  /** The Webmail UI, when enabled. */
+  readonly webmailUi?: IOAuthUi;
+}
+
+/** What {@link AuthSection.addBootstrap} uses of the edge section. */
+export interface IAuthBootstrapEdgeInputs {
+  /** Present when the mailbox has a hosted zone. */
+  readonly hostedZone?: route53.IHostedZone;
+}
+
+/** Props of {@link AuthSection}: what the auth key store and the identity provisioner are built from. */
+export interface AuthSectionProps {
+  readonly artifactResolver: IArtifactResolver;
+  readonly authProvider: IMailboxAuthProvider;
+  readonly data: IAuthDataInputs;
+  readonly email: IAuthEmailInputs;
   readonly vendorAccountIds: string[];
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
   readonly adminUiUrl?: string;
@@ -38,15 +68,11 @@ export interface AuthSectionProps {
 
 /** Props of {@link AuthSection.addBootstrap}: the values that exist only after the UIs. */
 export interface AuthBootstrapProps {
-  readonly sesRuleSet: IReceiptRuleSet;
+  readonly email: IAuthBootstrapEmailInputs;
+  readonly ui: IAuthBootstrapUiInputs;
+  readonly edge: IAuthBootstrapEdgeInputs;
   readonly sesReceivingMode?: SesReceivingMode;
-  /** Present when the mailbox has a hosted zone. */
-  readonly hostedZone?: route53.IHostedZone;
   readonly stackIdentityTagKey: string;
-  /** The Admin UI, when enabled. */
-  readonly adminUi?: IOAuthUi;
-  /** The Webmail UI, when enabled. */
-  readonly webmailUi?: IOAuthUi;
 }
 
 /** The auth key store, the identity provisioner and, once the UIs exist, the bootstrap. */
@@ -77,16 +103,16 @@ export class AuthSection extends Construct {
     this.authKeyStoreTable = authKeyStore.authKeyStoreTable;
 
     this.identityProvisioner = new IdentityProvisionerLambda(this, 'identity-provisioner', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      auditEventsQueue: props.auditEventsQueue,
+      configTable: props.data.configTable,
+      itemTable: props.data.itemTable,
+      changelogTable: props.data.changelogTable,
+      auditEventsQueue: props.data.auditEventsQueue,
       artifactResolver: props.artifactResolver,
       adminUIURL: props.adminUiUrl,
-      blobStore: props.blobStore,
-      emailSubmissionQueue: props.emailSubmissionQueue,
-      sesConfigSetName: props.sesConfigSetName,
-      systemSenderAddress: `noreply@${props.domainName}`,
+      blobStore: props.data.blobStore,
+      emailSubmissionQueue: props.email.submissionQueue,
+      sesConfigSetName: props.email.sesConfigSetName,
+      systemSenderAddress: `noreply@${props.data.derivedDomainName}`,
       vendorAccountIds: props.vendorAccountIds,
     });
   }
@@ -96,19 +122,19 @@ export class AuthSection extends Construct {
     const authProvider = this.props.authProvider;
 
     const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
-      ?? props.adminUi?.oauthClient.groups
+      ?? props.ui.adminUi?.oauthClient.groups
       ?? undefined;
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
-      domain: this.props.domainName,
+      domain: this.props.data.derivedDomainName,
       oidcIssuer: authProvider.issuer,
-      configTable: this.props.configTable,
+      configTable: this.props.data.configTable,
       authKeyStoreTable: this.authKeyStoreTable,
       artifactResolver: this.props.artifactResolver,
-      sesRuleSet: props.sesRuleSet,
+      sesRuleSet: props.email.sesRuleSet,
       sesReceivingMode: props.sesReceivingMode,
       sesSendEnabled: true,
-      hostedZone: props.hostedZone,
+      hostedZone: props.edge.hostedZone,
       vendorAccountIds: this.props.vendorAccountIds,
       stackIdentityTagKey: props.stackIdentityTagKey,
 
@@ -136,7 +162,7 @@ export class AuthSection extends Construct {
   }
 
   private bootstrapOAuthClients(props: AuthBootstrapProps): OAuthClientsConfig | undefined {
-    const { adminUi, webmailUi } = props;
+    const { adminUi, webmailUi } = props.ui;
 
     return (adminUi || webmailUi)
       ? {

@@ -8,14 +8,19 @@ import type { IDataTable }                   from '../../resources/tables/data-t
 
 import { TantivySearch }                     from './tantivy-search';
 
-/** Props of {@link SearchSection}. */
-export interface SearchSectionProps {
-  readonly artifactResolver: IArtifactResolver;
+/** What {@link SearchSection} uses of the data section. */
+export interface ISearchDataInputs {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
   /** The store the search index is kept in. */
   readonly blobStore: IDataBlobStore;
+}
+
+/** Props of {@link SearchSection}. */
+export interface SearchSectionProps {
+  readonly artifactResolver: IArtifactResolver;
+  readonly data: ISearchDataInputs;
   readonly queueProps?: Partial<BaseQueueProps>;
 }
 
@@ -26,10 +31,10 @@ export class SearchSection extends Construct {
     applyServerlessInboxComponentTag(this, 'search');
 
     new TantivySearch(this, 'tantivy-search', {
-      indexBucket: props.blobStore,
-      itemTable: props.itemTable,
-      configTable: props.configTable,
-      changelogTable: props.changelogTable,
+      indexBucket: props.data.blobStore,
+      itemTable: props.data.itemTable,
+      configTable: props.data.configTable,
+      changelogTable: props.data.changelogTable,
       artifactResolver: props.artifactResolver,
       queueProps: props.queueProps,
     });

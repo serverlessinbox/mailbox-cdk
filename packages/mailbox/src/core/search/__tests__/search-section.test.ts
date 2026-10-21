@@ -26,10 +26,12 @@ function synthSection(stack: Stack): SearchSection {
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     }),
-    configTable: dataTable('config-table'),
-    itemTable: dataTable('item-table'),
-    changelogTable: dataTable('changelog-table'),
-    blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+    data: {
+      configTable: dataTable('config-table'),
+      itemTable: dataTable('item-table'),
+      changelogTable: dataTable('changelog-table'),
+      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+    },
   });
   Template.fromStack(stack);
   return section;

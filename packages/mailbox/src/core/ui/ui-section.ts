@@ -6,6 +6,7 @@ import { Construct }                         from 'constructs';
 import type { IDependable }                  from 'constructs';
 
 import type { MailboxOAuthClients }          from '../../mailbox-outputs';
+import type { MailboxCertificateOverrides }  from '../../mailbox-props';
 import type { IAuditEventsQueue }            from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                   from '../../resources/tables/data-tables';
 import type { IAdminApiAddon }               from '../apis/addons';
@@ -17,26 +18,48 @@ import { AdminUi }                           from './admin-ui';
 import type { MailboxUi }                    from './mailbox-ui';
 import { WebmailUi }                         from './webmail-ui';
 
-/** Props of {@link UiSection}. */
-export interface UiSectionProps {
-  readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
+/** What {@link UiSection} uses of the data section. */
+export interface IUiDataInputs {
   readonly configTable: IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
-  readonly enableAdminUi: boolean;
-  readonly enableWebmailUi: boolean;
-  /** The endpoint names the UIs are served on and call. */
-  readonly mailboxDomains: IMailboxDomainNames;
-  readonly adminUiCertificate?: acm.ICertificate;
-  readonly webmailUiCertificate?: acm.ICertificate;
+}
+
+/** What {@link UiSection} uses of the auth section. */
+export interface IUiAuthInputs {
+  /** The Webmail UI's token exchange waits on this before it switches to the Webmail OAuth client row. */
+  readonly oauthClientsProvisioned: IDependable;
+}
+
+/** What {@link UiSection} uses of the apis section. */
+export interface IUiApisInputs {
+  /** The admin-API addons whose UI configuration is merged into the Admin UI's runtime config. */
+  readonly adminApiAddons: IAdminApiAddon[];
+}
+
+/** What {@link UiSection} uses of the edge section. */
+export interface IUiEdgeInputs {
+  /** The certificate the UIs are served with unless the operator gave their own; present when the mailbox has a hosted zone. */
+  readonly uiCertificate?: acm.ICertificate;
   /** Present when the Admin API has a custom domain the Admin UI should call. */
   readonly apiCertificate?: acm.ICertificate;
   /** Present when the JMAP API has a custom domain the Webmail UI should call. */
   readonly jmapCertificate?: acm.ICertificate;
-  /** The admin-API addons whose UI configuration is merged into the Admin UI's runtime config. */
-  readonly adminApiAddons: IAdminApiAddon[];
-  /** The Webmail UI's token exchange waits on this before it switches to the Webmail OAuth client row. */
-  readonly oauthClientsProvisioned: IDependable;
+}
+
+/** Props of {@link UiSection}. */
+export interface UiSectionProps {
+  readonly artifactResolver: IArtifactResolver;
+  readonly authProvider: IMailboxAuthProvider;
+  readonly enableAdminUi: boolean;
+  readonly enableWebmailUi: boolean;
+  /** The endpoint names the UIs are served on and call. */
+  readonly mailboxDomains: IMailboxDomainNames;
+  /** The operator's own certificates; the adminUi and webmailUi ones are read here, and the edge section's UI certificate serves a UI without one. */
+  readonly certificateOverrides?: MailboxCertificateOverrides;
+  readonly data: IUiDataInputs;
+  readonly auth: IUiAuthInputs;
+  readonly apis: IUiApisInputs;
+  readonly edge: IUiEdgeInputs;
 }
 
 /** What the bootstrap needs of a UI: the OAuth client it registered and where the client lands after login. */
@@ -84,14 +107,16 @@ export class UiSection extends Construct {
   }
 
   private addAdminUi(props: UiSectionProps): AdminUi {
+    const webmailUiCertificate = props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate;
+
     const adminUi = new AdminUi(this, 'admin-ui', {
       domainName: props.mailboxDomains.admin,
-      certificate: props.adminUiCertificate,
-      configTable: props.configTable,
-      auditEventsQueue: props.auditEventsQueue,
+      certificate: props.certificateOverrides?.adminUi ?? props.edge.uiCertificate,
+      configTable: props.data.configTable,
+      auditEventsQueue: props.data.auditEventsQueue,
       authProvider: props.authProvider,
-      apiUrl: props.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
-      webmailUrl: props.enableWebmailUi && props.webmailUiCertificate
+      apiUrl: props.edge.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
+      webmailUrl: props.enableWebmailUi && webmailUiCertificate
         ? `https://${props.mailboxDomains.webmail}`
         : undefined,
       uiConfig: this.mergeAdminUiConfig(props),
@@ -106,14 +131,14 @@ export class UiSection extends Construct {
   private addWebmailUi(props: UiSectionProps): WebmailUi {
     const webmailUi = new WebmailUi(this, 'webmail-ui', {
       domainName: props.mailboxDomains.webmail,
-      certificate: props.webmailUiCertificate,
-      configTable: props.configTable,
-      auditEventsQueue: props.auditEventsQueue,
+      certificate: props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate,
+      configTable: props.data.configTable,
+      auditEventsQueue: props.data.auditEventsQueue,
       authProvider: props.authProvider,
-      apiUrl: props.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
+      apiUrl: props.edge.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
       uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       artifactResolver: props.artifactResolver,
-      dependsOn: [props.oauthClientsProvisioned],
+      dependsOn: [props.auth.oauthClientsProvisioned],
     });
 
     this.grantUiContentDeployIfGrantable(webmailUi, props.artifactResolver);
@@ -138,7 +163,7 @@ export class UiSection extends Construct {
         : {}),
     };
 
-    for (const addon of props.adminApiAddons) {
+    for (const addon of props.apis.adminApiAddons) {
       if (addon.uiConfig) {
         Object.assign(mergedAdminUiConfig, addon.uiConfig);
       }

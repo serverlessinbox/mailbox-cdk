@@ -64,25 +64,31 @@ describe('ApisSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
-      changelogTable: dataTable('changelog-table'),
-      auditLogTable: dataTable('audit-log-table'),
-      mailFeedbackTable: dataTable('mail-feedback-table'),
-      authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
-      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
-      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      identityProvisioner: LambdaFunction.fromFunctionArn(
-        stack,
-        'identity-provisioner-ref',
-        'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
-      ),
+      data: {
+        configTable: dataTable('config-table'),
+        itemTable: dataTable('item-table'),
+        changelogTable: dataTable('changelog-table'),
+        auditLogTable: dataTable('audit-log-table'),
+        mailFeedbackTable: dataTable('mail-feedback-table'),
+        blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+        derivedDomainName: 'example.com',
+      },
+      auth: {
+        authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
+        identityProvisioner: LambdaFunction.fromFunctionArn(
+          stack,
+          'identity-provisioner-ref',
+          'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+        ),
+      },
+      email: {
+        submissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
+        sesRuleSetName: 'rule-set',
+        sesConfigSetName: 'config-set',
+      },
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
       stackIdentityTagKey: 'serverless-inbox:stack',
-      sesRuleSetName: 'rule-set',
-      sesConfigSetName: 'config-set',
-      domainName: 'example.com',
       jmapApiBaseUrl: 'https://jmap.example.com',
     });
   }
@@ -91,9 +97,8 @@ describe('ApisSection', () => {
     return {
       cdnHost: 'https://cdn.example.com',
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
-      hasHostedZone: false,
-      adminApiAllowedOrigins: [],
-      jmapApiAllowedOrigins: [],
+      edge: {},
+      ui: { adminUiOrigins: [], webmailUiOrigins: [] },
       ...overrides,
     };
   }
@@ -141,9 +146,16 @@ describe('ApisSection', () => {
     const section = newSection();
 
     section.addEndpoints(endpointsProps({
-      mcp: { regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional') },
+      enableMcp: true,
+      edge: { regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional') },
     }));
 
     expect(section.node.tryFindChild('mcp-api')).toBeDefined();
+  });
+
+  it('addEndpoints throws when the MCP API is enabled and the edge section has no regional certificate', () => {
+    const section = newSection();
+
+    expect(() => section.addEndpoints(endpointsProps({ enableMcp: true }))).toThrow('enableMcp needs the regional certificate');
   });
 });

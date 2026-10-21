@@ -16,18 +16,29 @@ import type { IResourceRemoval }                          from './sweeper/remova
 import { StackFailureDetectorRemoval }                    from './sweeper/stack-failure-detector-removal';
 import { SweeperInfra }                                   from './sweeper/sweeper-infra';
 
-/** Props of {@link OpsSection}. */
-export interface OpsSectionProps {
-  readonly artifactResolver: IArtifactResolver;
+/** What {@link OpsSection} uses of the data section. */
+export interface IOpsDataInputs {
   readonly configTable: IDataTable;
-  readonly domainName: string;
-  readonly vendorAccountIds: string[];
-  /** Default: {@link SendStackFailuresMode.ENABLED}. */
-  readonly sendStackFailures?: SendStackFailuresMode;
+  /** The domain name of the hosted zone, a deploy-time token. */
+  readonly derivedDomainName: string;
+}
+
+/** What {@link OpsSection} uses of the edge section. */
+export interface IOpsEdgeInputs {
   /** The version ARN of the edge sub-stack's JMAP blob download function, a deploy-time token. */
   readonly jmapBlobDownloadVersionArn: string;
   /** The regional API certificate this stack created, when it created one; it is retained and swept on removal. */
   readonly regionalCertificate?: acm.ICertificate;
+}
+
+/** Props of {@link OpsSection}. */
+export interface OpsSectionProps {
+  readonly artifactResolver: IArtifactResolver;
+  readonly vendorAccountIds: string[];
+  /** Default: {@link SendStackFailuresMode.ENABLED}. */
+  readonly sendStackFailures?: SendStackFailuresMode;
+  readonly data: IOpsDataInputs;
+  readonly edge: IOpsEdgeInputs;
 }
 
 /** The operational pieces around the mail server: license refresh, stack-failure detection and the cleanup of retained resources. */
@@ -37,9 +48,9 @@ export class OpsSection extends Construct {
     applyServerlessInboxComponentTag(this, 'ops');
 
     new LicenseRefresh(this, 'license-refresh', {
-      configTable: props.configTable,
+      configTable: props.data.configTable,
       artifactResolver: props.artifactResolver,
-      coreDomain: props.domainName,
+      coreDomain: props.data.derivedDomainName,
       vendorAccountIds: props.vendorAccountIds,
     });
 
@@ -56,12 +67,12 @@ export class OpsSection extends Construct {
       vendorAccountIds: props.vendorAccountIds,
     });
 
-    const edgeFunction = this.importEdgeFunction(props.jmapBlobDownloadVersionArn);
+    const edgeFunction = this.importEdgeFunction(props.edge.jmapBlobDownloadVersionArn);
 
     // Each retained resource is registered as its own removal.
     const removals: IResourceRemoval[] = [];
-    if (props.regionalCertificate) {
-      removals.push(new CertificateRemoval(this, 'cert-removal', { certificate: props.regionalCertificate }));
+    if (props.edge.regionalCertificate) {
+      removals.push(new CertificateRemoval(this, 'cert-removal', { certificate: props.edge.regionalCertificate }));
     }
     removals.push(new EdgeFunctionRemoval(this, 'edge-fn-removal', { function: edgeFunction }));
     if (stackFailureDetection.sweepTargets) {

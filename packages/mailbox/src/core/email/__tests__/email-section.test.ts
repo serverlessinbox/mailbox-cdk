@@ -31,13 +31,15 @@ function newSection(stack: Stack): EmailSection {
       location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     }),
-    configTable: dataTable('config-table'),
-    itemTable: dataTable('item-table'),
-    changelogTable: dataTable('changelog-table'),
-    mailFeedbackTable: dataTable('mail-feedback-table'),
-    blobStore: new DataBlobStore(bucket),
-    blobStoreBucket: bucket,
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    data: {
+      configTable: dataTable('config-table'),
+      itemTable: dataTable('item-table'),
+      changelogTable: dataTable('changelog-table'),
+      mailFeedbackTable: dataTable('mail-feedback-table'),
+      blobStore: new DataBlobStore(bucket),
+      blobStoreBucket: bucket,
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    },
   });
 }
 

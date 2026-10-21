@@ -52,14 +52,18 @@ describe('AuthSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
-      changelogTable: dataTable('changelog-table'),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
-      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      sesConfigSetName: 'config-set',
-      domainName: 'example.com',
+      data: {
+        configTable: dataTable('config-table'),
+        itemTable: dataTable('item-table'),
+        changelogTable: dataTable('changelog-table'),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+        blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+        derivedDomainName: 'example.com',
+      },
+      email: {
+        submissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
+        sesConfigSetName: 'config-set',
+      },
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
     });
   }
@@ -74,7 +78,9 @@ describe('AuthSection', () => {
   it('tags every taggable resource under it with the auth component', () => {
     const section = newSection();
     section.addBootstrap({
-      sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}),
+      email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+      ui: {},
+      edge: {},
       stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     });
 
@@ -100,7 +106,9 @@ describe('AuthSection', () => {
     const section = newSection();
 
     section.addBootstrap({
-      sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}),
+      email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+      ui: {},
+      edge: {},
       stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     });
 

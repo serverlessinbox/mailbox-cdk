@@ -16,9 +16,8 @@ import { EmailSending }                          from './email-sending';
 import { SESEventProcessing }                    from './ses-event-processing';
 import { SesRules }                              from './ses-rules';
 
-/** Props of {@link EmailSection}. */
-export interface EmailSectionProps {
-  readonly artifactResolver: IArtifactResolver;
+/** What {@link EmailSection} uses of the data section. */
+export interface IEmailDataInputs {
   readonly configTable: IDataTable;
   readonly itemTable: IDataTable;
   readonly changelogTable: IDataTable;
@@ -27,6 +26,12 @@ export interface EmailSectionProps {
   /** The raw bucket the SES receipt rules deliver into. */
   readonly blobStoreBucket: IBucket;
   readonly auditEventsQueue: IAuditEventsQueue;
+}
+
+/** Props of {@link EmailSection}. */
+export interface EmailSectionProps {
+  readonly artifactResolver: IArtifactResolver;
+  readonly data: IEmailDataInputs;
   readonly queueProps?: Partial<BaseQueueProps>;
 }
 
@@ -45,22 +50,24 @@ export class EmailSection extends Construct {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'email');
 
+    const { data } = props;
+
     this.sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
-      itemTable: props.itemTable,
-      mailFeedbackTable: props.mailFeedbackTable,
-      changelogTable: props.changelogTable,
-      configTable: props.configTable,
-      blobStore: props.blobStore,
-      auditEventsQueue: props.auditEventsQueue,
+      itemTable: data.itemTable,
+      mailFeedbackTable: data.mailFeedbackTable,
+      changelogTable: data.changelogTable,
+      configTable: data.configTable,
+      blobStore: data.blobStore,
+      auditEventsQueue: data.auditEventsQueue,
       artifactResolver: props.artifactResolver,
       queueProps: props.queueProps,
     });
 
     this.emailSending = new EmailSending(this, 'email-sending', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      blobStore: props.blobStore,
+      configTable: data.configTable,
+      itemTable: data.itemTable,
+      changelogTable: data.changelogTable,
+      blobStore: data.blobStore,
       artifactResolver: props.artifactResolver,
       sesConfigSetName: this.sesEventProcessing.sesConfigSetName,
       queueProps: props.queueProps,
@@ -70,17 +77,17 @@ export class EmailSection extends Construct {
     // Lambda so its own event source mapping can reference the queue at construction time.
     const sesRules = new SesRules(this, 'ses-rules', {
       delivery: {
-        blobStore: props.blobStoreBucket,
+        blobStore: data.blobStoreBucket,
         artifactResolver: props.artifactResolver,
         queueProps: props.queueProps,
       },
     });
 
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      blobStore: props.blobStore,
+      configTable: data.configTable,
+      itemTable: data.itemTable,
+      changelogTable: data.changelogTable,
+      blobStore: data.blobStore,
       emailProcessingQueue: sesRules.emailProcessingQueue,
       artifactResolver: props.artifactResolver,
     });

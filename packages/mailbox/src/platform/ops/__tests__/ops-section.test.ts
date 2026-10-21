@@ -33,10 +33,12 @@ function newSection(stack: Stack, overrides: Partial<OpsSectionProps> = {}): Ops
   });
   const section          = new OpsSection(stack, 'ops', {
     artifactResolver,
-    configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-    domainName: 'example.com',
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
-    jmapBlobDownloadVersionArn: VERSION_ARN,
+    data: {
+      configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+      derivedDomainName: 'example.com',
+    },
+    edge: { jmapBlobDownloadVersionArn: VERSION_ARN },
     ...overrides,
   });
   Template.fromStack(stack);
@@ -72,7 +74,10 @@ describe('OpsSection', () => {
   it('registers the certificate removal only when a regional certificate was created', () => {
     const { stack }            = newDeployerTestStack();
     const withCert             = newSection(stack, {
-      regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
+      edge: {
+        jmapBlobDownloadVersionArn: VERSION_ARN,
+        regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
+      },
     });
     const { stack: bareStack } = newDeployerTestStack();
     const withoutCert          = newSection(bareStack);
