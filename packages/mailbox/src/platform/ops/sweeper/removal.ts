@@ -7,6 +7,19 @@ import { Construct }                                   from 'constructs';
 
 import type { RemovalId, RemovalTargets, WorkerInput } from '../../../runtime/resource-sweeper/removal';
 
+/** What the sweeper workflow takes from a removal: the removal's own chain of states. */
+export interface IRemovalChain {
+  /**
+   * Builds this removal's own state-machine chain: a presence check on `$.toSweep.<id>` (see
+   * `withTargetPresenceGuard`), then — only when present — whatever waiting it needs, then invoking
+   * `worker` with a payload read from that same execution-input path, retrying on RETRY every
+   * `retryInterval` until the worker reports SUCCESS (continuing to `onSuccess`) or FAILED (a
+   * terminal Fail state). When nothing is present at `$.toSweep.<id>`, skips straight to `onSuccess`.
+   * Returns the chain's entry state.
+   */
+  buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State;
+}
+
 /**
  * Contract for registering a resource type with the sweeper. An implementation owns its own target
  * data, the IAM grants its own resources need on the shared worker role, its own entry in the custom
@@ -18,7 +31,7 @@ import type { RemovalId, RemovalTargets, WorkerInput } from '../../../runtime/re
  * runtime from `$.toSweep.<id>` in the execution input (see `withTargetPresenceGuard` below), and
  * skips itself when nothing is there.
  */
-export interface IResourceRemoval<TId extends RemovalId = RemovalId> {
+export interface IResourceRemoval<TId extends RemovalId = RemovalId> extends IRemovalChain {
   /**
    * Unique id for this removal. Used to keep its Step Functions state names collision-free, as the
    * key under which this removal's own `crProperties()` entry is placed in the custom resource's
@@ -35,16 +48,6 @@ export interface IResourceRemoval<TId extends RemovalId = RemovalId> {
    * removal's `id`.
    */
   crProperties(): RemovalTargets[TId];
-
-  /**
-   * Builds this removal's own state-machine chain: a presence check on `$.toSweep.<id>` (see
-   * `withTargetPresenceGuard`), then — only when present — whatever waiting it needs, then invoking
-   * `worker` with a payload read from that same execution-input path, retrying on RETRY every
-   * `retryInterval` until the worker reports SUCCESS (continuing to `onSuccess`) or FAILED (a
-   * terminal Fail state). When nothing is present at `$.toSweep.<id>`, skips straight to `onSuccess`.
-   * Returns the chain's entry state.
-   */
-  buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State;
 }
 
 /** The worker invocation of one removal and the loop that repeats it until the worker is done. */
