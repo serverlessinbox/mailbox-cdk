@@ -4,7 +4,7 @@ import { SQSClient }                        from '@aws-sdk/client-sqs';
 import type { ApiGatewayV2EventLike }       from '@serverlessinbox/mailbox-admin-api';
 import { env, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { IdentityProvisionerClient }        from '../shared/identity-provisioner-client';
+import { IdentityProvisionerClient }        from '../../runtime/shared/identity-provisioner-client';
 
 import { load }                             from './config';
 import { IdpUserMapper }                    from './idp-user-mapper';

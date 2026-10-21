@@ -13,7 +13,7 @@ import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { loadMailboxCognitoArtifactVersions }   from '../../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }     from '../../mailbox-cognito-registry-record';
-import { templateProperties }                   from '../../ts-lambdas/bootstrap-user/__tests__/bootstrap-user-helpers';
+import { templateProperties }                   from '../../runtime/bootstrap-user/__tests__/bootstrap-user-helpers';
 import { MailboxUserPool }                      from '../mailbox-user-pool';
 
 const BOOTSTRAP_USER_TYPE = 'Custom::CognitoBootstrapUser';

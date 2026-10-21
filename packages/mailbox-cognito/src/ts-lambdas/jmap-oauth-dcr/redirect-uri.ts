@@ -1,4 +1,4 @@
-import type { RedirectUri } from '../shared/identity-identifiers';
+import type { RedirectUri } from '../../runtime/shared/identity-identifiers';
 
 /**
  * RFC 8252 §7.3 loopback hostnames. A native app binds an ephemeral port per launch, so the port is never

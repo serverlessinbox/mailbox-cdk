@@ -10,8 +10,8 @@ import {
 } from '@serverlessinbox/mailbox-admin-api';
 import { toIssuer, type Issuer }                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { toGroupName, toUserSubject, toUsername, type GroupName, type UserSubject, type Username } from '../shared/cognito-identifiers';
-import { toEmailAddress, toScope, type EmailAddress, type Scope }                                  from '../shared/identity-identifiers';
+import { toGroupName, toUserSubject, toUsername, type GroupName, type UserSubject, type Username } from '../../runtime/shared/cognito-identifiers';
+import { toEmailAddress, toScope, type EmailAddress, type Scope }                                  from '../../runtime/shared/identity-identifiers';
 
 import { IdpUsersServiceRuntime, type IdpUsersServiceHandlers }                                    from './generated/idp_users_service';
 import type { IdpUsersRequestValidator }                                                           from './idp-users.validation';

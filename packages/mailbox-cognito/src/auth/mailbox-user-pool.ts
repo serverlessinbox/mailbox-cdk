@@ -25,7 +25,7 @@ import { MailboxCognitoDataDeployer }                                           
 import { CognitoBootstrapUserLambda }                                                                            from '../lambdas/cognito-bootstrap-user';
 import { loadMailboxCognitoArtifactVersions }                                                                    from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                                                      from '../mailbox-cognito-registry-record';
-import type { BootstrapUserProperties }                                                                          from '../ts-lambdas/bootstrap-user/properties';
+import type { BootstrapUserProperties }                                                                          from '../runtime/bootstrap-user/properties';
 
 import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
 import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './scopemaps/cognito';

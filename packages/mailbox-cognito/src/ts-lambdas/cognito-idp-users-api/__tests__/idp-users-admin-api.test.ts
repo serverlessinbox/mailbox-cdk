@@ -13,7 +13,7 @@ import type { ApiGatewayV2EventLike }    from '@serverlessinbox/mailbox-admin-ap
 import { toQueueUrl }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                    from 'aws-sdk-client-mock';
 
-import { toGroupName, type GroupName }   from '../../shared/cognito-identifiers';
+import { toGroupName, type GroupName }   from '../../../runtime/shared/cognito-identifiers';
 import { DeleteIdpUserResponseSchema }   from '../generated/idp_users_pb';
 import { IdpUsersAdminApi }              from '../idp-users-admin-api';
 import { IdpUsersRequestValidator }      from '../idp-users.validation';

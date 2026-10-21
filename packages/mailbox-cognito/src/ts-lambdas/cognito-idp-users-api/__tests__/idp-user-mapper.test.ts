@@ -6,7 +6,7 @@
  * attribute or a wrong enabled flag is shown to the admin as fact.
  */
 
-import { toUsername }    from '../../shared/cognito-identifiers';
+import { toUsername }    from '../../../runtime/shared/cognito-identifiers';
 import { IdpUserMapper } from '../idp-user-mapper';
 
 const CREATED  = new Date(1_000_000);

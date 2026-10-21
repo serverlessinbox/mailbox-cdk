@@ -3,7 +3,7 @@ import { LambdaClient }                     from '@aws-sdk/client-lambda';
 import { env, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2 }      from 'aws-lambda';
 
-import { IdentityProvisionerClient }        from '../shared/identity-provisioner-client';
+import { IdentityProvisionerClient }        from '../../runtime/shared/identity-provisioner-client';
 
 import { ClientRegistration }               from './client-registration';
 import { CognitoUserPoolClientManager }     from './cognito-client';

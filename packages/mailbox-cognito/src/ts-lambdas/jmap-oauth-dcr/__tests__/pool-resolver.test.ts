@@ -2,7 +2,7 @@
 
 import { toTenantId }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { toUserPoolId } from '../../shared/cognito-identifiers';
+import { toUserPoolId } from '../../../runtime/shared/cognito-identifiers';
 import { PoolResolver } from '../pool-resolver';
 
 describe('PoolResolver', () => {
