@@ -115,12 +115,12 @@ export class Mailbox extends Construct {
 
     const stackHelpers                                      = StackHelpers.getOrCreate(this, artifactResolver);
     const { derivedDomainName, derivedS3SafeDataStackName } = stackHelpers.resolveMailboxData(
-      groups.ops, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
+      groups.data, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
     );
 
     // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)
     const { derivedS3SafeDataStackName: mainStackNameBase } = stackHelpers.resolveMailboxData(
-      groups.ops, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
+      groups.data, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
     );
 
     setStackNameBase(this, mainStackNameBase);
