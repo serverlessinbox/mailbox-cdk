@@ -1,31 +1,24 @@
-import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag, setStackNameBase }                                                  from '@serverlessinbox/mailbox-cdk-shared';
+import { setStackNameBase }                                                                                    from '@serverlessinbox/mailbox-cdk-shared';
 import { addServerlessInboxResourceGroup, StackHelpers }                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }                                                                                     from 'aws-cdk-lib/aws-iam';
 import { IBucket }                                                                                             from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                                                               from 'aws-cdk-lib';
-import { Construct, DependencyGroup }                                                                          from 'constructs';
+import { Construct }                                                                                           from 'constructs';
 
 import { ApisSection }                                                                                        from './core/apis/apis-section';
 import type { IMailboxAuthProvider }                                                                           from './core/auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
-import type { IDataTable }                                                                                     from './resources/tables/data-tables';
 import { DataSection }                                                                                         from './core/data/data-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
 import { SearchSection }                                                                                       from './core/search/search-section';
 import { EdgeSection }                                                                                         from './core/edge/edge-section';
-import { AuthKeyStore }                                                                                        from './core/auth/auth-key-store';
-import { Bootstrap }                                                                                           from './core/auth/bootstrap';
+import { AuthSection }                                                                                         from './core/auth/auth-section';
 import type { CdnCustomDomain }                                                                                from './core/ui/cdn-construct';
 import { OpsSection }                                                                                          from './platform/ops/ops-section';
-import { IdentityProvisionerLambda }                                                                           from './resources/lambdas/identity-provisioner-lambda';
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
 import type { MailboxProps }                                                                                   from './mailbox-props';
-import { AdminUi }                                                                                             from './core/ui/admin-ui';
-import type { MailboxUi }                                                                                      from './core/ui/mailbox-ui';
-import { WebmailUi }                                                                                           from './core/ui/webmail-ui';
+import { UiSection }                                                                                           from './core/ui/ui-section';
 import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
 
 /**
@@ -45,7 +38,6 @@ export class Mailbox extends Construct {
    * surface cannot provide.
    */
   private readonly blobStoreBucket: IBucket;
-  private readonly configTable: IDataTable;
 
   /**
    * The OAuth clients this Mailbox created for its UIs. A client is present only when its UI is
@@ -91,11 +83,6 @@ export class Mailbox extends Construct {
       queueProps: encryptionPlan.queues,
     });
 
-    const groups = {
-      auth:   new Construct(this, 'auth'),
-      ui:     new Construct(this, 'ui'),
-    };
-
     new SearchSection(this, 'search', {
       artifactResolver,
       configTable,
@@ -104,10 +91,6 @@ export class Mailbox extends Construct {
       blobStore: data.blobStore,
       queueProps: encryptionPlan.queues,
     });
-
-    // Component tags on each group — CDK propagates to the whole subtree.
-    applyServerlessInboxComponentTag(groups.auth,   'auth');
-    applyServerlessInboxComponentTag(groups.ui,     'ui');
 
     setStackNameBase(this, data.mainStackNameBase);
 
@@ -122,11 +105,20 @@ export class Mailbox extends Construct {
 
     this.blobStoreBucket = data.blobStoreBucket;
     this.blobStoreHandle = data.blobStore;
-    this.configTable     = configTable;
 
-    const authKeyStore = new AuthKeyStore(groups.auth, 'auth-key-store', {
-      issuers: [authProvider.issuer],
+    const auth = new AuthSection(this, 'auth', {
       artifactResolver,
+      authProvider,
+      configTable,
+      itemTable,
+      changelogTable,
+      auditEventsQueue: data.auditEventsQueue,
+      blobStore: this.blobStoreHandle,
+      emailSubmissionQueue: email.submissionQueue,
+      sesConfigSetName: email.sesConfigSetName,
+      domainName,
+      vendorAccountIds,
+      adminUiUrl: this.urls.adminUi,
     });
 
     // Regional ACM certificates for regional services (API Gateway).
@@ -147,7 +139,7 @@ export class Mailbox extends Construct {
       providedJmapCertificate,
       itemTable,
       configTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
+      authKeyStoreTable: auth.authKeyStoreTable,
       productVersion: stackVersion,
     });
 
@@ -179,32 +171,6 @@ export class Mailbox extends Construct {
     const wsCertificate = providedWsCertificate
       ?? regionalSanCertificate;
 
-    const adminUiOrigins: string[]   = [];
-    const webmailUiOrigins: string[] = [];
-
-    let adminUi: AdminUi | undefined;
-    let webmailUi: WebmailUi | undefined;
-
-    let adminUiCnameTarget: string | undefined;
-    let webmailUiCnameTarget: string | undefined;
-
-    // The webmail token exchange waits on this group; the bootstrap resource joins it once built.
-    const oauthClientsProvisioned = new DependencyGroup();
-
-    const identityProvisioner = new IdentityProvisionerLambda(groups.auth, 'identity-provisioner', {
-      configTable,
-      itemTable,
-      changelogTable,
-      auditEventsQueue: data.auditEventsQueue,
-      artifactResolver,
-      adminUIURL: this.urls.adminUi,
-      blobStore: this.blobStoreHandle,
-      emailSubmissionQueue: email.submissionQueue,
-      sesConfigSetName: email.sesConfigSetName,
-      systemSenderAddress: `noreply@${domainName}`,
-      vendorAccountIds,
-    });
-
     const apis = new ApisSection(this, 'apis', {
       artifactResolver,
       authProvider,
@@ -214,11 +180,11 @@ export class Mailbox extends Construct {
       changelogTable,
       auditLogTable,
       mailFeedbackTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
+      authKeyStoreTable: auth.authKeyStoreTable,
       blobStore: this.blobStoreHandle,
       emailSubmissionQueue: email.submissionQueue,
       auditEventsQueue: data.auditEventsQueue,
-      identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
       vendorAccountIds,
       stackIdentityTagKey,
       sesRuleSetName: email.sesRuleSetName,
@@ -227,81 +193,28 @@ export class Mailbox extends Construct {
       jmapApiBaseUrl: this.urls.jmapApi,
     });
 
-    if (enableAdminUi) {
-      const providerAuthz = authProvider.authorizationConfig?.();
+    const ui = new UiSection(this, 'ui', {
+      artifactResolver,
+      authProvider,
+      configTable,
+      auditEventsQueue: data.auditEventsQueue,
+      enableAdminUi,
+      enableWebmailUi,
+      mailboxDomains,
+      adminUiCertificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
+      webmailUiCertificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
+      apiCertificate,
+      jmapCertificate,
+      adminApiAddons: apis.adminApiAddons,
+      oauthClientsProvisioned: auth.oauthClientsProvisioned,
+    });
 
-      // Build admin UI config eagerly by merging authz and all addon configs.
-      const mergedAdminUiConfig: Record<string, unknown> = {
-        ...(providerAuthz
-          ? {
-            authorization: {
-              roles: {
-                adminGroups: providerAuthz.adminGroups,
-                userGroups: providerAuthz.userGroups,
-              },
-            },
-          }
-          : {}),
-      };
-
-      for (const addon of apis.adminApiAddons) {
-        if (addon.uiConfig) {
-          Object.assign(mergedAdminUiConfig, addon.uiConfig);
-        }
-      }
-
-      adminUi = new AdminUi(groups.ui, 'admin-ui', {
-        domainName: mailboxDomains.admin,
-        certificate: props.overrides?.certificates?.adminUi ?? defaultUiCertificate,
-        configTable: this.configTable,
-        auditEventsQueue: data.auditEventsQueue,
-        authProvider,
-        apiUrl: apiCertificate ? `https://${mailboxDomains.api}` : undefined,
-        webmailUrl: enableWebmailUi && (props.overrides?.certificates?.webmailUi ?? defaultUiCertificate)
-          ? `https://${mailboxDomains.webmail}`
-          : undefined,
-        uiConfig: Object.keys(mergedAdminUiConfig).length > 0 ? mergedAdminUiConfig : undefined,
-        artifactResolver,
-      });
-
-      adminUiOrigins.push(`https://${adminUi.distributionDomainName}`);
-      adminUiCnameTarget = adminUi.distribution.distributionDomainName;
-
-      grantUiContentDeployIfGrantable(adminUi, artifactResolver);
-    }
-
-    if (enableWebmailUi) {
-      webmailUi = new WebmailUi(groups.ui, 'webmail-ui', {
-        domainName: mailboxDomains.webmail,
-        certificate: props.overrides?.certificates?.webmailUi ?? defaultUiCertificate,
-        configTable: this.configTable,
-        auditEventsQueue: data.auditEventsQueue,
-        authProvider,
-        apiUrl: jmapCertificate ? `https://${mailboxDomains.jmap}` : undefined,
-        uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
-        artifactResolver,
-        dependsOn: [oauthClientsProvisioned],
-      });
-
-      webmailUiOrigins.push(`https://${webmailUi.distributionDomainName}`);
-      webmailUiCnameTarget = webmailUi.distribution.distributionDomainName;
-
-      grantUiContentDeployIfGrantable(webmailUi, artifactResolver);
-    }
-
-    this.oauthClients = {
-      ...(adminUi ? { adminUi: adminUi.oauthClient } : {}),
-      ...(webmailUi ? { webmailUi: webmailUi.oauthClient } : {}),
-    };
+    this.oauthClients = ui.oauthClients;
 
     const extraOrigins              = props.extraAllowedOrigins ?? [];
-    const allowedOriginsForAdminApi = [...adminUiOrigins, ...extraOrigins];
-    const allowedOriginsForJmapApi  = [...webmailUiOrigins, ...extraOrigins];
-    const allowedOriginsForCdn      = [...adminUiOrigins, ...webmailUiOrigins, ...extraOrigins];
-
-    const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
-      ?? this.oauthClients.adminUi?.groups
-      ?? undefined;
+    const allowedOriginsForAdminApi = [...ui.adminUiOrigins, ...extraOrigins];
+    const allowedOriginsForJmapApi  = [...ui.webmailUiOrigins, ...extraOrigins];
+    const allowedOriginsForCdn      = [...ui.adminUiOrigins, ...ui.webmailUiOrigins, ...extraOrigins];
 
     new OpsSection(this, 'ops', {
       artifactResolver,
@@ -313,60 +226,14 @@ export class Mailbox extends Construct {
       regionalCertificate: regionalSanCertificate,
     });
 
-    const bootstrap = new Bootstrap(groups.auth, 'bootstrap', {
-      domain: domainName,
-      oidcIssuer: authProvider.issuer,
-      configTable,
-      authKeyStoreTable: authKeyStore.authKeyStoreTable,
-      artifactResolver,
+    auth.addBootstrap({
       sesRuleSet: email.sesRuleSet,
       sesReceivingMode: props.enableReceiving,
-      sesSendEnabled: true,
       hostedZone: hasHostedZone ? hostedZone : undefined,
-      vendorAccountIds,
       stackIdentityTagKey,
-
-      oidcProvider: {
-        tokenEndpoint: authProvider.tokenEndpoint,
-        authorizationEndpoint: authProvider.authorizationEndpoint,
-        authMethod: authProvider.authMethod,
-        usePkce: authProvider.usePkce,
-      },
-      authPolicies: {
-        adminApi: {
-          audiences: authProvider.policies.adminApi.audiences,
-          requireAnyOfGroups: adminRequiredGroups,
-          requireAllScopes: authProvider.policies.adminApi.requireAllScopes,
-        },
-        jmapApi: {
-          audiences: authProvider.policies.jmapApi.audiences,
-          requireAllScopes: authProvider.policies.jmapApi.requireAllScopes,
-        },
-      },
-      oauthClients: (adminUi || webmailUi)
-        ? {
-          adminUi: adminUi
-            ? {
-              flow: 'authorization_code',
-              clientId: adminUi.oauthClient.clientId,
-              clientSecret: adminUi.oauthClient.clientSecret,
-              scopes: ['openid', 'email', 'profile', ...adminUi.oauthClient.requestScopeList],
-              redirectUri: adminUi.oauthRedirectUri,
-            }
-            : undefined,
-          webmailUi: webmailUi
-            ? {
-              flow: 'authorization_code',
-              clientId: webmailUi.oauthClient.clientId,
-              clientSecret: webmailUi.oauthClient.clientSecret,
-              scopes: ['openid', 'email', 'profile', ...webmailUi.oauthClient.requestScopeList],
-              redirectUri: webmailUi.oauthRedirectUri,
-            }
-            : undefined,
-        }
-        : undefined,
+      adminUi: ui.adminUi,
+      webmailUi: ui.webmailUi,
     });
-    oauthClientsProvisioned.add(bootstrap.oauthClientsProvisioned);
 
     const cdnCertificate                               = hasHostedZone ? edgeCertificate : props.overrides?.certificates?.cloudFront;
     const cdnCustomDomain: CdnCustomDomain | undefined =
@@ -396,8 +263,8 @@ export class Mailbox extends Construct {
 
     if (hasHostedZone) {
       edge.addDns({
-        admin: adminUiCnameTarget,
-        webmail: webmailUiCnameTarget,
+        admin: ui.adminUiCnameTarget,
+        webmail: ui.webmailUiCnameTarget,
         cdn: cdnConstruct.distributionDomainName,
         api: endpoints.adminApiDomainTarget,
         jmap: endpoints.jmapApiDomainTarget,
@@ -415,20 +282,4 @@ export class Mailbox extends Construct {
 
   }
 
-}
-
-/**
- * Grants `resolver` write access to `ui`'s own content bucket, when `resolver` is capable of
- * being granted at all. `resolver` is typed `IArtifactResolver`, which carries no IAM principal,
- * so grantability is a runtime capability: a resolver without a principal needs no grant and is
- * skipped rather than erroring.
- */
-function grantUiContentDeployIfGrantable(ui: MailboxUi, resolver: IArtifactResolver): void {
-  if (isGrantable(resolver)) {
-    ui.grantContentDeploy(resolver);
-  }
-}
-
-function isGrantable(resolver: IArtifactResolver): resolver is IArtifactResolver & IGrantable {
-  return 'grantPrincipal' in resolver;
 }
