@@ -4,7 +4,6 @@ import {
   BucketAutoEmpty,
   StaticContentDeployer,
   StaticContentSource,
-  StackNamedBucket,
   S3Actions,
   grantObjectActions,
   grantListBucket,
@@ -26,13 +25,13 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import * as iam                            from 'aws-cdk-lib/aws-iam';
-import { Bucket, BlockPublicAccess }       from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn, RemovalPolicy, Tags }    from 'aws-cdk-lib';
+import { Aws, Fn, Tags }                   from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../auth/types';
-import type { IDataTable }                 from '../../resources/tables/data-tables';
+import { UiBucket }                        from '../../resources/buckets/ui-bucket';
 import type { IAuditEventsQueue }          from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                 from '../../resources/tables/data-tables';
+import { AuthPolicyName, OAuthClientName } from '../auth/types';
 
 import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
 
@@ -103,18 +102,14 @@ export class MailboxUi extends Construct {
   /** Name of the static-content bucket; the bucket resource itself stays private. */
   protected readonly bucketName: string;
 
-  private readonly bucket: Bucket;
+  private readonly bucket: UiBucket;
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
     super(scope, id);
 
     const artifacts = props.artifactResolver;
 
-    this.bucket     = new StackNamedBucket(this, `ui-${slugifyLabel(props.label)}`, {
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.DESTROY,
-      abacStatus: true,
-    });
+    this.bucket     = new UiBucket(this, `ui-${slugifyLabel(props.label)}`);
     this.bucketName = this.bucket.bucketName;
 
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
