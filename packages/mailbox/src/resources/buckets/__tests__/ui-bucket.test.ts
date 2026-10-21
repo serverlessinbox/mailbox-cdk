@@ -96,17 +96,30 @@ describe('UiBucket origins', () => {
     expect(JSON.stringify(name.asObject())).toContain('"Ref":"AWS::StackId"');
   });
 
-  it('lets only the distribution read the objects', () => {
+  it('lets only the distribution it is bound to read the bucket objects, through the one bucket-policy statement', () => {
+    const bucketId       = Object.keys(template.findResources('AWS::S3::Bucket'))[0];
+    const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
+
     template.hasResourceProperties('AWS::S3::BucketPolicy', {
       PolicyDocument: {
-        Statement: [
-          Match.objectLike({
+        Statement: Match.arrayEquals([
+          Match.objectEquals({
             Action: 's3:GetObject',
             Effect: 'Allow',
             Principal: { Service: 'cloudfront.amazonaws.com' },
-            Condition: { StringEquals: { 'AWS:SourceArn': Match.anyValue() } },
+            Resource: { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            Condition: {
+              StringEquals: {
+                'AWS:SourceArn': {
+                  'Fn::Join': ['', [
+                    'arn:', { Ref: 'AWS::Partition' }, ':cloudfront::', { Ref: 'AWS::AccountId' },
+                    ':distribution/', { Ref: distributionId },
+                  ]],
+                },
+              },
+            },
           }),
-        ],
+        ]),
       },
     });
   });

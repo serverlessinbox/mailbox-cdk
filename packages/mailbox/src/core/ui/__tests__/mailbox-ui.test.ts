@@ -4,8 +4,8 @@
  * MailboxUi tests: what the construct itself decides.
  *
  * Pins how the distribution is exposed (alias only with a certificate), which paths bypass the
- * single-page-app cache (`/config/*`) or go to the token exchange (`/auth/*`), the bucket policy
- * that lets CloudFront read objects and nothing else, what is deployed and tagged for a bundle or
+ * single-page-app cache (`/config/*`) or go to the token exchange (`/auth/*`), that the bucket is
+ * read through its own distribution, what is deployed and tagged for a bundle or
  * a config, and the exact scope of `grantContentDeploy`. A widened grant or a cached `/config/*`
  * stays green in tsc and synth and only shows up on a live distribution.
  */
@@ -129,32 +129,18 @@ describe('MailboxUi', () => {
   });
 
   describe('bucket', () => {
-    it('lets CloudFront read objects and nothing else', () => {
+    it('reads the bucket through its own distribution', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
       const template       = Template.fromStack(stack);
-      const bucketArn      = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
       const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
       template.hasResourceProperties('AWS::S3::BucketPolicy', {
         PolicyDocument: {
-          Statement: Match.arrayEquals([
-            Match.objectEquals({
-              Action: 's3:GetObject',
-              Effect: 'Allow',
-              Principal: { Service: 'cloudfront.amazonaws.com' },
-              Condition: {
-                StringEquals: {
-                  'AWS:SourceArn': {
-                    'Fn::Join': ['', [
-                      'arn:', { Ref: 'AWS::Partition' }, ':cloudfront::', { Ref: 'AWS::AccountId' },
-                      ':distribution/', { Ref: distributionId },
-                    ]],
-                  },
-                },
-              },
-              Resource: { 'Fn::Join': ['', [bucketArn, '/*']] },
+          Statement: [
+            Match.objectLike({
+              Condition: { StringEquals: { 'AWS:SourceArn': { 'Fn::Join': ['', Match.arrayWith([{ Ref: distributionId }])] } } },
             }),
-          ]),
+          ],
         },
       });
     });

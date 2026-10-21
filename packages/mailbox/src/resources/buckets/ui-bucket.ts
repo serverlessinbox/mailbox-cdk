@@ -22,6 +22,10 @@ import { Construct }         from 'constructs';
  * Fully private, destroyed with the stack, and created with ABAC enabled. It is the S3 side of the
  * UI's distribution: it hands out the two origins that read it through Origin Access Control and the
  * grant that lets a deployer write the static content.
+ *
+ * Binding either origin to a distribution makes CDK add a statement to this bucket's policy: that
+ * distribution, and only that one (an `AWS:SourceArn` condition on its ARN), may `s3:GetObject` every
+ * object in the bucket. No other principal can read the bucket's objects.
  */
 export class UiBucket extends StackNamedBucket {
   private readonly originAccessControl: IOriginAccessControl;
