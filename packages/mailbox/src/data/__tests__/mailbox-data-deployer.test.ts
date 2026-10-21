@@ -20,7 +20,7 @@ import {
   TEST_REGION,
   newDeployerTestStack,
 } from '../../__tests__/deployer-test-helpers';
-import type { TableRole }                from '../../ts-lambdas/data-override-resolver/resource-properties';
+import type { TableRole }                from '../../runtime/data-override-resolver/resource-properties';
 import { MailboxDataDeployer }           from '../mailbox-data-deployer';
 import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
 
