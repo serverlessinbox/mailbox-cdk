@@ -8,8 +8,8 @@
 
 import { Template }                               from 'aws-cdk-lib/assertions';
 
+import { newDeployerTestStack, newWorkerStandIn } from '../../../__tests__/deployer-infra-helpers';
 import { statementsForAction }                    from '../../../cdk-test-support';
-import { newDeployerTestStack, newWorkerStandIn } from '../../../deployer-infra/__tests__/deployer-infra-helpers';
 import { PollingCfnDeployerWorkflow }             from '../../workflows/polling-cfn-deployer-workflow';
 import { DeployerStarterLambda }                  from '../deployer-starter-lambda';
 

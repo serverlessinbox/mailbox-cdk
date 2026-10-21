@@ -12,10 +12,10 @@ import type { IFunction }                                                       
 import { Stack }                                                                             from 'aws-cdk-lib';
 import { Construct }                                                                         from 'constructs';
 
-import { PositionHash }                                                                      from '../../naming/position-hash';
-import { StackIdentity }                                                                     from '../../naming/stack-identity';
-import type { StackDeployerProperties }                                                      from '../../ts-lambdas/stack-deployer/stack-deployment';
 import { DeployerInfra }                                                                     from '../deployer-infra';
+import { PositionHash }                                                                      from '../naming/position-hash';
+import { StackIdentity }                                                                     from '../naming/stack-identity';
+import type { StackDeployerProperties }                                                      from '../ts-lambdas/stack-deployer/stack-deployment';
 
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 

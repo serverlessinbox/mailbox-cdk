@@ -3,11 +3,11 @@ import { IFunction }                    from 'aws-cdk-lib/aws-lambda';
 import { CustomResource, Duration, Fn } from 'aws-cdk-lib';
 import { Construct }                    from 'constructs';
 
-import { PositionHash }                 from '../naming/position-hash';
-import { StackIdentity }                from '../naming/stack-identity';
-import { DeployerStarterLambda }        from '../resources/lambdas/deployer-starter-lambda';
-import { PollingCfnDeployerWorkflow }   from '../resources/workflows/polling-cfn-deployer-workflow';
-import type { StackDeployerProperties } from '../ts-lambdas/stack-deployer/stack-deployment';
+import { PositionHash }                 from './naming/position-hash';
+import { StackIdentity }                from './naming/stack-identity';
+import { DeployerStarterLambda }        from './resources/lambdas/deployer-starter-lambda';
+import { PollingCfnDeployerWorkflow }   from './resources/workflows/polling-cfn-deployer-workflow';
+import type { StackDeployerProperties } from './ts-lambdas/stack-deployer/stack-deployment';
 
 const DEPLOY_STACK_SERVICE_TIMEOUT = Duration.hours(1);
 

@@ -122,10 +122,11 @@ export { S3Actions, grantObjectActions, grantListBucket } from './grants/s3-gran
 export { SsmActions, grantParameterActions } from './grants/ssm-grants';
 
 // Sub-stack deployer scaffolding: worker and starter Lambdas and the polling Step Functions workflow
-export { DeployerInfra, DeployerWorkerLambda, DeployerStarterLambda, PollingCfnDeployerWorkflow } from './deployer-infra';
-export type {
-  DeployerInfraProps,
-  DeployerWorkerLambdaProps,
-  DeployerStarterLambdaProps,
-  PollingCfnDeployerWorkflowProps,
-} from './deployer-infra';
+export { DeployerInfra } from './deployer-infra';
+export type { DeployerInfraProps } from './deployer-infra';
+export { DeployerWorkerLambda } from './resources/lambdas/deployer-worker-lambda';
+export type { DeployerWorkerLambdaProps } from './resources/lambdas/deployer-worker-lambda';
+export { DeployerStarterLambda } from './resources/lambdas/deployer-starter-lambda';
+export type { DeployerStarterLambdaProps } from './resources/lambdas/deployer-starter-lambda';
+export { PollingCfnDeployerWorkflow } from './resources/workflows/polling-cfn-deployer-workflow';
+export type { PollingCfnDeployerWorkflowProps } from './resources/workflows/polling-cfn-deployer-workflow';

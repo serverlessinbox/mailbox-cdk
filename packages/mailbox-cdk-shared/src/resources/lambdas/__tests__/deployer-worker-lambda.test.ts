@@ -10,8 +10,8 @@ import type { IArtifactResolver }                                from '@serverle
 import { Template }                                              from 'aws-cdk-lib/assertions';
 import { Construct }                                             from 'constructs';
 
+import { newDeployerTestStack }                                  from '../../../__tests__/deployer-infra-helpers';
 import { statementsForAction, statementsForResource, tagKeysOf } from '../../../cdk-test-support';
-import { newDeployerTestStack }                                  from '../../../deployer-infra/__tests__/deployer-infra-helpers';
 import { DeployerWorkerLambda }                                  from '../deployer-worker-lambda';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
