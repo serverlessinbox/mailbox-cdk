@@ -1,13 +1,13 @@
 import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { HmacTokenPayload, VerifiedJwt }                                                      from './auth-tokens';
-import { BlobIdFormat }                                                                            from './blob-id-format';
-import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id';
-import { BlobRequestRejected }                                                                     from './blob-request-rejected';
-import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront-event';
-import { CloudFrontResponses, type CloudFrontResponse }                                            from './cloudfront-responses';
+import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
+import { BlobIdFormat }                                                                            from './blob-id/blob-id-format';
+import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id/blob-id';
+import { BlobRequestRejected }                                                                     from './blob-id/blob-request-rejected';
+import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront/cloudfront-event';
+import { CloudFrontResponses, type CloudFrontResponse }                                            from './cloudfront/cloudfront-responses';
 import { extractConfig, type Config }                                                              from './config';
-import type { Verifiers }                                                                          from './region-bound-verifiers';
+import type { Verifiers }                                                                          from './verifiers/region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {

@@ -10,13 +10,13 @@
 import { DynamoDBClient }                     from '@aws-sdk/client-dynamodb';
 import { ExpectedFailure, LoggerBuffer }      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { HmacTokenPayload, VerifiedJwt } from '../auth-tokens';
+import type { HmacTokenPayload, VerifiedJwt } from '../verifiers/auth-tokens';
 import { BlobDownloadAuthorizer }             from '../blob-download-authorizer';
-import { BlobRequestRejected }                from '../blob-request-rejected';
-import type { CloudFrontRequest }             from '../cloudfront-event';
-import type { CloudFrontResponse }            from '../cloudfront-responses';
-import { HmacVerifier }                       from '../hmac-verifier';
-import { JwtVerifier }                        from '../jwt-verifier';
+import { BlobRequestRejected }                from '../blob-id/blob-request-rejected';
+import type { CloudFrontRequest }             from '../cloudfront/cloudfront-event';
+import type { CloudFrontResponse }            from '../cloudfront/cloudfront-responses';
+import { HmacVerifier }                       from '../verifiers/hmac-verifier';
+import { JwtVerifier }                        from '../verifiers/jwt-verifier';
 
 import {
   ACCOUNT_ID,

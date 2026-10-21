@@ -2,8 +2,8 @@ import { DynamoDBClient }                               from '@aws-sdk/client-dy
 import { ExpectedFailure, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { BlobDownloadAuthorizer }                       from './blob-download-authorizer';
-import { readOriginRequest }                            from './cloudfront-event';
-import { RegionBoundVerifiers }                         from './region-bound-verifiers';
+import { readOriginRequest }                            from './cloudfront/cloudfront-event';
+import { RegionBoundVerifiers }                         from './verifiers/region-bound-verifiers';
 
 const verifiers = new RegionBoundVerifiers((region) => new DynamoDBClient({ region }));
 

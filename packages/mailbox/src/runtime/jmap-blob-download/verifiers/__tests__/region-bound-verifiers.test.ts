@@ -9,7 +9,7 @@ import { DynamoDBClient }       from '@aws-sdk/client-dynamodb';
 
 import { RegionBoundVerifiers } from '../region-bound-verifiers';
 
-import { EU_WEST_1, US_EAST_1 } from './jmap-blob-download-helpers';
+import { EU_WEST_1, US_EAST_1 } from '../../__tests__/jmap-blob-download-helpers';
 
 describe('RegionBoundVerifiers', () => {
   it('creates the DynamoDB client in the region of the request', () => {

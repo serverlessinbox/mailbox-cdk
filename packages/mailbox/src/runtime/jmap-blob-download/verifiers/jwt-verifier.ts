@@ -3,9 +3,9 @@ import { toIssuer, type Issuer, type TableName }                          from '
 import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from 'jose';
 import * as t                                                             from 'typanion';
 
-import { toAudience, type Audience }                                      from './auth-identifiers';
+import { toAudience, type Audience }                                      from '../auth-identifiers';
 import type { VerifiedJwt }                                               from './auth-tokens';
-import { SUPPORTED_ALGORITHMS }                                           from './origin-headers';
+import { SUPPORTED_ALGORITHMS }                                           from '../cloudfront/origin-headers';
 
 export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
 

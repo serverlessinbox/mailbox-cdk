@@ -16,7 +16,7 @@ import {
   OTHER_AUTH_KEY_STORE_TABLE,
   sessionTokenOverPayload,
   sessionTokenSignedBy,
-} from './jmap-blob-download-helpers';
+} from '../../__tests__/jmap-blob-download-helpers';
 
 const CURRENT_KEY  = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');

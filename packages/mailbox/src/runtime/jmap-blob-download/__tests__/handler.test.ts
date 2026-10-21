@@ -10,11 +10,11 @@ import { DynamoDBClient }                                                       
 import { LoggerBuffer }                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { handler }                                                                          from '../handler';
-import { RegionBoundVerifiers }                                                             from '../region-bound-verifiers';
+import { RegionBoundVerifiers }                                                             from '../verifiers/region-bound-verifiers';
 
 import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, EU_CENTRAL_1, originRequestOf } from './jmap-blob-download-helpers';
 
-jest.mock('../region-bound-verifiers');
+jest.mock('../verifiers/region-bound-verifiers');
 
 function downloadEvent(customHeaders: Record<string, string> | null): unknown {
   return cloudFrontEventOf(originRequestOf({

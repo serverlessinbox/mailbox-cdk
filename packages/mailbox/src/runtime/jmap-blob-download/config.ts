@@ -1,9 +1,9 @@
 import { toRegion, toTableName, type Region, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import * as t                                                 from 'typanion';
 
-import { firstHeaderValue, type CloudFrontRequest }           from './cloudfront-event';
-import { isSupportedAlgorithm }                               from './jwt-verifier';
-import type { BlobDownloadOriginHeaders }                     from './origin-headers';
+import { firstHeaderValue, type CloudFrontRequest }           from './cloudfront/cloudfront-event';
+import { isSupportedAlgorithm }                               from './verifiers/jwt-verifier';
+import type { BlobDownloadOriginHeaders }                     from './cloudfront/origin-headers';
 
 const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table' satisfies keyof BlobDownloadOriginHeaders;
 const REGION_HEADER               = 'x-region' satisfies keyof BlobDownloadOriginHeaders;

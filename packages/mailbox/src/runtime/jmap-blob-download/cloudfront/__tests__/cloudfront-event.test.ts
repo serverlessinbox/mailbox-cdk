@@ -8,7 +8,7 @@ import { ExpectedFailure }                     from '@serverlessinbox/mailbox-cd
 
 import { firstHeaderValue, readOriginRequest } from '../cloudfront-event';
 
-import { cloudFrontEventOf }                   from './jmap-blob-download-helpers';
+import { cloudFrontEventOf }                   from '../../__tests__/jmap-blob-download-helpers';
 
 const VALID_REQUEST = {
   method: 'GET',

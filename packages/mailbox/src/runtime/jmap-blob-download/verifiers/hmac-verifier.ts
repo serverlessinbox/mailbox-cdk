@@ -2,7 +2,7 @@ import { DynamoDBClient, GetItemCommand }                    from '@aws-sdk/clie
 import { toAccountId, toIssuer, toTenantId, type TableName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import * as crypto                                           from 'crypto';
 
-import { toAudience }                                        from './auth-identifiers';
+import { toAudience }                                        from '../auth-identifiers';
 import type { HmacTokenPayload }                             from './auth-tokens';
 
 const HMAC_KEYS_TTL_MS          = 30 * 60 * 1000;
