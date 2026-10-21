@@ -4,9 +4,9 @@ import { SFNClient }                  from '@aws-sdk/client-sfn';
 import * as env                       from '../../runtime/handler-kit/config/config-env';
 import { emitManualFinalize }         from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
 import { ExpectedFailure }            from '../../runtime/handler-kit/errors/expected-failure';
-import type { Region }                from '../shared/aws-identifiers';
-import { LoggerBuffer }               from '../shared/logger-buffer';
-import { withSmokeTest }              from '../shared/with-smoke-test';
+import type { Region }                from '../../runtime/handler-kit/aws-identifiers';
+import { LoggerBuffer }               from '../../runtime/handler-kit/logger-buffer';
+import { withSmokeTest }              from '../../runtime/handler-kit/with-smoke-test';
 
 import { CfnResponder }               from './cfn-responder';
 import { CloudFormationStacks }       from './cloudformation-stacks';

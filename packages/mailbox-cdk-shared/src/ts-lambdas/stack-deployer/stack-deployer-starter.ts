@@ -3,8 +3,8 @@ import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient }      
 import type { StackId }                                                                                 from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { CaughtError }                                                                                  from '../../runtime/handler-kit/errors/caught-error';
 import { ExpectedFailure }                                                                              from '../../runtime/handler-kit/errors/expected-failure';
-import { formatArn, parseArn, type ParsedArn }                                                          from '../shared/arn';
-import type { LoggerBuffer }                                                                            from '../shared/logger-buffer';
+import { formatArn, parseArn, type ParsedArn }                                                          from '../../runtime/handler-kit/arn';
+import type { LoggerBuffer }                                                                            from '../../runtime/handler-kit/logger-buffer';
 
 import type { CfnReplyTarget, CfnResponder }                                                            from './cfn-responder';
 import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn } from './deployer-identifiers';

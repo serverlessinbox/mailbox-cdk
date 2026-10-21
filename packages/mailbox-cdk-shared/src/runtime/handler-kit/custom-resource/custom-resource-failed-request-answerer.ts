@@ -1,6 +1,6 @@
 import type { CloudFormationClient }                        from '@aws-sdk/client-cloudformation';
 
-import type { LoggerBuffer }                                from '../../../ts-lambdas/shared/logger-buffer';
+import type { LoggerBuffer }                                from '../logger-buffer';
 
 import { toStackId }                                        from './custom-resource-identifiers';
 import type { CustomResourceAnswer, CustomResourceRequest } from './custom-resource-request';

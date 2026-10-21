@@ -11,8 +11,8 @@ import {
 } from '@aws-sdk/client-cloudformation';
 
 import { CaughtError }         from '../../runtime/handler-kit/errors/caught-error';
-import type { Region }         from '../shared/aws-identifiers';
-import type { LoggerBuffer }   from '../shared/logger-buffer';
+import type { Region }         from '../../runtime/handler-kit/aws-identifiers';
+import type { LoggerBuffer }   from '../../runtime/handler-kit/logger-buffer';
 
 import type { OperationInput } from './stack-deployment';
 import { isSwitchedOn }        from './stack-flag';

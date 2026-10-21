@@ -5,7 +5,6 @@ tasks:
     desc: Bundle content-deployer lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/content-deployer/**/*.ts
-      - src/ts-lambdas/shared/**/*.ts
       - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/content-deployer.zip'
@@ -16,7 +15,6 @@ tasks:
     desc: Bundle bucket-auto-empty lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/bucket-auto-empty/**/*.ts
-      - src/ts-lambdas/shared/**/*.ts
       - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/bucket-auto-empty.zip'
@@ -27,7 +25,6 @@ tasks:
     desc: Bundle stack-deployer lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/stack-deployer/**/*.ts
-      - src/ts-lambdas/shared/**/*.ts
       - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/stack-deployer.zip'
@@ -37,13 +34,11 @@ tasks:
   bundle:stack-helpers:
     desc: Bundle stack-helpers lambda zip to dist/lambdas
     sources:
-      - src/ts-lambdas/stack-helpers/**/*.ts
-      - src/ts-lambdas/shared/**/*.ts
       - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/stack-helpers.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/stack-helpers/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/stack-helpers.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/stack-helpers/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/stack-helpers.zip
 
   bundle:
     desc: Bundle all mailbox-cdk-shared lambdas to dist/lambdas/*.zip

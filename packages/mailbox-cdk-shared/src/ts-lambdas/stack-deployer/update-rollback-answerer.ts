@@ -2,8 +2,8 @@ import type { CloudFormationClient }         from '@aws-sdk/client-cloudformatio
 
 import type { StackName }                    from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { isParentStackRollingBack }          from '../../runtime/handler-kit/custom-resource/custom-resource-rollback-detector';
-import type { Region }                       from '../shared/aws-identifiers';
-import type { LoggerBuffer }                 from '../shared/logger-buffer';
+import type { Region }                       from '../../runtime/handler-kit/aws-identifiers';
+import type { LoggerBuffer }                 from '../../runtime/handler-kit/logger-buffer';
 
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 import type { OperationInput, RequestType }  from './stack-deployment';

@@ -1,8 +1,8 @@
 import type { CustomResourceRequest }                                               from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { CaughtError }                                                              from '../../runtime/handler-kit/errors/caught-error';
 import { ExpectedFailure }                                                          from '../../runtime/handler-kit/errors/expected-failure';
-import type { InvocationDeadline }                                                  from '../shared/invocation-deadline';
-import type { LoggerBuffer }                                                        from '../shared/logger-buffer';
+import type { InvocationDeadline }                                                  from '../../runtime/handler-kit/invocation-deadline';
+import type { LoggerBuffer }                                                        from '../../runtime/handler-kit/logger-buffer';
 
 import type { BucketEmptier }                                                       from './bucket-emptier';
 import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from './resource-properties';

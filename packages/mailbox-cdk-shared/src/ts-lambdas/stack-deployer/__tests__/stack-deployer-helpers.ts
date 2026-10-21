@@ -10,8 +10,8 @@ import {
   toStackName,
   type StackId,
 } from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { toRegion }                                                                        from '../../shared/aws-identifiers';
-import { LoggerBuffer }                                                                    from '../../shared/logger-buffer';
+import { toRegion }                                                                        from '../../../runtime/handler-kit/aws-identifiers';
+import { LoggerBuffer }                                                                    from '../../../runtime/handler-kit/logger-buffer';
 import type { CfnReplyTarget }                                                             from '../cfn-responder';
 import { toStateMachineArn, toTemplateUrl }                                                from '../deployer-identifiers';
 import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack-deployment';

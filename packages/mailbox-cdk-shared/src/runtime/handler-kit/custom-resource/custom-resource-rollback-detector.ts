@@ -4,7 +4,7 @@ import {
   type StackStatus,
 } from '@aws-sdk/client-cloudformation';
 
-import type { LoggerBuffer } from '../../../ts-lambdas/shared/logger-buffer';
+import type { LoggerBuffer } from '../logger-buffer';
 import { CaughtError }       from '../errors/caught-error';
 
 import type { StackId }      from './custom-resource-identifiers';

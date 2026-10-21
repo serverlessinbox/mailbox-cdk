@@ -5,7 +5,7 @@ import { Construct }                           from 'constructs';
 import { StackHelpersLambda }                  from './resources/lambdas/stack-helpers-lambda';
 import { applyServerlessInboxComponentTag }    from './tagging/serverless-inbox-tags';
 import { getOrCreateSharedGroup }              from './tagging/shared-group';
-import type { StackHelpersResourceProperties } from './ts-lambdas/stack-helpers/resource-properties';
+import type { StackHelpersResourceProperties } from './runtime/stack-helpers/resource-properties';
 
 /**
  * The hosted zone and data stack name that the domain name and S3-safe stack name are derived from.

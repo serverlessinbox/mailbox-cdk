@@ -9,8 +9,8 @@ import { toStackId }                     from '../../runtime/handler-kit/custom-
 import { emitManualFinalize }            from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
 import type { CustomResourceRequest }    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { ExpectedFailure }               from '../../runtime/handler-kit/errors/expected-failure';
-import { LoggerBuffer }                  from '../shared/logger-buffer';
-import { withSmokeTest }                 from '../shared/with-smoke-test';
+import { LoggerBuffer }                  from '../../runtime/handler-kit/logger-buffer';
+import { withSmokeTest }                 from '../../runtime/handler-kit/with-smoke-test';
 
 import { BucketAutoEmptyRequestHandler } from './bucket-auto-empty-request-handler';
 import { BucketEmptier }                 from './bucket-emptier';

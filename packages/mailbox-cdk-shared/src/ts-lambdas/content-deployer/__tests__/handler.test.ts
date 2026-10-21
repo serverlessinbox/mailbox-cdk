@@ -15,7 +15,7 @@ import type { AwsClientStub }      from 'aws-sdk-client-mock';
 import type * as Https             from 'https';
 import { Writable }                from 'stream';
 
-import type { SmokeTestProbe }     from '../../shared/with-smoke-test';
+import type { SmokeTestProbe }     from '../../../runtime/handler-kit/with-smoke-test';
 import type * as HandlerModule     from '../handler';
 
 import {

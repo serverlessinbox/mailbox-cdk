@@ -2,9 +2,9 @@ import { GetHostedZoneCommand, type Route53Client }                             
 import { createHash }                                                            from 'crypto';
 
 import { sanitizeStackName }                                                     from '../../naming/sanitize-name';
-import type { StackId }                                                          from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                                                       from '../../runtime/handler-kit/errors/expected-failure';
-import type { LoggerBuffer }                                                     from '../shared/logger-buffer';
+import type { StackId }                                                          from '../handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                                                       from '../handler-kit/errors/expected-failure';
+import type { LoggerBuffer }                                                     from '../handler-kit/logger-buffer';
 
 import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';
 

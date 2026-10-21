@@ -1,7 +1,7 @@
 import type { Stack }                          from '@aws-sdk/client-cloudformation';
 
 import { CaughtError }                         from '../../runtime/handler-kit/errors/caught-error';
-import type { LoggerBuffer }                   from '../shared/logger-buffer';
+import type { LoggerBuffer }                   from '../../runtime/handler-kit/logger-buffer';
 
 import type { CfnReplyTarget, CfnResponder }   from './cfn-responder';
 import type { CloudFormationStacks }           from './cloudformation-stacks';

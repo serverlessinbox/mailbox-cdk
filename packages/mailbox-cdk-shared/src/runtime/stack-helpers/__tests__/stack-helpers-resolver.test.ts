@@ -11,10 +11,10 @@
 import { GetHostedZoneCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { mockClient }                          from 'aws-sdk-client-mock';
 
-import { toStackId }                           from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type { StackId }                        from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                     from '../../../runtime/handler-kit/errors/expected-failure';
-import { LoggerBuffer }                        from '../../shared/logger-buffer';
+import { toStackId }                           from '../../handler-kit/custom-resource/custom-resource-identifiers';
+import type { StackId }                        from '../../handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                     from '../../handler-kit/errors/expected-failure';
+import { LoggerBuffer }                        from '../../handler-kit/logger-buffer';
 import type { StackHelpersResourceProperties } from '../resource-properties';
 import { StackHelpersResolver }                from '../stack-helpers-resolver';
 

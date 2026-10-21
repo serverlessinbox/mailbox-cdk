@@ -7,7 +7,7 @@
 import { CloudFormationClient, DescribeStacksCommand }         from '@aws-sdk/client-cloudformation';
 import { mockClient }                                          from 'aws-sdk-client-mock';
 
-import { LoggerBuffer }                                        from '../../../../ts-lambdas/shared/logger-buffer';
+import { LoggerBuffer }                                        from '../../logger-buffer';
 import { toStackId }                                           from '../custom-resource-identifiers';
 import { isParentStackBeingDeleted, isParentStackRollingBack } from '../custom-resource-rollback-detector';
 

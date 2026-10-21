@@ -7,7 +7,7 @@
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                    from 'aws-sdk-client-mock';
 
-import { LoggerBuffer }                                                  from '../../../../ts-lambdas/shared/logger-buffer';
+import { LoggerBuffer }                                                  from '../../logger-buffer';
 import { FailedRequestAnswerer }                                         from '../custom-resource-failed-request-answerer';
 import type { CustomResourceRequest }                                    from '../custom-resource-request';
 

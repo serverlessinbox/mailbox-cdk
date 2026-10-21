@@ -1,4 +1,4 @@
-import { parseLogLevelStrict, type LogLevel } from '../../../ts-lambdas/shared/logger-buffer';
+import { parseLogLevelStrict, type LogLevel } from '../logger-buffer';
 
 import * as env                               from './config-env';
 

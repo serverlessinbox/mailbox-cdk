@@ -4,7 +4,7 @@ import type { IConstruct }                  from 'constructs';
 import { resolveDeployerType }              from '../context/deployer-type';
 import type { ServerlessInboxDeployerType } from '../context/deployer-type';
 import { StackIdentity }                    from '../naming/stack-identity';
-import { ServerlessInboxTagKeys }           from '../ts-lambdas/shared/tag-keys';
+import { ServerlessInboxTagKeys }           from '../runtime/handler-kit/tag-keys';
 
 export type ServerlessInboxComponent =
   | 'auth'

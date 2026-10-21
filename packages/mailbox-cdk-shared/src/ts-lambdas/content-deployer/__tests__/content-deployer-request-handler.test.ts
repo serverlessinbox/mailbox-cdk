@@ -9,9 +9,9 @@ import { CloudFrontClient }                             from '@aws-sdk/client-cl
 import { S3Client }                                     from '@aws-sdk/client-s3';
 
 import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
-import { invalidateCloudFront }                         from '../../shared/cloudfront-invalidation';
-import { deletePrefix, deployZipToPrefix, writeObject } from '../../shared/content-ops';
-import { LoggerBuffer }                                 from '../../shared/logger-buffer';
+import { invalidateCloudFront }                         from '../../../runtime/handler-kit/cloudfront-invalidation';
+import { deletePrefix, deployZipToPrefix, writeObject } from '../../../runtime/handler-kit/content-ops';
+import { LoggerBuffer }                                 from '../../../runtime/handler-kit/logger-buffer';
 import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
 
 import {
@@ -25,12 +25,12 @@ import {
   zipSource,
 } from './content-deployer-helpers';
 
-jest.mock('../../shared/content-ops', () => ({
+jest.mock('../../../runtime/handler-kit/content-ops', () => ({
   deletePrefix: jest.fn(),
   deployZipToPrefix: jest.fn(),
   writeObject: jest.fn(),
 }));
-jest.mock('../../shared/cloudfront-invalidation', () => ({
+jest.mock('../../../runtime/handler-kit/cloudfront-invalidation', () => ({
   invalidateCloudFront: jest.fn(),
 }));
 

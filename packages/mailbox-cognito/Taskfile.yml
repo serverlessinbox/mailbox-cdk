@@ -30,7 +30,6 @@ tasks:
     desc: Bundle cognito idp-users API lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/cognito-idp-users-api/**/*.ts
-      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip'
@@ -41,7 +40,6 @@ tasks:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/bootstrap-user/**/*.ts
-      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-bootstrap-user.zip'
@@ -55,7 +53,6 @@ tasks:
     desc: Bundle RFC 7591 dynamic client registration lambda zip to dist/lambdas
     sources:
       - src/ts-lambdas/jmap-oauth-dcr/**/*.ts
-      - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip'

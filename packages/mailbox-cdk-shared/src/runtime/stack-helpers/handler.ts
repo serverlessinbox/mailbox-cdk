@@ -1,14 +1,14 @@
 import { Route53Client }              from '@aws-sdk/client-route-53';
 import { wrapHandler }                from 'aws-custom-resources';
 
-import * as env                       from '../../runtime/handler-kit/config/config-env';
-import { answerRequestWithBadConfig } from '../../runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
-import { toStackId }                  from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { emitManualFinalize }         from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
-import type { CustomResourceRequest } from '../../runtime/handler-kit/custom-resource/custom-resource-request';
-import { ExpectedFailure }            from '../../runtime/handler-kit/errors/expected-failure';
-import { LoggerBuffer }               from '../shared/logger-buffer';
-import { withSmokeTest }              from '../shared/with-smoke-test';
+import * as env                       from '../handler-kit/config/config-env';
+import { answerRequestWithBadConfig } from '../handler-kit/custom-resource/custom-resource-bad-config-answer';
+import { toStackId }                  from '../handler-kit/custom-resource/custom-resource-identifiers';
+import { emitManualFinalize }         from '../handler-kit/custom-resource/custom-resource-manual-finalize';
+import type { CustomResourceRequest } from '../handler-kit/custom-resource/custom-resource-request';
+import { ExpectedFailure }            from '../handler-kit/errors/expected-failure';
+import { LoggerBuffer }               from '../handler-kit/logger-buffer';
+import { withSmokeTest }              from '../handler-kit/with-smoke-test';
 
 import { load }                       from './config';
 import { StackHelpersResolver }       from './stack-helpers-resolver';

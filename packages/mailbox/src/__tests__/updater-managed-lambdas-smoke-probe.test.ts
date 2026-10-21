@@ -35,6 +35,7 @@ const GO_PACKAGE = 'mailbox-go';
 const TS_LAMBDA_ROOTS = [
   path.join(__dirname, '..', 'ts-lambdas'),
   path.join(__dirname, '..', '..', '..', 'mailbox-cdk-shared', 'src', 'ts-lambdas'),
+  path.join(__dirname, '..', '..', '..', 'mailbox-cdk-shared', 'src', 'runtime'),
   path.join(__dirname, '..', '..', '..', 'mailbox-cognito', 'src', 'ts-lambdas'),
 ];
 

@@ -1,5 +1,5 @@
-import { parseArn }                      from '../shared/arn';
-import { isBrandedString, type Branded } from '../shared/branded';
+import { parseArn }                      from '../../runtime/handler-kit/arn';
+import { isBrandedString, type Branded } from '../../runtime/handler-kit/branded';
 
 /**
  * The identifiers and names only the stack deployer passes between its units, each a string of its own kind so

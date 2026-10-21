@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 
 import { ExpectedFailure }                      from '../../runtime/handler-kit/errors/expected-failure';
-import { hasTimeLeft, type InvocationDeadline } from '../shared/invocation-deadline';
+import { hasTimeLeft, type InvocationDeadline } from '../../runtime/handler-kit/invocation-deadline';
 
 const DELETE_OBJECTS_BATCH_SIZE = 1000;
 
