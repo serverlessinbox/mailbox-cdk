@@ -11,9 +11,8 @@ import { actionsOf, allPolicyStatements, sharedSubStackTagKeys, sharedWorkerServ
 import type { PolicyStatementJson }                                                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                                                                                       from 'aws-cdk-lib/assertions';
 
-import { MailboxCognitoDataDeployerWorker }                                                                               from '../mailbox-cognito-data-deployer-worker';
-
-import { newDeployerTestStack }                                                                                           from './cognito-deployer-helpers';
+import { newDeployerTestStack }                                                                                           from '../../../data-stack/__tests__/cognito-deployer-helpers';
+import { MailboxCognitoDataDeployerWorkerLambda }                                                                         from '../mailbox-cognito-data-deployer-worker-lambda';
 
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
 const DEPLOYED_STACK_ARN  = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
@@ -37,7 +36,7 @@ function tagSourcesOf(statements: PolicyStatementJson[], tagSource: 'ResourceTag
 
 function synthWorker(): Template {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxCognitoDataDeployerWorker(stack, 'worker', {
+  new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     templateObjectArn: TEMPLATE_OBJECT_ARN,
     deployedStackArn: DEPLOYED_STACK_ARN,
@@ -45,7 +44,7 @@ function synthWorker(): Template {
   return Template.fromStack(stack);
 }
 
-describe('MailboxCognitoDataDeployerWorker', () => {
+describe('MailboxCognitoDataDeployerWorkerLambda', () => {
   let template: Template;
 
   beforeAll(() => {

@@ -10,7 +10,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Aws }                     from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
-export interface MailboxCognitoDataDeployerWorkerProps {
+export interface MailboxCognitoDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /** S3 object ARN for the cognito data stack CloudFormation template. */
   readonly templateObjectArn: string;
@@ -25,10 +25,10 @@ export interface MailboxCognitoDataDeployerWorkerProps {
  * Every ARN it builds uses `Aws.*` tokens rather than synthesis-time values, so account and
  * region resolve at deploy time.
  */
-export class MailboxCognitoDataDeployerWorker extends DeployerWorkerLambda {
+export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda {
   private readonly rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
 
-  constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerProps) {
+  constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerLambdaProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
       deployedStackName: 'cognito',

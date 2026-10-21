@@ -12,11 +12,11 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { MailboxUserPool }                              from '../user-pool/mailbox-user-pool';
-import { MailboxCognitoDataDeployerWorker }             from '../data-stack/mailbox-cognito-data-deployer-worker';
 import { MailboxCognitoDataStack }                      from '../data-stack/mailbox-cognito-data-stack';
 import { loadMailboxCognitoArtifactVersions }           from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }             from '../mailbox-cognito-registry-record';
+import { MailboxCognitoDataDeployerWorkerLambda }       from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+import { MailboxUserPool }                              from '../user-pool/mailbox-user-pool';
 
 interface CloudFormationResource {
   Type: string;
@@ -259,7 +259,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
   /**
    * Part 1: Cognito Deployer Worker IAM Unit Test
-   * Tests MailboxCognitoDataDeployerWorker's own IAM grants directly, via synth.
+   * Tests MailboxCognitoDataDeployerWorkerLambda's own IAM grants directly, via synth.
    */
   describe('Cognito Deployer Worker', () => {
     it('cognito deployer worker: CloudFormation management is scoped to the cognito stack ARN; no unscoped iam/logs writes', () => {
@@ -280,7 +280,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const registryRecord   = loadMailboxCognitoRegistryRecord();
       const artifactResolver = MailboxArtifactResolverFactory.fromContext(testStack, registryRecord, loadMailboxCognitoArtifactVersions());
 
-      new MailboxCognitoDataDeployerWorker(testStack, 'worker', {
+      new MailboxCognitoDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
         deployedStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',

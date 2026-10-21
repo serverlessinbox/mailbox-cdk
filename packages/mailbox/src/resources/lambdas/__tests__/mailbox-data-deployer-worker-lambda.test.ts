@@ -14,15 +14,15 @@ import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
-} from '../../../../__tests__/deployer-test-helpers';
-import { MailboxDataDeployerWorker } from '../mailbox-data-deployer-worker';
+} from '../../../__tests__/deployer-test-helpers';
+import { MailboxDataDeployerWorkerLambda } from '../mailbox-data-deployer-worker-lambda';
 
 const DATA_STACK_ARN      = 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*';
 const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/data-template.json';
 
 function synthWorker(): Template {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxDataDeployerWorker(stack, 'worker', {
+  new MailboxDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
     dataStackArn: DATA_STACK_ARN,
@@ -33,7 +33,7 @@ function synthWorker(): Template {
   return Template.fromStack(stack);
 }
 
-describe('MailboxDataDeployerWorker', () => {
+describe('MailboxDataDeployerWorkerLambda', () => {
   let template: Template;
 
   beforeAll(() => {

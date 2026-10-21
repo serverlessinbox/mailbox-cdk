@@ -17,8 +17,8 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { MailboxEdgeDeployerWorker }                    from '../core/edge/mailbox-edge-deployer-worker';
 import { MailboxEdgeStack }                             from '../core/edge/mailbox-edge-stack';
+import { MailboxEdgeDeployerWorkerLambda }              from '../resources/lambdas/mailbox-edge-deployer-worker-lambda';
 
 import {
   CloudFormationResource,
@@ -333,7 +333,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
   /**
    * Deployer Worker IAM
    * Tests the actual unit containing the 2026-07-09 critical finding (unscoped iam:CreateRole/
-   * PutRolePolicy/AttachRolePolicy on Resource "*") directly — MailboxEdgeDeployerWorker's own
+   * PutRolePolicy/AttachRolePolicy on Resource "*") directly — MailboxEdgeDeployerWorkerLambda's own
    * IAM grants — instead of the full customer-facing stack (which lives in a different repo,
    * mailbox-apps, and can't be synthesized from here due to separate Yarn PnP roots).
    *
@@ -357,7 +357,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         deploymentRegion: testStack.region,
       });
 
-      new MailboxEdgeDeployerWorker(testStack, 'worker', {
+      new MailboxEdgeDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
         stack: testStack,
         edgeStackNamePattern: 'test-root-edge*',

@@ -8,9 +8,8 @@ import * as route53                                                             
 import { Aws, CustomResource, Stack, Token }                                                             from 'aws-cdk-lib';
 import { Construct }                                                                                     from 'constructs';
 
+import { MailboxEdgeDeployerWorkerLambda }                                                               from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
 import type { IDataTable }                                                                               from '../../resources/tables/data-tables';
-
-import { MailboxEdgeDeployerWorker }                                                                     from './mailbox-edge-deployer-worker';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -97,7 +96,7 @@ export class MailboxEdgeDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
       deployedStackName: 'edge',
       deployedStackArn: edgeStackArn,
-      createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorker(workerScope, workerId, {
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         edgeStackNamePattern,

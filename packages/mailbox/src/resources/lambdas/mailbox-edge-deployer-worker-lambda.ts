@@ -10,7 +10,7 @@ import { PolicyStatement }       from 'aws-cdk-lib/aws-iam';
 import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
 import { Construct }             from 'constructs';
 
-export interface MailboxEdgeDeployerWorkerProps {
+export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly stack: Stack;
   /**
@@ -48,8 +48,8 @@ export interface MailboxEdgeDeployerWorkerProps {
  *
  * The edge template contains no CloudWatch Log Groups, so this worker needs NO logs permissions.
  */
-export class MailboxEdgeDeployerWorker extends DeployerWorkerLambda {
-  constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkerProps) {
+export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
+  constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkerLambdaProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
       deployedStackName: 'edge',

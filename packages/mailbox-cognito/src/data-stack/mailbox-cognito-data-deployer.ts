@@ -4,7 +4,8 @@ import type { ServerlessInboxDeployerType }                          from '@serv
 import { Aws, Stack }                                                from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
-import { MailboxCognitoDataDeployerWorker }                          from './mailbox-cognito-data-deployer-worker';
+import { MailboxCognitoDataDeployerWorkerLambda }                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+
 import { cognitoDataStackName }                                      from './mailbox-cognito-data-stack-name';
 import { MailboxCognitoDataStackRef }                                from './mailbox-cognito-data-stack-ref';
 
@@ -60,7 +61,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
       deployedStackName: 'cognito',
       deployedStackArn: cognitoDataStackArn,
-      createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorker(workerScope, workerId, {
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: artifacts,
         templateObjectArn: artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json'),
         deployedStackArn: cognitoDataStackArn,

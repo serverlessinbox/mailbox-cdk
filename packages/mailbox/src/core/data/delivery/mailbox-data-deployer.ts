@@ -6,10 +6,10 @@ import { Aws, Fn, Stack }                                                       
 import { Construct }                                                                       from 'constructs';
 
 import type { IDataBlobStore }                                                             from '../../../resources/buckets/data-blob-store';
+import { MailboxDataDeployerWorkerLambda }                                                 from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
 import type { IDataTable }                                                                 from '../../../resources/tables/data-tables';
 import { MailboxDataStackRef }                                                             from '../mailbox-data-stack-ref';
 
-import { MailboxDataDeployerWorker }                                                       from './mailbox-data-deployer-worker';
 import { MailboxDataOverrideResolver }                                                     from './mailbox-data-override-resolver';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
@@ -66,7 +66,7 @@ export class MailboxDataDeployer extends Construct {
       stateMachineNamePrefix: 'mailbox-data-deployer-',
       deployedStackName: 'data',
       deployedStackArn: dataStackArn,
-      createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorker(workerScope, workerId, {
+      createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         dataStackArn,

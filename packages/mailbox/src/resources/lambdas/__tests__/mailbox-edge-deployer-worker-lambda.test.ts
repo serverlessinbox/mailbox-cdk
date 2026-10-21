@@ -14,8 +14,8 @@ import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../../__tests__/deployer-test-helpers';
-import { MailboxEdgeDeployerWorker }           from '../mailbox-edge-deployer-worker';
-import type { MailboxEdgeDeployerWorkerProps } from '../mailbox-edge-deployer-worker';
+import { MailboxEdgeDeployerWorkerLambda }           from '../mailbox-edge-deployer-worker-lambda';
+import type { MailboxEdgeDeployerWorkerLambdaProps } from '../mailbox-edge-deployer-worker-lambda';
 
 const EDGE_REGION                 = 'us-east-1';
 const EDGE_STACK_ARN              = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge*/*';
@@ -40,9 +40,9 @@ function ownedByRequestTag(): unknown[] {
   ];
 }
 
-function synthWorker(props: Partial<MailboxEdgeDeployerWorkerProps> = {}): Template {
+function synthWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): Template {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxEdgeDeployerWorker(stack, 'worker', {
+  new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
     edgeStackNamePattern: 'test-stack-edge*',
@@ -61,7 +61,7 @@ function resourceOf(template: Template, action: string, index = 0): string {
   return renderWithTokens(statementsForAction(template, action)[index].Resource);
 }
 
-describe('MailboxEdgeDeployerWorker', () => {
+describe('MailboxEdgeDeployerWorkerLambda', () => {
   let template: Template;
 
   beforeAll(() => {

@@ -17,10 +17,10 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../resources/tables/websocket-table';
-import { MailboxDataDeployerWorker }            from '../core/data/delivery/mailbox-data-deployer-worker';
 import { MailboxDataStack }                     from '../core/data/mailbox-data-stack';
+import { MailboxDataDeployerWorkerLambda }      from '../resources/lambdas/mailbox-data-deployer-worker-lambda';
 import { AuthKeyStoreTable }                    from '../resources/tables/auth-key-store-table';
+import { WebSocketTable }                       from '../resources/tables/websocket-table';
 
 import {
   CloudFormationResource,
@@ -154,7 +154,7 @@ describe('Mailbox Resource Naming', () => {
         deploymentRegion: stack.region,
       });
 
-      new MailboxDataDeployerWorker(stack, 'worker', {
+      new MailboxDataDeployerWorkerLambda(stack, 'worker', {
         artifactResolver,
         stack,
         dataStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*',

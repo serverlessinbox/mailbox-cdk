@@ -4,7 +4,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
-export interface MailboxDataDeployerWorkerProps {
+export interface MailboxDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly stack: Stack;
   readonly dataStackArn: string;
@@ -18,8 +18,8 @@ export interface MailboxDataDeployerWorkerProps {
  * acting as this role, to create, update and delete the data stack's DynamoDB tables and S3 bucket.
  * It does not decide when to deploy.
  */
-export class MailboxDataDeployerWorker extends DeployerWorkerLambda {
-  constructor(scope: Construct, id: string, props: MailboxDataDeployerWorkerProps) {
+export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
+  constructor(scope: Construct, id: string, props: MailboxDataDeployerWorkerLambdaProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
       deployedStackName: 'data',
