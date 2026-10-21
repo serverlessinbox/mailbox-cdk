@@ -17,9 +17,9 @@ import type { IBucket }                             from 'aws-cdk-lib/aws-s3';
 import { App, BootstraplessSynthesizer, Fn, Stack } from 'aws-cdk-lib';
 import { Construct }                                from 'constructs';
 
-import { statementsForAction }                      from '../cdk-test-support';
+import { statementsForAction }                      from '../../../cdk-test-support';
+import { StaticContentSource }                      from '../../../static-content-source';
 import { StaticContentDeployer }                    from '../content-deployer';
-import { StaticContentSource }                      from '../static-content-source';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {

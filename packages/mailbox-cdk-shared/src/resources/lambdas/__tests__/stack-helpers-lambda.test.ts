@@ -8,9 +8,8 @@
 
 import { Match, Template }         from 'aws-cdk-lib/assertions';
 
+import { createStackWithResolver } from '../../../__tests__/stack-helpers-helpers';
 import { StackHelpersLambda }      from '../stack-helpers-lambda';
-
-import { createStackWithResolver } from './stack-helpers-helpers';
 
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();

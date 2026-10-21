@@ -5,9 +5,9 @@ import { Construct }                    from 'constructs';
 
 import { PositionHash }                 from '../naming/position-hash';
 import { StackIdentity }                from '../naming/stack-identity';
+import { DeployerStarterLambda }        from '../resources/lambdas/deployer-starter-lambda';
 import type { StackDeployerProperties } from '../ts-lambdas/stack-deployer/stack-deployment';
 
-import { DeployerStarterLambda }        from './deployer-starter-lambda';
 import { PollingCfnDeployerWorkflow }   from './polling-cfn-deployer-workflow';
 
 const DEPLOY_STACK_SERVICE_TIMEOUT = Duration.hours(1);

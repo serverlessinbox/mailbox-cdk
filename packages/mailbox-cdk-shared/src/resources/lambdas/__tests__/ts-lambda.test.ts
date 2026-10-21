@@ -15,7 +15,7 @@ import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { TypeScriptLambda }                     from '../index';
+import { TypeScriptLambda }                     from '../../../index';
 
 describe('TypeScriptLambda Construct', () => {
   let app: App;

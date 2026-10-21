@@ -1,7 +1,7 @@
 import { Template }             from 'aws-cdk-lib/assertions';
 import * as t                   from 'typanion';
 
-import { DeployerWorkerLambda } from '../deployer-infra/deployer-worker-lambda';
+import { DeployerWorkerLambda } from '../resources/lambdas/deployer-worker-lambda';
 
 import { newProbeStack }        from './probe-stack';
 

@@ -5,12 +5,13 @@ import { Aws, Duration, CustomResource, Stack, Token, Tokenization } from 'aws-c
 import { Construct, type IDependable }                               from 'constructs';
 import { createHash }                                                from 'node:crypto';
 
-import type { IStaticContentSource }                                 from './static-content-source';
-import { getOrCreateSharedGroup }                                    from './tagging/shared-group';
+import type { IStaticContentSource }                                 from '../../static-content-source';
+import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
-} from './ts-lambdas/content-deployer/resource-properties';
+} from '../../ts-lambdas/content-deployer/resource-properties';
+
 import { TypeScriptLambda } from './ts-lambda';
 
 /** What `StaticContentDeployer.deploy` deploys, and where. */

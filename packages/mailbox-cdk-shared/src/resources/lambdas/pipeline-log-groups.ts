@@ -5,9 +5,10 @@ import * as cdk                       from 'aws-cdk-lib';
 import { Aws, Fn }                    from 'aws-cdk-lib';
 import type { Construct, IConstruct } from 'constructs';
 
-import { StackIdentity }              from './naming/stack-identity';
+import { StackIdentity }              from '../../naming/stack-identity';
+import { getOrCreateSharedGroup }     from '../../tagging/shared-group';
+
 import type { Pipeline }              from './pipelines';
-import { getOrCreateSharedGroup }     from './tagging/shared-group';
 
 /** Log retention, settable per pipeline. */
 const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {

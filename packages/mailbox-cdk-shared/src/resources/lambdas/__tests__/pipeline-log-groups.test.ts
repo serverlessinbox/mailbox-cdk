@@ -2,8 +2,8 @@ import { Match, Template }        from 'aws-cdk-lib/assertions';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { App, Stack }             from 'aws-cdk-lib';
 
+import { getOrCreateSharedGroup } from '../../../tagging/shared-group';
 import { PipelineLogGroup }       from '../pipeline-log-groups';
-import { getOrCreateSharedGroup } from '../tagging/shared-group';
 
 /**
  * Pins the one-log-group-per-(stack, pipeline) contract, the group name and the removal policies.

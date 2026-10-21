@@ -3,10 +3,10 @@ import { PolicyStatement }                from 'aws-cdk-lib/aws-iam';
 import { Duration }                       from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
-import { ServerlessInboxTagKeys }         from '../tagging/serverless-inbox-tags';
-import { TypeScriptLambda }               from '../ts-lambda';
+import { parentStackStatusReadStatement } from '../../deployer-infra/parent-stack-status-read';
+import { ServerlessInboxTagKeys }         from '../../tagging/serverless-inbox-tags';
 
-import { parentStackStatusReadStatement } from './parent-stack-status-read';
+import { TypeScriptLambda }               from './ts-lambda';
 
 /**
  * CloudFormation tags every resource it creates with its own keys and sends them in the same tag request as

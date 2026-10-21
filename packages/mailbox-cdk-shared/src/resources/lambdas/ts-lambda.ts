@@ -9,7 +9,8 @@ import {
 import { Aws }               from 'aws-cdk-lib';
 import { Construct }         from 'constructs';
 
-import { applyArtifactTags } from './artifacts/apply-artifact-tags';
+import { applyArtifactTags } from '../../artifacts/apply-artifact-tags';
+
 import { PipelineLogGroup }  from './pipeline-log-groups';
 import type { Pipeline }     from './pipelines';
 

@@ -3,7 +3,7 @@ import { Template }                                      from 'aws-cdk-lib/asser
 import { Construct }                                     from 'constructs';
 import * as t                                            from 'typanion';
 
-import { DeployerWorkerLambda }                          from '../deployer-infra/deployer-worker-lambda';
+import { DeployerWorkerLambda }                          from '../resources/lambdas/deployer-worker-lambda';
 
 import { statementsForAction, type PolicyStatementJson } from './policy-statements';
 import { newProbeStack }                                 from './probe-stack';

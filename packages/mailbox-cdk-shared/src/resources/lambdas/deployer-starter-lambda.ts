@@ -3,10 +3,10 @@ import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
 import { Duration }                         from 'aws-cdk-lib';
 import { Construct }                        from 'constructs';
 
-import { TypeScriptLambda }                 from '../ts-lambda';
+import { parentStackStatusReadStatement }   from '../../deployer-infra/parent-stack-status-read';
+import type { IPollingCfnDeployerWorkflow } from '../../deployer-infra/polling-cfn-deployer-workflow';
 
-import { parentStackStatusReadStatement }   from './parent-stack-status-read';
-import type { IPollingCfnDeployerWorkflow } from './polling-cfn-deployer-workflow';
+import { TypeScriptLambda }                 from './ts-lambda';
 
 export interface DeployerStarterLambdaProps {
   readonly artifactResolver: IArtifactResolver;

@@ -4,8 +4,8 @@ import { IBucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { Stack, RemovalPolicy }       from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
-import { BucketAutoEmpty }            from './bucket-auto-empty';
 import { StackNamedBucket }           from './named-bucket';
+import { BucketAutoEmpty }            from './resources/lambdas/bucket-auto-empty';
 import { getOrCreateSharedGroup }     from './tagging/shared-group';
 
 /**

@@ -7,7 +7,7 @@ import { Construct }                            from 'constructs';
 import * as t                                   from 'typanion';
 
 import { renderWithTokens }                     from '../../cdk-test-support';
-import { DeployerStarterLambda }                from '../deployer-starter-lambda';
+import { DeployerStarterLambda }                from '../../resources/lambdas/deployer-starter-lambda';
 import { PollingCfnDeployerWorkflow }           from '../polling-cfn-deployer-workflow';
 
 export const TEST_ACCOUNT = '123456789012';

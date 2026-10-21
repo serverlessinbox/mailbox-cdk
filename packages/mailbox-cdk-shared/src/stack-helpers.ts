@@ -2,7 +2,7 @@ import type { IArtifactResolver }              from '@serverlessinbox/artifact-r
 import * as cdk                                from 'aws-cdk-lib';
 import { Construct }                           from 'constructs';
 
-import { StackHelpersLambda }                  from './stack-helpers-lambda';
+import { StackHelpersLambda }                  from './resources/lambdas/stack-helpers-lambda';
 import { applyServerlessInboxComponentTag }    from './tagging/serverless-inbox-tags';
 import { getOrCreateSharedGroup }              from './tagging/shared-group';
 import type { StackHelpersResourceProperties } from './ts-lambdas/stack-helpers/resource-properties';

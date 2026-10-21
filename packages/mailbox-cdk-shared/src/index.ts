@@ -28,10 +28,10 @@ export type { ServerlessInboxDeployerType } from './context/deployer-type';
 export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjectsInDevelopment } from './context/development-mode';
 
 // Lambda constructs & artifact tagging
-export { TypeScriptLambda } from './ts-lambda';
-export type { TypeScriptLambdaProps } from './ts-lambda';
-export { GoLambda } from './go-lambda';
-export type { GoLambda2Props } from './go-lambda';
+export { TypeScriptLambda } from './resources/lambdas/ts-lambda';
+export type { TypeScriptLambdaProps } from './resources/lambdas/ts-lambda';
+export { GoLambda } from './resources/lambdas/go-lambda';
+export type { GoLambda2Props } from './resources/lambdas/go-lambda';
 export { applyArtifactTags } from './artifacts/apply-artifact-tags';
 export type { AutoUpdateType } from './artifacts/apply-artifact-tags';
 
@@ -56,14 +56,14 @@ export type {
 } from './tagging/serverless-inbox-tags';
 
 // Static content deployer
-export { StaticContentDeployer } from './content-deployer';
-export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './content-deployer';
+export { StaticContentDeployer } from './resources/lambdas/content-deployer';
+export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './resources/lambdas/content-deployer';
 export { StaticContentSource } from './static-content-source';
 export type { IStaticContentSource, StaticContentWriteOptions, StaticContentZipOptions } from './static-content-source';
 export type { StaticContentSourceSpec } from './ts-lambdas/content-deployer/resource-properties';
 
 // Bucket auto-empty
-export { BucketAutoEmpty } from './bucket-auto-empty';
+export { BucketAutoEmpty } from './resources/lambdas/bucket-auto-empty';
 
 // Public static assets bucket
 export { PublicStaticAssetsBucket } from './public-static-assets-bucket';
@@ -90,9 +90,9 @@ export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './st
 export { setStackNameBase, getStackNameBase } from './naming/stack-name-base-registry';
 
 // Pipeline taxonomy & shared per-pipeline log groups
-export type { Pipeline } from './pipelines';
-export { PipelineLogGroup } from './pipeline-log-groups';
-export type { IPipelineLogGroup } from './pipeline-log-groups';
+export type { Pipeline } from './resources/lambdas/pipelines';
+export { PipelineLogGroup } from './resources/lambdas/pipeline-log-groups';
+export type { IPipelineLogGroup } from './resources/lambdas/pipeline-log-groups';
 
 // Table & Queue constructs
 export { BaseTable } from './base-table';

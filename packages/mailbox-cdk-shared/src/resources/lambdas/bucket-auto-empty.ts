@@ -4,8 +4,9 @@ import { IBucket }                                from 'aws-cdk-lib/aws-s3';
 import { Duration, CustomResource, Stack }        from 'aws-cdk-lib';
 import { Construct }                              from 'constructs';
 
-import { getOrCreateSharedGroup }                 from './tagging/shared-group';
-import type { BucketAutoEmptyResourceProperties } from './ts-lambdas/bucket-auto-empty/resource-properties';
+import { getOrCreateSharedGroup }                 from '../../tagging/shared-group';
+import type { BucketAutoEmptyResourceProperties } from '../../ts-lambdas/bucket-auto-empty/resource-properties';
+
 import { TypeScriptLambda }                       from './ts-lambda';
 
 /**
