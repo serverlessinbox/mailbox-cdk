@@ -17,9 +17,9 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { DataTable }                            from '../../tables/data-tables';
-import { EmailProcessingQueue }                 from '../../../email/receiving/email-processing-queue';
+import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
 import { EmailProcessorLambda }                 from '../email-processor-lambda';
 
 describe('EmailProcessorLambda event-source wiring', () => {

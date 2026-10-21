@@ -4,13 +4,13 @@ import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cd
 import { Construct }                                                from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../api/websocket/websocket';
-import type { IDataBlobStore }                                      from '../../data/data-blob-store';
+import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                          from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                   from '../../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';
 import { SESEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
 
-import { SesEventQueue, type ISesEventQueue }                       from './ses-event-queue';
-import { SesEventTopic, type ISesEventTopic }                       from './ses-event-topic';
+import { SesEventQueue, type ISesEventQueue }                       from '../../resources/queues/ses-event-queue';
+import { SesEventTopic, type ISesEventTopic }                       from '../../resources/topics/ses-event-topic';
 
 /** Props of {@link SESEventProcessing}. */
 export interface SESEventProcessingProps {

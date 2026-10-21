@@ -5,7 +5,7 @@ import { Construct, IDependable }                                               
 import { Permission }                                                                            from '../auth/jmap-scopes';
 import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../auth/types';
 import type { IDataTable }                                                                       from '../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                                                from '../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue }                                                                from '../resources/queues/audit-events-queue';
 
 import { MailboxUi, UiBundleSource }                                                             from './mailbox-ui';
 

@@ -6,9 +6,9 @@ import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy }  from 'aws-cd
 import { Construct }                                                from 'constructs';
 
 import { SesReceiptForwarderLambda }                                from '../../resources/lambdas/ses-receipt-forwarder-lambda';
-import { BlobStore }                                                from '../../resources/blob-store';
+import { BlobStore }                                                from '../../resources/buckets/blob-store';
 
-import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from './email-processing-queue';
+import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from '../../resources/queues/email-processing-queue';
 
 /** Where received email is stored and how it is queued for processing. */
 export interface EmailDelivery {

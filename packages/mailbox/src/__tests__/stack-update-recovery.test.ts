@@ -25,7 +25,7 @@ import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import { StackUpdateAddon }                          from '../platform/update/stack-update-addon';
 import { DataTable }                                 from '../resources/tables/data-tables';
-import { AuditEventsQueue }                          from '../features/audit-writing/audit-events-queue';
+import { AuditEventsQueue }                          from '../resources/queues/audit-events-queue';
 
 const TEST_ACCOUNT = '123456789012';
 const TEST_REGION  = 'us-west-2';

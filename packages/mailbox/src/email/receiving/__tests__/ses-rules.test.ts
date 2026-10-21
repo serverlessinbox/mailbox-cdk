@@ -15,7 +15,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { BlobStore }                            from '../../../resources/blob-store';
+import { BlobStore }                            from '../../../resources/buckets/blob-store';
 import { SesRules }                             from '../ses-rules';
 
 describe('SesRules', () => {

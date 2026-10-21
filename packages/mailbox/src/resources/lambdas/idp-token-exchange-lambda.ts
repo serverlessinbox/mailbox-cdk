@@ -6,7 +6,7 @@ import { Construct }                       from 'constructs';
 
 import { AuthPolicyName, OAuthClientName } from '../../auth/types';
 import type { IDataTable }                 from '../tables/data-tables';
-import type { IAuditEventsQueue }          from '../../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable: IDataTable;

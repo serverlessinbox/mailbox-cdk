@@ -5,7 +5,7 @@ import * as cdk                                                                 
 import { Construct }                                                                      from 'constructs';
 
 import { AuditLogTable }                                                                  from '../resources/tables/auditlog-table';
-import { BlobStore }                                                                      from '../resources/blob-store';
+import { BlobStore }                                                                      from '../resources/buckets/blob-store';
 import { ChangelogTable }                                                                 from '../resources/tables/changelog-table';
 import { ConfigTable }                                                                    from '../resources/tables/config-table';
 import { ItemTable }                                                                      from '../resources/tables/item-table';

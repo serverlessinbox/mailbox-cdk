@@ -3,7 +3,7 @@ import { TableEncryption }                                                      
 import { QueueEncryption }                                                                                   from 'aws-cdk-lib/aws-sqs';
 import { Construct }                                                                                         from 'constructs';
 
-import type { BlobStoreProps }                                                                               from '../resources/blob-store';
+import type { BlobStoreProps }                                                                               from '../resources/buckets/blob-store';
 import type { DynamoTableEncryptionProps }                                                                   from '../resources/tables/data-table-props';
 
 import type { MailboxKmsConfig }                                                                             from './kms';

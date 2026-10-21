@@ -5,7 +5,7 @@ import { Duration }                from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
 import type { IDataTable }         from '../tables/data-tables';
-import type { IAuditEventsQueue }  from '../../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
 
 export interface StackUpdateApiLambdaProps {
   readonly rootStackArn: string;

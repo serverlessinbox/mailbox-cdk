@@ -5,9 +5,9 @@ import { Aws, Duration }                                           from 'aws-cdk
 import { Construct }                                               from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
-import type { IDataBlobStore }                                     from '../../data/data-blob-store';
+import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
 import type { IDataTable }                                         from '../tables/data-tables';
-import type { IEmailSendingQueueConsumer }                         from '../../email/sending/email-sending-queue';
+import type { IEmailSendingQueueConsumer }                         from '../queues/email-sending-queue';
 
 export interface EmailSenderLambdaProps {
   configTable: IDataTable;

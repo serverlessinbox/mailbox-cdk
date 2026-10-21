@@ -17,7 +17,7 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { DataTable }                            from '../../tables/data-tables';
-import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { AuditWriterLambda }                    from '../audit-writer-lambda';
 
 describe('AuditWriterLambda event-source wiring', () => {

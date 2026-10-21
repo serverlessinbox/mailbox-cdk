@@ -6,7 +6,7 @@ import { Construct }                                from 'constructs';
 import type { IDataTable }                          from '../../resources/tables/data-tables';
 import { AuditWriterLambda }                        from '../../resources/lambdas/audit-writer-lambda';
 
-import { AuditEventsQueue, type IAuditEventsQueue } from './audit-events-queue';
+import { AuditEventsQueue, type IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
 
 export interface AuditWritingProps {
   readonly auditLogTable: IDataTable;

@@ -17,7 +17,7 @@ import { WebSocketPush }                                                        
 import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './api';
 import type { IMailboxAuthProvider }                                                                           from './auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
-import type { IDataBlobStore }                                                                                 from './data/data-blob-store';
+import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
 import type { IDataTable }                                                                                     from './resources/tables/data-tables';
 import { MailboxDataDeployer }                                                                                 from './data';
 import { MailboxDns }                                                                                          from './domains';

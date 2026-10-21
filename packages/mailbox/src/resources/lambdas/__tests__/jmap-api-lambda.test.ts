@@ -21,10 +21,10 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { Permission }                           from '../../../auth/jmap-scopes';
-import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { DataTable }                            from '../../tables/data-tables';
-import { EmailSendingQueue }                    from '../../../email/sending/email-sending-queue';
-import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
+import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
 import { ApiHandlerLambda }                     from '../jmap-api-lambda';
 

@@ -13,7 +13,7 @@ import { Construct }                                                            
 
 import { IAdminApiAddon }                                                                              from '../../api/addons';
 import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                                                      from '../../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
 import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';
 import { SupportRoleAssumptionCollectorLambda }                                                        from '../../resources/lambdas/support-role-assumption-collector-lambda';
 

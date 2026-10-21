@@ -2,7 +2,7 @@ import { Table }                         from 'aws-cdk-lib/aws-dynamodb';
 import { IBucket, Bucket }               from 'aws-cdk-lib/aws-s3';
 import { Construct }                     from 'constructs';
 
-import { DataBlobStore, IDataBlobStore } from './data-blob-store';
+import { DataBlobStore, IDataBlobStore } from '../resources/buckets/data-blob-store';
 import { DataTable, IDataTable }         from '../resources/tables/data-tables';
 
 /**

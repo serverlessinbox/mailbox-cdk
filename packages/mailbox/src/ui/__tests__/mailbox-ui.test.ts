@@ -21,7 +21,7 @@ import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
 import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI } from '../../auth/types';
 import { DataTable }                                    from '../../resources/tables/data-tables';
-import { AuditEventsQueue }                             from '../../features/audit-writing/audit-events-queue';
+import { AuditEventsQueue }                             from '../../resources/queues/audit-events-queue';
 import { MailboxUi }                                    from '../mailbox-ui';
 import type { MailboxUiProps }                          from '../mailbox-ui';
 

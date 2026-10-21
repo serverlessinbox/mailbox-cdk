@@ -2,7 +2,7 @@ import { S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox
 import { IGrantable }                                     from 'aws-cdk-lib/aws-iam';
 import { IBucket }                                        from 'aws-cdk-lib/aws-s3';
 
-import { BlobStore }                                      from '../resources/blob-store';
+import { BlobStore }                                      from './blob-store';
 
 const EMAIL_BLOB_KEY_PATTERN     = 'tenants/*/accounts/*/emails/*';
 const UPLOAD_BLOB_KEY_PATTERN    = 'uploads/*';

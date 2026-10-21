@@ -10,7 +10,7 @@ import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
 import type { AdminApiAddonContext }                    from '../../../api/addons';
 import { DataTable }                                    from '../../../resources/tables/data-tables';
-import { AuditEventsQueue }                             from '../../../features/audit-writing/audit-events-queue';
+import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
 import type { IIdentityProvisioner }                    from '../../../resources/lambdas/identity-provisioner-lambda';
 
 /** A resource of a synthesized template, as `Template.findResources` returns it. */

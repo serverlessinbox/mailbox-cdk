@@ -3,11 +3,11 @@ import type { BaseQueueProps }                                     from '@server
 import { Construct }                                               from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
-import type { IDataBlobStore }                                     from '../../data/data-blob-store';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';
 
-import { EmailSendingQueue, type IEmailSendingQueue }              from './email-sending-queue';
+import { EmailSendingQueue, type IEmailSendingQueue }              from '../../resources/queues/email-sending-queue';
 
 /** Props of {@link EmailSending}. */
 export interface EmailSendingProps {

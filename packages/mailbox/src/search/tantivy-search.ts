@@ -6,11 +6,11 @@ import * as lambda                    from 'aws-cdk-lib/aws-lambda';
 import * as cdk                       from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
-import type { IDataBlobStore }        from '../data/data-blob-store';
+import type { IDataBlobStore }        from '../resources/buckets/data-blob-store';
 import type { IDataTable }            from '../resources/tables/data-tables';
 import { TantivyIndexerLambda }       from '../resources/lambdas/tantivy-indexer-lambda';
 
-import { TantivyIndexingScheduleDlq } from './tantivy-indexing-schedule-dlq';
+import { TantivyIndexingScheduleDlq } from '../resources/queues/tantivy-indexing-schedule-dlq';
 
 export interface TantivySearchProps {
   /**

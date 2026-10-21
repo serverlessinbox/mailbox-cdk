@@ -11,7 +11,7 @@ import {
   AUTH_POLICY_ADMIN_API,
 } from '../../auth/types';
 import type { IDataTable }        from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
+import type { IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
 import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchange-lambda';
 
 export interface IdpTokenExchangeApiProps {

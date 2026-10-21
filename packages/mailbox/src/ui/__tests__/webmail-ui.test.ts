@@ -17,7 +17,7 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 import { Permission }                           from '../../auth/jmap-scopes';
 import type { IMailboxAuthProvider }            from '../../auth/types';
 import { DataTable }                            from '../../resources/tables/data-tables';
-import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
+import { AuditEventsQueue }                     from '../../resources/queues/audit-events-queue';
 import { WebmailUi }                            from '../webmail-ui';
 
 interface SynthesizedFunction {

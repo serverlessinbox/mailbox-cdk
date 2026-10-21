@@ -5,7 +5,7 @@ import { IBucket }                                                   from 'aws-c
 import { Aws, Fn, Stack }                                            from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
-import type { IDataBlobStore }                                       from './data-blob-store';
+import type { IDataBlobStore }                                       from '../resources/buckets/data-blob-store';
 import type { IDataTable }                                           from '../resources/tables/data-tables';
 import { MailboxDataDeployerWorker }                                 from './mailbox-data-deployer-worker';
 import { MailboxDataOverrideResolver }                               from './mailbox-data-override-resolver';
