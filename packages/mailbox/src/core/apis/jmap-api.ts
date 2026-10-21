@@ -18,7 +18,7 @@ import type { IFunction }                                                 from '
 import { Duration, Aws, CfnResource }                                     from 'aws-cdk-lib';
 import { Construct }                                                      from 'constructs';
 
-import { IMailboxAuthProvider }                                           from '../../core/auth/types';
+import { IMailboxAuthProvider }                                           from '../auth/types';
 import type { IDataBlobStore }                                            from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                                from '../../resources/tables/data-tables';
 import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';
@@ -28,8 +28,8 @@ import type { IIdentityProvisioner }                                      from '
 import type { JmapOAuthHandlerConfig }                                    from '../../resources/lambdas/jmap-api-lambda';
 import { ApiHandlerLambda }                                               from '../../resources/lambdas/jmap-api-lambda';
 import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
-import type { IJmapApiAddon }                                             from '../addons';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../websocket/websocket';
+import type { IJmapApiAddon }                                             from './addons';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
 
 /**
  * Inputs of {@link JMapApi}: the tables, queues and blob store its handler Lambda works on, the

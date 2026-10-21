@@ -10,11 +10,11 @@ import * as cdk                                                                 
 import { Aws }                                                                                                 from 'aws-cdk-lib';
 import { Construct, DependencyGroup }                                                                          from 'constructs';
 
-import { AdminApi }                                                                                            from './api/admin/admin-api';
-import { JMapApi }                                                                                             from './api/jmap/jmap-api';
-import { McpApi }                                                                                              from './api/mcp/mcp-api';
-import { WebSocketPush }                                                                                       from './api/websocket/websocket';
-import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './api';
+import { AdminApi }                                                                                            from './core/apis/admin-api';
+import { JMapApi }                                                                                             from './core/apis/jmap-api';
+import { McpApi }                                                                                              from './core/apis/mcp-api';
+import { WebSocketPush }                                                                                       from './core/apis/websocket';
+import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './core/apis/addons';
 import type { IMailboxAuthProvider }                                                                           from './core/auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';

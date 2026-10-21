@@ -6,7 +6,7 @@ import { HttpApi, HttpMethod }                                                  
 import * as cdk                                                                                from 'aws-cdk-lib';
 import { Construct }                                                                           from 'constructs';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../api/addons';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../core/apis/addons';
 import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                              from '../../resources/queues/audit-events-queue';
 import { StackUpdateApiLambda }                                                                from '../../resources/lambdas/stack-update-api-lambda';

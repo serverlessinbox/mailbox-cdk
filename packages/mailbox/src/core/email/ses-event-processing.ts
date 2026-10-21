@@ -3,7 +3,7 @@ import { makePhysicalName, type BaseQueueProps }                    from '@serve
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../api/websocket/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../apis/websocket';
 import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                          from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';

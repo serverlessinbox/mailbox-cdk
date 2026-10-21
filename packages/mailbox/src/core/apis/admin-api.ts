@@ -14,7 +14,7 @@ import * as acm                                                    from 'aws-cdk
 import { Duration, Aws, CfnResource }                              from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API }                                   from '../../core/auth/types';
+import { AUTH_POLICY_ADMIN_API }                                   from '../auth/types';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
@@ -23,8 +23,8 @@ import type { IAuthKeyStoreTable }                                 from '../../r
 import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
 import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
 import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
-import type { IAdminApiAddon }                                     from '../addons';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../websocket/websocket';
+import type { IAdminApiAddon }                                     from './addons';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from './websocket';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, the

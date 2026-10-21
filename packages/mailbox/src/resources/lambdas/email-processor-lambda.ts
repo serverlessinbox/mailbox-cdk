@@ -3,7 +3,7 @@ import { GoLambda }                           from '@serverlessinbox/mailbox-cdk
 import { Duration }                           from 'aws-cdk-lib';
 import { Construct }                          from 'constructs'
 
-import type { IWebSocketBroadcastPublisher }  from '../../api/websocket/websocket';
+import type { IWebSocketBroadcastPublisher }  from '../../core/apis/websocket';
 import type { IDataBlobStore }                from '../buckets/data-blob-store';
 import type { IDataTable }                    from '../tables/data-tables';
 import type { IEmailProcessingQueueConsumer } from '../queues/email-processing-queue';

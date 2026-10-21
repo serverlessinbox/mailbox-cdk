@@ -21,7 +21,7 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { WebSocketTable }                       from '../../tables/websocket-table';
-import type { IWebSocketPushApi }               from '../../../api/websocket/websocket';
+import type { IWebSocketPushApi }               from '../../../core/apis/websocket';
 import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketBroadcastLambda }             from '../websocket-broadcast-lambda';
 

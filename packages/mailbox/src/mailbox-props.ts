@@ -1,7 +1,7 @@
 import type { IArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
 import type * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
 
-import type { IAdminApiAddonProvider } from './api';
+import type { IAdminApiAddonProvider } from './core/apis/addons';
 import type { IMailboxAuthProvider }   from './core/auth/types';
 import type { SesReceivingMode }       from './core/email/ses-receiving-mode';
 import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';

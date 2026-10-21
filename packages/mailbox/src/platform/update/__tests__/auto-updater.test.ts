@@ -18,7 +18,7 @@ import { PolicyStatement }                                from 'aws-cdk-lib/aws-
 import { Code, Function as LambdaFunction, Runtime }      from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 
-import type { AdminApiAddonContext }                      from '../../../api/addons';
+import type { AdminApiAddonContext }                      from '../../../core/apis/addons';
 import { AutoUpdater }                                    from '../auto-updater';
 import type { AutoUpdaterProps }                          from '../auto-updater';
 

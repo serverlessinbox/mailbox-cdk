@@ -3,9 +3,9 @@ import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import type { HttpApi }              from 'aws-cdk-lib/aws-apigatewayv2';
 import type { Construct }            from 'constructs';
 
-import type { IDataTable }           from '../resources/tables/data-tables';
-import type { IAuditEventsQueue }    from '../resources/queues/audit-events-queue';
-import type { IIdentityProvisioner } from '../resources/lambdas/identity-provisioner-lambda';
+import type { IDataTable }           from '../../resources/tables/data-tables';
+import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-queue';
+import type { IIdentityProvisioner } from '../../resources/lambdas/identity-provisioner-lambda';
 
 /**
  * A capability that extends the Admin API with extra routes and, optionally, Admin UI

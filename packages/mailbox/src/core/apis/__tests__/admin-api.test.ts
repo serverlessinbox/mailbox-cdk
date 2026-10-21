@@ -27,8 +27,8 @@ import { DataTable }                                 from '../../../resources/ta
 import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
 import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
-import type { IAdminApiAddon }                       from '../../addons';
-import type { IWebSocketBroadcastPublisher }         from '../../websocket/websocket';
+import type { IAdminApiAddon }                       from '../addons';
+import type { IWebSocketBroadcastPublisher }         from '../websocket';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
 

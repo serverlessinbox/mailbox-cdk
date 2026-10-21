@@ -2,7 +2,7 @@ import type { IArtifactResolver }                                  from '@server
 import type { BaseQueueProps }                                     from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../api/websocket/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';

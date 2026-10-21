@@ -12,7 +12,7 @@ import { Bucket }                                  from 'aws-cdk-lib/aws-s3';
 import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }       from '../../../api/websocket/websocket';
+import type { IWebSocketBroadcastPublisher }       from '../../apis/websocket';
 import { DataBlobStore }                           from '../../../resources/buckets/data-blob-store';
 import { DataTable }                               from '../../../resources/tables/data-tables';
 import { EmailSending, type EmailSendingProps }    from '../email-sending';

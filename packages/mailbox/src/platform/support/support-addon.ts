@@ -11,7 +11,7 @@ import * as cdk                                                                 
 import { Fn }                                                                                          from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
-import { IAdminApiAddon }                                                                              from '../../api/addons';
+import { IAdminApiAddon }                                                                              from '../../core/apis/addons';
 import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
 import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';

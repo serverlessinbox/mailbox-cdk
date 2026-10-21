@@ -1,6 +1,6 @@
 import type { Construct }                                               from 'constructs';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../api/addons';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../core/apis/addons';
 
 import { SupportAddon, SupportMode }                                    from './support-addon';
 

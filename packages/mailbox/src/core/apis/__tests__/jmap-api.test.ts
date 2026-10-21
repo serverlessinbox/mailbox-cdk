@@ -21,14 +21,14 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IMailboxAuthProvider }            from '../../../core/auth/types';
+import type { IMailboxAuthProvider }            from '../../auth/types';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
 import { DataTable }                            from '../../../resources/tables/data-tables';
 import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
-import type { IJmapApiAddon }                   from '../../addons';
-import type { IWebSocketBroadcastPublisher }    from '../../websocket/websocket';
+import type { IJmapApiAddon }                   from '../addons';
+import type { IWebSocketBroadcastPublisher }    from '../websocket';
 import { JMapApi }                              from '../jmap-api';
 import type { JMapApiProps }                    from '../jmap-api';
 

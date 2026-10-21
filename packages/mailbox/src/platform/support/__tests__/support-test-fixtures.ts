@@ -8,7 +8,7 @@ import * as lambda                                      from 'aws-cdk-lib/aws-la
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import type { AdminApiAddonContext }                    from '../../../api/addons';
+import type { AdminApiAddonContext }                    from '../../../core/apis/addons';
 import { DataTable }                                    from '../../../resources/tables/data-tables';
 import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
 import type { IIdentityProvisioner }                    from '../../../resources/lambdas/identity-provisioner-lambda';

@@ -21,9 +21,9 @@ import * as cdk                                       from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }              from 'aws-cdk-lib';
 import { Construct }                                  from 'constructs';
 
-import { AdminApi }                                   from '../api/admin/admin-api';
-import { JMapApi }                                    from '../api/jmap/jmap-api';
-import { McpApi }                                     from '../api/mcp/mcp-api';
+import { AdminApi }                                   from '../core/apis/admin-api';
+import { JMapApi }                                    from '../core/apis/jmap-api';
+import { McpApi }                                     from '../core/apis/mcp-api';
 import { Permission }                                 from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }                  from '../core/auth/types';
 import { DataBlobStore, type IDataBlobStore }         from '../resources/buckets/data-blob-store';

@@ -57,7 +57,7 @@ export type {
 export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './core/auth/jmap-scopes';
 
 // Admin API addons
-export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
+export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './core/apis/addons';
 export type { IAuditEventsQueue } from './resources/queues/audit-events-queue';
 export type { IIdentityProvisioner } from './resources/lambdas/identity-provisioner-lambda';
 export type { IDataTable } from './resources/tables/data-tables';
