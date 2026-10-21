@@ -59,8 +59,23 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
 
     this.stateMachineName = props.stateMachineName;
 
+    const waitBeforeCheck = this.waitBeforeCheck(props.checkInterval ?? Duration.seconds(20));
+    const done            = this.done();
+
     const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
-      definitionBody: sfn.DefinitionBody.fromChainable(this.buildDefinition(props)),
+      definitionBody: sfn.DefinitionBody.fromChainable(
+        this.init()
+          .next(this.startStackOperation(props.handler))
+          // A start that already finalized the operation (an early failure) ends the workflow.
+          .next(this.startedOk()
+            .when(this.isDone(START_RESULT), done)
+            .otherwise(waitBeforeCheck
+              .next(this.checkStackOperation(props.handler))
+              // The counters are read from a check that is still polling; a done result may carry none.
+              .next(this.checkedDone()
+                .when(this.isDone(CHECK_RESULT), done)
+                .otherwise(this.incrementAttempt().next(waitBeforeCheck))))),
+      ),
       timeout: props.timeout ?? Duration.minutes(90),
       comment: 'Serverless Inbox: sub-stack deployer workflow',
       stateMachineName: props.stateMachineName,
@@ -83,33 +98,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     });
   }
 
-  private buildDefinition(props: PollingCfnDeployerWorkflowProps): sfn.IChainable {
-    const init             = this.initialState();
-    const startOp          = this.workerInvocation('StartStackOperation', START_RESULT, this.startPayload(), props.handler);
-    const wait             = new sfn.Wait(this, 'WaitBeforeCheck', {
-      time: sfn.WaitTime.duration(props.checkInterval ?? Duration.seconds(20)),
-    });
-    const checkOp          = this.workerInvocation('CheckStackOperation', CHECK_RESULT, this.checkPayload(), props.handler);
-    const incrementAttempt = this.incrementAttemptState();
-    const done             = new sfn.Succeed(this, 'Done');
-
-    // The counters are read from a check that is still polling; a done result may carry none.
-    const checkChoice = new sfn.Choice(this, 'IsDone?')
-      .when(this.isDone(CHECK_RESULT), done)
-      .otherwise(incrementAttempt);
-
-    incrementAttempt.next(wait);
-    wait.next(checkOp).next(checkChoice);
-
-    // A start that already finalized the operation (an early failure) ends the workflow.
-    const startChoice = new sfn.Choice(this, 'StartedOk?')
-      .when(this.isDone(START_RESULT), done)
-      .otherwise(wait);
-
-    return init.next(startOp).next(startChoice);
-  }
-
-  private initialState(): sfn.Pass {
+  private init(): sfn.Pass {
     return new sfn.Pass(this, 'Init', {
       parameters: {
         ...this.forward(CFN_FIELD),
@@ -121,7 +110,31 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     });
   }
 
-  private incrementAttemptState(): sfn.Pass {
+  private startStackOperation(handler: IFunction): tasks.LambdaInvoke {
+    return this.workerInvocation('StartStackOperation', START_RESULT, this.startPayload(), handler);
+  }
+
+  private startedOk(): sfn.Choice {
+    return new sfn.Choice(this, 'StartedOk?');
+  }
+
+  private waitBeforeCheck(checkInterval: Duration): sfn.Wait {
+    return new sfn.Wait(this, 'WaitBeforeCheck', { time: sfn.WaitTime.duration(checkInterval) });
+  }
+
+  private checkStackOperation(handler: IFunction): tasks.LambdaInvoke {
+    return this.workerInvocation('CheckStackOperation', CHECK_RESULT, this.checkPayload(), handler);
+  }
+
+  private checkedDone(): sfn.Choice {
+    return new sfn.Choice(this, 'IsDone?');
+  }
+
+  private done(): sfn.Succeed {
+    return new sfn.Succeed(this, 'Done');
+  }
+
+  private incrementAttempt(): sfn.Pass {
     return new sfn.Pass(this, 'IncrementAttempt', {
       parameters: {
         ...this.forward(CFN_FIELD),
