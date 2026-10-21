@@ -1,14 +1,15 @@
-import type { ResolvedArtifact } from '@serverlessinbox/artifact-registry';
-import { applyArtifactTags }     from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                  from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                  from 'aws-cdk-lib/aws-iam';
-import * as lambda               from 'aws-cdk-lib/aws-lambda';
-import * as logs                 from 'aws-cdk-lib/aws-logs';
-import * as route53              from 'aws-cdk-lib/aws-route53';
-import * as s3                   from 'aws-cdk-lib/aws-s3';
-import * as cdk                  from 'aws-cdk-lib';
-import { Aws }                   from 'aws-cdk-lib';
-import { Construct }             from 'constructs';
+import type { ResolvedArtifact }  from '@serverlessinbox/artifact-registry';
+import { applyArtifactTags }      from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                   from 'aws-cdk-lib/aws-iam';
+import * as lambda                from 'aws-cdk-lib/aws-lambda';
+import * as logs                  from 'aws-cdk-lib/aws-logs';
+import * as route53               from 'aws-cdk-lib/aws-route53';
+import * as s3                    from 'aws-cdk-lib/aws-s3';
+import * as cdk                   from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
+
+import { JmapBlobDownloadLambda } from '../../resources/lambdas/jmap-blob-download-lambda';
 
 export interface MailboxEdgeConstructProps {
   /** Base domain name, e.g. example.com */
@@ -113,23 +114,10 @@ export class MailboxEdgeConstruct extends Construct {
 
     // The key here is already the full path (artifact prefix included)
     // This is pre-calculated by the deployer
-    //
-    // NOTE: Lambda@Edge function created inline (not wrapped in resources/lambdas/).
-    // Constraints:
-    // 1. Uses pre-resolved S3 reference (deployer-calculated key) rather than artifact resolver
-    // 2. Lambda@Edge hard restrictions: must live in us-east-1, cannot have environment variables,
-    //    cannot use VPC
-    const jmapBlobDownloadFunction = new lambda.Function(this, 'jmap-blob-download', {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromBucket(
-        artifactBucket,
-        props.jmapBlobDownloadReference.key,
-        props.jmapBlobDownloadReference.versionId,
-      ),
+    const jmapBlobDownloadFunction = new JmapBlobDownloadLambda(this, 'jmap-blob-download', {
+      artifactBucket,
+      artifact: props.jmapBlobDownloadReference,
       role: jmapBlobDownloadRole,
-      memorySize: 512,
-      description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge (${Aws.STACK_NAME})`,
       // Lambda@Edge sends logs to the SAME custom group name in every invocation region (no
       // Region prefix). In the home region that name already belongs to the CFN-created "jmap"
       // pipeline group, so home-region edge logs merge into it; other regions get same-named,
