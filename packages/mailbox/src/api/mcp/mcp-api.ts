@@ -15,7 +15,7 @@ import * as lambda      from 'aws-cdk-lib/aws-lambda';
 import { Aws }          from 'aws-cdk-lib';
 import { Construct }    from 'constructs';
 
-import { McpApiLambda } from '../../lambdas/mcp-api';
+import { McpApiLambda } from '../../resources/lambdas/mcp-api-lambda';
 
 /** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */
 export interface McpApiProps {

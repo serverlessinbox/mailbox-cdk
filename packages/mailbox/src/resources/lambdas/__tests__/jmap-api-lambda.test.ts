@@ -20,13 +20,13 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { Permission }                           from '../../auth/jmap-scopes';
-import { DataBlobStore }                        from '../../data/data-blob-store';
-import { DataTable }                            from '../../data/data-tables';
-import { EmailSendingQueue }                    from '../../email/sending/email-sending-queue';
-import { AuditEventsQueue }                     from '../../features/audit-writing/audit-events-queue';
-import { AuthKeyStoreTable }                    from '../../features/auth-key-store/auth-key-store-table';
-import { ApiHandlerLambda }                     from '../jmap-api';
+import { Permission }                           from '../../../auth/jmap-scopes';
+import { DataBlobStore }                        from '../../../data/data-blob-store';
+import { DataTable }                            from '../../../data/data-tables';
+import { EmailSendingQueue }                    from '../../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                     from '../../../features/audit-writing/audit-events-queue';
+import { AuthKeyStoreTable }                    from '../../../features/auth-key-store/auth-key-store-table';
+import { ApiHandlerLambda }                     from '../jmap-api-lambda';
 
 describe('ApiHandlerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;

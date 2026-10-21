@@ -20,10 +20,10 @@ import { ReceiptRuleSet }                                                       
 import * as cdk                                                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                             from 'aws-cdk-lib';
 
-import { DataTable }                                                                 from '../../data/data-tables';
-import { AuthKeyStoreTable }                                                         from '../../features/auth-key-store/auth-key-store-table';
-import { BootstrapLambda }                                                           from '../bootstrap';
-import type { BootstrapLambdaProps }                                                 from '../bootstrap';
+import { DataTable }                                                                 from '../../../data/data-tables';
+import { AuthKeyStoreTable }                                                         from '../../../features/auth-key-store/auth-key-store-table';
+import { BootstrapLambda }                                                           from '../bootstrap-lambda';
+import type { BootstrapLambdaProps }                                                 from '../bootstrap-lambda';
 
 describe('BootstrapLambda', () => {
   let stack: cdk.Stack;

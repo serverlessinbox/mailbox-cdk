@@ -12,7 +12,7 @@ import {
 } from '../../auth/types';
 import type { IDataTable }        from '../../data/data-tables';
 import type { IAuditEventsQueue } from '../../features/audit-writing/audit-events-queue';
-import { IdpTokenExchangeLambda } from '../../lambdas';
+import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchange-lambda';
 
 export interface IdpTokenExchangeApiProps {
   artifactResolver: IArtifactResolver;

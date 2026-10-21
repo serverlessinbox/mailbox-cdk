@@ -13,8 +13,7 @@ import type {
 } from '../../auth/types';
 import type { SesReceivingMode }    from '../../core/email/ses-receiving-mode';
 import type { IDataTable }          from '../../data/data-tables';
-import { BOOTSTRAP_LAMBDA_TIMEOUT } from '../../lambdas/bootstrap';
-import { BootstrapLambda }          from '../../lambdas';
+import { BOOTSTRAP_LAMBDA_TIMEOUT, BootstrapLambda } from '../../resources/lambdas/bootstrap-lambda';
 import type { IAuthKeyStoreTable }  from '../auth-key-store/auth-key-store-table';
 
 const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);

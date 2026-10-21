@@ -4,7 +4,7 @@ import { Rule, Schedule }                        from 'aws-cdk-lib/aws-events';
 import { Duration, Stack }                       from 'aws-cdk-lib';
 import { Construct }                             from 'constructs';
 
-import { AuthKeyStoreUpdaterLambda }             from '../../lambdas';
+import { AuthKeyStoreUpdaterLambda }             from '../../resources/lambdas/auth-key-store-updater-lambda';
 
 import { AuthKeyStoreTable, IAuthKeyStoreTable } from './auth-key-store-table';
 

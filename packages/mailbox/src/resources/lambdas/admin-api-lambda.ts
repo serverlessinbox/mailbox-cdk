@@ -5,13 +5,13 @@ import { PolicyStatement, Effect }                                              
 import { Aws, Duration, Stack }                                                           from 'aws-cdk-lib';
 import { Construct }                                                                      from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                        from '../api/websocket/websocket';
-import type { IDataBlobStore }                                                            from '../data/data-blob-store';
-import type { IDataTable }                                                                from '../data/data-tables';
-import type { IEmailSendingQueue }                                                        from '../email/sending/email-sending-queue';
-import type { IAuditEventsQueue }                                                         from '../features/audit-writing/audit-events-queue';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                        from '../../api/websocket/websocket';
+import type { IDataBlobStore }                                                            from '../../data/data-blob-store';
+import type { IDataTable }                                                                from '../../data/data-tables';
+import type { IEmailSendingQueue }                                                        from '../../email/sending/email-sending-queue';
+import type { IAuditEventsQueue }                                                         from '../../features/audit-writing/audit-events-queue';
 
-import type { IIdentityProvisioner }                                                      from './identity-provisioner';
+import type { IIdentityProvisioner }                                                      from './identity-provisioner-lambda';
 
 export interface AdminApiLambdaProps {
   readonly configTable: IDataTable;

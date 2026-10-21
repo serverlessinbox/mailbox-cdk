@@ -20,8 +20,9 @@ import type { IDataTable }                                         from '../../d
 import type { IEmailSendingQueue }                                 from '../../email/sending/email-sending-queue';
 import type { IAuditEventsQueue }                                  from '../../features/audit-writing/audit-events-queue';
 import type { IAuthKeyStoreTable }                                 from '../../features/auth-key-store/auth-key-store-table';
-import type { IIdentityProvisioner }                               from '../../lambdas/identity-provisioner';
-import { AdminApiLambda, AuthorizerLambda }                        from '../../lambdas';
+import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
+import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
+import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
 import type { IAdminApiAddon }                                     from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../websocket/websocket';
 

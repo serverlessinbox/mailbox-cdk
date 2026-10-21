@@ -16,12 +16,10 @@ import { Aws, CfnResource }                    from 'aws-cdk-lib';
 import { Construct }                           from 'constructs';
 
 import type { IDataTable }                     from '../../data/data-tables';
-import {
-  WebSocketConnectLambda,
-  WebSocketDisconnectLambda,
-  WebSocketMessageLambda,
-  WebSocketBroadcastLambda,
-} from '../../lambdas';
+import { WebSocketBroadcastLambda } from '../../resources/lambdas/websocket-broadcast-lambda';
+import { WebSocketConnectLambda } from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda } from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda } from '../../resources/lambdas/websocket-message-lambda';
 
 import { WebSocketTable, IWebSocketTable } from './websocket-table';
 

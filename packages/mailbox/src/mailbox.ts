@@ -33,7 +33,7 @@ import { StackFailureDetection, SendStackFailuresMode }                         
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
 import type { IResourceRemoval }                                                                               from './features/sweeper';
 import { EmailProcessorLambda }                                                                                from './resources/lambdas/email-processor-lambda';
-import { IdentityProvisionerLambda }                                                                           from './lambdas';
+import { IdentityProvisionerLambda }                                                                           from './resources/lambdas/identity-provisioner-lambda';
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
 import type { MailboxProps }                                                                                   from './mailbox-props';

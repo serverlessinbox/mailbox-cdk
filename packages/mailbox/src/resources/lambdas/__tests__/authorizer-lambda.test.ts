@@ -1,10 +1,10 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketConnectLambda connections-table grant tests (grant-concept unit B).
+ * AuthorizerLambda auth-key-store grant tests (grant-concept unit A).
  *
- * Verifies WebSocketConnectLambda grants exactly DynamoDbActions.readWrite on the connections table
- * (and nothing broader, e.g. no Scan/PartiQL/Deny), via the real WebSocketTable construct.
+ * Verifies AuthorizerLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
+ * table (and nothing broader, e.g. no Scan/PartiQL), and that the table-name env var is present.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -17,14 +17,14 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../api/websocket/websocket-table';
-import { DataTable }                            from '../../data/data-tables';
-import { WebSocketConnectLambda }               from '../websocket-connect';
+import { DataTable }                            from '../../../data/data-tables';
+import { AuthKeyStoreTable }                    from '../../../features/auth-key-store/auth-key-store-table';
+import { AuthorizerLambda }                     from '../authorizer-lambda';
 
-describe('WebSocketConnectLambda connections-table grant', () => {
+describe('AuthorizerLambda auth-key-store grant', () => {
   let stack: cdk.Stack;
   let template: Template;
-  let connectionsTable: WebSocketTable;
+  let authKeyStoreTable: AuthKeyStoreTable;
 
   beforeEach(() => {
     const app = new App();
@@ -43,40 +43,42 @@ describe('WebSocketConnectLambda connections-table grant', () => {
       deploymentRegion: stack.region,
     });
 
-    const configTable = new DataTable(new Table(stack, 'config-table', {
+    const configTable = new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    connectionsTable  = new WebSocketTable(stack, 'websocket-table');
+    });
+    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
 
-    new WebSocketConnectLambda(stack, 'websocket-connect', {
-      connectionsTable,
-      configTable,
+    new AuthorizerLambda(stack, 'authorizer', {
+      authKeyStoreTable,
+      configTable: new DataTable(configTable),
       artifactResolver,
+      serviceName: 'jmap',
+      pipeline: 'jmap',
     });
 
     template = Template.fromStack(stack);
   });
 
-  function connectionsTableStatements(): PolicyStatementJson[] {
-    const tableId = 'websockettablewebsocketEF927F93';
-    return statementsForResource(template, [
-      { 'Fn::GetAtt': [tableId, 'Arn'] },
-      { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
+  function authKeyStoreStatements(): PolicyStatementJson[] {
+    const expectedResource = stack.resolve([
+      authKeyStoreTable.tableArn,
+      `${authKeyStoreTable.tableArn}/index/*`,
     ]);
+
+    return statementsForResource(template, expectedResource);
   }
 
-  it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
-    const tableId          = 'websockettablewebsocketEF927F93';
-    const expectedResource = [
-      { 'Fn::GetAtt': [tableId, 'Arn'] },
-      { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-    ];
+  it('grants exactly DynamoDbActions.read, Allow, on the table + index resources', () => {
+    const expectedResource = stack.resolve([
+      authKeyStoreTable.tableArn,
+      `${authKeyStoreTable.tableArn}/index/*`,
+    ]);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Action: Match.arrayEquals([...DynamoDbActions.read]),
             Effect: 'Allow',
             Resource: expectedResource,
           }),
@@ -85,12 +87,22 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     });
   });
 
-  it('grants no Scan/PartiQL and no Deny on the connections table', () => {
-    const statements  = connectionsTableStatements();
+  it('grants no Scan/PartiQL and no Deny on the auth-key-store table', () => {
+    const statements  = authKeyStoreStatements();
     const actionsFlat = statements.flatMap(actionsOf);
 
     expect(actionsFlat).not.toContain('dynamodb:Scan');
     expect(actionsFlat.some((action) => typeof action === 'string' && action.startsWith('dynamodb:PartiQL'))).toBe(false);
     expect(statements.some((statement) => statement.Effect === 'Deny')).toBe(false);
+  });
+
+  it('sets AUTH_KEY_STORE_TABLE_NAME on the function environment', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
+        }),
+      },
+    });
   });
 });

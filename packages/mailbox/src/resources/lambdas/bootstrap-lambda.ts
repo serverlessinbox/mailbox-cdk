@@ -7,9 +7,9 @@ import type { IReceiptRuleSet }                                                 
 import { Aws, Duration, Stack }                                                           from 'aws-cdk-lib';
 import { Construct }                                                                      from 'constructs';
 
-import type { SesReceivingMode }                                                          from '../core/email/ses-receiving-mode';
-import type { IDataTable }                                                                from '../data/data-tables';
-import type { IAuthKeyStoreTable }                                                        from '../features/auth-key-store/auth-key-store-table';
+import type { SesReceivingMode }                                                          from '../../core/email/ses-receiving-mode';
+import type { IDataTable }                                                                from '../../data/data-tables';
+import type { IAuthKeyStoreTable }                                                        from '../../features/auth-key-store/auth-key-store-table';
 
 export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
 

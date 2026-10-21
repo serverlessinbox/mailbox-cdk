@@ -5,7 +5,7 @@ import type { Construct }            from 'constructs';
 
 import type { IDataTable }           from '../data/data-tables';
 import type { IAuditEventsQueue }    from '../features/audit-writing/audit-events-queue';
-import type { IIdentityProvisioner } from '../lambdas/identity-provisioner';
+import type { IIdentityProvisioner } from '../resources/lambdas/identity-provisioner-lambda';
 
 /**
  * A capability that extends the Admin API with extra routes and, optionally, Admin UI

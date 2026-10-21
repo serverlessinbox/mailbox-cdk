@@ -24,9 +24,10 @@ import type { IDataTable }                                                from '
 import type { IEmailSendingQueue }                                        from '../../email/sending/email-sending-queue';
 import type { IAuditEventsQueue }                                         from '../../features/audit-writing/audit-events-queue';
 import type { IAuthKeyStoreTable }                                        from '../../features/auth-key-store/auth-key-store-table';
-import type { IIdentityProvisioner }                                      from '../../lambdas/identity-provisioner';
-import type { JmapOAuthHandlerConfig }                                    from '../../lambdas/jmap-api';
-import { AuthorizerLambda, ApiHandlerLambda }                             from '../../lambdas';
+import type { IIdentityProvisioner }                                      from '../../resources/lambdas/identity-provisioner-lambda';
+import type { JmapOAuthHandlerConfig }                                    from '../../resources/lambdas/jmap-api-lambda';
+import { ApiHandlerLambda }                                               from '../../resources/lambdas/jmap-api-lambda';
+import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
 import type { IJmapApiAddon }                                             from '../addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../websocket/websocket';
 

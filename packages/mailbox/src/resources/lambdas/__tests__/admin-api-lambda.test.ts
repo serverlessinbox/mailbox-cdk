@@ -23,12 +23,12 @@ import { Bucket }                                                   from 'aws-cd
 import * as cdk                                                     from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                            from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                        from '../../api/websocket/websocket';
-import { DataBlobStore }                                            from '../../data/data-blob-store';
-import { DataTable }                                                from '../../data/data-tables';
-import { EmailSendingQueue }                                        from '../../email/sending/email-sending-queue';
-import { AuditEventsQueue }                                         from '../../features/audit-writing/audit-events-queue';
-import { AdminApiLambda }                                           from '../admin-api';
+import type { IWebSocketBroadcastPublisher }                        from '../../../api/websocket/websocket';
+import { DataBlobStore }                                            from '../../../data/data-blob-store';
+import { DataTable }                                                from '../../../data/data-tables';
+import { EmailSendingQueue }                                        from '../../../email/sending/email-sending-queue';
+import { AuditEventsQueue }                                         from '../../../features/audit-writing/audit-events-queue';
+import { AdminApiLambda }                                           from '../admin-api-lambda';
 
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;

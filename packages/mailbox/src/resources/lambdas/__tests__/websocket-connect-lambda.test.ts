@@ -1,12 +1,10 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketBroadcastLambda connections-table + push-API wiring tests (grant-concept unit B).
+ * WebSocketConnectLambda connections-table grant tests (grant-concept unit B).
  *
- * Verifies WebSocketBroadcastLambda grants exactly DynamoDbActions.readWrite on the connections
- * table (no Scan/PartiQL/Deny), sets WEBSOCKET_API_ENDPOINT from the injected IWebSocketPushApi's
- * managementEndpoint, and calls grantManageConnections with itself as the grantee. The push API
- * is faked here: the real ARN/statement shape it produces is pinned by WebSocketPush's own tests.
+ * Verifies WebSocketConnectLambda grants exactly DynamoDbActions.readWrite on the connections table
+ * (and nothing broader, e.g. no Scan/PartiQL/Deny), via the real WebSocketTable construct.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -16,29 +14,17 @@ import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-c
 import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../api/websocket/websocket-table';
-import type { IWebSocketPushApi }               from '../../api/websocket/websocket';
-import { DataTable }                            from '../../data/data-tables';
-import { WebSocketBroadcastLambda }             from '../websocket-broadcast';
+import { WebSocketTable }                       from '../../../api/websocket/websocket-table';
+import { DataTable }                            from '../../../data/data-tables';
+import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
 
-class FakeWebSocketPushApi implements IWebSocketPushApi {
-  public readonly managementEndpoint = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
-  public readonly grantCalls: IGrantable[] = [];
-
-  public grantManageConnections(grantee: IGrantable): void {
-    this.grantCalls.push(grantee);
-  }
-}
-
-describe('WebSocketBroadcastLambda connections-table and push-API wiring', () => {
+describe('WebSocketConnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
   let template: Template;
-  let fakePushApi: FakeWebSocketPushApi;
-  let broadcastLambda: WebSocketBroadcastLambda;
+  let connectionsTable: WebSocketTable;
 
   beforeEach(() => {
     const app = new App();
@@ -57,16 +43,14 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
       deploymentRegion: stack.region,
     });
 
-    const configTable      = new DataTable(new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const connectionsTable = new WebSocketTable(stack, 'websocket-table');
-    fakePushApi            = new FakeWebSocketPushApi();
+    connectionsTable  = new WebSocketTable(stack, 'websocket-table');
 
-    broadcastLambda = new WebSocketBroadcastLambda(stack, 'websocket-broadcast', {
+    new WebSocketConnectLambda(stack, 'websocket-connect', {
       connectionsTable,
       configTable,
-      webSocketPushApi: fakePushApi,
       artifactResolver,
     });
 
@@ -108,19 +92,5 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     expect(actionsFlat).not.toContain('dynamodb:Scan');
     expect(actionsFlat.some((action) => typeof action === 'string' && action.startsWith('dynamodb:PartiQL'))).toBe(false);
     expect(statements.some((statement) => statement.Effect === 'Deny')).toBe(false);
-  });
-
-  it('calls grantManageConnections on the push API with itself as the grantee', () => {
-    expect(fakePushApi.grantCalls).toEqual([broadcastLambda]);
-  });
-
-  it('sets WEBSOCKET_API_ENDPOINT from the push API managementEndpoint', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          WEBSOCKET_API_ENDPOINT: fakePushApi.managementEndpoint,
-        }),
-      },
-    });
   });
 });

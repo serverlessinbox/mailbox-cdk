@@ -3,23 +3,23 @@ import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import { IWebSocketTable }        from '../api/websocket/websocket-table';
-import type { IDataTable }        from '../data/data-tables';
+import { IWebSocketTable }        from '../../api/websocket/websocket-table';
+import type { IDataTable }        from '../../data/data-tables';
 
-export interface WebSocketDisconnectLambdaProps {
+export interface WebSocketConnectLambdaProps {
   connectionsTable: IWebSocketTable;
   configTable: IDataTable;
   artifactResolver: IArtifactResolver;
 }
 
-export class WebSocketDisconnectLambda extends GoLambda {
-  constructor(scope: Construct, id: string, props: WebSocketDisconnectLambdaProps) {
+export class WebSocketConnectLambda extends GoLambda {
+  constructor(scope: Construct, id: string, props: WebSocketConnectLambdaProps) {
     super(scope, id, {
-      lambdaId: 'websocket-disconnect',
+      lambdaId: 'websocket-connect',
       pipeline: 'jmap',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(10),
-      memorySize: 128,
+      timeout: Duration.seconds(30),
+      memorySize: 256,
       environment: {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
         CONFIG_TABLE_NAME: props.configTable.tableName,

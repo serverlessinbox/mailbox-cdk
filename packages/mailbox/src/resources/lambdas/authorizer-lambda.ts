@@ -4,9 +4,9 @@ import type { Pipeline }                        from '@serverlessinbox/mailbox-c
 import { Duration }                             from 'aws-cdk-lib';
 import { Construct }                            from 'constructs';
 
-import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../auth/types';
-import type { IDataTable }                      from '../data/data-tables';
-import type { IAuthKeyStoreTable }              from '../features/auth-key-store/auth-key-store-table';
+import { AUTH_POLICY_JMAP_API, AuthPolicyName } from '../../auth/types';
+import type { IDataTable }                      from '../../data/data-tables';
+import type { IAuthKeyStoreTable }              from '../../features/auth-key-store/auth-key-store-table';
 
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: IAuthKeyStoreTable;
