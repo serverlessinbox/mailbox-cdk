@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm }    from 'fs/promises';
 import { tmpdir }                from 'os';
 import { dirname, join }         from 'path';
 
-import { runWithInheritedStdio } from '../utils/run-process';
+import { runWithInheritedStdio } from './utils/run-process';
 
 /** Everything needed to bundle one Lambda entry file into a zip holding a single `index.js`. */
 export interface LambdaZipSpec {
