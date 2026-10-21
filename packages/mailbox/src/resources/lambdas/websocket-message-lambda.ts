@@ -4,7 +4,7 @@ import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
 import { IWebSocketTable }        from '../tables/websocket-table';
-import { IWebSocketPushApi }      from '../../core/apis/websocket';
+import type { IWebSocketPushApi } from '../../core/apis/websocket';
 import type { IDataTable }        from '../tables/data-tables';
 
 export interface WebSocketMessageLambdaProps {
