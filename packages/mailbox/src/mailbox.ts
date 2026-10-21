@@ -28,8 +28,8 @@ import { AuditWriting }                                                         
 import { AuthKeyStore }                                                                                        from './features/auth-key-store/auth-key-store';
 import { Bootstrap }                                                                                           from './features/bootstrap/bootstrap';
 import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';
-import { LicenseRefresh }                                                                                      from './features/license-refresh/license-refresh';
-import { StackFailureDetection, SendStackFailuresMode }                                                        from './features/stack-failure-detection';
+import { LicenseRefresh }                                                                                      from './platform/ops/license-refresh';
+import { StackFailureDetection, SendStackFailuresMode }                                                        from './platform/ops/stack-failure-detection';
 import { DeferredRemoval, SweeperInfra, CertificateRemoval, EdgeFunctionRemoval, StackFailureDetectorRemoval } from './features/sweeper';
 import type { IResourceRemoval }                                                                               from './features/sweeper';
 import { EmailProcessorLambda }                                                                                from './resources/lambdas/email-processor-lambda';

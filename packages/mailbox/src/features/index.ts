@@ -13,5 +13,5 @@ export type { AuthKeyStoreProps } from './auth-key-store/auth-key-store';
 export { DeferredRemoval } from './sweeper';
 export type { DeferredRemovalProps } from './sweeper';
 
-export { LicenseRefresh } from './license-refresh/license-refresh';
-export type { LicenseRefreshProps } from './license-refresh/license-refresh';
+export { LicenseRefresh } from '../platform/ops/license-refresh';
+export type { LicenseRefreshProps } from '../platform/ops/license-refresh';

@@ -17,7 +17,7 @@ import { App, BootstraplessSynthesizer }                                        
 
 import { Permission }                                                                  from '../auth/jmap-scopes';
 import type { IMailboxAuthProvider }                                                   from '../auth/types';
-import { SendStackFailuresMode }                                                       from '../features/stack-failure-detection';
+import { SendStackFailuresMode }                                                       from '../platform/ops/stack-failure-detection';
 import { Mailbox }                                                                     from '../mailbox';
 
 function createMockAuthProvider(): IMailboxAuthProvider {

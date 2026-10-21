@@ -4,7 +4,7 @@ import type * as acm                   from 'aws-cdk-lib/aws-certificatemanager'
 import type { IAdminApiAddonProvider } from './api';
 import type { IMailboxAuthProvider }   from './auth/types';
 import type { SesReceivingMode }       from './core/email/ses-receiving-mode';
-import type { SendStackFailuresMode }  from './features/stack-failure-detection';
+import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';
 import type { MailboxKmsConfig }       from './utils/kms';
 
 /**

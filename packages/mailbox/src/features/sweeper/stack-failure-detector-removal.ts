@@ -10,7 +10,7 @@ import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
 } from '../../runtime/resource-sweeper/removal';
-import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
+import type { StackFailureDetectorSweepTargets }                      from '../../platform/ops/stack-failure-detection';
 
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval }                                      from './removal';

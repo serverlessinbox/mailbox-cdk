@@ -18,7 +18,7 @@ export type {
 export type { SesReceivingMode } from './core/email/ses-receiving-mode';
 
 // Stack-failure-detection — consent enum (referenced by MailboxProps.sendStackFailures)
-export { SendStackFailuresMode } from './features/stack-failure-detection';
+export { SendStackFailuresMode } from './platform/ops/stack-failure-detection';
 
 // Auth — types
 export {

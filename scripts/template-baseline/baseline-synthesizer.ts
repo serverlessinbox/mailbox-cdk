@@ -11,7 +11,7 @@ import { SupportMode }                   from '../../packages/mailbox/src/platfo
 import { AutoUpdater }                   from '../../packages/mailbox/src/platform/update/auto-updater';
 import { MailboxDataStack }              from '../../packages/mailbox/src/data/mailbox-data-stack';
 import { MailboxEdgeStack }              from '../../packages/mailbox/src/edge/mailbox-edge-stack';
-import { SendStackFailuresMode }         from '../../packages/mailbox/src/features/stack-failure-detection';
+import { SendStackFailuresMode }         from '../../packages/mailbox/src/platform/ops/stack-failure-detection';
 import { Mailbox }                       from '../../packages/mailbox/src/mailbox';
 
 import type { FrozenProcessValues }      from './frozen-process-values';
