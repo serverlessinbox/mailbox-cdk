@@ -1,11 +1,11 @@
 import { CloudFormationClient }       from '@aws-sdk/client-cloudformation';
 import { SFNClient }                  from '@aws-sdk/client-sfn';
 
+import * as env                       from '../../runtime/handler-kit/config/config-env';
+import { emitManualFinalize }         from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
+import { ExpectedFailure }            from '../../runtime/handler-kit/errors/expected-failure';
 import type { Region }                from '../shared/aws-identifiers';
-import * as env                       from '../shared/env';
-import { ExpectedFailure }            from '../shared/expected-failure';
 import { LoggerBuffer }               from '../shared/logger-buffer';
-import { emitManualFinalize }         from '../shared/manual-finalize';
 import { withSmokeTest }              from '../shared/with-smoke-test';
 
 import { CfnResponder }               from './cfn-responder';

@@ -7,9 +7,9 @@
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                    from 'aws-sdk-client-mock';
 
+import { LoggerBuffer }                                                  from '../../../../ts-lambdas/shared/logger-buffer';
+import { FailedRequestAnswerer }                                         from '../custom-resource-failed-request-answerer';
 import type { CustomResourceRequest }                                    from '../custom-resource-request';
-import { FailedRequestAnswerer }                                         from '../failed-request-answerer';
-import { LoggerBuffer }                                                  from '../logger-buffer';
 
 const PHYSICAL_RESOURCE_ID = 'physical-id-from-cloudformation';
 

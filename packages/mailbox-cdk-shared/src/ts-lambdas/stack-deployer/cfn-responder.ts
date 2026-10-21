@@ -1,5 +1,5 @@
-import { CaughtError }                                                                from '../shared/caught-error';
-import { toPhysicalResourceId, type PhysicalResourceId }                              from '../shared/custom-resource-identifiers';
+import { toPhysicalResourceId, type PhysicalResourceId }                              from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { CaughtError }                                                                from '../../runtime/handler-kit/errors/caught-error';
 
 import { AnswerDeliveryFailure }                                                      from './answer-delivery-failure';
 import type { AnswerableEvent, CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from './stack-deployment';

@@ -1,10 +1,10 @@
 import type { CloudFrontClient }                        from '@aws-sdk/client-cloudfront';
 import type { S3Client }                                from '@aws-sdk/client-s3';
 
+import type { CustomResourceRequest }                   from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { ExpectedFailure }                              from '../../runtime/handler-kit/errors/expected-failure';
 import { invalidateCloudFront }                         from '../shared/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../shared/content-ops';
-import type { CustomResourceRequest }                   from '../shared/custom-resource-request';
-import { ExpectedFailure }                              from '../shared/expected-failure';
 import { hasTimeLeft, type InvocationDeadline }         from '../shared/invocation-deadline';
 import type { LoggerBuffer }                            from '../shared/logger-buffer';
 

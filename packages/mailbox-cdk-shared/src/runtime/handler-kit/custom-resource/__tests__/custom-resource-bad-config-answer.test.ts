@@ -4,7 +4,7 @@
  * error so CloudFormation gets a FAILED that names the problem.
  */
 
-import { answerRequestWithBadConfig } from '../bad-config-answer';
+import { answerRequestWithBadConfig } from '../custom-resource-bad-config-answer';
 import type { CustomResourceRequest } from '../custom-resource-request';
 
 function request(requestType: string): CustomResourceRequest {

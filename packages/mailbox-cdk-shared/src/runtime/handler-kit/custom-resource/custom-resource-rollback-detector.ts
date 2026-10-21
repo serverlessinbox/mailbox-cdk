@@ -4,9 +4,10 @@ import {
   type StackStatus,
 } from '@aws-sdk/client-cloudformation';
 
-import { CaughtError }       from './caught-error';
+import type { LoggerBuffer } from '../../../ts-lambdas/shared/logger-buffer';
+import { CaughtError }       from '../errors/caught-error';
+
 import type { StackId }      from './custom-resource-identifiers';
-import type { LoggerBuffer } from './logger-buffer';
 
 /**
  * Reads the status of the stack a custom resource belongs to, because a custom resource must answer CloudFormation

@@ -5,7 +5,7 @@
  */
 
 import { toStackId }          from '../custom-resource-identifiers';
-import { emitManualFinalize } from '../manual-finalize';
+import { emitManualFinalize } from '../custom-resource-manual-finalize';
 
 describe('emitManualFinalize', () => {
   const cfnEvent = {

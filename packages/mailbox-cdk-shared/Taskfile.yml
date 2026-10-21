@@ -6,6 +6,7 @@ tasks:
     sources:
       - src/ts-lambdas/content-deployer/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
+      - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/content-deployer.zip'
     cmds:
@@ -16,6 +17,7 @@ tasks:
     sources:
       - src/ts-lambdas/bucket-auto-empty/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
+      - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/bucket-auto-empty.zip'
     cmds:
@@ -26,6 +28,7 @@ tasks:
     sources:
       - src/ts-lambdas/stack-deployer/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
+      - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/stack-deployer.zip'
     cmds:
@@ -36,6 +39,7 @@ tasks:
     sources:
       - src/ts-lambdas/stack-helpers/**/*.ts
       - src/ts-lambdas/shared/**/*.ts
+      - src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/stack-helpers.zip'
     cmds:

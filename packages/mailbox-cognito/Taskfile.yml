@@ -31,6 +31,7 @@ tasks:
     sources:
       - src/ts-lambdas/cognito-idp-users-api/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip'
     cmds:
@@ -41,6 +42,7 @@ tasks:
     sources:
       - src/ts-lambdas/bootstrap-user/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-bootstrap-user.zip'
     cmds:
@@ -54,6 +56,7 @@ tasks:
     sources:
       - src/ts-lambdas/jmap-oauth-dcr/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip'
     cmds:

@@ -1,5 +1,5 @@
-import type { Branded }    from './branded';
-import { isBrandedString } from './branded';
+import type { Branded }    from '../../../ts-lambdas/shared/branded';
+import { isBrandedString } from '../../../ts-lambdas/shared/branded';
 
 /**
  * The identifiers of a CloudFormation custom-resource request that several Lambdas pass between their units,

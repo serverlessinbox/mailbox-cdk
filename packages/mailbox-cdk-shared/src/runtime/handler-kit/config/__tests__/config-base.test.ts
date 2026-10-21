@@ -4,8 +4,8 @@
  * reads these variables has no config of its own, so a regression here reaches all of them.
  */
 
-import { loadBaseConfig, loadLogLevel } from '../base-config';
-import { tryLoad }                      from '../env';
+import { loadBaseConfig, loadLogLevel } from '../config-base';
+import { tryLoad }                      from '../config-env';
 
 describe('base config', () => {
   beforeEach(() => {

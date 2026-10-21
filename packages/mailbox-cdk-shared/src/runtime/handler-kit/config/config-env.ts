@@ -1,7 +1,8 @@
 import * as t                 from 'typanion';
 
-import { AccumulatingLoader } from './accumulating-loader';
-import { CaughtError }        from './caught-error';
+import { CaughtError }        from '../errors/caught-error';
+
+import { AccumulatingLoader } from './config-accumulating-loader';
 
 /**
  * How a Lambda reads its configuration from the environment. It collects every problem instead of stopping at the

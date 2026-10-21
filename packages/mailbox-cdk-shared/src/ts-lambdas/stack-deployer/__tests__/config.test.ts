@@ -1,4 +1,4 @@
-import * as env                    from '../../shared/env';
+import * as env                    from '../../../runtime/handler-kit/config/config-env';
 import { loadStarter, loadWorker } from '../config';
 
 /**

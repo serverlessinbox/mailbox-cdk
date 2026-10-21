@@ -8,7 +8,7 @@
 import { S3Client, ListObjectVersionsCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { mockClient }                                                from 'aws-sdk-client-mock';
 
-import { ExpectedFailure }                                           from '../../shared/expected-failure';
+import { ExpectedFailure }                                           from '../../../runtime/handler-kit/errors/expected-failure';
 import { BucketEmptier }                                             from '../bucket-emptier';
 
 const PLENTY_OF_TIME = { getRemainingTimeInMillis: () => 900_000 };

@@ -1,5 +1,5 @@
-import { CaughtError }                          from '../shared/caught-error';
-import { ExpectedFailure }                      from '../shared/expected-failure';
+import { CaughtError }                          from '../../runtime/handler-kit/errors/caught-error';
+import { ExpectedFailure }                      from '../../runtime/handler-kit/errors/expected-failure';
 
 import { AnswerDeliveryFailure }                from './answer-delivery-failure';
 import type { CfnReplyTarget, CfnResponder }    from './cfn-responder';

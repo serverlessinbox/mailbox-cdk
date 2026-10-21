@@ -1,7 +1,6 @@
 import type { Stack } from '@aws-sdk/client-cloudformation';
 import * as t         from 'typanion';
 
-import { toRegion }   from '../../shared/aws-identifiers';
 import {
   toLogicalResourceId,
   toPhysicalResourceId,
@@ -10,7 +9,8 @@ import {
   toStackId,
   toStackName,
   type StackId,
-} from '../../shared/custom-resource-identifiers';
+} from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { toRegion }                                                                        from '../../shared/aws-identifiers';
 import { LoggerBuffer }                                                                    from '../../shared/logger-buffer';
 import type { CfnReplyTarget }                                                             from '../cfn-responder';
 import { toStateMachineArn, toTemplateUrl }                                                from '../deployer-identifiers';

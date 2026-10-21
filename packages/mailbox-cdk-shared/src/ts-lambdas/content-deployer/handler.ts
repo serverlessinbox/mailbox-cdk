@@ -3,14 +3,14 @@ import { CloudFrontClient }              from '@aws-sdk/client-cloudfront';
 import { S3Client }                      from '@aws-sdk/client-s3';
 import { wrapHandler }                   from 'aws-custom-resources';
 
-import { answerRequestWithBadConfig }    from '../shared/bad-config-answer';
-import { toStackId }                     from '../shared/custom-resource-identifiers';
-import type { CustomResourceRequest }    from '../shared/custom-resource-request';
-import * as env                          from '../shared/env';
-import { ExpectedFailure }               from '../shared/expected-failure';
-import { FailedRequestAnswerer }         from '../shared/failed-request-answerer';
+import * as env                          from '../../runtime/handler-kit/config/config-env';
+import { answerRequestWithBadConfig }    from '../../runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
+import { FailedRequestAnswerer }         from '../../runtime/handler-kit/custom-resource/custom-resource-failed-request-answerer';
+import { toStackId }                     from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { emitManualFinalize }            from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
+import type { CustomResourceRequest }    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { ExpectedFailure }               from '../../runtime/handler-kit/errors/expected-failure';
 import { LoggerBuffer }                  from '../shared/logger-buffer';
-import { emitManualFinalize }            from '../shared/manual-finalize';
 import { withSmokeTest }                 from '../shared/with-smoke-test';
 
 import { load }                          from './config';

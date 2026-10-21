@@ -10,8 +10,8 @@ import {
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
 
+import { CaughtError }         from '../../runtime/handler-kit/errors/caught-error';
 import type { Region }         from '../shared/aws-identifiers';
-import { CaughtError }         from '../shared/caught-error';
 import type { LoggerBuffer }   from '../shared/logger-buffer';
 
 import type { OperationInput } from './stack-deployment';

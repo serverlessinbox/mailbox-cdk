@@ -1,4 +1,4 @@
-import { ExpectedFailure }            from '../../shared/expected-failure';
+import { ExpectedFailure }            from '../../../runtime/handler-kit/errors/expected-failure';
 import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
 
 import {

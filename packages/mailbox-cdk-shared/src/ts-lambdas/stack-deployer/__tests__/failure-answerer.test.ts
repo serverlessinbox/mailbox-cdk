@@ -1,5 +1,5 @@
-import { toPhysicalResourceId }                       from '../../shared/custom-resource-identifiers';
-import { ExpectedFailure }                            from '../../shared/expected-failure';
+import { toPhysicalResourceId }                       from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                            from '../../../runtime/handler-kit/errors/expected-failure';
 import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
 import { CfnResponder }                               from '../cfn-responder';
 import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';

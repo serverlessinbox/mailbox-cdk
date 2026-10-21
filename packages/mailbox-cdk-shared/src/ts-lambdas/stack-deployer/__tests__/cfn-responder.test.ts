@@ -1,4 +1,4 @@
-import { toPhysicalResourceId }                                                                                    from '../../shared/custom-resource-identifiers';
+import { toPhysicalResourceId }                                                                                    from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { AnswerDeliveryFailure }                                                                                   from '../answer-delivery-failure';
 import { CfnResponder }                                                                                            from '../cfn-responder';
 

@@ -1,9 +1,10 @@
 import type { CloudFormationClient }                        from '@aws-sdk/client-cloudformation';
 
+import type { LoggerBuffer }                                from '../../../ts-lambdas/shared/logger-buffer';
+
 import { toStackId }                                        from './custom-resource-identifiers';
 import type { CustomResourceAnswer, CustomResourceRequest } from './custom-resource-request';
-import type { LoggerBuffer }                                from './logger-buffer';
-import { isParentStackRollingBack }                         from './stack-rollback-detector';
+import { isParentStackRollingBack }                         from './custom-resource-rollback-detector';
 
 /**
  * Decides the answer to a custom-resource request that failed. It suppresses only an Update that fails while

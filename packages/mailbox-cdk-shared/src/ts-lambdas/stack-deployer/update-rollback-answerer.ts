@@ -1,9 +1,9 @@
 import type { CloudFormationClient }         from '@aws-sdk/client-cloudformation';
 
+import type { StackName }                    from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { isParentStackRollingBack }          from '../../runtime/handler-kit/custom-resource/custom-resource-rollback-detector';
 import type { Region }                       from '../shared/aws-identifiers';
-import type { StackName }                    from '../shared/custom-resource-identifiers';
 import type { LoggerBuffer }                 from '../shared/logger-buffer';
-import { isParentStackRollingBack }          from '../shared/stack-rollback-detector';
 
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 import type { OperationInput, RequestType }  from './stack-deployment';

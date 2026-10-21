@@ -2,7 +2,7 @@ import type * as CloudFormationSdk        from '@aws-sdk/client-cloudformation';
 import type * as SfnSdk                   from '@aws-sdk/client-sfn';
 import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
 
-import { toPhysicalResourceId }           from '../../shared/custom-resource-identifiers';
+import { toPhysicalResourceId }           from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import type * as HandlerModule            from '../handler';
 
 import {

@@ -4,7 +4,7 @@
  * blank value would let a Lambda start with a half-configured environment.
  */
 
-import { AccumulatingLoader } from '../accumulating-loader';
+import { AccumulatingLoader } from '../config-accumulating-loader';
 
 describe('AccumulatingLoader', () => {
   const originalEnv = process.env;

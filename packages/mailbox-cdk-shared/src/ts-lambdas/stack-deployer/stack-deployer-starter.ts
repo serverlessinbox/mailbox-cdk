@@ -1,9 +1,9 @@
 import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient }                              from '@aws-sdk/client-sfn';
 
+import type { StackId }                                                                                 from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { CaughtError }                                                                                  from '../../runtime/handler-kit/errors/caught-error';
+import { ExpectedFailure }                                                                              from '../../runtime/handler-kit/errors/expected-failure';
 import { formatArn, parseArn, type ParsedArn }                                                          from '../shared/arn';
-import { CaughtError }                                                                                  from '../shared/caught-error';
-import type { StackId }                                                                                 from '../shared/custom-resource-identifiers';
-import { ExpectedFailure }                                                                              from '../shared/expected-failure';
 import type { LoggerBuffer }                                                                            from '../shared/logger-buffer';
 
 import type { CfnReplyTarget, CfnResponder }                                                            from './cfn-responder';

@@ -1,7 +1,7 @@
 import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { mockClient }                                                 from 'aws-sdk-client-mock';
 
-import { ExpectedFailure }                                            from '../../shared/expected-failure';
+import { ExpectedFailure }                                            from '../../../runtime/handler-kit/errors/expected-failure';
 import { CfnResponder }                                               from '../cfn-responder';
 import { toStateMachineArn, type StateMachineArn }                    from '../deployer-identifiers';
 import { StackDeployerStarter }                                       from '../stack-deployer-starter';

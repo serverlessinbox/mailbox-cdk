@@ -18,7 +18,7 @@ import {
   days,
   onOff,
   enumOf,
-} from '../env';
+} from '../config-env';
 
 describe('env', () => {
   const originalEnv = process.env;

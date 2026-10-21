@@ -2,8 +2,8 @@ import { GetHostedZoneCommand, type Route53Client }                             
 import { createHash }                                                            from 'crypto';
 
 import { sanitizeStackName }                                                     from '../../naming/sanitize-name';
-import type { StackId }                                                          from '../shared/custom-resource-identifiers';
-import { ExpectedFailure }                                                       from '../shared/expected-failure';
+import type { StackId }                                                          from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                                                       from '../../runtime/handler-kit/errors/expected-failure';
 import type { LoggerBuffer }                                                     from '../shared/logger-buffer';
 
 import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';

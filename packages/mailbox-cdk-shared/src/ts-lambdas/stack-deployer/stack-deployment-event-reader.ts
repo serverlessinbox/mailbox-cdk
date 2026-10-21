@@ -1,6 +1,6 @@
 import * as t              from 'typanion';
 
-import { ExpectedFailure } from '../shared/expected-failure';
+import { ExpectedFailure } from '../../runtime/handler-kit/errors/expected-failure';
 
 import {
   isCfnRequest,

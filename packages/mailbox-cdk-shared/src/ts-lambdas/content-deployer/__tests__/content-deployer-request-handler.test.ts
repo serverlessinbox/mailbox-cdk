@@ -8,9 +8,9 @@
 import { CloudFrontClient }                             from '@aws-sdk/client-cloudfront';
 import { S3Client }                                     from '@aws-sdk/client-s3';
 
+import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
 import { invalidateCloudFront }                         from '../../shared/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../../shared/content-ops';
-import { ExpectedFailure }                              from '../../shared/expected-failure';
 import { LoggerBuffer }                                 from '../../shared/logger-buffer';
 import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
 

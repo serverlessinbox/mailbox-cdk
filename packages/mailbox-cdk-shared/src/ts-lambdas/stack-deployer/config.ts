@@ -1,6 +1,6 @@
+import { loadBaseConfig, type BaseConfig }         from '../../runtime/handler-kit/config/config-base';
+import * as env                                    from '../../runtime/handler-kit/config/config-env';
 import { toRegion, type Region }                   from '../shared/aws-identifiers';
-import { loadBaseConfig, type BaseConfig }         from '../shared/base-config';
-import * as env                                    from '../shared/env';
 
 import { toStateMachineArn, type StateMachineArn } from './deployer-identifiers';
 

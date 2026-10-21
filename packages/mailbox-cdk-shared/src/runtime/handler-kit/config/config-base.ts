@@ -1,5 +1,6 @@
-import * as env                               from './env';
-import { parseLogLevelStrict, type LogLevel } from './logger-buffer';
+import { parseLogLevelStrict, type LogLevel } from '../../../ts-lambdas/shared/logger-buffer';
+
+import * as env                               from './config-env';
 
 /** The environment every Lambda reads: the level of its logger and the service name its logs carry. */
 export interface BaseConfig {

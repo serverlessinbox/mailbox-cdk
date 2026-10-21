@@ -7,7 +7,7 @@
 
 import { NoSuchBucket, S3Client }        from '@aws-sdk/client-s3';
 
-import { ExpectedFailure }               from '../../shared/expected-failure';
+import { ExpectedFailure }               from '../../../runtime/handler-kit/errors/expected-failure';
 import { LoggerBuffer }                  from '../../shared/logger-buffer';
 import { BucketAutoEmptyRequestHandler } from '../bucket-auto-empty-request-handler';
 import { BucketEmptier }                 from '../bucket-emptier';

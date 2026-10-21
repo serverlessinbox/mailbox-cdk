@@ -1,7 +1,7 @@
 import { CloudFormationClient, DescribeStacksCommand }                      from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                       from 'aws-sdk-client-mock';
 
-import { toPhysicalResourceId }                                             from '../../shared/custom-resource-identifiers';
+import { toPhysicalResourceId }                                             from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { CfnResponder }                                                     from '../cfn-responder';
 import type { OperationInput }                                              from '../stack-deployment';
 import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';

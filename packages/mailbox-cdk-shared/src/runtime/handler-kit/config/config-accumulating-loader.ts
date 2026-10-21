@@ -1,4 +1,4 @@
-import type { Loader } from './env';
+import type { Loader } from './config-env';
 
 /**
  * The single place the environment is read for configuration. It treats a blank variable as missing and keeps every

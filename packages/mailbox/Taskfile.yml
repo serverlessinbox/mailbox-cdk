@@ -24,6 +24,7 @@ tasks:
     sources:
       - src/ts-lambdas/jmap-blob-download/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip'
     cmds:
@@ -34,6 +35,7 @@ tasks:
     sources:
       - src/ts-lambdas/resource-sweeper/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip'
     cmds:
@@ -44,6 +46,7 @@ tasks:
     sources:
       - src/ts-lambdas/artifact-updater/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip'
     cmds:
@@ -54,6 +57,7 @@ tasks:
     sources:
       - src/ts-lambdas/data-override-resolver/**/*.ts
       - ../mailbox-cdk-shared/src/ts-lambdas/shared/**/*.ts
+      - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/data-override-resolver.zip'
     cmds:
