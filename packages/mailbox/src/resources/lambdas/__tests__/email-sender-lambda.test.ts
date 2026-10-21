@@ -21,8 +21,8 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { DataTable }                            from '../../tables/data-tables';
 import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
+import { DataTable }                            from '../../tables/data-tables';
 import { EmailSenderLambda }                    from '../email-sender-lambda';
 
 describe('EmailSenderLambda IAM scoping', () => {
@@ -114,14 +114,12 @@ describe('EmailSenderLambda IAM scoping', () => {
     }
   });
 
-  it('creates exactly one event source mapping sourced from the email-submissions queue with the unit\'s own batch settings', () => {
+  it('instantiates exactly one queue event, sourced from the email-submissions queue', () => {
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn: stack.resolve(submissionQueue.queueArn),
-      BatchSize: 1,
-      MaximumBatchingWindowInSeconds: 15,
     });
   });
 

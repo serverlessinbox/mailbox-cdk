@@ -3,8 +3,9 @@ import { GoLambda }                       from '@serverlessinbox/mailbox-cdk-sha
 import { Duration }                       from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
-import type { IDataTable }                from '../tables/data-tables';
+import { AuditEventsQueueEvent }          from '../events/audit-events-queue-event';
 import type { IAuditEventsQueueConsumer } from '../queues/audit-events-queue';
+import type { IDataTable }                from '../tables/data-tables';
 
 export interface AuditWriterLambdaProps {
   auditLogTable: IDataTable;
@@ -32,12 +33,8 @@ export class AuditWriterLambda extends GoLambda {
     // Grant permissions
     props.auditLogTable.grantReadWrite(this);
 
-    this.addEventSourceMapping('audit-events-queue', {
-      eventSourceArn: props.auditEventsQueue.queueArn,
-      batchSize: 100,
-      maxBatchingWindow: Duration.seconds(30),
-      reportBatchItemFailures: true,
-    });
     props.auditEventsQueue.grantConsume(this);
+
+    new AuditEventsQueueEvent(this, 'audit-events-queue', { target: this, queue: props.auditEventsQueue });
   }
 }

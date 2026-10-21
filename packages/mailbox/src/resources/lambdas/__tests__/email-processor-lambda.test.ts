@@ -18,8 +18,8 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { DataTable }                            from '../../tables/data-tables';
 import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
+import { DataTable }                            from '../../tables/data-tables';
 import { EmailProcessorLambda }                 from '../email-processor-lambda';
 
 describe('EmailProcessorLambda event-source wiring', () => {
@@ -68,14 +68,11 @@ describe('EmailProcessorLambda event-source wiring', () => {
     template = Template.fromStack(stack);
   });
 
-  it('creates exactly one event source mapping sourced from the email-processing queue with the unit\'s own batch settings', () => {
+  it('instantiates exactly one queue event, sourced from the email-processing queue', () => {
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn: stack.resolve(emailProcessingQueue.queueArn),
-      BatchSize: 10,
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
-      MaximumBatchingWindowInSeconds: 15,
     });
   });
 

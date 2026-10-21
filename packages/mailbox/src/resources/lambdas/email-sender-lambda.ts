@@ -6,8 +6,9 @@ import { Construct }                                               from 'constru
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../core/apis/websocket';
 import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
-import type { IDataTable }                                         from '../tables/data-tables';
+import { EmailSubmissionsQueueEvent }                              from '../events/email-submissions-queue-event';
 import type { IEmailSendingQueueConsumer }                         from '../queues/email-sending-queue';
+import type { IDataTable }                                         from '../tables/data-tables';
 
 export interface EmailSenderLambdaProps {
   configTable: IDataTable;
@@ -48,12 +49,9 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
 
     this.grantSesSendRawEmail(props.sesConfigSetName);
 
-    this.addEventSourceMapping('email-submissions-queue', {
-      eventSourceArn: props.submissionQueue.queueArn,
-      batchSize: 1,
-      maxBatchingWindow: Duration.seconds(15),
-    });
     props.submissionQueue.grantConsume(this);
+
+    new EmailSubmissionsQueueEvent(this, 'email-submissions-queue', { target: this, queue: props.submissionQueue });
   }
 
   private grantSesSendRawEmail(sesConfigSetName: string) {

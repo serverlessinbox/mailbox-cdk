@@ -16,8 +16,8 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../tables/data-tables';
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
+import { DataTable }                            from '../../tables/data-tables';
 import { AuditWriterLambda }                    from '../audit-writer-lambda';
 
 describe('AuditWriterLambda event-source wiring', () => {
@@ -56,14 +56,11 @@ describe('AuditWriterLambda event-source wiring', () => {
     template = Template.fromStack(stack);
   });
 
-  it('creates exactly one event source mapping sourced from the audit-events queue with the unit\'s own batch settings', () => {
+  it('instantiates exactly one queue event, sourced from the audit-events queue', () => {
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn: stack.resolve(auditEventsQueue.queueArn),
-      BatchSize: 100,
-      MaximumBatchingWindowInSeconds: 30,
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
     });
   });
 

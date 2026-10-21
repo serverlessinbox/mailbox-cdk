@@ -19,9 +19,9 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { DataTable }                            from '../../tables/data-tables';
-import { SesEventQueue }                        from '../../queues/ses-event-queue';
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
+import { SesEventQueue }                        from '../../queues/ses-event-queue';
+import { DataTable }                            from '../../tables/data-tables';
 import { SESEventProcessorLambda }              from '../ses-event-processor-lambda';
 
 describe('SESEventProcessorLambda event-source wiring', () => {
@@ -77,15 +77,11 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     template = Template.fromStack(stack);
   });
 
-  it('creates exactly one event source mapping sourced from the SES-event queue with the unit\'s own batch settings', () => {
+  it('instantiates exactly one queue event, sourced from the SES-event queue', () => {
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn: stack.resolve(sesEventQueue.queueArn),
-      BatchSize: 100,
-      MaximumBatchingWindowInSeconds: 30,
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
-      ScalingConfig: Match.objectEquals({ MaximumConcurrency: 5 }),
     });
   });
 

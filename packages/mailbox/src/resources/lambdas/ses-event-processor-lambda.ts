@@ -5,9 +5,10 @@ import { Construct }                                               from 'constru
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../core/apis/websocket';
 import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
-import type { IDataTable }                                         from '../tables/data-tables';
-import type { ISesEventQueue }                                     from '../queues/ses-event-queue';
+import { SesNotificationsQueueEvent }                              from '../events/ses-notifications-queue-event';
 import type { IAuditEventsQueue }                                  from '../queues/audit-events-queue';
+import type { ISesEventQueue }                                     from '../queues/ses-event-queue';
+import type { IDataTable }                                         from '../tables/data-tables';
 
 export interface SESEventProcessorLambdaProps {
   itemTable: IDataTable;
@@ -50,14 +51,9 @@ export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushT
     props.blobStore.grantEmailBlobWrite(this);
     props.auditEventsQueue.grantSend(this);
 
-    this.addEventSourceMapping('ses-notifications-queue', {
-      eventSourceArn: props.sesEventQueue.queueArn,
-      batchSize: 100,
-      maxConcurrency: 5,
-      reportBatchItemFailures: true,
-      maxBatchingWindow: Duration.seconds(30),
-    });
     props.sesEventQueue.grantConsume(this);
+
+    new SesNotificationsQueueEvent(this, 'ses-notifications-queue', { target: this, queue: props.sesEventQueue });
   }
 
   public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {

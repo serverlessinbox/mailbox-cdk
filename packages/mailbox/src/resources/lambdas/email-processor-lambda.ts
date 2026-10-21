@@ -5,6 +5,7 @@ import { Construct }                          from 'constructs'
 
 import type { IWebSocketBroadcastPublisher }  from '../../core/apis/websocket';
 import type { IDataBlobStore }                from '../buckets/data-blob-store';
+import { EmailProcessingQueueEvent }          from '../events/email-processing-queue-event';
 import type { IEmailProcessingQueueConsumer } from '../queues/email-processing-queue';
 import type { IDataTable }                    from '../tables/data-tables';
 
@@ -47,13 +48,9 @@ export class EmailProcessorLambda extends GoLambda {
     props.blobStore.grantIncomingEmailConsume(this);
     props.blobStore.grantEmailBlobWrite(this);
 
-    this.addEventSourceMapping('email-processing-queue', {
-      eventSourceArn: props.emailProcessingQueue.queueArn,
-      batchSize: 10,
-      reportBatchItemFailures: true,
-      maxBatchingWindow: Duration.seconds(15),
-    });
     props.emailProcessingQueue.grantConsume(this);
+
+    new EmailProcessingQueueEvent(this, 'email-processing-queue', { target: this, queue: props.emailProcessingQueue });
   }
 
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
