@@ -24,8 +24,8 @@ import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import * as path                         from 'node:path';
 
-import { Permission }                    from '../auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../auth/types';
+import { Permission }                    from '../core/auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../core/auth/types';
 import { MailboxEdgeStack }              from '../edge/mailbox-edge-stack';
 import { Mailbox }                       from '../mailbox';
 

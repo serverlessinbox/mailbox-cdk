@@ -9,7 +9,7 @@ import {
   AuthPolicyName,
   OAuthClientName,
   AUTH_POLICY_ADMIN_API,
-} from '../../auth/types';
+} from '../../core/auth/types';
 import type { IDataTable }        from '../../resources/tables/data-tables';
 import type { IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
 import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchange-lambda';

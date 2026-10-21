@@ -10,8 +10,8 @@ import { ChangelogTable }                                                       
 import { ConfigTable }                                                                    from '../../resources/tables/config-table';
 import { ItemTable }                                                                      from '../../resources/tables/item-table';
 import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
-import { MailboxKmsConfig }                                                               from '../../utils/kms';
-import { resolveMailboxEncryptionPlan }                                                   from '../../utils/mailbox-encryption';
+import { MailboxKmsConfig }                                                               from '../kms';
+import { resolveMailboxEncryptionPlan }                                                   from '../mailbox-encryption';
 import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {

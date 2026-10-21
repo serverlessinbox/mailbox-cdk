@@ -1,6 +1,6 @@
 import type * as acm             from 'aws-cdk-lib/aws-certificatemanager';
 
-import type { AuthClientConfig } from './auth/types';
+import type { AuthClientConfig } from './core/auth/types';
 
 /**
  * The public HTTPS URLs of the endpoints a Mailbox serves. The domain is derived at deploy time,

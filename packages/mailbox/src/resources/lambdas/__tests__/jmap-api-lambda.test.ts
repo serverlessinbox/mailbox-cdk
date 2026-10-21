@@ -20,7 +20,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { Permission }                           from '../../../auth/jmap-scopes';
+import { Permission }                           from '../../../core/auth/jmap-scopes';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { DataTable }                            from '../../tables/data-tables';
 import { EmailSendingQueue }                    from '../../queues/email-sending-queue';

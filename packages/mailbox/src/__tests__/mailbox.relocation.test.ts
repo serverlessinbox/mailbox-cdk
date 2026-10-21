@@ -17,8 +17,8 @@ import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 import { Construct }                     from 'constructs';
 
-import { Permission }                    from '../auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../auth/types';
+import { Permission }                    from '../core/auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../core/auth/types';
 import { Mailbox }                       from '../mailbox';
 
 import { CloudFormationResource }        from './iam-test-helpers';

@@ -21,7 +21,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IMailboxAuthProvider }            from '../../../auth/types';
+import type { IMailboxAuthProvider }            from '../../../core/auth/types';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
 import { DataTable }                            from '../../../resources/tables/data-tables';
 import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';

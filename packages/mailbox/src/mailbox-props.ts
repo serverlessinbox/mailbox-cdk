@@ -2,10 +2,10 @@ import type { IArtifactResolver }      from '@serverlessinbox/artifact-registry-
 import type * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
 
 import type { IAdminApiAddonProvider } from './api';
-import type { IMailboxAuthProvider }   from './auth/types';
+import type { IMailboxAuthProvider }   from './core/auth/types';
 import type { SesReceivingMode }       from './core/email/ses-receiving-mode';
 import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';
-import type { MailboxKmsConfig }       from './utils/kms';
+import type { MailboxKmsConfig }       from './core/kms';
 
 /**
  * Your own ACM certificates for the endpoints a Mailbox serves, for when you manage DNS and

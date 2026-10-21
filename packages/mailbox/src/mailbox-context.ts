@@ -13,8 +13,8 @@ import type { Construct }                   from 'constructs';
 import { loadMailboxArtifactVersions }      from './mailbox-artifact-versions';
 import type { MailboxProps }                from './mailbox-props';
 import { loadMailboxRegistryRecord }        from './mailbox-registry-record';
-import { resolveMailboxEncryptionPlan }     from './utils/mailbox-encryption';
-import type { MailboxEncryptionPlan }       from './utils/mailbox-encryption';
+import { resolveMailboxEncryptionPlan }     from './core/mailbox-encryption';
+import type { MailboxEncryptionPlan }       from './core/mailbox-encryption';
 
 /** The `MailboxProps` fields the foundation is resolved from. */
 type MailboxContextProps = Pick<MailboxProps, 'artifactResolver' | 'kms'>;

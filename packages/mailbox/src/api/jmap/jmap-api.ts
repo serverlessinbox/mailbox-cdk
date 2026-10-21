@@ -18,7 +18,7 @@ import type { IFunction }                                                 from '
 import { Duration, Aws, CfnResource }                                     from 'aws-cdk-lib';
 import { Construct }                                                      from 'constructs';
 
-import { IMailboxAuthProvider }                                           from '../../auth/types';
+import { IMailboxAuthProvider }                                           from '../../core/auth/types';
 import type { IDataBlobStore }                                            from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                                from '../../resources/tables/data-tables';
 import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';

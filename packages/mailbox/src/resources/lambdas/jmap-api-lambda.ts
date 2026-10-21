@@ -5,7 +5,7 @@ import { Duration }                                                       from '
 import { Construct }                                                      from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../api/websocket/websocket';
-import type { IMailboxAuthProviderBase }                                  from '../../auth/types';
+import type { IMailboxAuthProviderBase }                                  from '../../core/auth/types';
 import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
 import type { IDataTable }                                                from '../tables/data-tables';
 import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';

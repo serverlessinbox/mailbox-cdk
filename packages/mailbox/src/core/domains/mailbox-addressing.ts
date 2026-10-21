@@ -2,7 +2,7 @@ import * as route53          from 'aws-cdk-lib/aws-route53';
 import * as cdk              from 'aws-cdk-lib';
 import type { Construct }    from 'constructs';
 
-import { MailboxDomains }    from '../../domains';
+import { MailboxDomains }    from './mailbox-domains';
 import type { MailboxUrls }  from '../../mailbox-outputs';
 import type { MailboxProps } from '../../mailbox-props';
 

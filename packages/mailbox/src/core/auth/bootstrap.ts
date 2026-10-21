@@ -10,8 +10,8 @@ import type {
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
-} from '../../auth/types';
-import type { SesReceivingMode }    from '../../core/email/ses-receiving-mode';
+} from './types';
+import type { SesReceivingMode }    from '../email/ses-receiving-mode';
 import type { IDataTable }          from '../../resources/tables/data-tables';
 import { BOOTSTRAP_LAMBDA_TIMEOUT, BootstrapLambda } from '../../resources/lambdas/bootstrap-lambda';
 import type { IAuthKeyStoreTable }  from '../../resources/tables/auth-key-store-table';

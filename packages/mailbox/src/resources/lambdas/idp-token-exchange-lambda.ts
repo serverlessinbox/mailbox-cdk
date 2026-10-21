@@ -4,7 +4,7 @@ import type { Pipeline }                   from '@serverlessinbox/mailbox-cdk-sh
 import { Duration }                        from 'aws-cdk-lib';
 import { Construct }                       from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../../auth/types';
+import { AuthPolicyName, OAuthClientName } from '../../core/auth/types';
 import type { IDataTable }                 from '../tables/data-tables';
 import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
 

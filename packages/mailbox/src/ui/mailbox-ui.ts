@@ -30,7 +30,7 @@ import { Bucket, BlockPublicAccess }       from 'aws-cdk-lib/aws-s3';
 import { Aws, Fn, RemovalPolicy, Tags }    from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../auth/types';
+import { AuthPolicyName, OAuthClientName } from '../core/auth/types';
 import type { IDataTable }                 from '../resources/tables/data-tables';
 import type { IAuditEventsQueue }          from '../resources/queues/audit-events-queue';
 

@@ -2,8 +2,8 @@ import type { IArtifactResolver }                                               
 import * as acm                                                                                  from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct, IDependable }                                                                from 'constructs';
 
-import { Permission }                                                                            from '../auth/jmap-scopes';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../auth/types';
+import { Permission }                                                                            from '../core/auth/jmap-scopes';
+import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../core/auth/types';
 import type { IDataTable }                                                                       from '../resources/tables/data-tables';
 import type { IAuditEventsQueue }                                                                from '../resources/queues/audit-events-queue';
 

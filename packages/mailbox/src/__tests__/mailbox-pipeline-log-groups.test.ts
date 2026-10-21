@@ -10,8 +10,8 @@ import { Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { Permission }                    from '../auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../auth/types';
+import { Permission }                    from '../core/auth/jmap-scopes';
+import type { IMailboxAuthProvider }     from '../core/auth/types';
 import { Mailbox }                       from '../mailbox';
 
 function createMockAuthProvider(): IMailboxAuthProvider {

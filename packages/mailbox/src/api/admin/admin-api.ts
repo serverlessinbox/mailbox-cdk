@@ -14,7 +14,7 @@ import * as acm                                                    from 'aws-cdk
 import { Duration, Aws, CfnResource }                              from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API }                                   from '../../auth/types';
+import { AUTH_POLICY_ADMIN_API }                                   from '../../core/auth/types';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';

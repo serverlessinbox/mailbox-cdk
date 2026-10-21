@@ -1,7 +1,7 @@
 import { SecretValue }                                                     from 'aws-cdk-lib';
 import { Construct }                                                       from 'constructs';
 
-import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '../api/addons';
+import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '../../api/addons';
 
 import { Permission }                                                      from './jmap-scopes';
 

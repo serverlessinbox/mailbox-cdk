@@ -27,7 +27,7 @@ export {
   AUTH_POLICY_JMAP_API,
   OAUTH_CLIENT_ADMIN_UI,
   OAUTH_CLIENT_WEBMAIL_UI,
-} from './auth/types';
+} from './core/auth/types';
 export type {
   AuthPolicyName,
   OAuthClientName,
@@ -51,10 +51,10 @@ export type {
   MailboxAuthorizationConfig,
   IMailboxAuthorizationConfigProvider,
   IMailboxAuthProvider,
-} from './auth/types';
+} from './core/auth/types';
 
 // Auth — JMAP scopes
-export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './auth/jmap-scopes';
+export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './core/auth/jmap-scopes';
 
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './api/addons';
@@ -89,7 +89,7 @@ export type {
   MailboxKmsResource,
   MailboxKmsPerResourceConfig,
   MailboxKmsConfig,
-} from './utils/kms';
+} from './core/kms';
 
 // Artifact resolution — the auto-updating resolver and its settings
 export { AutoUpdater } from './platform/update/auto-updater';

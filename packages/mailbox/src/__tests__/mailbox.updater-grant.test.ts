@@ -19,8 +19,8 @@ import * as cdk                                     from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }            from 'aws-cdk-lib';
 
 import { AutoUpdater }                              from '../platform/update/auto-updater';
-import { Permission }                               from '../auth/jmap-scopes';
-import type { IMailboxAuthProvider }                from '../auth/types';
+import { Permission }                               from '../core/auth/jmap-scopes';
+import type { IMailboxAuthProvider }                from '../core/auth/types';
 import { loadMailboxArtifactVersions }              from '../mailbox-artifact-versions';
 import { loadMailboxRegistryRecord }                from '../mailbox-registry-record';
 import { Mailbox }                                  from '../mailbox';

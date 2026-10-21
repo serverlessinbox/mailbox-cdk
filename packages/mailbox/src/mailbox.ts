@@ -15,19 +15,19 @@ import { JMapApi }                                                              
 import { McpApi }                                                                                              from './api/mcp/mcp-api';
 import { WebSocketPush }                                                                                       from './api/websocket/websocket';
 import type { IAdminApiAddon, AdminApiAddonContext, IJmapApiAddon, JmapApiAddonContext }                       from './api';
-import type { IMailboxAuthProvider }                                                                           from './auth/types';
+import type { IMailboxAuthProvider }                                                                           from './core/auth/types';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
 import type { IDataBlobStore }                                                                                 from './resources/buckets/data-blob-store';
 import type { IDataTable }                                                                                     from './resources/tables/data-tables';
 import { MailboxDataDeployer }                                                                                 from './core/data/delivery/mailbox-data-deployer';
-import { MailboxDns }                                                                                          from './domains';
+import { MailboxDns }                                                                                          from './core/domains/mailbox-dns';
 import { MailboxEdgeDeployer }                                                                                 from './edge';
 import { SesRules }                                                                                            from './core/email/ses-rules';
 import { EmailSending }                                                                                        from './core/email/email-sending';
 import { SESEventProcessing }                                                                                  from './core/email/ses-event-processing';
 import { AuditWriting }                                                                                        from './core/data/audit-writing';
-import { AuthKeyStore }                                                                                        from './features/auth-key-store/auth-key-store';
-import { Bootstrap }                                                                                           from './features/bootstrap/bootstrap';
+import { AuthKeyStore }                                                                                        from './core/auth/auth-key-store';
+import { Bootstrap }                                                                                           from './core/auth/bootstrap';
 import { Cdn, type CdnCustomDomain }                                                                           from './features/cdn/cdn-construct';
 import { LicenseRefresh }                                                                                      from './platform/ops/license-refresh';
 import { StackFailureDetection, SendStackFailuresMode }                                                        from './platform/ops/stack-failure-detection';
@@ -42,11 +42,11 @@ import { IdentityProvisionerLambda }                                            
 import { MailboxContext }                                                                                      from './mailbox-context';
 import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
 import type { MailboxProps }                                                                                   from './mailbox-props';
-import { TantivySearch }                                                                                       from './search';
+import { TantivySearch }                                                                                       from './core/search/tantivy-search';
 import { AdminUi }                                                                                             from './ui/admin-ui';
 import type { MailboxUi }                                                                                      from './ui/mailbox-ui';
 import { WebmailUi }                                                                                           from './ui/webmail-ui';
-import { resolveMailboxEncryptionPlan }                                                                        from './utils/mailbox-encryption';
+import { resolveMailboxEncryptionPlan }                                                                        from './core/mailbox-encryption';
 import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
 
 /**
