@@ -1,5 +1,10 @@
 import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type { CustomResourceRequest }                    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import type {
+  CreateRequest,
+  CustomResourceRequest,
+  DeleteRequest,
+  UpdateRequest,
+}                                                       from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { CaughtError }                                   from '../../runtime/handler-kit/errors/caught-error';
 import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
 import type { InvocationDeadline }                       from '../../runtime/handler-kit/invocation-deadline';
@@ -45,11 +50,7 @@ export class BucketAutoEmptyRequestHandler {
 
     this.rejectInvalidProperties(request);
 
-    if (request.RequestType === 'Create' || request.RequestType === 'Update') {
-      return this.answerNothingToEmpty(request);
-    }
-
-    throw new ExpectedFailure(`Unknown RequestType: ${request.RequestType}`);
+    return this.answerNothingToEmpty(request);
   }
 
   private readProperties(request: CustomResourceRequest): unknown {
@@ -64,7 +65,7 @@ export class BucketAutoEmptyRequestHandler {
   }
 
   // Without a usable bucket name the bucket cannot be checked, so the Delete fails rather than guessing it is empty.
-  private readBucketNameForDelete(request: CustomResourceRequest): string {
+  private readBucketNameForDelete(request: DeleteRequest): string {
     const properties = this.readProperties(request);
     const bucketName = isBucketAutoEmptyDeletionProperties(properties) ? properties.bucketName.trim() : '';
     if (!bucketName) {
@@ -74,7 +75,7 @@ export class BucketAutoEmptyRequestHandler {
   }
 
   private async emptyBucketOnDelete(
-    request: CustomResourceRequest,
+    request: DeleteRequest,
     deadline: InvocationDeadline,
   ): Promise<BucketAutoEmptyResponse> {
     const bucketName         = this.readBucketNameForDelete(request);
@@ -103,14 +104,15 @@ export class BucketAutoEmptyRequestHandler {
     return this.answerEmptied(physicalResourceId, 0);
   }
 
-  private answerNothingToEmpty(request: CustomResourceRequest): BucketAutoEmptyResponse {
+  private answerNothingToEmpty(request: CreateRequest | UpdateRequest): BucketAutoEmptyResponse {
     this.logger.debug('Create/Update is a no-op for bucket-auto-empty');
     return this.answerEmptied(this.derivePhysicalResourceId(request), 0);
   }
 
-  private physicalResourceIdOf(request: CustomResourceRequest): PhysicalResourceId {
+  // An empty physical id counts as none.
+  private physicalResourceIdOf(request: DeleteRequest): PhysicalResourceId {
     return request.PhysicalResourceId
-      ? toPhysicalResourceId(request.PhysicalResourceId)
+      ? request.PhysicalResourceId
       : this.derivePhysicalResourceId(request);
   }
 

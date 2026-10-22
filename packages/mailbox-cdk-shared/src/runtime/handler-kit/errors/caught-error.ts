@@ -39,6 +39,11 @@ export class CaughtError {
     return this.message?.includes(text) ?? false;
   }
 
+  /** The message of the caught `Error`, or the string form of a caught value that is not an `Error`; an empty message stays empty. */
+  public readableMessage(): string {
+    return this.message ?? String(this.thrown);
+  }
+
   /** The caught error as one `name: message` line, for a result's reason; a non-`Error` value reads `undefined: undefined`. */
   public describe(): string {
     return `${this.name}: ${this.message}`;

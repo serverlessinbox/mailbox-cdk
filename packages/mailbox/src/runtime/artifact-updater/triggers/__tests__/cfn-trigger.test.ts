@@ -11,13 +11,12 @@
  */
 
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
+import { ParentStackStatus }                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent }                        from 'aws-lambda';
 import { mockClient }                                                    from 'aws-sdk-client-mock';
 import * as https                                                        from 'https';
 import { Writable }                                                      from 'stream';
-
-import { CfnTrigger }                                                    from '../cfn-trigger';
-import { UpdateCycle }                                                   from '../../update-cycle';
+import * as t                                                            from 'typanion';
 
 import {
   BAD_CONFIG_ERROR,
@@ -27,20 +26,26 @@ import {
   fakeLambdaContext,
   newUpdateCycle,
 } from '../../__tests__/updater-helpers';
+import { UpdateCycle }                                                   from '../../update-cycle';
+import { CfnTrigger }                                                    from '../cfn-trigger';
 
 jest.mock('../../update-cycle');
 jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
-interface CfnResponseBody {
-  Status: string;
-  Reason?: string;
-  PhysicalResourceId?: string;
-}
+const isCfnResponseBody = t.isPartial({
+  Status: t.isString(),
+  Reason: t.isOptional(t.isString()),
+  PhysicalResourceId: t.isOptional(t.isString()),
+});
+
+/** The fields of the body the trigger PUTs to the ResponseURL that these tests assert on. */
+type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 describe('CfnTrigger', () => {
-  const cloudFormationMock = mockClient(CloudFormationClient);
+  const cloudFormationMock       = mockClient(CloudFormationClient);
+  const badConfigReason: unknown = expect.stringContaining(BAD_CONFIG_ERROR);
   let responseJson: string;
 
   beforeEach(() => {
@@ -49,10 +54,10 @@ describe('CfnTrigger', () => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     responseJson = '';
-    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
+    jest.mocked(https.request).mockImplementation(((...[, callback]: [unknown, (res: object) => void]) => {
       callback({ statusCode: 200 });
       return new Writable({
-        write(chunk: Buffer, _encoding, done) {
+        write(...[chunk, , done]: [Buffer, BufferEncoding, () => void]) {
           responseJson += chunk.toString();
           done();
         },
@@ -65,13 +70,15 @@ describe('CfnTrigger', () => {
   });
 
   function sentResponse(): CfnResponseBody {
-    return JSON.parse(responseJson);
+    const sent: unknown = JSON.parse(responseJson);
+    t.assert(sent, isCfnResponseBody);
+    return sent;
   }
 
   const cycleRuns = () => jest.mocked(UpdateCycle.prototype.run);
 
   function healthyTrigger(event: CloudFormationCustomResourceEvent): CfnTrigger {
-    return new CfnTrigger(event, fakeLambdaContext(), newUpdateCycle, fakeCloudFormationClient(), undefined, 'artifact-updater');
+    return new CfnTrigger(event, fakeLambdaContext(), newUpdateCycle, new ParentStackStatus(fakeCloudFormationClient()), undefined, 'artifact-updater');
   }
 
   function misconfiguredTrigger(event: CloudFormationCustomResourceEvent): CfnTrigger {
@@ -79,7 +86,7 @@ describe('CfnTrigger', () => {
       event,
       fakeLambdaContext(),
       badConfigCycle,
-      fakeCloudFormationClient(),
+      new ParentStackStatus(fakeCloudFormationClient()),
       BAD_CONFIG_ERROR,
       'artifact-updater',
     );
@@ -124,7 +131,7 @@ describe('CfnTrigger', () => {
     it('answers FAILED naming the problem on Create, without running the update cycle', async () => {
       await misconfiguredTrigger(deployEndTriggerEvent('Create')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining(BAD_CONFIG_ERROR) });
+      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
       expect(cycleRuns()).not.toHaveBeenCalled();
     });
 
@@ -146,7 +153,7 @@ describe('CfnTrigger', () => {
 
       await misconfiguredTrigger(deployEndTriggerEvent('Update')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining(BAD_CONFIG_ERROR) });
+      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
     });
 
     it('answers FAILED on a Create even while the parent stack rolls back, without reading its status', async () => {
@@ -154,7 +161,7 @@ describe('CfnTrigger', () => {
 
       await misconfiguredTrigger(deployEndTriggerEvent('Create')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining(BAD_CONFIG_ERROR) });
+      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
       expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(0);
     });
 

@@ -109,7 +109,7 @@ export class StackDeployerStarter {
   }
 
   private malformedStackId(failure: unknown): ExpectedFailure {
-    return new ExpectedFailure(`StackId is malformed: ${new CaughtError(failure).message ?? String(failure)}`);
+    return new ExpectedFailure(`StackId is malformed: ${new CaughtError(failure).readableMessage()}`);
   }
 
   private rejectSlashStateMachineArn(): void {

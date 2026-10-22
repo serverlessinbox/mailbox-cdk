@@ -1,4 +1,3 @@
-import { toStackId }                                   from '../handler-kit/custom-resource/custom-resource-identifiers';
 import type { CustomResourceRequest }                  from '../handler-kit/custom-resource/custom-resource-request';
 
 import type { StackHelpersData, StackHelpersResolver } from './stack-helpers-resolver';
@@ -25,6 +24,6 @@ export class StackHelpersRequestHandler {
       return {};
     }
 
-    return { Data: await this.resolver.resolve(request.ResourceProperties, toStackId(request.StackId)) };
+    return { Data: await this.resolver.resolve(request.ResourceProperties, request.StackId) };
   }
 }

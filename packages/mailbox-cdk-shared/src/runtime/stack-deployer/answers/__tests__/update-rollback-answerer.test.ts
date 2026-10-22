@@ -2,6 +2,7 @@ import { CloudFormationClient, DescribeStacksCommand }                      from
 import { mockClient }                                                       from 'aws-sdk-client-mock';
 
 import { toPhysicalResourceId }                                             from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ParentStackStatus }                                                from '../../../../runtime/handler-kit/custom-resource/parent-stack-status';
 import {
   defaultLevelLogger,
   fakeCfnEndpoint,
@@ -46,7 +47,8 @@ describe('UpdateRollbackAnswerer', () => {
     subStacks    = { currentOutputs: jest.fn<Promise<Record<string, string> | undefined>, [OperationInput]>(async () => OLD_OUTPUTS) };
     consoleSpies = silenceConsole();
     endpoint     = fakeCfnEndpoint();
-    answerer     = new UpdateRollbackAnswerer(parentClient, subStacks, new CfnResponder(noPause), defaultLevelLogger());
+    const logger = defaultLevelLogger();
+    answerer     = new UpdateRollbackAnswerer(new ParentStackStatus(parentClient, logger), subStacks, new CfnResponder(noPause), logger);
   });
 
   afterEach(() => {

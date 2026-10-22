@@ -4,8 +4,8 @@
  * A changed line format breaks the operator's grep, and a wrong body leaves the resource hung.
  */
 
-import { toStackId }          from '../custom-resource-identifiers';
-import { emitManualFinalize } from '../custom-resource-manual-finalize';
+import { toPhysicalResourceId, toStackId } from '../custom-resource-identifiers';
+import { emitManualFinalize }              from '../custom-resource-manual-finalize';
 
 describe('emitManualFinalize', () => {
   const cfnEvent = {
@@ -13,7 +13,7 @@ describe('emitManualFinalize', () => {
     StackId: toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid'),
     RequestId: 'request-1',
     LogicalResourceId: 'MyResource',
-    RequestType: 'Delete',
+    RequestType: 'Delete' as const,
     ResourceProperties: { stackName: 'mail-data' },
   };
   let consoleLogSpy: jest.SpyInstance;
@@ -27,11 +27,11 @@ describe('emitManualFinalize', () => {
   });
 
   function loggedLines(): string[] {
-    return consoleLogSpy.mock.calls.map(([line]) => line);
+    return consoleLogSpy.mock.calls.map(([line]) => String(line));
   }
 
   it('writes the request, the response url, the body and the curl hint as separate lines', () => {
-    emitManualFinalize(cfnEvent, { physicalResourceId: 'physical-1' });
+    emitManualFinalize(cfnEvent, { physicalResourceId: toPhysicalResourceId('physical-1') });
 
     const body = '{"Status":"SUCCESS","PhysicalResourceId":"physical-1","StackId":"arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid","RequestId":"request-1","LogicalResourceId":"MyResource"}';
     expect(loggedLines()).toEqual([

@@ -13,7 +13,7 @@ import {
   CognitoIdentityProviderClient,
   NotAuthorizedException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { isParentStackRollingBack, type LoggerBuffer }                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ParentStackStatus, type LoggerBuffer }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent, Context }                                from 'aws-lambda';
 import { mockClient }                                                                     from 'aws-sdk-client-mock';
 import * as t                                                                             from 'typanion';
@@ -27,7 +27,7 @@ import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_
 const mockSentResponseBodies: string[] = [];
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),
-  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
+  request: (...[, onResponse]: [unknown, (res: { statusCode: number; headers: Record<string, string> }) => void]) => {
     const chunks: string[] = [];
     return {
       on: () => undefined,
@@ -40,10 +40,6 @@ jest.mock('https', () => ({
       },
     };
   },
-}));
-jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
-  ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
-  isParentStackRollingBack: jest.fn(),
 }));
 
 const isCfnResponse = t.isPartial({
@@ -135,19 +131,23 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
   let loaded: HandlerOf | undefined;
   jest.isolateModules(() => {
     jest.doMock('../bootstrap-user-request-handler', () => {
-      const { ExpectedFailure } = jest.requireMock<typeof import('@serverlessinbox/mailbox-cdk-shared/lambda-runtime')>(
+      const { ExpectedFailure } = jest.requireActual<typeof import('@serverlessinbox/mailbox-cdk-shared/lambda-runtime')>(
         '@serverlessinbox/mailbox-cdk-shared/lambda-runtime',
       );
       return {
         BootstrapUserRequestHandler: class {
-          constructor(_userEnsurer: unknown, _cloudFormation: unknown, private readonly logger: LoggerBuffer) {}
+          private readonly logger: LoggerBuffer;
+
+          constructor(...[, , logger]: [unknown, unknown, LoggerBuffer]) {
+            this.logger = logger;
+          }
 
           async handle(): Promise<never> {
             this.logger.debug('buffered_before_rejection');
             throw new ExpectedFailure('rejected on purpose');
           }
 
-          async answerFailure(_request: unknown, failure: unknown): Promise<never> {
+          async answerFailure(...[, failure]: [unknown, unknown]): Promise<never> {
             throw failure;
           }
         },
@@ -162,8 +162,8 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
 }
 
 describe('bootstrap-user handler', () => {
-  const cognitoMock                  = mockClient(CognitoIdentityProviderClient);
-  const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<typeof isParentStackRollingBack>;
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
   let debugLog: jest.SpyInstance;
   let originalEnvironment: NodeJS.ProcessEnv;
 
@@ -171,8 +171,8 @@ describe('bootstrap-user handler', () => {
     originalEnvironment = { ...process.env };
     cognitoMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
-    mockIsParentStackRollingBack.mockReset();
-    debugLog = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    isRollingBack = jest.spyOn(ParentStackStatus.prototype, 'isRollingBack').mockResolvedValue(false);
+    debugLog      = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
@@ -228,7 +228,7 @@ describe('bootstrap-user handler', () => {
     });
 
     it('answers an Update that fails while the parent stack rolls back with SUCCESS and the marker', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+      isRollingBack.mockResolvedValue(true);
 
       const response = await invoke(handler, cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
 

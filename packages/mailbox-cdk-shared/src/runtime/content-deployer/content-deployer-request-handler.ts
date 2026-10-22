@@ -4,7 +4,7 @@ import type { S3Client }                                 from '@aws-sdk/client-s
 import { invalidateCloudFront }                          from '../../runtime/handler-kit/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject }  from '../../runtime/handler-kit/content-ops';
 import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type { CustomResourceRequest }                    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import type { CustomResourceRequest, DeleteRequest }     from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
 import { hasTimeLeft, type InvocationDeadline }          from '../../runtime/handler-kit/invocation-deadline';
 import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
@@ -163,10 +163,9 @@ export class ContentDeployerRequestHandler {
     return toPhysicalResourceId(`content-assets:${request.StackId}:${request.LogicalResourceId}`);
   }
 
-  private answerDeleted(request: CustomResourceRequest): ContentDeployerResponse {
+  private answerDeleted(request: DeleteRequest): ContentDeployerResponse {
     this.logger.debug('Delete is a no-op for content-deployer');
-    const incoming = request.PhysicalResourceId;
-    return this.answer(incoming === undefined ? undefined : toPhysicalResourceId(incoming), 0, '0');
+    return this.answer(request.PhysicalResourceId, 0, '0');
   }
 
   private answerDeployed(

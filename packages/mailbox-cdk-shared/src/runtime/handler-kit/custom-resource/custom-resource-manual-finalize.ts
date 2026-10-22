@@ -1,5 +1,7 @@
-import type { StackId }               from './custom-resource-identifiers';
-import type { CustomResourceRequest } from './custom-resource-request';
+import type { Unbranded }                   from '../branded';
+
+import type { PhysicalResourceId, StackId } from './custom-resource-identifiers';
+import type { CustomResourceRequest }       from './custom-resource-request';
 
 /**
  * The custom-resource properties of a request. Only `stackName` is read; the rest are open because every custom
@@ -14,7 +16,7 @@ export interface ManualFinalizeResourceProperties {
  * The fields of a CloudFormation custom-resource request that the break-glass block reads, each optional because
  * an event that is not a real request, such as a smoke-test probe, carries none of them.
  */
-export interface ManualFinalizeEvent extends Partial<Omit<CustomResourceRequest, 'StackId' | 'PhysicalResourceId' | 'ResourceProperties'>> {
+export interface ManualFinalizeEvent extends Partial<Unbranded<Pick<CustomResourceRequest, 'RequestType' | 'RequestId' | 'LogicalResourceId'>>> {
   ResponseURL?: string;
   StackId?: StackId;
   ResourceProperties?: ManualFinalizeResourceProperties;
@@ -25,7 +27,7 @@ export interface ManualFinalizeEvent extends Partial<Omit<CustomResourceRequest,
  */
 export interface EmitManualFinalizeOptions {
   /** The physical resource ID for the response. If not provided, falls back to event.LogicalResourceId. */
-  physicalResourceId?: string;
+  physicalResourceId?: PhysicalResourceId;
   /** Service name for attribution in logs. */
   service?: string;
 }

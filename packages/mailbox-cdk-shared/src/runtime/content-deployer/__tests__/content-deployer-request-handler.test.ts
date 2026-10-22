@@ -17,11 +17,11 @@ import { ContentDeployerRequestHandler }                from '../content-deploye
 import {
   PHYSICAL_RESOURCE_ID,
   REQUEST_ID,
+  createRequest,
   dataSource,
-  fakeCreateEvent,
-  fakeDeleteEvent,
+  deleteRequest,
   fakeLambdaContext,
-  fakeUpdateEvent,
+  updateRequest,
   zipSource,
 } from './content-deployer-helpers';
 
@@ -60,7 +60,7 @@ describe('ContentDeployerRequestHandler', () => {
   describe('handle', () => {
     it('writes a data source at its key with its metadata', async () => {
       const response = await requestHandler.handle(
-        fakeCreateEvent({
+        createRequest({
           targetBucket: 'my-bucket',
           sources: [dataSource({ contentType: 'application/json', cacheControl: 'no-store' })],
         }),
@@ -82,7 +82,7 @@ describe('ContentDeployerRequestHandler', () => {
 
     it('empties the prefix of a zip source before unpacking the archive into it', async () => {
       const response = await requestHandler.handle(
-        fakeUpdateEvent({ targetBucket: 'my-bucket', sources: [zipSource({ sourceVersionId: 'v7' })] }),
+        updateRequest({ targetBucket: 'my-bucket', sources: [zipSource({ sourceVersionId: 'v7' })] }),
         invocation,
       );
 
@@ -102,7 +102,7 @@ describe('ContentDeployerRequestHandler', () => {
 
     it('adds up the objects written by every source', async () => {
       const response = await requestHandler.handle(
-        fakeCreateEvent({ targetBucket: 'my-bucket', sources: [dataSource(), zipSource()] }),
+        createRequest({ targetBucket: 'my-bucket', sources: [dataSource(), zipSource()] }),
         invocation,
       );
 
@@ -111,7 +111,7 @@ describe('ContentDeployerRequestHandler', () => {
 
     it('deploys into the trimmed target bucket', async () => {
       await requestHandler.handle(
-        fakeCreateEvent({ targetBucket: ' my-bucket ', sources: [dataSource()] }),
+        createRequest({ targetBucket: ' my-bucket ', sources: [dataSource()] }),
         invocation,
       );
 
@@ -122,7 +122,7 @@ describe('ContentDeployerRequestHandler', () => {
       jest.mocked(invalidateCloudFront).mockResolvedValue({ invalidated: true });
 
       const response = await requestHandler.handle(
-        fakeUpdateEvent({
+        updateRequest({
           targetBucket: 'my-bucket',
           sources: [dataSource()],
           distributionId: 'E123ABC',
@@ -144,7 +144,7 @@ describe('ContentDeployerRequestHandler', () => {
 
     it('invalidates without a target bucket when there are no sources to deploy', async () => {
       const response = await requestHandler.handle(
-        fakeCreateEvent({ sources: [], distributionId: 'E123ABC', invalidationPaths: ['/*'] }),
+        createRequest({ sources: [], distributionId: 'E123ABC', invalidationPaths: ['/*'] }),
         invocation,
       );
 
@@ -155,10 +155,7 @@ describe('ContentDeployerRequestHandler', () => {
 
     it('answers a Delete with invalid properties without reading them, keeping the physical id CloudFormation sent', async () => {
       const response = await requestHandler.handle(
-        {
-          ...fakeDeleteEvent({ targetBucket: 123, sources: 'not-an-array' }),
-          PhysicalResourceId: 'physical-id-from-cloudformation',
-        },
+        deleteRequest({ targetBucket: 123, sources: 'not-an-array' }, 'physical-id-from-cloudformation'),
         invocation,
       );
 
@@ -174,7 +171,7 @@ describe('ContentDeployerRequestHandler', () => {
     it('rejects invalid properties on Create as an expected failure and writes nothing', async () => {
       const failure = await rejectionOf(
         requestHandler.handle(
-          fakeCreateEvent({ targetBucket: 'my-bucket', sources: 'not-an-array' }),
+          createRequest({ targetBucket: 'my-bucket', sources: 'not-an-array' }),
           invocation,
         ),
       );
@@ -188,7 +185,7 @@ describe('ContentDeployerRequestHandler', () => {
       ['no targetBucket', { sources: [dataSource()] }],
       ['a blank targetBucket', { targetBucket: '   ', sources: [dataSource()] }],
     ])('rejects sources with %s as an expected failure', async (...[, properties]) => {
-      const failure = await rejectionOf(requestHandler.handle(fakeCreateEvent(properties), invocation));
+      const failure = await rejectionOf(requestHandler.handle(createRequest(properties), invocation));
 
       expect(failure).toBeInstanceOf(ExpectedFailure);
       expect(failure).toHaveProperty('message', 'Missing required property: targetBucket');
@@ -200,7 +197,7 @@ describe('ContentDeployerRequestHandler', () => {
 
       const failure = await rejectionOf(
         requestHandler.handle(
-          fakeCreateEvent({ targetBucket: 'my-bucket', sources: [dataSource(), dataSource({ key: 'second.json' })] }),
+          createRequest({ targetBucket: 'my-bucket', sources: [dataSource(), dataSource({ key: 'second.json' })] }),
           { ...invocation, getRemainingTimeInMillis: remainingTime },
         ),
       );
@@ -218,7 +215,7 @@ describe('ContentDeployerRequestHandler', () => {
 
       const failure = await rejectionOf(
         requestHandler.handle(
-          fakeCreateEvent({
+          createRequest({
             targetBucket: 'my-bucket',
             sources: [dataSource()],
             distributionId: 'E123ABC',
@@ -240,7 +237,7 @@ describe('ContentDeployerRequestHandler', () => {
       jest.mocked(writeObject).mockRejectedValue(new Error('AccessDenied'));
 
       const failure = await rejectionOf(
-        requestHandler.handle(fakeCreateEvent({ targetBucket: 'my-bucket', sources: [dataSource()] }), invocation),
+        requestHandler.handle(createRequest({ targetBucket: 'my-bucket', sources: [dataSource()] }), invocation),
       );
 
       expect(failure).not.toBeInstanceOf(ExpectedFailure);

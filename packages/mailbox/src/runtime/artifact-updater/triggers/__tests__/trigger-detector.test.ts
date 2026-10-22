@@ -7,12 +7,7 @@
  * so what the detector returns is exactly what it asked the builder for.
  */
 
-import { LoggerBuffer }                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-
-import { CfnTrigger }                           from '../cfn-trigger';
-import { HttpTrigger }                          from '../http-trigger';
-import { ScheduledTrigger }                     from '../scheduled-trigger';
-import { TriggerDetector, type TriggerBuilder } from '../trigger-detector';
+import { LoggerBuffer, ParentStackStatus }      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   badConfigCycle,
@@ -21,12 +16,16 @@ import {
   fakeLambdaContext,
   httpApiEvent,
 } from '../../__tests__/updater-helpers';
+import { CfnTrigger }                           from '../cfn-trigger';
+import { HttpTrigger }                          from '../http-trigger';
+import { ScheduledTrigger }                     from '../scheduled-trigger';
+import { TriggerDetector, type TriggerBuilder } from '../trigger-detector';
 
 describe('TriggerDetector', () => {
   const context          = fakeLambdaContext();
   const cfnEvent         = deployEndTriggerEvent('Create');
   const httpEvent        = httpApiEvent('POST', '/artifact-updates/trigger');
-  const cfnTrigger       = new CfnTrigger(cfnEvent, context, badConfigCycle, fakeCloudFormationClient(), undefined, 'artifact-updater');
+  const cfnTrigger       = new CfnTrigger(cfnEvent, context, badConfigCycle, new ParentStackStatus(fakeCloudFormationClient()), undefined, 'artifact-updater');
   const httpTrigger      = new HttpTrigger(httpEvent, () => { throw new Error('unused'); }, 'fn', new LoggerBuffer(), undefined);
   const scheduledTrigger = new ScheduledTrigger(badConfigCycle);
 

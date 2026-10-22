@@ -6,9 +6,9 @@ import { wrapHandler }                   from 'aws-custom-resources';
 import * as env                          from '../../runtime/handler-kit/config/config-env';
 import { answerRequestWithBadConfig }    from '../../runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
 import { FailedRequestAnswerer }         from '../../runtime/handler-kit/custom-resource/custom-resource-failed-request-answerer';
-import { toStackId }                     from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { emitManualFinalize }            from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
-import type { CustomResourceRequest }    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { readCustomResourceRequest }     from '../../runtime/handler-kit/custom-resource/custom-resource-request-reader';
+import { ParentStackStatus }             from '../../runtime/handler-kit/custom-resource/parent-stack-status';
 import { ExpectedFailure }               from '../../runtime/handler-kit/errors/expected-failure';
 import { LoggerBuffer }                  from '../../runtime/handler-kit/logger-buffer';
 import { withSmokeTest }                 from '../../runtime/handler-kit/with-smoke-test';
@@ -22,17 +22,17 @@ const cloudFront                     = new CloudFrontClient({});
 const cloudFormation                 = new CloudFormationClient({});
 
 export const handler = withSmokeTest(wrapHandler(async (event, context) => {
-  const request: CustomResourceRequest = event;
+  const request = readCustomResourceRequest(event);
 
   if (configError) {
     return answerRequestWithBadConfig(request, configError);
   }
 
-  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
 
   const logger                = new LoggerBuffer(config.serviceName, config.logLevel);
   const requestHandler        = new ContentDeployerRequestHandler(s3, cloudFront, logger);
-  const failedRequestAnswerer = new FailedRequestAnswerer(cloudFormation, logger);
+  const failedRequestAnswerer = new FailedRequestAnswerer(new ParentStackStatus(cloudFormation, logger), logger);
 
   try {
     return await requestHandler.handle(request, context);

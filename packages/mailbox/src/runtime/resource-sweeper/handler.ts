@@ -1,22 +1,22 @@
-import { ACMClient }                                         from '@aws-sdk/client-acm';
-import { CloudFormationClient }                              from '@aws-sdk/client-cloudformation';
-import { EventBridgeClient }                                 from '@aws-sdk/client-eventbridge';
-import { IAMClient }                                         from '@aws-sdk/client-iam';
-import { LambdaClient }                                      from '@aws-sdk/client-lambda';
-import { SFNClient }                                         from '@aws-sdk/client-sfn';
-import { withSmokeTest, env, ExpectedFailure, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }                                       from 'aws-custom-resources';
-import type { CloudFormationCustomResourceEvent }            from 'aws-lambda';
+import { ACMClient }                                                            from '@aws-sdk/client-acm';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { EventBridgeClient }                                                    from '@aws-sdk/client-eventbridge';
+import { IAMClient }                                                            from '@aws-sdk/client-iam';
+import { LambdaClient }                                                         from '@aws-sdk/client-lambda';
+import { SFNClient }                                                            from '@aws-sdk/client-sfn';
+import { withSmokeTest, env, ExpectedFailure, LoggerBuffer, ParentStackStatus } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent }                               from 'aws-lambda';
 
-import { loadStarter, loadWorker }                           from './config';
-import type { WorkerInput, WorkerOutput }                    from './removal';
-import { RootStackMembership }                               from './root-stack-membership';
-import { SweepStarter }                                      from './sweep-starter';
-import { SweepTargetPlanner }                                from './sweep-target-planner';
-import { SweepWorker }                                       from './sweep-worker';
-import { CertSweeper }                                       from './targets/cert-sweeper';
-import { EdgeFunctionSweeper }                               from './targets/edge-function-sweeper';
-import { StackFailureDetectorSweeper }                       from './targets/stack-failure-detector-sweeper';
+import { loadStarter, loadWorker }                                              from './config';
+import type { WorkerInput, WorkerOutput }                                       from './removal';
+import { RootStackMembership }                                                  from './root-stack-membership';
+import { SweepStarter }                                                         from './sweep-starter';
+import { SweepTargetPlanner }                                                   from './sweep-target-planner';
+import { SweepWorker }                                                          from './sweep-worker';
+import { CertSweeper }                                                          from './targets/cert-sweeper';
+import { EdgeFunctionSweeper }                                                  from './targets/edge-function-sweeper';
+import { StackFailureDetectorSweeper }                                          from './targets/stack-failure-detector-sweeper';
 
 // Lambda@Edge functions live in us-east-1 only, wherever the stack runs.
 const LAMBDA_AT_EDGE_REGION = 'us-east-1';
@@ -86,7 +86,7 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   }
 
   const logger       = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
-  const sweepStarter = new SweepStarter(starterConfig, sfnClient, cfnClient, sweepTargetPlanner, logger);
+  const sweepStarter = new SweepStarter(starterConfig, sfnClient, new ParentStackStatus(cfnClient, logger), sweepTargetPlanner, logger);
 
   // cast: wrapHandler's own event type (`TypeSafeCloudFormationResourceEvent`, from
   // `aws-custom-resources`) is `Omit<CloudFormationCustomResourceEvent, 'ResponseURL'>` — but `Omit`

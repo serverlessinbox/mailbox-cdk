@@ -5,9 +5,11 @@
 
 import { CloudFormationClient }                            from '@aws-sdk/client-cloudformation';
 import { SFNClient }                                       from '@aws-sdk/client-sfn';
-import { LoggerBuffer }                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, ParentStackStatus }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+import * as https                                          from 'https';
 import { Writable }                                        from 'stream';
+import * as t                                              from 'typanion';
 
 import { SweepStarter }                                    from '../sweep-starter';
 import { SweepTargetPlanner }                              from '../sweep-target-planner';
@@ -16,21 +18,24 @@ export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMac
 
 /** A `SweepStarter` on the default clients; a test's `mockClient(SFNClient)` / `mockClient(CloudFormationClient)` intercepts them. */
 export function createSweepStarter(): SweepStarter {
+  const logger = new LoggerBuffer('resource-sweeper-starter', 'error');
   return new SweepStarter(
     { logLevel: 'error', serviceName: 'resource-sweeper-starter', sweeperStateMachineArn: STATE_MACHINE_ARN },
     new SFNClient({ region: 'us-west-2' }),
-    new CloudFormationClient({ region: 'us-west-2' }),
+    new ParentStackStatus(new CloudFormationClient({ region: 'us-west-2' }), logger),
     new SweepTargetPlanner(),
-    new LoggerBuffer('resource-sweeper-starter', 'error'),
+    logger,
   );
 }
 
+const isCapturedCfnResponse = t.isPartial({
+  Status: t.isString(),
+  Reason: t.isOptional(t.isString()),
+  PhysicalResourceId: t.isOptional(t.isString()),
+});
+
 /** The fields of the CloudFormation response the starter PUTs that its tests assert on. */
-export interface CapturedCfnResponse {
-  Status: string;
-  Reason?: string;
-  PhysicalResourceId?: string;
-}
+export type CapturedCfnResponse = t.InferType<typeof isCapturedCfnResponse>;
 
 export const PARENT_STACK_ID = 'arn:aws:cloudformation:us-west-2:123456789012:stack/test/abc';
 const OLD_CERT_ARN = 'arn:aws:acm:us-west-2:123456789012:certificate/old';
@@ -88,19 +93,21 @@ export function lambdaContext(): Context {
  * and returns a function yielding the CloudFormation response body the handler PUT to ResponseURL.
  */
 export function captureCfnResponse(): () => CapturedCfnResponse {
-  // eslint-disable-next-line global-require
-  const https = require('https');
-  let body    = '';
-  https.request.mockImplementation((_options: unknown, callback?: (res: { statusCode: number }) => void) => {
+  let body = '';
+  jest.mocked(https.request).mockImplementation(((...[, callback]: [unknown, ((res: { statusCode: number }) => void)?]) => {
     if (callback) {
       callback({ statusCode: 200 });
     }
     return new Writable({
-      write(chunk: Buffer, _encoding: string, done: () => void) {
+      write(...[chunk, , done]: [Buffer, BufferEncoding, () => void]) {
         body += chunk.toString();
         done();
       },
     });
-  });
-  return () => JSON.parse(body) as CapturedCfnResponse;
+  }) as typeof https.request);
+  return () => {
+    const sent: unknown = JSON.parse(body);
+    t.assert(sent, isCapturedCfnResponse);
+    return sent;
+  };
 }

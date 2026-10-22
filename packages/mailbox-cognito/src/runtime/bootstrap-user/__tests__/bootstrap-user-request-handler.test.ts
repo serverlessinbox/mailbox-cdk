@@ -13,38 +13,36 @@ import {
   CognitoIdentityProviderClient,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { createCloudFormationClient, ExpectedFailure, isParentStackRollingBack, LoggerBuffer, toStackId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                                     from 'aws-sdk-client-mock';
+import { createCloudFormationClient, ExpectedFailure, LoggerBuffer, ParentStackStatus, toStackId }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                                                 from 'aws-sdk-client-mock';
 
-import { PASSWORD_SET_AT_INSTALL_TIME }                                                                   from '../bootstrap-user-answers';
-import { BootstrapUserRequestHandler }                                                                    from '../bootstrap-user-request-handler';
-import { UserEnsurer }                                                                                    from '../ensure-user';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                                               from '../bootstrap-user-answers';
+import { BootstrapUserRequestHandler }                                                                from '../bootstrap-user-request-handler';
+import { UserEnsurer }                                                                                from '../ensure-user';
 
-import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID }                      from './bootstrap-user-helpers';
-
-// The stack-status lookup belongs to isParentStackRollingBack and is pinned by its own tests, so this suite
-// mocks that function and lets everything else run for real.
-jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
-  ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
-  isParentStackRollingBack: jest.fn(),
-}));
-
-const mockIsParentStackRollingBack = isParentStackRollingBack as jest.MockedFunction<typeof isParentStackRollingBack>;
+import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID }                  from './bootstrap-user-helpers';
 
 const SUPPLIED_PASSWORD = 'Supplied1Password';
 
+// The stack-status lookup belongs to ParentStackStatus and is pinned by its own tests, so this suite replaces
+// its answer and lets everything else run for real.
 describe('BootstrapUserRequestHandler', () => {
-  const cognitoMock    = mockClient(CognitoIdentityProviderClient);
-  const cloudFormation = createCloudFormationClient();
-  const logger         = new LoggerBuffer('test-service', 'error');
+  const cognitoMock       = mockClient(CognitoIdentityProviderClient);
+  const logger            = new LoggerBuffer('test-service', 'error');
+  const parentStackStatus = new ParentStackStatus(createCloudFormationClient(), logger);
+  let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
   let requestHandler: BootstrapUserRequestHandler;
 
   beforeEach(() => {
     cognitoMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
-    mockIsParentStackRollingBack.mockReset();
-    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({}), logger), cloudFormation, logger);
+    isRollingBack  = jest.spyOn(parentStackStatus, 'isRollingBack');
+    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({}), logger), parentStackStatus, logger);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('handle', () => {
@@ -118,32 +116,32 @@ describe('BootstrapUserRequestHandler', () => {
     const failure = new Error('cognito failed');
 
     it('answers an Update that fails while the parent stack rolls back with the marker', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+      isRollingBack.mockResolvedValue(true);
 
       const answer = await requestHandler.answerFailure(request('Update'), failure);
 
       expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
     });
 
-    it('asks about the stack of the request through the CloudFormation client it was given', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+    it('asks about the stack of the request', async () => {
+      isRollingBack.mockResolvedValue(true);
 
       await requestHandler.answerFailure(request('Update'), failure);
 
-      expect(mockIsParentStackRollingBack).toHaveBeenCalledWith(toStackId(STACK_ID), cloudFormation, logger);
+      expect(isRollingBack).toHaveBeenCalledWith(toStackId(STACK_ID));
     });
 
     it('throws the failure of an Update when the parent stack is not rolling back', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(false);
+      isRollingBack.mockResolvedValue(false);
 
       await expect(requestHandler.answerFailure(request('Update'), failure)).rejects.toBe(failure);
     });
 
     it('throws the failure of a Create without consulting the stack status', async () => {
-      mockIsParentStackRollingBack.mockResolvedValue(true);
+      isRollingBack.mockResolvedValue(true);
 
       await expect(requestHandler.answerFailure(request('Create'), failure)).rejects.toBe(failure);
-      expect(mockIsParentStackRollingBack).not.toHaveBeenCalled();
+      expect(isRollingBack).not.toHaveBeenCalled();
     });
   });
 });

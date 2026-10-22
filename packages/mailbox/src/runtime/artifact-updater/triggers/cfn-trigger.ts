@@ -1,11 +1,12 @@
-import type { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import {
   answerRequestWithBadConfig,
   emitManualFinalize,
-  isParentStackRollingBack,
-  toStackId,
+  readCustomResourceRequest,
+  toPhysicalResourceId,
   type CustomResourceAnswer,
   type CustomResourceRequest,
+  type ParentStackStatus,
+  type PhysicalResourceId,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { wrapHandler }                                     from 'aws-custom-resources';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
@@ -14,7 +15,7 @@ import type { NewUpdateCycle, UpdaterTrigger }             from './updater-trigg
 
 /** The answer to CloudFormation: the physical id when this resource sets one, and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type CfnTriggerAnswer = {
-  readonly PhysicalResourceId?: string;
+  readonly PhysicalResourceId?: PhysicalResourceId;
   readonly Data: Record<string, never>;
 };
 
@@ -29,7 +30,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
   private readonly event: CloudFormationCustomResourceEvent;
   private readonly context: Context;
   private readonly newUpdateCycle: NewUpdateCycle;
-  private readonly cloudFormation: CloudFormationClient;
+  private readonly parentStackStatus: ParentStackStatus;
   private readonly configError: string | undefined;
   private readonly serviceName: string;
 
@@ -37,25 +38,25 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     event: CloudFormationCustomResourceEvent,
     context: Context,
     newUpdateCycle: NewUpdateCycle,
-    cloudFormation: CloudFormationClient,
+    parentStackStatus: ParentStackStatus,
     configError: string | undefined,
     serviceName: string,
   ) {
-    this.event          = event;
-    this.context        = context;
-    this.newUpdateCycle = newUpdateCycle;
-    this.cloudFormation = cloudFormation;
-    this.configError    = configError;
-    this.serviceName    = serviceName;
+    this.event             = event;
+    this.context           = context;
+    this.newUpdateCycle    = newUpdateCycle;
+    this.parentStackStatus = parentStackStatus;
+    this.configError       = configError;
+    this.serviceName       = serviceName;
   }
 
   /** Answers CloudFormation, then throws what the update cycle threw. */
   public async handle(): Promise<void> {
     const cycleFailures: unknown[] = [];
     const answerCloudFormation     = wrapHandler(async (event) => {
-      const request: CustomResourceRequest = event;
+      const request = readCustomResourceRequest(event);
 
-      emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: this.serviceName });
+      emitManualFinalize({ ...event, StackId: request.StackId }, { service: this.serviceName });
       return this.answerRequest(request, cycleFailures);
     });
     await answerCloudFormation(this.event, this.context, () => undefined);
@@ -83,7 +84,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     }
 
     await this.runCycle(cycleFailures);
-    return { PhysicalResourceId: request.LogicalResourceId, Data: {} };
+    return { PhysicalResourceId: toPhysicalResourceId(request.LogicalResourceId), Data: {} };
   }
 
   /**
@@ -92,7 +93,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
    * straight to the console.
    */
   private async answerBadConfig(request: CustomResourceRequest, configError: string): Promise<CustomResourceAnswer> {
-    if (request.RequestType === 'Update' && (await isParentStackRollingBack(toStackId(request.StackId), this.cloudFormation))) {
+    if (request.RequestType === 'Update' && (await this.parentStackStatus.isRollingBack(request.StackId))) {
       console.error('Configuration error on Update during parent stack rollback; responding SUCCESS', { error: configError });
       return { PhysicalResourceId: request.PhysicalResourceId };
     }

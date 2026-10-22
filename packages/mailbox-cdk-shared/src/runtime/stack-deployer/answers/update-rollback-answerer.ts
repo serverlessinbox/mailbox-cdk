@@ -1,8 +1,6 @@
-import type { CloudFormationClient }         from '@aws-sdk/client-cloudformation';
-
 import type { Region }                       from '../../../runtime/handler-kit/aws-identifiers';
 import type { StackName }                    from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { isParentStackRollingBack }          from '../../../runtime/handler-kit/custom-resource/custom-resource-rollback-detector';
+import type { ParentStackStatus }            from '../../../runtime/handler-kit/custom-resource/parent-stack-status';
 import type { LoggerBuffer }                 from '../../../runtime/handler-kit/logger-buffer';
 import type { OperationInput, RequestType }  from '../stack/stack-deployment';
 
@@ -33,16 +31,16 @@ export interface SubStackOutputs {
  * answers with. Every other request, and an Update the outputs of which cannot be read, is left to fail.
  */
 export class UpdateRollbackAnswerer implements UpdateRollbackAnswers {
-  private readonly parentStack: CloudFormationClient;
+  private readonly parentStackStatus: ParentStackStatus;
   private readonly subStacks: SubStackOutputs;
   private readonly responder: CfnResponder;
   private readonly logger: LoggerBuffer;
 
-  constructor(parentStack: CloudFormationClient, subStacks: SubStackOutputs, responder: CfnResponder, logger: LoggerBuffer) {
-    this.parentStack = parentStack;
-    this.subStacks   = subStacks;
-    this.responder   = responder;
-    this.logger      = logger;
+  constructor(parentStackStatus: ParentStackStatus, subStacks: SubStackOutputs, responder: CfnResponder, logger: LoggerBuffer) {
+    this.parentStackStatus = parentStackStatus;
+    this.subStacks         = subStacks;
+    this.responder         = responder;
+    this.logger            = logger;
   }
 
   async answerSuccess(request: FailedRequest, target: CfnReplyTarget, failureReason: string): Promise<boolean> {
@@ -50,7 +48,7 @@ export class UpdateRollbackAnswerer implements UpdateRollbackAnswers {
       return false;
     }
 
-    if (!(await isParentStackRollingBack(target.cfn.StackId, this.parentStack, this.logger))) {
+    if (!(await this.parentStackStatus.isRollingBack(target.cfn.StackId))) {
       return false;
     }
 

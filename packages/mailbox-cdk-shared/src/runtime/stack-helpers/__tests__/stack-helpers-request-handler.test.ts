@@ -7,21 +7,12 @@
 import { GetHostedZoneCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { mockClient }                          from 'aws-sdk-client-mock';
 
-import type { CustomResourceRequest }          from '../../handler-kit/custom-resource/custom-resource-request';
+import { cfnRequest }                          from '../../handler-kit/custom-resource/__tests__/custom-resource-request-helpers';
 import { LoggerBuffer }                        from '../../handler-kit/logger-buffer';
 import { StackHelpersRequestHandler }          from '../stack-helpers-request-handler';
 import { StackHelpersResolver }                from '../stack-helpers-resolver';
 
-function request(requestType: string): CustomResourceRequest {
-  return {
-    RequestType: requestType,
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-    RequestId: 'request-123',
-    LogicalResourceId: 'StackHelpers',
-    PhysicalResourceId: 'physical-id',
-    ResourceProperties: { HostedZoneId: 'Z123', DataStackName: 'Data_Stack' },
-  };
-}
+const PROPERTIES = { HostedZoneId: 'Z123', DataStackName: 'Data_Stack' };
 
 describe('StackHelpersRequestHandler', () => {
   const route53Mock = mockClient(Route53Client);
@@ -35,14 +26,14 @@ describe('StackHelpersRequestHandler', () => {
   });
 
   it('answers Delete with nothing and without looking anything up', async () => {
-    const answer = await handler.handle(request('Delete'));
+    const answer = await handler.handle(cfnRequest('Delete', PROPERTIES));
 
     expect(answer).toEqual({});
     expect(route53Mock.commandCalls(GetHostedZoneCommand)).toHaveLength(0);
   });
 
-  it.each(['Create', 'Update'])('answers %s with the attributes the resolver derives from the properties', async (requestType) => {
-    const answer = await handler.handle(request(requestType));
+  it.each(['Create', 'Update'] as const)('answers %s with the attributes the resolver derives from the properties', async (requestType) => {
+    const answer = await handler.handle(cfnRequest(requestType, PROPERTIES));
 
     expect(answer).toEqual({
       Data: { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },

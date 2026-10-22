@@ -4,18 +4,9 @@
  * error so CloudFormation gets a FAILED that names the problem.
  */
 
-import { answerRequestWithBadConfig } from '../custom-resource-bad-config-answer';
-import type { CustomResourceRequest } from '../custom-resource-request';
+import { answerRequestWithBadConfig }       from '../custom-resource-bad-config-answer';
 
-function request(requestType: string): CustomResourceRequest {
-  return {
-    RequestType: requestType,
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-    RequestId: 'request-123',
-    LogicalResourceId: 'TestResource',
-    PhysicalResourceId: 'physical-id-from-cloudformation',
-  };
-}
+import { cfnRequest, PHYSICAL_RESOURCE_ID } from './custom-resource-request-helpers';
 
 describe('answerRequestWithBadConfig', () => {
   beforeEach(() => {
@@ -27,17 +18,17 @@ describe('answerRequestWithBadConfig', () => {
   });
 
   it('answers SUCCESS to a Delete with the incoming physical id, and logs the configuration error', () => {
-    const answer = answerRequestWithBadConfig(request('Delete'), 'LOG_LEVEL: invalid');
+    const answer = answerRequestWithBadConfig(cfnRequest('Delete'), 'LOG_LEVEL: invalid');
 
-    expect(answer).toEqual({ PhysicalResourceId: 'physical-id-from-cloudformation' });
+    expect(answer).toEqual({ PhysicalResourceId: PHYSICAL_RESOURCE_ID });
     expect(console.error).toHaveBeenCalledWith(
       'Configuration error on Delete; responding SUCCESS so stack deletion is not blocked',
       { error: 'LOG_LEVEL: invalid' },
     );
   });
 
-  it.each(['Create', 'Update'])('throws the configuration error for a %s', (requestType) => {
-    expect(() => answerRequestWithBadConfig(request(requestType), 'LOG_LEVEL: invalid')).toThrow(
+  it.each(['Create', 'Update'] as const)('throws the configuration error for a %s', (requestType) => {
+    expect(() => answerRequestWithBadConfig(cfnRequest(requestType), 'LOG_LEVEL: invalid')).toThrow(
       new Error('LOG_LEVEL: invalid'),
     );
     expect(console.error).not.toHaveBeenCalled();

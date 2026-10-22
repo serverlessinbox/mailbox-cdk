@@ -1,6 +1,5 @@
-import { CloudFormationClient }                                                                     from '@aws-sdk/client-cloudformation';
 import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand }            from '@aws-sdk/client-sfn';
-import { CaughtError, emitManualFinalize, isParentStackBeingDeleted, toStackId, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, emitManualFinalize, toStackId, type LoggerBuffer, type ParentStackStatus }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent }                                                   from 'aws-lambda';
 
 import type { StarterConfig }                                                                       from './config';
@@ -22,7 +21,7 @@ export class SweepStarter {
   constructor(
     private readonly config: StarterConfig,
     private readonly sfnClient: SFNClient,
-    private readonly cfnClient: CloudFormationClient,
+    private readonly parentStackStatus: ParentStackStatus,
     private readonly planner: SweepTargetPlanner,
     private readonly logger: LoggerBuffer,
   ) {}
@@ -69,7 +68,7 @@ export class SweepStarter {
   }
 
   private async isDeleteOfLiveStack(event: CloudFormationCustomResourceEvent): Promise<boolean> {
-    return event.RequestType === 'Delete' && !(await isParentStackBeingDeleted(toStackId(event.StackId), this.cfnClient, this.logger));
+    return event.RequestType === 'Delete' && !(await this.parentStackStatus.isBeingDeleted(toStackId(event.StackId)));
   }
 
   private logSkippedSweep(event: CloudFormationCustomResourceEvent): void {

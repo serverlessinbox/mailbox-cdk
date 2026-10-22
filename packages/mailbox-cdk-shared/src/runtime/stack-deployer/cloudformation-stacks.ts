@@ -56,7 +56,7 @@ export class CloudFormationStacks {
       const response = await this.clientFor(op).send(new DescribeStackEventsCommand({ StackName: op.stackName }));
       return this.failureLines(response.StackEvents ?? []);
     } catch (failure) {
-      this.logger.warn(`Failed to describe stack events for ${op.stackName}`, { error: new CaughtError(failure).message ?? String(failure) });
+      this.logger.warn(`Failed to describe stack events for ${op.stackName}`, { error: new CaughtError(failure).readableMessage() });
       return [];
     }
   }
@@ -120,7 +120,7 @@ export class CloudFormationStacks {
   }
 
   private warnOutputsUnreadable(op: OperationInput, failure: unknown): undefined {
-    this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: new CaughtError(failure).message ?? String(failure) });
+    this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: new CaughtError(failure).readableMessage() });
     return undefined;
   }
 

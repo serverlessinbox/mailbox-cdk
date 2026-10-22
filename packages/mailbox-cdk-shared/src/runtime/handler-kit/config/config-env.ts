@@ -100,7 +100,7 @@ export function json<T>(validator: t.StrictValidator<unknown, T>): (raw: string)
     try {
       parsed = JSON.parse(raw);
     } catch (failure) {
-      throw new Error(`invalid JSON: ${new CaughtError(failure).message ?? String(failure)}`);
+      throw new Error(`invalid JSON: ${new CaughtError(failure).readableMessage()}`);
     }
 
     const errors: string[] = [];
@@ -161,7 +161,7 @@ function parseOrReport<T>(l: Loader, name: string, raw: string, parse: (raw: str
   try {
     return parse(raw);
   } catch (failure) {
-    l.report(name, new CaughtError(failure).message ?? String(failure));
+    l.report(name, new CaughtError(failure).readableMessage());
     return whenInvalid;
   }
 }

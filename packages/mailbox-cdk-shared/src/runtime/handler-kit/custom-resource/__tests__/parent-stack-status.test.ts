@@ -4,16 +4,16 @@
  * during a normal update or skip work it must do, and a wrong false during a rollback strands the stack.
  */
 
-import { CloudFormationClient, DescribeStacksCommand }         from '@aws-sdk/client-cloudformation';
-import { mockClient }                                          from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import { mockClient }                                  from 'aws-sdk-client-mock';
 
-import { LoggerBuffer }                                        from '../../logger-buffer';
-import { toStackId }                                           from '../custom-resource-identifiers';
-import { isParentStackBeingDeleted, isParentStackRollingBack } from '../custom-resource-rollback-detector';
+import { LoggerBuffer }                                from '../../logger-buffer';
+import { toStackId }                                   from '../custom-resource-identifiers';
+import { ParentStackStatus }                           from '../parent-stack-status';
 
 const STACK_ID = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid');
 
-describe('parent stack detectors', () => {
+describe('ParentStackStatus', () => {
   const cfnMock   = mockClient(CloudFormationClient);
   const cfnClient = new CloudFormationClient({});
 
@@ -22,32 +22,32 @@ describe('parent stack detectors', () => {
   });
 
   describe.each([
-    { name: 'isParentStackRollingBack', detect: isParentStackRollingBack, matchingStatus: 'UPDATE_ROLLBACK_IN_PROGRESS', otherStatus: 'UPDATE_IN_PROGRESS' },
-    { name: 'isParentStackBeingDeleted', detect: isParentStackBeingDeleted, matchingStatus: 'DELETE_IN_PROGRESS', otherStatus: 'UPDATE_COMPLETE' },
-  ])('$name', ({ detect, matchingStatus, otherStatus }) => {
+    { name: 'isRollingBack', ask: (status: ParentStackStatus) => status.isRollingBack(STACK_ID), matchingStatus: 'UPDATE_ROLLBACK_IN_PROGRESS', otherStatus: 'UPDATE_IN_PROGRESS' },
+    { name: 'isBeingDeleted', ask: (status: ParentStackStatus) => status.isBeingDeleted(STACK_ID), matchingStatus: 'DELETE_IN_PROGRESS', otherStatus: 'UPDATE_COMPLETE' },
+  ])('$name', ({ ask, matchingStatus, otherStatus }) => {
     it(`returns true for ${matchingStatus} and asks for the stack by its id`, async () => {
       cfnMock.on(DescribeStacksCommand).resolves({ Stacks: [{ StackName: 'mail', CreationTime: new Date(0), StackStatus: matchingStatus as never }] });
 
-      await expect(detect(STACK_ID, cfnClient)).resolves.toBe(true);
+      await expect(ask(new ParentStackStatus(cfnClient))).resolves.toBe(true);
       expect(cfnMock.commandCalls(DescribeStacksCommand)[0].args[0].input).toEqual({ StackName: STACK_ID });
     });
 
     it(`returns false for ${otherStatus}`, async () => {
       cfnMock.on(DescribeStacksCommand).resolves({ Stacks: [{ StackName: 'mail', CreationTime: new Date(0), StackStatus: otherStatus as never }] });
 
-      await expect(detect(STACK_ID, cfnClient)).resolves.toBe(false);
+      await expect(ask(new ParentStackStatus(cfnClient))).resolves.toBe(false);
     });
 
     it('returns false when no stack is returned', async () => {
       cfnMock.on(DescribeStacksCommand).resolves({ Stacks: [] });
 
-      await expect(detect(STACK_ID, cfnClient)).resolves.toBe(false);
+      await expect(ask(new ParentStackStatus(cfnClient))).resolves.toBe(false);
     });
 
     it('returns false without a logger when the lookup fails', async () => {
       cfnMock.on(DescribeStacksCommand).rejects(new Error('Stack not found'));
 
-      await expect(detect(STACK_ID, cfnClient)).resolves.toBe(false);
+      await expect(ask(new ParentStackStatus(cfnClient))).resolves.toBe(false);
     });
 
     it('returns false and records the failure as a buffered warn on the given logger when the lookup fails', async () => {
@@ -55,7 +55,7 @@ describe('parent stack detectors', () => {
       const logger         = new LoggerBuffer();
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      await expect(detect(STACK_ID, cfnClient, logger)).resolves.toBe(false);
+      await expect(ask(new ParentStackStatus(cfnClient, logger))).resolves.toBe(false);
       expect(consoleWarnSpy).not.toHaveBeenCalled();
 
       logger.flush();
@@ -69,7 +69,7 @@ describe('parent stack detectors', () => {
     const logger         = new LoggerBuffer(undefined, 'warn');
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-    await isParentStackRollingBack(STACK_ID, cfnClient, logger);
+    await new ParentStackStatus(cfnClient, logger).isRollingBack(STACK_ID);
 
     expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to check parent stack status: plain text');
     consoleWarnSpy.mockRestore();

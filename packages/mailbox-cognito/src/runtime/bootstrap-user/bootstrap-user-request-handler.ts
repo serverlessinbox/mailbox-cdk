@@ -1,12 +1,10 @@
 import {
   CaughtError,
   ExpectedFailure,
-  isParentStackRollingBack,
   toPhysicalResourceId,
-  toStackId,
-  type CloudFormationClient,
   type CustomResourceRequest,
   type LoggerBuffer,
+  type ParentStackStatus,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { generateSecurePassword }                                                       from '../../utils/secure-password';
@@ -24,13 +22,13 @@ const DEFAULT_USERNAME = 'admin';
  */
 export class BootstrapUserRequestHandler {
   private readonly userEnsurer: UserEnsurer;
-  private readonly cloudFormation: CloudFormationClient;
+  private readonly parentStackStatus: ParentStackStatus;
   private readonly logger: LoggerBuffer;
 
-  constructor(userEnsurer: UserEnsurer, cloudFormation: CloudFormationClient, logger: LoggerBuffer) {
-    this.userEnsurer    = userEnsurer;
-    this.cloudFormation = cloudFormation;
-    this.logger         = logger;
+  constructor(userEnsurer: UserEnsurer, parentStackStatus: ParentStackStatus, logger: LoggerBuffer) {
+    this.userEnsurer       = userEnsurer;
+    this.parentStackStatus = parentStackStatus;
+    this.logger            = logger;
   }
 
   /**
@@ -58,7 +56,7 @@ export class BootstrapUserRequestHandler {
    * the stack in UPDATE_ROLLBACK_FAILED. Every other failure is thrown on.
    */
   public async answerFailure(request: CustomResourceRequest, failure: unknown): Promise<BootstrapUserAnswer> {
-    const reason = new CaughtError(failure).message ?? String(failure);
+    const reason = new CaughtError(failure).readableMessage();
     this.logger.error('bootstrap_user_handler_failed', { message: reason });
 
     if (await this.parentStackIsRollingBack(request)) {
@@ -109,6 +107,6 @@ export class BootstrapUserRequestHandler {
     if (request.RequestType !== 'Update') {
       return false;
     }
-    return isParentStackRollingBack(toStackId(request.StackId), this.cloudFormation, this.logger);
+    return this.parentStackStatus.isRollingBack(request.StackId);
   }
 }

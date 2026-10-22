@@ -1,4 +1,6 @@
-import type { handler } from '../handler';
+import { readCustomResourceRequest }  from '../../../runtime/handler-kit/custom-resource/custom-resource-request-reader';
+import type { CustomResourceRequest } from '../../../runtime/handler-kit/custom-resource/custom-resource-request';
+import type { handler }               from '../handler';
 
 export type HandlerContext = Parameters<typeof handler>[1];
 
@@ -84,6 +86,18 @@ export function fakeUpdateEvent(resourceProperties: Record<string, unknown>): Fa
 
 export function fakeDeleteEvent(resourceProperties: Record<string, unknown>): FakeDeleteEvent {
   return { ...fakeCfnEventBase(resourceProperties), RequestType: 'Delete', PhysicalResourceId: PHYSICAL_RESOURCE_ID };
+}
+
+export function createRequest(resourceProperties: Record<string, unknown>): CustomResourceRequest {
+  return readCustomResourceRequest(fakeCreateEvent(resourceProperties));
+}
+
+export function updateRequest(resourceProperties: Record<string, unknown>): CustomResourceRequest {
+  return readCustomResourceRequest(fakeUpdateEvent(resourceProperties));
+}
+
+export function deleteRequest(resourceProperties: Record<string, unknown>, physicalResourceId: string = PHYSICAL_RESOURCE_ID): CustomResourceRequest {
+  return readCustomResourceRequest({ ...fakeDeleteEvent(resourceProperties), PhysicalResourceId: physicalResourceId });
 }
 
 export function dataSource(overrides: Record<string, unknown> = {}): Record<string, unknown> {

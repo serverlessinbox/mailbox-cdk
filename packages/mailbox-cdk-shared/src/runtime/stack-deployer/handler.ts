@@ -2,6 +2,7 @@ import { CloudFormationClient }               from '@aws-sdk/client-cloudformati
 import { SFNClient }                          from '@aws-sdk/client-sfn';
 
 import * as env                               from '../../runtime/handler-kit/config/config-env';
+import { ParentStackStatus }                  from '../../runtime/handler-kit/custom-resource/parent-stack-status';
 import { ExpectedFailure }                    from '../../runtime/handler-kit/errors/expected-failure';
 import { LoggerBuffer }                       from '../../runtime/handler-kit/logger-buffer';
 import { withSmokeTest }                      from '../../runtime/handler-kit/with-smoke-test';
@@ -53,7 +54,7 @@ export const starterHandler = withSmokeTest(async (event: unknown, context: Invo
   const starter         = new StackDeployerStarter(starterConfig.stateMachineArn, stepFunctions, events, responder, logger);
   const requestHandler  = new StackDeployerStarterRequestHandler(events, responder, starter);
   const stacks          = new CloudFormationStacks((region) => cloudFormationClients.forRegion(region), starterConfig.region, logger);
-  const failureAnswerer = new FailureAnswerer(events, responder, new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger));
+  const failureAnswerer = new FailureAnswerer(events, responder, new UpdateRollbackAnswerer(new ParentStackStatus(parentStackCloudFormation, logger), stacks, responder, logger));
 
   try {
     await requestHandler.handle(event, context.logStreamName);
@@ -73,7 +74,7 @@ export const workerHandler = withSmokeTest(async (event: unknown, context: Invoc
 
   const logger          = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
   const stacks          = new CloudFormationStacks((region) => cloudFormationClients.forRegion(region), workerConfig.region, logger);
-  const rollback        = new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger);
+  const rollback        = new UpdateRollbackAnswerer(new ParentStackStatus(parentStackCloudFormation, logger), stacks, responder, logger);
   const worker          = new StackDeployerWorker(stacks, responder, rollback, logger);
   const requestHandler  = new StackDeployerWorkerRequestHandler(events, responder, worker);
   const failureAnswerer = new FailureAnswerer(events, responder, rollback);

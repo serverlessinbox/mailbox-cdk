@@ -1,6 +1,6 @@
-import type { CustomResourceRequest }   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { readCustomResourceRequest, type CustomResourceRequest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { BootstrapUserProperties } from '../properties';
+import type { BootstrapUserProperties }                          from '../properties';
 
 /** The keys, with the values they carry, that CloudFormation hands the Lambda for the bootstrap user resource. */
 export type TemplateProperties = BootstrapUserProperties & {
@@ -28,12 +28,12 @@ export function request(
   requestType: 'Create' | 'Update' | 'Delete',
   resourceProperties: unknown = templateProperties(),
 ): CustomResourceRequest {
-  return {
+  return readCustomResourceRequest({
     RequestType: requestType,
     StackId: STACK_ID,
     RequestId: 'request-id-1',
     LogicalResourceId: 'BootstrapUserResource',
     ...(requestType === 'Create' ? {} : { PhysicalResourceId: PHYSICAL_RESOURCE_ID }),
     ResourceProperties: resourceProperties,
-  };
+  });
 }

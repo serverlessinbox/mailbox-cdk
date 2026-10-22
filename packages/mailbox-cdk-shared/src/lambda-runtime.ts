@@ -13,6 +13,7 @@ export { loadBaseConfig, loadLogLevel, type BaseConfig } from './runtime/handler
 export { ExpectedFailure } from './runtime/handler-kit/errors/expected-failure';
 export { answerRequestWithBadConfig } from './runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
 export type { CustomResourceAnswer, CustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request';
+export { readCustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request-reader';
 export { CaughtError } from './runtime/handler-kit/errors/caught-error';
 export { parseArn, type ParsedArn } from './runtime/handler-kit/arn';
 export { isBrandedString, type Branded, type Unbranded } from './runtime/handler-kit/branded';
@@ -58,4 +59,4 @@ export {
 } from './runtime/handler-kit/auth-identifiers';
 export { ServerlessInboxTagKeys } from './runtime/handler-kit/tag-keys';
 export { createCloudFormationClient, type CloudFormationClient } from './runtime/handler-kit/cloudformation-client';
-export { isParentStackRollingBack, isParentStackBeingDeleted } from './runtime/handler-kit/custom-resource/custom-resource-rollback-detector';
+export { ParentStackStatus } from './runtime/handler-kit/custom-resource/parent-stack-status';

@@ -1,28 +1,28 @@
-import { CloudFormationClient }                                                     from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient }                                                         from '@aws-sdk/client-cloudfront';
-import { LambdaClient }                                                             from '@aws-sdk/client-lambda';
-import { ResourceGroupsTaggingAPIClient }                                           from '@aws-sdk/client-resource-groups-tagging-api';
-import { S3Client }                                                                 from '@aws-sdk/client-s3';
-import { env, LoggerBuffer, type Region }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CloudFormationCustomResourceEvent, Context }                          from 'aws-lambda';
-import { setTimeout as sleep }                                                      from 'node:timers/promises';
+import { CloudFormationClient }                                                                     from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }                                                                         from '@aws-sdk/client-cloudfront';
+import { LambdaClient }                                                                             from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient }                                                           from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client }                                                                                 from '@aws-sdk/client-s3';
+import { env, LoggerBuffer, ParentStackStatus, type Region }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                                          from 'aws-lambda';
+import { setTimeout as sleep }                                                                      from 'node:timers/promises';
 
-import { CfnTrigger }                                                               from './triggers/cfn-trigger';
-import { load }                                                                     from './config';
-import { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
-import { FunctionSmokeTester }                                                      from './lambda-code/function-smoke-tester';
-import { HttpTrigger }                                                              from './triggers/http-trigger';
-import { LambdaCodeRollback }                                                       from './lambda-code/lambda-code-rollback';
-import { LambdaCodeUpdater }                                                        from './lambda-code/lambda-code-updater';
-import { LambdaFunctionCode }                                                       from './lambda-code/lambda-function-code';
-import { ReleaseArtifacts }                                                         from './release-artifacts';
-import { ScheduledTrigger }                                                         from './triggers/scheduled-trigger';
-import type { TriggerBuilder }                                                      from './triggers/trigger-detector';
-import { UiBucketUpdater }                                                          from './ui-bucket-updater';
-import { UpdateCycle }                                                              from './update-cycle';
-import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from './updater-clients';
-import type { HttpTriggerEvent }                                                    from './updater-event';
-import type { ReadyUpdater, UpdaterRuntime }                                        from './updater-runtime';
+import { load }                                                                                     from './config';
+import { EdgeLambdaUpdater }                                                                        from './edge-lambda-updater';
+import { FunctionSmokeTester }                                                                      from './lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }                                                                       from './lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }                                                                        from './lambda-code/lambda-code-updater';
+import { LambdaFunctionCode }                                                                       from './lambda-code/lambda-function-code';
+import { ReleaseArtifacts }                                                                         from './release-artifacts';
+import { CfnTrigger }                                                                               from './triggers/cfn-trigger';
+import { HttpTrigger }                                                                              from './triggers/http-trigger';
+import { ScheduledTrigger }                                                                         from './triggers/scheduled-trigger';
+import type { TriggerBuilder }                                                                      from './triggers/trigger-detector';
+import { UiBucketUpdater }                                                                          from './ui-bucket-updater';
+import { UpdateCycle }                                                                              from './update-cycle';
+import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients }                 from './updater-clients';
+import type { HttpTriggerEvent }                                                                    from './updater-event';
+import type { ReadyUpdater, UpdaterRuntime }                                                        from './updater-runtime';
 
 /**
  * Builds what one invocation works with, from the runtime the entry point loaded once per cold start: the
@@ -50,12 +50,31 @@ export class UpdaterComposition implements TriggerBuilder {
     return { config, cloudFormation, clients: UpdaterComposition.buildUpdaterClients(config.region), error: undefined };
   }
 
+  private static buildUpdaterClients(deploymentRegion: Region): UpdaterClients {
+    const deployment = UpdaterComposition.buildRegionClients(deploymentRegion);
+    return {
+      // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
+      registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
+      deployment,
+      edge: deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
+      cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
+    };
+  }
+
+  private static buildRegionClients(region: Region): RegionClients {
+    return {
+      region,
+      lambda: new LambdaClient({ region }),
+      tagging: new ResourceGroupsTaggingAPIClient({ region }),
+    };
+  }
+
   public cfnTrigger(event: CloudFormationCustomResourceEvent, context: Context): CfnTrigger {
     return new CfnTrigger(
       event,
       context,
       () => this.updateCycle(),
-      this.runtime.cloudFormation,
+      new ParentStackStatus(this.runtime.cloudFormation),
       this.runtime.error,
       this.runtime.config.serviceName,
     );
@@ -114,22 +133,4 @@ export class UpdaterComposition implements TriggerBuilder {
     return this.runtime;
   }
 
-  private static buildUpdaterClients(deploymentRegion: Region): UpdaterClients {
-    const deployment = UpdaterComposition.buildRegionClients(deploymentRegion);
-    return {
-      // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
-      registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
-      deployment,
-      edge: deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
-      cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
-    };
-  }
-
-  private static buildRegionClients(region: Region): RegionClients {
-    return {
-      region,
-      lambda: new LambdaClient({ region }),
-      tagging: new ResourceGroupsTaggingAPIClient({ region }),
-    };
-  }
 }

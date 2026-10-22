@@ -6,8 +6,8 @@ import {
   env,
   ExpectedFailure,
   LoggerBuffer,
-  toStackId,
-  type CustomResourceRequest,
+  readCustomResourceRequest,
+  toPhysicalResourceId,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { wrapHandler }           from 'aws-custom-resources';
 
@@ -24,7 +24,7 @@ const { config, error: configError } = env.tryLoad(load);
  * before a response is sent.
  */
 export const handler = withSmokeTest(wrapHandler(async (event) => {
-  const request: CustomResourceRequest = event;
+  const request = readCustomResourceRequest(event);
 
   if (configError) {
     return answerRequestWithBadConfig(request, configError);
@@ -32,17 +32,17 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
-  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
 
   try {
-    if (event.RequestType === 'Delete') {
+    if (request.RequestType === 'Delete') {
       return {};
     }
 
     const tableOverrideResolver = new TableOverrideResolver(dynamodb, logger);
     return {
-      PhysicalResourceId: event.LogicalResourceId,
-      Data: await tableOverrideResolver.resolve(event.ResourceProperties),
+      PhysicalResourceId: toPhysicalResourceId(request.LogicalResourceId),
+      Data: await tableOverrideResolver.resolve(request.ResourceProperties),
     };
   } catch (thrown) {
     logger.error(thrown instanceof Error ? thrown.message : String(thrown));

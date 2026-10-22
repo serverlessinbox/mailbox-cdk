@@ -6,9 +6,9 @@ import {
   env,
   ExpectedFailure,
   LoggerBuffer,
-  toStackId,
+  ParentStackStatus,
+  readCustomResourceRequest,
   withSmokeTest,
-  type CustomResourceRequest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { wrapHandler }                 from 'aws-custom-resources';
 
@@ -22,17 +22,17 @@ const cognito                        = new CognitoIdentityProviderClient({});
 const cloudFormation                 = createCloudFormationClient();
 
 export const handler = withSmokeTest(wrapHandler(async (event) => {
-  const request: CustomResourceRequest = event;
+  const request = readCustomResourceRequest(event);
 
   if (configError) {
     const badConfigAnswer = answerRequestWithBadConfig(request, configError);
     return BootstrapUserAnswers.withPasswordMarker(badConfigAnswer.PhysicalResourceId);
   }
 
-  emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
+  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
 
   const logger         = new LoggerBuffer(config.serviceName, config.logLevel);
-  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), cloudFormation, logger);
+  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), new ParentStackStatus(cloudFormation, logger), logger);
 
   try {
     return await requestHandler.handle(request);

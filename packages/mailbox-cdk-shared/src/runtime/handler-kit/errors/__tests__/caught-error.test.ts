@@ -40,6 +40,18 @@ describe('CaughtError', () => {
     });
   });
 
+  describe('readableMessage', () => {
+    it('is the message of an Error, which stays empty when the Error has none', () => {
+      expect(new CaughtError(sdkError('E', 'Stack does not exist')).readableMessage()).toBe('Stack does not exist');
+      expect(new CaughtError(sdkError('E', '')).readableMessage()).toBe('');
+    });
+
+    it('is the string form of a value that is not an Error', () => {
+      expect(new CaughtError('plain text').readableMessage()).toBe('plain text');
+      expect(new CaughtError(42).readableMessage()).toBe('42');
+    });
+  });
+
   describe('describe', () => {
     it('is the name and message on one line', () => {
       expect(new CaughtError(sdkError('ResourceNotFoundException', 'not found', { requestId: 'req-1' })).describe()).toBe('ResourceNotFoundException: not found');
