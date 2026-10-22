@@ -32,8 +32,14 @@ export interface ArtifactLambdaProps extends FunctionOptions {
    */
   readonly packageName: string;
 
+  /**
+   * The Lambda runtime the function runs on. Fixed by each language wrapper.
+   */
   readonly runtime: Runtime;
 
+  /**
+   * The entry point the runtime invokes. Fixed by each language wrapper.
+   */
   readonly handler: string;
 
   /**
@@ -58,7 +64,7 @@ export interface ArtifactLambdaProps extends FunctionOptions {
  *
  * The base of the Go and TypeScript Lambda wrappers; it chooses neither the runtime nor the handler.
  */
-export class ArtifactLambda extends LambdaFunction {
+export abstract class ArtifactLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: ArtifactLambdaProps) {
     const {
       lambdaId,

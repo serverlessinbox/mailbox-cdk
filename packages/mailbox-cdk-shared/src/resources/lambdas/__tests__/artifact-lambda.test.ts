@@ -37,8 +37,11 @@ function newFixture(): LambdaFixture {
   return { stack, artifactResolver };
 }
 
+/** Concrete stand-in for the abstract ArtifactLambda, so the suite can construct the base behaviour. */
+class TestArtifactLambda extends ArtifactLambda {}
+
 function newLambda(fixture: LambdaFixture, overrides: Partial<ArtifactLambdaProps> = {}): ArtifactLambda {
-  return new ArtifactLambda(fixture.stack, 'lambda', {
+  return new TestArtifactLambda(fixture.stack, 'lambda', {
     lambdaId: 'stack-deployer',
     packageName: 'test-package',
     pipeline: 'infra',
