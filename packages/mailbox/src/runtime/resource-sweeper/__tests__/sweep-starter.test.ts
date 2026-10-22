@@ -37,6 +37,7 @@ const sfnMock = mockClient(SFNClient);
 const cfnMock = mockClient(CloudFormationClient);
 
 const STALE_EXECUTION_ARN = 'arn:aws:states:us-west-2:123456789012:execution:mailbox-sweeper-ops-abc123:stale';
+const STARTER_ANSWER      = { PhysicalResourceId: 'mailbox-deferred-removal', Data: {} };
 
 function parentStackInStatus(status: StackStatus): void {
   cfnMock.on(DescribeStacksCommand).resolves({
@@ -134,8 +135,8 @@ describe('SweepStarter', () => {
   });
 
   describe('starting the sweep', () => {
-    it('makes no Step Functions call when the request has nothing to sweep', async () => {
-      await createSweepStarter().handle(createEvent());
+    it('makes no Step Functions call when the request has nothing to sweep, and still answers with the physical id', async () => {
+      await expect(createSweepStarter().handle(createEvent())).resolves.toEqual(STARTER_ANSWER);
 
       expect(sfnMock.calls()).toHaveLength(0);
     });
@@ -155,7 +156,7 @@ describe('SweepStarter', () => {
         Object.assign(new Error('already exists'), { name: 'ExecutionAlreadyExists' }),
       );
 
-      await expect(createSweepStarter().handle(updateEvent())).resolves.toBeUndefined();
+      await expect(createSweepStarter().handle(updateEvent())).resolves.toEqual(STARTER_ANSWER);
 
       expect(consoleError).not.toHaveBeenCalled();
     });
@@ -165,7 +166,7 @@ describe('SweepStarter', () => {
         Object.assign(new Error('state machine is deleting'), { name: 'StateMachineDeleting' }),
       );
 
-      await expect(createSweepStarter().handle(updateEvent())).resolves.toBeUndefined();
+      await expect(createSweepStarter().handle(updateEvent())).resolves.toEqual(STARTER_ANSWER);
 
       expect(consoleError).toHaveBeenCalledWith(
         'Failed to start SFN execution (best-effort, will not propagate)',

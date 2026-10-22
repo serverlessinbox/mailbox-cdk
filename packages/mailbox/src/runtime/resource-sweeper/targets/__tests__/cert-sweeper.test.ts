@@ -25,8 +25,9 @@ const CERT_ARN        = 'arn:aws:acm:us-west-2:123456789012:certificate/abc-123'
 const INPUT: CertRemovalInput = { certArn: CERT_ARN, rootStackName: ROOT_STACK_NAME, rootStackId: 'guid-1' };
 
 function sweep() {
-  const logger = new LoggerBuffer();
-  return new CertSweeper(new ACMClient({ region: 'us-west-2' }), new RootStackMembership(logger), logger).sweep(INPUT);
+  const logger  = new LoggerBuffer();
+  const sweeper = new CertSweeper(new ACMClient({ region: 'us-west-2' }), new RootStackMembership(logger), logger);
+  return sweeper.sweep(INPUT);
 }
 
 function taggedWithThisRootStack(): void {
@@ -52,7 +53,7 @@ describe('CertSweeper', () => {
 
     const result = await sweep();
 
-    expect(result).toEqual({ target: 'cert', status: 'done' });
+    expect(result).toEqual({ target: 'cert', status: 'SUCCESS' });
     expect(acmMock.commandCalls(DeleteCertificateCommand)[0].args[0].input).toEqual({ CertificateArn: CERT_ARN });
   });
 
@@ -66,7 +67,7 @@ describe('CertSweeper', () => {
 
     expect(result).toEqual({
       target: 'cert',
-      status: 'retry',
+      status: 'RETRY',
       reason: 'InUseBy: arn:aws:cloudfront::123456789012:distribution/ABC',
     });
     expect(acmMock.commandCalls(DeleteCertificateCommand)).toHaveLength(0);
@@ -77,7 +78,7 @@ describe('CertSweeper', () => {
       Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'cert', status: 'done' });
+    expect(await sweep()).toEqual({ target: 'cert', status: 'SUCCESS' });
   });
 
   it('fails on root stack mismatch without checking use or attempting any delete', async () => {
@@ -87,7 +88,7 @@ describe('CertSweeper', () => {
 
     const result = await sweep();
 
-    expect(result.status).toBe('failed');
+    expect(result.status).toBe('FAILED');
     expect(result.reason).toBe('Root stack mismatch (expected test-stack / guid-1, got someone-elses-stack / undefined)');
     expect(acmMock.commandCalls(DescribeCertificateCommand)).toHaveLength(0);
     expect(acmMock.commandCalls(DeleteCertificateCommand)).toHaveLength(0);
@@ -98,6 +99,6 @@ describe('CertSweeper', () => {
       Object.assign(new Error('boom'), { name: 'InternalException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'cert', status: 'failed', reason: 'InternalException: boom' });
+    expect(await sweep()).toEqual({ target: 'cert', status: 'FAILED', reason: 'InternalException: boom' });
   });
 });

@@ -84,7 +84,7 @@ describe('StackFailureDetectorSweeper', () => {
 
     const result = await sweep();
 
-    expect(result).toEqual({ target: 'detector', status: 'done' });
+    expect(result).toEqual({ target: 'detector', status: 'SUCCESS' });
     expect(eventsMock.commandCalls(RemoveTargetsCommand)[0].args[0].input).toEqual({
       Rule: 'mailbox-diag-rule-abc123',
       Ids:  ['Target0'],
@@ -120,7 +120,7 @@ describe('StackFailureDetectorSweeper', () => {
       Object.assign(new Error('no such entity'), { name: 'NoSuchEntityException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'detector', status: 'done' });
+    expect(await sweep()).toEqual({ target: 'detector', status: 'SUCCESS' });
   });
 
   it('fails immediately on rule root stack mismatch without touching the function or role', async () => {
@@ -130,7 +130,7 @@ describe('StackFailureDetectorSweeper', () => {
 
     expect(result).toEqual({
       target: 'detector',
-      status: 'failed',
+      status: 'FAILED',
       reason: 'Root stack mismatch (expected test-stack / guid-1, got someone-elses-stack / undefined)',
     });
     expect(eventsMock.commandCalls(DeleteRuleCommand)).toHaveLength(0);
@@ -144,7 +144,7 @@ describe('StackFailureDetectorSweeper', () => {
 
     const result = await sweep();
 
-    expect(result.status).toBe('failed');
+    expect(result.status).toBe('FAILED');
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)).toHaveLength(0);
     expect(iamMock.commandCalls(ListRoleTagsCommand)).toHaveLength(0);
   });
@@ -155,7 +155,7 @@ describe('StackFailureDetectorSweeper', () => {
 
     const result = await sweep();
 
-    expect(result.status).toBe('failed');
+    expect(result.status).toBe('FAILED');
     expect(iamMock.commandCalls(DeleteRolePolicyCommand)).toHaveLength(0);
     expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(0);
   });
@@ -166,7 +166,7 @@ describe('StackFailureDetectorSweeper', () => {
       Object.assign(new Error('denied'), { name: 'AccessDeniedException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'detector', status: 'failed', reason: 'AccessDeniedException: denied' });
+    expect(await sweep()).toEqual({ target: 'detector', status: 'FAILED', reason: 'AccessDeniedException: denied' });
   });
 
   it('still deletes the role when its inline policy is already gone (NoSuchEntityException)', async () => {
@@ -175,7 +175,7 @@ describe('StackFailureDetectorSweeper', () => {
       Object.assign(new Error('no such policy'), { name: 'NoSuchEntityException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'detector', status: 'done' });
+    expect(await sweep()).toEqual({ target: 'detector', status: 'SUCCESS' });
     expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(1);
   });
 
@@ -185,6 +185,6 @@ describe('StackFailureDetectorSweeper', () => {
       Object.assign(new Error('conflict'), { name: 'DeleteConflictException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'detector', status: 'retry', reason: 'DeleteConflictException' });
+    expect(await sweep()).toEqual({ target: 'detector', status: 'RETRY', reason: 'DeleteConflictException' });
   });
 });

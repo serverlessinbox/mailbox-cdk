@@ -21,8 +21,9 @@ const EDGE_FN_ARN     = 'arn:aws:lambda:us-east-1:123456789012:function:jmap-blo
 const INPUT: EdgeFunctionRemovalInput = { edgeFnArn: EDGE_FN_ARN, rootStackName: ROOT_STACK_NAME, rootStackId: 'guid-1' };
 
 function sweep() {
-  const logger = new LoggerBuffer();
-  return new EdgeFunctionSweeper(new LambdaClient({ region: 'us-east-1' }), new RootStackMembership(logger), logger).sweep(INPUT);
+  const logger  = new LoggerBuffer();
+  const sweeper = new EdgeFunctionSweeper(new LambdaClient({ region: 'us-east-1' }), new RootStackMembership(logger), logger);
+  return sweeper.sweep(INPUT);
 }
 
 beforeEach(() => {
@@ -36,7 +37,7 @@ describe('EdgeFunctionSweeper', () => {
 
     const result = await sweep();
 
-    expect(result).toEqual({ target: 'edge-fn', status: 'done' });
+    expect(result).toEqual({ target: 'edge-fn', status: 'SUCCESS' });
     expect(lambdaMock.commandCalls(GetFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'jmap-blob-download' });
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)[0].args[0].input).toEqual({ FunctionName: 'jmap-blob-download' });
   });
@@ -46,7 +47,7 @@ describe('EdgeFunctionSweeper', () => {
       Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }),
     );
 
-    expect(await sweep()).toEqual({ target: 'edge-fn', status: 'done' });
+    expect(await sweep()).toEqual({ target: 'edge-fn', status: 'SUCCESS' });
   });
 
   it('fails on root stack mismatch without attempting delete', async () => {
@@ -56,7 +57,7 @@ describe('EdgeFunctionSweeper', () => {
 
     expect(result).toEqual({
       target: 'edge-fn',
-      status: 'failed',
+      status: 'FAILED',
       reason: 'Root stack mismatch (expected test-stack / guid-1, got someone-elses-stack / undefined)',
     });
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)).toHaveLength(0);
@@ -70,7 +71,7 @@ describe('EdgeFunctionSweeper', () => {
 
     expect(await sweep()).toEqual({
       target: 'edge-fn',
-      status: 'retry',
+      status: 'RETRY',
       reason: 'InvalidParameterValueException: still replicated',
     });
   });

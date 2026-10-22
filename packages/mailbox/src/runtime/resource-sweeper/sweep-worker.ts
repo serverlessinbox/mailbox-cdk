@@ -1,13 +1,14 @@
-import type { LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ExpectedFailure, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type {
-  CertRemovalInput,
-  EdgeFunctionRemovalInput,
-  StackFailureDetectorRemovalInput,
-  TargetResult,
-  TargetSweeper,
-  WorkerInput,
-  WorkerOutput,
+import {
+  isWorkerInput,
+  type CertRemovalInput,
+  type EdgeFunctionRemovalInput,
+  type StackFailureDetectorRemovalInput,
+  type TargetResult,
+  type TargetSweeper,
+  type WorkerInput,
+  type WorkerOutput,
 } from './removal';
 
 /**
@@ -24,15 +25,24 @@ export class SweepWorker {
   ) {}
 
   /**
-   * Sweeps the removal `input` describes and answers Step Functions with the outcome: `SUCCESS` when
+   * Sweeps the removal `payload` describes and answers Step Functions with the outcome: `SUCCESS` when
    * the target is gone, `RETRY` when it is not deletable yet, `FAILED` when a retry would not help.
-   * Rejects only when a sweeper rejects.
+   * Rejects with an `ExpectedFailure` for a payload that is not a removal of a known type, and otherwise
+   * only when a sweeper rejects.
    */
-  public async handle(input: WorkerInput): Promise<WorkerOutput> {
+  public async handle(payload: unknown): Promise<WorkerOutput> {
+    const input  = this.readInput(payload);
     const result = await this.sweep(input);
 
-    this.logOutcome(result);
     return this.toWorkerOutput(result);
+  }
+
+  private readInput(payload: unknown): WorkerInput {
+    const errors: string[] = [];
+    if (!isWorkerInput(payload, { errors })) {
+      throw new ExpectedFailure(`Invalid worker payload: ${errors.join('; ')}`);
+    }
+    return payload;
   }
 
   private sweep(input: WorkerInput): Promise<TargetResult> {
@@ -48,23 +58,15 @@ export class SweepWorker {
     }
   }
 
-  private logOutcome(result: TargetResult): void {
-    if (result.status === 'done') {
+  private toWorkerOutput(result: TargetResult): WorkerOutput {
+    if (result.status === 'SUCCESS') {
       this.logger.info('Worker completed successfully', { target: result.target });
-    } else if (result.status === 'retry') {
+    } else if (result.status === 'RETRY') {
       this.logger.info('Worker needs retry', { target: result.target, reason: result.reason });
     } else {
       this.logger.error('Worker failed', { target: result.target, reason: result.reason });
     }
-  }
 
-  private toWorkerOutput(result: TargetResult): WorkerOutput {
-    if (result.status === 'done') {
-      return { status: 'SUCCESS' };
-    }
-    if (result.status === 'retry') {
-      return { status: 'RETRY', reason: result.reason };
-    }
-    return { status: 'FAILED', reason: result.reason };
+    return { status: result.status, reason: result.reason };
   }
 }

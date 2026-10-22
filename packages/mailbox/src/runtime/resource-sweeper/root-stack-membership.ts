@@ -1,6 +1,6 @@
 import { ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { RootStack }                            from './removal';
+import type { WorkerRootStack }                      from './removal';
 
 /** One key/value tag as the ACM, EventBridge and IAM tag listings return it. */
 export interface TagEntry {
@@ -29,7 +29,7 @@ export class RootStackMembership {
    * and returns the mismatch reason.
    */
   public mismatchInTagList(
-    rootStack: RootStack,
+    rootStack: WorkerRootStack,
     resourceLabel: string,
     tags: readonly TagEntry[] | undefined,
   ): string | undefined {
@@ -43,7 +43,7 @@ export class RootStackMembership {
    * the mismatch reason.
    */
   public mismatchInTagMap(
-    rootStack: RootStack,
+    rootStack: WorkerRootStack,
     resourceLabel: string,
     tags: Readonly<Record<string, string>> | undefined,
   ): string | undefined {
@@ -55,7 +55,7 @@ export class RootStackMembership {
     return { id: valueOf(ServerlessInboxTagKeys.rootStackId), name: valueOf(ServerlessInboxTagKeys.rootStack) };
   }
 
-  private mismatchReason(rootStack: RootStack, resourceLabel: string, tags: RootStackTags): string | undefined {
+  private mismatchReason(rootStack: WorkerRootStack, resourceLabel: string, tags: RootStackTags): string | undefined {
     if (this.belongsToRootStack(rootStack, tags)) {
       return undefined;
     }
@@ -71,7 +71,7 @@ export class RootStackMembership {
 
   // An id tag decides alone, so a recreated stack of the same name never claims its predecessor's resources.
   // Only a resource that predates the id tag falls back to the name.
-  private belongsToRootStack(rootStack: RootStack, tags: RootStackTags): boolean {
+  private belongsToRootStack(rootStack: WorkerRootStack, tags: RootStackTags): boolean {
     if (tags.id !== undefined) {
       return tags.id === rootStack.rootStackId;
     }

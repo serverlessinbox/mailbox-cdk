@@ -1,11 +1,16 @@
-import * as iam                                        from 'aws-cdk-lib/aws-iam';
-import { IFunction }                                   from 'aws-cdk-lib/aws-lambda';
-import * as tasks                                      from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as sfn                                        from 'aws-cdk-lib/aws-stepfunctions';
-import { Duration }                                    from 'aws-cdk-lib';
-import { Construct }                                   from 'constructs';
+import * as iam                                                                   from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                                              from 'aws-cdk-lib/aws-lambda';
+import * as tasks                                                                 from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sfn                                                                   from 'aws-cdk-lib/aws-stepfunctions';
+import { Duration }                                                               from 'aws-cdk-lib';
+import { Construct }                                                              from 'constructs';
 
-import type { RemovalId, RemovalTargets, WorkerInput } from '../../../runtime/resource-sweeper/removal';
+import type { RemovalId, RemovalTargets, SweepStatus, WorkerInput, WorkerOutput } from '../../../runtime/resource-sweeper/removal';
+
+const WORKER_RESULT_PATH    = '$.workerResult';
+const WORKER_STATUS_PATH    = `${WORKER_RESULT_PATH}.${'status' satisfies keyof WorkerOutput}`;
+const WORKER_STATUS_SUCCESS = 'SUCCESS' satisfies SweepStatus;
+const WORKER_STATUS_RETRY   = 'RETRY' satisfies SweepStatus;
 
 /** What the sweeper workflow takes from a removal: the removal's own chain of states. */
 export interface IRemovalChain {
@@ -102,7 +107,7 @@ export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: 
   const invoke = new tasks.LambdaInvoke(scope, `${idPrefix}Invoke`, {
     lambdaFunction:           props.worker,
     payloadResponseOnly:      true,
-    resultPath:               '$.workerResult',
+    resultPath:               WORKER_RESULT_PATH,
     payload:                  sfn.TaskInput.fromObject({ ...props.payload }),
     retryOnServiceExceptions: true,
   });
@@ -110,8 +115,8 @@ export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: 
   const wait = new sfn.Wait(scope, `${idPrefix}WaitRetry`, { time: sfn.WaitTime.duration(props.retryInterval) });
 
   const choice = new sfn.Choice(scope, `${idPrefix}StatusChoice`)
-    .when(sfn.Condition.stringEquals('$.workerResult.status', 'SUCCESS'), props.onSuccess)
-    .when(sfn.Condition.stringEquals('$.workerResult.status', 'RETRY'), wait)
+    .when(sfn.Condition.stringEquals(WORKER_STATUS_PATH, WORKER_STATUS_SUCCESS), props.onSuccess)
+    .when(sfn.Condition.stringEquals(WORKER_STATUS_PATH, WORKER_STATUS_RETRY), wait)
     .otherwise(new sfn.Fail(scope, `${idPrefix}Failed`, { error: 'WorkerFailed', cause: props.failureCause }));
 
   graceWait?.next(invoke);

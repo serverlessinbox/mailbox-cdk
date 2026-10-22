@@ -17,6 +17,7 @@
 
 const STATE_MACHINE_ARN                          = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 process.env['SERVICE_NAME']                      = 'resource-sweeper';
+process.env['AWS_REGION']                        = 'us-west-2';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
 import {
@@ -141,7 +142,9 @@ describe('handler flush', () => {
       await starterHandler(updateEvent(), lambdaContext());
 
       expect(flush).toHaveBeenCalledTimes(1);
-      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('planner blew up') });
+      const response = cfnResponse();
+      expect(response.Status).toBe('FAILED');
+      expect(response.Reason).toContain('planner blew up');
     });
 
     it('answers FAILED with the reason and does not flush when the starter throws an ExpectedFailure', async () => {
@@ -151,7 +154,9 @@ describe('handler flush', () => {
       await starterHandler(updateEvent(), lambdaContext());
 
       expect(flush).not.toHaveBeenCalled();
-      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('request rejected on purpose') });
+      const response = cfnResponse();
+      expect(response.Status).toBe('FAILED');
+      expect(response.Reason).toContain('request rejected on purpose');
     });
 
     it('does not flush when the request succeeds', async () => {

@@ -5,7 +5,7 @@
 
 import { CloudFormationClient }                            from '@aws-sdk/client-cloudformation';
 import { SFNClient }                                       from '@aws-sdk/client-sfn';
-import { LoggerBuffer, ParentStackStatus }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, ParentStackStatus, toRegion }       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
 import * as https                                          from 'https';
 import { Writable }                                        from 'stream';
@@ -20,7 +20,7 @@ export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMac
 export function createSweepStarter(): SweepStarter {
   const logger = new LoggerBuffer('resource-sweeper-starter', 'error');
   return new SweepStarter(
-    { logLevel: 'error', serviceName: 'resource-sweeper-starter', sweeperStateMachineArn: STATE_MACHINE_ARN },
+    { logLevel: 'error', serviceName: 'resource-sweeper-starter', region: toRegion('us-west-2'), sweeperStateMachineArn: STATE_MACHINE_ARN },
     new SFNClient({ region: 'us-west-2' }),
     new ParentStackStatus(new CloudFormationClient({ region: 'us-west-2' }), logger),
     new SweepTargetPlanner(),

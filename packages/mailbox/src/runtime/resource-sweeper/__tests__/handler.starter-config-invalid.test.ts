@@ -9,6 +9,7 @@
  */
 
 process.env['SERVICE_NAME'] = 'resource-sweeper-starter';
+process.env['AWS_REGION']   = 'us-west-2';
 delete process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'];
 
 import {
@@ -43,15 +44,14 @@ describe('handlers — starter config invalid', () => {
     jest.restoreAllMocks();
   });
 
-  it('answers SUCCESS to a Delete without calling Step Functions, logging the config problem', async () => {
+  it('answers SUCCESS to a Delete with the incoming physical id, without calling Step Functions, logging the config problem', async () => {
     await starterHandler(deleteEvent(), lambdaContext());
 
-    expect(cfnResponse().Status).toBe('SUCCESS');
+    expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'mailbox-deferred-removal' });
     expect(sfnMock.calls()).toHaveLength(0);
-    expect(console.error).toHaveBeenCalledWith(
-      'Invalid starter config; answering SUCCESS to Delete without a sweep',
-      { configError: expect.stringContaining('MAILBOX_SWEEPER_STATE_MACHINE_ARN') },
-    );
+    const logged = JSON.stringify(jest.mocked(console.error).mock.calls[0]);
+    expect(logged).toContain('Configuration error on Delete; responding SUCCESS so stack deletion is not blocked');
+    expect(logged).toContain('MAILBOX_SWEEPER_STATE_MACHINE_ARN');
   });
 
   it('answers FAILED to a Create, naming the missing variable', async () => {

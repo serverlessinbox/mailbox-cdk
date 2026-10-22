@@ -6,6 +6,12 @@ import type { StarterConfig }                                                   
 import type { RemovalPropertiesMap }                                                                from './removal';
 import type { SweepTargetPlanner }                                                                  from './sweep-target-planner';
 
+/** The answer to CloudFormation: the resource's fixed physical id and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
+export type StarterAnswer = {
+  readonly PhysicalResourceId: string;
+  readonly Data:               Record<string, never>;
+};
+
 /**
  * Starts one Step Functions execution to sweep whatever the `SweepTargetPlanner` decides needs
  * sweeping for a custom-resource request. The targets travel in the execution input as
@@ -18,6 +24,8 @@ import type { SweepTargetPlanner }                                              
  * Starting the sweep is best-effort: a failure is logged but never thrown.
  */
 export class SweepStarter {
+  private static readonly ANSWER: StarterAnswer = { PhysicalResourceId: 'mailbox-deferred-removal', Data: {} };
+
   constructor(
     private readonly config: StarterConfig,
     private readonly sfnClient: SFNClient,
@@ -27,14 +35,16 @@ export class SweepStarter {
   ) {}
 
   /**
-   * Starts the sweep the request's targets call for, if any. Resolves also when the sweep could not
-   * be started (logged at error level, never thrown).
+   * Starts the sweep the request's targets call for, if any, and resolves to the answer for CloudFormation.
+   * Resolves also when the sweep could not be started (logged at error level, never thrown).
    */
-  public async handle(event: CloudFormationCustomResourceEvent): Promise<void> {
+  public async handle(event: CloudFormationCustomResourceEvent): Promise<StarterAnswer> {
     this.announce(event);
 
     const toSweep = await this.resolveSweepTargets(event);
     await this.startSweepWhenAny(event, toSweep);
+
+    return SweepStarter.ANSWER;
   }
 
   private announce(event: CloudFormationCustomResourceEvent): void {
@@ -60,7 +70,9 @@ export class SweepStarter {
   private async resolveSweepTargets(event: CloudFormationCustomResourceEvent): Promise<RemovalPropertiesMap> {
     // A Delete of a stack that stays alive must not sweep: its targets are still in use.
     if (await this.isDeleteOfLiveStack(event)) {
-      this.logSkippedSweep(event);
+      this.logger.warn('Delete received while the parent stack is not being deleted; skipping the sweep', {
+        stackId: event.StackId,
+      });
       return {};
     }
 
@@ -69,12 +81,6 @@ export class SweepStarter {
 
   private async isDeleteOfLiveStack(event: CloudFormationCustomResourceEvent): Promise<boolean> {
     return event.RequestType === 'Delete' && !(await this.parentStackStatus.isBeingDeleted(toStackId(event.StackId)));
-  }
-
-  private logSkippedSweep(event: CloudFormationCustomResourceEvent): void {
-    this.logger.warn('Delete received while the parent stack is not being deleted; skipping the sweep', {
-      stackId: event.StackId,
-    });
   }
 
   private async startSweepWhenAny(event: CloudFormationCustomResourceEvent, toSweep: RemovalPropertiesMap): Promise<void> {

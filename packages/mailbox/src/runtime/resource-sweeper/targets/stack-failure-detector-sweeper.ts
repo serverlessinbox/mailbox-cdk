@@ -8,6 +8,7 @@ import { IAMClient, ListRoleTagsCommand, DeleteRolePolicyCommand, DeleteRoleComm
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }                    from '@aws-sdk/client-lambda';
 import { CaughtError, parseArn, type LoggerBuffer }                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
+import { OwnershipCheckedDelete }                                                     from '../ownership-checked-delete';
 import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper }         from '../removal';
 import { RootStackMembership }                                                        from '../root-stack-membership';
 import { TargetResults }                                                              from '../target-results';
@@ -23,6 +24,7 @@ import { TargetResults }                                                        
  */
 export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDetectorRemovalInput> {
   private readonly results = new TargetResults('detector');
+  private readonly ownershipCheckedDelete: OwnershipCheckedDelete;
 
   constructor(
     private readonly eventsClient: EventBridgeClient,
@@ -30,12 +32,14 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
     private readonly iamClient: IAMClient,
     private readonly rootStackMembership: RootStackMembership,
     private readonly logger: LoggerBuffer,
-  ) {}
+  ) {
+    this.ownershipCheckedDelete = new OwnershipCheckedDelete(this.results, logger);
+  }
 
   /**
-   * Sweeps the rule, then the function, then the role. Resolves to `done` once all three are gone,
-   * otherwise to the outcome of the first step that is not done: `retry` while the role still has
-   * attached policies, `failed` on a root stack mismatch or any other error. Never rejects.
+   * Sweeps the rule, then the function, then the role. Resolves to `SUCCESS` once all three are gone,
+   * otherwise to the outcome of the first step that is not done: `RETRY` while the role still has
+   * attached policies, `FAILED` on a root stack mismatch or any other error. Never rejects.
    */
   public async sweep(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
     const steps = [
@@ -47,7 +51,7 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
     for (const step of steps) {
       const outcome = await step();
       // Stop at the first step that is not done: the role must not be deleted while the function that runs under it exists.
-      if (outcome.status !== 'done') {
+      if (outcome.status !== 'SUCCESS') {
         return outcome;
       }
     }
@@ -55,25 +59,14 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
     return this.results.done();
   }
 
-  private async sweepRule(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    try {
-      return await this.deleteRuleWhenInRootStack(input);
-    } catch (thrown) {
-      return this.resultOfFailure(thrown, 'EventBridge rule', 'ResourceNotFoundException');
-    }
-  }
-
-  private async deleteRuleWhenInRootStack(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    const ruleName = parseArn(input.ruleArn).resourceName;
-
-    const mismatch = await this.findRuleRootStackMismatch(input);
-    // Never delete what belongs to another stack. A mismatch is final, so it is not retried.
-    if (mismatch) {
-      return this.results.failed(mismatch);
-    }
-
-    await this.deleteRule(input, ruleName);
-    return this.results.done();
+  private sweepRule(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
+    return this.ownershipCheckedDelete.sweep({
+      label:                 'EventBridge rule',
+      goneErrorName:         'ResourceNotFoundException',
+      otherErrors:           'failed',
+      findRootStackMismatch: () => this.findRuleRootStackMismatch(input),
+      deleteResource:        () => this.deleteRule(input),
+    });
   }
 
   private async findRuleRootStackMismatch(input: StackFailureDetectorRemovalInput): Promise<string | undefined> {
@@ -82,87 +75,60 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
     return this.rootStackMembership.mismatchInTagList(input, 'EventBridge rule', tagsResp.Tags);
   }
 
-  private async deleteRule(input: StackFailureDetectorRemovalInput, ruleName: string): Promise<void> {
+  private async deleteRule(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
+    const ruleName = parseArn(input.ruleArn).resourceName;
+
     this.logger.info('EventBridge rule belongs to the root stack; removing targets and deleting');
-    // Targets are detached only when the input names one.
-    if (input.ruleTargetId) {
-      await this.eventsClient.send(new RemoveTargetsCommand({ Rule: ruleName, Ids: [input.ruleTargetId] }));
-    }
+    await this.eventsClient.send(new RemoveTargetsCommand({ Rule: ruleName, Ids: [input.ruleTargetId] }));
     await this.eventsClient.send(new DeleteRuleCommand({ Name: ruleName }));
     this.logger.info('EventBridge rule deleted successfully');
-  }
-
-  private async sweepFunction(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    try {
-      return await this.deleteFunctionWhenInRootStack(input);
-    } catch (thrown) {
-      return this.resultOfFailure(thrown, 'Detector Lambda function', 'ResourceNotFoundException');
-    }
-  }
-
-  private async deleteFunctionWhenInRootStack(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    const functionName = parseArn(input.detectorFnArn).resourceName;
-
-    const mismatch = await this.findFunctionRootStackMismatch(input, functionName);
-    // Never delete what belongs to another stack. A mismatch is final, so it is not retried.
-    if (mismatch) {
-      return this.results.failed(mismatch);
-    }
-
-    await this.deleteFunction(functionName);
     return this.results.done();
   }
 
-  private async findFunctionRootStackMismatch(
-    input: StackFailureDetectorRemovalInput,
-    functionName: string,
-  ): Promise<string | undefined> {
+  private sweepFunction(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
+    return this.ownershipCheckedDelete.sweep({
+      label:                 'Detector Lambda function',
+      goneErrorName:         'ResourceNotFoundException',
+      otherErrors:           'failed',
+      findRootStackMismatch: () => this.findFunctionRootStackMismatch(input),
+      deleteResource:        () => this.deleteFunction(input),
+    });
+  }
+
+  private async findFunctionRootStackMismatch(input: StackFailureDetectorRemovalInput): Promise<string | undefined> {
     this.logger.debug('Verifying detector Lambda function belongs to the root stack');
-    const getResp = await this.lambdaClient.send(new GetFunctionCommand({ FunctionName: functionName }));
+    const getResp = await this.lambdaClient.send(new GetFunctionCommand({ FunctionName: parseArn(input.detectorFnArn).resourceName }));
     return this.rootStackMembership.mismatchInTagMap(input, 'Detector Lambda function', getResp.Tags);
   }
 
-  private async deleteFunction(functionName: string): Promise<void> {
+  private async deleteFunction(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
     this.logger.info('Detector Lambda function belongs to the root stack; attempting delete');
-    await this.lambdaClient.send(new DeleteFunctionCommand({ FunctionName: functionName }));
+    await this.lambdaClient.send(new DeleteFunctionCommand({ FunctionName: parseArn(input.detectorFnArn).resourceName }));
     this.logger.info('Detector Lambda function deleted successfully');
+    return this.results.done();
   }
 
-  private async sweepRole(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    try {
-      return await this.deleteRoleWhenInRootStack(input);
-    } catch (thrown) {
-      return this.resultOfFailure(thrown, 'Detector IAM role', 'NoSuchEntityException');
-    }
+  private sweepRole(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
+    return this.ownershipCheckedDelete.sweep({
+      label:                 'Detector IAM role',
+      goneErrorName:         'NoSuchEntityException',
+      otherErrors:           'failed',
+      findRootStackMismatch: () => this.findRoleRootStackMismatch(input),
+      deleteResource:        () => this.deleteRolePolicyAndRole(input),
+    });
   }
 
-  private async deleteRoleWhenInRootStack(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
-    const roleName = parseArn(input.detectorRoleArn).resourceName;
-
-    const mismatch = await this.findRoleRootStackMismatch(input, roleName);
-    // Never delete what belongs to another stack. A mismatch is final, so it is not retried.
-    if (mismatch) {
-      return this.results.failed(mismatch);
-    }
-
-    return this.deleteRolePolicyAndRole(input, roleName);
-  }
-
-  private async findRoleRootStackMismatch(
-    input: StackFailureDetectorRemovalInput,
-    roleName: string,
-  ): Promise<string | undefined> {
+  private async findRoleRootStackMismatch(input: StackFailureDetectorRemovalInput): Promise<string | undefined> {
     this.logger.debug('Verifying detector IAM role belongs to the root stack');
-    const tagsResp = await this.iamClient.send(new ListRoleTagsCommand({ RoleName: roleName }));
+    const tagsResp = await this.iamClient.send(new ListRoleTagsCommand({ RoleName: parseArn(input.detectorRoleArn).resourceName }));
     return this.rootStackMembership.mismatchInTagList(input, 'Detector IAM role', tagsResp.Tags);
   }
 
-  private async deleteRolePolicyAndRole(input: StackFailureDetectorRemovalInput, roleName: string): Promise<TargetResult> {
+  private async deleteRolePolicyAndRole(input: StackFailureDetectorRemovalInput): Promise<TargetResult> {
+    const roleName = parseArn(input.detectorRoleArn).resourceName;
+
     this.logger.info('Detector IAM role belongs to the root stack; deleting policy and role');
-    // The inline policy is deleted only when the input names one.
-    if (input.detectorRolePolicyName) {
-      await this.deleteRolePolicyIfPresent(roleName, input.detectorRolePolicyName);
-    }
+    await this.deleteRolePolicyIfPresent(roleName, input.detectorRolePolicyName);
     return this.deleteRole(roleName);
   }
 
@@ -199,18 +165,5 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
     }
 
     throw thrown;
-  }
-
-  private resultOfFailure(thrown: unknown, resourceLabel: string, goneErrorName: string): TargetResult {
-    const error = new CaughtError(thrown);
-    // A resource that no longer exists is what the sweep is after, so it counts as swept.
-    if (error.is(goneErrorName)) {
-      this.logger.debug(`${resourceLabel} not found; treating as deleted`);
-      return this.results.done();
-    }
-
-    // Any other error ends the sweep as failed, reported with its name and message as the result's reason.
-    this.logger.error(`${resourceLabel} deletion error`, { errorName: error.name, errorMessage: error.message });
-    return this.results.failed(error.describe());
   }
 }

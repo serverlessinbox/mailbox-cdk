@@ -1,31 +1,15 @@
 /**
- * Coverage for `SweepWorker`: each `removalType` reaches the sweeper of that type with its own
- * payload, and a sweep outcome maps to the worker status Step Functions branches on. The sweepers
- * are fakes.
+ * Coverage for `SweepWorker`: a payload that is not a removal of a known type is rejected before any
+ * sweeper runs, each `removalType` reaches the sweeper of that type with its own payload, and a sweep
+ * outcome is the status Step Functions branches on. The sweepers are fakes.
  */
 
-import { LoggerBuffer }                                                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ExpectedFailure, LoggerBuffer }                                                                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { SweepWorker }                                                                                                    from '../sweep-worker';
+import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult, TargetSweeper }     from '../removal';
+import { SweepWorker }                                                                                                        from '../sweep-worker';
 
-/** A sweeper fake that records the input it was handed and answers a fixed result after logging a trace line. */
-class FakeSweeper<TInput> implements TargetSweeper<TInput> {
-  public received: TInput | undefined;
-
-  constructor(
-    private readonly result: TargetResult,
-    private readonly logger: LoggerBuffer,
-  ) {}
-
-  public async sweep(input: TInput): Promise<TargetResult> {
-    this.received = input;
-    this.logger.debug('sweeper trace');
-    return this.result;
-  }
-}
-
-const DONE: TargetResult = { target: 'cert', status: 'done' };
+const SWEPT: TargetResult = { target: 'cert', status: 'SUCCESS' };
 
 const CERT_INPUT: CertRemovalInput                     = {
   certArn:       'arn:aws:acm:us-west-2:123456789012:certificate/abc',
@@ -47,12 +31,15 @@ const DETECTOR_INPUT: StackFailureDetectorRemovalInput = {
   rootStackId:            'guid-1',
 };
 
+function sweeperAnswering<TInput>(result: TargetResult): jest.Mocked<TargetSweeper<TInput>> {
+  return { sweep: jest.fn().mockResolvedValue(result) };
+}
+
 function workerWith(results: { cert?: TargetResult; edge?: TargetResult; detector?: TargetResult } = {}) {
-  const logger   = new LoggerBuffer('resource-sweeper-worker', 'error');
-  const cert     = new FakeSweeper<CertRemovalInput>(results.cert ?? DONE, logger);
-  const edge     = new FakeSweeper<EdgeFunctionRemovalInput>(results.edge ?? DONE, logger);
-  const detector = new FakeSweeper<StackFailureDetectorRemovalInput>(results.detector ?? DONE, logger);
-  const worker   = new SweepWorker(logger, cert, edge, detector);
+  const cert     = sweeperAnswering<CertRemovalInput>(results.cert ?? SWEPT);
+  const edge     = sweeperAnswering<EdgeFunctionRemovalInput>(results.edge ?? SWEPT);
+  const detector = sweeperAnswering<StackFailureDetectorRemovalInput>(results.detector ?? SWEPT);
+  const worker   = new SweepWorker(new LoggerBuffer('resource-sweeper-worker', 'error'), cert, edge, detector);
   return { worker, cert, edge, detector };
 }
 
@@ -66,15 +53,38 @@ describe('SweepWorker', () => {
     jest.restoreAllMocks();
   });
 
+  describe('payload', () => {
+    it('rejects a removal type no sweeper handles, as an expected failure naming the field, before any sweep', async () => {
+      const { worker, cert, edge, detector } = workerWith();
+
+      const rejection = worker.handle({ removalType: 'queue', ...CERT_INPUT });
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toThrow('removalType');
+      expect(cert.sweep).not.toHaveBeenCalled();
+      expect(edge.sweep).not.toHaveBeenCalled();
+      expect(detector.sweep).not.toHaveBeenCalled();
+    });
+
+    it('rejects a detector payload whose rule target id is empty, which would remove no target', async () => {
+      const { worker, detector } = workerWith();
+
+      const rejection = worker.handle({ removalType: 'detector', ...DETECTOR_INPUT, ruleTargetId: '' });
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      expect(detector.sweep).not.toHaveBeenCalled();
+    });
+  });
+
   describe('dispatch', () => {
     it('hands a cert payload only to the cert sweeper', async () => {
       const { worker, cert, edge, detector } = workerWith();
 
       await worker.handle({ removalType: 'cert', ...CERT_INPUT });
 
-      expect(cert.received).toMatchObject(CERT_INPUT);
-      expect(edge.received).toBeUndefined();
-      expect(detector.received).toBeUndefined();
+      expect(cert.sweep).toHaveBeenCalledWith(expect.objectContaining(CERT_INPUT));
+      expect(edge.sweep).not.toHaveBeenCalled();
+      expect(detector.sweep).not.toHaveBeenCalled();
     });
 
     it('hands an edge-fn payload only to the edge function sweeper', async () => {
@@ -82,9 +92,9 @@ describe('SweepWorker', () => {
 
       await worker.handle({ removalType: 'edge-fn', ...EDGE_INPUT });
 
-      expect(edge.received).toMatchObject(EDGE_INPUT);
-      expect(cert.received).toBeUndefined();
-      expect(detector.received).toBeUndefined();
+      expect(edge.sweep).toHaveBeenCalledWith(expect.objectContaining(EDGE_INPUT));
+      expect(cert.sweep).not.toHaveBeenCalled();
+      expect(detector.sweep).not.toHaveBeenCalled();
     });
 
     it('hands a detector payload only to the stack-failure detector sweeper', async () => {
@@ -92,18 +102,18 @@ describe('SweepWorker', () => {
 
       await worker.handle({ removalType: 'detector', ...DETECTOR_INPUT });
 
-      expect(detector.received).toMatchObject(DETECTOR_INPUT);
-      expect(cert.received).toBeUndefined();
-      expect(edge.received).toBeUndefined();
+      expect(detector.sweep).toHaveBeenCalledWith(expect.objectContaining(DETECTOR_INPUT));
+      expect(cert.sweep).not.toHaveBeenCalled();
+      expect(edge.sweep).not.toHaveBeenCalled();
     });
   });
 
   describe('outcome', () => {
     it.each<[string, TargetResult, unknown]>([
-      ['done', { target: 'cert', status: 'done' }, { status: 'SUCCESS' }],
-      ['retry', { target: 'cert', status: 'retry', reason: 'InUseBy: x' }, { status: 'RETRY', reason: 'InUseBy: x' }],
-      ['failed', { target: 'cert', status: 'failed', reason: 'boom' }, { status: 'FAILED', reason: 'boom' }],
-    ])('maps a %s sweep to its worker status', async (_name, result, expected) => {
+      ['swept', { target: 'cert', status: 'SUCCESS' }, { status: 'SUCCESS' }],
+      ['retry', { target: 'cert', status: 'RETRY', reason: 'InUseBy: x' }, { status: 'RETRY', reason: 'InUseBy: x' }],
+      ['failed', { target: 'cert', status: 'FAILED', reason: 'boom' }, { status: 'FAILED', reason: 'boom' }],
+    ])('answers a %s sweep with its status and reason', async (_name, result, expected) => {
       const { worker } = workerWith({ cert: result });
 
       const output = await worker.handle({ removalType: 'cert', ...CERT_INPUT });

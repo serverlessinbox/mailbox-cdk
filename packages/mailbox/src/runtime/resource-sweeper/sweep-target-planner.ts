@@ -1,4 +1,5 @@
 import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
+import { isDeepStrictEqual }                      from 'node:util';
 
 import type { RemovalPropertiesMap }              from './removal';
 
@@ -40,7 +41,7 @@ export class SweepTargetPlanner {
     for (const [removalId, oldValue] of Object.entries(oldProps)) {
       const newValue = currentProps[removalId];
       // The old entry is swept when the update dropped or changed it, because nothing will manage it any more.
-      if (newValue === undefined || !this.deepEqual(oldValue, newValue)) {
+      if (newValue === undefined || !isDeepStrictEqual(oldValue, newValue)) {
         toSweep[removalId] = oldValue;
       }
     }
@@ -56,28 +57,5 @@ export class SweepTargetPlanner {
       }
     }
     return result;
-  }
-
-  /** Structural equality over plain JSON-shaped values. */
-  private deepEqual(a: unknown, b: unknown): boolean {
-    // Identical values, equal primitives included, are equal.
-    if (a === b) {
-      return true;
-    }
-    // Past identity, only two objects can still be equal; null, primitives and mixed pairs cannot.
-    if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
-      return false;
-    }
-    // An array and a plain object are never equal, whatever they hold.
-    if (Array.isArray(a) !== Array.isArray(b)) {
-      return false;
-    }
-    // Arrays are equal element by element, in order.
-    if (Array.isArray(a) && Array.isArray(b)) {
-      return a.length === b.length && a.every((value, i) => this.deepEqual(value, b[i]));
-    }
-    const aEntries = Object.entries(a);
-    const bValues  = new Map(Object.entries(b));
-    return aEntries.length === bValues.size && aEntries.every(([key, value]) => this.deepEqual(value, bValues.get(key)));
   }
 }
