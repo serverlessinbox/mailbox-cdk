@@ -2,14 +2,15 @@
 
 /**
  * Pins the deployed shape of the stack-helpers Lambda: it runs the stack-helpers bundle and may call
- * Route 53 GetHostedZone, the only AWS call its handler makes, and nothing else of Route 53. Without
- * the grant every lookup fails at deploy time with AccessDenied, which no synth-time check reports.
+ * Route 53 GetHostedZone and nothing else of Route 53. Without the grant every lookup fails at deploy
+ * time with AccessDenied, which no synth-time check reports.
  */
 
-import { Match, Template }         from 'aws-cdk-lib/assertions';
+import { Match, Template }                         from 'aws-cdk-lib/assertions';
 
-import { createStackWithResolver } from '../../../__tests__/stack-helpers-helpers';
-import { StackHelpersLambda }      from '../stack-helpers-lambda';
+import { createStackWithResolver }                 from '../../../__tests__/stack-helpers-helpers';
+import { actionsOf, allPolicyStatements }          from '../../../cdk-test-support';
+import { StackHelpersLambda }                      from '../stack-helpers-lambda';
 
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();
@@ -23,9 +24,8 @@ describe('StackHelpersLambda', () => {
   });
 
   it('may only get hosted zones, and may not list them', () => {
-    const route53Statements = Object.values(template.findResources('AWS::IAM::Policy'))
-      .flatMap((policy) => policy.Properties.PolicyDocument.Statement)
-      .filter((statement: { Action: string | string[] }) => JSON.stringify(statement.Action).includes('route53:'));
+    const route53Statements = allPolicyStatements(template)
+      .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
 
     expect(route53Statements).toEqual([
       { Effect: 'Allow', Action: 'route53:GetHostedZone', Resource: '*' },

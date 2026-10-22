@@ -4,21 +4,32 @@ import { Duration }                       from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
 import { parentStackStatusReadStatement } from '../../grants/parent-stack-status-read';
-import { ServerlessInboxTagKeys }         from '../../tagging/serverless-inbox-tags';
+import { ServerlessInboxTagKeys }         from '../../runtime/handler-kit/tag-keys';
 
 import { TypeScriptLambda }               from './ts-lambda';
+
+/** What `DeployerWorkerLambda` needs: the artifact resolver for its code and the name of the stack its deployer deploys. */
+export interface DeployerWorkerLambdaProps {
+  readonly artifactResolver: IArtifactResolver;
+  /** Composes into `SERVICE_NAME`, which keeps each deployer's function distinguishable while they share the 'stack-deployer' lambdaId. */
+  readonly deployedStackName: string;
+}
+
+/** The `Condition` block of a tag-write statement: the tag keys it admits, compared with `ForAllValues:StringLike`. */
+export interface TagKeysCondition {
+  readonly 'ForAllValues:StringLike': AdmittedTagKeys;
+}
+
+/** The tag keys a tag-write statement admits. */
+export interface AdmittedTagKeys {
+  readonly 'aws:TagKeys': string[];
+}
 
 /**
  * CloudFormation tags every resource it creates with its own keys and sends them in the same tag request as
  * ours, so every `aws:TagKeys` condition a deployer worker writes must admit them alongside the sub-stack keys.
  */
 const CLOUDFORMATION_TAG_KEY_PATTERN = 'aws:cloudformation:*';
-
-export interface DeployerWorkerLambdaProps {
-  readonly artifactResolver: IArtifactResolver;
-  /** Composes into `SERVICE_NAME`, which keeps each deployer's function distinguishable while they share the 'stack-deployer' lambdaId. */
-  readonly deployedStackName: string;
-}
 
 /**
  * The Lambda that performs a deployer's CloudFormation operations and polls them to completion. It
@@ -118,7 +129,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   }
 
   /** The `aws:TagKeys` condition every tag-write statement uses: the sub-stack keys, `additionalTagKeys`, and CloudFormation's own keys by pattern. */
-  protected tagKeyCondition(additionalTagKeys: string[] = []): Record<string, Record<string, string[]>> {
+  protected tagKeyCondition(additionalTagKeys: string[] = []): TagKeysCondition {
     return {
       'ForAllValues:StringLike': {
         'aws:TagKeys': [...this.subStackTagKeys, ...additionalTagKeys, CLOUDFORMATION_TAG_KEY_PATTERN],

@@ -4,15 +4,17 @@ import type { IBucket }                                              from 'aws-c
 import { Aws, Duration, CustomResource, Stack, Token, Tokenization } from 'aws-cdk-lib';
 import { Construct, type IDependable }                               from 'constructs';
 import { createHash }                                                from 'node:crypto';
+import * as t                                                        from 'typanion';
 
-import type { IStaticContentSource }                                 from '../../static-content-source';
-import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
+import { parentStackStatusReadStatement }                            from '../../grants/parent-stack-status-read';
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
 } from '../../runtime/content-deployer/resource-properties';
+import type { IStaticContentSource }                                 from '../../static-content-source';
+import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
 
-import { TypeScriptLambda } from './ts-lambda';
+import { TypeScriptLambda }                                          from './ts-lambda';
 
 /** What `StaticContentDeployer.deploy` deploys, and where. */
 export interface StaticContentDeploymentProps {
@@ -55,7 +57,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       memorySize: 1024,
     });
 
-    this.grantParentStackStatusRead();
+    this.addToRolePolicy(parentStackStatusReadStatement());
   }
 
   /**
@@ -125,16 +127,6 @@ export class StaticContentDeployer extends TypeScriptLambda {
     return resource;
   }
 
-  private grantParentStackStatusRead(): void {
-    const stack = Stack.of(this);
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudformation:DescribeStacks'],
-        resources: [stack.stackId],
-      }),
-    );
-  }
-
   private grantDeployment(props: StaticContentDeploymentProps): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
@@ -196,10 +188,11 @@ export class StaticContentDeployer extends TypeScriptLambda {
    * at deploy time: the identity changes when a referenced value changes, and not otherwise.
    */
   private dataSourceIdentity(key: string, body: string): string {
-    const fragments  = Tokenization.reverseString(body);
-    const maskedBody = fragments.mapTokens({ mapToken: () => TOKEN_PLACEHOLDER }).join({ join: (left, right) => `${left}${right}` });
-    const digest     = createHash('sha256').update(maskedBody).digest('hex');
-    const tokens     = fragments.tokens.map((token) => Token.asString(token));
+    const fragments           = Tokenization.reverseString(body);
+    const maskedBody: unknown = fragments.mapTokens({ mapToken: () => TOKEN_PLACEHOLDER }).join({ join: (left, right) => `${left}${right}` });
+    t.assert(maskedBody, t.isString());
+    const digest = createHash('sha256').update(maskedBody).digest('hex');
+    const tokens = fragments.tokens.map((token) => Token.asString(token));
     return ['data', key, digest, ...tokens].join(':');
   }
 

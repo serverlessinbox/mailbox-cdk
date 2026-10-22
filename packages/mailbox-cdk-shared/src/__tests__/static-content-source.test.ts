@@ -68,7 +68,7 @@ describe('StaticContentSource', () => {
     it.each([
       ['without a trailing slash', 'content', 'content/'],
       ['with a trailing slash', 'content/', 'content/'],
-    ])('normalizes a target prefix %s', (_case, targetPrefix, normalizedPrefix) => {
+    ])('normalizes a target prefix %s', (caseName, targetPrefix, normalizedPrefix) => {
       const source = StaticContentSource.zipFromBucket('artifacts-bucket', 'ui/admin-ui.zip', targetPrefix);
 
       expect(source.spec).toMatchObject({ targetPrefix: normalizedPrefix });

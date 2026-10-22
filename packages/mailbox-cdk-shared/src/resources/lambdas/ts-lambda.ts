@@ -14,9 +14,10 @@ import { applyArtifactTags } from '../../artifacts/apply-artifact-tags';
 import { PipelineLogGroup }  from './pipeline-log-groups';
 import type { Pipeline }     from './pipelines';
 
+/** What `TypeScriptLambda` needs beyond the function options: which published artifact holds the code, and which pipeline the function logs under. */
 export interface TypeScriptLambdaProps extends FunctionOptions {
   /**
-   * Lambda identifier used by artifact resolver (e.g., "edge-deployer", "webhook-handler")
+   * Lambda identifier used by artifact resolver
    */
   readonly lambdaId: string;
 
@@ -26,7 +27,7 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
   readonly artifactResolver: IArtifactResolver;
 
   /**
-   * Package name where the lambda artifact is published (e.g. "mailbox-cdk-shared").
+   * Package name where the lambda artifact is published.
    * The artifact resolver must hold a pin for it.
    */
   readonly packageName: string;
@@ -52,28 +53,9 @@ export interface TypeScriptLambdaProps extends FunctionOptions {
 }
 
 /**
- * TypeScript Lambda construct that loads code from S3 artifacts.
- * Similar to GoLambda but for Node.js runtimes.
- *
- * Automatically:
- * - Resolves code from artifact bucket using artifact resolver
- * - Sets up CloudWatch logs with retention
- * - Uses Node.js 24.x runtime with ARM64 architecture
- * - Configurable memory and timeout
- *
- * Example:
- * ```ts
- * new TypeScriptLambda(scope, 'MyLambda', {
- *   lambdaId: 'my-handler',
- *   artifactResolver,
- *   packageName: 'my-package',
- *   timeout: Duration.seconds(30),
- *   memorySize: 256,
- *   environment: {
- *     MY_ENV: 'value',
- *   },
- * });
- * ```
+ * A Node.js Lambda on ARM64 whose code is a published artifact, resolved through the artifact resolver
+ * from `lambdas/<lambdaId>.zip` of the package named by `packageName`. It logs to the shared log group
+ * of its pipeline unless `logGroup` is passed, and carries `SERVICE_NAME` and the artifact tags.
  */
 export class TypeScriptLambda extends LambdaFunction {
   constructor(scope: Construct, id: string, props: TypeScriptLambdaProps) {
@@ -101,7 +83,7 @@ export class TypeScriptLambda extends LambdaFunction {
       ...(lambdaProps.functionName ? { functionName: lambdaProps.functionName } : {}),
       description: lambdaProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...(logGroup ? { logGroup } : {}),
-      // SERVICE_NAME carries the stable lambdaId to every log line for attribution.
+      // SERVICE_NAME is the stable name every log line is attributed to.
       // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
       environment: {
         ...callerEnvironment,

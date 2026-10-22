@@ -1,3 +1,9 @@
+/**
+ * Pins the one-log-group-per-(stack, pipeline) contract, the group name and the removal policies.
+ * A group is `RETAIN`ed, so a changed name or a second group per pipeline leaves an orphan behind
+ * and breaks the delete-and-recreate of a stack.
+ */
+
 import { Match, Template }        from 'aws-cdk-lib/assertions';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { App, Stack }             from 'aws-cdk-lib';
@@ -5,11 +11,6 @@ import { App, Stack }             from 'aws-cdk-lib';
 import { getOrCreateSharedGroup } from '../../../tagging/shared-group';
 import { PipelineLogGroup }       from '../pipeline-log-groups';
 
-/**
- * Pins the one-log-group-per-(stack, pipeline) contract, the group name and the removal policies.
- * A group is `RETAIN`ed, so a changed name or a second group per pipeline leaves an orphan behind
- * and breaks the delete-and-recreate of a stack.
- */
 function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
 }
@@ -35,13 +36,15 @@ describe('PipelineLogGroup', () => {
     const admin = PipelineLogGroup.getOrCreate(stack, 'admin');
 
     expect(jmap).not.toBe(admin);
-    const groups = Object.values(logGroupResources(stack));
-    expect(groups).toHaveLength(2);
-    const nameStarts = groups.map((group) => group.Properties.LogGroupName['Fn::Join'][1].slice(0, 3));
-    expect(nameStarts).toEqual(expect.arrayContaining([
-      ['/serverlessinbox/', { Ref: 'AWS::StackName' }, '/jmap-'],
-      ['/serverlessinbox/', { Ref: 'AWS::StackName' }, '/admin-'],
-    ]));
+    const template = Template.fromStack(stack);
+    template.resourceCountIs('AWS::Logs::LogGroup', 2);
+    for (const pipeline of ['jmap', 'admin']) {
+      template.hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: {
+          'Fn::Join': ['', Match.arrayWith(['/serverlessinbox/', { Ref: 'AWS::StackName' }, `/${pipeline}-`])],
+        },
+      });
+    }
   });
 
   it('getOrCreate throws when another kind of construct occupies the pipeline\'s slot', () => {

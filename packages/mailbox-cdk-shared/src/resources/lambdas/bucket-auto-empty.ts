@@ -4,8 +4,9 @@ import { IBucket }                                from 'aws-cdk-lib/aws-s3';
 import { Duration, CustomResource, Stack }        from 'aws-cdk-lib';
 import { Construct }                              from 'constructs';
 
-import { getOrCreateSharedGroup }                 from '../../tagging/shared-group';
+import { parentStackStatusReadStatement }         from '../../grants/parent-stack-status-read';
 import type { BucketAutoEmptyResourceProperties } from '../../runtime/bucket-auto-empty/resource-properties';
+import { getOrCreateSharedGroup }                 from '../../tagging/shared-group';
 
 import { TypeScriptLambda }                       from './ts-lambda';
 
@@ -25,7 +26,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
       memorySize: 512,
     });
 
-    this.grantParentStackStatusRead();
+    this.addToRolePolicy(parentStackStatusReadStatement());
   }
 
   /**
@@ -78,15 +79,5 @@ export class BucketAutoEmpty extends TypeScriptLambda {
 
     // The resource's Delete empties the bucket, so it must run before the policy that authorizes it is deleted.
     resource.node.addDependency(policy);
-  }
-
-  private grantParentStackStatusRead(): void {
-    const stack = Stack.of(this);
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudformation:DescribeStacks'],
-        resources: [stack.stackId],
-      }),
-    );
   }
 }

@@ -6,6 +6,7 @@ import type { ServerlessInboxDeployerType } from '../context/deployer-type';
 import { StackIdentity }                    from '../naming/stack-identity';
 import { ServerlessInboxTagKeys }           from '../runtime/handler-kit/tag-keys';
 
+/** The component of the deployment a resource belongs to, written as its `serverless-inbox:component` tag. */
 export type ServerlessInboxComponent =
   | 'auth'
   | 'data'
@@ -17,8 +18,6 @@ export type ServerlessInboxComponent =
   | 'storage'
   | 'search'
   | 'messaging';
-
-export { ServerlessInboxTagKeys };
 
 export interface ApplyServerlessInboxTagsOptions {
   /** Defaults to 'mailbox'. */
@@ -35,12 +34,70 @@ export interface ApplyServerlessInboxTagsOptions {
   readonly extraTags?: Record<string, string>;
 }
 
+/** The back-reference to the root stack's region that an edge stack's resources carry. */
 export interface ApplyServerlessInboxEdgeTagsOptions {
   /** The root stack's region (where the main stack is deployed). Tagged as `serverless-inbox:root-region`. */
   readonly rootRegion: string;
 }
 
-function applyServerlessInboxTags(
+/** What `serverlessInboxSubStackTags` builds a sub-stack's tags from. */
+export interface ServerlessInboxSubStackTagOptions {
+  /** Root (main) stack name shared across the deployment. */
+  readonly rootStack: string;
+  /** Root (main) stack's unique id, the guid of its stack id. */
+  readonly rootStackId: string;
+  /** This sub-stack's own CloudFormation stack name. */
+  readonly stack: string;
+  /** Product version (e.g. '1.2.3' or 'channel:dev'). Not included in the tag map. */
+  readonly version?: string;
+  /** Defaults to 'mailbox'. */
+  readonly product?: string;
+}
+
+/** The tags of a sub-stack's `AWS::CloudFormation::Stack`: the correlation scheme's product, root stack, root stack id and stack keys. */
+export type ServerlessInboxSubStackTags = {
+  readonly [ServerlessInboxTagKeys.product]: string;
+  readonly [ServerlessInboxTagKeys.rootStack]: string;
+  readonly [ServerlessInboxTagKeys.rootStackId]: string;
+  readonly [ServerlessInboxTagKeys.stack]: string;
+};
+
+/** The root stack whose resources a grant admits: its name as tagged under `root-stack`, and its guid as tagged under `root-stack-id`. */
+export interface RootStack {
+  readonly name: string;
+  readonly id: string;
+}
+
+/** The `Condition` block of one IAM statement a root-stack tag check produces. */
+export interface RootStackConditions {
+  /** The tag value the resource, or the request, must carry. */
+  readonly StringEquals: Record<string, string>;
+  /** Present on the name statement: the id tag must be absent. */
+  readonly Null?: Record<string, string>;
+}
+
+/** The two statements' conditions that together admit the resources the root stack owns. */
+export type RootStackConditionPair = readonly [RootStackConditions, RootStackConditions];
+
+/**
+ * Tags `scope` with the correlation tags of the deployment: the product, the root stack, the root stack's
+ * id, this stack and the deployer type resolved from the CDK context, then the caller's extra tags.
+ */
+export function applyServerlessInboxBaseTags(
+  scope: IConstruct,
+  options: ApplyServerlessInboxTagsOptions,
+): void {
+  applyServerlessInboxBaseTagsWithDeployerType(scope, options, resolveDeployerType(scope), StackIdentity.guid);
+}
+
+/**
+ * The base tags with the deployer type and the root stack's id given instead of resolved. A sub-stack
+ * template synthesized standalone (its own `new App()`, no CDK context) would silently resolve the
+ * deployer type to the 'cdk' fallback, so the caller passes the value it already has from its own
+ * CfnParameter. A sub-stack is not the root stack, so the caller also passes the root stack's id it
+ * received as a parameter (`rootStackId`), never its own.
+ */
+export function applyServerlessInboxBaseTagsWithDeployerType(
   scope: IConstruct,
   options: ApplyServerlessInboxTagsOptions,
   deployerType: ServerlessInboxDeployerType,
@@ -65,45 +122,9 @@ function applyServerlessInboxTags(
   }
 }
 
-export function applyServerlessInboxBaseTags(
-  scope: IConstruct,
-  options: ApplyServerlessInboxTagsOptions,
-): void {
-  applyServerlessInboxTags(scope, options, resolveDeployerType(scope), StackIdentity.guid);
-}
-
-/**
- * Internal-only variant for sub-stack templates synthesized standalone (their own `new App()`,
- * no CDK context) — `resolveDeployerType` would silently resolve to the 'cdk' fallback there, so
- * the caller passes the value it already has from its own CfnParameter instead. A sub-stack is
- * not the root stack, so the caller also passes the root stack's id it received as a parameter
- * (`rootStackId`), never its own. Not re-exported
- * from packages/mailbox/src/index.ts — never reaches the published surface.
- */
-export function applyServerlessInboxBaseTagsWithDeployerType(
-  scope: IConstruct,
-  options: ApplyServerlessInboxTagsOptions,
-  deployerType: ServerlessInboxDeployerType,
-  rootStackId: string,
-): void {
-  applyServerlessInboxTags(scope, options, deployerType, rootStackId);
-}
-
+/** Tags `scope` with the component of the deployment it belongs to. */
 export function applyServerlessInboxComponentTag(scope: IConstruct, component: ServerlessInboxComponent): void {
   Tags.of(scope).add(ServerlessInboxTagKeys.component, component);
-}
-
-export interface ServerlessInboxSubStackTagOptions {
-  /** Root (main) stack name shared across the deployment. */
-  readonly rootStack: string;
-  /** Root (main) stack's unique id, the guid of its stack id. */
-  readonly rootStackId: string;
-  /** This sub-stack's own CloudFormation stack name. */
-  readonly stack: string;
-  /** Product version (e.g. '1.2.3' or 'channel:dev'). Not included in the tag map. */
-  readonly version?: string;
-  /** Defaults to 'mailbox'. */
-  readonly product?: string;
 }
 
 /**
@@ -113,30 +134,20 @@ export interface ServerlessInboxSubStackTagOptions {
  */
 export function serverlessInboxSubStackTags(
   options: ServerlessInboxSubStackTagOptions,
-): Record<string, string> {
-  const tags: Record<string, string> = {
+): ServerlessInboxSubStackTags {
+  return {
     [ServerlessInboxTagKeys.product]: (options.product ?? 'mailbox').trim() || 'mailbox',
     [ServerlessInboxTagKeys.rootStack]: options.rootStack,
     [ServerlessInboxTagKeys.rootStackId]: options.rootStackId,
     [ServerlessInboxTagKeys.stack]: options.stack,
   };
-  return tags;
 }
 
+/** Marks `scope` as part of the edge stack and records the region of the root stack it belongs to. */
 export function applyServerlessInboxEdgeTags(scope: IConstruct, options: ApplyServerlessInboxEdgeTagsOptions): void {
   Tags.of(scope).add(ServerlessInboxTagKeys.edge, 'true');
-  // root-stack is set by applyServerlessInboxBaseTags; only the root-region back-reference is added here.
   Tags.of(scope).add(ServerlessInboxTagKeys.rootRegion, options.rootRegion);
 }
-
-/** The root stack whose resources a grant admits: its name as tagged under `root-stack`, and its guid as tagged under `root-stack-id`. */
-export interface RootStack {
-  readonly name: string;
-  readonly id: string;
-}
-
-/** The `Condition` block of one IAM statement: operator to condition-key/value map. */
-export type RootStackConditions =Record<string, Record<string, string>>;
 
 /**
  * The conditions of the two statements that together admit the resources the root stack owns:
@@ -145,7 +156,7 @@ export type RootStackConditions =Record<string, Record<string, string>>;
  * grants on the union of statements, so a caller adds one statement per element, spreading it into
  * its own conditions next to any keys under other operators.
  */
-export function rootStackResourceTagConditions(rootStack: RootStack): readonly [RootStackConditions, RootStackConditions] {
+export function rootStackResourceTagConditions(rootStack: RootStack): RootStackConditionPair {
   return rootStackConditions('aws:ResourceTag', rootStack);
 }
 
@@ -153,14 +164,14 @@ export function rootStackResourceTagConditions(rootStack: RootStack): readonly [
  * The same two conditions over the REQUEST tag (the tags written by the current request, e.g. on
  * create or first tag-write): the request carries the root stack's id, or carries no id and the root stack's name.
  */
-export function rootStackRequestTagConditions(rootStack: RootStack): readonly [RootStackConditions, RootStackConditions] {
+export function rootStackRequestTagConditions(rootStack: RootStack): RootStackConditionPair {
   return rootStackConditions('aws:RequestTag', rootStack);
 }
 
 function rootStackConditions(
   keyPrefix: 'aws:ResourceTag' | 'aws:RequestTag',
   rootStack: RootStack,
-): readonly [RootStackConditions, RootStackConditions] {
+): RootStackConditionPair {
   const idKey   = `${keyPrefix}/${ServerlessInboxTagKeys.rootStackId}`;
   const nameKey = `${keyPrefix}/${ServerlessInboxTagKeys.rootStack}`;
   return [

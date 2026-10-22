@@ -40,10 +40,11 @@ describe('DeployerStarterLambda', () => {
   it("names the workflow's state machine in its environment", () => {
     const { stack, workflow, template } = synthStarter();
 
+    const stateMachineArn: unknown = stack.resolve(workflow.stateMachineArn);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Handler: 'index.starterHandler',
       Environment: {
-        Variables: { MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: stack.resolve(workflow.stateMachineArn) },
+        Variables: { MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: stateMachineArn },
       },
     });
   });

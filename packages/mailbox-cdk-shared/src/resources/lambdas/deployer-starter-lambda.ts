@@ -8,6 +8,7 @@ import type { IPollingCfnDeployerWorkflow } from '../workflows/polling-cfn-deplo
 
 import { TypeScriptLambda }                 from './ts-lambda';
 
+/** What `DeployerStarterLambda` needs: the workflow it starts and the stack that deployer deploys. */
 export interface DeployerStarterLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly workflow: IPollingCfnDeployerWorkflow;

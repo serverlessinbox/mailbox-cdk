@@ -13,24 +13,29 @@ import { PollingCfnDeployerWorkflow }           from '../resources/workflows/pol
 export const TEST_ACCOUNT = '123456789012';
 export const TEST_REGION = 'us-west-2';
 
-/** One state of a synthesized state machine definition. */
-export interface StateJson {
-  readonly Type: string;
-  readonly Next?: string;
-  readonly End?: boolean;
-  readonly Parameters?: Record<string, unknown>;
-  readonly Seconds?: number;
-  readonly Choices?: Array<{ Variable: string; BooleanEquals: boolean; Next: string }>;
-  readonly Default?: string;
-  readonly ResultPath?: string;
-}
+const isStateJson = t.isPartial({
+  Type: t.isString(),
+  Next: t.isOptional(t.isString()),
+  End: t.isOptional(t.isBoolean()),
+  Parameters: t.isOptional(t.isRecord(t.isOneOf([t.isString(), t.isNumber()]))),
+  Seconds: t.isOptional(t.isNumber()),
+  Choices: t.isOptional(t.isArray(t.isPartial({ Variable: t.isString(), BooleanEquals: t.isBoolean(), Next: t.isString() }))),
+  Default: t.isOptional(t.isString()),
+  ResultPath: t.isOptional(t.isString()),
+});
+
+const isDefinitionJson = t.isPartial({
+  StartAt: t.isString(),
+  TimeoutSeconds: t.isNumber(),
+  States: t.isRecord(isStateJson),
+});
+
+const isStateMachineResource = t.isPartial({
+  Properties: t.isPartial({ DefinitionString: t.isOneOf([t.isString(), t.isPartial({})]) }),
+});
 
 /** A synthesized state machine definition, with every intrinsic function replaced by a placeholder. */
-export interface DefinitionJson {
-  readonly StartAt: string;
-  readonly TimeoutSeconds: number;
-  readonly States: Record<string, StateJson>;
-}
+export type DefinitionJson = t.InferType<typeof isDefinitionJson>;
 
 export interface DeployerTestStack {
   readonly stack: Stack;
@@ -88,9 +93,20 @@ export function starterServiceName(deployedStackName: string): string {
   return starters[0].Properties.Environment.Variables.SERVICE_NAME;
 }
 
+/** The definition of the template's one state machine, parsed from its synthesized definition string; one that is not shaped like a state machine definition throws. */
 export function stateMachineDefinition(template: Template): DefinitionJson {
-  const machines = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
-  return JSON.parse(renderWithTokens(machines[0].Properties.DefinitionString));
+  const [machine]         = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+  const resource: unknown = machine;
+  const errors: string[]  = [];
+  if (!isStateMachineResource(resource, { errors })) {
+    throw new Error(`Not a state machine resource: ${errors.join('; ')}`);
+  }
+
+  const definition: unknown = JSON.parse(renderWithTokens(resource.Properties.DefinitionString));
+  if (!isDefinitionJson(definition, { errors })) {
+    throw new Error(`Not a state machine definition: ${errors.join('; ')}`);
+  }
+  return definition;
 }
 
 export function stateMachineLogicalId(template: Template): string {

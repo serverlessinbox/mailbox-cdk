@@ -1,16 +1,26 @@
-import { Template }                        from 'aws-cdk-lib/assertions';
-import { App, Stack }                      from 'aws-cdk-lib';
-
-import { addServerlessInboxResourceGroup } from '../resource-group';
-
 /**
  * Pins the resource group's tag query and the description charset. AWS rejects a description outside
  * `[\sa-zA-Z0-9_.-]*`, which only a deploy reveals, so the literal is held to that set here.
  */
-function groupResourceIn(stack: Stack): Record<string, unknown> {
+
+import { Template }                        from 'aws-cdk-lib/assertions';
+import { App, Stack }                      from 'aws-cdk-lib';
+import * as t                              from 'typanion';
+
+import { addServerlessInboxResourceGroup } from '../resource-group';
+
+const isGroupResource = t.isPartial({
+  Properties: t.isPartial({ Description: t.isString() }),
+});
+
+type GroupProperties = t.InferType<typeof isGroupResource>['Properties'];
+
+function groupResourceIn(stack: Stack): GroupProperties {
   const groups = Object.values(Template.fromStack(stack).findResources('AWS::ResourceGroups::Group'));
   expect(groups).toHaveLength(1);
-  return groups[0].Properties;
+  const group: unknown = groups[0];
+  t.assert(group, isGroupResource);
+  return group.Properties;
 }
 
 describe('addServerlessInboxResourceGroup', () => {

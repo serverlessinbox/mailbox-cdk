@@ -9,8 +9,7 @@ import { DeployerStarterLambda }        from './resources/lambdas/deployer-start
 import { PollingCfnDeployerWorkflow }   from './resources/workflows/polling-cfn-deployer-workflow';
 import type { StackDeployerProperties } from './runtime/stack-deployer/stack/stack-deployment';
 
-const DEPLOY_STACK_SERVICE_TIMEOUT = Duration.hours(1);
-
+/** What `DeployerInfra` needs: the stack it deploys, the name of its workflow, and how its worker Lambda is built. */
 export interface DeployerInfraProps {
   readonly artifactResolver: IArtifactResolver;
   /**
@@ -32,6 +31,8 @@ export interface DeployerInfraProps {
    */
   readonly createWorker: (scope: Construct, id: string) => IFunction;
 }
+
+const DEPLOY_STACK_SERVICE_TIMEOUT = Duration.hours(1);
 
 /**
  * The scaffolding every sub-stack deployer shares: a worker Lambda that performs the CloudFormation

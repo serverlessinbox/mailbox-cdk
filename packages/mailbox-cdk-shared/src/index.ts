@@ -32,13 +32,13 @@ export { isDevelopmentMode, removalPolicyForRetainedResources, autoDeleteObjects
 export { TypeScriptLambda } from './resources/lambdas/ts-lambda';
 export type { TypeScriptLambdaProps } from './resources/lambdas/ts-lambda';
 export { GoLambda } from './resources/lambdas/go-lambda';
-export type { GoLambda2Props } from './resources/lambdas/go-lambda';
+export type { GoLambdaProps } from './resources/lambdas/go-lambda';
 export { applyArtifactTags } from './artifacts/apply-artifact-tags';
 export type { AutoUpdateType } from './artifacts/apply-artifact-tags';
 
 // Serverless Inbox tagging
+export { ServerlessInboxTagKeys } from './runtime/handler-kit/tag-keys';
 export {
-  ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,

@@ -10,6 +10,15 @@ import { getOrCreateSharedGroup }     from '../../tagging/shared-group';
 
 import type { Pipeline }              from './pipelines';
 
+/** The CloudWatch log group of a pipeline: a `logs.ILogGroup` plus one narrow read grant. */
+export interface IPipelineLogGroup extends logs.ILogGroup {
+  /**
+   * Grants exactly `logs:FilterLogEvents` on this log group (e.g., for querying logs during
+   * recovery/troubleshooting). Scoped to this log group's ARN — no conditions.
+   */
+  grantFilterEvents(grantee: iam.IGrantable): iam.Grant;
+}
+
 /** Log retention, settable per pipeline. */
 const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
   infra: RetentionDays.ONE_MONTH,
@@ -21,9 +30,9 @@ const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
 };
 
 /**
- * Removal policy, settable per pipeline. The infra group is RETAIN on every operation: the stack-failure
- * detector writes to it and reads it as its upload payload, and it must still exist when the detector
- * runs after a failed first create, which RETAIN_ON_UPDATE_OR_DELETE does not preserve.
+ * Removal policy, settable per pipeline. The infra group is RETAIN on every operation, because
+ * RETAIN_ON_UPDATE_OR_DELETE deletes the group when the first create fails, and what was written to it
+ * must survive that failure.
  */
 const PIPELINE_REMOVAL_POLICY: Record<Pipeline, cdk.RemovalPolicy> = {
   infra: cdk.RemovalPolicy.RETAIN,
@@ -33,15 +42,6 @@ const PIPELINE_REMOVAL_POLICY: Record<Pipeline, cdk.RemovalPolicy> = {
   admin: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
   audit: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
 };
-
-/** The CloudWatch log group of a pipeline: a `logs.ILogGroup` plus one narrow read grant. */
-export interface IPipelineLogGroup extends logs.ILogGroup {
-  /**
-   * Grants exactly `logs:FilterLogEvents` on this log group (e.g., for querying logs during
-   * recovery/troubleshooting). Scoped to this log group's ARN — no conditions.
-   */
-  grantFilterEvents(grantee: iam.IGrantable): iam.Grant;
-}
 
 /**
  * The CloudWatch log group of a pipeline, one per (stack, pipeline), created through `getOrCreate`.
@@ -76,14 +76,6 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
     });
   }
 
-  grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
-    return iam.Grant.addToPrincipal({
-      grantee,
-      actions: ['logs:FilterLogEvents'],
-      resourceArns: [this.logGroupArn],
-    });
-  }
-
   private static requirePipelineLogGroup(existing: IConstruct, childId: string): PipelineLogGroup {
     if (!(existing instanceof PipelineLogGroup)) {
       throw new Error(
@@ -97,5 +89,13 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
 
   private static logGroupNameFor(pipeline: Pipeline): string {
     return Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', StackIdentity.guidPrefix]);
+  }
+
+  grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
+    return iam.Grant.addToPrincipal({
+      grantee,
+      actions: ['logs:FilterLogEvents'],
+      resourceArns: [this.logGroupArn],
+    });
   }
 }

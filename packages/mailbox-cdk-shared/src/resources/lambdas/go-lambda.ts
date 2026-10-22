@@ -14,16 +14,17 @@ import { applyArtifactTags } from '../../artifacts/apply-artifact-tags';
 import { PipelineLogGroup }  from './pipeline-log-groups';
 import type { Pipeline }     from './pipelines';
 
-export interface GoLambda2Props extends FunctionOptions {
+/** What `GoLambda` needs beyond the function options: which published artifact holds the code, and which pipeline the function logs under. */
+export interface GoLambdaProps extends FunctionOptions {
   /**
-   * Lambda identifier used by code provider (e.g., "authorizer", "api-handler")
+   * Lambda identifier used by code provider
    */
-  lambdaId: string;
+  readonly lambdaId: string;
 
   /**
    * Code provider for obtaining lambda code asset
    */
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
 
   /**
    * The pipeline this Lambda belongs to. Selects the shared CloudWatch log group it writes to.
@@ -40,9 +41,14 @@ export interface GoLambda2Props extends FunctionOptions {
   readonly serviceName?: string;
 }
 
-/** @internal */
+/**
+ * A Go Lambda on ARM64 whose code is a published artifact, resolved through the artifact resolver from
+ * `lambdas/<lambdaId>.zip`. It logs to the shared log group of its pipeline unless `logGroup` is passed,
+ * and carries `SERVICE_NAME` and the artifact tags.
+ * @internal
+ */
 export class GoLambda extends LambdaFunction {
-  constructor(scope: Construct, id: string, props: GoLambda2Props) {
+  constructor(scope: Construct, id: string, props: GoLambdaProps) {
     const { lambdaId, artifactResolver, pipeline, serviceName, environment: callerEnvironment, ...restProps } = props;
 
     const code = new ArtifactCode(scope, artifactResolver, 'mailbox-go', `lambdas/${lambdaId}.zip`);
@@ -58,7 +64,7 @@ export class GoLambda extends LambdaFunction {
       ...(restProps.functionName ? { functionName: restProps.functionName } : {}),
       description: restProps.description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
       ...(logGroup ? { logGroup } : {}),
-      // SERVICE_NAME carries the stable lambdaId to every log line for attribution.
+      // SERVICE_NAME is the stable name every log line is attributed to.
       // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
       environment: {
         ...callerEnvironment,

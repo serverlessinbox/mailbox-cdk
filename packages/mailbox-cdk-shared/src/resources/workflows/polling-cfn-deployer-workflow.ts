@@ -1,29 +1,13 @@
-import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
-import { IFunction }                          from 'aws-cdk-lib/aws-lambda';
-import * as tasks                             from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as sfn                               from 'aws-cdk-lib/aws-stepfunctions';
-import { ArnFormat, Duration, Fn, Stack }     from 'aws-cdk-lib';
-import { Construct, IDependable }             from 'constructs';
+import { Grant, IGrantable }                   from 'aws-cdk-lib/aws-iam';
+import { IFunction }                           from 'aws-cdk-lib/aws-lambda';
+import * as tasks                              from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sfn                                from 'aws-cdk-lib/aws-stepfunctions';
+import { ArnFormat, Duration, Fn, Stack }      from 'aws-cdk-lib';
+import type { IResolvable }                    from 'aws-cdk-lib';
+import { Construct, IDependable }              from 'constructs';
 
-import type { SfnInvokeEvent, WorkflowInput } from '../../runtime/stack-deployer/stack/stack-deployment';
-import type { RetryCounts, WorkerResult }     from '../../runtime/stack-deployer/worker-result';
-
-const CFN_FIELD            = 'cfn' satisfies keyof WorkflowInput;
-const OP_FIELD             = 'op' satisfies keyof WorkflowInput;
-const ATTEMPT_FIELD        = 'attempt' satisfies keyof SfnInvokeEvent;
-const DELETE_RETRIES_FIELD = 'deleteRetryCount' satisfies keyof RetryCounts;
-const CREATE_RETRIES_FIELD = 'createRetryCount' satisfies keyof RetryCounts;
-const DONE_FIELD           = 'done' satisfies keyof WorkerResult;
-
-/** Where the workflow keeps the answer of the start invocation, and of the latest check invocation. */
-const START_RESULT = 'start';
-const CHECK_RESULT = 'check';
-
-/** The invocation payload of the first worker call: the checks' payload without the retry counters. */
-type StartPayload = Record<Exclude<keyof SfnInvokeEvent, keyof RetryCounts>, unknown>;
-
-/** The invocation payload of every polling worker call. */
-type CheckPayload = Record<keyof SfnInvokeEvent, unknown>;
+import type { SfnInvokeEvent, WorkflowInput }  from '../../runtime/stack-deployer/stack/stack-deployment';
+import type { RetryCounts, WorkerResult }      from '../../runtime/stack-deployer/worker-result';
 
 /** A deployer workflow's state machine address, and the permission to start and follow its executions. */
 export interface IPollingCfnDeployerWorkflow {
@@ -31,6 +15,7 @@ export interface IPollingCfnDeployerWorkflow {
   grantStartAndDescribeExecutions(grantee: IGrantable): void;
 }
 
+/** What `PollingCfnDeployerWorkflow` needs: the worker function it invokes and the state machine's name; the timings are optional. */
 export interface PollingCfnDeployerWorkflowProps {
   readonly handler: IFunction;
   /** How long to wait between checks (default: 20s). */
@@ -40,6 +25,38 @@ export interface PollingCfnDeployerWorkflowProps {
   /** The state machine's name; also the source of the execution ARN pattern granted to the starter. */
   readonly stateMachineName: string;
 }
+
+/** The invocation payload of every polling worker call: an `SfnInvokeEvent` whose references into the state the state machine resolves when it runs. */
+interface CheckPayload extends RetryCounts {
+  readonly mode: NonNullable<SfnInvokeEvent['mode']>;
+  readonly cfn: IResolvable;
+  readonly op: IResolvable;
+  readonly attempt: number;
+}
+
+/** The invocation payload of the first worker call: the checks' payload without the retry counters. */
+type StartPayload = Omit<CheckPayload, keyof RetryCounts>;
+
+/** The answer a worker call leaves in the state: that of the start invocation, or that of the latest check invocation. */
+type ResultField = typeof START_RESULT | typeof CHECK_RESULT;
+
+/** A top-level field of the state the workflow carries: the forwarded input and the answers of the worker calls. */
+type StateField = typeof CFN_FIELD | typeof OP_FIELD | ResultField;
+
+/** A field a path into the state can name. */
+type PathField = StateField | typeof ATTEMPT_FIELD | typeof DELETE_RETRIES_FIELD | typeof CREATE_RETRIES_FIELD | typeof DONE_FIELD;
+
+/** The state-machine parameter that copies a state field to the same field of the next state. */
+type ForwardedField = Partial<Record<`${StateField}.$`, string>>;
+
+const CFN_FIELD            = 'cfn' satisfies keyof WorkflowInput;
+const OP_FIELD             = 'op' satisfies keyof WorkflowInput;
+const ATTEMPT_FIELD        = 'attempt' satisfies keyof CheckPayload;
+const DELETE_RETRIES_FIELD = 'deleteRetryCount' satisfies keyof RetryCounts;
+const CREATE_RETRIES_FIELD = 'createRetryCount' satisfies keyof RetryCounts;
+const DONE_FIELD           = 'done' satisfies keyof WorkerResult;
+const START_RESULT         = 'start';
+const CHECK_RESULT         = 'check';
 
 /**
  * The Step Functions workflow that drives one long-running sub-stack deployment: it starts the stack
@@ -148,7 +165,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     });
   }
 
-  private workerInvocation(id: string, resultField: string, payload: StartPayload | CheckPayload, handler: IFunction): tasks.LambdaInvoke {
+  private workerInvocation(id: string, resultField: ResultField, payload: StartPayload | CheckPayload, handler: IFunction): tasks.LambdaInvoke {
     return new tasks.LambdaInvoke(this, id, {
       lambdaFunction: handler,
       payloadResponseOnly: true,
@@ -177,15 +194,15 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     };
   }
 
-  private isDone(resultField: string): sfn.Condition {
+  private isDone(resultField: ResultField): sfn.Condition {
     return sfn.Condition.booleanEquals(this.path(resultField, DONE_FIELD), true);
   }
 
-  private forward(field: string): Record<string, string> {
+  private forward(field: StateField): ForwardedField {
     return { [`${field}.$`]: this.path(field) };
   }
 
-  private path(...fields: string[]): string {
+  private path(...fields: PathField[]): string {
     return `$.${fields.join('.')}`;
   }
 

@@ -16,10 +16,21 @@ import { Bucket }                                   from 'aws-cdk-lib/aws-s3';
 import type { IBucket }                             from 'aws-cdk-lib/aws-s3';
 import { App, BootstraplessSynthesizer, Fn, Stack } from 'aws-cdk-lib';
 import { Construct }                                from 'constructs';
+import * as t                                       from 'typanion';
 
 import { statementsForAction }                      from '../../../cdk-test-support';
 import { StaticContentSource }                      from '../../../static-content-source';
 import { StaticContentDeployer }                    from '../content-deployer';
+
+const isRef = t.isPartial({ Ref: t.isString() });
+
+const isInvalidationProperties = t.isPartial({
+  deploymentNonce: t.isOptional(t.isOneOf([t.isString(), t.isPartial({})])),
+});
+
+const isInvalidationResource = t.isPartial({ Properties: isInvalidationProperties });
+
+type InvalidationProperties = t.InferType<typeof isInvalidationProperties>;
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {
@@ -45,7 +56,9 @@ function targetBucket(scope: Construct): IBucket {
 
 /** The logical id CloudFormation gives a custom resource, which its dependents list in `DependsOn`. */
 function logicalIdOf(stack: Stack, resource: { ref: string }): string {
-  return stack.resolve(resource.ref).Ref;
+  const resolved: unknown = stack.resolve(resource.ref);
+  t.assert(resolved, isRef);
+  return resolved.Ref;
 }
 
 describe('StaticContentDeployer', () => {
@@ -197,11 +210,11 @@ describe('StaticContentDeployer', () => {
 
       deployer.invalidate(uiScope, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
 
-      const invalidations = Object.values(Template.fromStack(stack).findResources('Custom::ContentInvalidation'));
-      expect(invalidations).toHaveLength(1);
-      expect([...invalidations[0].DependsOn].sort()).toEqual(
-        [logicalIdOf(stack, uiContent), logicalIdOf(stack, uiConfig)].sort(),
-      );
+      const template = Template.fromStack(stack);
+      template.resourceCountIs('Custom::ContentInvalidation', 1);
+      template.hasResource('Custom::ContentInvalidation', {
+        DependsOn: [logicalIdOf(stack, uiContent), logicalIdOf(stack, uiConfig)].sort(),
+      });
     });
   });
 
@@ -212,13 +225,15 @@ describe('StaticContentDeployer', () => {
     /** The properties of the one invalidation resource of a stack built by `configure`. */
     function synthInvalidationProperties(
       configure: (deployer: StaticContentDeployer, stack: Stack) => void,
-    ): Record<string, unknown> {
+    ): InvalidationProperties {
       const configuredStack = newStack();
       configure(StaticContentDeployer.getOrCreate(configuredStack, newArtifactResolver(configuredStack)), configuredStack);
 
       const invalidations = Object.values(Template.fromStack(configuredStack).findResources('Custom::ContentInvalidation'));
       expect(invalidations).toHaveLength(1);
-      return invalidations[0].Properties;
+      const invalidation: unknown = invalidations[0];
+      t.assert(invalidation, isInvalidationResource);
+      return invalidation.Properties;
     }
 
     function deployUi(source: ReturnType<typeof StaticContentSource.data>) {
