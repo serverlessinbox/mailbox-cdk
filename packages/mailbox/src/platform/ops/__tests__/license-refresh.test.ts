@@ -71,26 +71,4 @@ describe('LicenseRefresh', () => {
       });
     });
   });
-
-  it('refreshes after the owning stack finishes a create or an update', () => {
-    template.hasResourceProperties('AWS::Events::Rule', {
-      EventPattern: {
-        source: ['aws.cloudformation'],
-        'detail-type': ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [{ Ref: 'AWS::StackId' }],
-          'status-details': { status: ['CREATE_COMPLETE', 'UPDATE_COMPLETE'] },
-        },
-      },
-    });
-  });
-
-  it('invokes the refresher Lambda from both rules', () => {
-    const rules = Object.values(template.findResources('AWS::Events::Rule'));
-
-    expect(rules).toHaveLength(2);
-    const targetArns = rules.map((rule) => rule.Properties.Targets[0].Arn);
-    expect(targetArns[0]).toEqual(targetArns[1]);
-    expect(targetArns[0]).toEqual({ 'Fn::GetAtt': [expect.stringContaining('handler'), 'Arn'] });
-  });
 });

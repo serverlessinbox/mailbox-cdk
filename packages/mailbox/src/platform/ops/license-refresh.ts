@@ -1,15 +1,12 @@
 import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
 import { ComponentDescription, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import { LambdaFunction }                     from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule }                     from 'aws-cdk-lib/aws-events';
 import * as lambda                            from 'aws-cdk-lib/aws-lambda';
-import { Stack }                              from 'aws-cdk-lib';
 import { Construct }                          from 'constructs';
 
 import { LicenseRefresherLambda }             from '../../resources/lambdas/license-refresher-lambda';
 import type { IDataTable }                    from '../../resources/tables/data-tables';
 
-/** Inputs of the license refresher Lambda and of the rules that invoke it. */
+/** Inputs of the license refresher Lambda. */
 export interface LicenseRefreshProps {
   readonly configTable: IDataTable;
   readonly artifactResolver: IArtifactResolver;
@@ -18,10 +15,7 @@ export interface LicenseRefreshProps {
   readonly vendorAccountIds: string[];
 }
 
-/**
- * The license refresher Lambda together with the rules that invoke it: once a day, and after every
- * stack create or update.
- */
+/** The license refresher Lambda, which refreshes once a day and after every stack create or update. */
 export class LicenseRefresh extends Construct {
   /** The Lambda function that refreshes the license. */
   public readonly licenseFunction: lambda.IFunction;
@@ -30,37 +24,18 @@ export class LicenseRefresh extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Periodically refreshes the product license from the license server.');
 
-    const handler = new LicenseRefresherLambda(this, 'handler', {
-      configTable: props.configTable,
-      artifactResolver: props.artifactResolver,
-      coreDomain: props.coreDomain,
-      vendorAccountIds: props.vendorAccountIds,
-    });
-
-    this.licenseFunction = handler;
-
     // The time differs per install so that customer stacks do not all refresh at once.
     const stackHelpers = StackHelpers.getOrCreate(this, props.artifactResolver);
     const hour         = stackHelpers.resolveSeededNumber(this, 'schedule-hour', { salt: 'license-refresh-hour', range: 24 });
     const minute       = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
-    new Rule(this, 'rule', {
-      schedule: Schedule.cron({ hour, minute }),
-      targets: [new LambdaFunction(handler)],
-    });
 
-    // Refresh immediately after stack deploy/update completes.
-    new Rule(this, 'refresh-on-stack-complete', {
-      eventPattern: {
-        source: ['aws.cloudformation'],
-        detailType: ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [Stack.of(this).stackId],
-          'status-details': {
-            status: ['CREATE_COMPLETE', 'UPDATE_COMPLETE'],
-          },
-        },
-      },
-      targets: [new LambdaFunction(handler)],
+    this.licenseFunction = new LicenseRefresherLambda(this, 'handler', {
+      configTable: props.configTable,
+      artifactResolver: props.artifactResolver,
+      coreDomain: props.coreDomain,
+      vendorAccountIds: props.vendorAccountIds,
+      scheduleHour: hour,
+      scheduleMinute: minute,
     });
   }
 }

@@ -17,9 +17,15 @@ const platformOnlyLambdas = [
   'support-role-assumption-collector-lambda',
 ];
 
-const platformListFiles = [...platformOnlyLambdas.map((name) => `resources/lambdas/${name}.ts`), 'resources/workflows/sweeper-workflow.ts'];
+const platformOnlyEvents = ['license-refresh-schedule'];
 
-const platformListBasenames = [...platformOnlyLambdas, 'sweeper-workflow'];
+const platformListFiles = [
+  ...platformOnlyLambdas.map((name) => `resources/lambdas/${name}.ts`),
+  ...platformOnlyEvents.map((name) => `resources/events/${name}.ts`),
+  'resources/workflows/sweeper-workflow.ts',
+];
+
+const platformListBasenames = [...platformOnlyLambdas, ...platformOnlyEvents, 'sweeper-workflow'];
 
 // Contract files a platform file takes from the rest of mailbox: path below
 // src/ without extension.
@@ -56,7 +62,7 @@ const platformImportsOnlyContracts = {
 // Platform-list files sit in resources/ and name the rest of mailbox by
 // relative path: a sibling (./x) or a parent folder (../x, ../../x).
 const platformListImportsOnlyContracts = {
-  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/)\\.\\.?/',
+  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./events/license-refresh-schedule$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/)\\.\\.?/',
   message: 'platform-list files import the rest of mailbox only through the four contract files (rule 3).',
 };
 

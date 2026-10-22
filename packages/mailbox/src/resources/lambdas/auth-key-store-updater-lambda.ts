@@ -1,8 +1,9 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
-import { Construct }               from 'constructs';
+import type { IArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, StackDeployedEvent }  from '@serverlessinbox/mailbox-cdk-shared';
+import { Construct }                     from 'constructs';
 
-import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import { AuthKeyRefreshSchedule }        from '../events/auth-key-refresh-schedule';
+import type { IAuthKeyStoreTable }       from '../tables/auth-key-store-table';
 
 export interface AuthKeyStoreUpdaterLambdaProps {
   issuers: string[];
@@ -25,5 +26,8 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
 
     // This Lambda writes the current (and rotating previous) HMAC key and JWKS entries.
     props.authKeyStoreTable.grantReadWrite(this);
+
+    new AuthKeyRefreshSchedule(this, 'refresh-schedule', { target: this });
+    new StackDeployedEvent(this, 'stack-deployed', { target: this });
   }
 }

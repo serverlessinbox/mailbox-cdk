@@ -90,6 +90,17 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     expect(statements.some((statement) => statement.Effect === 'Deny')).toBe(false);
   });
 
+  it('is invoked by the 6-hourly refresh and by the stack-deployed event', () => {
+    const targets = [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^authkeystoreupdater'), 'Arn'] }, Id: 'Target0' }];
+
+    template.resourceCountIs('AWS::Events::Rule', 2);
+    template.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(6 hours)', Targets: targets });
+    template.hasResourceProperties('AWS::Events::Rule', {
+      EventPattern: Match.objectLike({ source: ['aws.cloudformation'] }),
+      Targets: targets,
+    });
+  });
+
   it('sets AUTH_KEY_STORE_TABLE_NAME on the function environment', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {

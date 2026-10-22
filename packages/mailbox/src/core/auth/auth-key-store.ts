@@ -1,8 +1,5 @@
 import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
 import { ComponentDescription }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { LambdaFunction }                        from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule }                        from 'aws-cdk-lib/aws-events';
-import { Duration, Stack }                       from 'aws-cdk-lib';
 import { Construct }                             from 'constructs';
 
 import { AuthKeyStoreUpdaterLambda }             from '../../resources/lambdas/auth-key-store-updater-lambda';
@@ -25,34 +22,12 @@ export class AuthKeyStore extends Construct {
 
     const authKeyStoreTable = new AuthKeyStoreTable(this, 'table');
 
-    const handler = new AuthKeyStoreUpdaterLambda(this, 'handler', {
+    new AuthKeyStoreUpdaterLambda(this, 'handler', {
       authKeyStoreTable,
       issuers: props.issuers,
       artifactResolver: props.artifactResolver,
     });
 
     this.authKeyStoreTable = authKeyStoreTable;
-
-    // Keep the cache fresh for key rotation.
-    new Rule(this, 'rule', {
-      schedule: Schedule.rate(Duration.hours(6)),
-      targets: [new LambdaFunction(handler)],
-    });
-
-    // Populate the cache soon after stack deploy/update completes, without using CDK custom-resource triggers.
-    // This runs once per successful deploy (CREATE_COMPLETE/UPDATE_COMPLETE) for this stack.
-    new Rule(this, 'populate-on-stack-complete', {
-      eventPattern: {
-        source: ['aws.cloudformation'],
-        detailType: ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [Stack.of(this).stackId],
-          'status-details': {
-            status: ['CREATE_COMPLETE', 'UPDATE_COMPLETE'],
-          },
-        },
-      },
-      targets: [new LambdaFunction(handler)],
-    });
   }
 }
