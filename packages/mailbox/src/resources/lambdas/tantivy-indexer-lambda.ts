@@ -1,9 +1,11 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
+import type { IQueue }            from 'aws-cdk-lib/aws-sqs';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
 import type { IDataBlobStore }    from '../buckets/data-blob-store';
+import { SearchIndexingSchedule } from '../events/search-indexing-schedule';
 import type { IDataTable }        from '../tables/data-tables';
 
 export interface TantivyIndexerLambdaProps {
@@ -12,6 +14,7 @@ export interface TantivyIndexerLambdaProps {
   configTable: IDataTable;
   changelogTable: IDataTable;
   artifactResolver: IArtifactResolver;
+  indexingScheduleDlq: IQueue;
 }
 
 export class TantivyIndexerLambda extends GoLambda {
@@ -35,5 +38,7 @@ export class TantivyIndexerLambda extends GoLambda {
     props.itemTable.grantRead(this);
     props.configTable.grantRead(this);
     props.changelogTable.grantRead(this);
+
+    new SearchIndexingSchedule(this, 'indexing-schedule', { target: this, deadLetterQueue: props.indexingScheduleDlq });
   }
 }

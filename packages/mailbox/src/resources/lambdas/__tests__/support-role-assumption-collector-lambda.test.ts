@@ -71,4 +71,14 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
       },
     });
   });
+
+  it('is invoked on an hourly schedule', () => {
+    const template            = Template.fromStack(stack);
+    const [functionLogicalId] = Object.keys(template.findResources('AWS::Lambda::Function'));
+
+    template.hasResourceProperties('AWS::Events::Rule', {
+      ScheduleExpression: 'cron(0 * * * ? *)',
+      Targets: [{ Arn: { 'Fn::GetAtt': [functionLogicalId, 'Arn'] }, Id: 'Target0' }],
+    });
+  });
 });

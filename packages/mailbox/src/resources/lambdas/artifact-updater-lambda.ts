@@ -1,11 +1,13 @@
-import type { IArtifactResolver }                                                   from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                                           from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                          from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                                            from 'aws-cdk-lib';
-import { Construct }                                                                from 'constructs';
+import type { IArtifactResolver }                                                                          from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagConditions, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                                                                  from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                                                 from 'aws-cdk-lib/aws-iam';
+import { Aspects, Aws, Duration }                                                                          from 'aws-cdk-lib';
+import type { CfnCondition }                                                                               from 'aws-cdk-lib';
+import { Construct }                                                                                       from 'constructs';
 
-import type { Granularity }                                                         from '../../platform/update/auto-updater';
+import type { Granularity }                                                                                from '../../platform/update/auto-updater';
+import { ArtifactUpdateSchedule }                                                                          from '../events/artifact-update-schedule';
 
 export interface ArtifactUpdaterLambdaProps {
   artifactResolver: IArtifactResolver;
@@ -14,6 +16,9 @@ export interface ArtifactUpdaterLambdaProps {
   rootStackTagValue: string;
   rootStackId: string;
   artifactBucketBase: string;
+  updateInterval: Duration;
+  /** The scheduled update exists only while this condition holds; the function itself always exists. */
+  isTracking: CfnCondition;
 }
 
 /**
@@ -54,6 +59,9 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantArtifactReleaseAccess(props.artifactBucketBase);
     this.grantParentStackStatusRead();
     this.grantSelfInvoke();
+
+    const schedule = new ArtifactUpdateSchedule(this, 'update-schedule', { target: this, interval: props.updateInterval });
+    Aspects.of(schedule).add(new GateOnConditionAspect(props.isTracking));
   }
 
   /** GetResources is read-only enumeration and cannot be scoped. */

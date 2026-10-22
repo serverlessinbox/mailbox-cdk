@@ -7,7 +7,8 @@ import { Construct }               from 'constructs';
 import {
   buildSupportTierEnvironment,
 } from '../../platform/support/support-roles-infra';
-import type { IDataTable } from '../tables/data-tables';
+import { SupportCollectionSchedule } from '../events/support-collection-schedule';
+import type { IDataTable }           from '../tables/data-tables';
 
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** Support-hop role ARN — scoped for expiry enforcement via tag recomputation. */
@@ -83,6 +84,8 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     this.grantCloudTrailLookup();
     // Grant UntagRole on support-hop for expiry enforcement.
     this.grantExpiryEnforcement(props.supportHopRoleArn, props.supportTierTagKeys);
+
+    new SupportCollectionSchedule(this, 'collection-schedule', { target: this });
   }
 
   private grantCloudTrailLookup(): void {

@@ -6,12 +6,12 @@ import { Aws, Duration, Fn, Tags }                                              
 import * as cdk                                                                  from 'aws-cdk-lib';
 import { Construct, IConstruct }                                                 from 'constructs';
 
-import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../core/apis/addons';
-import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
 import { loadMailboxArtifactVersions }                                           from '../../mailbox-artifact-versions';
 import { loadMailboxRegistryRecord }                                             from '../../mailbox-registry-record';
+import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
 
+import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
 import { TrackedUpdateTriggers }                                                 from './tracked-update-triggers';
 
 /**
@@ -126,6 +126,8 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
       rootStackId: StackIdentity.guid,
+      updateInterval: props.updateInterval ?? Duration.hours(6),
+      isTracking,
     });
     this.updaterFunction = updater;
     this.grantPrincipal  = updater.grantPrincipal;
@@ -134,7 +136,6 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     this.trackedTriggers = new TrackedUpdateTriggers(this, 'tracked-update-triggers', {
       updater,
       isTracking,
-      updateInterval: props.updateInterval ?? Duration.hours(6),
     });
   }
 

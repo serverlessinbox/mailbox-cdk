@@ -4,18 +4,16 @@ import { resolveVendorAccountIds }                                              
 import { HttpLambdaAuthorizer }                                                                        from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration }                                                                       from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpApi, HttpMethod }                                                                         from 'aws-cdk-lib/aws-apigatewayv2';
-import * as targets                                                                                    from 'aws-cdk-lib/aws-events-targets';
-import * as events                                                                                     from 'aws-cdk-lib/aws-events';
 import type { IFunction }                                                                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                                                                        from 'aws-cdk-lib';
 import { Fn }                                                                                          from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
 import { IAdminApiAddon }                                                                              from '../../core/apis/addons';
-import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
 import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';
 import { SupportRoleAssumptionCollectorLambda }                                                        from '../../resources/lambdas/support-role-assumption-collector-lambda';
+import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
 
 import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
 
@@ -113,7 +111,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       });
 
       // Role-assumption collector Lambda.
-      const collectorLambda = new SupportRoleAssumptionCollectorLambda(this, 'collector', {
+      new SupportRoleAssumptionCollectorLambda(this, 'collector', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
         tierRoleArns: rolesInfra.tierArns,
         configTable: props.configTable,
@@ -122,14 +120,6 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
         supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
         supportTierTagKeys,
       });
-
-      // EventBridge rule: hourly schedule for the collector.
-      const rule = new events.Rule(this, 'hourly-collector-rule', {
-        schedule: events.Schedule.cron({ minute: '0' }), // Hourly at minute 0
-        description: 'Hourly trigger for support role assumption collector and expiry enforcement',
-      });
-
-      rule.addTarget(new targets.LambdaFunction(collectorLambda));
 
       cdk.Aspects.of(this).add(new GateOnConditionAspect(condition));
     }

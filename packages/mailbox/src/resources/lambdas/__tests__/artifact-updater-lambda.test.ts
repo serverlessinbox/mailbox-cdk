@@ -10,18 +10,19 @@
  * with a configuration failure.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
-import { getAttLogicalId, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { env }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                       from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }                             from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                                                 from '@serverlessinbox/artifact-registry-cdk';
+import { getAttLogicalId, statementsForRole }                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ServerlessInboxTagKeys }                                           from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                         from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, CfnCondition, Duration, Fn, Stack } from 'aws-cdk-lib';
 
-import { load }                                           from '../../../runtime/artifact-updater/config';
-import { ArtifactUpdaterLambda }                          from '../artifact-updater-lambda';
+import { load }                                                             from '../../../runtime/artifact-updater/config';
+import { ArtifactUpdaterLambda }                                            from '../artifact-updater-lambda';
 
+const TRACKING_CONDITION       = 'IsTracking';
 const ROOT_STACK               = 'my-root-stack';
 const BUCKET_BASE              = 'test-artifacts';
 const ROOT_STACK_ID            = 'guid-1';
@@ -68,9 +69,11 @@ describe('ArtifactUpdaterLambda', () => {
       rootStackTagValue: ROOT_STACK,
       rootStackId: ROOT_STACK_ID,
       artifactBucketBase: BUCKET_BASE,
+      updateInterval: Duration.hours(3),
+      isTracking: new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') }),
     });
 
-    template           = Template.fromStack(stack);
+    template           =Template.fromStack(stack);
     const functions    = template.findResources('AWS::Lambda::Function');
     [updaterLogicalId] = Object.keys(functions);
     updater            = functions[updaterLogicalId] as FunctionResource;
@@ -112,6 +115,29 @@ describe('ArtifactUpdaterLambda', () => {
         Action: 'lambda:InvokeFunction',
         FunctionName: { 'Fn::GetAtt': [updaterLogicalId, 'Arn'] },
         Principal: { 'Fn::GetAtt': [roleLogicalId, 'Arn'] },
+      });
+    });
+  });
+
+  describe('update schedule', () => {
+    it('gates the rule on the tracking condition', () => {
+      const rules = Object.values(template.findResources('AWS::Events::Rule'));
+
+      expect(rules).toHaveLength(1);
+      expect(rules[0].Condition).toBe(TRACKING_CONDITION);
+    });
+
+    it('gates the permission that lets the rule invoke the function on the tracking condition', () => {
+      const permissions = Object.values(template.findResources('AWS::Lambda::Permission', { Properties: { Principal: 'events.amazonaws.com' } }));
+
+      expect(permissions).toHaveLength(1);
+      expect(permissions[0].Condition).toBe(TRACKING_CONDITION);
+    });
+
+    it('invokes this function at the given interval', () => {
+      template.hasResourceProperties('AWS::Events::Rule', {
+        ScheduleExpression: 'rate(3 hours)',
+        Targets: [{ Arn: { 'Fn::GetAtt': [updaterLogicalId, 'Arn'] }, Id: 'Target0' }],
       });
     });
   });
