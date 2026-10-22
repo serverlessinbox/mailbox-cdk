@@ -5,12 +5,12 @@ import type { IBucket }                                            from 'aws-cdk
 import type { IReceiptRuleSet }                                    from 'aws-cdk-lib/aws-ses';
 import { Construct }                                               from 'constructs';
 
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import { EmailProcessorLambda }                                    from '../../resources/lambdas/email-processor-lambda';
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 
 import { EmailSending }                                            from './email-sending';
 import { SesEventProcessing }                                      from './ses-event-processing';

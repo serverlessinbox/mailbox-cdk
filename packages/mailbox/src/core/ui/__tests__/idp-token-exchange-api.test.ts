@@ -14,9 +14,9 @@ import * as dynamodb                                     from 'aws-cdk-lib/aws-d
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../auth/types';
-import { DataTable }                                     from '../../../resources/tables/data-tables';
+import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../../contracts/auth-names';
 import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                     from '../../../resources/tables/data-tables';
 import { IdpTokenExchangeApi }                           from '../idp-token-exchange-api';
 
 interface SynthesizedFunction {

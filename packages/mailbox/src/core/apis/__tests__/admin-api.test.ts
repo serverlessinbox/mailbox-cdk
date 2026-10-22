@@ -21,6 +21,7 @@ import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
+import type { IWebSocketBroadcastPublisher }         from '../../../contracts/websocket-push';
 import { DataBlobStore }                             from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
@@ -29,7 +30,6 @@ import { DataTable }                                 from '../../../resources/ta
 import type { IAdminApiAddon }                       from '../addons';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
-import type { IWebSocketBroadcastPublisher }         from '../websocket';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;

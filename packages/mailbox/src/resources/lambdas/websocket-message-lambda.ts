@@ -3,9 +3,9 @@ import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import { IWebSocketTable }        from '../tables/websocket-table';
-import type { IWebSocketPushApi } from '../../core/apis/websocket';
+import type { IWebSocketPushApi } from '../../contracts/websocket-push';
 import type { IDataTable }        from '../tables/data-tables';
+import { IWebSocketTable }        from '../tables/websocket-table';
 
 export interface WebSocketMessageLambdaProps {
   connectionsTable: IWebSocketTable;

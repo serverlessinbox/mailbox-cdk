@@ -123,6 +123,14 @@ describe('EdgeSection', () => {
     expect(withoutZone.uiCertificate).toBeUndefined();
   });
 
+  it('offers the other sections its hosted zone as a DNS zone when the mailbox has one and none otherwise', () => {
+    const { section: withZone }    = newSection();
+    const { section: withoutZone } = newSection(WITHOUT_ZONE);
+
+    expect(withZone.dnsZone?.hostedZoneId).toBe('Z0TESTZONE');
+    expect(withoutZone.dnsZone).toBeUndefined();
+  });
+
   it('gives each regional API the operator certificate, else the regional SAN certificate', () => {
     const { stack: probe } = newDeployerTestStack();
     const jmap             = acm.Certificate.fromCertificateArn(probe, 'jmap', 'arn:aws:acm:us-west-2:111122223333:certificate/jmap');

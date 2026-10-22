@@ -4,6 +4,7 @@ import type { VendorLink }                                                      
 import type * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct }                                                                        from 'constructs';
 
+import type { IWebSocketBroadcastPublisher }                                                from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                              from '../../resources/buckets/data-blob-store';
 import type { IIdentityProvisioner }                                                        from '../../resources/lambdas/identity-provisioner-lambda';
 import type { IAuditEventsQueue }                                                           from '../../resources/queues/audit-events-queue';
@@ -18,7 +19,6 @@ import { AdminApi }                                                             
 import { JmapApi }                                                                          from './jmap-api';
 import { McpApi }                                                                           from './mcp-api';
 import { WebSocketPush }                                                                    from './websocket';
-import type { IWebSocketBroadcastPublisher }                                                from './websocket';
 
 /** What {@link ApisSection} uses of the data section. */
 export interface IApisDataInputs {

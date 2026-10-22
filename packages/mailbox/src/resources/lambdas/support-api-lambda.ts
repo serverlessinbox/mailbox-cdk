@@ -4,7 +4,7 @@ import { PolicyStatement, Effect }    from 'aws-cdk-lib/aws-iam';
 import { Duration, Stack }            from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
 
-import type { ISupportRoles }         from '../../platform/support/support-roles-infra';
+import type { ISupportRoles }         from '../../contracts/support-roles';
 import type { IAuditEventsQueue }     from '../queues/audit-events-queue';
 import type { IDataTable }            from '../tables/data-tables';
 

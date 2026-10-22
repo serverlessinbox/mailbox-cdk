@@ -19,7 +19,7 @@ import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IWebSocketPushApi }               from '../../../core/apis/websocket';
+import type { IWebSocketPushApi }               from '../../../contracts/websocket-push';
 import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketBroadcastLambda }             from '../websocket-broadcast-lambda';

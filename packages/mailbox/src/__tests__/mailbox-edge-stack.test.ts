@@ -15,6 +15,7 @@ import type { ArtifactPin }                             from '@serverlessinbox/a
 import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactObject, DeployedStack }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                     from 'aws-cdk-lib/assertions';
+import { Role }                                         from 'aws-cdk-lib/aws-iam';
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
@@ -361,15 +362,14 @@ describe('MailboxEdgeStack Template Synthesis', () => {
 
       new MailboxEdgeDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        stack:                   testStack,
-        edgeStackNamePattern:    'test-root-edge*',
-        edgeStack:               new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*'),
-        rootStack:               'test-root',
-        rootStackId:             'test-guid',
-        template:                new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
-        artifactObjects:         [new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'lambdas/jmap-blob-download.zip')],
-        hostedZoneId:            'Z123456',
-        jmapBlobDownloadRoleArn: 'arn:aws:iam::123456789012:role/test-role',
+        edgeStackNamePattern: 'test-root-edge*',
+        edgeStack:            new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*'),
+        rootStack:            'test-root',
+        rootStackId:          'test-guid',
+        template:             new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
+        artifactObjects:      [new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'lambdas/jmap-blob-download.zip')],
+        hostedZoneId:         'Z123456',
+        jmapBlobDownloadRole: Role.fromRoleArn(testStack, 'jmap-blob-download-role', 'arn:aws:iam::123456789012:role/test-role'),
       });
 
       const template  = Template.fromStack(testStack);

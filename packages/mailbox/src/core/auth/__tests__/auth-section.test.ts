@@ -130,6 +130,18 @@ describe('AuthSection', () => {
     template.hasResourceProperties('Custom::Bootstrap', { domain: 'example.com' });
   });
 
+  it('bootstraps with the hosted zone the edge section offers', () => {
+    const section = newSection();
+
+    section.addBootstrap({
+      email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+      ui:    {},
+      edge:  { dnsZone: { hostedZoneId: 'Z0TESTZONE', grantRecordManagement: jest.fn() } },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', { hostedZoneId: 'Z0TESTZONE' });
+  });
+
   describe('with enabled UIs', () => {
     const adminUi: IOAuthUi   = {
       oauthClient:      { clientId: 'admin-client', requestScopeList: ['admin-api/admin'], groups: ['admins'] },

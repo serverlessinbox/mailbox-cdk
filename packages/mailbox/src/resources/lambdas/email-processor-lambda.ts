@@ -3,7 +3,7 @@ import { ComponentDescription, GoLambda }                          from '@server
 import { Duration }                                                from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../core/apis/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
 import { EmailProcessingQueueEvent }                               from '../events/email-processing-queue-event';
 import type { IEmailProcessingQueueConsumer }                      from '../queues/email-processing-queue';

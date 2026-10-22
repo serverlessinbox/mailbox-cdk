@@ -10,6 +10,7 @@
 import { renderWithTokens, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { IArtifactObject, IDeployedStack }                                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                                  from 'aws-cdk-lib/assertions';
+import { Role }                                                                      from 'aws-cdk-lib/aws-iam';
 
 import {
   TEST_ACCOUNT,
@@ -46,14 +47,13 @@ function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}):
   const { stack, artifactResolver } = newDeployerTestStack();
   const worker                      = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
-    stack,
-    edgeStackNamePattern:    'test-stack-edge*',
+    edgeStackNamePattern: 'test-stack-edge*',
     edgeStack,
-    rootStack:               'test-stack',
-    rootStackId:             'test-guid',
-    template:                edgeTemplate,
-    artifactObjects:         [edgeArtifact],
-    jmapBlobDownloadRoleArn: JMAP_BLOB_DOWNLOAD_ROLE_ARN,
+    rootStack:            'test-stack',
+    rootStackId:          'test-guid',
+    template:             edgeTemplate,
+    artifactObjects:      [edgeArtifact],
+    jmapBlobDownloadRole: Role.fromRoleArn(stack, 'jmap-blob-download-role', JMAP_BLOB_DOWNLOAD_ROLE_ARN),
     ...props,
   });
   return { worker, template: Template.fromStack(stack) };

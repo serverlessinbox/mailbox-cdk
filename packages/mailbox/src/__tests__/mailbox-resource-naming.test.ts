@@ -106,7 +106,6 @@ describe('Mailbox Resource Naming', () => {
 
       new MailboxDataDeployerWorkerLambda(stack, 'worker', {
         artifactResolver,
-        stack,
         dataStack:     new DeployedStack('arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*'),
         dataStackName: 'test-data',
         template:      new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
@@ -116,10 +115,7 @@ describe('Mailbox Resource Naming', () => {
       return Template.fromStack(stack);
     }
 
-    // Resource entries may be plain strings (stack.account resolves to a literal when the test
-    // stack has an explicit env) or an Fn::Join carrying an unresolved Aws.ACCOUNT_ID Ref token
-    // (Aws.* is always a token — see cdk-construct-pattern's "Account/region in a template
-    // value"). Return the raw entries so each test can assert on the shape it actually gets.
+    // Returns the raw resource entries, so each test asserts the exact Fn::Join the worker renders.
     function resourcesForAction(template: Template, action: string): unknown[] {
       return statementsForAction(template, action).flatMap(resourcesOf);
     }
@@ -128,13 +124,16 @@ describe('Mailbox Resource Naming', () => {
       const template  = synthDataDeployerWorker('test-data');
       const resources = resourcesForAction(template, 'dynamodb:CreateTable');
 
-      // nameBase ('test-data') is joined after the literal Aws.ACCOUNT_ID Ref token, so the
-      // resource is an Fn::Join, not a plain string. Assert its exact parts: the bug being
-      // guarded against would show up as a second '-data-' segment in the final literal part.
+      // Assert the exact parts: the bug being guarded against would show up as a second '-data-'
+      // segment in the final literal part.
       expect(resources).toEqual([
         {
           'Fn::Join': ['', [
-            'arn:aws:dynamodb:us-west-2:123456789012:table/',
+            'arn:aws:dynamodb:',
+            { Ref: 'AWS::Region' },
+            ':',
+            { Ref: 'AWS::AccountId' },
+            ':table/',
             { Ref: 'AWS::AccountId' },
             '-test-data-*',
           ]],
@@ -146,9 +145,9 @@ describe('Mailbox Resource Naming', () => {
       const template  = synthDataDeployerWorker('test-data');
       const resources = resourcesForAction(template, 's3:CreateBucket');
 
-      // stack.account resolves to a literal (explicit env on the test stack), so this resource
-      // is a plain string — assert it exactly, with no second '-data-' segment.
-      expect(resources).toEqual(['arn:aws:s3:::123456789012-test-data-*']);
+      expect(resources).toEqual([
+        { 'Fn::Join': ['', ['arn:aws:s3:::', { Ref: 'AWS::AccountId' }, '-test-data-*']] },
+      ]);
     });
   });
 

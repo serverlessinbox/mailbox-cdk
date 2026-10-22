@@ -5,10 +5,10 @@ import { HttpApi, HttpMethod }     from 'aws-cdk-lib/aws-apigatewayv2';
 import { Aws }                     from 'aws-cdk-lib';
 import { Construct, IDependable }  from 'constructs';
 
-import {
+import type {
   AuthPolicyName,
   OAuthClientName,
-} from '../../core/auth/types';
+} from '../../contracts/auth-names';
 import { IdpTokenExchangeLambda }  from '../../resources/lambdas/idp-token-exchange-lambda';
 import type { IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
 import type { IDataTable }         from '../../resources/tables/data-tables';
@@ -62,8 +62,8 @@ export class IdpTokenExchangeApi extends Construct {
       artifactResolver: props.artifactResolver,
       serviceName:      props.serviceName,
       pipeline:         props.pipeline,
+      dependsOn:        props.dependsOn,
     });
-    apiHandlerLambda.node.addDependency(...(props.dependsOn ?? []));
 
     this.api.addRoutes({
       path:        '/auth/{proxy+}',

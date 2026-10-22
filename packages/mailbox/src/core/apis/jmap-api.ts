@@ -15,6 +15,8 @@ import { Duration, Aws, CfnResource }                                        fro
 import { Construct }                                                         from 'constructs';
 import type { IConstruct }                                                   from 'constructs';
 
+import { AUTH_POLICY_JMAP_API }                                              from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }    from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                               from '../../resources/buckets/data-blob-store';
 import { AuthorizerLambda }                                                  from '../../resources/lambdas/authorizer-lambda';
 import type { IIdentityProvisioner }                                         from '../../resources/lambdas/identity-provisioner-lambda';
@@ -23,12 +25,11 @@ import type { IAuditEventsQueue }                                            fro
 import type { IEmailSendingQueue }                                           from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                           from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                   from '../../resources/tables/data-tables';
-import { AUTH_POLICY_JMAP_API, IMailboxAuthProvider }                        from '../auth/types';
+import { IMailboxAuthProvider }                                              from '../auth/types';
 
 import type { IJmapApiAddon }                                                from './addons';
 import { ApiCustomDomain }                                                   from './api-custom-domain';
 import type { ApiCustomDomainProps, ILogicalIdPin }                          from './api-custom-domain';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }    from './websocket';
 
 /**
  * Inputs of {@link JmapApi}: the tables, queues and blob store its handler Lambda works on, the

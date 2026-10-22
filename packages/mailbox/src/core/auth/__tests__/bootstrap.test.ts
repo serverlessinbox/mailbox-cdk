@@ -19,6 +19,7 @@ import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                 from '../../../resources/tables/data-tables';
+import type { IDnsZone }                             from '../../edge/dns-zone';
 import { Bootstrap }                                 from '../bootstrap';
 import type { BootstrapProps }                       from '../bootstrap';
 import type { OAuthAuthorizationCodeClientConfig }   from '../types';
@@ -89,6 +90,20 @@ describe('Bootstrap', () => {
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: Match.absent(),
     });
+  });
+
+  it('sends the id of the hosted zone it is given, and the zone grants the bootstrap Lambda record management', () => {
+    const dnsZone: IDnsZone = { hostedZoneId: 'Z0TESTZONE', grantRecordManagement: jest.fn() };
+    const bootstrap         = createBootstrap({ dnsZone });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', { hostedZoneId: 'Z0TESTZONE' });
+    expect(dnsZone.grantRecordManagement).toHaveBeenCalledWith(bootstrap.handler);
+  });
+
+  it('sends no hostedZoneId when it has no hosted zone', () => {
+    createBootstrap();
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', { hostedZoneId: Match.absent() });
   });
 
   it('sends the default tenant name and local part', () => {

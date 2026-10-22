@@ -16,7 +16,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }    from '../../../core/apis/websocket';
+import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
 import { DataTable }                            from '../../tables/data-tables';

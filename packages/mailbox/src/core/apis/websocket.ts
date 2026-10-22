@@ -7,47 +7,21 @@ import {
   WebSocketApi,
   WebSocketStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { Effect, IGrantable, PolicyStatement }      from 'aws-cdk-lib/aws-iam';
-import type { IFunction }                           from 'aws-cdk-lib/aws-lambda';
-import { Aws }                                      from 'aws-cdk-lib';
-import { Construct }                                from 'constructs';
+import { Effect, IGrantable, PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
+import type { IFunction }                                       from 'aws-cdk-lib/aws-lambda';
+import { Aws }                                                  from 'aws-cdk-lib';
+import { Construct }                                            from 'constructs';
 
-import { WebSocketBroadcastLambda }                 from '../../resources/lambdas/websocket-broadcast-lambda';
-import { WebSocketConnectLambda }                   from '../../resources/lambdas/websocket-connect-lambda';
-import { WebSocketDisconnectLambda }                from '../../resources/lambdas/websocket-disconnect-lambda';
-import { WebSocketMessageLambda }                   from '../../resources/lambdas/websocket-message-lambda';
-import type { IDataTable }                          from '../../resources/tables/data-tables';
-import { WebSocketTable, IWebSocketTable }          from '../../resources/tables/websocket-table';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushApi } from '../../contracts/websocket-push';
+import { WebSocketBroadcastLambda }                             from '../../resources/lambdas/websocket-broadcast-lambda';
+import { WebSocketConnectLambda }                               from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda }                            from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda }                               from '../../resources/lambdas/websocket-message-lambda';
+import type { IDataTable }                                      from '../../resources/tables/data-tables';
+import { WebSocketTable, IWebSocketTable }                      from '../../resources/tables/websocket-table';
 
-import { ApiCustomDomain }                          from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin } from './api-custom-domain';
-
-/** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */
-export interface IWebSocketBroadcastPublisher {
-  readonly functionName: string;
-  grantInvoke(grantee: IGrantable): void;
-}
-
-/** A Lambda that can be pointed at a WebSocket broadcaster; it needs no WebSocket URL. */
-export interface IWebSocketPushTarget extends IFunction {
-  enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void;
-}
-
-/** A Lambda that can be pointed at a WebSocket broadcaster and also needs the WebSocket URL. */
-export interface IWebSocketPushTargetWithUrl extends IFunction {
-  enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void;
-}
-
-/**
- * Lets a holder grant a caller permission to push messages to connected WebSocket clients
- * (`grantManageConnections`) and read the ApiGatewayManagementApi endpoint
- * (`managementEndpoint`) — without exposing the underlying API Gateway WebSocket API construct.
- */
-export interface IWebSocketPushApi {
-  readonly managementEndpoint: string;
-
-  grantManageConnections(grantee: IGrantable): void;
-}
+import { ApiCustomDomain }                                      from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }             from './api-custom-domain';
 
 /** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {

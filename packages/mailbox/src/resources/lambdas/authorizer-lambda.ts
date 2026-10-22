@@ -4,7 +4,7 @@ import type { Pipeline }                        from '@serverlessinbox/mailbox-c
 import { Duration }                             from 'aws-cdk-lib';
 import { Construct }                            from 'constructs';
 
-import type { AuthPolicyName }                  from '../../core/auth/types';
+import type { AuthPolicyName }                  from '../../contracts/auth-names';
 import type { IAuthKeyStoreTable }              from '../tables/auth-key-store-table';
 import type { IDataTable }                      from '../tables/data-tables';
 

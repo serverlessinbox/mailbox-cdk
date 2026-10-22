@@ -1,8 +1,10 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda }       from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                   from 'aws-cdk-lib/aws-iam';
-import { Duration }               from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import type { IArtifactResolver }   from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda }         from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                     from 'aws-cdk-lib/aws-iam';
+import { Duration }                 from 'aws-cdk-lib';
+import { Construct }                from 'constructs';
+
+import { MAILBOX_ARTIFACT_PACKAGE } from '../../contracts/mailbox-artifact-package';
 
 /** Inputs of {@link ResourceSweeperWorkerLambda}. */
 export interface ResourceSweeperWorkerLambdaProps {
@@ -23,7 +25,7 @@ export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
       pipeline:         'infra',
       serviceName:      'resource-sweeper-worker',
       artifactResolver: props.artifactResolver,
-      packageName:      'mailbox-cdk',
+      packageName:      MAILBOX_ARTIFACT_PACKAGE,
       handler:          'index.workerHandler',
       timeout:          Duration.minutes(3),
       memorySize:       256,

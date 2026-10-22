@@ -4,7 +4,7 @@ import { Effect, PolicyStatement }                                 from 'aws-cdk
 import { Aws, Duration }                                           from 'aws-cdk-lib';
 import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../core/apis/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
 import { EmailSubmissionsQueueEvent }                              from '../events/email-submissions-queue-event';
 import type { IEmailSendingQueueConsumer }                         from '../queues/email-sending-queue';

@@ -13,7 +13,7 @@ export type {
   MailboxUrls,
   MailboxCertificates,
 } from './mailbox-outputs';
-export type { SesReceivingMode } from './core/email/ses-receiving-mode';
+export type { SesReceivingMode } from './contracts/ses-receiving-mode';
 
 // Hosted zone — looked up once by the app, passed to the constructs that need it
 export { HostedZoneLookup } from './core/domains/hosted-zone-lookup';
@@ -23,16 +23,15 @@ export type { HostedZoneLookupProps } from './core/domains/hosted-zone-lookup';
 export { SendStackFailuresMode } from './platform/ops/stack-failure-detection';
 
 // Auth — types
+export { DEFAULT_OIDC_PROVIDER_NAME } from './core/auth/types';
 export {
-  DEFAULT_OIDC_PROVIDER_NAME,
   AUTH_POLICY_ADMIN_API,
   AUTH_POLICY_JMAP_API,
   OAUTH_CLIENT_ADMIN_UI,
   OAUTH_CLIENT_WEBMAIL_UI,
-} from './core/auth/types';
+} from './contracts/auth-names';
+export type { AuthPolicyName, OAuthClientName } from './contracts/auth-names';
 export type {
-  AuthPolicyName,
-  OAuthClientName,
   AuthMethod,
   OidcProviderConfig,
   AuthPolicyConfig,
@@ -57,6 +56,7 @@ export type {
 
 // Auth — JMAP scopes
 export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './core/auth/jmap-scopes';
+export type { ScopeMap } from './core/auth/jmap-scopes';
 
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './core/apis/addons';
@@ -94,5 +94,6 @@ export type {
 
 // Artifact resolution — the auto-updating resolver and its settings
 export { AutoUpdater } from './platform/update/auto-updater';
-export type { AutoUpdaterProps, Granularity } from './platform/update/auto-updater';
+export type { AutoUpdaterProps } from './platform/update/auto-updater';
+export type { Granularity } from './contracts/granularity';
 

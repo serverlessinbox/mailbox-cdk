@@ -16,6 +16,8 @@ import type { IMailboxDomainNames }                                             
 import { Cdn }                                                                      from '../ui/cdn-construct';
 import type { CdnCustomDomain }                                                     from '../ui/cdn-construct';
 
+import { DnsZone }                                                                  from './dns-zone';
+import type { IDnsZone }                                                            from './dns-zone';
 import { MailboxEdgeDeployer }                                                      from './mailbox-edge-deployer';
 
 /** What {@link EdgeSection} uses of the data section. */
@@ -114,8 +116,8 @@ export class EdgeSection extends Construct {
   public readonly regionalCertificate?: acm.ICertificate;
   /** The version ARN of the edge JMAP blob download function, a deploy-time token. */
   public readonly jmapBlobDownloadVersionArn: string;
-  /** The hosted zone the certificates validate and the DNS records are written into; present when the mailbox has one. */
-  public readonly hostedZone?: route53.IHostedZone;
+  /** The hosted zone the certificates validate and the DNS records are written into, as the other sections may use it; present when the mailbox has one. */
+  public readonly dnsZone?: IDnsZone;
   /** The certificate the UIs are served with unless the operator gave their own; present when the mailbox has a hosted zone. */
   public readonly uiCertificate?: acm.ICertificate;
   /** The certificate of the admin API's custom domain: the operator's own, else the regional SAN certificate. */
@@ -126,6 +128,7 @@ export class EdgeSection extends Construct {
   public readonly wsCertificate?: acm.ICertificate;
 
   private readonly props: EdgeSectionProps;
+  private readonly hostedZone?: route53.IHostedZone;
   private readonly edgeStack: MailboxEdgeDeployer;
 
   constructor(scope: Construct, id: string, props: EdgeSectionProps) {
@@ -134,6 +137,7 @@ export class EdgeSection extends Construct {
 
     this.props      = props;
     this.hostedZone = props.hostedZone;
+    this.dnsZone    = props.hostedZone ? new DnsZone(props.hostedZone) : undefined;
 
     const provided   = props.certificateOverrides;
     const domainName = props.addressing.domains.domainName;

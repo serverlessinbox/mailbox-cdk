@@ -1,21 +1,12 @@
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
-import * as ssm            from 'aws-cdk-lib/aws-ssm';
-import { Construct }       from 'constructs';
+import * as ssm                       from 'aws-cdk-lib/aws-ssm';
+import { Construct }                  from 'constructs';
+
+import type { ITemplateVersionParam } from '../../contracts/template-version-param';
 
 /** Inputs of the template-version parameter. */
 export interface TemplateVersionParamProps {
   /** Template version string (e.g., 'v0.0.53' or '0.0.0-dev') stored as the parameter's value. */
   readonly templateVersion: string;
-}
-
-/**
- * What a reader of the template-version parameter needs: the parameter name (for a Lambda's env var)
- * and a read grant.
- */
-export interface ITemplateVersionParam {
-  readonly parameterName: string;
-
-  grantRead(grantee: IGrantable): void;
 }
 
 /**

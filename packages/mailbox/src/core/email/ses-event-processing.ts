@@ -3,13 +3,13 @@ import { ComponentDescription, makePhysicalName, type BaseQueueProps } from '@se
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                   from 'constructs';
 
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                         from '../../resources/buckets/data-blob-store';
 import { SesEventProcessorLambda }                                     from '../../resources/lambdas/ses-event-processor-lambda';
 import type { IAuditEventsQueue }                                      from '../../resources/queues/audit-events-queue';
 import { SesEventQueue }                                               from '../../resources/queues/ses-event-queue';
 import type { IDataTable }                                             from '../../resources/tables/data-tables';
 import { SesEventTopic }                                               from '../../resources/topics/ses-event-topic';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../apis/websocket';
 
 /** Props of {@link SesEventProcessing}. */
 export interface SesEventProcessingProps {

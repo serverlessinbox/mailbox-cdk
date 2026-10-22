@@ -3,7 +3,7 @@ import { GoLambda }                      from '@serverlessinbox/mailbox-cdk-shar
 import { Duration }                      from 'aws-cdk-lib';
 import { Construct }                     from 'constructs';
 
-import type { ISupportRoles }            from '../../platform/support/support-roles-infra';
+import type { ISupportRoles }            from '../../contracts/support-roles';
 import { SupportCollectionSchedule }     from '../events/support-collection-schedule';
 import type { IDataTable }               from '../tables/data-tables';
 

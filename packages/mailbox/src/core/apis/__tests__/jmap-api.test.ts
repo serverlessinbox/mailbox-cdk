@@ -21,6 +21,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
@@ -30,7 +31,6 @@ import type { IMailboxAuthProvider }            from '../../auth/types';
 import type { IJmapApiAddon }                   from '../addons';
 import { JmapApi }                              from '../jmap-api';
 import type { JmapApiProps }                    from '../jmap-api';
-import type { IWebSocketBroadcastPublisher }    from '../websocket';
 
 describe('JmapApi', () => {
   let stack: cdk.Stack;

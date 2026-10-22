@@ -10,6 +10,7 @@ import type { ServerlessInboxDeployerType, VendorLink } from '@serverlessinbox/m
 import { Aws }                                          from 'aws-cdk-lib';
 import type { Construct }                               from 'constructs';
 
+import { MAILBOX_ARTIFACT_PACKAGE }                     from './contracts/mailbox-artifact-package';
 import { MailboxEncryption }                            from './core/mailbox-encryption';
 import type { MailboxEncryptionPlan }                   from './core/mailbox-encryption';
 import { loadMailboxArtifactVersions }                  from './mailbox-artifact-versions';
@@ -45,7 +46,7 @@ export class MailboxContext {
     // overridden by CDK context.
     const artifactResolver: IArtifactResolver = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(scope, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    const stackVersion                        = artifactResolver.getVersion('mailbox-cdk');
+    const stackVersion                        = artifactResolver.getVersion(MAILBOX_ARTIFACT_PACKAGE);
 
     // The Mailbox is the root stack of its own deployment.
     applyServerlessInboxBaseTags(scope, { rootStack: Aws.STACK_NAME });

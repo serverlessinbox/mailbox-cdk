@@ -12,10 +12,10 @@ import { Bucket }                                           from 'aws-cdk-lib/aw
 import * as cdk                                             from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                    from 'aws-cdk-lib';
 
+import type { IWebSocketBroadcastPublisher }                from '../../../contracts/websocket-push';
 import { DataBlobStore }                                    from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                                 from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                        from '../../../resources/tables/data-tables';
-import type { IWebSocketBroadcastPublisher }                from '../../apis/websocket';
 import { SesEventProcessing, type SesEventProcessingProps } from '../ses-event-processing';
 
 function createStack(): cdk.Stack {

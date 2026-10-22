@@ -15,11 +15,11 @@ import { statementsForAction }                                                  
 import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                                      from 'aws-cdk-lib/aws-dynamodb';
-import { HostedZone }                                                                from 'aws-cdk-lib/aws-route53';
 import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                             from 'aws-cdk-lib';
 
+import type { IDnsZone }                                                             from '../../../core/edge/dns-zone';
 import { AuthKeyStoreTable }                                                         from '../../tables/auth-key-store-table';
 import { DataTable }                                                                 from '../../tables/data-tables';
 import { BootstrapLambda }                                                           from '../bootstrap-lambda';
@@ -54,8 +54,8 @@ describe('BootstrapLambda', () => {
     sesRuleSet        = new ReceiptRuleSet(stack, 'ses-rule-set', {});
   });
 
-  function synthBootstrap(overrides: Partial<BootstrapLambdaProps> = {}): Template {
-    new BootstrapLambda(stack, 'bootstrap', {
+  function newBootstrap(overrides: Partial<BootstrapLambdaProps> = {}): BootstrapLambda {
+    return new BootstrapLambda(stack, 'bootstrap', {
       timeout: cdk.Duration.seconds(45),
       configTable,
       authKeyStoreTable,
@@ -65,6 +65,10 @@ describe('BootstrapLambda', () => {
       vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     });
+  }
+
+  function synthBootstrap(overrides: Partial<BootstrapLambdaProps> = {}): Template {
+    newBootstrap(overrides);
 
     return Template.fromStack(stack);
   }
@@ -192,14 +196,11 @@ describe('BootstrapLambda', () => {
       });
     });
 
-    it('grants record management on the hosted zone when one is given', () => {
-      const hostedZone = HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0123456789', zoneName: 'example.com' });
-      const template   = synthBootstrap({ hostedZone });
+    it('has the hosted zone it is given grant it record management', () => {
+      const dnsZone: IDnsZone = { hostedZoneId: 'Z0123456789', grantRecordManagement: jest.fn() };
+      const bootstrap         = newBootstrap({ dnsZone });
 
-      hasStatement(template, {
-        Action:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
-        Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z0123456789']] },
-      });
+      expect(dnsZone.grantRecordManagement).toHaveBeenCalledWith(bootstrap);
     });
 
     it('grants no Route53 access when no hosted zone is given', () => {

@@ -2,15 +2,15 @@ import type { IArtifactResolver }                    from '@serverlessinbox/arti
 import { ComponentDescription }                      from '@serverlessinbox/mailbox-cdk-shared';
 import type { VendorLink }                           from '@serverlessinbox/mailbox-cdk-shared';
 import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
-import * as route53                                  from 'aws-cdk-lib/aws-route53';
 import { IReceiptRuleSet }                           from 'aws-cdk-lib/aws-ses';
 import { CustomResource, Duration }                  from 'aws-cdk-lib';
 import { Construct, IDependable }                    from 'constructs';
 
+import type { SesReceivingMode }                     from '../../contracts/ses-receiving-mode';
 import { BootstrapLambda }                           from '../../resources/lambdas/bootstrap-lambda';
 import type { IAuthKeyStoreTable }                   from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                           from '../../resources/tables/data-tables';
-import type { SesReceivingMode }                     from '../email/ses-receiving-mode';
+import type { IDnsZone }                             from '../edge/dns-zone';
 
 import type {
   AuthPoliciesConfig,
@@ -36,7 +36,8 @@ export interface BootstrapProps {
   readonly sesReceivingMode?: SesReceivingMode;
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
-  readonly hostedZone?:     route53.IHostedZone;
+  /** The hosted zone the bootstrap role may manage records in; its id is sent to the bootstrap Lambda. */
+  readonly dnsZone?: IDnsZone;
   /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources, resolved by the caller. */
   readonly vendorLink: VendorLink;
 }
@@ -77,7 +78,7 @@ export class Bootstrap extends Construct {
       sesRuleSet:        props.sesRuleSet,
       sesReceivingMode:  props.sesReceivingMode,
       sesSendEnabled:    props.sesSendEnabled,
-      hostedZone:        props.hostedZone,
+      dnsZone:           props.dnsZone,
       vendorLink:        props.vendorLink,
     });
 
@@ -100,7 +101,7 @@ export class Bootstrap extends Construct {
             webmailUi: props.oauthClients.webmailUi ? this.toRequestOAuthClient(props.oauthClients.webmailUi) : undefined,
           }
           : undefined,
-        hostedZoneId: props.hostedZone?.hostedZoneId,
+        hostedZoneId: props.dnsZone?.hostedZoneId,
       },
     });
     this.oauthClientsProvisioned = bootstrapResource;

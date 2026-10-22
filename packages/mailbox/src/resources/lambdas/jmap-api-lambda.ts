@@ -4,8 +4,8 @@ import { PolicyStatement }                                                from '
 import { Duration }                                                       from 'aws-cdk-lib';
 import { Construct }                                                      from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../core/apis/websocket';
-import type { IMailboxAuthProviderBase }                                  from '../../core/auth/types';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../contracts/websocket-push';
+import type { ScopeMap }                                                  from '../../core/auth/jmap-scopes';
 import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
@@ -27,7 +27,7 @@ export interface JmapApiLambdaProps {
   artifactResolver:     IArtifactResolver;
   identityProvisioner:  IIdentityProvisioner;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
-  scopeMap:             IMailboxAuthProviderBase['scopeMap'];
+  scopeMap:             ScopeMap;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;

@@ -29,6 +29,12 @@ export enum Permission {
   ADMIN = 'admin',
 }
 
+/**
+ * What an auth provider's scopes stand for: each OAuth scope name the provider issues, mapped to the
+ * {@link Permission}s it grants.
+ */
+export type ScopeMap = Record<string, Permission[]>;
+
 /** A human-readable description for each {@link Permission}. */
 export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.MAIL_READ]:      'Read emails',

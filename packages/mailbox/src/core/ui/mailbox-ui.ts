@@ -25,10 +25,10 @@ import { Bucket }                          from 'aws-cdk-lib/aws-s3';
 import { Fn, Tags }                        from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
+import { AuthPolicyName, OAuthClientName } from '../../contracts/auth-names';
 import { UiBucket }                        from '../../resources/buckets/ui-bucket';
 import type { IAuditEventsQueue }          from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                 from '../../resources/tables/data-tables';
-import { AuthPolicyName, OAuthClientName } from '../auth/types';
 
 import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
 

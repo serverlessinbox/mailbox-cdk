@@ -312,7 +312,6 @@ describe('MailboxDataStack Template Synthesis', () => {
 
       new MailboxDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        stack:         testStack,
         dataStack:     new DeployedStack('arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*'),
         dataStackName: 'test-root-data',
         template:      new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),

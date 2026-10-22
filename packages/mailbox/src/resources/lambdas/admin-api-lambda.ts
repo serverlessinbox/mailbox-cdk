@@ -5,7 +5,7 @@ import { PolicyStatement, Effect }                                              
 import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
 import { Construct }                                                                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../core/apis/websocket';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                                      from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }                                                                   from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                                                  from '../queues/email-sending-queue';

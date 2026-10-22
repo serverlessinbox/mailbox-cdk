@@ -2,11 +2,11 @@ import type { IArtifactResolver }                                  from '@server
 import { ComponentDescription, type BaseQueueProps }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }                                               from 'constructs';
 
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';
 import { EmailSendingQueue, type IEmailSendingQueue }              from '../../resources/queues/email-sending-queue';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 
 /** Props of {@link EmailSending}. */
 export interface EmailSendingProps {

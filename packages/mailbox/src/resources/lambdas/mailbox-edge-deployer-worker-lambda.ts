@@ -7,12 +7,12 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactObject, IDeployedStack, RootStack } from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement }                                 from 'aws-cdk-lib/aws-iam';
+import type { IRole }                                      from 'aws-cdk-lib/aws-iam';
 import { ArnFormat, Aws, Stack }                           from 'aws-cdk-lib';
 import { Construct }                                       from 'constructs';
 
 export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly stack:            Stack;
   /**
    * Wildcard over the names the edge stack has had (`${AWS::StackName}-edge*`). Scopes the grants on the
    * stack's Lambda functions and resource group, which are named after the stack.
@@ -28,8 +28,8 @@ export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactObjects: IArtifactObject[];
   /** Route53 hosted zone used for the edge certificate's DNS validation (omit when no hosted zone is configured). */
   readonly hostedZoneId?: string;
-  /** ARN of the jmap-blob-download Lambda@Edge execution role (created in root stack) */
-  readonly jmapBlobDownloadRoleArn: string;
+  /** The jmap-blob-download Lambda@Edge execution role (created in root stack); the only role the worker may pass. */
+  readonly jmapBlobDownloadRole: IRole;
 }
 
 /**
@@ -62,10 +62,10 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
 
     // Grants for the resources of the edge stack
     const rootStack: RootStack = { name: props.rootStack, id: props.rootStackId };
-    this.grantCertificateLifecycle(props.stack, rootStack);
-    this.grantLambdaFunctionLifecycle(props.stack, props.edgeStackNamePattern, rootStack);
-    this.grantExecutionRolePassage(props.jmapBlobDownloadRoleArn);
-    this.grantResourceGroupLifecycle(props.stack, props.edgeStackNamePattern);
+    this.grantCertificateLifecycle(rootStack);
+    this.grantLambdaFunctionLifecycle(props.edgeStackNamePattern, rootStack);
+    this.grantExecutionRolePassage(props.jmapBlobDownloadRole);
+    this.grantResourceGroupLifecycle(props.edgeStackNamePattern);
 
     if (props.hostedZoneId !== undefined) {
       this.grantDnsValidationAccess(props.hostedZoneId);
@@ -87,8 +87,8 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * - RemoveTagsFromCertificate is gated by aws:ResourceTag so only already-owned certs can be untagged.
    * - DeleteCertificate is gated by aws:ResourceTag as the final ownership check.
    */
-  private grantCertificateLifecycle(stack: Stack, rootStack: RootStack): void {
-    const certificateArnPrefix = stack.formatArn({
+  private grantCertificateLifecycle(rootStack: RootStack): void {
+    const certificateArnPrefix = Stack.of(this).formatArn({
       service:      'acm',
       region:       'us-east-1',
       resource:     'certificate',
@@ -157,7 +157,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
    * aws:TagKeys.
    */
-  private grantLambdaFunctionLifecycle(stack: Stack, edgeStackNamePattern: string, rootStack: RootStack): void {
+  private grantLambdaFunctionLifecycle(edgeStackNamePattern: string, rootStack: RootStack): void {
     const edgeLambdaActions   = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
@@ -169,7 +169,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
       'lambda:TagResource',
       'lambda:UntagResource',
     ];
-    const edgeLambdaArnPrefix = stack.formatArn({
+    const edgeLambdaArnPrefix = Stack.of(this).formatArn({
       service:      'lambda',
       region:       'us-east-1',
       resource:     'function',
@@ -214,11 +214,11 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
   }
 
   /** Gated to the Lambda services, so the role cannot be passed to any other service. */
-  private grantExecutionRolePassage(jmapBlobDownloadRoleArn: string): void {
+  private grantExecutionRolePassage(jmapBlobDownloadRole: IRole): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:    ['iam:PassRole'],
-        resources:  [jmapBlobDownloadRoleArn],
+        resources:  [jmapBlobDownloadRole.roleArn],
         conditions: {
           StringEquals: {
             'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'],
@@ -234,8 +234,8 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * is scoped to it. CreateGroup stays on `*`: group-ARN scoping for it is unverified, and a wrongly scoped
    * create fails the whole edge deployment.
    */
-  private grantResourceGroupLifecycle(stack: Stack, edgeStackNamePattern: string): void {
-    const edgeResourceGroupArn = stack.formatArn({
+  private grantResourceGroupLifecycle(edgeStackNamePattern: string): void {
+    const edgeResourceGroupArn = Stack.of(this).formatArn({
       service:      'resource-groups',
       region:       'us-east-1',
       resource:     'group',

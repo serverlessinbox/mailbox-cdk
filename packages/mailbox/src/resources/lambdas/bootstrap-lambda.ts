@@ -2,12 +2,12 @@ import type { IArtifactResolver }                                               
 import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
 import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement }                                                                          from 'aws-cdk-lib/aws-iam';
-import type { IHostedZone }                                                                         from 'aws-cdk-lib/aws-route53';
 import type { IReceiptRuleSet }                                                                     from 'aws-cdk-lib/aws-ses';
 import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
 import { Construct }                                                                                from 'constructs';
 
-import type { SesReceivingMode }                                                                    from '../../core/email/ses-receiving-mode';
+import type { SesReceivingMode }                                                                    from '../../contracts/ses-receiving-mode';
+import type { IDnsZone }                                                                            from '../../core/edge/dns-zone';
 import type { IAuthKeyStoreTable }                                                                  from '../tables/auth-key-store-table';
 import type { IDataTable }                                                                          from '../tables/data-tables';
 
@@ -24,7 +24,7 @@ export interface BootstrapLambdaProps {
   /** When true, sets SES_SEND_ENABLED to `on`. */
   readonly sesSendEnabled?: boolean;
   /** When present, the bootstrap role may manage records in this hosted zone. */
-  readonly hostedZone?: IHostedZone;
+  readonly dnsZone?: IDnsZone;
   /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources (set as STACK_IDENTITY_TAG_KEY, used in the ses:TagResource condition). */
   readonly vendorLink: VendorLink;
 }
@@ -61,9 +61,7 @@ export class BootstrapLambda extends GoLambda {
     this.grantLicenseApiAccess(props.vendorLink.vendorAccountIds);
     this.grantSesReceiptRuleSetActivation();
 
-    if (props.hostedZone) {
-      this.grantHostedZoneRecordManagement(props.hostedZone);
-    }
+    props.dnsZone?.grantRecordManagement(this);
 
     this.grantSesEmailIdentityRegistration(props.domain);
     this.grantSesEmailIdentityStackTagging(props.domain, props.vendorLink.stackIdentityTagKey);
@@ -114,13 +112,6 @@ export class BootstrapLambda extends GoLambda {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
       resources: ['*'],
-    }));
-  }
-
-  private grantHostedZoneRecordManagement(hostedZone: IHostedZone): void {
-    this.addToRolePolicy(new PolicyStatement({
-      actions:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
-      resources: [hostedZone.hostedZoneArn],
     }));
   }
 

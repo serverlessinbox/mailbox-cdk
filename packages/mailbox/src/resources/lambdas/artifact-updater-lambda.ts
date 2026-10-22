@@ -6,7 +6,8 @@ import { Aspects, Aws, Duration }                                               
 import type { CfnCondition }                                                                               from 'aws-cdk-lib';
 import { Construct }                                                                                       from 'constructs';
 
-import type { Granularity }                                                                                from '../../platform/update/auto-updater';
+import type { Granularity }                                                                                from '../../contracts/granularity';
+import { MAILBOX_ARTIFACT_PACKAGE }                                                                        from '../../contracts/mailbox-artifact-package';
 import { ArtifactUpdateSchedule }                                                                          from '../events/artifact-update-schedule';
 
 export interface ArtifactUpdaterLambdaProps {
@@ -34,7 +35,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       lambdaId:         'artifact-updater',
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      packageName:      'mailbox-cdk',
+      packageName:      MAILBOX_ARTIFACT_PACKAGE,
       timeout:          Duration.minutes(5),
       memorySize:       256,
       environment:      {

@@ -23,7 +23,7 @@ import { Bucket }                                                   from 'aws-cd
 import * as cdk                                                     from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                            from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                        from '../../../core/apis/websocket';
+import type { IWebSocketBroadcastPublisher }                        from '../../../contracts/websocket-push';
 import { DataBlobStore }                                            from '../../buckets/data-blob-store';
 import { AuditEventsQueue }                                         from '../../queues/audit-events-queue';
 import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';

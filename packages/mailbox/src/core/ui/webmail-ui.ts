@@ -3,10 +3,10 @@ import { ComponentDescription }                                                 
 import type * as acm                                                                             from 'aws-cdk-lib/aws-certificatemanager';
 import type { Construct, IDependable }                                                           from 'constructs';
 
+import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }                                         from '../../contracts/auth-names';
 import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
 import { Permission }                                                                            from '../auth/jmap-scopes';
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }                                         from '../auth/types';
 import type { AuthClientConfig, IMailboxAuthProvider }                                           from '../auth/types';
 
 import { MailboxUi }                                                                             from './mailbox-ui';

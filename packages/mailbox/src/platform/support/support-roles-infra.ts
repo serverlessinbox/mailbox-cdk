@@ -4,6 +4,8 @@ import * as iam                                          from 'aws-cdk-lib/aws-i
 import { Fn, Aws, Stack, Duration }                      from 'aws-cdk-lib';
 import { Construct }                                     from 'constructs';
 
+import type { ISupportRoles }                            from '../../contracts/support-roles';
+
 import {
   ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS,
   SUPPORT_CONFIG_READ_TIER,
@@ -18,32 +20,6 @@ const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
 export interface SupportRolesInfraProps {
   /** Vendor AWS account IDs permitted to assume the support hop role, already resolved by the caller. */
   readonly vendorAccountIds: string[];
-}
-
-/**
- * What a Lambda that works with the support roles needs from them: the role ARNs and tag keys to
- * run with, and the grants to hold. A Lambda grants itself through these methods.
- */
-export interface ISupportRoles {
-  /** ARN of the hop role, which the case API tags to open and close access to the tier roles. */
-  readonly hopRoleArn:        string;
-  /** ARN of the support-diag tier role. */
-  readonly diagRoleArn:       string;
-  /** ARN of the support-config-read tier role. */
-  readonly configReadRoleArn: string;
-  /** Tag key on the hop role that opens access to the support-diag tier role. */
-  readonly diagTagKey:        string;
-  /** Tag key on the hop role that opens access to the support-config-read tier role. */
-  readonly configReadTagKey:  string;
-
-  /** Lets the grantee tag and untag the hop role, restricted to the tier tag keys. */
-  grantTagWrites(grantee: iam.IGrantable): void;
-
-  /** Lets the grantee list the tags on the hop role. */
-  grantTagRead(grantee: iam.IGrantable): void;
-
-  /** Lets the grantee look up the CloudTrail events of the support roles being assumed. */
-  grantAssumptionLookup(grantee: iam.IGrantable): void;
 }
 
 /**

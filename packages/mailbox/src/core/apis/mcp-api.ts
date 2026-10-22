@@ -14,7 +14,7 @@ import { Aws }                           from 'aws-cdk-lib';
 import { Construct }                     from 'constructs';
 
 import { McpApiLambda }                  from '../../resources/lambdas/mcp-api-lambda';
-import type { IMailboxAuthProviderBase } from '../auth/types';
+import type { ScopeMap }                 from '../auth/jmap-scopes';
 
 import { ApiCustomDomain }               from './api-custom-domain';
 
@@ -28,7 +28,7 @@ export interface McpApiProps {
   readonly certificate: acm.ICertificate;
   /** Base domain; the API is served on `mcp.<domainName>`. */
   readonly domainName: string;
-  readonly scopeMap:   IMailboxAuthProviderBase['scopeMap'];
+  readonly scopeMap:   ScopeMap;
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
 }

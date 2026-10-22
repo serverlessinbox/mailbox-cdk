@@ -31,6 +31,10 @@ const platformListBasenames = [...platformOnlyLambdas, ...platformOnlyEvents, 's
 // src/ without extension.
 const contractFiles = ['core/apis/addons', 'resources/tables/data-tables', 'resources/queues/audit-events-queue', 'resources/lambdas/identity-provisioner-lambda'];
 
+// Types and constants that core, resources and platform all use live in src/contracts/. Platform
+// and platform-list files import it freely; it imports nothing from core/ or platform/.
+const contractsDir = 'contracts';
+
 const mailboxSrc = 'packages/mailbox/src';
 const kitSrc = 'packages/mailbox-cdk-shared/src';
 const cognitoSrc = 'packages/mailbox-cognito/src';
@@ -63,8 +67,13 @@ const platformImportsOnlyContracts = {
 // Platform-list files sit in resources/ and name the rest of mailbox by
 // relative path: a sibling (./x) or a parent folder (../x, ../../x).
 const platformListImportsOnlyContracts = {
-  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./events/artifact-update-schedule$|\\.\\./events/license-refresh-schedule$|\\.\\./events/stack-failed-event$|\\.\\./events/support-collection-schedule$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/)\\.\\.?/',
-  message: 'platform-list files import the rest of mailbox only through the four contract files (rule 3).',
+  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./events/artifact-update-schedule$|\\.\\./events/license-refresh-schedule$|\\.\\./events/stack-failed-event$|\\.\\./events/support-collection-schedule$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/|\\.\\./\\.\\./' + contractsDir + '/)\\.\\.?/',
+  message: 'platform-list files import the rest of mailbox only through the four contract files and src/contracts (rule 3).',
+};
+
+const contractsImportNothingAbove = {
+  regex: '(^|/)(core|platform)/',
+  message: 'src/contracts imports nothing from core/ or platform/ (rule 6).',
 };
 
 // G-model R3: only resources/lambdas/** and resources/events/** import a file of resources/events/**
@@ -111,6 +120,11 @@ export const boundaryConfig = [
     files: [`${mailboxSrc}/platform/**/*.ts`],
     ignores: outsideRules,
     rules: { 'no-restricted-imports': ['error', { patterns: [platformImportsOnlyContracts, noEventsImport] }] },
+  },
+  {
+    files: [`${mailboxSrc}/${contractsDir}/**/*.ts`],
+    ignores: outsideRules,
+    rules: { 'no-restricted-imports': ['error', { patterns: [contractsImportNothingAbove] }] },
   },
   {
     files: [`${kitSrc}/**/*.ts`],

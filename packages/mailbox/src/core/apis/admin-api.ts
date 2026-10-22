@@ -13,6 +13,8 @@ import type { CorsPreflightOptions }                                  from 'aws-
 import { Duration, Aws }                                              from 'aws-cdk-lib';
 import { Construct }                                                  from 'constructs';
 
+import { AUTH_POLICY_ADMIN_API }                                      from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                        from '../../resources/buckets/data-blob-store';
 import { AdminApiLambda }                                             from '../../resources/lambdas/admin-api-lambda';
 import { AuthorizerLambda }                                           from '../../resources/lambdas/authorizer-lambda';
@@ -21,12 +23,10 @@ import type { IAuditEventsQueue }                                     from '../.
 import type { IEmailSendingQueue }                                    from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                    from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                            from '../../resources/tables/data-tables';
-import { AUTH_POLICY_ADMIN_API }                                      from '../auth/types';
 
 import type { IAdminApiAddon }                                        from './addons';
 import { ApiCustomDomain }                                            from './api-custom-domain';
 import type { ApiCustomDomainProps, ILogicalIdPin }                   from './api-custom-domain';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from './websocket';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, the

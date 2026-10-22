@@ -1,8 +1,10 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda }       from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                   from 'aws-cdk-lib/aws-iam';
-import * as cdk                   from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import type { IArtifactResolver }   from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda }         from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                     from 'aws-cdk-lib/aws-iam';
+import * as cdk                     from 'aws-cdk-lib';
+import { Construct }                from 'constructs';
+
+import { MAILBOX_ARTIFACT_PACKAGE } from '../../contracts/mailbox-artifact-package';
 
 /** Props of the data override resolver Lambda. */
 export interface DataOverrideResolverLambdaProps {
@@ -17,7 +19,7 @@ export class DataOverrideResolverLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DataOverrideResolverLambdaProps) {
     super(scope, id, {
       lambdaId:         'data-override-resolver',
-      packageName:      'mailbox-cdk',
+      packageName:      MAILBOX_ARTIFACT_PACKAGE,
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
       timeout:          cdk.Duration.seconds(60),

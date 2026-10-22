@@ -19,11 +19,19 @@ import * as iam                                         from 'aws-cdk-lib/aws-ia
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI } from '../../auth/types';
-import { DataTable }                                    from '../../../resources/tables/data-tables';
+import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI } from '../../../contracts/auth-names';
 import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                    from '../../../resources/tables/data-tables';
 import { MailboxUi }                                    from '../mailbox-ui';
 import type { MailboxUiProps }                          from '../mailbox-ui';
+
+/** The parts of a synthesized `AWS::CloudFront::Distribution` that these tests read. */
+interface SynthesizedDistribution {
+  readonly Properties: {
+    readonly DistributionConfig: Record<string, unknown>;
+    readonly Tags?:              Array<{ Key: string; Value: string }>;
+  };
+}
 
 describe('MailboxUi', () => {
   let stack: cdk.Stack;
@@ -53,14 +61,17 @@ describe('MailboxUi', () => {
     };
   }
 
+  function synthesizedDistribution(): SynthesizedDistribution {
+    // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
+    return Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0] as SynthesizedDistribution;
+  }
+
   function distributionConfig(): Record<string, unknown> {
-    const distribution = Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
-    return distribution.Properties.DistributionConfig;
+    return synthesizedDistribution().Properties.DistributionConfig;
   }
 
   function distributionTags(): Record<string, string> {
-    const distribution                                = Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
-    const tags: Array<{ Key: string; Value: string }> = distribution.Properties.Tags ?? [];
+    const tags = synthesizedDistribution().Properties.Tags ?? [];
     return Object.fromEntries(tags.map((tag) => [tag.Key, tag.Value]));
   }
 

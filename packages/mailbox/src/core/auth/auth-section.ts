@@ -1,11 +1,11 @@
 import type { IArtifactResolver }                                                            from '@serverlessinbox/artifact-registry-cdk';
 import { applyServerlessInboxComponentTag }                                                  from '@serverlessinbox/mailbox-cdk-shared';
 import type { VendorLink }                                                                   from '@serverlessinbox/mailbox-cdk-shared';
-import type * as route53                                                                     from 'aws-cdk-lib/aws-route53';
 import type { IReceiptRuleSet }                                                              from 'aws-cdk-lib/aws-ses';
 import { Construct, DependencyGroup }                                                        from 'constructs';
 import type { IDependable }                                                                  from 'constructs';
 
+import type { SesReceivingMode }                                                             from '../../contracts/ses-receiving-mode';
 import type { IDataBlobStore }                                                               from '../../resources/buckets/data-blob-store';
 import { IdentityProvisionerLambda }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
 import type { IIdentityProvisioner }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
@@ -13,7 +13,7 @@ import type { IAuditEventsQueue }                                               
 import type { IEmailSendingQueue }                                                           from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                                           from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                   from '../../resources/tables/data-tables';
-import type { SesReceivingMode }                                                             from '../email/ses-receiving-mode';
+import type { IDnsZone }                                                                     from '../edge/dns-zone';
 import type { IOAuthUi }                                                                     from '../ui/ui-section';
 
 import { AuthKeyStore }                                                                      from './auth-key-store';
@@ -51,7 +51,7 @@ export interface IAuthBootstrapUiInputs {
 /** What {@link AuthSection.addBootstrap} uses of the edge section. */
 export interface IAuthBootstrapEdgeInputs {
   /** Present when the mailbox has a hosted zone. */
-  readonly hostedZone?: route53.IHostedZone;
+  readonly dnsZone?: IDnsZone;
 }
 
 /** Props of {@link AuthSection}: what the auth key store and the identity provisioner are built from. */
@@ -133,7 +133,7 @@ export class AuthSection extends Construct {
       sesRuleSet:        props.email.sesRuleSet,
       sesReceivingMode:  props.sesReceivingMode,
       sesSendEnabled:    true,
-      hostedZone:        props.edge.hostedZone,
+      dnsZone:           props.edge.dnsZone,
       vendorLink:        this.props.vendorLink,
 
       oidcProvider: {

@@ -2,12 +2,11 @@ import type { IArtifactResolver }               from '@serverlessinbox/artifact-
 import { DeployerWorkerLambda }                 from '@serverlessinbox/mailbox-cdk-shared';
 import type { IArtifactObject, IDeployedStack } from '@serverlessinbox/mailbox-cdk-shared';
 import { Effect, PolicyStatement }              from 'aws-cdk-lib/aws-iam';
-import { Aws, IResolvable, Stack }              from 'aws-cdk-lib';
+import { Aws, IResolvable }                     from 'aws-cdk-lib';
 import { Construct }                            from 'constructs';
 
 export interface MailboxDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly stack:            Stack;
   readonly dataStack:        IDeployedStack;
   readonly dataStackName:    string;
   readonly template:         IArtifactObject;
@@ -33,14 +32,14 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
     this.grantTaggingApi();
 
     // Grants for the resources of the data stack
-    this.grantDynamoDbTableManagement(props.stack, props.nameBase);
-    this.grantS3BucketManagement(props.stack, props.nameBase);
-    this.grantKmsAccess(props.stack);
+    this.grantDynamoDbTableManagement(props.nameBase);
+    this.grantS3BucketManagement(props.nameBase);
+    this.grantKmsAccess();
   }
 
   // `nameBase` is already the data stack name (e.g. 'stackname-data'), so the tables are named
   // `${account}-${nameBase}-<resourceName>`, with no additional '-data-' segment.
-  private grantDynamoDbTableManagement(stack: Stack, nameBase: string | IResolvable): void {
+  private grantDynamoDbTableManagement(nameBase: string | IResolvable): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   [
@@ -57,13 +56,13 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
           'dynamodb:UntagResource',
           'dynamodb:ListTagsOfResource',
         ],
-        resources: [`arn:aws:dynamodb:${stack.region}:${stack.account}:table/${Aws.ACCOUNT_ID}-${nameBase}-*`],
+        resources: [`arn:aws:dynamodb:${Aws.REGION}:${Aws.ACCOUNT_ID}:table/${Aws.ACCOUNT_ID}-${nameBase}-*`],
       })
     );
   }
 
   // The bucket is named like the tables: `${account}-${nameBase}-<resourceName>`.
-  private grantS3BucketManagement(stack: Stack, nameBase: string | IResolvable): void {
+  private grantS3BucketManagement(nameBase: string | IResolvable): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   [
@@ -86,21 +85,21 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
           's3:PutBucketOwnershipControls',
           's3:GetBucketOwnershipControls',
         ],
-        resources: [`arn:aws:s3:::${stack.account}-${nameBase}-*`],
+        resources: [`arn:aws:s3:::${Aws.ACCOUNT_ID}-${nameBase}-*`],
       })
     );
   }
 
   // SSE-KMS on the tables and the bucket.
-  private grantKmsAccess(stack: Stack): void {
+  private grantKmsAccess(): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:    ['kms:DescribeKey', 'kms:CreateGrant'],
         effect:     Effect.ALLOW,
         resources:  [
-          `arn:aws:kms:${stack.region}:${stack.account}:alias/aws/dynamodb`,
-          `arn:aws:kms:${stack.region}:${stack.account}:alias/aws/s3`,
-          `arn:aws:kms:${stack.region}:${stack.account}:key/*`,
+          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/dynamodb`,
+          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/s3`,
+          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:key/*`,
         ],
         conditions: {
           Bool: { 'kms:GrantIsForAWSResource': 'true' },

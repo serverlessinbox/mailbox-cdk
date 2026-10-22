@@ -3,8 +3,9 @@ import { GoLambda }                             from '@serverlessinbox/mailbox-c
 import type { Pipeline }                        from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }                             from 'aws-cdk-lib';
 import { Construct }                            from 'constructs';
+import type { IDependable }                     from 'constructs';
 
-import type { AuthPolicyName, OAuthClientName } from '../../core/auth/types';
+import type { AuthPolicyName, OAuthClientName } from '../../contracts/auth-names';
 import type { IAuditEventsQueue }               from '../queues/audit-events-queue';
 import type { IDataTable }                      from '../tables/data-tables';
 
@@ -20,6 +21,9 @@ export interface IdpTokenExchangeLambdaProps {
 
   /** This one code site is instantiated for both webmail-ui ('jmap') and admin-ui ('admin'); the caller states which. */
   readonly pipeline: Pipeline;
+
+  /** Resources that must be deployed before this function is created or updated. */
+  readonly dependsOn?: IDependable[];
 }
 
 export class IdpTokenExchangeLambda extends GoLambda {
@@ -41,5 +45,7 @@ export class IdpTokenExchangeLambda extends GoLambda {
 
     props.configTable.grantRead(this);
     props.auditEventsQueue.grantSend(this);
+
+    this.node.addDependency(...(props.dependsOn ?? []));
   }
 }

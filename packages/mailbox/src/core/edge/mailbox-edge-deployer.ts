@@ -99,17 +99,16 @@ export class MailboxEdgeDeployer extends Construct {
       deployedStack:          edgeStack,
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
-        stack,
         edgeStackNamePattern,
         edgeStack,
-        rootStack:               Aws.STACK_NAME,
-        rootStackId:             StackIdentity.guid,
-        template:                new ArtifactObject(props.artifactResolver, JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.TEMPLATE_OBJECT),
-        artifactObjects:         [
+        rootStack:            Aws.STACK_NAME,
+        rootStackId:          StackIdentity.guid,
+        template:             new ArtifactObject(props.artifactResolver, JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.TEMPLATE_OBJECT),
+        artifactObjects:      [
           new ArtifactObject(props.artifactResolver, JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.BLOB_DOWNLOAD_OBJECT),
         ],
-        hostedZoneId:            props.hostedZone?.hostedZoneId,
-        jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
+        hostedZoneId:         props.hostedZone?.hostedZoneId,
+        jmapBlobDownloadRole: this.jmapBlobDownloadRole,
       }),
     });
 
