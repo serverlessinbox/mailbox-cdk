@@ -34,6 +34,7 @@ export interface DeployerInfraProps {
 }
 
 const DEPLOY_STACK_SERVICE_TIMEOUT = Duration.hours(1);
+const WORKFLOW_ID                  = 'workflow';
 
 /**
  * The scaffolding every sub-stack deployer shares: a worker Lambda that performs the CloudFormation
@@ -49,7 +50,7 @@ export class DeployerInfra extends Construct {
 
     const worker = props.createWorker(this, 'worker');
 
-    this.workflow = new PollingCfnDeployerWorkflow(this, 'workflow', {
+    this.workflow = new PollingCfnDeployerWorkflow(this, WORKFLOW_ID, {
       handler:          worker,
       stateMachineName: this.stateMachineName(props.stateMachineNamePrefix),
     });
@@ -77,13 +78,13 @@ export class DeployerInfra extends Construct {
       properties,
     });
 
-    resource.node.addDependency(this.workflow.stateMachineDependable);
+    resource.node.addDependency(this.workflow);
 
     return resource;
   }
 
-  /** `<prefix><position hash>-<guid prefix>`: the hash changes when this construct moves, the guid prefix keeps the name unique across installs. */
+  /** `<prefix><position hash>-<guid prefix>`: the hash is that of the workflow, which is the state machine, so the name changes when the state machine moves; the guid prefix keeps it unique across installs. */
   private stateMachineName(prefix: string): string {
-    return Fn.join('', [prefix, PositionHash.of(this), '-', StackIdentity.guidPrefix]);
+    return Fn.join('', [prefix, PositionHash.ofChild(this, WORKFLOW_ID), '-', StackIdentity.guidPrefix]);
   }
 }

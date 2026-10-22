@@ -1,9 +1,8 @@
-import { BaseQueue, type BaseQueueProps, SqsActions }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { IGrantable }                                                    from 'aws-cdk-lib/aws-iam';
-import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
-import { QueueEncryption }                                               from 'aws-cdk-lib/aws-sqs';
-import { Duration }                                                      from 'aws-cdk-lib';
-import { Construct }                                                     from 'constructs';
+import { BaseQueue, type BaseQueueProps }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { IGrantable }                                                        from 'aws-cdk-lib/aws-iam';
+import { QueueEncryption }                                                   from 'aws-cdk-lib/aws-sqs';
+import { Duration }                                                          from 'aws-cdk-lib';
+import { Construct }                                                         from 'constructs';
 
 /** Inputs of {@link EmailProcessingQueue}. */
 export interface EmailProcessingQueueProps {
@@ -36,53 +35,30 @@ export interface IEmailProcessingQueueConsumer extends IEmailProcessingQueue {
 
 /**
  * SQS queue carrying inbound-email notifications to a consumer. Its visibility timeout (6 minutes)
- * must exceed the consumer's Lambda timeout plus its batching window; backed by a dead-letter queue
- * for messages that fail after 3 receives.
- *
- * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
+ * must exceed the consumer's Lambda timeout plus its batching window; backed by a dead-letter queue,
+ * created beside it, for messages that fail after 3 receives.
  *
  * Not responsible for wiring the consumer's event source mapping.
  */
-export class EmailProcessingQueue extends Construct implements IEmailProcessingQueueConsumer {
-  public readonly queue: BaseQueue;
-  public readonly dlq: BaseQueue;
-  public readonly queueUrl: string;
-  public readonly queueArn: string;
-
+export class EmailProcessingQueue extends BaseQueue implements IEmailProcessingQueueConsumer {
   constructor(scope: Construct, id: string, props: EmailProcessingQueueProps = {}) {
-    super(scope, id);
+    const encryptionMasterKey = props.queueProps?.encryptionMasterKey;
+    const encryption          = encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.SQS_MANAGED;
 
-    const queueEncryptionProps = this.encryptionProps(props.queueProps?.encryptionMasterKey);
-
-    this.dlq = new BaseQueue(this, 'email-processing-dlq', {
-      ...queueEncryptionProps,
+    const dlq = new BaseQueue(scope, `${id}-dlq`, {
+      encryption,
+      encryptionMasterKey,
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue    = new BaseQueue(this, 'email-processing-queue', {
-      ...queueEncryptionProps,
+    super(scope, id, {
+      encryption,
+      encryptionMasterKey,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue:   {
-        queue:           this.dlq,
+        queue:           dlq,
         maxReceiveCount: 3,
       },
     });
-    this.queueUrl = this.queue.queueUrl;
-    this.queueArn = this.queue.queueArn;
-  }
-
-  public grantSend(grantee: IGrantable): void {
-    this.queue.grantActions(grantee, SqsActions.send);
-  }
-
-  public grantConsume(grantee: IGrantable): void {
-    this.queue.grantActions(grantee, SqsActions.consume);
-  }
-
-  private encryptionProps(masterKey: IKey | undefined): Partial<BaseQueueProps> {
-    if (masterKey) {
-      return { encryption: QueueEncryption.KMS, encryptionMasterKey: masterKey };
-    }
-    return { encryption: QueueEncryption.SQS_MANAGED };
   }
 }

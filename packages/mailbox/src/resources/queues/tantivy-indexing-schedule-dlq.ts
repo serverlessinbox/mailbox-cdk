@@ -23,17 +23,11 @@ export interface ITantivyIndexingScheduleDlq {
  *
  * Not responsible for retrying or otherwise processing the failed invocations it collects.
  */
-export class TantivyIndexingScheduleDlq extends Construct implements ITantivyIndexingScheduleDlq {
-  public readonly queue: BaseQueue;
-  public readonly queueArn: string;
-
+export class TantivyIndexingScheduleDlq extends BaseQueue implements ITantivyIndexingScheduleDlq {
   constructor(scope: Construct, id: string, props: TantivyIndexingScheduleDlqProps = {}) {
-    super(scope, id);
-
-    this.queue    = new BaseQueue(this, 'tantivy-indexing-schedule-dlq', {
+    super(scope, id, {
       ...props.queueProps,
       retentionPeriod: Duration.days(14),
     });
-    this.queueArn = this.queue.queueArn;
   }
 }

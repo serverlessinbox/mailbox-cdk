@@ -1,9 +1,8 @@
 /**
  * TantivyIndexingScheduleDlq tests.
  *
- * Pin the 14 day retention of failed scheduled invocations, that the caller's queue props reach the
- * queue, and that `queueArn` identifies the queue; a regression loses failed invocation records
- * early or hands the schedule a wrong target ARN.
+ * Pin the 14 day retention of failed scheduled invocations and that the caller's queue props reach the
+ * queue; a regression loses failed invocation records early.
  */
 
 import { Template }                                from 'aws-cdk-lib/assertions';
@@ -39,14 +38,5 @@ describe('TantivyIndexingScheduleDlq', () => {
       VisibilityTimeout:      120,
       MessageRetentionPeriod: 14 * 24 * 60 * 60,
     });
-  });
-
-  it('queueArn resolves to the queue resource\'s Arn attribute', () => {
-    const stack = createStack();
-    const sut   = new TantivyIndexingScheduleDlq(stack, 'dlq');
-
-    const queueId = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
-
-    expect(stack.resolve(sut.queueArn)).toEqual({ 'Fn::GetAtt': [queueId, 'Arn'] });
   });
 });

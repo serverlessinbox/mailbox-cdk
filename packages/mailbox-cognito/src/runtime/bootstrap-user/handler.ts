@@ -5,6 +5,7 @@ import {
   emitManualFinalize,
   env,
   ExpectedFailure,
+  FailedRequestAnswerer,
   LoggerBuffer,
   ParentStackStatus,
   readCustomResourceRequest,
@@ -31,8 +32,9 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
 
-  const logger         = new LoggerBuffer(config.serviceName, config.logLevel);
-  const requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), new ParentStackStatus(cloudFormation, logger), logger);
+  const logger                = new LoggerBuffer(config.serviceName, config.logLevel);
+  const requestHandler        = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), logger);
+  const failedRequestAnswerer = new FailedRequestAnswerer(new ParentStackStatus(cloudFormation, logger), logger, BootstrapUserAnswers.withPasswordMarker().Data);
 
   try {
     return await requestHandler.handle(request);
@@ -40,6 +42,11 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     if (!(failure instanceof ExpectedFailure)) {
       logger.flush();
     }
-    return await requestHandler.answerFailure(request, failure);
+
+    const suppressedAnswer = await failedRequestAnswerer.answer(request, failure);
+    if (suppressedAnswer) {
+      return suppressedAnswer;
+    }
+    throw failure;
   }
 }), env.check(load));

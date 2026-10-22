@@ -1,4 +1,4 @@
-import { BaseQueue, type BaseQueueProps, SqsActions }                    from '@serverlessinbox/mailbox-cdk-shared';
+import { BaseQueue, type BaseQueueProps }                                from '@serverlessinbox/mailbox-cdk-shared';
 import { IGrantable, PolicyStatement, ServicePrincipal }                 from 'aws-cdk-lib/aws-iam';
 import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
 import { SqsSubscription }                                               from 'aws-cdk-lib/aws-sns-subscriptions';
@@ -28,8 +28,7 @@ export interface ISesEventQueue {
 }
 
 /**
- * SQS queue subscribed to the SES-notifications SNS topic. `grantConsume` exposes only the SQS
- * actions a consumer needs.
+ * SQS queue subscribed to the SES-notifications SNS topic.
  *
  * SNS cannot deliver to a queue encrypted with the AWS-managed SQS key (`alias/aws/sqs`), so this
  * queue defaults to unencrypted unless the caller supplies a customer-managed KMS key via
@@ -41,27 +40,21 @@ export interface ISesEventQueue {
  *
  * Not responsible for the topic itself or the SES configuration set; the topic is passed in.
  */
-export class SesEventQueue extends Construct implements ISesEventQueue {
-  public readonly queue: BaseQueue;
-  public readonly queueArn: string;
-
+export class SesEventQueue extends BaseQueue implements ISesEventQueue {
   constructor(scope: Construct, id: string, props: SesEventQueueProps) {
-    super(scope, id);
-
     const queueProps = props.queueProps ?? {};
 
     const encryption = queueProps.encryption
       ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
 
-    this.queue    = new BaseQueue(this, 'ses-notifications-queue', {
+    super(scope, id, {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       encryption,
     });
-    this.queueArn = this.queue.queueArn;
 
     props.topic.addSubscription(
-      new SqsSubscription(this.queue, {
+      new SqsSubscription(this, {
         rawMessageDelivery: true,
       })
     );
@@ -69,10 +62,6 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
     if (encryption === QueueEncryption.KMS && queueProps.encryptionMasterKey) {
       this.allowTopicToUseKey(queueProps.encryptionMasterKey, props.topic);
     }
-  }
-
-  public grantConsume(grantee: IGrantable): void {
-    this.queue.grantActions(grantee, SqsActions.consume);
   }
 
   private allowTopicToUseKey(key: IKey, topic: ITopic): void {

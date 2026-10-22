@@ -1,7 +1,7 @@
-import { BaseQueue, type BaseQueueProps, SqsActions }                    from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }                                               from 'aws-cdk-lib/aws-iam';
-import { Duration }                                                      from 'aws-cdk-lib';
-import { Construct }                                                     from 'constructs';
+import { BaseQueue, type BaseQueueProps }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                                                   from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                          from 'aws-cdk-lib';
+import { Construct }                                                         from 'constructs';
 
 /** Props of {@link EmailSendingQueue}. */
 export interface EmailSendingQueueProps {
@@ -31,31 +31,23 @@ export interface IEmailSendingQueueConsumer extends IEmailSendingQueue {
 
 /**
  * SQS queue carrying email submissions to the consumer that sends them via SES, backed by a
- * dead-letter queue for submissions that exceed the maximum receive count.
+ * dead-letter queue, created beside it, for submissions that exceed the maximum receive count.
  *
  * The visibility timeout must exceed the consumer's function timeout plus its event source batching
  * window, otherwise a message still being processed becomes visible and is delivered again.
  *
- * `grantSend`/`grantConsume` expose only the specific SQS actions each kind of caller needs.
- *
  * Not responsible for wiring the consumer's event source mapping.
  */
-export class EmailSendingQueue extends Construct implements IEmailSendingQueueConsumer {
-  public readonly queueUrl: string;
-  public readonly queueArn: string;
-  private readonly queue: BaseQueue;
-
+export class EmailSendingQueue extends BaseQueue implements IEmailSendingQueueConsumer {
   constructor(scope: Construct, id: string, props: EmailSendingQueueProps = {}) {
-    super(scope, id);
-
     const queueProps = props.queueProps ?? {};
 
-    const dlq = new BaseQueue(this, 'email-submissions-dlq', {
+    const dlq = new BaseQueue(scope, `${id}-dlq`, {
       ...queueProps,
       retentionPeriod: Duration.days(14),
     });
 
-    this.queue    = new BaseQueue(this, 'email-submissions', {
+    super(scope, id, {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue:   {
@@ -63,15 +55,5 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
         maxReceiveCount: 5,
       },
     });
-    this.queueUrl = this.queue.queueUrl;
-    this.queueArn = this.queue.queueArn;
-  }
-
-  public grantSend(grantee: IGrantable): void {
-    this.queue.grantActions(grantee, SqsActions.send);
-  }
-
-  public grantConsume(grantee: IGrantable): void {
-    this.queue.grantActions(grantee, SqsActions.consume);
   }
 }

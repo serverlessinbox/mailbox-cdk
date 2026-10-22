@@ -14,6 +14,7 @@ export { ExpectedFailure } from './runtime/handler-kit/errors/expected-failure';
 export { answerRequestWithBadConfig } from './runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
 export type { CustomResourceAnswer, CustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request';
 export { readCustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request-reader';
+export { FailedRequestAnswerer } from './runtime/handler-kit/custom-resource/custom-resource-failed-request-answerer';
 export { CaughtError } from './runtime/handler-kit/errors/caught-error';
 export { parseArn, type ParsedArn } from './runtime/handler-kit/arn';
 export { isBrandedString, type Branded, type Unbranded } from './runtime/handler-kit/branded';

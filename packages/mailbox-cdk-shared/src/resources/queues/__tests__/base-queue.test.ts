@@ -13,8 +13,6 @@ import * as cdk                                    from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
 import { Construct }                               from 'constructs';
 
-import { SqsActions }                              from '../../../grants/sqs-actions';
-import type { SqsAction }                          from '../../../grants/sqs-actions';
 import { PositionHash }                            from '../../../naming/position-hash';
 import { StackIdentity }                           from '../../../naming/stack-identity';
 import { BaseQueue }                               from '../base-queue';
@@ -26,8 +24,8 @@ interface GrantedQueue {
   readonly keyId:    string;
 }
 
-/** A role granted `actions` on a queue that is encrypted with a customer-managed key when `withKey` is set. */
-function grantOnQueue(actions: readonly SqsAction[], withKey: boolean): GrantedQueue {
+/** A role given the `grant` of a queue that is encrypted with a customer-managed key when `withKey` is set. */
+function grantOnQueue(grant: 'grantSend' | 'grantConsume', withKey: boolean): GrantedQueue {
   const stack = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
@@ -36,7 +34,7 @@ function grantOnQueue(actions: readonly SqsAction[], withKey: boolean): GrantedQ
   const queue = new BaseQueue(stack, 'jobs', withKey ? { encryptionMasterKey: key } : {});
   const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
-  queue.grantActions(role, actions);
+  queue[grant](role);
 
   return {
     template: Template.fromStack(stack),
@@ -116,9 +114,9 @@ describe('BaseQueue', () => {
     });
   });
 
-  describe('grantActions', () => {
-    it('grants exactly sqs:SendMessage on the queue ARN for send, with no KMS statement on a queue without a key', () => {
-      const { template, queueId } = grantOnQueue(SqsActions.send, false);
+  describe('grants', () => {
+    it('grantSend grants exactly sqs:SendMessage on the queue ARN, with no KMS statement on a queue without a key', () => {
+      const { template, queueId } = grantOnQueue('grantSend', false);
 
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
@@ -129,8 +127,8 @@ describe('BaseQueue', () => {
       });
     });
 
-    it('grants exactly the consume actions on the queue ARN for consume, with no KMS statement on a queue without a key', () => {
-      const { template, queueId } = grantOnQueue(SqsActions.consume, false);
+    it('grantConsume grants exactly the consume actions on the queue ARN, with no KMS statement on a queue without a key', () => {
+      const { template, queueId } = grantOnQueue('grantConsume', false);
 
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
@@ -145,8 +143,8 @@ describe('BaseQueue', () => {
       });
     });
 
-    it('adds the send KMS statement to a send grant on a queue with a customer-managed key', () => {
-      const { template, queueId, keyId } = grantOnQueue(SqsActions.send, true);
+    it('adds the send KMS statement to grantSend on a queue with a customer-managed key', () => {
+      const { template, queueId, keyId } = grantOnQueue('grantSend', true);
 
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
@@ -158,8 +156,8 @@ describe('BaseQueue', () => {
       });
     });
 
-    it('adds the consume KMS statement to a consume grant on a queue with a customer-managed key', () => {
-      const { template, queueId, keyId } = grantOnQueue(SqsActions.consume, true);
+    it('adds the consume KMS statement to grantConsume on a queue with a customer-managed key', () => {
+      const { template, queueId, keyId } = grantOnQueue('grantConsume', true);
 
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {

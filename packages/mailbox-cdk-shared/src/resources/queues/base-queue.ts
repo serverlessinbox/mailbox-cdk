@@ -3,6 +3,7 @@ import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration }                           from 'aws-cdk-lib';
 import { Construct }                          from 'constructs';
 
+import { SqsActions }                         from '../../grants/sqs-actions';
 import type { SqsAction }                     from '../../grants/sqs-actions';
 import { makePhysicalName }                   from '../../naming/resource-names';
 
@@ -52,13 +53,23 @@ export class BaseQueue extends Queue {
     });
   }
 
+  /** Grants `grantee` exactly `SqsActions.send` on this queue, plus the KMS actions a producer needs on a customer-managed key. */
+  public grantSend(grantee: IGrantable): Grant {
+    return this.grantActions(grantee, SqsActions.send);
+  }
+
+  /** Grants `grantee` exactly `SqsActions.consume` on this queue, plus the KMS action a consumer needs on a customer-managed key. */
+  public grantConsume(grantee: IGrantable): Grant {
+    return this.grantActions(grantee, SqsActions.consume);
+  }
+
   /**
    * Grants `grantee` exactly the given SQS actions on this queue, scoped to the queue's ARN. If the
    * queue uses a customer-managed KMS key (`encryptionMasterKey`), also grants the matching key
    * actions, so a caller granted `SqsActions.send`/`SqsActions.consume` never needs to reason about
    * the queue's encryption separately from its message actions.
    */
-  grantActions(grantee: IGrantable, actions: readonly SqsAction[]): Grant {
+  protected grantActions(grantee: IGrantable, actions: readonly SqsAction[]): Grant {
     const grant = Grant.addToPrincipal({
       grantee,
       actions:      [...actions],

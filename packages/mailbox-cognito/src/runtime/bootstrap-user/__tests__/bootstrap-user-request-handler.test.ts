@@ -1,45 +1,38 @@
 /// <reference types="jest" />
 
 /**
- * Pins the answers of the bootstrap user custom resource: which password it reports, which physical id it
- * answers with, and when a failed Update is answered with success. A password reported although it was never
- * applied would hand the operator a credential that does not work, and a failed Update answered with failure
- * during a stack rollback leaves the stack in UPDATE_ROLLBACK_FAILED.
+ * Pins the answers of the bootstrap user custom resource: which password it reports and which physical id it
+ * answers with. A password reported although it was never applied would hand the operator a credential that
+ * does not work.
  */
 
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { ExpectedFailure, LoggerBuffer, ParentStackStatus, toStackId }                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                                 from 'aws-sdk-client-mock';
+import { ExpectedFailure, LoggerBuffer }                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                                 from 'aws-sdk-client-mock';
 
-import { PASSWORD_SET_AT_INSTALL_TIME }                                                               from '../bootstrap-user-answers';
-import { BootstrapUserRequestHandler }                                                                from '../bootstrap-user-request-handler';
-import { UserEnsurer }                                                                                from '../ensure-user';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                               from '../bootstrap-user-answers';
+import { BootstrapUserRequestHandler }                                                from '../bootstrap-user-request-handler';
+import { UserEnsurer }                                                                from '../ensure-user';
 
-import { PHYSICAL_RESOURCE_ID, request, STACK_ID, templateProperties, USER_POOL_ID }                  from './bootstrap-user-helpers';
+import { PHYSICAL_RESOURCE_ID, request, templateProperties, USER_POOL_ID }            from './bootstrap-user-helpers';
 
 const SUPPLIED_PASSWORD = 'Supplied1Password';
 
-// The stack-status lookup belongs to ParentStackStatus and is pinned by its own tests, so this suite replaces
-// its answer and lets everything else run for real.
 describe('BootstrapUserRequestHandler', () => {
-  const cognitoMock       = mockClient(CognitoIdentityProviderClient);
-  const logger            = new LoggerBuffer('test-service', 'error');
-  const parentStackStatus = new ParentStackStatus(new CloudFormationClient({}), logger);
-  let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
+  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  const logger      = new LoggerBuffer('test-service', 'error');
   let requestHandler: BootstrapUserRequestHandler;
 
   beforeEach(() => {
     cognitoMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
-    isRollingBack  = jest.spyOn(parentStackStatus, 'isRollingBack');
-    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({}), logger), parentStackStatus, logger);
+    requestHandler = new BootstrapUserRequestHandler(new UserEnsurer(new CognitoIdentityProviderClient({}), logger), logger);
   });
 
   afterEach(() => {
@@ -113,36 +106,4 @@ describe('BootstrapUserRequestHandler', () => {
     });
   });
 
-  describe('answerFailure', () => {
-    const failure = new Error('cognito failed');
-
-    it('answers an Update that fails while the parent stack rolls back with the marker', async () => {
-      isRollingBack.mockResolvedValue(true);
-
-      const answer = await requestHandler.answerFailure(request('Update'), failure);
-
-      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
-    });
-
-    it('asks about the stack of the request', async () => {
-      isRollingBack.mockResolvedValue(true);
-
-      await requestHandler.answerFailure(request('Update'), failure);
-
-      expect(isRollingBack).toHaveBeenCalledWith(toStackId(STACK_ID));
-    });
-
-    it('throws the failure of an Update when the parent stack is not rolling back', async () => {
-      isRollingBack.mockResolvedValue(false);
-
-      await expect(requestHandler.answerFailure(request('Update'), failure)).rejects.toBe(failure);
-    });
-
-    it('throws the failure of a Create without consulting the stack status', async () => {
-      isRollingBack.mockResolvedValue(true);
-
-      await expect(requestHandler.answerFailure(request('Create'), failure)).rejects.toBe(failure);
-      expect(isRollingBack).not.toHaveBeenCalled();
-    });
-  });
 });

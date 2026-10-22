@@ -47,6 +47,15 @@ describe('FailedRequestAnswerer', () => {
     });
   });
 
+  it('reports the data the answerer was given in the answer to an Update failing during a rollback', async () => {
+    parentStackIsIn('UPDATE_ROLLBACK_IN_PROGRESS');
+    const answererWithData = new FailedRequestAnswerer(new ParentStackStatus(new CloudFormationClient({}), logger), logger, { temporaryPassword: 'kept' });
+
+    const answer = await answererWithData.answer(cfnRequest('Update'), new Error('boom'));
+
+    expect(answer).toEqual({ PhysicalResourceId: PHYSICAL_RESOURCE_ID, Data: { temporaryPassword: 'kept' } });
+  });
+
   it('lets the failure of an Update stand when the parent stack is not rolling back', async () => {
     parentStackIsIn('UPDATE_IN_PROGRESS');
 

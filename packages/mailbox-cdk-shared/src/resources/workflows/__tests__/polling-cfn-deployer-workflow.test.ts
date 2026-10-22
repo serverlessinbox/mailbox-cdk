@@ -6,8 +6,8 @@
  * mis-wired transition either fails every deployment or loops it until the workflow times out.
  */
 
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import { CfnResource, Duration, Stack }          from 'aws-cdk-lib';
+import { Template }                              from 'aws-cdk-lib/assertions';
+import { Duration, Stack }                       from 'aws-cdk-lib';
 
 import {
   TEST_ACCOUNT,
@@ -15,7 +15,6 @@ import {
   newDeployerTestStack,
   newWorkerStandIn,
   stateMachineDefinition,
-  stateMachineLogicalId,
 } from '../../../__tests__/deployer-infra-helpers';
 import { statementsForAction }                   from '../../../cdk-test-support';
 import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
@@ -189,20 +188,6 @@ describe('PollingCfnDeployerWorkflow', () => {
           ],
         ],
       });
-    });
-  });
-
-  it('exposes the state machine as the dependable a dependent resource waits for', () => {
-    const { stack } = newDeployerTestStack();
-    const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-      handler:          newWorkerStandIn(stack, 'worker'),
-      stateMachineName: 'test-deployer-machine',
-    });
-    new CfnResource(stack, 'dependent', { type: 'Custom::Dependent' }).node.addDependency(workflow.stateMachineDependable);
-
-    const template = Template.fromStack(stack);
-    template.hasResource('Custom::Dependent', {
-      DependsOn: Match.arrayWith([stateMachineLogicalId(template)]),
     });
   });
 });

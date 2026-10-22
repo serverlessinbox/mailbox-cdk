@@ -55,12 +55,12 @@ describe('DeployerInfra', () => {
     expect(createWorker).toHaveBeenCalledWith(infra, 'worker');
   });
 
-  it('names the state machine by the prefix, the infra position hash and the guid prefix of the stack id', () => {
+  it('names the state machine by the prefix, the position hash of the workflow, which is the state machine, and the guid prefix of the stack id', () => {
     const { stack, infra } = newInfra();
 
     Template.fromStack(stack).hasResourceProperties('AWS::StepFunctions::StateMachine', {
       StateMachineName: {
-        'Fn::Join': ['', [`test-deployer-${PositionHash.of(infra)}-`, stack.resolve(StackIdentity.guidPrefix)]],
+        'Fn::Join': ['', [`test-deployer-${PositionHash.of(infra.node.findChild('workflow'))}-`, stack.resolve(StackIdentity.guidPrefix)]],
       },
     });
   });

@@ -4,7 +4,7 @@ import * as tasks                              from 'aws-cdk-lib/aws-stepfunctio
 import * as sfn                                from 'aws-cdk-lib/aws-stepfunctions';
 import { Duration }                            from 'aws-cdk-lib';
 import type { IResolvable }                    from 'aws-cdk-lib';
-import { Construct, IDependable }              from 'constructs';
+import { Construct }                           from 'constructs';
 
 import type { SfnInvokeEvent, WorkflowInput }  from '../../runtime/stack-deployer/stack/stack-deployment';
 import type { RetryCounts, WorkerResult }      from '../../runtime/stack-deployer/worker-result';
@@ -62,54 +62,44 @@ const CHECK_RESULT         = 'check';
  * The Step Functions workflow that drives one long-running sub-stack deployment: it starts the stack
  * operation through the worker Lambda, then polls the worker until the operation is over.
  * Its input is a `WorkflowInput`.
+ *
+ * A state machine is built from its states, so they exist before the state machine does; they are
+ * created under a construct of their own, `<id>-states`, beside it.
  */
-export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfnDeployerWorkflow {
-  public readonly stateMachineArn: string;
-
-  /** A resource that depends on this is deleted before the state machine is. */
-  public readonly stateMachineDependable: IDependable;
-
-  private readonly stateMachine: sfn.IStateMachine;
-
+export class PollingCfnDeployerWorkflow extends sfn.StateMachine implements IPollingCfnDeployerWorkflow {
   constructor(scope: Construct, id: string, props: PollingCfnDeployerWorkflowProps) {
-    super(scope, id);
-
-    const waitBeforeCheck = this.waitBeforeCheck(props.checkInterval ?? Duration.seconds(20));
-    const done            = this.done();
-
-    this.stateMachine = new sfn.StateMachine(this, 'StateMachine', {
+    super(scope, id, {
       definitionBody:   sfn.DefinitionBody.fromChainable(
-        this.init()
-          .next(this.startStackOperation(props.handler))
-          // A start that already finalized the operation (an early failure) ends the workflow.
-          .next(this.startedOk()
-            .when(this.isDone(START_RESULT), done)
-            .otherwise(waitBeforeCheck
-              .next(this.checkStackOperation(props.handler))
-              // The counters are read from a check that is still polling; a done result may carry none.
-              .next(this.checkedDone()
-                .when(this.isDone(CHECK_RESULT), done)
-                .otherwise(this.incrementAttempt().next(waitBeforeCheck))))),
+        PollingCfnDeployerWorkflow.definition(new Construct(scope, `${id}-states`), props),
       ),
       timeout:          props.timeout ?? Duration.minutes(90),
       comment:          'Serverless Inbox: sub-stack deployer workflow',
       stateMachineName: props.stateMachineName,
     });
-
-    this.stateMachineArn        = this.stateMachine.stateMachineArn;
-    this.stateMachineDependable = this.stateMachine;
   }
 
-  public grantStartAndDescribeExecutions(grantee: IGrantable): void {
-    this.stateMachine.grantStartExecution(grantee);
-    this.stateMachine.grantExecution(grantee, 'states:DescribeExecution');
+  private static definition(states: Construct, props: PollingCfnDeployerWorkflowProps): sfn.IChainable {
+    const waitBeforeCheck = PollingCfnDeployerWorkflow.waitBeforeCheck(states, props.checkInterval ?? Duration.seconds(20));
+    const done            = PollingCfnDeployerWorkflow.done(states);
+
+    return PollingCfnDeployerWorkflow.init(states)
+      .next(PollingCfnDeployerWorkflow.startStackOperation(states, props.handler))
+      // A start that already finalized the operation (an early failure) ends the workflow.
+      .next(PollingCfnDeployerWorkflow.startedOk(states)
+        .when(PollingCfnDeployerWorkflow.isDone(START_RESULT), done)
+        .otherwise(waitBeforeCheck
+          .next(PollingCfnDeployerWorkflow.checkStackOperation(states, props.handler))
+          // The counters are read from a check that is still polling; a done result may carry none.
+          .next(PollingCfnDeployerWorkflow.checkedDone(states)
+            .when(PollingCfnDeployerWorkflow.isDone(CHECK_RESULT), done)
+            .otherwise(PollingCfnDeployerWorkflow.incrementAttempt(states).next(waitBeforeCheck)))));
   }
 
-  private init(): sfn.Pass {
-    return new sfn.Pass(this, 'Init', {
+  private static init(states: Construct): sfn.Pass {
+    return new sfn.Pass(states, 'Init', {
       parameters: {
-        ...this.forward(CFN_FIELD),
-        ...this.forward(OP_FIELD),
+        ...PollingCfnDeployerWorkflow.forward(CFN_FIELD),
+        ...PollingCfnDeployerWorkflow.forward(OP_FIELD),
         [ATTEMPT_FIELD]:        0,
         [DELETE_RETRIES_FIELD]: 0,
         [CREATE_RETRIES_FIELD]: 0,
@@ -117,82 +107,87 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     });
   }
 
-  private startStackOperation(handler: IFunction): tasks.LambdaInvoke {
-    return this.workerInvocation('StartStackOperation', START_RESULT, this.startPayload(), handler);
+  private static startStackOperation(states: Construct, handler: IFunction): tasks.LambdaInvoke {
+    return PollingCfnDeployerWorkflow.workerInvocation(states, 'StartStackOperation', START_RESULT, PollingCfnDeployerWorkflow.startPayload(), handler);
   }
 
-  private startedOk(): sfn.Choice {
-    return new sfn.Choice(this, 'StartedOk?');
+  private static startedOk(states: Construct): sfn.Choice {
+    return new sfn.Choice(states, 'StartedOk?');
   }
 
-  private waitBeforeCheck(checkInterval: Duration): sfn.Wait {
-    return new sfn.Wait(this, 'WaitBeforeCheck', { time: sfn.WaitTime.duration(checkInterval) });
+  private static waitBeforeCheck(states: Construct, checkInterval: Duration): sfn.Wait {
+    return new sfn.Wait(states, 'WaitBeforeCheck', { time: sfn.WaitTime.duration(checkInterval) });
   }
 
-  private checkStackOperation(handler: IFunction): tasks.LambdaInvoke {
-    return this.workerInvocation('CheckStackOperation', CHECK_RESULT, this.checkPayload(), handler);
+  private static checkStackOperation(states: Construct, handler: IFunction): tasks.LambdaInvoke {
+    return PollingCfnDeployerWorkflow.workerInvocation(states, 'CheckStackOperation', CHECK_RESULT, PollingCfnDeployerWorkflow.checkPayload(), handler);
   }
 
-  private checkedDone(): sfn.Choice {
-    return new sfn.Choice(this, 'IsDone?');
+  private static checkedDone(states: Construct): sfn.Choice {
+    return new sfn.Choice(states, 'IsDone?');
   }
 
-  private done(): sfn.Succeed {
-    return new sfn.Succeed(this, 'Done');
+  private static done(states: Construct): sfn.Succeed {
+    return new sfn.Succeed(states, 'Done');
   }
 
-  private incrementAttempt(): sfn.Pass {
-    return new sfn.Pass(this, 'IncrementAttempt', {
+  private static incrementAttempt(states: Construct): sfn.Pass {
+    return new sfn.Pass(states, 'IncrementAttempt', {
       parameters: {
-        ...this.forward(CFN_FIELD),
-        ...this.forward(OP_FIELD),
-        ...this.forward(START_RESULT),
-        ...this.forward(CHECK_RESULT),
-        [`${ATTEMPT_FIELD}.$`]:        `States.MathAdd(${this.path(ATTEMPT_FIELD)}, 1)`,
-        [`${DELETE_RETRIES_FIELD}.$`]: this.path(CHECK_RESULT, DELETE_RETRIES_FIELD),
-        [`${CREATE_RETRIES_FIELD}.$`]: this.path(CHECK_RESULT, CREATE_RETRIES_FIELD),
+        ...PollingCfnDeployerWorkflow.forward(CFN_FIELD),
+        ...PollingCfnDeployerWorkflow.forward(OP_FIELD),
+        ...PollingCfnDeployerWorkflow.forward(START_RESULT),
+        ...PollingCfnDeployerWorkflow.forward(CHECK_RESULT),
+        [`${ATTEMPT_FIELD}.$`]:        `States.MathAdd(${PollingCfnDeployerWorkflow.path(ATTEMPT_FIELD)}, 1)`,
+        [`${DELETE_RETRIES_FIELD}.$`]: PollingCfnDeployerWorkflow.path(CHECK_RESULT, DELETE_RETRIES_FIELD),
+        [`${CREATE_RETRIES_FIELD}.$`]: PollingCfnDeployerWorkflow.path(CHECK_RESULT, CREATE_RETRIES_FIELD),
       },
     });
   }
 
-  private workerInvocation(id: string, resultField: ResultField, payload: StartPayload | CheckPayload, handler: IFunction): tasks.LambdaInvoke {
-    return new tasks.LambdaInvoke(this, id, {
+  private static workerInvocation(states: Construct, id: string, resultField: ResultField, payload: StartPayload | CheckPayload, handler: IFunction): tasks.LambdaInvoke {
+    return new tasks.LambdaInvoke(states, id, {
       lambdaFunction:      handler,
       payloadResponseOnly: true,
-      resultPath:          this.path(resultField),
+      resultPath:          PollingCfnDeployerWorkflow.path(resultField),
       payload:             sfn.TaskInput.fromObject(payload),
     });
   }
 
-  private startPayload(): StartPayload {
+  private static startPayload(): StartPayload {
     return {
       mode:    'start',
-      cfn:     sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
-      op:      sfn.JsonPath.objectAt(this.path(OP_FIELD)),
-      attempt: sfn.JsonPath.numberAt(this.path(ATTEMPT_FIELD)),
+      cfn:     sfn.JsonPath.objectAt(PollingCfnDeployerWorkflow.path(CFN_FIELD)),
+      op:      sfn.JsonPath.objectAt(PollingCfnDeployerWorkflow.path(OP_FIELD)),
+      attempt: sfn.JsonPath.numberAt(PollingCfnDeployerWorkflow.path(ATTEMPT_FIELD)),
     };
   }
 
-  private checkPayload(): CheckPayload {
+  private static checkPayload(): CheckPayload {
     return {
       mode:             'check',
-      cfn:              sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
-      op:               sfn.JsonPath.objectAt(this.path(OP_FIELD)),
-      attempt:          sfn.JsonPath.numberAt(this.path(ATTEMPT_FIELD)),
-      deleteRetryCount: sfn.JsonPath.numberAt(this.path(DELETE_RETRIES_FIELD)),
-      createRetryCount: sfn.JsonPath.numberAt(this.path(CREATE_RETRIES_FIELD)),
+      cfn:              sfn.JsonPath.objectAt(PollingCfnDeployerWorkflow.path(CFN_FIELD)),
+      op:               sfn.JsonPath.objectAt(PollingCfnDeployerWorkflow.path(OP_FIELD)),
+      attempt:          sfn.JsonPath.numberAt(PollingCfnDeployerWorkflow.path(ATTEMPT_FIELD)),
+      deleteRetryCount: sfn.JsonPath.numberAt(PollingCfnDeployerWorkflow.path(DELETE_RETRIES_FIELD)),
+      createRetryCount: sfn.JsonPath.numberAt(PollingCfnDeployerWorkflow.path(CREATE_RETRIES_FIELD)),
     };
   }
 
-  private isDone(resultField: ResultField): sfn.Condition {
-    return sfn.Condition.booleanEquals(this.path(resultField, DONE_FIELD), true);
+  private static isDone(resultField: ResultField): sfn.Condition {
+    return sfn.Condition.booleanEquals(PollingCfnDeployerWorkflow.path(resultField, DONE_FIELD), true);
   }
 
-  private forward(field: StateField): ForwardedField {
-    return { [`${field}.$`]: this.path(field) };
+  private static forward(field: StateField): ForwardedField {
+    return { [`${field}.$`]: PollingCfnDeployerWorkflow.path(field) };
   }
 
-  private path(...fields: PathField[]): string {
+  private static path(...fields: PathField[]): string {
     return `$.${fields.join('.')}`;
+  }
+
+  public grantStartAndDescribeExecutions(grantee: IGrantable): void {
+    this.grantStartExecution(grantee);
+    this.grantExecution(grantee, 'states:DescribeExecution');
   }
 }

@@ -1,10 +1,8 @@
 import {
-  CaughtError,
   ExpectedFailure,
   toPhysicalResourceId,
   type CustomResourceRequest,
   type LoggerBuffer,
-  type ParentStackStatus,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { generateSecurePassword }                                                       from '../../utils/secure-password';
@@ -22,13 +20,11 @@ const DEFAULT_USERNAME = 'admin';
  */
 export class BootstrapUserRequestHandler {
   private readonly userEnsurer: UserEnsurer;
-  private readonly parentStackStatus: ParentStackStatus;
   private readonly logger: LoggerBuffer;
 
-  constructor(userEnsurer: UserEnsurer, parentStackStatus: ParentStackStatus, logger: LoggerBuffer) {
-    this.userEnsurer       = userEnsurer;
-    this.parentStackStatus = parentStackStatus;
-    this.logger            = logger;
+  constructor(userEnsurer: UserEnsurer, logger: LoggerBuffer) {
+    this.userEnsurer = userEnsurer;
+    this.logger      = logger;
   }
 
   /**
@@ -49,19 +45,6 @@ export class BootstrapUserRequestHandler {
 
     const reportedPassword = userWasCreated ? temporaryPassword : PASSWORD_SET_AT_INSTALL_TIME;
     return this.answerEnsured(request, user, reportedPassword);
-  }
-
-  /**
-   * Answers an Update that fails while the parent stack rolls back with success, because failing it would leave
-   * the stack in UPDATE_ROLLBACK_FAILED. Every other failure is thrown on.
-   */
-  public async answerFailure(request: CustomResourceRequest, failure: unknown): Promise<BootstrapUserAnswer> {
-    this.logger.error('bootstrap_user_handler_failed', { message: new CaughtError(failure).readableMessage() });
-
-    if (await this.parentStackIsRollingBack(request)) {
-      return this.answerSuppressed(failure);
-    }
-    throw failure;
   }
 
   private readProperties(request: CustomResourceRequest): BootstrapUserProperties {
@@ -98,18 +81,5 @@ export class BootstrapUserRequestHandler {
       return BootstrapUserAnswers.withPassword(reportedPassword, toPhysicalResourceId(`BootstrapUser:${user.userPoolId}:${user.username}`));
     }
     return BootstrapUserAnswers.withPassword(reportedPassword);
-  }
-
-  private answerSuppressed(failure: unknown): BootstrapUserAnswer {
-    this.logger.warn('Suppressing error during stack rollback', { error: new CaughtError(failure).readableMessage() });
-    return BootstrapUserAnswers.withPasswordMarker();
-  }
-
-  // Only an Update is suppressed: a Create that fails must fail, and the detector is not consulted for it.
-  private async parentStackIsRollingBack(request: CustomResourceRequest): Promise<boolean> {
-    if (request.RequestType !== 'Update') {
-      return false;
-    }
-    return this.parentStackStatus.isRollingBack(request.StackId);
   }
 }

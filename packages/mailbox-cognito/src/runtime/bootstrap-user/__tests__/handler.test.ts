@@ -139,17 +139,13 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
         BootstrapUserRequestHandler: class {
           private readonly logger: LoggerBuffer;
 
-          constructor(_userEnsurer: unknown, _parentStackStatus: unknown, logger: LoggerBuffer) {
+          constructor(_userEnsurer: unknown, logger: LoggerBuffer) {
             this.logger = logger;
           }
 
           async handle(): Promise<never> {
             this.logger.debug('buffered_before_rejection');
             throw new ExpectedFailure('rejected on purpose');
-          }
-
-          async answerFailure(_request: unknown, failure: unknown): Promise<never> {
-            throw failure;
           }
         },
       };
@@ -167,7 +163,13 @@ describe('bootstrap-user handler', () => {
   const cloudFormationMock = mockClient(CloudFormationClient);
   let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
   let debugLog: jest.SpyInstance;
+  let errorLog: jest.SpiedFunction<typeof console.error>;
   let originalEnvironment: NodeJS.ProcessEnv;
+
+  /** The first argument of every line written at error level. */
+  function loggedErrorMessages(): unknown[] {
+    return errorLog.mock.calls.map((call) => call[0] as unknown);
+  }
 
   beforeEach(() => {
     originalEnvironment = { ...process.env };
@@ -176,7 +178,7 @@ describe('bootstrap-user handler', () => {
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     isRollingBack = jest.spyOn(ParentStackStatus.prototype, 'isRollingBack').mockResolvedValue(false);
     debugLog      = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    errorLog      = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -269,6 +271,7 @@ describe('bootstrap-user handler', () => {
       expect(response.Status).toBe('FAILED');
       expect(response.Reason).toContain('rejected on purpose');
       expect(debugLog).not.toHaveBeenCalled();
+      expect(loggedErrorMessages()).not.toContain('Handler failed');
     });
 
     it('answers an unexpected failure with FAILED and writes the buffered trace that led to it', async () => {
@@ -278,6 +281,7 @@ describe('bootstrap-user handler', () => {
 
       expect(response.Status).toBe('FAILED');
       expect(debugLog).toHaveBeenCalledWith('bootstrap_user_ensuring_user');
+      expect(loggedErrorMessages()).toContain('Handler failed');
     });
   });
 });

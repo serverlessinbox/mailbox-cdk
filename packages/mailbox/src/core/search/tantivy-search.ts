@@ -30,12 +30,12 @@ export class TantivySearch extends Construct {
     });
 
     new TantivyIndexerLambda(this, 'tantivy-indexer', {
-      indexBucket:         props.indexBucket,
-      itemTable:           props.itemTable,
-      configTable:         props.configTable,
-      changelogTable:      props.changelogTable,
-      artifactResolver:    props.artifactResolver,
-      indexingScheduleDlq: indexingScheduleDlq.queue,
+      indexBucket:      props.indexBucket,
+      itemTable:        props.itemTable,
+      configTable:      props.configTable,
+      changelogTable:   props.changelogTable,
+      artifactResolver: props.artifactResolver,
+      indexingScheduleDlq,
     });
   }
 }

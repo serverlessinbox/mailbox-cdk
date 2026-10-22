@@ -2,8 +2,17 @@ import { CaughtError }                                      from '../errors/caug
 import { ExpectedFailure }                                  from '../errors/expected-failure';
 import type { LoggerBuffer }                                from '../logger-buffer';
 
+import type { PhysicalResourceId }                          from './custom-resource-identifiers';
 import type { CustomResourceAnswer, CustomResourceRequest } from './custom-resource-request';
 import type { ParentStackStatus }                           from './parent-stack-status';
+
+/** The attributes a custom resource reports to CloudFormation, which the template reads through `GetAtt`. */
+export type SuppressedAnswerData = Readonly<Record<string, string>>;
+
+/** The answer that suppresses a failure: the unchanged physical id and, for a resource with attributes, their values. */
+export interface SuppressedAnswer extends CustomResourceAnswer {
+  readonly Data?: SuppressedAnswerData;
+}
 
 /**
  * Decides the answer to a custom-resource request that failed. It suppresses only an Update that fails while
@@ -12,10 +21,13 @@ import type { ParentStackStatus }                           from './parent-stack
 export class FailedRequestAnswerer {
   private readonly parentStackStatus: ParentStackStatus;
   private readonly logger: LoggerBuffer;
+  private readonly suppressedData: SuppressedAnswerData | undefined;
 
-  constructor(parentStackStatus: ParentStackStatus, logger: LoggerBuffer) {
+  /** A resource whose attributes other resources read passes the `suppressedData` its suppressed answer reports. */
+  constructor(parentStackStatus: ParentStackStatus, logger: LoggerBuffer, suppressedData?: SuppressedAnswerData) {
     this.parentStackStatus = parentStackStatus;
     this.logger            = logger;
+    this.suppressedData    = suppressedData;
   }
 
   /**
@@ -24,7 +36,7 @@ export class FailedRequestAnswerer {
    * CloudFormation re-sends Update with the old properties while the parent stack rolls back, and
    * answering FAILED to that strands the stack in UPDATE_ROLLBACK_FAILED.
    */
-  public async answer(request: CustomResourceRequest, failure: unknown): Promise<CustomResourceAnswer | undefined> {
+  public async answer(request: CustomResourceRequest, failure: unknown): Promise<SuppressedAnswer | undefined> {
     const reason = new CaughtError(failure).readableMessage();
     if (!(failure instanceof ExpectedFailure)) {
       this.logger.error('Handler failed', { error: reason });
@@ -39,6 +51,13 @@ export class FailedRequestAnswerer {
     }
 
     this.logger.warn('Suppressing error during stack rollback', { error: reason });
-    return { PhysicalResourceId: request.PhysicalResourceId };
+    return this.suppressedAnswer(request.PhysicalResourceId);
+  }
+
+  private suppressedAnswer(physicalResourceId: PhysicalResourceId): SuppressedAnswer {
+    if (this.suppressedData === undefined) {
+      return { PhysicalResourceId: physicalResourceId };
+    }
+    return { PhysicalResourceId: physicalResourceId, Data: this.suppressedData };
   }
 }
