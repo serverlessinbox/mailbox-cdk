@@ -4,9 +4,11 @@
 export { deployZipToPrefix } from './runtime/handler-kit/content-ops';
 export { invalidateCloudFront } from './runtime/handler-kit/cloudfront-invalidation';
 export * as env from './runtime/handler-kit/config/config-env';
-export { withSmokeTest, SmokeTestProbe, SmokeTestResponse } from './runtime/handler-kit/with-smoke-test';
+export { withSmokeTest } from './runtime/handler-kit/with-smoke-test';
+export { SmokeTestProbe, SmokeTestResponse } from './runtime/handler-kit/smoke-test';
 export { emitManualFinalize, type EmitManualFinalizeOptions } from './runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
-export { LoggerBuffer, parseLogLevelStrict, type LogLevel, type LogEntry } from './runtime/handler-kit/logger-buffer';
+export { LoggerBuffer, type LogEntry } from './runtime/handler-kit/logger-buffer';
+export { parseLogLevelStrict, type LogLevel } from './runtime/handler-kit/log-level';
 export { loadBaseConfig, loadLogLevel, type BaseConfig } from './runtime/handler-kit/config/config-base';
 export { ExpectedFailure } from './runtime/handler-kit/errors/expected-failure';
 export { answerRequestWithBadConfig } from './runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';

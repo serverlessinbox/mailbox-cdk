@@ -6,7 +6,7 @@
  * floods CloudWatch on healthy invocations or loses the trace of a failed one.
  */
 
-import { LoggerBuffer, parseLogLevelStrict } from '../logger-buffer';
+import { LoggerBuffer } from '../logger-buffer';
 
 describe('LoggerBuffer', () => {
   let consoleDebugSpy: jest.SpyInstance;
@@ -142,23 +142,4 @@ describe('LoggerBuffer', () => {
     });
   });
 
-});
-
-describe('parseLogLevelStrict', () => {
-  it.each(['debug', 'info', 'warn', 'error'] as const)('parses %s', (level) => {
-    expect(parseLogLevelStrict(level)).toBe(level);
-  });
-
-  it('parses levels case-insensitively', () => {
-    expect(parseLogLevelStrict('DEBUG')).toBe('debug');
-    expect(parseLogLevelStrict('WaRn')).toBe('warn');
-  });
-
-  it.each(['verbose', 'trace', '1', ''])('rejects the level string %j', (raw) => {
-    expect(() => parseLogLevelStrict(raw)).toThrow(`Invalid log level: '${raw}' is not one of debug, info, warn, error`);
-  });
-
-  it.each([123, null, undefined])('rejects the non-string value %p', (raw) => {
-    expect(() => Reflect.apply(parseLogLevelStrict, undefined, [raw])).toThrow(/expected string/);
-  });
 });

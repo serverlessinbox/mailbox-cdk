@@ -1,4 +1,4 @@
-import { parseLogLevelStrict, type LogLevel } from '../logger-buffer';
+import { parseLogLevelStrict, type LogLevel } from '../log-level';
 
 import * as env                               from './config-env';
 

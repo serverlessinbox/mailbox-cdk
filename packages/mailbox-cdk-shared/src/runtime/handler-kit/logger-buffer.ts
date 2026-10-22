@@ -1,4 +1,4 @@
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import { LOG_LEVELS, type LogLevel } from './log-level';
 
 /** The structured fields written beside a log message. */
 type LogData = Record<string, unknown>;
@@ -8,24 +8,6 @@ export interface LogEntry {
   level: LogLevel;
   message: string;
   data?: LogData;
-}
-
-/** The levels from lowest to highest priority. */
-const LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
-
-/** Parses a log level case-insensitively and throws on any value that is not one of the four levels. */
-export function parseLogLevelStrict(raw: string): LogLevel {
-  if (typeof raw !== 'string') {
-    throw new Error(`Invalid log level: expected string, got ${typeof raw}`);
-  }
-
-  const normalized = raw.toLowerCase();
-  const level      = LEVELS.find((candidate) => candidate === normalized);
-  if (level === undefined) {
-    throw new Error(`Invalid log level: '${raw}' is not one of ${LEVELS.join(', ')}`);
-  }
-
-  return level;
 }
 
 /**
@@ -83,7 +65,7 @@ export class LoggerBuffer {
   }
 
   private isAtOrAboveLevel(levelA: LogLevel, levelB: LogLevel): boolean {
-    return LEVELS.indexOf(levelA) >= LEVELS.indexOf(levelB);
+    return LOG_LEVELS.indexOf(levelA) >= LOG_LEVELS.indexOf(levelB);
   }
 
   private emitEntry(entry: LogEntry): void {

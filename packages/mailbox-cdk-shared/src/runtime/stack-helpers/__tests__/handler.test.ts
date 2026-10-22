@@ -14,7 +14,7 @@ import type { AwsClientStub }                                  from 'aws-sdk-cli
 import type * as Https                                         from 'https';
 import { Writable }                                            from 'stream';
 
-import type { SmokeTestProbe }                                 from '../../handler-kit/with-smoke-test';
+import type { SmokeTestProbe }                                 from '../../handler-kit/smoke-test';
 import type * as HandlerModule                                 from '../handler';
 
 import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext } from './cfn-helpers';

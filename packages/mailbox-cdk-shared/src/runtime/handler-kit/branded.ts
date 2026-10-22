@@ -7,14 +7,20 @@ import * as t from 'typanion';
  */
 export type Branded<Kind extends string> = string & { readonly brand: Kind };
 
+/** A value of any `Branded` kind, whatever the kind. */
 type AnyBrand = { readonly brand: string };
 
+/** A field's type with a branded string replaced by `string`; every other type stays as it is. */
 type PlainValue<Value> = Value extends AnyBrand ? string : Value;
 
 /** The same shape with every branded string as the plain string it is on the wire, for code that writes the payload without these brands. */
 export type Unbranded<Shape> = { [Field in keyof Shape]: PlainValue<Shape[Field]> };
 
-// A payload value gets its brand from the kind's factory, like every other value; the factory of these kinds accepts any string.
+/**
+ * A typanion validator that accepts a string and types it as the brand `toBrand` produces. The kind's factory
+ * is the only place that casts to the brand, so the validator runs it on the value; a factory that rejects a
+ * value rejects it here with the factory's own error.
+ */
 export function isBrandedString<Brand extends string>(toBrand: (raw: string) => Brand): t.StrictValidator<unknown, Brand> {
   return t.makeValidator<unknown, Brand>({
     test: (value, state): value is Brand => {
