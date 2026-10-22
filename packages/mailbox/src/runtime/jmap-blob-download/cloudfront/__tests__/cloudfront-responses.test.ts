@@ -3,11 +3,11 @@
  * of an error, and the CORS preflight headers. Browsers reject a download whose preflight answer drifts.
  */
 
-import { CloudFrontResponses } from '../cloudfront-responses';
+import { corsPreflightResponse, errorResponse } from '../cloudfront-responses';
 
-describe('CloudFrontResponses.error', () => {
+describe('errorResponse', () => {
   it('answers the status as a string, the message as its description and a JSON body carrying the message', () => {
-    expect(CloudFrontResponses.error(403, 'Access denied: invalid blob')).toEqual({
+    expect(errorResponse(403, 'Access denied: invalid blob')).toEqual({
       status:            '403',
       statusDescription: 'Access denied: invalid blob',
       headers:           { 'content-type': [{ key: 'Content-Type', value: 'application/json' }] },
@@ -16,7 +16,7 @@ describe('CloudFrontResponses.error', () => {
   });
 });
 
-describe('CloudFrontResponses.corsPreflight', () => {
+describe('corsPreflightResponse', () => {
   const allowedHeaders = {
     'access-control-allow-methods':     [{ key: 'Access-Control-Allow-Methods', value: 'GET, HEAD, OPTIONS' }],
     'access-control-allow-headers':     [{ key: 'Access-Control-Allow-Headers', value: 'Authorization, Content-Type, Cache-Control' }],
@@ -25,7 +25,7 @@ describe('CloudFrontResponses.corsPreflight', () => {
   };
 
   it('echoes the request origin', () => {
-    expect(CloudFrontResponses.corsPreflight('https://webmail.example.com')).toEqual({
+    expect(corsPreflightResponse('https://webmail.example.com')).toEqual({
       status:            '200',
       statusDescription: 'OK',
       headers:           {
@@ -36,7 +36,7 @@ describe('CloudFrontResponses.corsPreflight', () => {
   });
 
   it('allows any origin when the request names none', () => {
-    expect(CloudFrontResponses.corsPreflight(undefined).headers['access-control-allow-origin']).toEqual([
+    expect(corsPreflightResponse(undefined).headers['access-control-allow-origin']).toEqual([
       { key: 'Access-Control-Allow-Origin', value: '*' },
     ]);
   });

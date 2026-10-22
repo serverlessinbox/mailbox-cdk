@@ -1,12 +1,12 @@
 import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
-import { BlobIdFormat }                                                                            from './blob-id/blob-id-format';
+import { decodeBlobId, isSafeBlobPath, parseBlobId }                                               from './blob-id/blob-id-format';
 import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id/blob-id';
 import { BlobRequestRejected }                                                                     from './blob-id/blob-request-rejected';
 import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront/cloudfront-event';
-import { CloudFrontResponses, type CloudFrontResponse }                                            from './cloudfront/cloudfront-responses';
+import { corsPreflightResponse, errorResponse, type CloudFrontResponse }                           from './cloudfront/cloudfront-responses';
 import { extractConfig, type Config }                                                              from './config';
+import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
 import type { Verifiers }                                                                          from './verifiers/region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
@@ -16,6 +16,12 @@ interface DownloadParams {
   readonly type?:     string;
   readonly name?:     string;
 }
+
+/** The statuses a request is refused with. */
+type RejectionStatus = 400 | 401 | 403 | 500;
+
+/** What a refusal adds to its log line. */
+type RejectionContext = { readonly accountId: AccountId };
 
 /**
  * Decides whether a CloudFront origin request for a blob may reach the S3 origin, and rewrites an allowed
@@ -39,7 +45,7 @@ export class BlobDownloadAuthorizer {
    */
   public async authorize(request: CloudFrontRequest): Promise<CloudFrontRequest | CloudFrontResponse> {
     if (request.method === 'OPTIONS') {
-      return CloudFrontResponses.corsPreflight(firstHeaderValue(request.headers, 'origin'));
+      return corsPreflightResponse(firstHeaderValue(request.headers, 'origin'));
     }
 
     const config        = this.readConfig(request);
@@ -67,21 +73,19 @@ export class BlobDownloadAuthorizer {
    */
   public answerFailure(thrown: unknown): CloudFrontResponse {
     if (thrown instanceof BlobRequestRejected) {
-      return CloudFrontResponses.error(thrown.status, thrown.message);
+      return errorResponse(thrown.status, thrown.message);
     }
 
     this.logger.error('Authorization error', { error: new CaughtError(thrown).describeWithMetadata() });
-    return CloudFrontResponses.error(500, 'Internal server error');
+    return errorResponse(500, 'Internal server error');
   }
 
   private readConfig(request: CloudFrontRequest): Config {
     this.logger.debug('Starting blob authorization');
 
     const reading = extractConfig(request);
-    if ('problem' in reading) {
-      const answer = `Configuration error: ${reading.problem}`;
-      this.logger.error(answer);
-      throw new BlobRequestRejected(500, answer);
+    if (reading.kind === 'rejected') {
+      throw this.reject(500, `Configuration error: ${reading.problem}`);
     }
     return reading.config;
   }
@@ -103,12 +107,12 @@ export class BlobDownloadAuthorizer {
   }
 
   private readBlob(encoded: EncodedBlobId): ParsedBlobId {
-    const decoded = BlobIdFormat.decode(encoded);
+    const decoded = decodeBlobId(encoded);
     if (!decoded) {
       throw this.reject(400, 'Invalid blobId format', 'Invalid blobId format (decode failed)');
     }
 
-    const blob = BlobIdFormat.parse(decoded);
+    const blob = parseBlobId(decoded);
     if (!blob) {
       throw this.reject(400, 'Invalid blobId format', 'Invalid blobId format (parse failed)');
     }
@@ -197,7 +201,7 @@ export class BlobDownloadAuthorizer {
   }
 
   private requireSafePath(blob: ParsedBlobId): void {
-    if (!BlobIdFormat.isSafePath(blob.path)) {
+    if (!isSafeBlobPath(blob.path)) {
       throw this.reject(403, 'Access denied: invalid blob path', 'Access denied: unsafe blob path');
     }
 
@@ -243,8 +247,8 @@ export class BlobDownloadAuthorizer {
     }
   }
 
-  private reject(status: number, answer: string, reason?: string, data?: Record<string, unknown>): BlobRequestRejected {
-    this.logger.warn(reason ?? answer, data);
+  private reject(status: RejectionStatus, answer: string, reason?: string, context?: RejectionContext): BlobRequestRejected {
+    this.logger.warn(reason ?? answer, context);
     return new BlobRequestRejected(status, answer);
   }
 }

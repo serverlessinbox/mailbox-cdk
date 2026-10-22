@@ -4,16 +4,15 @@
  * taking the MAC from the first colon instead of the last mis-parses every filename that contains one.
  */
 
-import { BlobIdFormat }                     from '../blob-id-format';
-import { toEncodedBlobId }                  from '../blob-id';
+import { decodedBlobIdOf, encodedBlobIdOf }          from '../../__tests__/jmap-blob-download-helpers';
+import { decodeBlobId, isSafeBlobPath, parseBlobId } from '../blob-id-format';
+import { toEncodedBlobId }                           from '../blob-id';
 
-import { decodedBlobIdOf, encodedBlobIdOf } from '../../__tests__/jmap-blob-download-helpers';
-
-describe('BlobIdFormat.decode', () => {
+describe('decodeBlobId', () => {
   it('decodes the unpadded base64url form back to the id', () => {
     const decoded = 'eml:emailID12345:original.eml';
 
-    expect(BlobIdFormat.decode(encodedBlobIdOf(decoded))).toBe(decoded);
+    expect(decodeBlobId(encodedBlobIdOf(decoded))).toBe(decoded);
   });
 
   it('decodes the url-safe characters a standard base64 alphabet would write as + and /', () => {
@@ -21,22 +20,22 @@ describe('BlobIdFormat.decode', () => {
     const encoded = encodedBlobIdOf(decoded);
 
     expect(encoded).toMatch(/[-_]/);
-    expect(BlobIdFormat.decode(encoded)).toBe(decoded);
+    expect(decodeBlobId(encoded)).toBe(decoded);
   });
 
   it.each([
-    ['an empty id', ''],
-    ['characters outside the base64url alphabet', '!!!invalid base64!!!'],
-    ['padding', 'ZW1sOnRlc3Q='],
-    ['a standard-alphabet slash', 'ab/c'],
-  ])('has no decoded form for %s', (_name, encoded) => {
-    expect(BlobIdFormat.decode(toEncodedBlobId(encoded))).toBeNull();
+    { input: 'an empty id', encoded: '' },
+    { input: 'characters outside the base64url alphabet', encoded: '!!!invalid base64!!!' },
+    { input: 'padding', encoded: 'ZW1sOnRlc3Q=' },
+    { input: 'a standard-alphabet slash', encoded: 'ab/c' },
+  ])('has no decoded form for $input', ({ encoded }) => {
+    expect(decodeBlobId(toEncodedBlobId(encoded))).toBeNull();
   });
 });
 
-describe('BlobIdFormat.parse', () => {
+describe('parseBlobId', () => {
   it('splits an email id into entity, path and MAC', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID123:document.pdf:dGVzdG1hY2RhdGE'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('eml:emailID123:document.pdf:dGVzdG1hY2RhdGE'))).toEqual({
       type:     'email',
       entityId: 'emailID123',
       path:     'document.pdf',
@@ -45,7 +44,7 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it('takes the MAC of an email id from the last colon, so a path may contain colons', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID:my:file:with:colons.pdf:dGVzdG1hYzI'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('eml:emailID:my:file:with:colons.pdf:dGVzdG1hYzI'))).toEqual({
       type:     'email',
       entityId: 'emailID',
       path:     'my:file:with:colons.pdf',
@@ -54,7 +53,7 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it('parses an email id issued without a MAC to a null MAC', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID789:document.pdf'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('eml:emailID789:document.pdf'))).toEqual({
       type:     'email',
       entityId: 'emailID789',
       path:     'document.pdf',
@@ -63,7 +62,7 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it('parses an email id that ends in a colon to an empty MAC, not to a null one', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID:document.pdf:'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('eml:emailID:document.pdf:'))).toEqual({
       type:     'email',
       entityId: 'emailID',
       path:     'document.pdf',
@@ -72,7 +71,7 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it('parses a contact id with the whole remainder as its path', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('cnt:cardID:path:with:many:colons.jpg'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('cnt:cardID:path:with:many:colons.jpg'))).toEqual({
       type:     'contact',
       entityId: 'cardID',
       path:     'path:with:many:colons.jpg',
@@ -80,7 +79,7 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it('parses a principal id with the whole remainder as its path', () => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf('prn:principalID:avatar:2.png'))).toEqual({
+    expect(parseBlobId(decodedBlobIdOf('prn:principalID:avatar:2.png'))).toEqual({
       type:     'principal',
       entityId: 'principalID',
       path:     'avatar:2.png',
@@ -88,38 +87,38 @@ describe('BlobIdFormat.parse', () => {
   });
 
   it.each([
-    ['an unknown prefix', 'xyz:entityId:path'],
-    ['an email id without a path separator', 'eml:onlyEntityId'],
-    ['a contact id without a path separator', 'cnt:onlyEntityId'],
-    ['a principal id without a path separator', 'prn:onlyEntityId'],
-  ])('has no parsed form for %s', (_name, decoded) => {
-    expect(BlobIdFormat.parse(decodedBlobIdOf(decoded))).toBeNull();
+    { input: 'an unknown prefix', decoded: 'xyz:entityId:path' },
+    { input: 'an email id without a path separator', decoded: 'eml:onlyEntityId' },
+    { input: 'a contact id without a path separator', decoded: 'cnt:onlyEntityId' },
+    { input: 'a principal id without a path separator', decoded: 'prn:onlyEntityId' },
+  ])('has no parsed form for $input', ({ decoded }) => {
+    expect(parseBlobId(decodedBlobIdOf(decoded))).toBeNull();
   });
 });
 
-describe('BlobIdFormat.isSafePath', () => {
+describe('isSafeBlobPath', () => {
   it.each(['document.pdf', 'file-name_123.txt', 'file:with:colons.pdf', 'file.with.dots', '...'])(
     'accepts %s',
     (path) => {
-      expect(BlobIdFormat.isSafePath(path)).toBe(true);
+      expect(isSafeBlobPath(path)).toBe(true);
     },
   );
 
   it.each([
-    ['an empty path', ''],
-    ['a forward slash', 'path/to/file.pdf'],
-    ['a leading forward slash', '/file.pdf'],
-    ['a backslash', 'path\\to\\file.pdf'],
-    ['a parent directory', '..'],
-    ['a traversal', '../../etc/passwd'],
-    ['a null character', 'file\x00.pdf'],
-    ['a unit separator, the last control character', 'file\x1f.pdf'],
-    ['a line feed', 'file\n.pdf'],
-  ])('rejects %s', (_name, path) => {
-    expect(BlobIdFormat.isSafePath(path)).toBe(false);
+    { input: 'an empty path', path: '' },
+    { input: 'a forward slash', path: 'path/to/file.pdf' },
+    { input: 'a leading forward slash', path: '/file.pdf' },
+    { input: 'a backslash', path: 'path\\to\\file.pdf' },
+    { input: 'a parent directory', path: '..' },
+    { input: 'a traversal', path: '../../etc/passwd' },
+    { input: 'a null character', path: 'file\x00.pdf' },
+    { input: 'a unit separator, the last control character', path: 'file\x1f.pdf' },
+    { input: 'a line feed', path: 'file\n.pdf' },
+  ])('rejects $input', ({ path }) => {
+    expect(isSafeBlobPath(path)).toBe(false);
   });
 
   it('accepts the space, the first character after the control range', () => {
-    expect(BlobIdFormat.isSafePath('my file.pdf')).toBe(true);
+    expect(isSafeBlobPath('my file.pdf')).toBe(true);
   });
 });

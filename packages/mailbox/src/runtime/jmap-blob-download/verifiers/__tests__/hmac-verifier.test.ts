@@ -8,8 +8,6 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient }                     from 'aws-sdk-client-mock';
 
-import { HmacVerifier }                   from '../hmac-verifier';
-
 import {
   AUTH_KEY_STORE_TABLE,
   blobMacSignedBy,
@@ -17,6 +15,7 @@ import {
   sessionTokenOverPayload,
   sessionTokenSignedBy,
 } from '../../__tests__/jmap-blob-download-helpers';
+import { HmacVerifier } from '../hmac-verifier';
 
 const CURRENT_KEY  = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');
@@ -114,9 +113,9 @@ describe('HmacVerifier', () => {
     });
 
     it.each([
-      ['three fields', 'tenant-1|issuer|aud'],
-      ['five fields', 'tenant-1|issuer|aud|acc-1|extra'],
-    ])('rejects a correctly signed token whose payload has %s', async (_name, payload) => {
+      { fields: 'three fields', payload: 'tenant-1|issuer|aud' },
+      { fields: 'five fields', payload: 'tenant-1|issuer|aud|acc-1|extra' },
+    ])('rejects a correctly signed token whose payload has $fields', async ({ payload }) => {
       storeHoldsKeys(CURRENT_KEY);
 
       await expect(
@@ -168,10 +167,10 @@ describe('HmacVerifier', () => {
     });
 
     it.each([
-      ['another account', 'tenant-1|account-2|email-1'],
-      ['another email', 'tenant-1|account-1|email-2'],
-      ['another tenant', 'tenant-2|account-1|email-1'],
-    ])('rejects a MAC that was made for %s', async (_name, payload) => {
+      { madeFor: 'another account', payload: 'tenant-1|account-2|email-1' },
+      { madeFor: 'another email', payload: 'tenant-1|account-1|email-2' },
+      { madeFor: 'another tenant', payload: 'tenant-2|account-1|email-1' },
+    ])('rejects a MAC that was made for $madeFor', async ({ payload }) => {
       storeHoldsKeys(CURRENT_KEY);
       const mac = blobMacSignedBy(CURRENT_KEY, 'tenant-1', 'account-1', 'email-1');
 
@@ -179,14 +178,17 @@ describe('HmacVerifier', () => {
     });
 
     it.each([
-      ['a truncated MAC', (mac: string) => mac.slice(0, 20)],
-      ['an empty MAC', () => ''],
-      ['a MAC with a flipped first byte', (mac: string) => {
-        const bytes = Buffer.from(mac, 'base64url');
-        bytes[0]   ^= 0xff;
-        return bytes.toString('base64url');
-      }],
-    ])('rejects %s', async (_name, tamper) => {
+      { mac: 'a truncated MAC', tamper: (mac: string) => mac.slice(0, 20) },
+      { mac: 'an empty MAC', tamper: () => '' },
+      {
+        mac:    'a MAC with a flipped first byte',
+        tamper: (mac: string) => {
+          const bytes = Buffer.from(mac, 'base64url');
+          bytes[0]   ^= 0xff;
+          return bytes.toString('base64url');
+        },
+      },
+    ])('rejects $mac', async ({ tamper }) => {
       storeHoldsKeys(CURRENT_KEY);
       const mac = tamper(blobMacSignedBy(CURRENT_KEY, 'tenant-1', 'account-1', 'email-1'));
 

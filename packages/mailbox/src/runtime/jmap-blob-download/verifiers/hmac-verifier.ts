@@ -3,10 +3,8 @@ import { toAccountId, toIssuer, toTenantId, type TableName } from '@serverlessin
 import * as crypto                                           from 'crypto';
 
 import { toAudience }                                        from '../auth-identifiers';
-import type { HmacTokenPayload }                             from './auth-tokens';
 
-const HMAC_KEYS_TTL_MS          = 30 * 60 * 1000;
-const SESSION_TOKEN_FIELD_COUNT = 4;
+import type { HmacTokenPayload }                             from './auth-tokens';
 
 /**
  * The HMAC signing keys of the auth key store: `current` signs new tokens, `previous` is still accepted while
@@ -17,10 +15,14 @@ interface HmacKeys {
   readonly previous?: Buffer;
 }
 
+/** The HMAC keys of one auth key store table with the time they were read, in epoch milliseconds. */
 interface CachedHmacKeys {
   readonly keys:      HmacKeys;
   readonly fetchedAt: number;
 }
+
+const HMAC_KEYS_TTL_MS          = 30 * 60 * 1000;
+const SESSION_TOKEN_FIELD_COUNT = 4;
 
 /**
  * Verifies the HMAC-signed values the Go services issue: the session token that names the accounts a bearer

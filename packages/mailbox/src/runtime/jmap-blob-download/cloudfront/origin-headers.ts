@@ -1,3 +1,6 @@
+import * as t from 'typanion';
+
+/** The JWT signature algorithms a distribution may configure; the function verifies no other. */
 export const SUPPORTED_ALGORITHMS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384'] as const;
 
 /** A JWT signature algorithm the verifier accepts. */
@@ -13,3 +16,6 @@ export type BlobDownloadOriginHeaders = {
   'x-region':               string;
   'x-jwt-algorithms':       SupportedAlgorithm;
 };
+
+/** Narrows a value to one of the `SUPPORTED_ALGORITHMS`. */
+export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);

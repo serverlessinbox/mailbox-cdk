@@ -10,9 +10,9 @@ import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient }                     from 'aws-sdk-client-mock';
 import * as crypto                        from 'crypto';
 
-import { JwtVerifier }                    from '../jwt-verifier';
-
 import { AUTH_KEY_STORE_TABLE }           from '../../__tests__/jmap-blob-download-helpers';
+import type { SupportedAlgorithm }        from '../../cloudfront/origin-headers';
+import { JwtVerifier }                    from '../jwt-verifier';
 
 const ISSUER = 'https://idp.example.com/pool';
 const KID    = 'kid-1';
@@ -20,6 +20,11 @@ const KID    = 'kid-1';
 interface SigningKey {
   readonly privateKey: crypto.KeyObject;
   readonly jwk:        crypto.JsonWebKey;
+}
+
+interface AlgorithmCase {
+  readonly alg:        SupportedAlgorithm;
+  readonly signingKey: SigningKey;
 }
 
 function rsaSigningKey(): SigningKey {
@@ -76,7 +81,7 @@ describe('JwtVerifier', () => {
       .resolves({ Item: { jwks: { S: JSON.stringify({ keys }) } } });
   }
 
-  function verify(token: string, allowedAlgorithms?: string[]): Promise<unknown> {
+  function verify(token: string, allowedAlgorithms?: readonly SupportedAlgorithm[]): Promise<unknown> {
     return verifier.verifySignatureOnly(token, AUTH_KEY_STORE_TABLE, allowedAlgorithms);
   }
 
@@ -91,12 +96,12 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf())).resolves.toEqual({ sub: 'user-1', issuer: ISSUER, audience: 'client-1' });
     });
 
-    it.each([
-      ['RS384', RSA_KEY],
-      ['RS512', RSA_KEY],
-      ['ES256', ES256_KEY],
-      ['ES384', ES384_KEY],
-    ])('accepts a %s token when the distribution allows the algorithm', async (alg, signingKey) => {
+    it.each<AlgorithmCase>([
+      { alg: 'RS384', signingKey: RSA_KEY },
+      { alg: 'RS512', signingKey: RSA_KEY },
+      { alg: 'ES256', signingKey: ES256_KEY },
+      { alg: 'ES384', signingKey: ES384_KEY },
+    ])('accepts a $alg token when the distribution allows the algorithm', async ({ alg, signingKey }) => {
       issuerPublishes([{ ...signingKey.jwk, kid: KID }]);
 
       await expect(verify(jwtOf({ alg, signWith: signingKey }), [alg])).resolves.toMatchObject({ sub: 'user-1' });
@@ -168,11 +173,6 @@ describe('JwtVerifier', () => {
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(0);
     });
 
-    it('rejects every token without reading the key store when none of the allowed algorithms is supported', async () => {
-      await expect(verify(jwtOf(), ['HS256'])).resolves.toBeNull();
-      expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(0);
-    });
-
     it('rejects a token claiming one issuer but signed with the key of another issuer that uses the same kid', async () => {
       const issuerB = 'https://other.example.com/pool';
       issuerPublishes([{ ...OTHER_RSA_KEY.jwk, kid: KID }], issuerB);
@@ -206,19 +206,15 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf(), ['ES256'])).resolves.toBeNull();
     });
 
-    it('rejects an allowed algorithm the verifier cannot verify', async () => {
-      await expect(verify(jwtOf({ alg: 'HS256' }), ['HS256'])).resolves.toBeNull();
-    });
-
-    it('rejects a validly signed algorithm outside the supported set even when the distribution allows it', async () => {
-      await expect(verify(jwtOf({ alg: 'PS256' }), ['PS256'])).resolves.toBeNull();
+    it('rejects a token signed with an algorithm outside the supported set', async () => {
+      await expect(verify(jwtOf({ alg: 'PS256' }))).resolves.toBeNull();
     });
 
     it('rejects a token with the alg none', async () => {
       const [, payload] = jwtOf().split('.');
       const header      = Buffer.from(JSON.stringify({ alg: 'none', kid: KID })).toString('base64url');
 
-      await expect(verify(`${header}.${payload}.`, ['none'])).resolves.toBeNull();
+      await expect(verify(`${header}.${payload}.`)).resolves.toBeNull();
     });
 
     it('rejects a token whose kid the issuer did not publish', async () => {
@@ -271,23 +267,23 @@ describe('JwtVerifier', () => {
     });
 
     it.each([
-      ['an exp that is not a number', { exp: '9999999999' }],
-      ['an issuer that is not a string', { iss: 7 }],
-      ['a subject that is not a string', { sub: 7 }],
-    ])('rejects a token with %s', async (_name, claims) => {
+      { claim: 'an exp that is not a number', claims: { exp: '9999999999' } },
+      { claim: 'an issuer that is not a string', claims: { iss: 7 } },
+      { claim: 'a subject that is not a string', claims: { sub: 7 } },
+    ])('rejects a token with $claim', async ({ claims }) => {
       await expect(verify(jwtOf({ payload: claims }))).resolves.toBeNull();
     });
 
     it.each([
-      ['two parts', 'aGVhZGVy.cGF5bG9hZA'],
-      ['four parts', 'a.b.c.d'],
-      ['a header that is not JSON', `bm90LWpzb24.${Buffer.from('{}').toString('base64url')}.c2ln`],
-      ['a payload that is not JSON', `${Buffer.from('{"alg":"RS256"}').toString('base64url')}.bm90LWpzb24.c2ln`],
-      ['a header without an alg', `${Buffer.from('{"kid":"kid-1"}').toString('base64url')}.${Buffer.from('{}').toString('base64url')}.c2ln`],
-      ['segments that are not base64url', '!!!.@@@.###'],
-      ['a signature that is not base64url', `${jwtOf().split('.').slice(0, 2).join('.')}.***`],
-      ['an empty string', ''],
-    ])('rejects a token with %s', async (_name, token) => {
+      { shape: 'two parts', token: 'aGVhZGVy.cGF5bG9hZA' },
+      { shape: 'four parts', token: 'a.b.c.d' },
+      { shape: 'a header that is not JSON', token: `bm90LWpzb24.${Buffer.from('{}').toString('base64url')}.c2ln` },
+      { shape: 'a payload that is not JSON', token: `${Buffer.from('{"alg":"RS256"}').toString('base64url')}.bm90LWpzb24.c2ln` },
+      { shape: 'a header without an alg', token: `${Buffer.from('{"kid":"kid-1"}').toString('base64url')}.${Buffer.from('{}').toString('base64url')}.c2ln` },
+      { shape: 'segments that are not base64url', token: '!!!.@@@.###' },
+      { shape: 'a signature that is not base64url', token: `${jwtOf().split('.').slice(0, 2).join('.')}.***` },
+      { shape: 'an empty string', token: '' },
+    ])('rejects a token with $shape', async ({ token }) => {
       await expect(verify(token)).resolves.toBeNull();
     });
   });

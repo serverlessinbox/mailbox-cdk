@@ -4,13 +4,9 @@ import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from '
 import * as t                                                             from 'typanion';
 
 import { toAudience, type Audience }                                      from '../auth-identifiers';
+import type { SupportedAlgorithm }                                        from '../cloudfront/origin-headers';
+
 import type { VerifiedJwt }                                               from './auth-tokens';
-import { SUPPORTED_ALGORITHMS }                                           from '../cloudfront/origin-headers';
-
-export const isSupportedAlgorithm = t.isEnum(SUPPORTED_ALGORITHMS);
-
-const DEFAULT_ALLOWED_ALGORITHMS: readonly string[] = ['RS256'];
-const CLOCK_TOLERANCE_SECONDS                       = 300;
 
 const isJwtPayload = t.isPartial({
   sub:       t.isOptional(t.isString()),
@@ -38,9 +34,17 @@ const isJwks = t.isPartial({
   keys: t.isArray(isJwk),
 });
 
+/** The claims of a JWT payload that the verifier reads. */
 type JwtPayload = t.InferType<typeof isJwtPayload>;
+
+/** The JSON Web Key Set an issuer publishes. */
 type Jwks = t.InferType<typeof isJwks>;
+
+/** The keys of one issuer, ready to select a key by the `kid` of a token. */
 type KeySet = ReturnType<typeof createLocalJWKSet>;
+
+const DEFAULT_ALLOWED_ALGORITHMS: readonly SupportedAlgorithm[] = ['RS256'];
+const CLOCK_TOLERANCE_SECONDS                                   = 300;
 
 /**
  * Verifies JWTs against the issuers' public keys held in the auth key store. It checks the signature and the
@@ -65,21 +69,21 @@ export class JwtVerifier {
   public async verifySignatureOnly(
     token: string,
     authKeyStoreTable: TableName,
-    allowedAlgorithms: string[] | undefined,
+    allowedAlgorithms: readonly SupportedAlgorithm[] | undefined,
   ): Promise<VerifiedJwt | null> {
     try {
       const unverifiedClaims = this.claimsOf(decodeJwt(token));
       const issuer           = this.normalizeIssuer(unverifiedClaims?.iss ?? '');
       const header           = decodeProtectedHeader(token);
-      const algorithms       = this.supportedAlgorithmsOf(allowedAlgorithms);
-      if (!issuer || !header.kid || !header.alg || !algorithms.includes(header.alg)) {
+      const algorithms       = this.algorithmsOf(allowedAlgorithms);
+      if (!issuer || !header.kid || !header.alg || !algorithms.some((algorithm) => algorithm === header.alg)) {
         return null;
       }
 
       const keySet      = await this.keySetOf(issuer, authKeyStoreTable);
       const { payload } = await jwtVerify(token, keySet, {
         clockTolerance: CLOCK_TOLERANCE_SECONDS,
-        algorithms,
+        algorithms:     [...algorithms],
       });
 
       const claims = this.claimsOf(payload);
@@ -97,9 +101,8 @@ export class JwtVerifier {
     return isJwtPayload(payload) ? payload : null;
   }
 
-  private supportedAlgorithmsOf(allowedAlgorithms: string[] | undefined): string[] {
-    const allowed = allowedAlgorithms && allowedAlgorithms.length > 0 ? allowedAlgorithms : DEFAULT_ALLOWED_ALGORITHMS;
-    return allowed.filter((algorithm) => isSupportedAlgorithm(algorithm));
+  private algorithmsOf(allowedAlgorithms: readonly SupportedAlgorithm[] | undefined): readonly SupportedAlgorithm[] {
+    return allowedAlgorithms && allowedAlgorithms.length > 0 ? allowedAlgorithms : DEFAULT_ALLOWED_ALGORITHMS;
   }
 
   private normalizeIssuer(issuer: string): Issuer {

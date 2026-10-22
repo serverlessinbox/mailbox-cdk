@@ -14,8 +14,8 @@ flowchart TD
   handler --> authorizer["BlobDownloadAuthorizer"]
   handler --> verifiers["RegionBoundVerifiers"]
   authorizer --> config["config.ts: origin headers"]
-  authorizer --> format["BlobIdFormat: decode, parse, path check"]
-  authorizer --> responses["CloudFrontResponses"]
+  authorizer --> format["blob-id-format.ts: decode, parse, path check"]
+  authorizer --> responses["cloudfront-responses.ts: error and preflight answers"]
   authorizer --> jwt["JwtVerifier"]
   authorizer --> hmac["HmacVerifier"]
   verifiers --> jwt

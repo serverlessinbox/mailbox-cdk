@@ -10,11 +10,11 @@
 import { DynamoDBClient }                     from '@aws-sdk/client-dynamodb';
 import { ExpectedFailure, LoggerBuffer }      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { HmacTokenPayload, VerifiedJwt } from '../verifiers/auth-tokens';
 import { BlobDownloadAuthorizer }             from '../blob-download-authorizer';
 import { BlobRequestRejected }                from '../blob-id/blob-request-rejected';
 import type { CloudFrontRequest }             from '../cloudfront/cloudfront-event';
 import type { CloudFrontResponse }            from '../cloudfront/cloudfront-responses';
+import type { HmacTokenPayload, VerifiedJwt } from '../verifiers/auth-tokens';
 import { HmacVerifier }                       from '../verifiers/hmac-verifier';
 import { JwtVerifier }                        from '../verifiers/jwt-verifier';
 
@@ -118,12 +118,12 @@ describe('BlobDownloadAuthorizer', () => {
   });
 
   describe('configuration', () => {
-    it('rejects with a 500 that names the broken header and writes the same text as an error', async () => {
+    it('rejects with a 500 that names the broken header, as an expected answer that writes no error', async () => {
       const request = downloadRequest({ request: { customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE } } });
 
       await expectRejected(request, 500, 'Configuration error: header x-region is missing or empty');
 
-      expect(consoleError).toHaveBeenCalledWith('Configuration error: header x-region is missing or empty');
+      expect(consoleError).not.toHaveBeenCalled();
     });
 
     it('takes the verifiers of the region the configuration names', async () => {
@@ -135,9 +135,9 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('download parameters', () => {
     it.each([
-      ['accountId', { accountId: undefined }],
-      ['blobId', { blobId: undefined }],
-    ])('rejects a request without %s with a 400', async (_name, missing) => {
+      { parameter: 'accountId', missing: { accountId: undefined } },
+      { parameter: 'blobId', missing: { blobId: undefined } },
+    ])('rejects a request without $parameter with a 400', async ({ missing }) => {
       await expectRejected(downloadRequest(missing), 400, 'Missing required parameters: accountId and blobId');
     });
 
@@ -156,12 +156,12 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('bearer token', () => {
     it.each([
-      ['no Authorization header', null],
-      ['a scheme other than Bearer', 'Basic dXNlcjpwYXNz'],
-      ['a Bearer scheme without a token', 'Bearer '],
-      ['a lone Bearer word', 'Bearer'],
-      ['more than one token', 'Bearer one two'],
-    ])('rejects %s with a 401', async (_name, authorization) => {
+      { header: 'no Authorization header', authorization: null },
+      { header: 'a scheme other than Bearer', authorization: 'Basic dXNlcjpwYXNz' },
+      { header: 'a Bearer scheme without a token', authorization: 'Bearer ' },
+      { header: 'a lone Bearer word', authorization: 'Bearer' },
+      { header: 'more than one token', authorization: 'Bearer one two' },
+    ])('rejects $header with a 401', async ({ authorization }) => {
       const request = originRequestOf({
         authorization,
         querystring: downloadQuery({ accountId: 'account-1', blobId: encodedBlobIdOf('eml:email-1:document.pdf:mac-value'), auth: 'session-token' }),
@@ -231,9 +231,9 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('account access', () => {
     it.each([
-      ['an email', 'eml:email-1:document.pdf:mac-value'],
-      ['a contact', 'cnt:card-1:photo.jpg'],
-    ])('rejects %s blob of an account the session does not list with a 403', async (_name, blob) => {
+      { kind: 'an email', blob: 'eml:email-1:document.pdf:mac-value' },
+      { kind: 'a contact', blob: 'cnt:card-1:photo.jpg' },
+    ])('rejects $kind blob of an account the session does not list with a 403', async ({ blob }) => {
       await expectRejected(downloadRequest({ blob, accountId: 'account-2' }), 403, 'Access denied: account not authorized');
     });
 
@@ -292,10 +292,10 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('blob path', () => {
     it.each([
-      ['an email', 'eml:email-1:../../etc/passwd:mac-value'],
-      ['a contact', 'cnt:card-1:..'],
-      ['a principal', 'prn:principal-1:a\\b'],
-    ])('rejects %s blob whose path leaves its prefix with a 403', async (_name, blob) => {
+      { kind: 'an email', blob: 'eml:email-1:../../etc/passwd:mac-value' },
+      { kind: 'a contact', blob: 'cnt:card-1:..' },
+      { kind: 'a principal', blob: 'prn:principal-1:a\\b' },
+    ])('rejects $kind blob whose path leaves its prefix with a 403', async ({ blob }) => {
       await expectRejected(downloadRequest({ blob }), 403, 'Access denied: invalid blob path');
     });
 
@@ -308,10 +308,10 @@ describe('BlobDownloadAuthorizer', () => {
 
   describe('an allowed request', () => {
     it.each([
-      ['an email', 'eml:email-1:document.pdf:mac-value', '/tenants/tenant-1/accounts/account-1/emails/email-1/document.pdf'],
-      ['a contact', 'cnt:card-1:photo.jpg', '/tenants/tenant-1/accounts/account-1/contacts/card-1/photo.jpg'],
-      ['a principal', 'prn:principal-1:avatar.png', '/tenants/tenant-1/principals/principal-1/avatar.png'],
-    ])('is rewritten to the S3 key of %s blob under the session tenant, without the MAC', async (_name, blob, uri) => {
+      { kind: 'an email', blob: 'eml:email-1:document.pdf:mac-value', uri: '/tenants/tenant-1/accounts/account-1/emails/email-1/document.pdf' },
+      { kind: 'a contact', blob: 'cnt:card-1:photo.jpg', uri: '/tenants/tenant-1/accounts/account-1/contacts/card-1/photo.jpg' },
+      { kind: 'a principal', blob: 'prn:principal-1:avatar.png', uri: '/tenants/tenant-1/principals/principal-1/avatar.png' },
+    ])('is rewritten to the S3 key of $kind blob under the session tenant, without the MAC', async ({ blob, uri }) => {
       const request = downloadRequest({ blob });
 
       const answer = await authorizer.authorize(request);
@@ -380,11 +380,13 @@ describe('BlobDownloadAuthorizer', () => {
     });
 
     it.each([
-      ['an unexpected error', new Error('socket hang up')],
-      ['an expected failure that is not a rejection', new ExpectedFailure('Malformed CloudFront event: bad')],
-    ])('answers %s with a generic 500 and writes it as an error', (_name, thrown) => {
+      { failure: 'an unexpected error', thrown: new Error('socket hang up') },
+      { failure: 'an expected failure that is not a rejection', thrown: new ExpectedFailure('Malformed CloudFront event: bad') },
+    ])('answers $failure with a generic 500 and writes it as an error', ({ thrown }) => {
+      const mentionsThrown: unknown = expect.stringContaining(thrown.message);
+
       expect(authorizer.answerFailure(thrown)).toMatchObject({ status: '500', statusDescription: 'Internal server error' });
-      expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: expect.stringContaining(thrown.message) });
+      expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: mentionsThrown });
     });
   });
 });

@@ -10,6 +10,11 @@ import { extractConfig }                         from '../config';
 
 import { AUTH_KEY_STORE_TABLE, originRequestOf } from './jmap-blob-download-helpers';
 
+interface HeaderStateCase {
+  readonly state:         string;
+  readonly customHeaders: Record<string, string>;
+}
+
 describe('extractConfig', () => {
   it('reads the table, region and algorithm list from the custom origin headers', () => {
     const request = originRequestOf({
@@ -21,6 +26,7 @@ describe('extractConfig', () => {
     });
 
     expect(extractConfig(request)).toEqual({
+      kind:   'read',
       config: {
         authKeyStoreTable: AUTH_KEY_STORE_TABLE,
         region:            'eu-central-1',
@@ -33,30 +39,34 @@ describe('extractConfig', () => {
     const request = originRequestOf({ customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'us-gov-east-1' } });
 
     expect(extractConfig(request)).toEqual({
+      kind:   'read',
       config: { authKeyStoreTable: AUTH_KEY_STORE_TABLE, region: 'us-gov-east-1', jwtAlgorithms: undefined },
     });
   });
 
   it('names the missing custom origin headers', () => {
     expect(extractConfig(originRequestOf({ customHeaders: null }))).toEqual({
+      kind:    'rejected',
       problem: 'the custom origin headers of the S3 origin are missing',
     });
   });
 
-  it.each([
-    ['absent', { 'x-region': 'eu-west-1' }],
-    ['empty', { 'x-auth-key-store-table': '', 'x-region': 'eu-west-1' }],
-  ])('names x-auth-key-store-table when it is %s', (_name, customHeaders) => {
+  it.each<HeaderStateCase>([
+    { state: 'absent', customHeaders: { 'x-region': 'eu-west-1' } },
+    { state: 'empty', customHeaders: { 'x-auth-key-store-table': '', 'x-region': 'eu-west-1' } },
+  ])('names x-auth-key-store-table when it is $state', ({ customHeaders }) => {
     expect(extractConfig(originRequestOf({ customHeaders }))).toEqual({
+      kind:    'rejected',
       problem: 'header x-auth-key-store-table is missing or empty',
     });
   });
 
-  it.each([
-    ['absent', { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE }],
-    ['empty', { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': '' }],
-  ])('names x-region when it is %s, and does not default it', (_name, customHeaders) => {
+  it.each<HeaderStateCase>([
+    { state: 'absent', customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE } },
+    { state: 'empty', customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': '' } },
+  ])('names x-region when it is $state, and does not default it', ({ customHeaders }) => {
     expect(extractConfig(originRequestOf({ customHeaders }))).toEqual({
+      kind:    'rejected',
       problem: 'header x-region is missing or empty',
     });
   });
@@ -66,7 +76,7 @@ describe('extractConfig', () => {
     (region) => {
       const reading = extractConfig(originRequestOf({ customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': region } }));
 
-      expect(reading).toEqual({ problem: 'header x-region is not an AWS region code' });
+      expect(reading).toEqual({ kind: 'rejected', problem: 'header x-region is not an AWS region code' });
     },
   );
 
@@ -75,6 +85,9 @@ describe('extractConfig', () => {
       customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1', 'x-jwt-algorithms': algorithms },
     }));
 
-    expect(reading).toEqual({ problem: 'header x-jwt-algorithms is not a comma-separated list of supported algorithms' });
+    expect(reading).toEqual({
+      kind:    'rejected',
+      problem: 'header x-jwt-algorithms is not a comma-separated list of supported algorithms',
+    });
   });
 });
