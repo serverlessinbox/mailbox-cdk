@@ -63,8 +63,8 @@ export interface FakeCfnEndpoint {
 export function fakeCfnEndpoint(): FakeCfnEndpoint {
   const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 200 }));
   return {
-    answers: () => fetchSpy.mock.calls.map(([, init]) => {
-      const body: unknown = JSON.parse(String(init?.body));
+    answers: () => fetchSpy.mock.calls.map((fetchArguments) => {
+      const body: unknown = JSON.parse(String(fetchArguments[1]?.body));
       t.assert(body, isCfnAnswerBody);
       return body;
     }),

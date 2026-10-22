@@ -78,7 +78,8 @@ export class CloudFormationStacks {
       const stack = await this.describe(op);
       return stack ? this.outputsOf(stack) : undefined;
     } catch (failure) {
-      return this.warnOutputsUnreadable(op, failure);
+      this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: new CaughtError(failure).readableMessage() });
+      return undefined;
     }
   }
 
@@ -87,7 +88,14 @@ export class CloudFormationStacks {
    * created again. An update that changes nothing is not a failure.
    */
   async startOrUpdate(op: OperationInput): Promise<void> {
-    this.logOperation(op);
+    // Parameter keys only: the values may be sensitive, such as an admin username.
+    this.logger.debug('CloudFormation parameters', { parameterKeys: this.parameters(op).map((parameter) => parameter.ParameterKey) });
+    this.logger.debug('CloudFormation tags', { tags: this.tags(op) });
+    this.logger.debug('Stack operation', {
+      stackName:             op.stackName,
+      templateUrl:           op.templateUrl,
+      terminationProtection: op.terminationProtection,
+    });
 
     const existing = await this.describeOrCreate(op);
     if (!existing) {
@@ -119,11 +127,6 @@ export class CloudFormationStacks {
     return this.clientForRegion(op.region ?? this.defaultRegion);
   }
 
-  private warnOutputsUnreadable(op: OperationInput, failure: unknown): undefined {
-    this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: new CaughtError(failure).readableMessage() });
-    return undefined;
-  }
-
   private missingStackOrRethrow(failure: unknown): undefined {
     const caught = new CaughtError(failure);
     if (caught.is('ValidationError') && caught.messageIncludes('does not exist')) {
@@ -152,18 +155,6 @@ export class CloudFormationStacks {
       lines.push(`${logicalId} (${type}) ${status}: ${reason}`);
     }
     return lines;
-  }
-
-  private logOperation(op: OperationInput): void {
-    // Parameter keys only: the values may be sensitive, such as an admin username.
-    const parameterKeys = this.parameters(op).map((parameter) => parameter.ParameterKey);
-    this.logger.debug('CloudFormation parameters', { parameterKeys });
-    this.logger.debug('CloudFormation tags', { tags: this.tags(op) });
-    this.logger.debug('Stack operation', {
-      stackName:             op.stackName,
-      templateUrl:           op.templateUrl,
-      terminationProtection: op.terminationProtection,
-    });
   }
 
   private async describeOrCreate(op: OperationInput): Promise<Stack | undefined> {

@@ -26,7 +26,9 @@ export class FailedRequestAnswerer {
    */
   public async answer(request: CustomResourceRequest, failure: unknown): Promise<CustomResourceAnswer | undefined> {
     const reason = new CaughtError(failure).readableMessage();
-    this.logUnexpected(failure, reason);
+    if (!(failure instanceof ExpectedFailure)) {
+      this.logger.error('Handler failed', { error: reason });
+    }
 
     if (request.RequestType !== 'Update') {
       return undefined;
@@ -38,11 +40,5 @@ export class FailedRequestAnswerer {
 
     this.logger.warn('Suppressing error during stack rollback', { error: reason });
     return { PhysicalResourceId: request.PhysicalResourceId };
-  }
-
-  private logUnexpected(failure: unknown, reason: string): void {
-    if (!(failure instanceof ExpectedFailure)) {
-      this.logger.error('Handler failed', { error: reason });
-    }
   }
 }

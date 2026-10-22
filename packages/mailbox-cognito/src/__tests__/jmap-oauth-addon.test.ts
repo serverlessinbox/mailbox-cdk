@@ -152,7 +152,7 @@ function buildHarness(
  * resource can be asserted to carry it as its `Condition`. `expectedFlag` is a literal string or a `{ Ref }` token.
  */
 function findGatingConditionLogicalId(template: Template, expectedFlag: unknown): string {
-  const matches = Object.entries(conditionsOf(template)).filter(([, expression]) => expression['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
+  const matches = Object.entries(conditionsOf(template)).filter((condition) => condition[1]['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
   expect(matches).toHaveLength(1);
 
   const [logicalId, expression] = matches[0];

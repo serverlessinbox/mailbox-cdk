@@ -20,10 +20,10 @@ function newStack(): cdk.Stack {
 function bucketNameOf(stack: cdk.Stack): string {
   const template = Template.fromStack(stack);
   template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-  const resources  = template.findResources('AWS::S3::Bucket');
-  const bucketName = Object.values(resources)[0].Properties.BucketName;
-  expect(bucketName).toBeDefined();
-  return JSON.stringify(bucketName);
+  const [bucket]            = Object.values(template.findResources('AWS::S3::Bucket'));
+  const properties: unknown = bucket.Properties;
+  expect(properties).toHaveProperty('BucketName');
+  return JSON.stringify(properties);
 }
 
 describe('Stack Name Base Registry', () => {

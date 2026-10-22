@@ -19,19 +19,51 @@ import {
   type _Object,
 } from '@aws-sdk/client-s3';
 import { mockClient }                                   from 'aws-sdk-client-mock';
+import { Readable }                                     from 'stream';
 
 import { deletePrefix, deployZipToPrefix, writeObject } from '../content-ops';
 
+/** The part of an unzipper entry that `deployZipToPrefix` reads. */
+interface FakeZipEntry {
+  readonly path: string;
+  readonly type: 'File' | 'Directory';
+  buffer(): Promise<Buffer>;
+}
+
+/** The part of an unzipper central directory that `deployZipToPrefix` reads. */
+interface FakeZipDirectory {
+  readonly files: FakeZipEntry[];
+}
+
+const mockOpenBuffer = jest.fn<Promise<FakeZipDirectory>, [Buffer]>();
+
 jest.mock('unzipper', () => ({
   Open: {
-    buffer: jest.fn(),
+    buffer: (zip: Buffer) => mockOpenBuffer(zip),
   },
 }));
 
-const unzipperMock = require('unzipper');
+/** A file entry of a zip, with the content its `buffer()` yields. */
+function fileEntry(path: string, content: string): FakeZipEntry {
+  return { path, type: 'File', buffer: async () => Buffer.from(content) };
+}
+
+/** A directory entry of a zip, which carries no content. */
+function directoryEntry(path: string): FakeZipEntry {
+  return { path, type: 'Directory', buffer: async () => Buffer.alloc(0) };
+}
+
+/** The streaming body S3 answers a GetObject with; the unit reads only its bytes. */
+function zipBody() {
+  return Object.assign(Readable.from(Buffer.from('mock-zip-data')), {
+    transformToByteArray: async () => new Uint8Array(Buffer.from('mock-zip-data')),
+    transformToString:    async () => 'mock-zip-data',
+    transformToWebStream: () => new ReadableStream(),
+  });
+}
 
 describe('deployZipToPrefix', () => {
-  const s3Mock = mockClient(S3Client as any);
+  const s3Mock = mockClient(S3Client);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,37 +71,15 @@ describe('deployZipToPrefix', () => {
   });
 
   it('deploys zip entries to S3 with correct keys and content-types', async () => {
-    // Mock directory structure
-    const mockDirectory = {
+    mockOpenBuffer.mockResolvedValue({
       files: [
-        {
-          path:   './index.html',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('<html>test</html>')),
-        },
-        {
-          path:   'app.js',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('console.log("test");')),
-        },
-        {
-          path:   'style.css',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('body { color: red; }')),
-        },
-        {
-          path:   'config.json',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('{"key":"value"}')),
-        },
+        fileEntry('./index.html', '<html>test</html>'),
+        fileEntry('app.js', 'console.log("test");'),
+        fileEntry('style.css', 'body { color: red; }'),
+        fileEntry('config.json', '{"key":"value"}'),
       ],
-    };
-
-    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
-    const mockBody = {
-      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
-    };
-    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
+    });
+    s3Mock.on(GetObjectCommand).resolves({ Body: zipBody() });
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
@@ -128,26 +138,8 @@ describe('deployZipToPrefix', () => {
   });
 
   it('skips directory entries', async () => {
-    const mockDirectory = {
-      files: [
-        {
-          path:   'dir/',
-          type:   'Directory',
-          buffer: jest.fn(),
-        },
-        {
-          path:   'file.txt',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('content')),
-        },
-      ],
-    };
-
-    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
-    const mockBody = {
-      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
-    };
-    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
+    mockOpenBuffer.mockResolvedValue({ files: [directoryEntry('dir/'), fileEntry('file.txt', 'content')] });
+    s3Mock.on(GetObjectCommand).resolves({ Body: zipBody() });
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
@@ -166,21 +158,8 @@ describe('deployZipToPrefix', () => {
   });
 
   it('uses sourceVersionId when provided', async () => {
-    const mockDirectory = {
-      files: [
-        {
-          path:   'file.txt',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('content')),
-        },
-      ],
-    };
-
-    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
-    const mockBody = {
-      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
-    };
-    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
+    mockOpenBuffer.mockResolvedValue({ files: [fileEntry('file.txt', 'content')] });
+    s3Mock.on(GetObjectCommand).resolves({ Body: zipBody() });
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
@@ -211,21 +190,8 @@ describe('deployZipToPrefix', () => {
   });
 
   it('includes ContentLength in PutObject commands', async () => {
-    const mockDirectory = {
-      files: [
-        {
-          path:   'file.txt',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('test content here')),
-        },
-      ],
-    };
-
-    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
-    const mockBody = {
-      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
-    };
-    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
+    mockOpenBuffer.mockResolvedValue({ files: [fileEntry('file.txt', 'test content here')] });
+    s3Mock.on(GetObjectCommand).resolves({ Body: zipBody() });
     s3Mock.on(PutObjectCommand).resolves({});
 
     const s3Client = new S3Client({});
@@ -248,55 +214,22 @@ describe('deployZipToPrefix', () => {
   });
 
   it('accepts injected S3Client and uses it for all calls', async () => {
-    const mockDirectory = {
-      files: [
-        {
-          path:   'test.txt',
-          type:   'File',
-          buffer: jest.fn().mockResolvedValue(Buffer.from('test')),
-        },
-      ],
-    };
+    mockOpenBuffer.mockResolvedValue({ files: [fileEntry('test.txt', 'test')] });
+    const injectedClient = new S3Client({});
+    const injectedMock   = mockClient(injectedClient);
+    injectedMock.on(GetObjectCommand).resolves({ Body: zipBody() });
+    injectedMock.on(PutObjectCommand).resolves({});
 
-    unzipperMock.Open.buffer.mockResolvedValue(mockDirectory);
-    const mockBody = {
-      transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('mock-zip-data'))),
-    };
-    s3Mock.on(GetObjectCommand).resolves({ Body: mockBody as any });
-    s3Mock.on(PutObjectCommand).resolves({});
-
-    // Create a fake S3 client with a jest mock send method
-    const fakeS3 = {
-      send: jest.fn(),
-    };
-
-    // Mock the send method to handle commands
-    (fakeS3.send as jest.Mock).mockImplementation(async (command) => {
-      if (command instanceof GetObjectCommand) {
-        return { Body: mockBody };
-      } else if (command instanceof PutObjectCommand) {
-        return {};
-      }
-      throw new Error(`Unexpected command: ${command.constructor.name}`);
-    });
-
-    await deployZipToPrefix(fakeS3 as any, {
+    await deployZipToPrefix(injectedClient, {
       sourceBucket: 'source-bucket',
       sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });
 
-    // Verify the injected client's send method was called
-    expect(fakeS3.send).toHaveBeenCalled();
-    const calls = (fakeS3.send as jest.Mock).mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
-
-    // Verify we had at least one GetObjectCommand and at least one PutObjectCommand
-    const getCommands = calls.filter((call) => call[0] instanceof GetObjectCommand);
-    const putCommands = calls.filter((call) => call[0] instanceof PutObjectCommand);
-    expect(getCommands.length).toBeGreaterThan(0);
-    expect(putCommands.length).toBeGreaterThan(0);
+    expect(injectedMock.commandCalls(GetObjectCommand)).toHaveLength(1);
+    expect(injectedMock.commandCalls(PutObjectCommand)).toHaveLength(1);
+    expect(s3Mock.calls()).toHaveLength(0);
   });
 });
 
@@ -309,7 +242,7 @@ describe('deletePrefix', () => {
   });
 
   function keysNamed(count: number, from = 0): _Object[] {
-    return Array.from({ length: count }, (_, index) => ({ Key: `content/file-${from + index}` }));
+    return Array.from({ length: count }, (_element, index) => ({ Key: `content/file-${from + index}` }));
   }
 
   it('deletes nothing and returns 0 when the prefix holds no objects', async () => {
@@ -423,11 +356,8 @@ describe('deployZipToPrefix, for one entry', () => {
   });
 
   async function deployEntry(entryPath: string): Promise<void> {
-    unzipperMock.Open.buffer.mockResolvedValue({
-      files: [{ path: entryPath, type: 'File', buffer: jest.fn().mockResolvedValue(Buffer.from('content')) }],
-    });
-    const body = { transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array()) };
-    s3Mock.on(GetObjectCommand).resolves({ Body: body as any });
+    mockOpenBuffer.mockResolvedValue({ files: [fileEntry(entryPath, 'content')] });
+    s3Mock.on(GetObjectCommand).resolves({ Body: zipBody() });
 
     await deployZipToPrefix(new S3Client({}), {
       sourceBucket: 'source-bucket',

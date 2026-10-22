@@ -184,7 +184,7 @@ describe('ContentDeployerRequestHandler', () => {
     it.each([
       ['no targetBucket', { sources: [dataSource()] }],
       ['a blank targetBucket', { targetBucket: '   ', sources: [dataSource()] }],
-    ])('rejects sources with %s as an expected failure', async (...[, properties]) => {
+    ])('rejects sources with %s as an expected failure', async (_title, properties) => {
       const failure = await rejectionOf(requestHandler.handle(createRequest(properties), invocation));
 
       expect(failure).toBeInstanceOf(ExpectedFailure);

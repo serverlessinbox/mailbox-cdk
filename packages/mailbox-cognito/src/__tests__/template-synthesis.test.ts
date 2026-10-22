@@ -67,7 +67,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Check that Cognito resources are present and carry appropriate tags
       // (Cognito resources may not all be taggable via CFN Tags property, so this verifies structure)
       let cognitoResourceCount = 0;
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Cognito::UserPool') ||
             isResourceOfType(resource, 'AWS::Cognito::UserPoolDomain') ||
             isResourceOfType(resource, 'AWS::Cognito::UserPoolResourceServer') ||
@@ -217,7 +217,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       }
 
       let userPoolCount = 0;
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Cognito::UserPool')) {
           userPoolCount++;
           // Verify the pool has a name configured
@@ -243,7 +243,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       }
 
       let resourceServerCount = 0;
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Cognito::UserPoolResourceServer')) {
           resourceServerCount++;
           // Verify scopes are defined
@@ -403,7 +403,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       let hasLambda         = false;
       let hasCustomResource = false;
 
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
           hasLambda = true;
         }
@@ -451,7 +451,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // For explicit cognito domain, NO StackHelpers Lambda should be created
       let stackHelpersLambda = false;
 
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
           const props = resource.Properties as Record<string, unknown>;
           if (props.Description && String(props.Description).includes('StackHelpers')) {
@@ -498,7 +498,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // For custom domain, NO StackHelpers Lambda should be created
       let stackHelpersLambda = false;
 
-      for (const [, resource] of Object.entries(resources)) {
+      for (const resource of Object.values(resources)) {
         if (isResourceOfType(resource, 'AWS::Lambda::Function')) {
           const props = resource.Properties as Record<string, unknown>;
           if (props.Description && String(props.Description).includes('StackHelpers')) {

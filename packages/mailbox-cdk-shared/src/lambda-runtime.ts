@@ -58,5 +58,4 @@ export {
   type Issuer,
 } from './runtime/handler-kit/auth-identifiers';
 export { ServerlessInboxTagKeys } from './runtime/handler-kit/tag-keys';
-export { createCloudFormationClient, type CloudFormationClient } from './runtime/handler-kit/cloudformation-client';
 export { ParentStackStatus } from './runtime/handler-kit/custom-resource/parent-stack-status';

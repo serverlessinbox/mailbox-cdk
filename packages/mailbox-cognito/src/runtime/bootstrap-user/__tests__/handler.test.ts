@@ -28,7 +28,7 @@ import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_
 const mockSentResponseBodies: string[] = [];
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),
-  request: (...[, onResponse]: [unknown, (res: { statusCode: number; headers: Record<string, string> }) => void]) => {
+  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
     const chunks: string[] = [];
     return {
       on:    () => undefined,
@@ -139,7 +139,7 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
         BootstrapUserRequestHandler: class {
           private readonly logger: LoggerBuffer;
 
-          constructor(...[, , logger]: [unknown, unknown, LoggerBuffer]) {
+          constructor(_userEnsurer: unknown, _parentStackStatus: unknown, logger: LoggerBuffer) {
             this.logger = logger;
           }
 
@@ -148,7 +148,7 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
             throw new ExpectedFailure('rejected on purpose');
           }
 
-          async answerFailure(...[, failure]: [unknown, unknown]): Promise<never> {
+          async answerFailure(_request: unknown, failure: unknown): Promise<never> {
             throw failure;
           }
         },

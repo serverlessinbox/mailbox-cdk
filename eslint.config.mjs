@@ -96,6 +96,11 @@ export default [
           format: null,
           leadingUnderscore: 'forbid',
         },
+        {
+          selector: 'parameter',
+          format: null,
+          leadingUnderscore: 'allow',
+        },
       ],
       'arca/import-align': 'error',
       'arca/import-ordering': 'error',

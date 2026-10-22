@@ -70,7 +70,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     this.logger              = deps.logger;
   }
 
-  public async listIdpUsers(...[, req]: [IdpUsersContext, ListIdpUsersRequest]): Promise<ListIdpUsersResponse> {
+  public async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {
     const output = await this.cognito.send(
       new ListUsersCommand({
         UserPoolId:      this.userPoolId,

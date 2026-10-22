@@ -134,7 +134,10 @@ export class StackDeployerStarter {
   private async handleStartFailure(failure: unknown, executionName: ExecutionName, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
     const caught = new CaughtError(failure);
     if (!this.isExecutionAlreadyExists(caught)) {
-      this.logStartFailed(caught);
+      this.logger.error('Failed to start Step Functions execution', {
+        errorName:    caught.name,
+        errorMessage: caught.describeWithMetadata(),
+      });
       throw this.startFailure(input.op.requestType, failure);
     }
 
@@ -149,13 +152,6 @@ export class StackDeployerStarter {
     }
 
     await this.resumeAfterExistingExecution(executionName, input, failure);
-  }
-
-  private logStartFailed(caught: CaughtError): void {
-    this.logger.error('Failed to start Step Functions execution', {
-      errorName:    caught.name,
-      errorMessage: caught.describeWithMetadata(),
-    });
   }
 
   private async resumeAfterExistingExecution(executionName: ExecutionName, input: WorkflowInput, alreadyExistsFailure: unknown): Promise<void> {

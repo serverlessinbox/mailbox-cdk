@@ -211,7 +211,7 @@ describe('CognitoIdpUsersService', () => {
       const rejection = await newService().createIdpUser(context(), request({ groups: ['staff', 'finance'] })).catch((thrown: unknown) => thrown);
 
       expect(rejection).toBe(firstFailure);
-      expect(logWarn.mock.calls.map(([, data]) => data?.group)).toEqual(['staff', 'finance']);
+      expect(logWarn.mock.calls.map((warnArguments) => warnArguments[1]?.group)).toEqual(['staff', 'finance']);
       expect(cognitoMock.commandCalls(AdminDeleteUserCommand)).toHaveLength(1);
     });
 

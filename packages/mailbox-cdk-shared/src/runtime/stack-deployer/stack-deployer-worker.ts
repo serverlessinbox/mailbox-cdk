@@ -50,7 +50,14 @@ export class StackDeployerWorker implements StackFailureAnswerer {
    * step that wraps them in a StackOperationFailure.
    */
   async handle(event: SfnInvokeEvent, target: CfnReplyTarget): Promise<WorkerResult> {
-    this.logInvocation(event);
+    this.logger.info('Stack deployer op', {
+      mode:                  event.mode,
+      requestType:           event.op.requestType,
+      stackName:             event.op.stackName,
+      templateUrl:           event.op.templateUrl,
+      terminationProtection: event.op.terminationProtection,
+      parameterKeys:         Object.keys(event.op.parameters ?? {}),
+    });
 
     if (event.mode === 'start') {
       return this.startOperation(event.op, target);
@@ -60,7 +67,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
   /** Answers CloudFormation that the stack operation failed, with the recent stack events as detail, and ends the workflow. */
   async answerFailure(op: OperationInput, failure: StackOperationFailure, target: CfnReplyTarget): Promise<WorkerResult> {
-    this.logFailure(failure);
+    this.logger.error('Stack deployer failed', { errorMessage: failure.message });
 
     if (await this.rollback.answerSuccess(op, target, failure.message)) {
       return WorkerResult.finished();
@@ -69,21 +76,6 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     const failures = await this.stacks.describeRecentFailures(op);
     await this.responder.answerFailure(target, op.requestType, `${failure.message}${this.eventsDetail(failures)}`);
     return WorkerResult.finished();
-  }
-
-  private logInvocation(event: SfnInvokeEvent): void {
-    this.logger.info('Stack deployer op', {
-      mode:                  event.mode,
-      requestType:           event.op.requestType,
-      stackName:             event.op.stackName,
-      templateUrl:           event.op.templateUrl,
-      terminationProtection: event.op.terminationProtection,
-      parameterKeys:         Object.keys(event.op.parameters ?? {}),
-    });
-  }
-
-  private logFailure(failure: StackOperationFailure): void {
-    this.logger.error('Stack deployer failed', { errorMessage: failure.message });
   }
 
   private async startOperation(op: OperationInput, target: CfnReplyTarget): Promise<WorkerResult> {
@@ -176,7 +168,8 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     try {
       await this.stacks.deleteIfExists(op);
     } catch (failure) {
-      this.warnDeleteRetryFailed(failure);
+      // A failed delete retry is not an answer: the next check sees the stack's state and tries again.
+      this.logger.warn('Retry DeleteStack failed (will keep polling)', { error: new CaughtError(failure).describeWithMetadata() });
     }
     return WorkerResult.pollAgain({ deleteRetryCount: retries.deleteRetryCount + 1, createRetryCount: retries.createRetryCount });
   }
@@ -249,7 +242,8 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     try {
       await this.stacks.recreate(op);
     } catch (failure) {
-      this.logRecreateFailed(failure);
+      // A failed recreate still counts as a retry: the next check sees the stack's state.
+      this.logger.error('Recreate CreateStack failed', { error: new CaughtError(failure).describeWithMetadata() });
     }
     return WorkerResult.pollAgain({ deleteRetryCount: retries.deleteRetryCount, createRetryCount: retries.createRetryCount + 1 });
   }
@@ -269,16 +263,6 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       return;
     }
     await this.responder.fail(target, reason);
-  }
-
-  // A failed delete retry is not an answer: the next check sees the stack's state and tries again.
-  private warnDeleteRetryFailed(failure: unknown): void {
-    this.logger.warn('Retry DeleteStack failed (will keep polling)', { error: new CaughtError(failure).describeWithMetadata() });
-  }
-
-  // A failed recreate still counts as a retry: the next check sees the stack's state.
-  private logRecreateFailed(failure: unknown): void {
-    this.logger.error('Recreate CreateStack failed', { error: new CaughtError(failure).describeWithMetadata() });
   }
 
   private eventsDetail(failures: string[]): string {

@@ -13,6 +13,7 @@ import { mockClient }                                          from 'aws-sdk-cli
 import type { AwsClientStub }                                  from 'aws-sdk-client-mock';
 import type * as Https                                         from 'https';
 import { Writable }                                            from 'stream';
+import * as t                                                  from 'typanion';
 
 import type { SmokeTestProbe }                                 from '../../handler-kit/smoke-test';
 import type * as HandlerModule                                 from '../handler';
@@ -24,11 +25,14 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
-interface CfnResponseBody {
-  Status:  string;
-  Reason?: string;
-  Data?:   Record<string, string>;
-}
+const isCfnResponseBody = t.isPartial({
+  Status: t.isString(),
+  Reason: t.isOptional(t.isString()),
+  Data:   t.isOptional(t.isRecord(t.isString())),
+});
+
+/** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
+type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 describe('stack-helpers handler', () => {
   const originalEnv = process.env;
@@ -57,7 +61,6 @@ describe('stack-helpers handler', () => {
     process.env = { ...originalEnv, ...environment };
 
     // Required after resetModules so the faked client class is the one the handler constructs.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const route53Sdk                              = require('@aws-sdk/client-route-53') as typeof Route53Sdk;
     const { GetHostedZoneCommand, Route53Client } = route53Sdk;
     const route53Mock                             = mockClient(Route53Client);
@@ -67,8 +70,7 @@ describe('stack-helpers handler', () => {
     arrange(route53Mock, route53Sdk);
 
     let responseJson = '';
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const https = require('https') as typeof Https;
+    const https      = require('https') as typeof Https;
     jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
       callback({ statusCode: 200 });
       return new Writable({
@@ -79,12 +81,16 @@ describe('stack-helpers handler', () => {
       });
     }) as typeof https.request);
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
+    let response: CfnResponseBody = { Status: 'NOT SENT' };
+    if (responseJson !== '') {
+      const sent: unknown = JSON.parse(responseJson);
+      t.assert(sent, isCfnResponseBody);
+      response = sent;
+    }
     return { result, response, hostedZoneLookups: route53Mock.commandCalls(GetHostedZoneCommand) };
   }
 

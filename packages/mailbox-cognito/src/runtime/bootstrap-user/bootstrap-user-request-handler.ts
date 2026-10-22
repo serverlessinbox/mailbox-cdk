@@ -56,7 +56,7 @@ export class BootstrapUserRequestHandler {
    * the stack in UPDATE_ROLLBACK_FAILED. Every other failure is thrown on.
    */
   public async answerFailure(request: CustomResourceRequest, failure: unknown): Promise<BootstrapUserAnswer> {
-    this.logFailure(failure);
+    this.logger.error('bootstrap_user_handler_failed', { message: new CaughtError(failure).readableMessage() });
 
     if (await this.parentStackIsRollingBack(request)) {
       return this.answerSuppressed(failure);
@@ -98,10 +98,6 @@ export class BootstrapUserRequestHandler {
       return BootstrapUserAnswers.withPassword(reportedPassword, toPhysicalResourceId(`BootstrapUser:${user.userPoolId}:${user.username}`));
     }
     return BootstrapUserAnswers.withPassword(reportedPassword);
-  }
-
-  private logFailure(failure: unknown): void {
-    this.logger.error('bootstrap_user_handler_failed', { message: new CaughtError(failure).readableMessage() });
   }
 
   private answerSuppressed(failure: unknown): BootstrapUserAnswer {

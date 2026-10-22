@@ -165,7 +165,7 @@ describe('StackHelpersResolver', () => {
     });
 
     it('is a plain-digit number from 0 up to but excluding the range', async () => {
-      const stackIds = Array.from({ length: 200 }, (_, index) => toStackId(`arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/${index}`));
+      const stackIds = Array.from({ length: 200 }, (_element, index) => toStackId(`arn:aws:cloudformation:eu-west-1:123456789012:stack/mailbox/${index}`));
 
       const results = await Promise.all(stackIds.map((id) => resolveFor({ Salt: 'any', Range: '24' }, id)));
 

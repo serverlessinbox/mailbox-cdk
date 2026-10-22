@@ -86,10 +86,10 @@ describe('bucket-auto-empty handler', () => {
 
     let responseJson = '';
     const https      = require('https') as typeof Https;
-    jest.mocked(https.request).mockImplementation(((...[, onResponse]: [unknown, (res: object) => void]) => {
+    jest.mocked(https.request).mockImplementation(((_options: unknown, onResponse: (res: object) => void) => {
       onResponse({ statusCode: 200 });
       return new Writable({
-        write(...[chunk, , done]: [Buffer, BufferEncoding, (error?: Error | null) => void]) {
+        write(chunk: Buffer, _encoding: BufferEncoding, done: (error?: Error | null) => void) {
           responseJson += chunk.toString();
           done();
         },

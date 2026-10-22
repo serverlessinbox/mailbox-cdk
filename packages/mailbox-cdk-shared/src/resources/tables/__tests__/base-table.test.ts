@@ -73,7 +73,7 @@ describe('BaseTable Deny Enumeration', () => {
     // Find all inline policies for this role and collect all Deny statements
     let foundCompleteStatement = false;
 
-    for (const [, resource] of Object.entries(resources)) {
+    for (const resource of Object.values(resources)) {
       if (resource.Type !== 'AWS::IAM::Policy') {
         continue;
       }
@@ -194,7 +194,7 @@ describe('BaseTable Deny Enumeration', () => {
     let denyCount                       = 0;
     const deniedResourceArns: unknown[] = [];
 
-    for (const [, resource] of Object.entries(resources)) {
+    for (const resource of Object.values(resources)) {
       if (resource.Type !== 'AWS::IAM::Policy') {
         continue;
       }
@@ -261,7 +261,7 @@ describe('BaseTable Deny Enumeration', () => {
     // Verify Deny statement exists
     let foundDeny = false;
 
-    for (const [, resource] of Object.entries(resources)) {
+    for (const resource of Object.values(resources)) {
       if (resource.Type !== 'AWS::IAM::Policy') {
         continue;
       }
@@ -317,7 +317,7 @@ describe('BaseTable Deny Enumeration', () => {
     // Verify Allow statements still exist
     let foundAllow = false;
 
-    for (const [, resource] of Object.entries(resources)) {
+    for (const resource of Object.values(resources)) {
       if (resource.Type !== 'AWS::IAM::Policy') {
         continue;
       }

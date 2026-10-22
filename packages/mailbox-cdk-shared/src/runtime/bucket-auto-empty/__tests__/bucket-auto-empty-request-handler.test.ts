@@ -39,7 +39,7 @@ describe('BucketAutoEmptyRequestHandler', () => {
     it.each([
       ['Create', readCustomResourceRequest(fakeCreateEvent({ bucketName: 'my-bucket' }))],
       ['Update', readCustomResourceRequest(fakeUpdateEvent({ bucketName: 'my-bucket' }))],
-    ])('answers %s without emptying anything', async (...[, request]) => {
+    ])('answers %s without emptying anything', async (_title, request) => {
       const response = await requestHandler.handle(request, deadline);
 
       expect(response).toEqual({ PhysicalResourceId: PHYSICAL_RESOURCE_ID, Data: { deleted: '0' } });
@@ -84,7 +84,7 @@ describe('BucketAutoEmptyRequestHandler', () => {
       ['a blank bucketName', readCustomResourceRequest(fakeDeleteEvent({ bucketName: '   ' }))],
       ['a bucketName that is not a string', readCustomResourceRequest(fakeDeleteEvent({ bucketName: 123 }))],
       ['no resource properties', readCustomResourceRequest({ ...fakeDeleteEvent({}), ResourceProperties: undefined })],
-    ])('fails a Delete with %s, saying the bucket cannot be checked', async (...[, request]) => {
+    ])('fails a Delete with %s, saying the bucket cannot be checked', async (_title, request) => {
       const failure: unknown = await requestHandler.handle(request, deadline).catch((error: unknown) => error);
 
       expect(failure).toBeInstanceOf(ExpectedFailure);
