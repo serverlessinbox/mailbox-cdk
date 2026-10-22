@@ -1,7 +1,13 @@
+/// <reference types="jest" />
+
+/**
+ * SesNotificationsQueueEvent: the mapping from the SES event queue to its consumer. Batch size, window,
+ * concurrency cap and partial-failure reporting decide how SES notifications are delivered and retried.
+ */
+
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 import { Topic }                                from 'aws-cdk-lib/aws-sns';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { SesEventQueue }                        from '../../queues/ses-event-queue';

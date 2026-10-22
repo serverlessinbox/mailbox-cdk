@@ -5,9 +5,12 @@ import type { Construct }                     from 'constructs';
 
 import type { IEmailProcessingQueueConsumer } from '../queues/email-processing-queue';
 
+/** Settings of the mapping that feeds inbound emails from their queue to a function. */
 export interface EmailProcessingQueueEventProps {
-  target: IFunction;
-  queue:  IEmailProcessingQueueConsumer;
+  /** The function that receives each batch of inbound emails. */
+  readonly target: IFunction;
+  /** The queue the inbound emails are read from, seen from the consuming side. */
+  readonly queue:  IEmailProcessingQueueConsumer;
 }
 
 /** Invokes the target with batches of up to 10 inbound emails, reporting partial batch failures. */

@@ -5,9 +5,12 @@ import type { IQueue }    from 'aws-cdk-lib/aws-sqs';
 import { Duration }       from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
+/** Settings of the schedule that periodically triggers search indexing. */
 export interface SearchIndexingScheduleProps {
-  target:          IFunction;
-  deadLetterQueue: IQueue;
+  /** The function invoked every 6 hours to index; EventBridge is granted permission to invoke it. */
+  readonly target:          IFunction;
+  /** Receives the invocations EventBridge could not deliver to the target; EventBridge is granted permission to send to it. */
+  readonly deadLetterQueue: IQueue;
 }
 
 /** Invokes the target every 6 hours; invocations EventBridge cannot deliver go to the dead-letter queue. */

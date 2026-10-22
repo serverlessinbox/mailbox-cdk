@@ -5,9 +5,12 @@ import type { Construct }          from 'constructs';
 
 import type { ISesEventQueue }     from '../queues/ses-event-queue';
 
+/** Settings of the mapping that feeds SES notifications from their queue to a function. */
 export interface SesNotificationsQueueEventProps {
-  target: IFunction;
-  queue:  ISesEventQueue;
+  /** The function that receives each batch of SES notifications. */
+  readonly target: IFunction;
+  /** The queue the SES notifications are read from. */
+  readonly queue:  ISesEventQueue;
 }
 
 /** Invokes the target with batches of up to 100 SES notifications, at most 5 concurrent batches, reporting partial batch failures. */

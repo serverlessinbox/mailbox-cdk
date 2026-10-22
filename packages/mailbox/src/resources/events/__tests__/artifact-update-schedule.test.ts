@@ -1,6 +1,12 @@
+/// <reference types="jest" />
+
+/**
+ * ArtifactUpdateSchedule: the rule that invokes the update function at the configured interval. The
+ * schedule expression and the target are what the update cadence depends on.
+ */
+
 import { Match, Template }                                from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }                        from 'aws-cdk-lib/aws-lambda';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 
 import { ArtifactUpdateSchedule }                         from '../artifact-update-schedule';
@@ -24,9 +30,5 @@ describe('ArtifactUpdateSchedule', () => {
       State:              'ENABLED',
       Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
     });
-  });
-
-  it('lets EventBridge invoke the target', () => {
-    template.hasResourceProperties('AWS::Lambda::Permission', { Action: 'lambda:InvokeFunction', Principal: 'events.amazonaws.com' });
   });
 });

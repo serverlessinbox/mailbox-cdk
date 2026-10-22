@@ -1,6 +1,12 @@
+/// <reference types="jest" />
+
+/**
+ * EmailSubmissionsQueueEvent: the mapping from the sending queue to its consumer. One message per batch
+ * keeps each send independent of the others.
+ */
+
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { EmailSendingQueue }                    from '../../queues/email-sending-queue';

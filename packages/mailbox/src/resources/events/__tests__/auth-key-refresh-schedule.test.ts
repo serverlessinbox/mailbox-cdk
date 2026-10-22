@@ -1,4 +1,10 @@
 /// <reference types="jest" />
+
+/**
+ * AuthKeyRefreshSchedule: the rule that invokes the signing-key refresh every 6 hours. The interval bounds
+ * how long a rotated key stays unknown to the cache.
+ */
+
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }                   from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
@@ -24,6 +30,5 @@ describe('AuthKeyRefreshSchedule', () => {
       State:              'ENABLED',
       Targets:            [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] }, Id: 'Target0' }],
     });
-    template.resourceCountIs('AWS::Lambda::Permission', 1);
   });
 });

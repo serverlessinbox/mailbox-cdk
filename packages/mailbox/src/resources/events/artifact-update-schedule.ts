@@ -4,9 +4,12 @@ import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Duration }  from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
+/** Settings of the schedule that periodically invokes an artifact-update function. */
 export interface ArtifactUpdateScheduleProps {
-  target:   IFunction;
-  interval: Duration;
+  /** The function invoked on every tick; EventBridge is granted permission to invoke it. */
+  readonly target:   IFunction;
+  /** Time between two invocations, applied as a fixed-rate schedule. EventBridge rejects a rate below one minute. */
+  readonly interval: Duration;
 }
 
 /** Invokes the target at a fixed interval. */

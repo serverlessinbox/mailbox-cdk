@@ -5,9 +5,12 @@ import type { Construct }                  from 'constructs';
 
 import type { IEmailSendingQueueConsumer } from '../queues/email-sending-queue';
 
+/** Settings of the mapping that feeds submitted emails from the sending queue to a function. */
 export interface EmailSubmissionsQueueEventProps {
-  target: IFunction;
-  queue:  IEmailSendingQueueConsumer;
+  /** The function that receives each submitted email. */
+  readonly target: IFunction;
+  /** The queue the submitted emails are read from, seen from the consuming side. */
+  readonly queue:  IEmailSendingQueueConsumer;
 }
 
 /** Invokes the target with one submitted email per batch. */

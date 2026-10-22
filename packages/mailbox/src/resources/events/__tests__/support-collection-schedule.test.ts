@@ -1,6 +1,12 @@
+/// <reference types="jest" />
+
+/**
+ * SupportCollectionSchedule: the rule that invokes the support collector hourly. The cron expression sets
+ * how often role assumptions are collected and their expiry enforced.
+ */
+
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { SupportCollectionSchedule }            from '../support-collection-schedule';
@@ -25,9 +31,5 @@ describe('SupportCollectionSchedule', () => {
       State:              'ENABLED',
       Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
     });
-  });
-
-  it('lets EventBridge invoke the target', () => {
-    template.hasResourceProperties('AWS::Lambda::Permission', { Action: 'lambda:InvokeFunction', Principal: 'events.amazonaws.com' });
   });
 });

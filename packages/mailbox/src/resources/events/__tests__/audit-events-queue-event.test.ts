@@ -1,6 +1,12 @@
+/// <reference types="jest" />
+
+/**
+ * AuditEventsQueueEvent: the mapping from the audit events queue to its consumer. Batch size, window and
+ * partial-failure reporting decide how audit events are delivered and retried.
+ */
+
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';

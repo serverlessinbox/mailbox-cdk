@@ -1,6 +1,12 @@
+/// <reference types="jest" />
+
+/**
+ * EmailProcessingQueueEvent: the mapping from the inbound email queue to its consumer. Batch size, window
+ * and partial-failure reporting decide how inbound emails are delivered and retried.
+ */
+
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';

@@ -4,8 +4,10 @@ import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Duration }       from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
+/** Settings of the schedule that periodically refreshes cached signing keys. */
 export interface AuthKeyRefreshScheduleProps {
-  target: IFunction;
+  /** The function invoked every 6 hours to refresh the signing keys; EventBridge is granted permission to invoke it. */
+  readonly target: IFunction;
 }
 
 /** Invokes the target every 6 hours, keeping the cached signing keys fresh through key rotation. */

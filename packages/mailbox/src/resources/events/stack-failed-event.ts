@@ -9,11 +9,15 @@ import { retainOnEveryOperation }        from '../../utils/cfn-resource';
 
 /** What the sweeper needs to find and remove the retained rule. */
 export interface IStackFailedEvent {
+  /** ARN of the retained rule. */
   readonly ruleArn:      string;
+  /** Id of the rule's single target within the rule. */
   readonly ruleTargetId: string;
 }
 
+/** Settings of the rule that reports a failed or rolled-back stack. */
 export interface StackFailedEventProps {
+  /** The function invoked when the stack ends in a rolled-back or failed state; EventBridge is granted permission to invoke it. */
   readonly target: IFunction;
 }
 
