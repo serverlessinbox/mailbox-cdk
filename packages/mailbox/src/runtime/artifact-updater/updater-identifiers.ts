@@ -1,11 +1,5 @@
 import { parseArn, type Branded } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-/**
- * The identifiers and names the artifact updater passes between its units, each a string of its own kind so
- * that one kind cannot be passed where another is expected. The brand exists in the type only. Every kind has
- * exactly one factory, and the cast to the brand sits in that factory and nowhere else.
- */
-
 /** The ARN of a Lambda function the updater manages. */
 export type LambdaFunctionArn = Branded<'LambdaFunctionArn'>;
 
@@ -39,22 +33,27 @@ export function toDistributionArn(raw: string): DistributionArn {
   return raw as DistributionArn;
 }
 
+/** Marks the string as the name of a UI content bucket; the name is whatever the resource's tag holds. */
 export function toContentBucketName(raw: string): ContentBucketName {
   return raw as ContentBucketName;
 }
 
+/** Marks the string as the name of an artifact bucket. */
 export function toArtifactBucketName(raw: string): ArtifactBucketName {
   return raw as ArtifactBucketName;
 }
 
+/** Marks the string as the name of an artifact package. */
 export function toArtifactPackageName(raw: string): ArtifactPackageName {
   return raw as ArtifactPackageName;
 }
 
+/** Marks the string as the name of an artifact within its package. */
 export function toArtifactName(raw: string): ArtifactName {
   return raw as ArtifactName;
 }
 
+/** Marks the string as an artifact version; it is not checked to be a semantic version. */
 export function toArtifactVersion(raw: string): ArtifactVersion {
   return raw as ArtifactVersion;
 }

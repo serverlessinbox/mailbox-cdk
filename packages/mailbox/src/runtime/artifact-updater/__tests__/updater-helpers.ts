@@ -6,6 +6,8 @@ import { ResourceGroupsTaggingAPIClient }                                       
 import { S3Client }                                                                 from '@aws-sdk/client-s3';
 import { LoggerBuffer, toRegion, type Region }                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context }  from 'aws-lambda';
+import * as https                                                                   from 'https';
+import { Writable }                                                                 from 'stream';
 
 import type { LambdaTarget, UiTarget }                                              from '../artifact-target';
 import type { Config }                                                              from '../config';
@@ -15,6 +17,7 @@ import { LambdaCodeRollback }                                                   
 import { LambdaCodeUpdater }                                                        from '../lambda-code/lambda-code-updater';
 import { LambdaFunctionCode, type Sleep }                                           from '../lambda-code/lambda-function-code';
 import { ReleaseArtifacts }                                                         from '../release-artifacts';
+import type { NewUpdateCycle }                                                      from '../triggers/updater-trigger';
 import { UiBucketUpdater }                                                          from '../ui-bucket-updater';
 import { UpdateCycle }                                                              from '../update-cycle';
 import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from '../updater-clients';
@@ -29,7 +32,6 @@ import {
   toLambdaFunctionArn,
 } from '../updater-identifiers';
 import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
-import type { NewUpdateCycle }              from '../triggers/updater-trigger';
 
 /** The functions of the faked release registry package, which a suite sets up per test. */
 export interface RegistryMocks {
@@ -37,6 +39,15 @@ export interface RegistryMocks {
   readonly deriveTrack:        jest.Mock;
   readonly buildArtifactKey:   jest.Mock;
 }
+
+/** The part of the release a faked `buildArtifactKey` reads: the parsed version and the name of the object. */
+export interface ReleaseKeyParts {
+  readonly version:    { readonly version: string };
+  readonly objectName: string;
+}
+
+/** What the faked registry's `buildArtifactKey` is called with: the kind of artifact, its package and the release. */
+export type BuildArtifactKeyArguments = [kind: string, packageName: string, release: ReleaseKeyParts];
 
 /** The values of a target in the plain strings tests write; the helpers brand them. */
 export interface TargetValues {
@@ -241,11 +252,30 @@ export function fakeLambdaContext(): Context {
   };
 }
 
+/**
+ * Routes the mocked `https.request` (the suite must `jest.mock('https', ...)`) into memory, answering the PUT
+ * with status 200, and returns a function yielding the body that was sent to CloudFormation's response URL.
+ */
+export function captureCloudFormationResponse(): () => string {
+  let body = '';
+  jest.mocked(https.request).mockImplementation(((...args: [unknown, (res: object) => void]) => {
+    args[1]({ statusCode: 200 });
+    return new Writable({
+      write(chunk: Buffer, ...rest: [BufferEncoding, (error?: Error | null) => void]) {
+        body += chunk.toString();
+        rest[1]();
+      },
+    });
+  }) as typeof https.request);
+  return () => body;
+}
+
 /** A successful Lambda invoke response whose payload is the given text, as bytes like the real SDK returns it. */
 export function invokeResponse(payload: string): InvokeCommandOutput {
+  const encoder = new TextEncoder();
   return {
     StatusCode: 200,
-    Payload:    new TextEncoder().encode(payload) as InvokeCommandOutput['Payload'],
+    Payload:    encoder.encode(payload) as InvokeCommandOutput['Payload'],
     $metadata:  {},
   };
 }

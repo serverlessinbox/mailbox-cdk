@@ -48,7 +48,7 @@ export class UiBucketUpdater {
       return false;
     }
 
-    const location       = this.releases.locate(this.deployment.region, target.packageName, stale.parsed, target.artifactName);
+    const location       = this.releases.locateUiBundle(this.deployment.region, target, stale.parsed);
     const distributionId = parseArn(target.arn).resourceId;
 
     try {
@@ -83,7 +83,11 @@ export class UiBucketUpdater {
       });
       return true;
     } catch (thrown) {
-      this.recordFailedUpdate(target, distributionId, thrown);
+      this.logger.error('failed to update UI bucket', {
+        bucketName: target.bucketName,
+        distributionId,
+        error:      new CaughtError(thrown).message,
+      });
       throw thrown;
     }
   }
@@ -97,13 +101,5 @@ export class UiBucketUpdater {
         },
       }),
     );
-  }
-
-  private recordFailedUpdate(target: UiTarget, distributionId: string, thrown: unknown): void {
-    this.logger.error('failed to update UI bucket', {
-      bucketName: target.bucketName,
-      distributionId,
-      error: new CaughtError(thrown).message,
-    });
   }
 }

@@ -10,10 +10,9 @@ import { InvokeCommand, LambdaClient }    from '@aws-sdk/client-lambda';
 import { LoggerBuffer }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                     from 'aws-sdk-client-mock';
 
-import { HttpTrigger }                    from '../http-trigger';
-import type { HttpTriggerEvent }          from '../../updater-event';
-
 import { BAD_CONFIG_ERROR, httpApiEvent } from '../../__tests__/updater-helpers';
+import type { HttpTriggerEvent }          from '../../updater-event';
+import { HttpTrigger }                    from '../http-trigger';
 
 describe('HttpTrigger', () => {
   const lambdaMock = mockClient(LambdaClient);
@@ -49,9 +48,9 @@ describe('HttpTrigger', () => {
     });
 
     it.each([
-      ['a GET to the trigger path', httpApiEvent('GET', '/artifact-updates/trigger')],
-      ['a POST to another path', httpApiEvent('POST', '/artifact-updates/status')],
-    ])('answers 404 and starts nothing for %s', async (_description, event) => {
+      { request: 'a GET to the trigger path', event: httpApiEvent('GET', '/artifact-updates/trigger') },
+      { request: 'a POST to another path', event: httpApiEvent('POST', '/artifact-updates/status') },
+    ])('answers 404 and starts nothing for $request', async ({ event }) => {
       const response = await triggerFor(event).handle();
 
       expect(response).toEqual({ statusCode: 404, body: '' });
@@ -74,10 +73,10 @@ describe('HttpTrigger', () => {
     });
 
     it.each([
-      ['a request context without http', { requestContext: {} }],
-      ['a request context whose http is not an object', { requestContext: { http: 'POST' } }],
-      ['a raw path that is not text', { rawPath: 42, requestContext: { http: { method: 'POST' } } }],
-    ])('answers 404 and starts nothing for %s', async (_description, event) => {
+      { request: 'a request context without http', event: { requestContext: {} } },
+      { request: 'a request context whose http is not an object', event: { requestContext: { http: 'POST' } } },
+      { request: 'a raw path that is not text', event: { rawPath: 42, requestContext: { http: { method: 'POST' } } } },
+    ])('answers 404 and starts nothing for $request', async ({ event }) => {
       const response = await triggerFor(event).handle();
 
       expect(response).toEqual({ statusCode: 404, body: '' });

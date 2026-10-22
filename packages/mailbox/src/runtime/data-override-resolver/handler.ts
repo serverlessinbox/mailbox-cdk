@@ -1,13 +1,14 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   answerRequestWithBadConfig,
-  withSmokeTest,
+  CaughtError,
   emitManualFinalize,
   env,
   ExpectedFailure,
   LoggerBuffer,
   readCustomResourceRequest,
   toPhysicalResourceId,
+  withSmokeTest,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { wrapHandler }           from 'aws-custom-resources';
 
@@ -45,8 +46,8 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
       Data:               await tableOverrideResolver.resolve(request.ResourceProperties),
     };
   } catch (thrown) {
-    logger.error(thrown instanceof Error ? thrown.message : String(thrown));
     if (!(thrown instanceof ExpectedFailure)) {
+      logger.error(new CaughtError(thrown).readableMessage());
       logger.flush();
     }
     throw thrown;

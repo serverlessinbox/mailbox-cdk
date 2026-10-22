@@ -9,7 +9,8 @@ const runtime = UpdaterComposition.loadRuntime();
 
 export const handler = async (event: unknown, context: Context): Promise<HttpTriggerResponse | void> => {
   const composition = new UpdaterComposition(runtime);
-  const trigger     = new TriggerDetector(composition).detect(event, context);
+  const detector    = new TriggerDetector(composition);
+  const trigger     = detector.detect(event, context);
 
   try {
     return await trigger.handle();

@@ -35,11 +35,11 @@ export class TableOverrideResolver {
     const props = this.parseProperties(resourceProperties);
 
     return {
-      configTableArn:       await this.resolveTable('configTable', props.configTableIncomingArn, props.configTableOverrideArn),
-      itemTableArn:         await this.resolveTable('itemTable', props.itemTableIncomingArn, props.itemTableOverrideArn),
-      changelogTableArn:    await this.resolveTable('changelogTable', props.changelogTableIncomingArn, props.changelogTableOverrideArn),
-      auditLogTableArn:     await this.resolveTable('auditLogTable', props.auditLogTableIncomingArn, props.auditLogTableOverrideArn),
-      mailFeedbackTableArn: await this.resolveTable('mailFeedbackTable', props.mailFeedbackTableIncomingArn, props.mailFeedbackTableOverrideArn),
+      configTableArn:       await this.resolveTable('configTable', props),
+      itemTableArn:         await this.resolveTable('itemTable', props),
+      changelogTableArn:    await this.resolveTable('changelogTable', props),
+      auditLogTableArn:     await this.resolveTable('auditLogTable', props),
+      mailFeedbackTableArn: await this.resolveTable('mailFeedbackTable', props),
     };
   }
 
@@ -51,7 +51,10 @@ export class TableOverrideResolver {
     return resourceProperties;
   }
 
-  private async resolveTable(role: TableRole, incomingArn: string, overrideArn: string): Promise<string> {
+  private async resolveTable(role: TableRole, props: ResourceProperties): Promise<string> {
+    const incomingArn = props[`${role}IncomingArn`];
+    const overrideArn = props[`${role}OverrideArn`];
+
     // An override equal to the incoming ARN means the operator has not redirected this role.
     if (overrideArn === incomingArn) {
       this.logger.info(`${role}: override matches incoming, using incoming table`);

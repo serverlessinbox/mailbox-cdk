@@ -17,11 +17,10 @@ import { LoggerBuffer }                                                    from 
 import { mockClient }                                                      from 'aws-sdk-client-mock';
 import { SemVer }                                                          from 'semver';
 
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from '../../__tests__/updater-helpers';
+import type { ArtifactLocation, StaleTarget }                              from '../../release-artifacts';
 import { LambdaCodeRollback }                                              from '../lambda-code-rollback';
 import { LambdaFunctionCode }                                              from '../lambda-function-code';
-import type { ArtifactLocation, StaleTarget }                              from '../../release-artifacts';
-
-import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from '../../__tests__/updater-helpers';
 
 describe('LambdaCodeRollback', () => {
   const lambdaMock                         = mockClient(LambdaClient);

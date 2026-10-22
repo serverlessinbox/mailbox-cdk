@@ -15,11 +15,11 @@ describe('toLambdaFunctionArn', () => {
   });
 
   it.each([
-    ['a CloudFront distribution', 'arn:aws:cloudfront::123456789012:distribution/ABCD1234'],
-    ['a Lambda layer', 'arn:aws:lambda:us-east-1:123456789012:layer:shared:3'],
-    ['a CloudFront function', 'arn:aws:cloudfront::123456789012:function/redirect'],
-    ['text that is not an ARN', 'mailbox-go'],
-  ])('rejects %s', (_description, arn) => {
+    { value: 'a CloudFront distribution', arn: 'arn:aws:cloudfront::123456789012:distribution/ABCD1234' },
+    { value: 'a Lambda layer', arn: 'arn:aws:lambda:us-east-1:123456789012:layer:shared:3' },
+    { value: 'a CloudFront function', arn: 'arn:aws:cloudfront::123456789012:function/redirect' },
+    { value: 'text that is not an ARN', arn: 'mailbox-go' },
+  ])('rejects $value', ({ arn }) => {
     expect(() => toLambdaFunctionArn(arn)).toThrow();
   });
 

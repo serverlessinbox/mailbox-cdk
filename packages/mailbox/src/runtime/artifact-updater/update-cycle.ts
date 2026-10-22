@@ -1,5 +1,6 @@
 import type { ResourceTagMapping, Tag }                                                  from '@aws-sdk/client-resource-groups-tagging-api';
 import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer }              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                            from 'typanion';
 
 import type { LambdaTarget, UiTarget }                                                   from './artifact-target';
 import type { Config }                                                                   from './config';
@@ -16,14 +17,25 @@ import {
   toLambdaFunctionArn,
 } from './updater-identifiers';
 
+const isUpdateType = t.isEnum(['code', 'edge', 'ui'] as const);
+
+/** The kinds of update a resource opts in to through its auto-update-type tag; a resource without a kind is not updated. */
+type UpdateType = t.InferType<typeof isUpdateType>;
+
+const isUpdatableService = t.isEnum(['cloudfront', 'lambda'] as const);
+
+/** The values of a resource's tags by tag key. */
+type TagValues = Record<string, string>;
+
 /**
  * A managed resource that opted in to automatic updates and carries the tags that say what it was deployed
- * from. Its values are as the tags hold them, not yet checked to be of the kinds the updaters take.
+ * from. The update type is checked; the other tag values are as the tags hold them, not yet checked to be of
+ * the kinds the updaters take.
  */
 interface UpdatableResource {
   readonly arn:             string;
   readonly service:         string | undefined;
-  readonly autoUpdateType:  string;
+  readonly updateType:      UpdateType;
   readonly packageName:     string;
   readonly artifactName:    string;
   readonly deployedVersion: string;
@@ -77,7 +89,7 @@ export class UpdateCycle {
       }
       this.concludeCycle();
     } catch (thrown) {
-      this.recordFailedCycle(thrown);
+      this.logger.error('artifact update cycle failed', { error: new CaughtError(thrown).message });
       throw thrown;
     }
   }
@@ -129,7 +141,7 @@ export class UpdateCycle {
     } catch (thrown) {
       this.updatesAttempted += 1;
       this.updatesFailed    += 1;
-      this.recordFailedResource(resource.arn, thrown);
+      this.logger.error('failed to update resource', { arn: resource.arn, error: new CaughtError(thrown).message });
     }
   }
 
@@ -153,6 +165,11 @@ export class UpdateCycle {
       return undefined;
     }
 
+    if (!isUpdateType(autoUpdateType)) {
+      this.logger.debug('unknown auto-update-type', { arn, resourceType: service, type: autoUpdateType });
+      return undefined;
+    }
+
     if (!packageName || !artifactName || !deployedVersion) {
       this.logger.warn('resource missing artifact tags', {
         arn,
@@ -167,7 +184,7 @@ export class UpdateCycle {
     return {
       arn,
       service,
-      autoUpdateType,
+      updateType: autoUpdateType,
       packageName,
       artifactName,
       deployedVersion,
@@ -177,22 +194,25 @@ export class UpdateCycle {
 
   /** True when the resource was handed to an updater; false when it is of a kind or in a place no updater takes. */
   private async advance(scan: RegionClients, resource: UpdatableResource): Promise<boolean> {
-    if (resource.service === 'cloudfront') {
-      return this.advanceDistribution(resource);
+    if (!isUpdatableService(resource.service)) {
+      this.logger.debug('unknown resource type', { arn: resource.arn, resourceType: resource.service });
+      return false;
     }
-    if (resource.service === 'lambda') {
-      return this.advanceFunction(scan, resource);
+
+    switch (resource.service) {
+      case 'cloudfront':
+        return this.advanceDistribution(resource);
+      case 'lambda':
+        return this.advanceFunction(scan, resource);
     }
-    this.logger.debug('unknown resource type', { arn: resource.arn, resourceType: resource.service });
-    return false;
   }
 
   /** Only a distribution in front of a UI bucket is updated. */
   private async advanceDistribution(resource: UpdatableResource): Promise<boolean> {
-    if (resource.autoUpdateType !== 'ui') {
+    if (resource.updateType !== 'ui') {
       this.logger.debug('unsupported auto-update-type for CloudFront distribution', {
         arn:  resource.arn,
-        type: resource.autoUpdateType,
+        type: resource.updateType,
       });
       return false;
     }
@@ -207,14 +227,14 @@ export class UpdateCycle {
   }
 
   private async advanceFunction(scan: RegionClients, resource: UpdatableResource): Promise<boolean> {
-    switch (resource.autoUpdateType) {
+    switch (resource.updateType) {
       case 'code':
         await this.codeUpdater.advanceIfStale(scan, this.lambdaTarget(resource));
         return true;
       case 'edge':
         return this.advanceEdgeFunction(scan, resource);
-      default:
-        this.logger.debug('unknown auto-update-type for lambda', { arn: resource.arn, type: resource.autoUpdateType });
+      case 'ui':
+        this.logger.debug('unknown auto-update-type for lambda', { arn: resource.arn, type: resource.updateType });
         return false;
     }
   }
@@ -257,21 +277,13 @@ export class UpdateCycle {
     }
   }
 
-  private tagMapFrom(tags: Tag[] | undefined): Record<string, string> {
-    const map: Record<string, string> = {};
+  private tagMapFrom(tags: Tag[] | undefined): TagValues {
+    const map: TagValues = {};
     for (const tag of tags ?? []) {
       if (tag.Key && tag.Value) {
         map[tag.Key] = tag.Value;
       }
     }
     return map;
-  }
-
-  private recordFailedResource(arn: string, thrown: unknown): void {
-    this.logger.error('failed to update resource', { arn, error: new CaughtError(thrown).message });
-  }
-
-  private recordFailedCycle(thrown: unknown): void {
-    this.logger.error('artifact update cycle failed', { error: new CaughtError(thrown).message });
   }
 }

@@ -9,7 +9,12 @@
 
 import { CloudFrontClient, TagResourceCommand }                                                      from '@aws-sdk/client-cloudfront';
 import type { S3Client }                                                                             from '@aws-sdk/client-s3';
-import { LoggerBuffer, type Region }                                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import {
+  invalidateCloudFront as invalidateCloudFrontFunction,
+  LoggerBuffer,
+  type Region,
+} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type * as LambdaRuntime                                                                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                                                                from 'aws-sdk-client-mock';
 
 import { ReleaseArtifacts }                                                                          from '../release-artifacts';
@@ -24,7 +29,7 @@ jest.mock('@serverlessinbox/artifact-registry', () => ({
 }));
 
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
-  ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
+  ...jest.requireActual<typeof LambdaRuntime>('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
   deployZipToPrefix:    jest.fn(),
   invalidateCloudFront: jest.fn(),
 }));
@@ -102,11 +107,9 @@ describe('UiBucketUpdater', () => {
       targetBucket: 'ui-content-bucket',
       targetPrefix: 'content/',
     });
-    expect(invalidateCloudFront).toHaveBeenCalledWith(expect.anything(), {
-      distributionId:  'ABCD1234',
-      paths:           ['/*'],
-      callerReference: expect.stringContaining('ui-update:ui-content-bucket:1.2.4:'),
-    });
+    const invalidation = jest.mocked(invalidateCloudFrontFunction).mock.calls[0][1];
+    expect(invalidation).toMatchObject({ distributionId: 'ABCD1234', paths: ['/*'] });
+    expect(invalidation.callerReference).toContain('ui-update:ui-content-bucket:1.2.4:');
     expect(cloudFrontMock.commandCalls(TagResourceCommand)[0].args[0].input).toEqual({
       Resource: DISTRIBUTION_ARN,
       Tags:     { Items: [{ Key: 'serverless-inbox:artifact-version', Value: '1.2.4' }] },

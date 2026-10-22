@@ -137,7 +137,7 @@ describe('UpdateCycle', () => {
 
       await cycle.run();
 
-      const scanned = new Set(taggingMock.calls().map((call) => call.thisValue));
+      const scanned = new Set(taggingMock.calls().map((call): unknown => call.thisValue));
       expect(scanned).toEqual(new Set([clients.deployment.tagging, clients.edge.tagging]));
     });
 
@@ -160,10 +160,16 @@ describe('UpdateCycle', () => {
 
   describe('which resources are updated', () => {
     it.each([
-      ['opted out', lambdaWithType('none')],
-      ['opted out and carrying no artifact tags', resource(LAMBDA_ARN, { 'serverless-inbox:auto-update-type': 'none' })],
-      ['untagged, which defaults to opted out', resource(LAMBDA_ARN, { 'serverless-inbox:root-stack': 'my-stack' })],
-    ])('skips a resource that is %s, before looking at its artifact tags', async (_description, skipped) => {
+      { state: 'opted out', skipped: lambdaWithType('none') },
+      {
+        state:   'opted out and carrying no artifact tags',
+        skipped: resource(LAMBDA_ARN, { 'serverless-inbox:auto-update-type': 'none' }),
+      },
+      {
+        state:   'untagged, which defaults to opted out',
+        skipped: resource(LAMBDA_ARN, { 'serverless-inbox:root-stack': 'my-stack' }),
+      },
+    ])('skips a resource that is $state, before looking at its artifact tags', async ({ skipped }) => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [skipped] });
       const { cycle, codeUpdater, edgeUpdater, uiUpdater } = newCycle();
 
@@ -194,6 +200,25 @@ describe('UpdateCycle', () => {
         );
       },
     );
+
+    it.each([
+      { kind: 'function', resource: lambdaWithType('canary'), resourceType: 'lambda' },
+      { kind: 'distribution', resource: distributionWithType('canary', 'ui-content-bucket'), resourceType: 'cloudfront' },
+    ])('skips a $kind whose auto-update-type is none of the types it knows, and says so at debug level', async ({ resource: unknownType, resourceType }) => {
+      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [unknownType] });
+      const { cycle, codeUpdater, edgeUpdater, uiUpdater } = newCycle();
+
+      await cycle.run();
+
+      expect(codeUpdater.advanceIfStale).not.toHaveBeenCalled();
+      expect(edgeUpdater.advanceIfStale).not.toHaveBeenCalled();
+      expect(uiUpdater.advanceIfStale).not.toHaveBeenCalled();
+      expect(console.debug).toHaveBeenCalledWith('unknown auto-update-type', {
+        arn:          unknownType.ResourceARN,
+        resourceType,
+        type:         'canary',
+      });
+    });
 
     it('skips a resource in the response that has no ARN', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [{ Tags: [] }] });
@@ -289,9 +314,9 @@ describe('UpdateCycle', () => {
     });
 
     it.each([
-      ['a ui distribution without a bucket-name tag', distributionWithType('ui')],
-      ['a distribution of another update type', distributionWithType('code', 'ui-content-bucket')],
-    ])('leaves %s alone', async (_description, distribution) => {
+      { kind: 'a ui distribution without a bucket-name tag', distribution: distributionWithType('ui') },
+      { kind: 'a distribution of another update type', distribution: distributionWithType('code', 'ui-content-bucket') },
+    ])('leaves $kind alone', async ({ distribution }) => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [distribution] });
       const { cycle, uiUpdater } = newCycle();
 

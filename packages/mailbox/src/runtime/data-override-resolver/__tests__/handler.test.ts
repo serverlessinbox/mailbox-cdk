@@ -75,17 +75,21 @@ describe('handler with a valid config', () => {
 
     expect(flush).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith('describe blew up', { service: 'data-override-resolver' });
-    expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('describe blew up') });
+    const response = cfnResponse();
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('describe blew up');
   });
 
-  it('answers FAILED with the reason and does not flush when the resolver throws an ExpectedFailure', async () => {
+  it('answers FAILED with the reason, and neither flushes nor writes an error line, when the resolver throws an ExpectedFailure', async () => {
     resolve.mockRejectedValue(new ExpectedFailure('itemTable: override table x does not exist'));
     const cfnResponse = captureCfnResponse();
 
     await handler(createEvent(), lambdaContext());
 
     expect(flush).not.toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalledWith('itemTable: override table x does not exist', { service: 'data-override-resolver' });
-    expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('itemTable: override table x does not exist') });
+    expect(consoleError).not.toHaveBeenCalledWith('itemTable: override table x does not exist', { service: 'data-override-resolver' });
+    const response = cfnResponse();
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('itemTable: override table x does not exist');
   });
 });

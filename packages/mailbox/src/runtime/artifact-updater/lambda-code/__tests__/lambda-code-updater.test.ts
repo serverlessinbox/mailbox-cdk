@@ -17,12 +17,6 @@ import {
 import { LoggerBuffer }        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }          from 'aws-sdk-client-mock';
 
-import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback }  from '../lambda-code-rollback';
-import { LambdaCodeUpdater }   from '../lambda-code-updater';
-import { LambdaFunctionCode }  from '../lambda-function-code';
-import { ReleaseArtifacts }    from '../../release-artifacts';
-
 import {
   EU_WEST_1,
   fakeUpdaterClients,
@@ -30,8 +24,14 @@ import {
   lambdaTarget,
   noSleep,
   testConfig,
+  type BuildArtifactKeyArguments,
   type RegistryMocks,
 } from '../../__tests__/updater-helpers';
+import { ReleaseArtifacts }    from '../../release-artifacts';
+import { FunctionSmokeTester } from '../function-smoke-tester';
+import { LambdaCodeRollback }  from '../lambda-code-rollback';
+import { LambdaCodeUpdater }   from '../lambda-code-updater';
+import { LambdaFunctionCode }  from '../lambda-function-code';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack:        jest.fn(),
@@ -65,8 +65,7 @@ describe('LambdaCodeUpdater', () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     deriveTrack.mockReturnValue('v1');
     buildArtifactKey.mockImplementation(
-      (_kind: string, _package: string, release: { version: { version: string }; objectName: string }) =>
-        `releases/v${release.version.version}/${release.objectName}`,
+      (...args: BuildArtifactKeyArguments) => `releases/v${args[2].version.version}/${args[2].objectName}`,
     );
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(GetFunctionConfigurationCommand).resolves({ LastUpdateStatus: 'Successful' });
@@ -123,9 +122,17 @@ describe('LambdaCodeUpdater', () => {
   });
 
   describe.each([
-    ['fails', () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')), 'fail'],
-    ['cannot be run', () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')), 'unprobeable'],
-  ])('when the smoke test %s', (_description, arrangeProbe, expectedVerdict) => {
+    {
+      outcome:         'fails',
+      arrangeProbe:    () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
+      expectedVerdict: 'fail',
+    },
+    {
+      outcome:         'cannot be run',
+      arrangeProbe:    () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
+      expectedVerdict: 'unprobeable',
+    },
+  ])('when the smoke test $outcome', ({ arrangeProbe, expectedVerdict }) => {
     it('puts the function back on its old code and writes no tag', async () => {
       readReleasePointer.mockResolvedValue({ version: '1.2.4' });
       arrangeProbe();

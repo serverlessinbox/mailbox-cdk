@@ -2,6 +2,7 @@ import { InvokeCommand, type LambdaClient }          from '@aws-sdk/client-lambd
 import { CaughtError, type LoggerBuffer }            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { hasHttpRequestLine, type HttpTriggerEvent } from '../updater-event';
+
 import type { UpdaterTrigger }                       from './updater-trigger';
 
 /** The response to an HTTP API request. */
@@ -66,23 +67,23 @@ export class HttpTrigger implements UpdaterTrigger<HttpTriggerResponse> {
       errorName:    caught.name,
       errorMessage: caught.message,
     });
-    return HttpTrigger.serverError(`Failed to trigger update: ${caught.message}`);
-  }
-
-  private static serverError(message: string): HttpTriggerResponse {
-    return { statusCode: 500, body: JSON.stringify({ error: message }) };
+    return this.serverError(`Failed to trigger update: ${caught.message}`);
   }
 
   /** There is no logger before the configuration loads, so the problem goes straight to the console. */
   private answerBadConfig(configError: string): HttpTriggerResponse {
     console.error('Configuration error', { error: configError });
-    return HttpTrigger.serverError(`Configuration error: ${configError}`);
+    return this.serverError(`Configuration error: ${configError}`);
+  }
+
+  private serverError(message: string): HttpTriggerResponse {
+    return { statusCode: 500, body: JSON.stringify({ error: message }) };
   }
 
   /** A request whose method and path cannot be read has neither, and is answered 404. */
   private readRequest(): RequestLine {
     const line = this.lineOf(this.event);
-    this.logger.debug('http trigger received',{ method: line.method, path: line.path });
+    this.logger.debug('http trigger received', { method: line.method, path: line.path });
     return line;
   }
 

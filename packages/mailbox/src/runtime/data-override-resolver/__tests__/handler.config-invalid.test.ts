@@ -32,7 +32,9 @@ describe('handler with an invalid config', () => {
     await handler(createEvent(), lambdaContext());
 
     expect(resolve).not.toHaveBeenCalled();
-    expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: expect.stringContaining('LOG_LEVEL') });
+    const response = cfnResponse();
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('LOG_LEVEL');
   });
 
   it('answers a Delete with SUCCESS, so a stack that cannot be updated can still be deleted', async () => {

@@ -1,8 +1,9 @@
 import type { S3Client }                                                      from '@aws-sdk/client-s3';
 import { buildArtifactKey, deriveTrack, readReleasePointer }                  from '@serverlessinbox/artifact-registry';
-import { LoggerBuffer, type Region }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { valid as semverValid, gt as semverGt, parse as semverParse, SemVer } from 'semver';
+import type { LoggerBuffer, Region }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { gt as semverGt, parse as semverParse, type SemVer }                  from 'semver';
 
+import type { ArtifactCoordinates }                                           from './artifact-target';
 import type { UpdaterTargetConfig }                                           from './config';
 import {
   toArtifactBucketName,
@@ -26,8 +27,8 @@ export interface ArtifactLocation {
 }
 
 /**
- * The release artifacts the updater follows: finds the release a deployed version is behind on, and locates
- * a release object. It decides nothing about how an artifact is installed.
+ * The release artifacts the updater follows: finds the release a deployed version is behind on, and owns where
+ * each kind of artifact is stored in a release. It decides nothing about how an artifact is installed.
  */
 export class ReleaseArtifacts {
   private readonly registryS3: S3Client;
@@ -65,17 +66,19 @@ export class ReleaseArtifacts {
       return null;
     }
 
-    if (!semverValid(pointer.version) || !semverValid(deployedVersion)) {
+    const parsed   = semverParse(pointer.version);
+    const deployed = semverParse(deployedVersion);
+    if (!parsed || !deployed) {
       this.logger.debug('invalid version format, skipping', {
         deployedVersion,
         candidateVersion:      pointer.version,
-        deployedVersionValid:  semverValid(deployedVersion),
-        candidateVersionValid: semverValid(pointer.version),
+        deployedVersionValid:  deployed?.version ?? null,
+        candidateVersionValid: parsed?.version ?? null,
       });
       return null;
     }
 
-    if (!semverGt(pointer.version, deployedVersion)) {
+    if (!semverGt(parsed, deployed)) {
       this.logger.debug('version is not newer', {
         deployedVersion,
         candidateVersion: pointer.version,
@@ -83,20 +86,20 @@ export class ReleaseArtifacts {
       return null;
     }
 
-    const parsed   = semverParse(pointer.version);
-    const deployed = semverParse(deployedVersion);
-    if (!parsed || !deployed) {
-      this.logger.debug('failed to parse version (logic error: semverValid guard should have prevented this)', {
-        version: pointer.version,
-      });
-      return null;
-    }
-
     return { version: toArtifactVersion(pointer.version), parsed, deployed };
   }
 
-  /** The bucket of the region and the key of the object of one release of the package. */
-  public locate(
+  /** The location of the zip of a Lambda function's code in one release of its package. */
+  public locateLambdaCode(region: Region, target: ArtifactCoordinates, release: SemVer): ArtifactLocation {
+    return this.locate(region, target.packageName, release, `lambdas/${target.artifactName}.zip`);
+  }
+
+  /** The location of a UI bundle in one release of its package; the bundle is stored under its artifact name. */
+  public locateUiBundle(region: Region, target: ArtifactCoordinates, release: SemVer): ArtifactLocation {
+    return this.locate(region, target.packageName, release, target.artifactName);
+  }
+
+  private locate(
     region: Region,
     packageName: ArtifactPackageName,
     release: SemVer,

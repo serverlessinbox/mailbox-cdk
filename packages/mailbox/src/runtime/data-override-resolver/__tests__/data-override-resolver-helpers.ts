@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 /**
  * Fixtures shared by the data override resolver's tests: the resource properties the construct sends,
  * CloudFormation custom-resource events carrying them, and the capture of the response a
@@ -5,7 +7,9 @@
  */
 
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+import * as https                                          from 'https';
 import { Writable }                                        from 'stream';
+import * as t                                              from 'typanion';
 
 import type { ResourceProperties, TableRole }              from '../resource-properties';
 
@@ -60,40 +64,53 @@ export function deleteEvent(): CloudFormationCustomResourceEvent {
   };
 }
 
+/** A Lambda context that carries only the fields the handler passes on. */
 export function lambdaContext(): Context {
   return {
-    getRemainingTimeInMillis: () => 30000,
-    logStreamName:            'log-stream',
-    logGroupName:             'log-group',
-  } as unknown as Context;
+    callbackWaitsForEmptyEventLoop: false,
+    functionName:                   'data-override-resolver',
+    functionVersion:                '$LATEST',
+    invokedFunctionArn:             SERVICE_TOKEN,
+    memoryLimitInMB:                '256',
+    awsRequestId:                   'test-request-id',
+    logGroupName:                   'log-group',
+    logStreamName:                  'log-stream',
+    getRemainingTimeInMillis:       () => 30000,
+    done:                           () => undefined,
+    fail:                           () => undefined,
+    succeed:                        () => undefined,
+  };
 }
+
+const isCapturedCfnResponse = t.isPartial({
+  Status:             t.isString(),
+  Reason:             t.isOptional(t.isString()),
+  PhysicalResourceId: t.isOptional(t.isString()),
+  Data:               t.isOptional(t.isRecord(t.isString())),
+});
 
 /** The fields of the CloudFormation response that the handler tests assert on. */
-export interface CapturedCfnResponse {
-  Status:              string;
-  Reason?:             string;
-  PhysicalResourceId?: string;
-  Data?:               Record<string, string>;
-}
+export type CapturedCfnResponse = t.InferType<typeof isCapturedCfnResponse>;
 
 /**
- * Routes the mocked `https.request` (the test file must `jest.mock('https', ...)`) into a Writable
+ * Routes the mocked `https.request` (the test file must `jest.mock('https', ...)`) into a stream
  * and returns a function yielding the CloudFormation response body the handler PUT to ResponseURL.
  */
 export function captureCfnResponse(): () => CapturedCfnResponse {
-  // eslint-disable-next-line global-require
-  const https = require('https');
-  let body    = '';
-  https.request.mockImplementation((_options: unknown, callback?: (res: { statusCode: number }) => void) => {
-    if (callback) {
-      callback({ statusCode: 200 });
-    }
+  let body = '';
+  jest.mocked(https.request).mockImplementation(((...args: [unknown, ((res: object) => void)?]) => {
+    args[1]?.({ statusCode: 200 });
     return new Writable({
-      write(chunk: Buffer, _encoding: string, done: () => void) {
+      write(chunk: Buffer, ...rest: [BufferEncoding, (error?: Error | null) => void]) {
         body += chunk.toString();
-        done();
+        rest[1]();
       },
     });
-  });
-  return () => JSON.parse(body) as CapturedCfnResponse;
+  }) as typeof https.request);
+
+  return () => {
+    const response: unknown = JSON.parse(body);
+    t.assert(response, isCapturedCfnResponse);
+    return response;
+  };
 }

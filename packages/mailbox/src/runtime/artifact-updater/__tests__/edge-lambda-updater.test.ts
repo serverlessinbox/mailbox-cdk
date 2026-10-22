@@ -45,6 +45,7 @@ import {
   noSleep,
   testConfig,
   testRootStackResources,
+  type BuildArtifactKeyArguments,
   type RegistryMocks,
 } from './updater-helpers';
 
@@ -142,8 +143,7 @@ describe('EdgeLambdaUpdater', () => {
     deriveTrack.mockReturnValue('v1');
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
     buildArtifactKey.mockImplementation(
-      (_kind: string, _package: string, release: { version: { version: string }; objectName: string }) =>
-        `edge-pkg/release/${release.version.version}/${release.objectName}`,
+      (...args: BuildArtifactKeyArguments) => `edge-pkg/release/${args[2].version.version}/${args[2].objectName}`,
     );
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(GetFunctionConfigurationCommand).resolves({ LastUpdateStatus: 'Successful' });
@@ -217,9 +217,17 @@ describe('EdgeLambdaUpdater', () => {
   });
 
   describe.each([
-    ['fails', () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')), 'fail'],
-    ['cannot be run', () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')), 'unprobeable'],
-  ])('when the smoke test of the published version %s', (_description, arrangeProbe, expectedVerdict) => {
+    {
+      outcome:         'fails',
+      arrangeProbe:    () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
+      expectedVerdict: 'fail',
+    },
+    {
+      outcome:         'cannot be run',
+      arrangeProbe:    () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
+      expectedVerdict: 'unprobeable',
+    },
+  ])('when the smoke test of the published version $outcome', ({ arrangeProbe, expectedVerdict }) => {
     it('leaves the distribution on its version, puts the code back on the deployed release and writes no tag', async () => {
       arrangeProbe();
 
@@ -266,9 +274,9 @@ describe('EdgeLambdaUpdater', () => {
 
   describe('when no distribution can be repointed', () => {
     it.each([
-      ['no distribution carries the tag', [] as string[]],
-      ['no tagged distribution uses the function', ['DIST_OTHER']],
-    ])('rejects, logs and does not tag when %s', async (_description, taggedIds) => {
+      { situation: 'no distribution carries the tag', taggedIds: [] as string[] },
+      { situation: 'no tagged distribution uses the function', taggedIds: ['DIST_OTHER'] },
+    ])('rejects, logs and does not tag when $situation', async ({ taggedIds }) => {
       taggedDistributions(...taggedIds);
       distributionConfigOf('DIST_OTHER', distributionConfig([association(`${OTHER_ARN}:1`, 'origin-request')]));
 

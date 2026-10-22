@@ -27,8 +27,8 @@ import type { ReadyUpdater, UpdaterRuntime }                                    
 /**
  * Builds what one invocation works with, from the runtime the entry point loaded once per cold start: the
  * invocation's logger and the triggers, each handed only the cycle factory, client, names and logger it uses.
- * It also loads that runtime. It decides nothing about an event. The cycle and the client exist only for a
- * configuration that loaded; for one that failed, asking for them throws the configuration error.
+ * It also loads that runtime. It decides nothing about an event. The cycle and the client exist only for a configuration that loaded; for
+ * one that failed, asking for them throws the configuration error.
  */
 export class UpdaterComposition implements TriggerBuilder {
   public readonly logger: LoggerBuffer;
@@ -132,5 +132,4 @@ export class UpdaterComposition implements TriggerBuilder {
     }
     return this.runtime;
   }
-
 }

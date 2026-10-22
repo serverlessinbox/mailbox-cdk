@@ -1,23 +1,37 @@
-import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
-import * as t                                     from 'typanion';
+import * as t from 'typanion';
 
-const hasCfnTriggerFields = t.isPartial({
-  RequestType:        t.isString(),
-  StackId:            t.isString(),
+const isResourceProperties = t.isPartial({ ServiceToken: t.isString() });
+
+const cfnRequestFields = {
+  ServiceToken:       t.isString(),
   ResponseURL:        t.isString(),
-  LogicalResourceId:  t.isString(),
-  PhysicalResourceId: t.isOptional(t.isString()),
+  StackId:            t.isString(),
   RequestId:          t.isString(),
+  LogicalResourceId:  t.isString(),
+  ResourceType:       t.isString(),
+  ResourceProperties: isResourceProperties,
+};
+
+const isCreateRequest = t.isPartial({ RequestType: t.isLiteral('Create'), ...cfnRequestFields });
+const isUpdateRequest = t.isPartial({
+  RequestType:           t.isLiteral('Update'),
+  ...cfnRequestFields,
+  PhysicalResourceId:    t.isString(),
+  OldResourceProperties: isResourceProperties,
+});
+const isDeleteRequest = t.isPartial({
+  RequestType: t.isLiteral('Delete'),
+  ...cfnRequestFields,
+  PhysicalResourceId: t.isString(),
 });
 
 /**
- * Whether the event is a CloudFormation custom-resource request. Only the fields that tell it from the other
- * events the updater receives are checked; the rest of its shape is CloudFormation's contract, and the schema
- * accepts the fields it does not list.
+ * Whether the event is a CloudFormation custom-resource request: one of the three request variants with every
+ * field CloudFormation sends for it. CloudFormation's contract allows more fields than the schema lists, so
+ * unlisted fields are accepted; a request without a listed field is not recognised and would be run as a
+ * scheduled event.
  */
-export const isCfnTriggerEvent = t.makeValidator<unknown, CloudFormationCustomResourceEvent>({
-  test: (value, state): value is CloudFormationCustomResourceEvent => hasCfnTriggerFields(value, state),
-});
+export const isCfnTriggerEvent = t.isOneOf([isCreateRequest, isUpdateRequest, isDeleteRequest]);
 
 /**
  * What makes an event an API Gateway v2 (HTTP API) request to the updater: it has a request context. Whether

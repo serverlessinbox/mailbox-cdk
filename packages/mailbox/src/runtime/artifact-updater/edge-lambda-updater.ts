@@ -20,8 +20,6 @@ import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-
 import type { RegionClients, RootStackResources }               from './updater-clients';
 import { toLambdaFunctionArn, type LambdaFunctionArn }          from './updater-identifiers';
 
-const CONFLICT_RETRY_DELAYS_MS = [3000, 6000];
-
 /** The cache behaviours of a distribution, in which Lambda@Edge functions are associated. */
 type CacheBehaviorsOf = Pick<DistributionConfig, 'DefaultCacheBehavior' | 'CacheBehaviors'>;
 
@@ -31,6 +29,8 @@ interface DistributionOfFunction {
   readonly config: DistributionConfig;
   readonly etag:   string;
 }
+
+const CONFLICT_RETRY_DELAYS_MS = [3000, 6000];
 
 /**
  * Advances a Lambda@Edge function to the newer release of its code: replaces the code, publishes a version and
@@ -81,7 +81,7 @@ export class EdgeLambdaUpdater {
       return false;
     }
 
-    const location = this.releases.locate(this.edge.region, target.packageName, stale.parsed, this.objectName(target));
+    const location = this.releases.locateLambdaCode(this.edge.region, target, stale.parsed);
 
     try {
       await this.deployNewCode(target, stale, location);
@@ -105,7 +105,10 @@ export class EdgeLambdaUpdater {
       });
       return true;
     } catch (thrown) {
-      this.recordFailedUpdate(target, thrown);
+      this.logger.error('failed to update edge lambda', {
+        edgeLambdaArn: target.arn,
+        error:         new CaughtError(thrown).message,
+      });
       throw thrown;
     }
   }
@@ -168,17 +171,8 @@ export class EdgeLambdaUpdater {
     stale: StaleTarget,
     verdict: SmokeTestVerdict,
   ): Promise<void> {
-    const deployedLocation = this.releases.locate(
-      this.edge.region,
-      target.packageName,
-      stale.deployed,
-      this.objectName(target),
-    );
+    const deployedLocation = this.releases.locateLambdaCode(this.edge.region, target, stale.deployed);
     await this.rollback.restore(this.edge.lambda, target, stale, verdict, deployedLocation);
-  }
-
-  private objectName(target: LambdaTarget): string {
-    return `lambdas/${target.artifactName}.zip`;
   }
 
   /** The first distribution of this install that associates the function, whatever the version or event type of the association. */
@@ -252,12 +246,5 @@ export class EdgeLambdaUpdater {
 
   private withoutVersion(arn: string): string {
     return arn.replace(/:\d+$/, '');
-  }
-
-  private recordFailedUpdate(target: LambdaTarget, thrown: unknown): void {
-    this.logger.error('failed to update edge lambda', {
-      edgeLambdaArn: target.arn,
-      error:         new CaughtError(thrown).message,
-    });
   }
 }

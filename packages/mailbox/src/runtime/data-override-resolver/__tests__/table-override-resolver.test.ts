@@ -48,7 +48,9 @@ describe('TableOverrideResolver', () => {
   });
 
   it('rejects properties missing a required key with an error naming the key', async () => {
-    const { itemTableIncomingArn: _omitted, ...withoutItemTableIncoming } = PROPERTIES_WITHOUT_OVERRIDES;
+    const withoutItemTableIncoming = Object.fromEntries(
+      Object.entries(PROPERTIES_WITHOUT_OVERRIDES).filter(([key]) => key !== 'itemTableIncomingArn'),
+    );
 
     const rejection = resolver.resolve(withoutItemTableIncoming);
 
@@ -108,10 +110,10 @@ describe('TableOverrideResolver', () => {
     });
 
     it.each([
-      ['another service', 'arn:aws:sqs:eu-west-1:123456789012:table/override-item'],
-      ['a table index', `${OVERRIDE_ITEM_ARN}/index/by-date`],
-      ['a table stream', `${OVERRIDE_ITEM_ARN}/stream/2026-01-01T00:00:00.000`],
-    ])('rejects with an ExpectedFailure, without calling DynamoDB, when the override is the ARN of %s', async (_kind, overrideArn) => {
+      { kind: 'another service', overrideArn: 'arn:aws:sqs:eu-west-1:123456789012:table/override-item' },
+      { kind: 'a table index', overrideArn: `${OVERRIDE_ITEM_ARN}/index/by-date` },
+      { kind: 'a table stream', overrideArn: `${OVERRIDE_ITEM_ARN}/stream/2026-01-01T00:00:00.000` },
+    ])('rejects with an ExpectedFailure, without calling DynamoDB, when the override is the ARN of $kind', async ({ overrideArn }) => {
       const rejection = resolver.resolve({ ...PROPERTIES_WITHOUT_OVERRIDES, itemTableOverrideArn: overrideArn });
 
       await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);

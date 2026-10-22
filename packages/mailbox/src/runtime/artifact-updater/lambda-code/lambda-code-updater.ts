@@ -1,11 +1,12 @@
 import { CaughtError, type LoggerBuffer }                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { LambdaTarget }                                    from '../artifact-target';
+import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from '../release-artifacts';
+import type { RegionClients }                                   from '../updater-clients';
+
 import type { FunctionSmokeTester, SmokeTestVerdict }           from './function-smoke-tester';
 import type { LambdaCodeRollback }                              from './lambda-code-rollback';
 import type { LambdaFunctionCode }                              from './lambda-function-code';
-import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from '../release-artifacts';
-import type { RegionClients }                                   from '../updater-clients';
 
 /**
  * Advances a Lambda function to the newer release of its code, when there is one. The new code is probed with
@@ -41,20 +42,16 @@ export class LambdaCodeUpdater {
       return false;
     }
 
-    const location = this.releases.locate(scan.region, target.packageName, stale.parsed, this.objectName(target));
+    const location = this.releases.locateLambdaCode(scan.region, target, stale.parsed);
 
     try {
       await this.deployNewCode(scan, target, stale, location);
       const verdict = await this.smokeTester.probe(scan.lambda, target.arn);
       return await this.settle(scan, target, stale, verdict);
     } catch (thrown) {
-      this.recordFailedUpdate(target, thrown);
+      this.logger.error('failed to update lambda', { lambdaArn: target.arn, error: new CaughtError(thrown).message });
       throw thrown;
     }
-  }
-
-  private objectName(target: LambdaTarget): string {
-    return `lambdas/${target.artifactName}.zip`;
   }
 
   private async deployNewCode(
@@ -90,17 +87,8 @@ export class LambdaCodeUpdater {
       return true;
     }
 
-    const deployedLocation = this.releases.locate(
-      scan.region,
-      target.packageName,
-      stale.deployed,
-      this.objectName(target),
-    );
+    const deployedLocation = this.releases.locateLambdaCode(scan.region, target, stale.deployed);
     await this.rollback.restore(scan.lambda, target, stale, verdict, deployedLocation);
     return false;
-  }
-
-  private recordFailedUpdate(target: LambdaTarget, thrown: unknown): void {
-    this.logger.error('failed to update lambda', { lambdaArn: target.arn, error: new CaughtError(thrown).message });
   }
 }

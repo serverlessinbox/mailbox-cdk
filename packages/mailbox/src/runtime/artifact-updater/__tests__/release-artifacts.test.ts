@@ -7,12 +7,12 @@
  * redirect-following client and be rebuilt on every call. The registry package is faked because it reads S3.
  */
 
-import { LoggerBuffer }                                                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { SemVer }                                                                      from 'semver';
+import { LoggerBuffer }                                                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SemVer }                                                                                from 'semver';
 
-import { ReleaseArtifacts }                                                            from '../release-artifacts';
+import { ReleaseArtifacts }                                                                      from '../release-artifacts';
 
-import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, type RegistryMocks } from './updater-helpers';
+import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
   deriveTrack:        jest.fn(),
@@ -68,11 +68,11 @@ describe('ReleaseArtifacts', () => {
     });
 
     it.each([
-      ['the same version', '1.2.3', '1.2.3'],
-      ['an older version', '1.2.2', '1.2.3'],
-      ['a pointer that is not a semantic version', 'not-a-semver', '1.2.3'],
-      ['a deployed version that is not a semantic version', '1.2.4', 'not-a-semver'],
-    ])('returns null for %s', async (_description, pointerVersion, deployedVersion) => {
+      { description: 'the same version', pointerVersion: '1.2.3', deployedVersion: '1.2.3' },
+      { description: 'an older version', pointerVersion: '1.2.2', deployedVersion: '1.2.3' },
+      { description: 'a pointer that is not a semantic version', pointerVersion: 'not-a-semver', deployedVersion: '1.2.3' },
+      { description: 'a deployed version that is not a semantic version', pointerVersion: '1.2.4', deployedVersion: 'not-a-semver' },
+    ])('returns null for $description', async ({ pointerVersion, deployedVersion }) => {
       readReleasePointer.mockResolvedValue({ version: pointerVersion });
 
       await expect(
@@ -81,12 +81,12 @@ describe('ReleaseArtifacts', () => {
     });
   });
 
-  describe('locate', () => {
-    it('puts a release object in the artifact bucket of the region, under the key the registry builds for it', () => {
+  describe('locateLambdaCode', () => {
+    it('puts the zip of the function in the artifact bucket of the region, under the key the registry builds for it', () => {
       buildArtifactKey.mockReturnValue('serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip');
       const release = new SemVer('1.2.4');
 
-      const location = releases.locate(EU_WEST_1,packageName, release, 'lambdas/mailbox-go.zip');
+      const location = releases.locateLambdaCode(EU_WEST_1, lambdaTarget(), release);
 
       expect(location).toEqual({
         bucket: 'mailbox-artifacts-eu-west-1',
@@ -96,6 +96,22 @@ describe('ReleaseArtifacts', () => {
         type:       'release',
         version:    release,
         objectName: 'lambdas/mailbox-go.zip',
+        project:    'serverlessinbox',
+      });
+    });
+  });
+
+  describe('locateUiBundle', () => {
+    it('stores the bundle under its artifact name, with no folder of its own', () => {
+      buildArtifactKey.mockReturnValue('serverlessinbox/packages/ui-bundle/releases/v1.2.4/ui-bundle.zip');
+      const release = new SemVer('1.2.4');
+
+      releases.locateUiBundle(EU_WEST_1, uiTarget(), release);
+
+      expect(buildArtifactKey).toHaveBeenCalledWith('package', 'ui-bundle', {
+        type:       'release',
+        version:    release,
+        objectName: 'ui-bundle.zip',
         project:    'serverlessinbox',
       });
     });

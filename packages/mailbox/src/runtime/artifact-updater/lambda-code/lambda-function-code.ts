@@ -9,11 +9,11 @@ import { ServerlessInboxTagKeys }                  from '@serverlessinbox/mailbo
 import type { ArtifactLocation }                   from '../release-artifacts';
 import type { ArtifactVersion, LambdaFunctionArn } from '../updater-identifiers';
 
-const MAX_POLL_ATTEMPTS = 30;
-const POLL_INTERVAL_MS  = 2000;
-
 /** Waits for the given number of milliseconds. */
 export type Sleep = (milliseconds: number) => Promise<void>;
+
+const MAX_POLL_ATTEMPTS = 30;
+const POLL_INTERVAL_MS  = 2000;
 
 /**
  * The operations on the code of a Lambda function that the code and edge update paths share: replace the
