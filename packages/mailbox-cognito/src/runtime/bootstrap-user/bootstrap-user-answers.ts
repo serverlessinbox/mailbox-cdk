@@ -1,6 +1,7 @@
-import type { CustomResourceAnswer }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CustomResourceAnswer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { PASSWORD_SET_AT_INSTALL_TIME } from './password';
+/** Marker returned in Data.temporaryPassword when password was set at install time and is not recoverable. */
+export const PASSWORD_SET_AT_INSTALL_TIME = '(password set at install time)';
 
 /** The attributes of the custom resource; the construct reads `temporaryPassword` through `GetAtt`. */
 export type BootstrapUserAnswerData = {

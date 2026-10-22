@@ -14,21 +14,7 @@ export enum CognitoScope {
   ADMIN = 'admin',
 }
 
-/** The mailbox permissions each Cognito scope grants. */
-export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
-  [CognitoScope.MAIL_READ]: [Permission.MAIL_READ],
-  [CognitoScope.MAIL_WRITE]: [Permission.MAIL_WRITE],
-  [CognitoScope.MAIL_SEND]: [Permission.MAIL_SEND],
-  [CognitoScope.ACCOUNT_READ]: [Permission.ACCOUNT_READ],
-  [CognitoScope.ALIAS_READ]: [Permission.ALIAS_READ],
-  [CognitoScope.ALIAS_WRITE]: [Permission.ALIAS_WRITE],
-  [CognitoScope.USER_READ]: [Permission.USER_READ],
-  [CognitoScope.CONTACTS_READ]: [Permission.CONTACTS_READ],
-  [CognitoScope.CONTACTS_WRITE]: [Permission.CONTACTS_WRITE],
-  [CognitoScope.ADMIN]: [Permission.ADMIN],
-};
-
-/** The Cognito scope that grants each mailbox permission; the inverse of `CognitoScopeToPermissions`. */
+/** The Cognito scope that grants each mailbox permission. */
 export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.MAIL_READ]: CognitoScope.MAIL_READ,
   [Permission.MAIL_WRITE]: CognitoScope.MAIL_WRITE,
@@ -41,3 +27,12 @@ export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
   [Permission.CONTACTS_WRITE]: CognitoScope.CONTACTS_WRITE,
   [Permission.ADMIN]: CognitoScope.ADMIN,
 };
+
+/** The mailbox permissions each Cognito scope grants; the inverse of `PermissionToCognitoScope`, in the order of `CognitoScope`. */
+// cast: Object.fromEntries yields an index-signature type; the keys are exactly the values of CognitoScope.
+export const CognitoScopeToPermissions = Object.fromEntries(
+  Object.values(CognitoScope).map((scope) => [
+    scope,
+    Object.values(Permission).filter((permission) => PermissionToCognitoScope[permission] === scope),
+  ]),
+) as Record<CognitoScope, Permission[]>;

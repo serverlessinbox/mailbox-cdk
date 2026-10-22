@@ -8,14 +8,14 @@ import type { DcrPersistResponse }                                        from '
 
 import type { CognitoUserPoolClientManager }                              from './cognito-client';
 import { isClientRegistrationRequest, type ClientRegistrationRequest }    from './dcr.validation';
-import type { PoolResolver }                                              from './pool-resolver';
 import type { RedirectUriPolicy }                                         from './redirect-uri';
 import { RegistrationAnswers }                                            from './registration-answers';
+import { SUPPORTED_SCOPES }                                               from './supported-scopes';
 
 const DEFAULT_CLIENT_NAME = 'Unnamed JMAP Client';
 
 /** The scope granted when a client asks for none, or for none that Cognito can bind. */
-const DEFAULT_SCOPE = 'openid email profile offline_access';
+const DEFAULT_SCOPE = SUPPORTED_SCOPES.join(' ');
 
 const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
@@ -34,7 +34,7 @@ export class ClientRegistration {
   constructor(
     private readonly identityProvisioner: IdentityProvisionerClient,
     private readonly cognito: CognitoUserPoolClientManager,
-    private readonly poolResolver: PoolResolver,
+    private readonly userPoolId: UserPoolId,
     private readonly redirectUriPolicy: RedirectUriPolicy,
     private readonly logger: LoggerBuffer,
   ) {}
@@ -72,12 +72,11 @@ export class ClientRegistration {
   }
 
   private async registerNewClient(tenantId: TenantId, request: ClientRegistrationRequest, clientName: string): Promise<APIGatewayProxyStructuredResultV2> {
-    const userPoolId    = this.poolResolver.resolve(tenantId);
     const cognitoScopes = this.cognitoScopesOf(request.scope);
 
     let clientId: ClientId;
     try {
-      clientId = await this.cognito.createClient(userPoolId, clientName, request.redirect_uris, cognitoScopes);
+      clientId = await this.cognito.createClient(this.userPoolId, clientName, request.redirect_uris, cognitoScopes);
     } catch (failure) {
       return this.answerCreateFailure(failure, tenantId, request.scope, cognitoScopes);
     }
@@ -95,14 +94,15 @@ export class ClientRegistration {
       });
       persistStatus   = persisted.status;
     } catch (failure) {
-      return this.answerPersistFailure(failure, tenantId, userPoolId, clientId);
+      return this.answerPersistFailure(failure, tenantId, clientId);
     }
 
     if (persistStatus !== 'success') {
-      return this.answerPersistConflict(tenantId, userPoolId, clientId, persistStatus);
+      return this.answerPersistConflict(tenantId, clientId, persistStatus);
     }
 
-    return this.answerCreated(tenantId, request, clientId, grantedScope, clientName);
+    this.logger.info('jmap_oauth_dcr_registered', { tenantId, clientId });
+    return this.answerRegistered(request, clientId, grantedScope, clientName);
   }
 
   private decodeBody(event: APIGatewayProxyEventV2): unknown {
@@ -134,17 +134,6 @@ export class ClientRegistration {
       .split(' ')
       .filter((token) => token.length > 0 && token !== OFFLINE_ACCESS_SCOPE)
       .map(toScope);
-  }
-
-  private answerCreated(
-    tenantId: TenantId,
-    request: ClientRegistrationRequest,
-    clientId: ClientId,
-    scope: string,
-    clientName: string,
-  ): APIGatewayProxyStructuredResultV2 {
-    this.logger.info('jmap_oauth_dcr_registered', { tenantId, clientId });
-    return this.answerRegistered(request, clientId, scope, clientName);
   }
 
   private answerRegistered(request: ClientRegistrationRequest, clientId: string, scope: string, clientName: string): APIGatewayProxyStructuredResultV2 {
@@ -186,27 +175,22 @@ export class ClientRegistration {
     return RegistrationAnswers.rejected(500, 'server_error', 'Failed to create OAuth client');
   }
 
-  private async answerPersistFailure(failure: unknown, tenantId: TenantId, userPoolId: UserPoolId, clientId: ClientId): Promise<APIGatewayProxyStructuredResultV2> {
+  private async answerPersistFailure(failure: unknown, tenantId: TenantId, clientId: ClientId): Promise<APIGatewayProxyStructuredResultV2> {
     this.logger.error('jmap_oauth_dcr_persist_error', { tenantId, clientId, error: String(failure) });
-    await this.rollbackClient(tenantId, userPoolId, clientId);
+    await this.rollbackClient(tenantId, clientId);
     return RegistrationAnswers.rejected(500, 'server_error', 'Failed to persist client registration');
   }
 
-  private async answerPersistConflict(
-    tenantId: TenantId,
-    userPoolId: UserPoolId,
-    clientId: ClientId,
-    status: DcrPersistStatus,
-  ): Promise<APIGatewayProxyStructuredResultV2> {
+  private async answerPersistConflict(tenantId: TenantId, clientId: ClientId, status: DcrPersistStatus): Promise<APIGatewayProxyStructuredResultV2> {
     this.logger.warn('jmap_oauth_dcr_persist_conflict', { tenantId, clientId, status });
-    await this.rollbackClient(tenantId, userPoolId, clientId);
+    await this.rollbackClient(tenantId, clientId);
     return RegistrationAnswers.rejected(409, 'invalid_client_metadata', 'Client registration conflict');
   }
 
   // A client that cannot be deleted stays orphaned in the pool; that is logged and accepted, and the rejection is still answered.
-  private async rollbackClient(tenantId: TenantId, userPoolId: UserPoolId, clientId: ClientId): Promise<void> {
+  private async rollbackClient(tenantId: TenantId, clientId: ClientId): Promise<void> {
     try {
-      await this.cognito.deleteClient(userPoolId, clientId);
+      await this.cognito.deleteClient(this.userPoolId, clientId);
     } catch (failure) {
       this.logger.error('jmap_oauth_dcr_rollback_failed', { tenantId, clientId, error: String(failure) });
     }

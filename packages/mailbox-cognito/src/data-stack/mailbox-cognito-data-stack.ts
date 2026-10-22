@@ -15,6 +15,19 @@ import { Construct }                 from 'constructs';
 
 import { CognitoScopeToPermissions } from '../user-pool/cognito-scopemap';
 
+import {
+  ADMIN_GROUP_NAME,
+  DEFAULT_MFA_MODE,
+  DEFAULT_PASSWORD_MIN_LENGTH,
+  MFA_MODES,
+  RESOURCE_SERVER_IDENTIFIER,
+  USER_GROUP_NAME,
+  type MailboxCognitoDataStackParameters,
+} from './mailbox-cognito-data-stack-contract';
+
+/** The CloudFormation parameters of the stack, one per name in the parameter contract. */
+type DeclaredParameters = Readonly<Record<keyof MailboxCognitoDataStackParameters, cdk.CfnParameter>>;
+
 /**
  * CDK Stack that creates and owns all retained Serverless Inbox Cognito resources:
  * - UserPool (retained)
@@ -33,77 +46,82 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     this.templateOptions.description =
       'Serverless JMAP email server on AWS identity tier — Cognito user pool, authentication domain, and user groups.';
 
-    // --- CloudFormation Parameters ---
+    const parameters = this.declareParameters();
+    this.applyCorrelationTags(parameters);
+    const hasCustomDomain = this.declareHasCustomDomain(parameters);
 
-    const cognitoDomainPrefix = new cdk.CfnParameter(this, 'cognitoDomainPrefix', {
-      type: 'String',
-      description: 'Cognito-managed domain prefix (globally unique). Required when no custom domain is provided.',
-    });
+    const cfnPool = this.createUserPool(parameters);
+    this.createUserPoolDomain(cfnPool, parameters, hasCustomDomain);
+    this.createResourceServer(cfnPool);
+    this.createDefaultGroups(cfnPool);
 
-    const customDomainName = new cdk.CfnParameter(this, 'customDomainName', {
-      type: 'String',
-      description: 'Custom domain hostname for the Cognito hosted UI (e.g. auth.example.com). Leave empty to use the Cognito-managed prefix domain.',
-      default: '',
-    });
+    this.publishOutputs(cfnPool, parameters, hasCustomDomain);
+  }
 
-    const customDomainCertArn = new cdk.CfnParameter(this, 'customDomainCertArn', {
-      type: 'String',
-      description: 'ACM certificate ARN (must be in us-east-1) for the custom domain. Required when customDomainName is provided.',
-      default: '',
-    });
+  private declareParameters(): DeclaredParameters {
+    return {
+      cognitoDomainPrefix: this.declareParameter('cognitoDomainPrefix', {
+        type: 'String',
+        description: 'Cognito-managed domain prefix (globally unique). Required when no custom domain is provided.',
+      }),
+      customDomainName: this.declareParameter('customDomainName', {
+        type: 'String',
+        description: 'Custom domain hostname for the Cognito hosted UI (e.g. auth.example.com). Leave empty to use the Cognito-managed prefix domain.',
+        default: '',
+      }),
+      customDomainCertArn: this.declareParameter('customDomainCertArn', {
+        type: 'String',
+        description: 'ACM certificate ARN (must be in us-east-1) for the custom domain. Required when customDomainName is provided.',
+        default: '',
+      }),
+      mfaMode: this.declareParameter('mfaMode', {
+        type: 'String',
+        description: 'MFA enforcement: OFF disables MFA, OPTIONAL lets users enroll TOTP, ON requires TOTP for all users.',
+        default: DEFAULT_MFA_MODE,
+        allowedValues: [...MFA_MODES],
+      }),
+      passwordMinLength: this.declareParameter('passwordMinLength', {
+        type: 'Number',
+        description: 'Minimum password length (6–99).',
+        default: DEFAULT_PASSWORD_MIN_LENGTH,
+        minValue: 6,
+        maxValue: 99,
+      }),
+      rootStack: this.declareParameter('rootStack', {
+        type: 'String',
+        description: 'Root (main) CloudFormation stack name (regional stack that created this cognito stack)',
+        default: '',
+      }),
+      rootStackId: this.declareParameter('rootStackId', {
+        type: 'String',
+        description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
+      }),
+      productVersion: this.declareParameter('productVersion', {
+        type: 'String',
+        description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
+        default: 'unknown',
+      }),
+      deployerType: this.declareParameter('deployerType', {
+        type: 'String',
+        description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+        default: 'cfn',
+        allowedValues: ['cdk', 'cfn', 'marketplace'],
+      }),
+    };
+  }
 
-    const mfaMode = new cdk.CfnParameter(this, 'mfaMode', {
-      type: 'String',
-      description: 'MFA enforcement: OFF disables MFA, OPTIONAL lets users enroll TOTP, ON requires TOTP for all users.',
-      default: 'OPTIONAL',
-      allowedValues: ['OFF', 'OPTIONAL', 'ON'],
-    });
+  private declareParameter(name: keyof MailboxCognitoDataStackParameters, props: cdk.CfnParameterProps): cdk.CfnParameter {
+    return new cdk.CfnParameter(this, name, props);
+  }
 
-    const passwordMinLength = new cdk.CfnParameter(this, 'passwordMinLength', {
-      type: 'Number',
-      description: 'Minimum password length (6–99).',
-      default: 8,
-      minValue: 6,
-      maxValue: 99,
-    });
-
-    // --- Correlation / tagging parameters (mirror the edge/data sub-stacks) ---
-
-    const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
-      type: 'String',
-      description: 'Root (main) CloudFormation stack name (regional stack that created this cognito stack)',
-      default: '',
-    });
-    rootStackParam.overrideLogicalId('rootStack');
-
-    const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
-      type: 'String',
-      description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
-    });
-    rootStackIdParam.overrideLogicalId('rootStackId');
-
-    const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
-      type: 'String',
-      description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
-      default: 'unknown',
-    });
-    productVersionParam.overrideLogicalId('productVersion');
-
-    const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
-      type: 'String',
-      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
-      default: 'cfn',
-      allowedValues: ['cdk', 'cfn', 'marketplace'],
-    });
-    deployerTypeParam.overrideLogicalId('deployerType');
-
-    // Apply product/correlation tags to everything in this cognito data stack.
-    // root-stack is the main stack name (via rootStack param); the base helper tags this
-    // stack's own name as `stack` (AWS::StackName). Cognito is the identity/auth tier.
+  // Apply product/correlation tags to everything in this cognito data stack.
+  // root-stack is the main stack name (via rootStack param); the base helper tags this
+  // stack's own name as `stack` (AWS::StackName). Cognito is the identity/auth tier.
+  private applyCorrelationTags(parameters: DeclaredParameters): void {
     applyServerlessInboxBaseTagsWithDeployerType(this, {
       product: 'mailbox',
-      rootStack: rootStackParam.valueAsString,
-    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
+      rootStack: parameters.rootStack.valueAsString,
+    }, parameters.deployerType.valueAsString as ServerlessInboxDeployerType, parameters.rootStackId.valueAsString);
     applyServerlessInboxComponentTag(this, 'auth');
 
     // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack
@@ -111,27 +129,27 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
       fallbackDescription: 'ServerlessInbox identity - Cognito user directory.',
     }));
+  }
 
-    // --- Conditions ---
-
-    const hasCustomDomain = new cdk.CfnCondition(this, 'HasCustomDomain', {
+  private declareHasCustomDomain(parameters: DeclaredParameters): cdk.CfnCondition {
+    return new cdk.CfnCondition(this, 'HasCustomDomain', {
       expression: cdk.Fn.conditionNot(
-        cdk.Fn.conditionEquals(customDomainName.valueAsString, ''),
+        cdk.Fn.conditionEquals(parameters.customDomainName.valueAsString, ''),
       ),
     });
+  }
 
-    // --- UserPool ---
-    // L1 (CfnUserPool) is required here because CF parameter token strings cannot be assigned
-    // to L2 enum properties (e.g. cognito.Mfa). All outputs use cfnPool.ref / Fn.sub for ARN.
-
+  // L1 (CfnUserPool) is required here because CF parameter token strings cannot be assigned
+  // to L2 enum properties (e.g. cognito.Mfa). All outputs use cfnPool.ref / Fn.sub for ARN.
+  private createUserPool(parameters: DeclaredParameters): cognito.CfnUserPool {
     const cfnPool = new cognito.CfnUserPool(this, 'user-pool', {
       userPoolName: Fn.sub('${AWS::AccountId}-${AWS::StackName}-users'),
       adminCreateUserConfig: { allowAdminCreateUserOnly: true },
-      mfaConfiguration: mfaMode.valueAsString,
+      mfaConfiguration: parameters.mfaMode.valueAsString,
       enabledMfas: ['SOFTWARE_TOKEN_MFA'],
       policies: {
         passwordPolicy: {
-          minimumLength: passwordMinLength.valueAsNumber,
+          minimumLength: parameters.passwordMinLength.valueAsNumber,
           requireLowercase: true,
           requireUppercase: true,
           requireNumbers: true,
@@ -144,55 +162,56 @@ export class MailboxCognitoDataStack extends cdk.Stack {
       },
     });
     cfnPool.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+    return cfnPool;
+  }
 
-    // --- UserPoolDomain ---
-
+  private createUserPoolDomain(cfnPool: cognito.CfnUserPool, parameters: DeclaredParameters, hasCustomDomain: cdk.CfnCondition): void {
     const cfnDomain = new cognito.CfnUserPoolDomain(this, 'user-pool-domain', {
       userPoolId: cfnPool.ref,
       domain: Fn.conditionIf(
         hasCustomDomain.logicalId,
-        customDomainName.valueAsString,
-        cognitoDomainPrefix.valueAsString,
+        parameters.customDomainName.valueAsString,
+        parameters.cognitoDomainPrefix.valueAsString,
       ).toString(),
       customDomainConfig: Fn.conditionIf(
         hasCustomDomain.logicalId,
-        { certificateArn: customDomainCertArn.valueAsString },
+        { certificateArn: parameters.customDomainCertArn.valueAsString },
         Aws.NO_VALUE,
-      ) as any,
+      ),
     });
     cfnDomain.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+  }
 
-    // --- UserPoolResourceServer ---
-    // Scopes are synthesized from platform constants at template build time.
-    // To add scopes: update CognitoScopeToPermissions, release a new package version,
-    // republish the template, and redeploy.
-
+  // Scopes are synthesized from platform constants at template build time.
+  // To add scopes: update CognitoScopeToPermissions, release a new package version,
+  // republish the template, and redeploy.
+  private createResourceServer(cfnPool: cognito.CfnUserPool): void {
     new cognito.CfnUserPoolResourceServer(this, 'user-pool-resource-server', {
       userPoolId: cfnPool.ref,
-      identifier: 'si',
+      identifier: RESOURCE_SERVER_IDENTIFIER,
       name: 'JMAP API',
       scopes: Object.entries(CognitoScopeToPermissions).map(([scope, permissions]) => ({
-        scopeName: scope.replace(/\//g, '.'),
+        scopeName: scope,
         scopeDescription: JMAP_SCOPE_DESCRIPTIONS[permissions[0]] ?? scope,
       })),
     });
+  }
 
-    // --- Default User Groups ---
-
+  private createDefaultGroups(cfnPool: cognito.CfnUserPool): void {
     new cognito.CfnUserPoolGroup(this, 'group-admin', {
       userPoolId: cfnPool.ref,
-      groupName: 'admin',
+      groupName: ADMIN_GROUP_NAME,
       description: 'Serverless Inbox administrator group',
     });
 
     new cognito.CfnUserPoolGroup(this, 'group-user', {
       userPoolId: cfnPool.ref,
-      groupName: 'user',
+      groupName: USER_GROUP_NAME,
       description: 'Serverless Inbox standard user group',
     });
+  }
 
-    // --- CloudFormation Outputs ---
-
+  private publishOutputs(cfnPool: cognito.CfnUserPool, parameters: DeclaredParameters, hasCustomDomain: cdk.CfnCondition): void {
     new cdk.CfnOutput(this, 'userPoolId', { value: cfnPool.ref });
     new cdk.CfnOutput(this, 'userPoolArn', {
       value: Fn.sub('arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${PoolId}', {
@@ -202,9 +221,9 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'oauthDomain', {
       value: Fn.conditionIf(
         hasCustomDomain.logicalId,
-        customDomainName.valueAsString,
+        parameters.customDomainName.valueAsString,
         Fn.sub('${Prefix}.auth.${AWS::Region}.amazoncognito.com', {
-          Prefix: cognitoDomainPrefix.valueAsString,
+          Prefix: parameters.cognitoDomainPrefix.valueAsString,
         }),
       ).toString(),
     });

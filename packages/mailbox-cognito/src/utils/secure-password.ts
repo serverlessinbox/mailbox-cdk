@@ -35,6 +35,3 @@ export function generateSecurePassword(): string {
 
   return passwordChars.join('');
 }
-
-/** Marker returned in Data.temporaryPassword when password was set at install time and is not recoverable. */
-export const PASSWORD_SET_AT_INSTALL_TIME = '(password set at install time)';

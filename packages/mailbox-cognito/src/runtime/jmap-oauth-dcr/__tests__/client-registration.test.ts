@@ -20,7 +20,6 @@ import { toUserPoolId }                                                         
 import { IdentityProvisionerClient }                                                    from '../../shared/identity-provisioner-client';
 import { ClientRegistration }                                                           from '../client-registration';
 import { CognitoUserPoolClientManager }                                                 from '../cognito-client';
-import { PoolResolver }                                                                 from '../pool-resolver';
 import { RedirectUriPolicy }                                                            from '../redirect-uri';
 
 import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent, sentRequests } from './jmap-oauth-dcr-helpers';
@@ -48,7 +47,7 @@ describe('ClientRegistration', () => {
     registration = new ClientRegistration(
       new IdentityProvisionerClient(toFunctionName('identity-provisioner-fn'), new LambdaClient({})),
       new CognitoUserPoolClientManager(new CognitoIdentityProviderClient({})),
-      new PoolResolver(toUserPoolId('pool-1')),
+      toUserPoolId('pool-1'),
       new RedirectUriPolicy(),
       new LoggerBuffer(undefined, 'debug'),
     );

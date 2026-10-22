@@ -8,8 +8,9 @@ import { IBucket }                                                              
 import * as cdk                                                                                        from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
-import { DynamicClientRegistrationMode }                                                               from './user-pool/dynamic-client-registration-mode';
 import { JmapOAuthDcrLambda }                                                                          from './resources/lambdas/jmap-oauth-dcr-lambda';
+import { SUPPORTED_SCOPES }                                                                            from './runtime/jmap-oauth-dcr/supported-scopes';
+import { DynamicClientRegistrationMode }                                                               from './user-pool/dynamic-client-registration-mode';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH      = '/oauth/register';
@@ -132,10 +133,10 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   }
 
   public addRoutes(api: HttpApi): void {
-    const stage                           = this.defaultStageOf(api);
-    const existingSettings: RouteSettings = { ...stage.routeSettings };
+    const stage            = this.defaultStageOf(api);
+    const existingSettings = this.routeSettingsOf(stage);
 
-    const discoverySettings    = this.addDiscoveryRoute(api, stage);
+    const discoverySettings    =this.addDiscoveryRoute(api, stage);
     const registrationSettings = this.addRegistrationRoute(api, stage);
 
     stage.routeSettings = { ...existingSettings, ...discoverySettings, ...registrationSettings };
@@ -157,7 +158,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       ...(withRegistration
         ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
-      scopes_supported: ['openid', 'email', 'profile', 'offline_access'],
+      scopes_supported: [...SUPPORTED_SCOPES],
       response_types_supported: ['code'],
       response_modes_supported: ['query'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
@@ -217,6 +218,11 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       throw new Error(`The route ${route.node.path} has no CloudFormation resource for the stage to depend on`);
     }
     stage.addDependency(routeResource);
+  }
+
+  // cast: the L1 CfnStage types routeSettings as any.
+  private routeSettingsOf(stage: CfnStage): RouteSettings {
+    return { ...(stage.routeSettings as RouteSettings | undefined) };
   }
 
   private defaultStageOf(api: HttpApi): CfnStage {

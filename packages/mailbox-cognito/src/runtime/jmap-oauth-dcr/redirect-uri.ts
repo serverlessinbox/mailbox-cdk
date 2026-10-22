@@ -32,13 +32,11 @@ export class RedirectUriPolicy {
   }
 
   public allows(uri: RedirectUri): boolean {
-    let parsed: URL;
-    try {
-      parsed = new URL(uri);
-    } catch {
+    if (!URL.canParse(uri)) {
       return false;
     }
 
+    const parsed = new URL(uri);
     if (DENYLISTED_SCHEMES.has(parsed.protocol)) {
       return false;
     }

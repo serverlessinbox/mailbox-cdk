@@ -1,4 +1,5 @@
 import {
+  CaughtError,
   ExpectedFailure,
   isParentStackRollingBack,
   toPhysicalResourceId,
@@ -8,12 +9,12 @@ import {
   type LoggerBuffer,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { toGroupName, toUserPoolId, toUsername }                   from '../shared/cognito-identifiers';
+import { generateSecurePassword }                                                       from '../../utils/secure-password';
+import { toGroupName, toUserPoolId, toUsername }                                        from '../shared/cognito-identifiers';
 
-import { BootstrapUserAnswers, type BootstrapUserAnswer }          from './bootstrap-user-answers';
-import { UserEnsurer, type BootstrapUser }                         from './ensure-user';
-import { generateSecurePassword, PASSWORD_SET_AT_INSTALL_TIME }    from './password';
-import { isBootstrapUserProperties, type BootstrapUserProperties } from './properties';
+import { BootstrapUserAnswers, PASSWORD_SET_AT_INSTALL_TIME, type BootstrapUserAnswer } from './bootstrap-user-answers';
+import { UserEnsurer, type BootstrapUser }                                              from './ensure-user';
+import { isBootstrapUserProperties, type BootstrapUserProperties }                      from './properties';
 
 const DEFAULT_USERNAME = 'admin';
 
@@ -57,7 +58,7 @@ export class BootstrapUserRequestHandler {
    * the stack in UPDATE_ROLLBACK_FAILED. Every other failure is thrown on.
    */
   public async answerFailure(request: CustomResourceRequest, failure: unknown): Promise<BootstrapUserAnswer> {
-    const reason = failure instanceof Error ? failure.message : String(failure);
+    const reason = new CaughtError(failure).message ?? String(failure);
     this.logger.error('bootstrap_user_handler_failed', { message: reason });
 
     if (await this.parentStackIsRollingBack(request)) {

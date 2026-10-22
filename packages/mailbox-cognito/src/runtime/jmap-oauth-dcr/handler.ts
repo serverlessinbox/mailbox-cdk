@@ -8,7 +8,6 @@ import { IdentityProvisionerClient }        from '../shared/identity-provisioner
 import { ClientRegistration }               from './client-registration';
 import { CognitoUserPoolClientManager }     from './cognito-client';
 import { load }                             from './config';
-import { PoolResolver }                     from './pool-resolver';
 import { RedirectUriPolicy }                from './redirect-uri';
 import { RegistrationAnswers }              from './registration-answers';
 
@@ -19,12 +18,11 @@ const cognitoClient = new CognitoIdentityProviderClient({});
 
 const identityProvisioner = new IdentityProvisionerClient(config.identityProvisionerFunctionName, lambdaClient);
 const cognito             = new CognitoUserPoolClientManager(cognitoClient);
-const poolResolver        = new PoolResolver(config.userPoolId);
 const redirectUriPolicy   = new RedirectUriPolicy();
 
 export const handler = withSmokeTest(async (event: APIGatewayProxyEventV2) => {
   const logger       = new LoggerBuffer(config.serviceName, config.logLevel);
-  const registration = new ClientRegistration(identityProvisioner, cognito, poolResolver, redirectUriPolicy, logger);
+  const registration = new ClientRegistration(identityProvisioner, cognito, config.userPoolId, redirectUriPolicy, logger);
 
   try {
     return await registration.register(event);

@@ -81,7 +81,7 @@ export class UserEnsurer {
     } catch (failure) {
       this.logger.error('bootstrap_user_group_join_failed', {
         groupName,
-        error: failure instanceof Error ? failure.message : String(failure),
+        error: new CaughtError(failure).message ?? String(failure),
       });
     }
   }

@@ -1,5 +1,6 @@
 import { InvokeCommand, type InvokeCommandOutput, type LambdaClient } from '@aws-sdk/client-lambda';
 import type { FunctionName }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { StrictValidator }                                       from 'typanion';
 
 import {
   isDcrCheckResponse,
@@ -15,8 +16,6 @@ import {
   type ProvisionUserResponse,
   type ResolveTenantResponse,
 } from './identity-provisioner-contract';
-
-type ResponseValidator<Response> = (value: unknown, state?: { errors?: string[] }) => value is Response;
 
 /**
  * Typed client of the `identity-provisioner` Lambda's invoke contract. Every response is untrusted external
@@ -75,7 +74,7 @@ export class IdentityProvisionerClient {
     );
   }
 
-  private async invoke<Response>(request: IdentityProvisionerRequest, isExpectedShape: ResponseValidator<Response>): Promise<Response> {
+  private async invoke<Response>(request: IdentityProvisionerRequest, isExpectedShape: StrictValidator<unknown, Response>): Promise<Response> {
     const result = await this.lambda.send(
       new InvokeCommand({
         FunctionName: this.functionName,
@@ -99,7 +98,7 @@ export class IdentityProvisionerClient {
     return result.Payload ? JSON.parse(Buffer.from(result.Payload).toString('utf-8')) : undefined;
   }
 
-  private validate<Response>(response: unknown, isExpectedShape: ResponseValidator<Response>): Response {
+  private validate<Response>(response: unknown, isExpectedShape: StrictValidator<unknown, Response>): Response {
     const errors: string[] = [];
     if (!isExpectedShape(response, { errors })) {
       throw new Error(`identity-provisioner returned an unexpected shape: ${errors.join('; ')}`);

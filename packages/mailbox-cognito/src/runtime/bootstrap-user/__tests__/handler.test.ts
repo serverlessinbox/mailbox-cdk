@@ -19,8 +19,8 @@ import { mockClient }                                                           
 import * as t                                                                             from 'typanion';
 
 // Import handler AFTER mocking https
+import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../bootstrap-user-answers';
 import { handler }                                                                        from '../index';
-import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../password';
 
 import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 

@@ -6,6 +6,13 @@ import { Construct }                                                 from 'const
 
 import { MailboxCognitoDataDeployerWorkerLambda }                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
 
+import {
+  COGNITO_DATA_STACK_TEMPLATE_OBJECT,
+  COGNITO_DEPLOYED_STACK_NAME,
+  DEFAULT_MFA_MODE,
+  DEFAULT_PASSWORD_MIN_LENGTH,
+  type MailboxCognitoDataStackParameters,
+} from './mailbox-cognito-data-stack-contract';
 import { cognitoDataStackName }                                      from './mailbox-cognito-data-stack-name';
 import { MailboxCognitoDataStackRef }                                from './mailbox-cognito-data-stack-ref';
 
@@ -59,11 +66,11 @@ export class MailboxCognitoDataDeployer extends Construct {
     const deployerInfra = new DeployerInfra(this, 'infra', {
       artifactResolver: artifacts,
       stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
-      deployedStackName: 'cognito',
+      deployedStackName: COGNITO_DEPLOYED_STACK_NAME,
       deployedStackArn: cognitoDataStackArn,
       createWorker: (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: artifacts,
-        templateObjectArn: artifacts.getArn('mailbox-cognito', 'cognito-data-stack-template.json'),
+        templateObjectArn: artifacts.getArn('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
         deployedStackArn: cognitoDataStackArn,
       }),
     });
@@ -74,7 +81,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       region: Aws.REGION,
       preserveOnDelete: true,
       stackName,
-      templateUrl: artifacts.getUrl('mailbox-cognito', 'cognito-data-stack-template.json'),
+      templateUrl: artifacts.getUrl('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
       parameters: this.templateParameters(props, productVersion),
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
@@ -91,11 +98,11 @@ export class MailboxCognitoDataDeployer extends Construct {
     });
   }
 
-  private templateParameters(props: MailboxCognitoDataDeployerProps, productVersion: string): Record<string, string> {
+  private templateParameters(props: MailboxCognitoDataDeployerProps, productVersion: string): MailboxCognitoDataStackParameters {
     return {
       cognitoDomainPrefix: props.cognitoDomainPrefix,
-      mfaMode: props.mfaMode ?? 'OPTIONAL',
-      passwordMinLength: String(props.passwordMinLength ?? 8),
+      mfaMode: props.mfaMode ?? DEFAULT_MFA_MODE,
+      passwordMinLength: String(props.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH),
       rootStack: Aws.STACK_NAME,
       rootStackId: StackIdentity.guid,
       productVersion,

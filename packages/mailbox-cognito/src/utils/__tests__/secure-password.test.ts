@@ -6,9 +6,9 @@
  * observed outputs.
  */
 
-import { generateSecurePassword } from '../password';
+import { generateSecurePassword } from '../secure-password';
 
-describe('password module', () => {
+describe('secure-password module', () => {
   describe('generateSecurePassword', () => {
     function validatePassword(password: string): { isValid: boolean; reason?: string } {
       // Policy: minimum length 8, requires lowercase, uppercase, and digits

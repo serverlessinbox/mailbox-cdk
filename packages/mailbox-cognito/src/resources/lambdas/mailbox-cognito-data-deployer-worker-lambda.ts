@@ -5,10 +5,13 @@ import {
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }          from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Aws }                     from 'aws-cdk-lib';
-import { Construct }               from 'constructs';
+import type { RootStack }              from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }     from 'aws-cdk-lib/aws-iam';
+import type { PolicyStatementProps }   from 'aws-cdk-lib/aws-iam';
+import { Aws }                         from 'aws-cdk-lib';
+import { Construct }                   from 'constructs';
+
+import { COGNITO_DEPLOYED_STACK_NAME } from '../../data-stack/mailbox-cognito-data-stack-contract';
 
 export interface MailboxCognitoDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
@@ -31,7 +34,7 @@ export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerLambdaProps) {
     super(scope, id, {
       artifactResolver: props.artifactResolver,
-      deployedStackName: 'cognito',
+      deployedStackName: COGNITO_DEPLOYED_STACK_NAME,
     });
 
     // Grants inherited from the shared deployer worker
@@ -53,35 +56,21 @@ export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda
   // CreateUserPool binds to no resource type (cognito-idp Service Reference, same shape as ACM
   // RequestCertificate), so aws:ResourceTag can never gate it: the pool does not exist yet.
   private grantUserPoolCreation(): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-idp:CreateUserPool'],
-        resources: ['*'],      }),
-    );
+    this.allowOnAllResources(['cognito-idp:CreateUserPool']);
   }
 
   // These actions bind to the "userpool" resource type and act on a pool that already exists and
   // is already tagged, so aws:ResourceTag is satisfiable.
   private grantUserPoolLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'cognito-idp:DeleteUserPool',
-            'cognito-idp:DescribeUserPool',
-            'cognito-idp:UpdateUserPool',
-            'cognito-idp:SetUserPoolMfaConfig',
-            'cognito-idp:GetUserPoolMfaConfig',
-            'cognito-idp:UntagResource',
-            'cognito-idp:ListTagsForResource',
-          ],
-          resources: ['*'],
-          conditions,
-        }),
-      );
-    }
+    this.allowOnRootStackResources([
+      'cognito-idp:DeleteUserPool',
+      'cognito-idp:DescribeUserPool',
+      'cognito-idp:UpdateUserPool',
+      'cognito-idp:SetUserPoolMfaConfig',
+      'cognito-idp:GetUserPoolMfaConfig',
+      'cognito-idp:UntagResource',
+      'cognito-idp:ListTagsForResource',
+    ]);
   }
 
   // aws:TagKeys is multivalued, so it needs ForAllValues: a plain StringEquals never matches and
@@ -90,92 +79,63 @@ export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda
     // On CREATE, CloudFormation sends the tags in the request against a still-untagged pool, so
     // aws:RequestTag matches and aws:ResourceTag cannot.
     for (const conditions of rootStackRequestTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['cognito-idp:TagResource'],
-          resources: ['*'],
-          conditions: { ...conditions, ...this.tagKeyCondition() },
-        }),
-      );
+      this.allowOnAllResources(['cognito-idp:TagResource'], { ...conditions, ...this.tagKeyCondition() });
     }
     // On UPDATE, CloudFormation sends only the changed tags, so the root-stack tags may be absent from the
     // request, but the pool is already tagged and aws:ResourceTag matches. The request-tag and
     // resource-tag statements together cover both.
     for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['cognito-idp:TagResource'],
-          resources: ['*'],
-          conditions: { ...conditions, ...this.tagKeyCondition() },
-        }),
-      );
+      this.allowOnAllResources(['cognito-idp:TagResource'], { ...conditions, ...this.tagKeyCondition() });
     }
   }
 
   private grantUserPoolDomainLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'cognito-idp:CreateUserPoolDomain',
-            'cognito-idp:DeleteUserPoolDomain',
-            'cognito-idp:UpdateUserPoolDomain',
-          ],
-          resources: ['*'],
-          conditions,
-        }),
-      );
-    }
+    this.allowOnRootStackResources([
+      'cognito-idp:CreateUserPoolDomain',
+      'cognito-idp:DeleteUserPoolDomain',
+      'cognito-idp:UpdateUserPoolDomain',
+    ]);
   }
 
   // DescribeUserPoolDomain binds to no resource type (cognito-idp Service Reference), so it cannot
   // be tag-gated.
   private grantUserPoolDomainRead(): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-idp:DescribeUserPoolDomain'],
-        resources: ['*'],
-      }),
-    );
+    this.allowOnAllResources(['cognito-idp:DescribeUserPoolDomain']);
   }
 
   private grantResourceServerLifecycle(): void {
-    for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'cognito-idp:CreateResourceServer',
-            'cognito-idp:DeleteResourceServer',
-            'cognito-idp:DescribeResourceServer',
-            'cognito-idp:UpdateResourceServer',
-          ],
-          resources: ['*'],
-          conditions,
-        }),
-      );
-    }
+    this.allowOnRootStackResources([
+      'cognito-idp:CreateResourceServer',
+      'cognito-idp:DeleteResourceServer',
+      'cognito-idp:DescribeResourceServer',
+      'cognito-idp:UpdateResourceServer',
+    ]);
   }
 
   private grantGroupLifecycle(): void {
+    this.allowOnRootStackResources([
+      'cognito-idp:CreateGroup',
+      'cognito-idp:DeleteGroup',
+      'cognito-idp:GetGroup',
+      'cognito-idp:UpdateGroup',
+    ]);
+  }
+
+  /** One statement per condition set that admits the resources the root stack owns. */
+  private allowOnRootStackResources(actions: string[]): void {
     for (const conditions of rootStackResourceTagConditions(this.rootStack)) {
-      this.addToRolePolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'cognito-idp:CreateGroup',
-            'cognito-idp:DeleteGroup',
-            'cognito-idp:GetGroup',
-            'cognito-idp:UpdateGroup',
-          ],
-          resources: ['*'],
-          conditions,
-        }),
-      );
+      this.allowOnAllResources(actions, conditions);
     }
+  }
+
+  private allowOnAllResources(actions: string[], conditions?: PolicyStatementProps['conditions']): void {
+    this.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions,
+        resources: ['*'],
+        conditions,
+      }),
+    );
   }
 }

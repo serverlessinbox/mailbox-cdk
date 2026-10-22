@@ -61,7 +61,7 @@ function loadHandlerWhoseRegistrationFails(): Handler {
         constructor(
           _identityProvisioner: unknown,
           _cognito: unknown,
-          _poolResolver: unknown,
+          _userPoolId: unknown,
           _redirectUriPolicy: unknown,
           private readonly logger: LoggerBuffer,
         ) {}
