@@ -8,7 +8,7 @@
  */
 import { ArtifactZone, PinnedArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }              from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                               from 'aws-cdk-lib/assertions';
+import { Match, Template }                                        from 'aws-cdk-lib/assertions';
 import * as acm                                                   from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                                   from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                             from 'aws-cdk-lib/aws-lambda';
@@ -72,7 +72,6 @@ describe('ApisSection', () => {
         mailFeedbackTable: dataTable('mail-feedback-table'),
         blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
         auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
-        derivedDomainName: 'example.com',
       },
       auth:           {
         authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
@@ -150,6 +149,17 @@ describe('ApisSection', () => {
     }));
 
     expect(section.node.tryFindChild('mcp-api')).toBeDefined();
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'mcp.example.com' });
+  });
+
+  it('addEndpoints sends system mail from the domain of the mailbox domains', () => {
+    const section = newSection();
+
+    section.addEndpoints(endpointsProps());
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ SYSTEM_SENDER_ADDRESS: 'noreply@example.com' }) },
+    });
   });
 
   it('addEndpoints throws when the MCP API is enabled and the edge section has no regional certificate', () => {

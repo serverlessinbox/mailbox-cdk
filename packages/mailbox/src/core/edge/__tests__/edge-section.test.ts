@@ -7,7 +7,7 @@
  * request because their inputs exist only after the UIs and the APIs.
  */
 import { ServerlessInboxTagKeys }                            from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                          from 'aws-cdk-lib/assertions';
+import { Match, Template }                                   from 'aws-cdk-lib/assertions';
 import * as acm                                              from 'aws-cdk-lib/aws-certificatemanager';
 import { Table }                                             from 'aws-cdk-lib/aws-dynamodb';
 import * as route53                                          from 'aws-cdk-lib/aws-route53';
@@ -32,10 +32,9 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
     deployerType:   'cfn',
     productVersion: '1.2.3',
     data:           {
-      configTable:       dataTable(stack, 'config-table'),
-      itemTable:         dataTable(stack, 'item-table'),
-      derivedDomainName: 'example.com',
-      blobStoreBucket:   new Bucket(stack, 'blob-store'),
+      configTable:     dataTable(stack, 'config-table'),
+      itemTable:       dataTable(stack, 'item-table'),
+      blobStoreBucket: new Bucket(stack, 'blob-store'),
     },
     auth:           { authKeyStoreTable: dataTable(stack, 'auth-key-store-table') },
     addressing:     {
@@ -43,10 +42,13 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
       edgePrefix: 'mail',
       zone:       route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
     },
-    hostedZoneId:   'Z0TESTZONE',
     ...overrides,
   });
   return { stack, section };
+}
+
+function addressingWithoutZone(): EdgeSectionProps['addressing'] {
+  return { domains: new MailboxDomains({ domainName: 'example.com' }), edgePrefix: 'mail' };
 }
 
 const BLOB_CDN_PROPS: BlobCdnProps = { ui: { adminUiOrigins: [], webmailUiOrigins: [] }, extraAllowedOrigins: [] };
@@ -84,6 +86,15 @@ describe('EdgeSection', () => {
     expect(section.regionalCertificate).toBeDefined();
   });
 
+  it('validates the regional certificate names, including mcp, in the hosted zone of the addressing', () => {
+    const { stack } = newSection();
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CertificateManager::Certificate', {
+      SubjectAlternativeNames: Match.arrayWith(['mcp.example.com']),
+      DomainValidationOptions: Match.arrayWith([{ DomainName: 'mcp.example.com', HostedZoneId: 'Z0TESTZONE' }]),
+    });
+  });
+
   it('builds no regional certificate when the operator provides both API certificates', () => {
     const provided         = (stack: Stack, id: string): acm.ICertificate => acm.Certificate.fromCertificateArn(stack, id, 'arn:aws:acm:us-west-2:111122223333:certificate/provided');
     const { stack: probe } = newDeployerTestStack();
@@ -104,7 +115,7 @@ describe('EdgeSection', () => {
 
   it('serves the UIs with the edge certificate when the mailbox has a hosted zone and with none otherwise', () => {
     const { section: withZone }    = newSection();
-    const { section: withoutZone } = newSection({ hostedZoneId: undefined });
+    const { section: withoutZone } = newSection({ addressing: addressingWithoutZone() });
 
     expect(withZone.edgeCertificate).toBeDefined();
     expect(withZone.uiCertificate).toBe(withZone.edgeCertificate);
@@ -135,7 +146,7 @@ describe('EdgeSection', () => {
   it('addBlobCdn serves the CDN on the cdn domain with the operator CloudFront certificate when there is no hosted zone', () => {
     const { stack: probe }   = newDeployerTestStack();
     const cloudFront         = acm.Certificate.fromCertificateArn(probe, 'cloudfront', 'arn:aws:acm:us-east-1:111122223333:certificate/cloudfront');
-    const { stack, section } = newSection({ hostedZoneId: undefined, certificateOverrides: { cloudFront } });
+    const { stack, section } = newSection({ addressing: addressingWithoutZone(), certificateOverrides: { cloudFront } });
 
     section.addBlobCdn(BLOB_CDN_PROPS);
 
@@ -153,7 +164,7 @@ describe('EdgeSection', () => {
   });
 
   it('addDns creates no records when the mailbox has no hosted zone', () => {
-    const { section } = newSection({ hostedZoneId: undefined });
+    const { section } = newSection({ addressing: addressingWithoutZone() });
 
     section.addDns(DNS_PROPS);
 

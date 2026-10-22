@@ -48,7 +48,7 @@ export class StackHelpersResolver {
   async resolve(resourceProperties: unknown, stackId: StackId): Promise<StackHelpersData> {
     const properties = this.parseProperties(resourceProperties);
 
-    const domainName          = await this.lookUpDomainName(properties.HostedZoneId ?? '');
+    const domainName          = properties.DomainName ?? await this.lookUpDomainName(properties.HostedZoneId ?? '');
     const s3SafeDataStackName = this.sanitizeDataStackName(properties.DataStackName ?? '');
     const prefixFallback      = properties.Fallback || s3SafeDataStackName;
     const cognitoDomainPrefix = this.deriveCognitoDomainPrefix(domainName, prefixFallback);

@@ -17,6 +17,10 @@ export type {
 } from './mailbox-outputs';
 export type { SesReceivingMode } from './core/email/ses-receiving-mode';
 
+// Hosted zone — looked up once by the app, passed to the constructs that need it
+export { HostedZoneLookup } from './core/domains/hosted-zone-lookup';
+export type { HostedZoneLookupProps } from './core/domains/hosted-zone-lookup';
+
 // Stack-failure-detection — consent enum (referenced by MailboxProps.sendStackFailures)
 export { SendStackFailuresMode } from './platform/ops/stack-failure-detection';
 

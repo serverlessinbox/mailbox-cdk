@@ -51,12 +51,11 @@ export class Mailbox extends Construct {
       artifactResolver,
       deployerType,
       stackHelpers: StackHelpers.getOrCreate(this, artifactResolver),
-      hostedZoneId: props.hostedZoneId,
       queueProps,
     });
     setStackNameBase(this, data.mainStackNameBase);
 
-    const addressing = MailboxAddressing.resolve(this, props, data.derivedDomainName, enabledUis);
+    const addressing = MailboxAddressing.resolve(this, props, enabledUis);
 
     const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps });
 
@@ -66,6 +65,7 @@ export class Mailbox extends Construct {
       data,
       email,
       vendorLink,
+      domainName: addressing.domains.domainName,
       adminUiUrl: addressing.urls.adminUi,
     });
 
@@ -76,7 +76,6 @@ export class Mailbox extends Construct {
       data,
       auth,
       addressing,
-      hostedZoneId:         props.hostedZoneId,
       certificateOverrides: props.overrides?.certificates,
     });
 
@@ -123,7 +122,12 @@ export class Mailbox extends Construct {
 
     new SearchSection(this, 'search', { artifactResolver, data, queueProps });
 
-    new OpsSection(this, 'ops', { artifactResolver, vendorAccountIds: vendorLink.vendorAccountIds, sendStackFailures: props.sendStackFailures, data, edge });
+    new OpsSection(this, 'ops', {
+      artifactResolver, data, edge,
+      domainName:        addressing.domains.domainName,
+      vendorAccountIds:  vendorLink.vendorAccountIds,
+      sendStackFailures: props.sendStackFailures,
+    });
 
     this.urls         = addressing.urls;
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };

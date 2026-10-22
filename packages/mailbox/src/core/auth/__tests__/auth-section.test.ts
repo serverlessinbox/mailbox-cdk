@@ -7,7 +7,7 @@
  */
 import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                   from 'aws-cdk-lib/assertions';
+import { Match, Template }                                            from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                       from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
 import { ReceiptRuleSet }                                             from 'aws-cdk-lib/aws-ses';
@@ -53,18 +53,18 @@ describe('AuthSection', () => {
       }),
       authProvider,
       data:       {
-        configTable:       dataTable('config-table'),
-        itemTable:         dataTable('item-table'),
-        changelogTable:    dataTable('changelog-table'),
-        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
-        blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
-        derivedDomainName: 'example.com',
+        configTable:      dataTable('config-table'),
+        itemTable:        dataTable('item-table'),
+        changelogTable:   dataTable('changelog-table'),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+        blobStore:        new DataBlobStore(new Bucket(stack, 'blob-store')),
       },
       email:      {
         submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
         sesConfigSetName: 'config-set',
       },
       vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+      domainName: 'example.com',
     });
   }
 
@@ -111,5 +111,21 @@ describe('AuthSection', () => {
     });
 
     expect(section.node.tryFindChild('bootstrap')).toBeDefined();
+  });
+
+  it('sends system mail from the given domain and bootstraps for it', () => {
+    const section = newSection();
+
+    section.addBootstrap({
+      email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+      ui:    {},
+      edge:  {},
+    });
+
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ SYSTEM_SENDER_ADDRESS: 'noreply@example.com' }) },
+    });
+    template.hasResourceProperties('Custom::Bootstrap', { domain: 'example.com' });
   });
 });

@@ -2,17 +2,18 @@ import { Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { MailboxCognitoDataStack }       from '../../packages/mailbox-cognito/src/data-stack/mailbox-cognito-data-stack';
 import { DynamicClientRegistrationMode } from '../../packages/mailbox-cognito/src/user-pool/dynamic-client-registration-mode';
 import { MailboxUserPool }               from '../../packages/mailbox-cognito/src/user-pool/mailbox-user-pool';
-import { MailboxCognitoDataStack }       from '../../packages/mailbox-cognito/src/data-stack/mailbox-cognito-data-stack';
-import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/platform/update/stack-update-addon';
+import { MailboxDataStack }              from '../../packages/mailbox/src/core/data/mailbox-data-stack';
+import { HostedZoneLookup }              from '../../packages/mailbox/src/core/domains/hosted-zone-lookup';
+import { MailboxEdgeStack }              from '../../packages/mailbox/src/core/edge/mailbox-edge-stack';
+import { Mailbox }                       from '../../packages/mailbox/src/mailbox';
+import { SendStackFailuresMode }         from '../../packages/mailbox/src/platform/ops/stack-failure-detection';
 import { SupportAddonProvider }          from '../../packages/mailbox/src/platform/support/support-addon-provider';
 import { SupportMode }                   from '../../packages/mailbox/src/platform/support/support-addon';
 import { AutoUpdater }                   from '../../packages/mailbox/src/platform/update/auto-updater';
-import { MailboxDataStack }              from '../../packages/mailbox/src/core/data/mailbox-data-stack';
-import { MailboxEdgeStack }              from '../../packages/mailbox/src/core/edge/mailbox-edge-stack';
-import { SendStackFailuresMode }         from '../../packages/mailbox/src/platform/ops/stack-failure-detection';
-import { Mailbox }                       from '../../packages/mailbox/src/mailbox';
+import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/platform/update/stack-update-addon';
 
 import type { FrozenProcessValues }      from './frozen-process-values';
 import type { StackTemplate }            from './stack-template';
@@ -76,9 +77,10 @@ export class BaselineSynthesizer {
       dynamicClientRegistration: DynamicClientRegistrationMode.ENABLED,
     });
     authProvider.addBootstrapUser({ username: 'baseline-admin', groups: ['admin'] });
+    const hostedZone = new HostedZoneLookup(stack, 'hosted-zone-lookup', { hostedZoneId: 'Z1234567890ABC', artifactResolver: autoUpdater }).hostedZone;
     new Mailbox(stack, 'mailbox', {
       authProvider,
-      hostedZoneId:           'Z1234567890ABC',
+      hostedZone,
       enableMcp:              true,
       enableReceiving:        'on',
       sendStackFailures:      SendStackFailuresMode.ENABLED,

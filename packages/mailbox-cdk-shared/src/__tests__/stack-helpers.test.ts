@@ -45,31 +45,51 @@ describe('StackHelpers', () => {
     });
   });
 
-  describe('resolveMailboxData', () => {
-    const { stack: mailboxStack, resolver: mailboxResolver } = createStackWithResolver();
-    const data                                               = StackHelpers.getOrCreate(mailboxStack, mailboxResolver).resolveMailboxData(
-      new Construct(mailboxStack, 'Caller'),
-      'mailbox-data',
-      { hostedZoneId: 'Z123', dataStackName: 'my-data-stack' },
+  describe('resolveHostedZoneName', () => {
+    const { stack: zoneStack, resolver: zoneResolver } = createStackWithResolver();
+    const zoneName                                     = StackHelpers.getOrCreate(zoneStack, zoneResolver).resolveHostedZoneName(
+      new Construct(zoneStack, 'Caller'),
+      'zone-name',
+      'Z123',
     );
-    const template                                           = Template.fromStack(mailboxStack);
+    const template                                     = Template.fromStack(zoneStack);
 
     it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
         ServiceToken:   Match.objectLike({ 'Fn::GetAtt': Match.arrayWith(['Arn']) }),
         ServiceTimeout: '90',
         HostedZoneId:   'Z123',
-        DataStackName:  'my-data-stack',
       });
     });
 
-    it('returns the domainName and s3SafeDataStackName attributes of that resource', () => {
+    it('returns the domainName attribute of that resource', () => {
       const logicalId = logicalIdOfOnlyCustomResource(template);
 
-      expect(mailboxStack.resolve(data.derivedDomainName)).toEqual({ 'Fn::GetAtt': [logicalId, 'domainName'] });
-      expect(mailboxStack.resolve(data.derivedS3SafeDataStackName)).toEqual({
-        'Fn::GetAtt': [logicalId, 's3SafeDataStackName'],
+      expect(zoneStack.resolve(zoneName)).toEqual({ 'Fn::GetAtt': [logicalId, 'domainName'] });
+    });
+  });
+
+  describe('resolveS3SafeStackName', () => {
+    const { stack: nameStack, resolver: nameResolver } = createStackWithResolver();
+    const s3SafeName                                   = StackHelpers.getOrCreate(nameStack, nameResolver).resolveS3SafeStackName(
+      new Construct(nameStack, 'Caller'),
+      's3-safe-name',
+      'my-data-stack',
+    );
+    const template                                     = Template.fromStack(nameStack);
+
+    it('attaches a Custom::StackHelpers resource with the stack name and no hosted zone', () => {
+      template.hasResourceProperties('Custom::StackHelpers', {
+        ServiceTimeout: '90',
+        DataStackName:  'my-data-stack',
+        HostedZoneId:   Match.absent(),
       });
+    });
+
+    it('returns the s3SafeDataStackName attribute of that resource', () => {
+      const logicalId = logicalIdOfOnlyCustomResource(template);
+
+      expect(nameStack.resolve(s3SafeName)).toEqual({ 'Fn::GetAtt': [logicalId, 's3SafeDataStackName'] });
     });
   });
 
@@ -78,13 +98,14 @@ describe('StackHelpers', () => {
     const prefix                                             = StackHelpers.getOrCreate(cognitoStack, cognitoResolver).resolveCognitoDomainPrefix(
       new Construct(cognitoStack, 'Caller'),
       'cognito-prefix',
-      'Z456',
+      'mail.example.com',
     );
     const template                                           = Template.fromStack(cognitoStack);
 
-    it('attaches a Custom::StackHelpers resource falling back to the stack name', () => {
+    it('attaches a Custom::StackHelpers resource sending the domain name, with no hosted zone, falling back to the stack name', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
-        HostedZoneId: 'Z456',
+        DomainName:   'mail.example.com',
+        HostedZoneId: Match.absent(),
         Fallback:     { Ref: 'AWS::StackName' },
       });
     });
@@ -123,8 +144,8 @@ describe('StackHelpers', () => {
   it('gives every resolver call its own resource while the Lambda stays shared', () => {
     const helpers     = StackHelpers.getOrCreate(stack, resolver);
     const callerScope = new Construct(stack, 'CallerScope');
-    helpers.resolveMailboxData(callerScope, 'mailbox-data', { hostedZoneId: 'Z123', dataStackName: 'data' });
-    helpers.resolveCognitoDomainPrefix(callerScope, 'cognito-prefix', 'Z123');
+    helpers.resolveHostedZoneName(callerScope, 'zone-name', 'Z123');
+    helpers.resolveCognitoDomainPrefix(callerScope, 'cognito-prefix', 'example.com');
 
     const template = Template.fromStack(stack);
 

@@ -15,6 +15,7 @@ import {
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
 import * as cognito                                                                                              from 'aws-cdk-lib/aws-cognito';
 import * as lambda                                                                                               from 'aws-cdk-lib/aws-lambda';
+import type * as route53                                                                                         from 'aws-cdk-lib/aws-route53';
 import { Aws, CustomResource, Duration, SecretValue }                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                             from 'constructs';
 
@@ -96,10 +97,14 @@ export interface MailboxUserPoolCognitoAutoDomain {
   /** Selects this domain setting in `MailboxUserPoolDomainConfig`: always `cognito-auto`. */
   readonly kind: 'cognito-auto';
   /**
-   * Route53 hosted zone ID used to auto-derive `cognitoDomainPrefix`. The prefix is derived from the mail
-   * domain of this hosted zone and sanitized at deploy time.
+   * The Route53 hosted zone used to auto-derive `cognitoDomainPrefix`. The prefix is the zone's name
+   * (`zoneName`) with every character Cognito does not allow replaced, and is computed at deploy time
+   * without calling Route53 itself.
+   *
+   * Pass the `hostedZone` of the `HostedZoneLookup` your `Mailbox` uses, so the zone is looked up once
+   * for your whole app. A zone with a fixed `zoneName` works as well.
    */
-  readonly hostedZoneId: string;
+  readonly hostedZone: route53.IHostedZone;
 }
 
 /**
@@ -539,7 +544,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         return domain.cognitoDomainPrefix;
       case 'cognito-auto':
         return StackHelpers.getOrCreate(this, this.artifacts)
-          .resolveCognitoDomainPrefix(this, 'domain-prefix', domain.hostedZoneId);
+          .resolveCognitoDomainPrefix(this, 'domain-prefix', domain.hostedZone.zoneName);
       case 'custom':
         return Aws.STACK_NAME;
     }

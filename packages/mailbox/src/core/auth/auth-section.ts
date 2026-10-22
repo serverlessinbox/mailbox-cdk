@@ -27,8 +27,6 @@ export interface IAuthDataInputs {
   readonly changelogTable:   IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
   readonly blobStore:        IDataBlobStore;
-  /** The domain name of the hosted zone, a deploy-time token. */
-  readonly derivedDomainName: string;
 }
 
 /** What {@link AuthSection} uses of the email section. */
@@ -63,6 +61,8 @@ export interface AuthSectionProps {
   readonly data:             IAuthDataInputs;
   readonly email:            IAuthEmailInputs;
   readonly vendorLink:       VendorLink;
+  /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
+  readonly domainName:       string;
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
   readonly adminUiUrl?: string;
 }
@@ -112,7 +112,7 @@ export class AuthSection extends Construct {
       blobStore:            props.data.blobStore,
       emailSubmissionQueue: props.email.submissionQueue,
       sesConfigSetName:     props.email.sesConfigSetName,
-      systemSenderAddress:  `noreply@${props.data.derivedDomainName}`,
+      systemSenderAddress:  `noreply@${props.domainName}`,
       vendorAccountIds:     props.vendorLink.vendorAccountIds,
     });
   }
@@ -126,7 +126,7 @@ export class AuthSection extends Construct {
       ?? undefined;
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
-      domain:            this.props.data.derivedDomainName,
+      domain:            this.props.domainName,
       oidcIssuer:        authProvider.issuer,
       configTable:       this.props.data.configTable,
       authKeyStoreTable: this.authKeyStoreTable,

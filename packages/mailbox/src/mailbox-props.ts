@@ -1,23 +1,24 @@
 import type { IArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
 import type * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
+import type * as route53               from 'aws-cdk-lib/aws-route53';
 
 import type { IAdminApiAddonProvider } from './core/apis/addons';
 import type { IMailboxAuthProvider }   from './core/auth/types';
 import type { SesReceivingMode }       from './core/email/ses-receiving-mode';
-import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';
 import type { MailboxKmsConfig }       from './core/kms';
+import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';
 
 /**
  * Your own ACM certificates for the endpoints a Mailbox serves, for when you manage DNS and
  * certificates yourself. Every field left out falls back to the certificate the Mailbox creates
- * itself, which requires `MailboxProps.hostedZoneId`.
+ * itself, which requires `MailboxProps.hostedZone`.
  */
 export interface MailboxCertificateOverrides {
   /**
    * Certificate attached to the CDN's alternate domain name (cdn.<domain>). It must be issued in
    * us-east-1, because CloudFront only accepts certificates from there.
    *
-   * Used only when `MailboxProps.hostedZoneId` is not set; with a hosted zone the Mailbox's own
+   * Used only when `MailboxProps.hostedZone` is not set; with a hosted zone the Mailbox's own
    * edge certificate is used and this field is ignored. Without a hosted zone and without this
    * certificate, the CDN is served on its default CloudFront domain.
    */
@@ -62,7 +63,7 @@ export interface MailboxCertificateOverrides {
    * Certificate for the WebSocket push custom domain (ws.<domain>). It must be issued in the same
    * region as the stack, because API Gateway custom domains use regional certificates.
    *
-   * Used only when `MailboxProps.hostedZoneId` is set: it then takes precedence over the regional
+   * Used only when `MailboxProps.hostedZone` is set: it then takes precedence over the regional
    * certificate the Mailbox creates. Without a hosted zone the WebSocket endpoint gets no custom
    * domain and this field is ignored.
    */
@@ -107,7 +108,7 @@ export interface MailboxSubdomainOverrides {
 export interface MailboxOverrides {
   /**
    * Your own ACM certificates per endpoint. When omitted, the Mailbox creates the certificates it
-   * needs, which requires `MailboxProps.hostedZoneId`. Supply individual fields to bypass that
+   * needs, which requires `MailboxProps.hostedZone`. Supply individual fields to bypass that
    * for specific endpoints, for example with manual DNS or a cross-account certificate.
    */
   readonly certificates?: MailboxCertificateOverrides;
@@ -125,14 +126,18 @@ export interface MailboxOverrides {
  */
 export interface MailboxProps {
   /**
-   * The Route53 hosted zone that serves your domain. The Mailbox derives the domain name from the
-   * zone at deploy time, creates DNS records for its endpoints in it, and creates the ACM
+   * The Route53 hosted zone that serves your domain. The Mailbox takes the domain name from the
+   * zone's `zoneName`, creates DNS records for its endpoints in it, and creates the ACM
    * certificates they need.
+   *
+   * Pass the `hostedZone` of a `HostedZoneLookup` so the zone is looked up once for your whole app.
+   * The Mailbox itself makes no lookup, so a zone whose `zoneName` is only known at deploy time
+   * works as well as one with a fixed name.
    *
    * When omitted, no DNS records or certificates are created: supply your own through
    * `overrides.certificates` and point DNS at the endpoints yourself.
    */
-  readonly hostedZoneId?: string;
+  readonly hostedZone?: route53.IHostedZone;
 
   /**
    * Configuration for at-rest KMS encryption of the Mailbox's core resources. See
@@ -200,7 +205,7 @@ export interface MailboxProps {
   /**
    * Whether to activate the MCP (Model Context Protocol) API at mcp.<domain>. Requires an Advanced
    * license tier. The MCP endpoint uses the regional certificate the Mailbox creates, so it also
-   * requires `hostedZoneId`, and `overrides.certificates` must not supply both `api` and `jmap`,
+   * requires `hostedZone`, and `overrides.certificates` must not supply both `api` and `jmap`,
    * or no regional certificate is created.
    *
    * @default false

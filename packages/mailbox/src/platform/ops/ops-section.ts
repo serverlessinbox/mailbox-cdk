@@ -19,8 +19,6 @@ import { SweeperInfra }                                   from './sweeper/sweepe
 /** What {@link OpsSection} uses of the data section. */
 export interface IOpsDataInputs {
   readonly configTable: IDataTable;
-  /** The domain name of the hosted zone, a deploy-time token. */
-  readonly derivedDomainName: string;
 }
 
 /** What {@link OpsSection} uses of the edge section. */
@@ -35,6 +33,8 @@ export interface IOpsEdgeInputs {
 export interface OpsSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly vendorAccountIds: string[];
+  /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
+  readonly domainName:       string;
   /** Default: {@link SendStackFailuresMode.ENABLED}. */
   readonly sendStackFailures?: SendStackFailuresMode;
   readonly data:               IOpsDataInputs;
@@ -50,7 +50,7 @@ export class OpsSection extends Construct {
     new LicenseRefresh(this, 'license-refresh', {
       configTable:      props.data.configTable,
       artifactResolver: props.artifactResolver,
-      coreDomain:       props.data.derivedDomainName,
+      coreDomain:       props.domainName,
       vendorAccountIds: props.vendorAccountIds,
     });
 

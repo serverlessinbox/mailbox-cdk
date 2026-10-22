@@ -8,23 +8,6 @@ import { applyServerlessInboxComponentTag }    from './tagging/serverless-inbox-
 import { getOrCreateSharedGroup }              from './tagging/shared-group';
 
 /**
- * The hosted zone and data stack name that the domain name and S3-safe stack name are derived from.
- */
-export interface StackHelpersMailboxDataProps {
-  /** An empty string means no hosted zone: the lookup is skipped and `derivedDomainName` is empty. */
-  readonly hostedZoneId:  string;
-  readonly dataStackName: string;
-}
-
-/**
- * Deploy-time CloudFormation tokens for the derived values, so not usable in synth-time decisions.
- */
-export interface StackHelpersMailboxData {
-  readonly derivedDomainName:          string;
-  readonly derivedS3SafeDataStackName: string;
-}
-
-/**
  * What a seeded number is derived from and how large it may be.
  */
 export interface StackHelpersSeededNumberProps {
@@ -61,27 +44,30 @@ export class StackHelpers extends Construct {
     return new StackHelpers(sharedGroup, 'stack-helpers', artifactResolver);
   }
 
-  /** Attaches the caller's own custom resource under `scope`. */
-  resolveMailboxData(
-    scope: Construct,
-    id: string,
-    props: StackHelpersMailboxDataProps,
-  ): StackHelpersMailboxData {
-    const cr = this.attach(scope, id, {
-      HostedZoneId:  props.hostedZoneId,
-      DataStackName: props.dataStackName,
-    });
-    return {
-      derivedDomainName:          cr.getAttString('domainName'),
-      derivedS3SafeDataStackName: cr.getAttString('s3SafeDataStackName'),
-    };
+  /**
+   * Attaches the caller's own custom resource under `scope`; the result is a deploy-time token: the
+   * name of the hosted zone without its trailing dot, empty when `hostedZoneId` is empty.
+   */
+  resolveHostedZoneName(scope: Construct, id: string, hostedZoneId: string): string {
+    const cr = this.attach(scope, id, { HostedZoneId: hostedZoneId });
+    return cr.getAttString('domainName');
   }
 
   /** Attaches the caller's own custom resource under `scope`; the result is a deploy-time token. */
-  resolveCognitoDomainPrefix(scope: Construct, id: string, hostedZoneId: string): string {
+  resolveS3SafeStackName(scope: Construct, id: string, stackName: string): string {
+    const cr = this.attach(scope, id, { DataStackName: stackName });
+    return cr.getAttString('s3SafeDataStackName');
+  }
+
+  /**
+   * Attaches the caller's own custom resource under `scope`; the result is a deploy-time token. The
+   * prefix is derived from `domainName` with no Route 53 call, and falls back to the stack name when
+   * `domainName` leaves nothing usable.
+   */
+  resolveCognitoDomainPrefix(scope: Construct, id: string, domainName: string): string {
     const cr = this.attach(scope, id, {
-      HostedZoneId: hostedZoneId,
-      Fallback:     cdk.Aws.STACK_NAME,
+      DomainName: domainName,
+      Fallback:   cdk.Aws.STACK_NAME,
     });
     return cr.getAttString('cognitoDomainPrefix');
   }

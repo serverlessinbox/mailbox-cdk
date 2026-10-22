@@ -2,12 +2,13 @@ import * as route53          from 'aws-cdk-lib/aws-route53';
 import * as cdk              from 'aws-cdk-lib';
 import type { Construct }    from 'constructs';
 
-import { MailboxDomains }    from './mailbox-domains';
 import type { MailboxUrls }  from '../../mailbox-outputs';
 import type { MailboxProps } from '../../mailbox-props';
 
+import { MailboxDomains }    from './mailbox-domains';
+
 /** The `MailboxProps` fields the addressing is resolved from. */
-type MailboxAddressingProps = Pick<MailboxProps, 'hostedZoneId' | 'subdomainNamespace' | 'overrides'>;
+type MailboxAddressingProps = Pick<MailboxProps, 'hostedZone' | 'subdomainNamespace' | 'overrides'>;
 
 /** Which UIs the Mailbox serves; a disabled UI gets no URL. */
 export interface MailboxEnabledUis {
@@ -16,33 +17,30 @@ export interface MailboxEnabledUis {
 }
 
 /**
- * Where a `Mailbox` is reachable: the hosted zone, the condition that tells whether a subdomain
- * namespace is set, the endpoint domain names, the public URLs and the prefix the edge stack
- * expects. Holds no endpoint construct and creates no DNS record.
+ * Where a `Mailbox` is reachable: the hosted zone it was given, the condition that tells whether a
+ * subdomain namespace is set, the endpoint domain names, the public URLs and the prefix the edge
+ * stack expects. Holds no endpoint construct and creates no DNS record.
  *
- * Creates the zone import and the namespace condition directly under the scope it receives, so
- * their ids and paths are those of the `Mailbox` itself.
+ * Creates the namespace condition directly under the scope it receives, so its id and path are
+ * those of the `Mailbox` itself.
  */
 export class MailboxAddressing {
   private constructor(
-    public readonly zone: route53.IHostedZone,
+    public readonly zone: route53.IHostedZone | undefined,
     public readonly subdomainNamespaceCondition: cdk.CfnCondition | undefined,
     public readonly domains: MailboxDomains,
     public readonly urls: MailboxUrls,
     public readonly edgePrefix: string,
   ) {}
 
-  /** Resolves the addressing for `domainName`, the domain derived from the hosted zone at deploy time. */
+  /** Resolves the addressing for the domain of `props.hostedZone`; without a zone the domain is empty at deploy time. */
   public static resolve(
     scope: Construct,
     props: MailboxAddressingProps,
-    domainName: string,
     enabledUis: MailboxEnabledUis,
   ): MailboxAddressing {
-    const zone = route53.HostedZone.fromHostedZoneAttributes(scope, 'zone', {
-      hostedZoneId: props.hostedZoneId ?? '',
-      zoneName:     domainName,
-    });
+    const zone       = props.hostedZone;
+    const domainName = zone ? zone.zoneName : cdk.Lazy.string({ produce: () => '' });
 
     const subdomainNamespaceCondition = props.subdomainNamespace !== undefined
       ? new cdk.CfnCondition(scope, 'HasSubdomainNamespace', {

@@ -22,8 +22,6 @@ import { MailboxEdgeDeployer }                                                  
 export interface IEdgeDataInputs {
   readonly configTable: IDataTable;
   readonly itemTable:   IDataTable;
-  /** The domain name of the hosted zone, a deploy-time token. */
-  readonly derivedDomainName: string;
   /** The raw bucket the CDN fronts. */
   readonly blobStoreBucket: IBucket;
 }
@@ -38,7 +36,8 @@ export interface IEdgeAddressing {
   /** The endpoint names; the regional certificate covers the api, jmap and ws names. */
   readonly domains:    IMailboxDomainNames;
   readonly edgePrefix: string;
-  readonly zone:       route53.IHostedZone;
+  /** Present when the mailbox has a hosted zone: the certificates validate and the DNS records are written into it. */
+  readonly zone?:      route53.IHostedZone;
 }
 
 /** What {@link EdgeSection.addBlobCdn} uses of the ui section. */
@@ -57,8 +56,6 @@ export interface EdgeSectionProps {
   readonly data:             IEdgeDataInputs;
   readonly auth:             IEdgeAuthInputs;
   readonly addressing:       IEdgeAddressing;
-  /** Set when the mailbox has a hosted zone; the certificates validate and the DNS records are written into it. */
-  readonly hostedZoneId?: string;
   /** The operator's own certificates; the api, jmap, ws and cloudFront ones are read here. */
   readonly certificateOverrides?: MailboxCertificateOverrides;
 }
@@ -136,12 +133,13 @@ export class EdgeSection extends Construct {
     applyServerlessInboxComponentTag(this, 'edge');
 
     this.props      = props;
-    this.hostedZone = props.hostedZoneId ? props.addressing.zone : undefined;
+    this.hostedZone = props.addressing.zone;
 
-    const provided = props.certificateOverrides;
+    const provided   = props.certificateOverrides;
+    const domainName = props.addressing.domains.domainName;
 
     this.edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
-      domainName:        props.data.derivedDomainName,
+      domainName,
       artifactResolver:  props.artifactResolver,
       prefix:            props.addressing.edgePrefix,
       hostedZone:        this.hostedZone,
@@ -162,16 +160,17 @@ export class EdgeSection extends Construct {
     // the api, jmap, ws and mcp names and fills the gaps.
     let regionalSanCertificate: acm.ICertificate | undefined;
     let cfnCert: acm.CfnCertificate | undefined;
-    if (props.hostedZoneId && (!provided?.api || !provided.jmap)) {
-      cfnCert = new acm.CfnCertificate(this, 'regional-api-certificate', {
+    if (this.hostedZone && (!provided?.api || !provided.jmap)) {
+      const { hostedZoneId } = this.hostedZone;
+      cfnCert                = new acm.CfnCertificate(this, 'regional-api-certificate', {
         domainName:              props.addressing.domains.api,
-        subjectAlternativeNames: [props.addressing.domains.jmap, props.addressing.domains.ws, `mcp.${props.data.derivedDomainName}`],
+        subjectAlternativeNames: [props.addressing.domains.jmap, props.addressing.domains.ws, `mcp.${domainName}`],
         validationMethod:        'DNS',
         domainValidationOptions: [
-          { domainName: props.addressing.domains.api, hostedZoneId: props.hostedZoneId },
-          { domainName: props.addressing.domains.jmap, hostedZoneId: props.hostedZoneId },
-          { domainName: props.addressing.domains.ws, hostedZoneId: props.hostedZoneId },
-          { domainName: `mcp.${props.data.derivedDomainName}`, hostedZoneId: props.hostedZoneId },
+          { domainName: props.addressing.domains.api, hostedZoneId },
+          { domainName: props.addressing.domains.jmap, hostedZoneId },
+          { domainName: props.addressing.domains.ws, hostedZoneId },
+          { domainName: `mcp.${domainName}`, hostedZoneId },
         ],
       });
       ComponentDescription.describe(cfnCert, 'Regional ACM certificate covering the api, jmap, ws and mcp endpoints.');

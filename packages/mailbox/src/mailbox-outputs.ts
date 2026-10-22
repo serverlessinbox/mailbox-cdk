@@ -26,12 +26,12 @@ export interface MailboxUrls {
 export interface MailboxCertificates {
   /**
    * The us-east-1 ACM certificate for the CloudFront (edge) alternate domain names. Present only
-   * when `MailboxProps.hostedZoneId` is set.
+   * when `MailboxProps.hostedZone` is set.
    */
   readonly edge?: acm.ICertificate;
   /**
    * The regional ACM SAN certificate covering the api, jmap, ws and mcp subdomains. Present only
-   * when `MailboxProps.hostedZoneId` is set and at least one of `overrides.certificates.api` and
+   * when `MailboxProps.hostedZone` is set and at least one of `overrides.certificates.api` and
    * `overrides.certificates.jmap` is not supplied.
    */
   readonly regional?: acm.ICertificate;

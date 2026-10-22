@@ -112,6 +112,30 @@ describe('StackHelpersResolver', () => {
     });
   });
 
+  describe('Cognito domain prefix from a given DomainName', () => {
+    it('is sanitized like a looked-up domain name and needs no Route 53 call', async () => {
+      const data = await resolveFor({ DomainName: 'AWS.Mail_Example.com', Fallback: 'my-stack' });
+
+      expect(data.cognitoDomainPrefix).toBe('mail-example-com');
+      expect(data.domainName).toBe('AWS.Mail_Example.com');
+      expect(route53Mock.commandCalls(GetHostedZoneCommand)).toHaveLength(0);
+    });
+
+    it('wins over a HostedZoneId, which is then not looked up', async () => {
+      const data = await resolveFor({ DomainName: 'given.example.com', HostedZoneId: 'Z123' });
+
+      expect(data.cognitoDomainPrefix).toBe('given-example-com');
+      expect(route53Mock.commandCalls(GetHostedZoneCommand)).toHaveLength(0);
+    });
+
+    it('falls back when the given DomainName is empty', async () => {
+      const data = await resolveFor({ DomainName: '', Fallback: 'my-stack' });
+
+      expect(data.cognitoDomainPrefix).toBe('my-stack');
+      expect(route53Mock.commandCalls(GetHostedZoneCommand)).toHaveLength(0);
+    });
+  });
+
   describe('Cognito domain prefix fallback', () => {
     it('is used when the domain name is made only of reserved words', async () => {
       expect(await cognitoPrefixForDomain('aws.amazon.cognito', { Fallback: 'my-stack' })).toBe('my-stack');

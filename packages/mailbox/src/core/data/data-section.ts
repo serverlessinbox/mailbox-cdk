@@ -1,6 +1,5 @@
 import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
 import type { BaseQueueProps, ServerlessInboxDeployerType }                    from '@serverlessinbox/mailbox-cdk-shared';
-import type { StackHelpersMailboxData, StackHelpersMailboxDataProps }          from '@serverlessinbox/mailbox-cdk-shared';
 import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                                from 'aws-cdk-lib';
@@ -14,24 +13,21 @@ import type { IDataTable }                                                     f
 import { AuditWriting }                                                        from './audit-writing';
 import { MailboxDataDeployer }                                                 from './delivery/mailbox-data-deployer';
 
-/** Derives the domain name and the S3-safe stack name at deploy time. */
-export interface IMailboxDataResolver {
-  resolveMailboxData(scope: Construct, id: string, props: StackHelpersMailboxDataProps): StackHelpersMailboxData;
+/** Derives the S3-safe form of a stack name at deploy time. */
+export interface IS3SafeStackNameResolver {
+  resolveS3SafeStackName(scope: Construct, id: string, stackName: string): string;
 }
 
 /** Props of {@link DataSection}. */
 export interface DataSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly deployerType:     ServerlessInboxDeployerType;
-  readonly stackHelpers:     IMailboxDataResolver;
-  readonly hostedZoneId?:    string;
+  readonly stackHelpers:     IS3SafeStackNameResolver;
   readonly queueProps?:      Partial<BaseQueueProps>;
 }
 
-/** The retained data resources, the audit writer, and the stack names derived from the hosted zone. */
+/** The retained data resources, the audit writer, and the S3-safe stack names. */
 export class DataSection extends Construct {
-  /** The domain name of the hosted zone, a deploy-time token. */
-  public readonly derivedDomainName: string;
   /** The S3-safe name of the data stack, a deploy-time token. */
   public readonly nameBase: string;
   /** The S3-safe name of the main stack, a deploy-time token. */
@@ -49,25 +45,15 @@ export class DataSection extends Construct {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'data');
 
-    // Derive domain name and S3-safe stack name from hosted zone at deploy time.
     const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
 
-    const { derivedDomainName, derivedS3SafeDataStackName } = props.stackHelpers.resolveMailboxData(
-      this, 'stack-helpers', { hostedZoneId: props.hostedZoneId ?? '', dataStackName: effectiveDataStackName },
-    );
+    this.nameBase = props.stackHelpers.resolveS3SafeStackName(this, 'stack-helpers', effectiveDataStackName);
     ComponentDescription.describe(
       this.node.findChild('stack-helpers'),
-      'Deploy-time helper custom resources (e.g. deriving the domain name from the hosted zone).',
+      'Deploy-time helper custom resources (e.g. deriving the S3-safe stack names).',
     );
 
-    // Derive S3-safe main stack name (no domain lookup needed, so hostedZoneId is empty)
-    const { derivedS3SafeDataStackName: mainStackNameBase } = props.stackHelpers.resolveMailboxData(
-      this, 'stack-helpers-main-stack', { hostedZoneId: '', dataStackName: Aws.STACK_NAME },
-    );
-
-    this.derivedDomainName = derivedDomainName;
-    this.nameBase          = derivedS3SafeDataStackName;
-    this.mainStackNameBase = mainStackNameBase;
+    this.mainStackNameBase = props.stackHelpers.resolveS3SafeStackName(this, 'stack-helpers-main-stack', Aws.STACK_NAME);
 
     // Retained data resources come from the auto-deployed data stack. Every field on `dataRef` is
     // an `IDataTable` grant interface; no raw `ITable` reaches this scope.

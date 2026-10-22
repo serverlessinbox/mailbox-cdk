@@ -8,7 +8,8 @@
 import type { IArtifactResolver }                                        from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsOfDocument }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ArtifactObject, DeployedStack, MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                      from 'aws-cdk-lib/assertions';
+import { Match, Template }                                               from 'aws-cdk-lib/assertions';
+import * as route53                                                      from 'aws-cdk-lib/aws-route53';
 import * as cdk                                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                 from 'aws-cdk-lib';
 
@@ -381,8 +382,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Construct with cognito-auto domain config
       const userPool = new MailboxUserPool(stack, 'user-pool', {
         domain:           {
-          kind:         'cognito-auto',
-          hostedZoneId: 'Z1234567890ABC',
+          kind:       'cognito-auto',
+          hostedZone: route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z1234567890ABC', zoneName: 'mail.example.com' }),
         },
         artifactResolver: resolver,
       });
@@ -415,6 +416,31 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Both Lambda and CustomResource should be present for cognito-auto
       expect(hasLambda).toBe(true);
       expect(hasCustomResource).toBe(true);
+    });
+
+    it('kind: cognito-auto - derives the prefix from the zone name of the given hosted zone without a Route 53 lookup', () => {
+      const app = new App();
+      setUpArtifactContext(app);
+      const stack = new cdk.Stack(app, 'TestCognitoAutoPrefixStack', {
+        env:         { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+
+      new MailboxUserPool(stack, 'user-pool', {
+        domain:           {
+          kind:       'cognito-auto',
+          hostedZone: route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z1234567890ABC', zoneName: 'mail.example.com' }),
+        },
+        artifactResolver: createTestResolver(stack),
+      });
+
+      const template = Template.fromStack(stack);
+      const [crId]   = Object.keys(template.findResources('Custom::StackHelpers'));
+      template.resourceCountIs('Custom::StackHelpers', 1);
+      template.hasResourceProperties('Custom::StackHelpers', { DomainName: 'mail.example.com', HostedZoneId: Match.absent() });
+      template.hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
+        parameters: Match.objectLike({ cognitoDomainPrefix: { 'Fn::GetAtt': [crId, 'cognitoDomainPrefix'] } }),
+      });
     });
 
     it('kind: cognito - no StackHelpers Lambda/CR, uses explicit prefix', () => {

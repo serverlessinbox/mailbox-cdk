@@ -30,8 +30,6 @@ export interface IApisDataInputs {
   readonly mailFeedbackTable: IDataTable;
   readonly blobStore:         IDataBlobStore;
   readonly auditEventsQueue:  IAuditEventsQueue;
-  /** The domain name of the hosted zone, a deploy-time token. */
-  readonly derivedDomainName: string;
 }
 
 /** What {@link ApisSection} uses of the auth section. */
@@ -261,7 +259,7 @@ export class ApisSection extends Construct {
 
       sesRuleSetName:      email.sesRuleSetName,
       sesConfigSetName:    email.sesConfigSetName,
-      systemSenderAddress: `noreply@${data.derivedDomainName}`,
+      systemSenderAddress: `noreply@${props.mailboxDomains.domainName}`,
     });
   }
 
@@ -270,14 +268,14 @@ export class ApisSection extends Construct {
       return undefined;
     }
     if (!props.edge.regionalCertificate) {
-      throw new Error('enableMcp needs the regional certificate: set hostedZoneId and leave overrides.certificates without both api and jmap');
+      throw new Error('enableMcp needs the regional certificate: set hostedZone and leave overrides.certificates without both api and jmap');
     }
 
     return new McpApi(this, 'mcp-api', {
       jmapApiGateway:   jmapApi.httpApi,
       authorizerLambda: jmapApi.authorizerLambda,
       certificate:      props.edge.regionalCertificate,
-      domainName:       this.props.data.derivedDomainName,
+      domainName:       props.mailboxDomains.domainName,
       scopeMap:         this.props.authProvider.scopeMap as Record<string, string[]>,
       artifactResolver: this.props.artifactResolver,
     });

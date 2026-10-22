@@ -17,6 +17,7 @@ import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
 import { Permission }                    from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }     from '../core/auth/types';
+import { HostedZoneLookup }              from '../core/domains/hosted-zone-lookup';
 import { Mailbox }                       from '../mailbox';
 
 import { CloudFormationResource }        from './iam-test-helpers';
@@ -111,7 +112,7 @@ function uniquelyNamedLogicalIds(): string[] {
   });
   new Mailbox(stack, 'mailbox', {
     authProvider:    createMockAuthProvider(),
-    hostedZoneId:    'Z1234567890ABC',
+    hostedZone:      new HostedZoneLookup(stack, 'hosted-zone-lookup', { hostedZoneId: 'Z1234567890ABC' }).hostedZone,
     enableMcp:       true,
     enableReceiving: 'on',
   });

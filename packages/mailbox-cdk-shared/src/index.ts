@@ -89,7 +89,6 @@ export { getOrCreateSharedGroup } from './tagging/shared-group';
 
 // Stack helpers
 export { StackHelpers } from './stack-helpers';
-export type { StackHelpersMailboxDataProps, StackHelpersMailboxData } from './stack-helpers';
 
 // Stack name-base registry
 export { setStackNameBase, getStackNameBase } from './naming/stack-name-base-registry';

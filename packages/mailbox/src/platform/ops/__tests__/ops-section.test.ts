@@ -8,7 +8,7 @@
  */
 import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }   from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                    from 'aws-cdk-lib/assertions';
+import { Match, Template }                             from 'aws-cdk-lib/assertions';
 import * as acm                                        from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                        from 'aws-cdk-lib/aws-dynamodb';
 import { CfnResource, TagManager }                     from 'aws-cdk-lib';
@@ -34,9 +34,9 @@ function newSection(stack: Stack, overrides: Partial<OpsSectionProps> = {}): Ops
   const section          = new OpsSection(stack, 'ops', {
     artifactResolver,
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
+    domainName:       'example.com',
     data:             {
-      configTable:       new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-      derivedDomainName: 'example.com',
+      configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
     },
     edge:             { jmapBlobDownloadVersionArn: VERSION_ARN },
     ...overrides,
@@ -69,6 +69,16 @@ describe('OpsSection', () => {
     for (const childId of ['license-refresh', 'stack-failure-detection', 'edge-fn-removal-target', 'edge-fn-removal', 'stack-failure-detector-removal', 'sweeper-infra', 'deferred-removal']) {
       expect(section.node.tryFindChild(childId)).toBeDefined();
     }
+  });
+
+  it('hands the domain it was given to the license refresh', () => {
+    const { stack } = newDeployerTestStack();
+
+    newSection(stack, { domainName: 'mail.example.org' });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ CORE_DOMAIN: 'mail.example.org' }) },
+    });
   });
 
   it('registers the certificate removal only when a regional certificate was created', () => {
