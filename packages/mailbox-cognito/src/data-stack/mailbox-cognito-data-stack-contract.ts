@@ -36,6 +36,5 @@ export type MailboxCognitoDataStackParameters = {
   readonly passwordMinLength: string;
   readonly rootStack: string;
   readonly rootStackId: string;
-  readonly productVersion: string;
   readonly deployerType: ServerlessInboxDeployerType;
 };

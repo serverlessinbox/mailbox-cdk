@@ -96,11 +96,6 @@ export class MailboxCognitoDataStack extends cdk.Stack {
         type: 'String',
         description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
       }),
-      productVersion: this.declareParameter('productVersion', {
-        type: 'String',
-        description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
-        default: 'unknown',
-      }),
       deployerType: this.declareParameter('deployerType', {
         type: 'String',
         description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',

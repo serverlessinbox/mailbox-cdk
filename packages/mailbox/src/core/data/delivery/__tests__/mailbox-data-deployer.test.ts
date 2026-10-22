@@ -16,7 +16,6 @@ import * as iam                                               from 'aws-cdk-lib/
 
 import {
   TEST_ACCOUNT,
-  TEST_ARTIFACT_VERSION,
   TEST_REGION,
   newDeployerTestStack,
 } from '../../../../__tests__/deployer-test-helpers';
@@ -81,7 +80,6 @@ describe('MailboxDataDeployer', () => {
         parameters: {
           nameBase: 'test-name-base',
           rootStack: STACK_NAME_REF,
-          productVersion: TEST_ARTIFACT_VERSION,
           deployerType: 'marketplace',
         },
       });

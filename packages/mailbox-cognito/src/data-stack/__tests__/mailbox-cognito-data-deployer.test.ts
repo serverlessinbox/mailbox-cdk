@@ -15,7 +15,7 @@ import { Stack }                                       from 'aws-cdk-lib';
 import { MailboxCognitoDataDeployer }                  from '../mailbox-cognito-data-deployer';
 import type { MailboxCognitoDataDeployerProps }        from '../mailbox-cognito-data-deployer';
 
-import { TEST_ARTIFACT_VERSION, newDeployerTestStack } from './cognito-deployer-helpers';
+import { newDeployerTestStack }                        from './cognito-deployer-helpers';
 
 const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxCognitoDataDeployer';
 const STACK_NAME_REF         = { Ref: 'AWS::StackName' };
@@ -84,7 +84,6 @@ describe('MailboxCognitoDataDeployer', () => {
           mfaMode: 'OPTIONAL',
           passwordMinLength: '8',
           rootStack: STACK_NAME_REF,
-          productVersion: TEST_ARTIFACT_VERSION,
           deployerType: 'cdk',
         },
       });

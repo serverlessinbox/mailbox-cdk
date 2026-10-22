@@ -76,8 +76,6 @@ export class MailboxDataDeployer extends Construct {
       }),
     });
 
-    const productVersion = props.artifactResolver.getVersion('mailbox-cdk');
-
     const resource = infra.deployStack(this, 'resource', 'Custom::MailboxDataDeployer', {
       stackName: dataStackName,
       templateUrl: props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
@@ -86,14 +84,12 @@ export class MailboxDataDeployer extends Construct {
         nameBase: props.nameBase,
         rootStack: Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
-        productVersion,
         deployerType: props.deployerType,
       },
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
         stack: dataStackName,
-        version: productVersion,
       }),
     });
 

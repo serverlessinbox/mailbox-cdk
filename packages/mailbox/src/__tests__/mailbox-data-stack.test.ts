@@ -207,7 +207,6 @@ describe('MailboxDataStack Template Synthesis', () => {
       // Data stack should have root stack correlation parameters
       expect(parameters).toHaveProperty('rootStack');
       expect(parameters).toHaveProperty('nameBase');
-      expect(parameters).toHaveProperty('productVersion');
     });
   });
 

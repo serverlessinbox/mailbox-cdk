@@ -60,13 +60,6 @@ export class MailboxDataStack extends cdk.Stack {
     });
     rootStackIdParam.overrideLogicalId('rootStackId');
 
-    const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
-      type: 'String',
-      description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
-      default: 'unknown',
-    });
-    productVersionParam.overrideLogicalId('productVersion');
-
     const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
       type: 'String',
       description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',

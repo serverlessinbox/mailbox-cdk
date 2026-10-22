@@ -120,7 +120,6 @@ export class MailboxEdgeDeployer extends Construct {
         rootStack: Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
         stack: edgeStackName,
-        version: props.productVersion,
       }),
       terminationProtection: props.terminationProtection ?? false,
       region: 'us-east-1',

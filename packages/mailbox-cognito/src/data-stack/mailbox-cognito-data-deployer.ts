@@ -75,19 +75,16 @@ export class MailboxCognitoDataDeployer extends Construct {
       }),
     });
 
-    const productVersion = artifacts.getVersion('mailbox-cognito');
-
     const resource = deployerInfra.deployStack(this, 'resource', 'Custom::MailboxCognitoDataDeployer', {
       region: Aws.REGION,
       preserveOnDelete: true,
       stackName,
       templateUrl: artifacts.getUrl('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
-      parameters: this.templateParameters(props, productVersion),
+      parameters: this.templateParameters(props),
       tags: serverlessInboxSubStackTags({
         rootStack: Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
         stack: stackName,
-        version: productVersion,
       }),
     });
 
@@ -98,14 +95,13 @@ export class MailboxCognitoDataDeployer extends Construct {
     });
   }
 
-  private templateParameters(props: MailboxCognitoDataDeployerProps, productVersion: string): MailboxCognitoDataStackParameters {
+  private templateParameters(props: MailboxCognitoDataDeployerProps): MailboxCognitoDataStackParameters {
     return {
       cognitoDomainPrefix: props.cognitoDomainPrefix,
       mfaMode: props.mfaMode ?? DEFAULT_MFA_MODE,
       passwordMinLength: String(props.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH),
       rootStack: Aws.STACK_NAME,
       rootStackId: StackIdentity.guid,
-      productVersion,
       deployerType: props.deployerType,
       ...(props.customDomain !== undefined
         ? {

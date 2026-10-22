@@ -48,8 +48,6 @@ export interface ServerlessInboxSubStackTagOptions {
   readonly rootStackId: string;
   /** This sub-stack's own CloudFormation stack name. */
   readonly stack: string;
-  /** Product version (e.g. '1.2.3' or 'channel:dev'). Not included in the tag map. */
-  readonly version?: string;
   /** Defaults to 'mailbox'. */
   readonly product?: string;
 }
