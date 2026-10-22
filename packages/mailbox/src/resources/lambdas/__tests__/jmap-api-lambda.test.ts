@@ -3,7 +3,7 @@
 /**
  * JmapApiLambda (jmap-api) auth-key-store grant and OAuth config tests.
  *
- * Verifies JmapApiLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
+ * Verifies JmapApiLambda.grantRead grants exactly the read actions on the auth-key-store
  * table (and nothing broader, e.g. no Scan/PartiQL), that the table-name env var is present, and
  * that OAUTH_HANDLER_CONFIG carries the scope map the Go handler reads and no other field.
  */
@@ -12,7 +12,7 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions, VENDOR_ACCOUNT_ID }   from '@serverlessinbox/mailbox-cdk-shared';
+import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
@@ -99,12 +99,12 @@ describe('JmapApiLambda', () => {
     return statementsForResource(template, authKeyStoreResources());
   }
 
-  it('grants exactly DynamoDbActions.read, Allow, on the table + index resources', () => {
+  it('grants exactly the read actions, Allow, on the table + index resources', () => {
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action:   Match.arrayEquals([...DynamoDbActions.read]),
+            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query']),
             Effect:   'Allow',
             Resource: Match.exact(authKeyStoreResources()),
           }),

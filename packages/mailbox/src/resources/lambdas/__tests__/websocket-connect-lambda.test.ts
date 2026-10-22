@@ -3,7 +3,7 @@
 /**
  * WebSocketConnectLambda connections-table grant tests (grant-concept unit B).
  *
- * Verifies WebSocketConnectLambda grants exactly DynamoDbActions.readWrite on the connections table
+ * Verifies WebSocketConnectLambda grants exactly the read-write actions on the connections table
  * (and nothing broader, e.g. no Scan/PartiQL/Deny), via the real WebSocketTable construct.
  */
 
@@ -11,14 +11,13 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../tables/websocket-table';
 import { DataTable }                            from '../../tables/data-tables';
+import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
 
 describe('WebSocketConnectLambda connections-table grant', () => {
@@ -65,7 +64,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     ]);
   }
 
-  it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
+  it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
     const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -76,7 +75,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
             Effect:   'Allow',
             Resource: expectedResource,
           }),

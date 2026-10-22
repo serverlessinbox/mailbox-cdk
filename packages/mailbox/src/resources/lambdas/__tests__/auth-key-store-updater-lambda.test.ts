@@ -3,7 +3,7 @@
 /**
  * AuthKeyStoreUpdaterLambda auth-key-store grant tests (grant-concept unit A).
  *
- * Verifies AuthKeyStoreUpdaterLambda.grantReadWrite grants exactly DynamoDbActions.readWrite on
+ * Verifies AuthKeyStoreUpdaterLambda.grantReadWrite grants exactly the read-write actions on
  * the auth-key-store table (and nothing broader, e.g. no Scan/PartiQL), and that the table-name
  * env var is present.
  */
@@ -12,7 +12,6 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
@@ -54,7 +53,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
   });
 
   function authKeyStoreStatements(): PolicyStatementJson[] {
-    const expectedResource = stack.resolve([
+    const expectedResource: unknown = stack.resolve([
       authKeyStoreTable.tableArn,
       `${authKeyStoreTable.tableArn}/index/*`,
     ]);
@@ -62,8 +61,8 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     return statementsForResource(template, expectedResource);
   }
 
-  it('grants exactly DynamoDbActions.readWrite, Allow, on the table + index resources', () => {
-    const expectedResource = stack.resolve([
+  it('grants exactly the read-write actions, Allow, on the table + index resources', () => {
+    const expectedResource: unknown = stack.resolve([
       authKeyStoreTable.tableArn,
       `${authKeyStoreTable.tableArn}/index/*`,
     ]);
@@ -72,7 +71,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
             Effect:   'Allow',
             Resource: expectedResource,
           }),

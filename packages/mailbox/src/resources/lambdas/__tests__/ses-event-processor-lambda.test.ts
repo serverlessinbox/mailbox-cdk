@@ -10,7 +10,6 @@
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { SqsActions }                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
@@ -87,14 +86,14 @@ describe('SesEventProcessorLambda event-source wiring', () => {
     });
   });
 
-  it('grants the role exactly the SqsActions.consume statement on the SES-event queue', () => {
+  it('grants the role exactly the SQS consume statement on the SES-event queue', () => {
     const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);
     const [statement] = consumeStatements;
 
     expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals([...SqsActions.consume]).test(statement.Action);
+    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
     expect(actionMatch.hasFailed()).toBe(false);
     const resourceMatch = Match.exact(stack.resolve(sesEventQueue.queueArn)).test(statement.Resource);
     expect(resourceMatch.hasFailed()).toBe(false);

@@ -116,18 +116,6 @@ export type { ServerlessInboxResourceGroupProps } from './tagging/resource-group
 // Component description
 export { ComponentDescription } from './tagging/component-description';
 
-// DynamoDB least-privilege action sets & table grant helper
-export { DynamoDbActions, grantTableActions } from './grants/dynamodb-grants';
-
-// SQS least-privilege action sets, for `BaseQueue.grantActions`
-export { SqsActions } from './grants/sqs-actions';
-
-// S3 least-privilege object action sets & bucket grant helpers
-export { S3Actions, grantObjectActions, grantListBucket } from './grants/s3-grants';
-
-// SSM Parameter Store least-privilege action set
-export { SsmActions } from './grants/ssm-actions';
-
 // Sub-stack deployer scaffolding: worker and starter Lambdas and the polling Step Functions workflow
 export { DeployerInfra } from './deployer-infra';
 export type { DeployerInfraProps } from './deployer-infra';

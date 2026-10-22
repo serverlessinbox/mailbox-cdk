@@ -3,7 +3,7 @@
 /**
  * WebSocketBroadcastLambda connections-table + push-API wiring tests (grant-concept unit B).
  *
- * Verifies WebSocketBroadcastLambda grants exactly DynamoDbActions.readWrite on the connections
+ * Verifies WebSocketBroadcastLambda grants exactly the read-write actions on the connections
  * table (no Scan/PartiQL/Deny), sets WEBSOCKET_API_ENDPOINT from the injected IWebSocketPushApi's
  * managementEndpoint, and calls grantManageConnections with itself as the grantee. The push API
  * is faked here: the real ARN/statement shape it produces is pinned by WebSocketPush's own tests.
@@ -13,16 +13,15 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { WebSocketTable }                       from '../../tables/websocket-table';
 import type { IWebSocketPushApi }               from '../../../core/apis/websocket';
 import { DataTable }                            from '../../tables/data-tables';
+import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketBroadcastLambda }             from '../websocket-broadcast-lambda';
 
 class FakeWebSocketPushApi implements IWebSocketPushApi {
@@ -81,7 +80,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     ]);
   }
 
-  it('grants exactly DynamoDbActions.readWrite, Allow, on the connections table + index resources', () => {
+  it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
     const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -92,7 +91,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
             Effect:   'Allow',
             Resource: expectedResource,
           }),

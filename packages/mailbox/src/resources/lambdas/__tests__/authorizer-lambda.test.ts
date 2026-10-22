@@ -3,7 +3,7 @@
 /**
  * AuthorizerLambda auth-key-store grant tests (grant-concept unit A).
  *
- * Verifies AuthorizerLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
+ * Verifies AuthorizerLambda.grantRead grants exactly the read actions on the auth-key-store
  * table (and nothing broader, e.g. no Scan/PartiQL), and that the table-name env var is present.
  */
 
@@ -11,7 +11,6 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
@@ -72,12 +71,12 @@ describe('AuthorizerLambda auth-key-store grant', () => {
     return statementsForResource(template, authKeyStoreResources());
   }
 
-  it('grants exactly DynamoDbActions.read, Allow, on the table + index resources', () => {
+  it('grants exactly the read actions, Allow, on the table + index resources', () => {
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action:   Match.arrayEquals([...DynamoDbActions.read]),
+            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query']),
             Effect:   'Allow',
             Resource: Match.exact(authKeyStoreResources()),
           }),

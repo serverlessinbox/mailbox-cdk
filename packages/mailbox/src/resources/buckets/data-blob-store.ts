@@ -1,8 +1,7 @@
-import { S3Actions, grantObjectActions, grantListBucket } from '@serverlessinbox/mailbox-cdk-shared';
-import { IGrantable }                                     from 'aws-cdk-lib/aws-iam';
-import { IBucket }                                        from 'aws-cdk-lib/aws-s3';
+import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
+import { IBucket }           from 'aws-cdk-lib/aws-s3';
 
-import { BlobStore }                                      from './blob-store';
+import { BlobStore }         from './blob-store';
 
 /**
  * A handle to the blob store's bucket, given instead of a raw CDK `IBucket`. Use it to read the
@@ -49,6 +48,12 @@ export interface IDataBlobStore {
  * Wraps a bucket reference and narrows what a consumer can do with it. Not responsible for creating,
  * importing or configuring the bucket. A plain class, not a construct: it adds no node of its own to
  * the construct tree and synthesizes nothing.
+ *
+ * Each grant lists its S3 actions rather than using CDK's `Bucket.grantRead`/`grantWrite`, which also
+ * allow `s3:GetBucket*` and `s3:List*`. `HeadObject` is authorized by `s3:GetObject`; there is no
+ * `s3:HeadObject` action. When the bucket has a customer-managed key, a grant adds the key actions its
+ * S3 actions need: `kms:GenerateDataKey*` for `PutObject`, `kms:Decrypt` for `GetObject`, and
+ * `kms:DescribeKey` for either. `DeleteObject` does not use the key.
  */
 export class DataBlobStore implements IDataBlobStore {
   private static readonly EMAIL_BLOB_KEY_PATTERN     = 'tenants/*/accounts/*/emails/*';
@@ -65,39 +70,89 @@ export class DataBlobStore implements IDataBlobStore {
   }
 
   public grantEmailBlobWrite(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.write, DataBlobStore.EMAIL_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:PutObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.EMAIL_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:DescribeKey');
   }
 
   public grantEmailBlobRead(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.read, DataBlobStore.EMAIL_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.EMAIL_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantEmailBlobReadWriteDelete(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readWriteDelete, DataBlobStore.EMAIL_BLOB_KEY_PATTERN);
-    grantListBucket(grantee, this.bucket, DataBlobStore.EMAIL_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.EMAIL_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucket.bucketArn],
+      conditions:   { StringLike: { 's3:prefix': DataBlobStore.EMAIL_BLOB_KEY_PATTERN } },
+    });
   }
 
   public grantUploadBlobReadWriteDelete(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readWriteDelete, DataBlobStore.UPLOAD_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.UPLOAD_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantIncomingEmailConsume(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readDelete, DataBlobStore.INCOMING_EMAIL_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.INCOMING_EMAIL_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantContactBlobReadWriteDelete(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readWriteDelete, DataBlobStore.CONTACT_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.CONTACT_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantPrincipalBlobReadWriteDelete(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readWriteDelete, DataBlobStore.PRINCIPAL_BLOB_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.PRINCIPAL_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantSearchIndexRead(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.read, DataBlobStore.SEARCH_INDEX_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.SEARCH_INDEX_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:Decrypt', 'kms:DescribeKey');
   }
 
   public grantSearchIndexReadWrite(grantee: IGrantable): void {
-    grantObjectActions(grantee, this.bucket, S3Actions.readWrite, DataBlobStore.SEARCH_INDEX_KEY_PATTERN);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.SEARCH_INDEX_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
   }
 }

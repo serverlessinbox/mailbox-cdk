@@ -1,17 +1,11 @@
-import {
-  StackNamedBucket,
-  S3Actions,
-  makePhysicalName,
-  grantObjectActions,
-  grantListBucket,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import { S3BucketOrigin }    from 'aws-cdk-lib/aws-cloudfront-origins';
+import { StackNamedBucket, makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
+import { S3BucketOrigin }                     from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   IOrigin,
   IOriginAccessControl,
   S3OriginAccessControl,
 } from 'aws-cdk-lib/aws-cloudfront';
-import { IGrantable }        from 'aws-cdk-lib/aws-iam';
+import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy }     from 'aws-cdk-lib';
 import { Construct }         from 'constructs';
@@ -69,9 +63,27 @@ export class UiBucket extends StackNamedBucket {
    * resource type. A tag condition on these actions therefore denies the write.
    */
   grantContentDeploy(grantee: IGrantable): void {
-    grantObjectActions(grantee, this, [...S3Actions.write, ...S3Actions.delete], 'content/*');
-    grantObjectActions(grantee, this, [...S3Actions.write, ...S3Actions.delete], 'config/*');
-    grantListBucket(grantee, this, 'content/*');
-    grantListBucket(grantee, this, 'config/*');
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.arnForObjects('content/*')],
+    });
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.arnForObjects('config/*')],
+    });
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucketArn],
+      conditions:   { StringLike: { 's3:prefix': 'content/*' } },
+    });
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucketArn],
+      conditions:   { StringLike: { 's3:prefix': 'config/*' } },
+    });
   }
 }

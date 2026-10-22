@@ -1,8 +1,8 @@
-import { DynamoDbActions, grantTableActions, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode, ITable }                  from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable }                                          from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                                       from 'aws-cdk-lib';
-import { Construct }                                           from 'constructs';
+import { StackNamedTable }                    from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode, ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                      from 'aws-cdk-lib';
+import { Construct }                          from 'constructs';
 
 /**
  * Write or read-write access to the WebSocket connections table without exposing the underlying
@@ -33,8 +33,8 @@ export interface IWebSocketTable {
  * Not responsible for the WebSocket API, its Lambdas, or broadcast logic.
  */
 export class WebSocketTable extends Construct implements IWebSocketTable {
-  private readonly table: ITable;
   public readonly tableName: string;
+  private readonly table: ITable;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -63,10 +63,29 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
   }
 
   public grantWrite(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.write);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'],
+      resourceArns: this.tableAndIndexArns(),
+    });
   }
 
   public grantReadWrite(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.readWrite);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'dynamodb:GetItem',
+        'dynamodb:BatchGetItem',
+        'dynamodb:Query',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+      ],
+      resourceArns: this.tableAndIndexArns(),
+    });
+  }
+
+  private tableAndIndexArns(): string[] {
+    return [this.table.tableArn, `${this.table.tableArn}/index/*`];
   }
 }

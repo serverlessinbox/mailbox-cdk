@@ -13,7 +13,6 @@
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { SqsActions }                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
@@ -124,7 +123,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     });
   });
 
-  it('grants the role exactly the SqsActions.consume statement on the email-submissions queue', () => {
+  it('grants the role exactly the SQS consume statement on the email-submissions queue', () => {
     const template          = Template.fromStack(stack);
     const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
@@ -132,7 +131,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     const [statement] = consumeStatements;
 
     expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals([...SqsActions.consume]).test(statement.Action);
+    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
     expect(actionMatch.hasFailed()).toBe(false);
     const resourceMatch = Match.exact(stack.resolve(submissionQueue.queueArn)).test(statement.Resource);
     expect(resourceMatch.hasFailed()).toBe(false);

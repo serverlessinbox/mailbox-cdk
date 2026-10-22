@@ -1,8 +1,8 @@
-import { DynamoDbActions, grantTableActions, StackNamedTable }  from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode, ITable }                   from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable }                                           from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                                        from 'aws-cdk-lib';
-import { Construct }                                            from 'constructs';
+import { StackNamedTable }                    from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode, ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                      from 'aws-cdk-lib';
+import { Construct }                          from 'constructs';
 
 /**
  * Read or read-write access to the auth-key-store table without exposing the underlying DynamoDB
@@ -58,10 +58,29 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
   }
 
   public grantRead(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.read);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'],
+      resourceArns: this.tableAndIndexArns(),
+    });
   }
 
   public grantReadWrite(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.readWrite);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'dynamodb:GetItem',
+        'dynamodb:BatchGetItem',
+        'dynamodb:Query',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+      ],
+      resourceArns: this.tableAndIndexArns(),
+    });
+  }
+
+  private tableAndIndexArns(): string[] {
+    return [this.table.tableArn, `${this.table.tableArn}/index/*`];
   }
 }

@@ -1,6 +1,5 @@
-import { DynamoDbActions, grantTableActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { ITable }                             from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable }                         from 'aws-cdk-lib/aws-iam';
+import { ITable }                from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }     from 'aws-cdk-lib/aws-iam';
 
 /**
  * A handle to one of the data sub-stack's DynamoDB tables (config, item, changelog, audit log, or
@@ -52,10 +51,29 @@ export class DataTable implements IDataTable {
   }
 
   public grantRead(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.read);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'],
+      resourceArns: this.tableAndIndexArns(),
+    });
   }
 
   public grantReadWrite(grantee: IGrantable): void {
-    grantTableActions(grantee, this.table, DynamoDbActions.readWrite);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'dynamodb:GetItem',
+        'dynamodb:BatchGetItem',
+        'dynamodb:Query',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+      ],
+      resourceArns: this.tableAndIndexArns(),
+    });
+  }
+
+  private tableAndIndexArns(): string[] {
+    return [this.table.tableArn, `${this.table.tableArn}/index/*`];
   }
 }

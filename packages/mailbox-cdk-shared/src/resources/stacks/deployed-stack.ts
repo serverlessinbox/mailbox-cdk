@@ -21,27 +21,35 @@ export class DeployedStack implements IDeployedStack {
   constructor(private readonly stackArn: string) {}
 
   public grantLifecycle(grantee: IGrantable): void {
-    this.grantActions(grantee, [
-      'cloudformation:CreateStack',
-      'cloudformation:UpdateStack',
-      'cloudformation:DeleteStack',
-      'cloudformation:DescribeStacks',
-      'cloudformation:DescribeStackEvents',
-      'cloudformation:GetTemplateSummary',
-      'cloudformation:GetStackPolicy',
-      'cloudformation:SetStackPolicy',
-    ]);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'cloudformation:CreateStack',
+        'cloudformation:UpdateStack',
+        'cloudformation:DeleteStack',
+        'cloudformation:DescribeStacks',
+        'cloudformation:DescribeStackEvents',
+        'cloudformation:GetTemplateSummary',
+        'cloudformation:GetStackPolicy',
+        'cloudformation:SetStackPolicy',
+      ],
+      resourceArns: [this.stackArn],
+    });
   }
 
   public grantTemplateRead(grantee: IGrantable): void {
-    this.grantActions(grantee, ['cloudformation:GetTemplate']);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['cloudformation:GetTemplate'],
+      resourceArns: [this.stackArn],
+    });
   }
 
   public grantDescribe(grantee: IGrantable): void {
-    this.grantActions(grantee, ['cloudformation:DescribeStacks']);
-  }
-
-  private grantActions(grantee: IGrantable, actions: string[]): void {
-    Grant.addToPrincipal({ grantee, actions, resourceArns: [this.stackArn] });
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['cloudformation:DescribeStacks'],
+      resourceArns: [this.stackArn],
+    });
   }
 }

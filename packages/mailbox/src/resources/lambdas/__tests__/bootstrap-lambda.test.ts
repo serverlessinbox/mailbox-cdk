@@ -12,7 +12,7 @@
 import { ArtifactZone, PinnedArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
 import { statementsForAction }                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { DynamoDbActions, VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                                      from 'aws-cdk-lib/aws-dynamodb';
 import { HostedZone }                                                                from 'aws-cdk-lib/aws-route53';
@@ -143,14 +143,14 @@ describe('BootstrapLambda', () => {
   });
 
   describe('grants', () => {
-    it('grants exactly DynamoDbActions.readWrite, Allow, on the auth-key-store table and its indexes', () => {
+    it('grants exactly the read-write actions, Allow, on the auth-key-store table and its indexes', () => {
       const template = synthBootstrap();
 
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
           Statement: Match.arrayWith([
             Match.objectEquals({
-              Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+              Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
               Effect:   'Allow',
               Resource: Match.exact(authKeyStoreResources()),
             }),

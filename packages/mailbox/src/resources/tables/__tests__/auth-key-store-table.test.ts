@@ -1,4 +1,3 @@
-import { DynamoDbActions }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }               from 'aws-cdk-lib/assertions';
 import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
@@ -72,7 +71,7 @@ describe('AuthKeyStoreTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action:   DynamoDbActions.read,
+            Action:   ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'],
             Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
@@ -101,7 +100,14 @@ describe('AuthKeyStoreTable', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action:   DynamoDbActions.readWrite,
+            Action:   [
+              'dynamodb:GetItem',
+              'dynamodb:BatchGetItem',
+              'dynamodb:Query',
+              'dynamodb:PutItem',
+              'dynamodb:UpdateItem',
+              'dynamodb:DeleteItem',
+            ],
             Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
