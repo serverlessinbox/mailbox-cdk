@@ -18,24 +18,24 @@ import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '..
 describe('CognitoIdpUsersApiLambda', () => {
   const pool: ICognitoIdpUsersPoolConfig          = { userPoolId: 'us-west-2_abcdefgh', grantAdminAccess: jest.fn() };
   const auditEventsQueue: IAuditEventsQueue       = {
-    queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
-    queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
+    queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+    queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: jest.fn(),
   };
   const identityProvisioner: IIdentityProvisioner = {
-    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     functionName: 'identity-provisioner',
-    grantInvoke: jest.fn(),
+    grantInvoke:  jest.fn(),
   };
 
   function synthesize(groups: Pick<CognitoIdpUsersApiLambdaProps, 'adminGroups' | 'userGroups'>): { template: Template; lambda: CognitoIdpUsersApiLambda } {
     const stack            = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const artifactResolver = new PinnedArtifactResolver({
-      packages: { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      packages:         { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -58,12 +58,12 @@ describe('CognitoIdpUsersApiLambda', () => {
     const { template } = synthesize({ adminGroups: ['admin', 'staff'], userGroups: ['user'] });
 
     expect(environmentOf(template)).toEqual({
-      USER_POOL_ID: 'us-west-2_abcdefgh',
-      AUDIT_EVENTS_QUEUE_URL: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+      USER_POOL_ID:                       'us-west-2_abcdefgh',
+      AUDIT_EVENTS_QUEUE_URL:             'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
       IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner',
-      ADMIN_GROUPS: '["admin","staff"]',
-      USER_GROUPS: '["user"]',
-      SERVICE_NAME: 'cognito-idp-users-api',
+      ADMIN_GROUPS:                       '["admin","staff"]',
+      USER_GROUPS:                        '["user"]',
+      SERVICE_NAME:                       'cognito-idp-users-api',
     });
   });
 

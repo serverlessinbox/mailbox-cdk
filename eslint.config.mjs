@@ -1,7 +1,6 @@
-import { fixupPluginRules } from '@eslint/compat';
-import alignAssignments from 'eslint-plugin-align-assignments';
 import arca from 'eslint-plugin-arca';
 import ts from 'typescript-eslint';
+import { alignRule } from './eslint.align.mjs';
 
 // Lint-only tsconfigs, so tests, tools and scripts parse with type information
 // without changing any package's build or test tsconfig.
@@ -71,10 +70,10 @@ export default [
     },
     plugins: {
       '@typescript-eslint': ts.plugin,
-      'align-assignments': fixupPluginRules(alignAssignments),
       arca,
       custom: {
         rules: {
+          align: alignRule,
           'plan-labels': planLabelRule,
         },
       },
@@ -98,12 +97,12 @@ export default [
           leadingUnderscore: 'forbid',
         },
       ],
-      'align-assignments/align-assignments': 'error',
       'arca/import-align': 'error',
       'arca/import-ordering': 'error',
       'arca/import-quotes': 'error',
       'arca/newline-after-import-section': 'error',
       curly: ['error', 'all'],
+      'custom/align': 'error',
       'custom/plan-labels': 'error',
       'max-classes-per-file': ['error', 1],
       'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }],

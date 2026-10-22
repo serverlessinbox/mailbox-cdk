@@ -23,25 +23,25 @@ const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);
 
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {
-  readonly configTable: IDataTable;
+  readonly configTable:       IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
-  readonly tenantName?: string;
+  readonly tenantName?:       string;
   readonly defaultLocalPart?: string;
-  readonly domain: string;
-  readonly oidcIssuer: string;
+  readonly domain:            string;
+  readonly oidcIssuer:        string;
   readonly oidcProviderName?: string;
 
   readonly oidcProvider?: OidcProviderConfig;
   readonly authPolicies?: AuthPoliciesConfig;
   readonly oauthClients?: OAuthClientsConfig;
 
-  readonly artifactResolver: IArtifactResolver;
-  readonly sesRuleSet: IReceiptRuleSet;
+  readonly artifactResolver:  IArtifactResolver;
+  readonly sesRuleSet:        IReceiptRuleSet;
   readonly sesReceivingMode?: SesReceivingMode;
   /** When true, the bootstrap Lambda will mark the default domain as SES send-capable. */
   readonly sesSendEnabled?: boolean;
-  readonly hostedZone?: route53.IHostedZone;
+  readonly hostedZone?:     route53.IHostedZone;
   /** The vendor accounts that scope the execute-api:Invoke permission and the tag key that identifies this stack's resources, resolved by the caller. */
   readonly vendorLink: VendorLink;
 }
@@ -61,34 +61,34 @@ export class Bootstrap extends Construct {
     ComponentDescription.describe(this, 'Runs one-time deploy-time setup: SES identity/receipt config, OIDC/OAuth client registration, and config/DNS seeding.');
 
     this.handler = new BootstrapLambda(this, 'handler', {
-      configTable: props.configTable,
+      configTable:       props.configTable,
       authKeyStoreTable: props.authKeyStoreTable,
-      artifactResolver: props.artifactResolver,
-      domain: props.domain,
-      sesRuleSet: props.sesRuleSet,
-      sesReceivingMode: props.sesReceivingMode,
-      sesSendEnabled: props.sesSendEnabled,
-      hostedZone: props.hostedZone,
-      vendorLink: props.vendorLink,
+      artifactResolver:  props.artifactResolver,
+      domain:            props.domain,
+      sesRuleSet:        props.sesRuleSet,
+      sesReceivingMode:  props.sesReceivingMode,
+      sesSendEnabled:    props.sesSendEnabled,
+      hostedZone:        props.hostedZone,
+      vendorLink:        props.vendorLink,
     });
 
     const bootstrapResource      = new CustomResource(this, 'resource', {
-      resourceType: 'Custom::Bootstrap',
-      serviceToken: this.handler.functionArn,
+      resourceType:   'Custom::Bootstrap',
+      serviceToken:   this.handler.functionArn,
       serviceTimeout: BOOTSTRAP_LAMBDA_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),
-      properties: {
+      properties:     {
         ensureServiceQuotasPrereqs: true,
-        tenantName: props.tenantName ?? 'default-tenant',
-        defaultLocalPart: props.defaultLocalPart ?? '{username}',
-        domain: props.domain,
-        oidcIssuer: props.oidcIssuer,
-        oidcProviderName: props.oidcProviderName,
+        tenantName:                 props.tenantName ?? 'default-tenant',
+        defaultLocalPart:           props.defaultLocalPart ?? '{username}',
+        domain:                     props.domain,
+        oidcIssuer:                 props.oidcIssuer,
+        oidcProviderName:           props.oidcProviderName,
 
         oidcProvider: props.oidcProvider,
         authPolicies: props.authPolicies,
         oauthClients: props.oauthClients
           ? {
-            adminUi: props.oauthClients.adminUi ? this.toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
+            adminUi:   props.oauthClients.adminUi ? this.toRequestOAuthClient(props.oauthClients.adminUi) : undefined,
             webmailUi: props.oauthClients.webmailUi ? this.toRequestOAuthClient(props.oauthClients.webmailUi) : undefined,
           }
           : undefined,
@@ -101,10 +101,10 @@ export class Bootstrap extends Construct {
   private toRequestOAuthClient(client: OAuthAuthorizationCodeClientConfig) {
     return {
       requestedAudience: client.requestedAudience ?? client.clientId,
-      clientId: client.clientId,
-      clientSecret: client.clientSecret?.unsafeUnwrap(),
-      scopes: client.scopes,
-      redirectUri: client.redirectUri,
+      clientId:          client.clientId,
+      clientSecret:      client.clientSecret?.unsafeUnwrap(),
+      scopes:            client.scopes,
+      redirectUri:       client.redirectUri,
     };
   }
 }

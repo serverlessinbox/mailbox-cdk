@@ -29,15 +29,15 @@ describe('CfnResponder', () => {
       const request = cfnRequest({ ResourceType: 'Custom::MailboxDataDeployer' });
 
       expect(responder.targetForRequest(request, LOG_STREAM_NAME)).toEqual({
-        cfn: {
-          ResponseURL: RESPONSE_URL,
-          StackId: STACK_ID,
-          RequestId: 'request-123',
+        cfn:                {
+          ResponseURL:       RESPONSE_URL,
+          StackId:           STACK_ID,
+          RequestId:         'request-123',
           LogicalResourceId: 'MailboxDeployer',
-          ResourceType: 'Custom::MailboxDataDeployer',
+          ResourceType:      'Custom::MailboxDataDeployer',
         },
         physicalResourceId: STACK_NAME,
-        logStreamName: LOG_STREAM_NAME,
+        logStreamName:      LOG_STREAM_NAME,
       });
     });
 
@@ -62,9 +62,9 @@ describe('CfnResponder', () => {
       const event = sfnEvent();
 
       expect(responder.targetForStep(event, LOG_STREAM_NAME)).toEqual({
-        cfn: event.cfn,
+        cfn:                event.cfn,
         physicalResourceId: STACK_NAME,
-        logStreamName: LOG_STREAM_NAME,
+        logStreamName:      LOG_STREAM_NAME,
       });
     });
   });
@@ -90,14 +90,14 @@ describe('CfnResponder', () => {
       expect(init?.method).toBe('PUT');
       expect(init?.headers).toEqual({ 'content-type': '' });
       expect(JSON.parse(String(init?.body))).toEqual({
-        Status: 'SUCCESS',
-        Reason: 'done',
+        Status:             'SUCCESS',
+        Reason:             'done',
         PhysicalResourceId: STACK_NAME,
-        StackId: STACK_ID,
-        RequestId: 'request-123',
-        LogicalResourceId: 'MailboxDeployer',
-        NoEcho: false,
-        Data: { TableName: 'items' },
+        StackId:            STACK_ID,
+        RequestId:          'request-123',
+        LogicalResourceId:  'MailboxDeployer',
+        NoEcho:             false,
+        Data:               { TableName: 'items' },
       });
     });
 
@@ -195,7 +195,7 @@ describe('CfnResponder', () => {
       expect(responder.targetForAnswerable({ cfn, physicalResourceId: undefined, requestType: 'Create', stackName: STACK_NAME }, LOG_STREAM_NAME)).toEqual({
         cfn,
         physicalResourceId: STACK_NAME,
-        logStreamName: LOG_STREAM_NAME,
+        logStreamName:      LOG_STREAM_NAME,
       });
     });
 

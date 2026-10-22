@@ -259,13 +259,13 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
     this.authzConfig               = {
       adminGroups: props.authorization?.adminGroups ?? ['admin'],
-      userGroups: props.authorization?.userGroups ?? ['user'],
+      userGroups:  props.authorization?.userGroups ?? ['user'],
     };
     this.scopeMap                  = this.buildScopeMap();
     this.policies                  = this.buildPolicies();
     this.authFlows                 = props.authFlows ?? {
       userPassword: false,
-      userSrp: false,
+      userSrp:      false,
     };
 
     // This construct is a composition root, so it resolves the deployer type itself.
@@ -273,12 +273,12 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
     const cognitoDeployer = new MailboxCognitoDataDeployer(this, 'cognito-deployer', {
       cognitoDomainPrefix: this.resolveCognitoDomainPrefix(props.domain),
-      customDomain: props.domain.kind === 'custom'
+      customDomain:        props.domain.kind === 'custom'
         ? { domainName: props.domain.domainName, certificateArn: props.domain.certificateArn }
         : undefined,
-      mfaMode: props.mfaMode,
-      passwordMinLength: props.passwordMinLength,
-      artifactResolver: this.artifacts,
+      mfaMode:             props.mfaMode,
+      passwordMinLength:   props.passwordMinLength,
+      artifactResolver:    this.artifacts,
       deployerType,
     });
     const stackRef        = cognitoDeployer.dataStackRef;
@@ -334,12 +334,12 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     }
 
     const client = this.createOAuthClient({
-      flow: 'authorization_code',
-      name: resolvedName,
-      permissions: [Permission.ADMIN],
-      groups: this.authzConfig.adminGroups,
+      flow:         'authorization_code',
+      name:         resolvedName,
+      permissions:  [Permission.ADMIN],
+      groups:       this.authzConfig.adminGroups,
       callbackUrls: config.callbackUrls,
-      logoutUrls: config.logoutUrls,
+      logoutUrls:   config.logoutUrls,
     });
 
     this.addAudience(this.policies.adminApi, client.clientId);
@@ -356,12 +356,12 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     }
 
     const client = this.createOAuthClient({
-      flow: 'authorization_code',
-      name: resolvedName,
-      permissions: config.permissions,
-      groups: this.authzConfig.userGroups,
+      flow:         'authorization_code',
+      name:         resolvedName,
+      permissions:  config.permissions,
+      groups:       this.authzConfig.userGroups,
       callbackUrls: config.callbackUrls,
-      logoutUrls: config.logoutUrls,
+      logoutUrls:   config.logoutUrls,
     });
 
     this.addAudience(this.policies.jmapApi, client.clientId);
@@ -372,11 +372,11 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   public createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
-        artifactResolver: this.artifacts,
-        auditEventsQueue: ctx.auditEventsQueue,
+        artifactResolver:    this.artifacts,
+        auditEventsQueue:    ctx.auditEventsQueue,
         identityProvisioner: ctx.identityProvisioner,
-        pool: this,
-        uiConfig: this.adminUiConfig(),
+        pool:                this,
+        uiConfig:            this.adminUiConfig(),
       }),
     ];
   }
@@ -388,10 +388,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
     return [
       new JmapOAuthAddon(scope, 'jmap-oauth-addon', {
-        pool: this,
-        artifactResolver: this.artifacts,
-        apiBaseUrl: ctx.apiBaseUrl,
-        identityProvisioner: ctx.identityProvisioner,
+        pool:                      this,
+        artifactResolver:          this.artifacts,
+        apiBaseUrl:                ctx.apiBaseUrl,
+        identityProvisioner:       ctx.identityProvisioner,
         dynamicClientRegistration: this.dynamicClientRegistration,
       }),
     ];
@@ -428,13 +428,13 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const constructId = `bootstrapped-user-${index}`;
     const handler     = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
-      userPoolArn: this.userPoolArn,
+      userPoolArn:      this.userPoolArn,
     });
 
     const properties: BootstrapUserProperties = {
-      userPoolId: this.userPoolId,
-      username: config.username,
-      groups: config.groups,
+      userPoolId:        this.userPoolId,
+      username:          config.username,
+      groups:            config.groups,
       temporaryPassword: config.temporaryPassword,
       // Force re-invocation when response contract changes (e.g., Data field added)
       responseContractVersion: '1',
@@ -458,7 +458,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   public grantAdminAccess(fn: lambda.IFunction): void {
     fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: [
+        actions:   [
           'cognito-idp:ListUsers',
           'cognito-idp:ListUsersInGroup',
           'cognito-idp:ListGroups',
@@ -485,10 +485,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         audiences: [],
         // Cognito client_credentials tokens carry no group claim, so only user tokens can meet this.
         requireAnyOfGroups: this.authzConfig.adminGroups,
-        requireAllScopes: [this.toOAuthScope(Permission.ADMIN)],
+        requireAllScopes:   [this.toOAuthScope(Permission.ADMIN)],
       },
-      jmapApi: {
-        audiences: [],
+      jmapApi:  {
+        audiences:        [],
         requireAllScopes: [],
       },
     };
@@ -529,23 +529,23 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const requestScopeList    = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
 
     const cfnClient = new cognito.CfnUserPoolClient(this, `user-pool-client-${clientKey}`, {
-      userPoolId: this.userPoolId,
-      clientName: `mailbox-client-${clientKey}`,
-      explicitAuthFlows: this.buildExplicitAuthFlows(),
-      generateSecret: isClientCredentials,
-      accessTokenValidity: 1,
-      idTokenValidity: 1,
-      refreshTokenValidity: 30,
-      tokenValidityUnits: {
-        accessToken: 'hours',
-        idToken: 'hours',
+      userPoolId:                      this.userPoolId,
+      clientName:                      `mailbox-client-${clientKey}`,
+      explicitAuthFlows:               this.buildExplicitAuthFlows(),
+      generateSecret:                  isClientCredentials,
+      accessTokenValidity:             1,
+      idTokenValidity:                 1,
+      refreshTokenValidity:            30,
+      tokenValidityUnits:              {
+        accessToken:  'hours',
+        idToken:      'hours',
         refreshToken: 'days',
       },
-      preventUserExistenceErrors: 'ENABLED',
-      supportedIdentityProviders: this.supportedIdentityProviders.map(p => p.name),
-      allowedOAuthFlows: isClientCredentials ? ['client_credentials'] : ['code'],
+      preventUserExistenceErrors:      'ENABLED',
+      supportedIdentityProviders:      this.supportedIdentityProviders.map(p => p.name),
+      allowedOAuthFlows:               isClientCredentials ? ['client_credentials'] : ['code'],
       allowedOAuthFlowsUserPoolClient: true,
-      allowedOAuthScopes: [
+      allowedOAuthScopes:              [
         ...(isClientCredentials ? [] : ['openid', 'email', 'profile']),
         ...requestScopeList,
       ],
@@ -553,12 +553,12 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         ? {}
         : {
           callbackUrLs: params.callbackUrls,
-          logoutUrLs: params.logoutUrls,
+          logoutUrLs:   params.logoutUrls,
         }),
     });
 
     return {
-      clientId: cfnClient.ref,
+      clientId:     cfnClient.ref,
       clientSecret: isClientCredentials ? SecretValue.unsafePlainText(cfnClient.attrClientSecret) : undefined,
       requestScopeList,
       groups: params.groups ?? [],
@@ -567,8 +567,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   private createHeadlessClient(config: ProvisionHeadlessClientConfig): AuthClientConfig {
     const client = this.createOAuthClient({
-      flow: 'client_credentials',
-      name: config.name,
+      flow:        'client_credentials',
+      name:        config.name,
       permissions: config.permissions,
     });
     this.headlessClients.set(config.name, client);

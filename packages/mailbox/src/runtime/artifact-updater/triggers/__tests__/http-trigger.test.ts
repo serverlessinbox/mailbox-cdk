@@ -42,9 +42,9 @@ describe('HttpTrigger', () => {
       expect(response.statusCode).toBe(202);
       expect(JSON.parse(response.body)).toEqual({ status: 'triggered' });
       expect(lambdaMock.commandCalls(InvokeCommand)[0].args[0].input).toEqual({
-        FunctionName: 'artifact-updater-function',
+        FunctionName:   'artifact-updater-function',
         InvocationType: 'Event',
-        Payload: '{}',
+        Payload:        '{}',
       });
     });
 
@@ -118,7 +118,7 @@ describe('HttpTrigger', () => {
       expect(response.statusCode).toBe(500);
       expect(JSON.parse(response.body)).toEqual({ error: 'Failed to trigger update: not authorized' });
       expect(console.error).toHaveBeenCalledWith('Failed to trigger update', {
-        errorName: 'AccessDeniedException',
+        errorName:    'AccessDeniedException',
         errorMessage: 'not authorized',
       });
     });

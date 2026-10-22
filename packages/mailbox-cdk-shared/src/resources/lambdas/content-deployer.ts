@@ -28,7 +28,7 @@ export interface StaticContentDeploymentProps {
 /** What `StaticContentDeployer.invalidate` invalidates. */
 export interface StaticContentInvalidationProps {
   readonly distributionId: string;
-  readonly paths: string[];
+  readonly paths:          string[];
 }
 
 /** A deployment made from a scope: the resource to depend on, and the identity of the content it deploys. */
@@ -53,9 +53,9 @@ export class StaticContentDeployer extends TypeScriptLambda {
       pipeline: 'infra',
       artifactResolver,
       packageName: KIT_ARTIFACT_PACKAGE,
-      handler: 'index.handler',
-      timeout: Duration.minutes(15),
-      memorySize: 1024,
+      handler:     'index.handler',
+      timeout:     Duration.minutes(15),
+      memorySize:  1024,
     });
 
     this.addToRolePolicy(parentStackStatusReadStatement());
@@ -84,12 +84,12 @@ export class StaticContentDeployer extends TypeScriptLambda {
 
     const properties: ContentDeployerResourceProperties = {
       targetBucket: props.targetBucket.bucketName,
-      sources: [props.source.spec],
+      sources:      [props.source.spec],
     };
     const resource                                      = new CustomResource(scope, id, {
-      serviceToken: this.functionArn,
+      serviceToken:   this.functionArn,
       serviceTimeout: Duration.minutes(15),
-      resourceType: 'Custom::ContentDeployment',
+      resourceType:   'Custom::ContentDeployment',
       properties,
     });
 
@@ -109,15 +109,15 @@ export class StaticContentDeployer extends TypeScriptLambda {
 
     const deployments                                   = this.deploymentsByScope.get(scope) ?? [];
     const properties: ContentDeployerResourceProperties = {
-      sources: [],
-      distributionId: props.distributionId,
+      sources:           [],
+      distributionId:    props.distributionId,
       invalidationPaths: props.paths,
-      deploymentNonce: this.deploymentNonce(deployments),
+      deploymentNonce:   this.deploymentNonce(deployments),
     };
     const resource                                      = new CustomResource(scope, id, {
-      serviceToken: this.functionArn,
+      serviceToken:   this.functionArn,
       serviceTimeout: Duration.minutes(15),
-      resourceType: 'Custom::ContentInvalidation',
+      resourceType:   'Custom::ContentInvalidation',
       properties,
     });
 
@@ -131,7 +131,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
   private grantDeployment(props: StaticContentDeploymentProps): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['s3:PutObject', 's3:DeleteObject'],
+        actions:   ['s3:PutObject', 's3:DeleteObject'],
         resources: props.source.objectArns(props.targetBucket),
       }),
     );
@@ -139,7 +139,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
     if (props.source.spec.kind === 'zip') {
       this.addToRolePolicy(
         new iam.PolicyStatement({
-          actions: ['s3:ListBucket'],
+          actions:   ['s3:ListBucket'],
           resources: [props.targetBucket.bucketArn],
         }),
       );
@@ -148,7 +148,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
     if (props.source.sourceArns) {
       this.addToRolePolicy(
         new iam.PolicyStatement({
-          actions: ['s3:GetObject', 's3:GetObjectVersion'],
+          actions:   ['s3:GetObject', 's3:GetObjectVersion'],
           resources: props.source.sourceArns(),
         }),
       );
@@ -158,7 +158,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
   private grantInvalidation(distributionId: string): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['cloudfront:CreateInvalidation'],
+        actions:   ['cloudfront:CreateInvalidation'],
         resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${distributionId}`],
       }),
     );

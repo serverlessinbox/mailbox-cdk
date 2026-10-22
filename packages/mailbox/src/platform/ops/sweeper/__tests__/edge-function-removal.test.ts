@@ -27,7 +27,7 @@ describe('EdgeFunctionRemoval', () => {
   const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null: { [idKey]: 'true' },
+    Null:         { [idKey]: 'true' },
   };
 
   it('reads functions in us-east-1 unconditioned and deletes them there only when the root stack owns them, by id or by name without an id tag', () => {

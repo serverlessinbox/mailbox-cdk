@@ -10,7 +10,7 @@ import type { MailboxKmsConfig }                                                
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 
 export interface MailboxEncryptionPlan {
-  readonly blobStore: BlobStoreProps;
+  readonly blobStore:    BlobStoreProps;
   readonly dynamoTables: DynamoTableEncryptionProps;
   /**
    * Default props for queues created via BaseQueue.

@@ -44,14 +44,14 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
 
   constructor(scope: Construct, id: string, props: DeployerWorkerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'stack-deployer',
-      pipeline: 'infra',
-      serviceName: `stack-deployer-${props.deployedStackName}-worker`,
+      lambdaId:         'stack-deployer',
+      pipeline:         'infra',
+      serviceName:      `stack-deployer-${props.deployedStackName}-worker`,
       artifactResolver: props.artifactResolver,
-      packageName: KIT_ARTIFACT_PACKAGE,
-      handler: 'index.workerHandler',
-      timeout: Duration.minutes(15),
-      memorySize: 512,
+      packageName:      KIT_ARTIFACT_PACKAGE,
+      handler:          'index.workerHandler',
+      timeout:          Duration.minutes(15),
+      memorySize:       512,
     });
 
     this.subStackTagKeys = [
@@ -72,7 +72,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   protected grantStackLifecycle(stackArn: string, readsTemplate = false): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'cloudformation:CreateStack',
           'cloudformation:UpdateStack',
           'cloudformation:DeleteStack',
@@ -92,7 +92,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   protected grantTemplateValidation(): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['cloudformation:ValidateTemplate'],
+        actions:   ['cloudformation:ValidateTemplate'],
         resources: ['*'],
       })
     );
@@ -102,7 +102,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   protected grantArtifactRead(objectArns: string[]): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['s3:GetObject', 's3:GetObjectVersion'],
+        actions:   ['s3:GetObject', 's3:GetObjectVersion'],
         resources: objectArns,
       })
     );
@@ -116,14 +116,14 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   protected grantTaggingApi(additionalTagKeys: string[] = []): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['tag:GetResources'],
+        actions:   ['tag:GetResources'],
         resources: ['*'],
       })
     );
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['tag:TagResources', 'tag:UntagResources'],
-        resources: ['*'],
+        actions:    ['tag:TagResources', 'tag:UntagResources'],
+        resources:  ['*'],
         conditions: this.tagKeyCondition(additionalTagKeys),
       })
     );

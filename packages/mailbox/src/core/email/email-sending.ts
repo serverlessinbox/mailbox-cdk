@@ -10,10 +10,10 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis
 
 /** Props of {@link EmailSending}. */
 export interface EmailSendingProps {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly blobStore: IDataBlobStore;
+  readonly configTable:      IDataTable;
+  readonly itemTable:        IDataTable;
+  readonly changelogTable:   IDataTable;
+  readonly blobStore:        IDataBlobStore;
   readonly artifactResolver: IArtifactResolver;
   readonly sesConfigSetName: string;
 
@@ -42,10 +42,10 @@ export class EmailSending extends Construct {
     this.submissionQueue  = submissionQueue;
 
     this.emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      blobStore: props.blobStore,
+      configTable:      props.configTable,
+      itemTable:        props.itemTable,
+      changelogTable:   props.changelogTable,
+      blobStore:        props.blobStore,
       sesConfigSetName: props.sesConfigSetName,
       submissionQueue,
       artifactResolver: props.artifactResolver,

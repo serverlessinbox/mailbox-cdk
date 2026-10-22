@@ -31,7 +31,7 @@ describe('BaseTable Deny Enumeration', () => {
   it('synthesizes Deny statement for Scan and all PartiQL actions in Lambda role granted grantReadData', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -44,7 +44,7 @@ describe('BaseTable Deny Enumeration', () => {
     const fn = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     table.grantReadData(fn);
@@ -159,7 +159,7 @@ describe('BaseTable Deny Enumeration', () => {
   it('applies one Deny statement per table when a role is granted on multiple tables', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -176,7 +176,7 @@ describe('BaseTable Deny Enumeration', () => {
     const fn = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     table1.grantReadData(fn);
@@ -234,7 +234,7 @@ describe('BaseTable Deny Enumeration', () => {
   it('synthesizes Deny statement for grantFullAccess', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -245,7 +245,7 @@ describe('BaseTable Deny Enumeration', () => {
     const fn = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     table.grantFullAccess(fn);
@@ -290,7 +290,7 @@ describe('BaseTable Deny Enumeration', () => {
   it('preserves existing Allow grants when applying Deny', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -301,7 +301,7 @@ describe('BaseTable Deny Enumeration', () => {
     const fn = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     table.grantReadData(fn);

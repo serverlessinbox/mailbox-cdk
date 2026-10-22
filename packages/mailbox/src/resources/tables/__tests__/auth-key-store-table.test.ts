@@ -17,7 +17,7 @@ import { AuthKeyStoreTable }             from '../auth-key-store-table';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -30,7 +30,7 @@ describe('AuthKeyStoreTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::DynamoDB::Table', {
-      KeySchema: [
+      KeySchema:   [
         { AttributeName: 'pk', KeyType: 'HASH' },
         { AttributeName: 'sk', KeyType: 'RANGE' },
       ],
@@ -68,12 +68,12 @@ describe('AuthKeyStoreTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: DynamoDbActions.read,
-            Effect: 'Allow',
+            Action:   DynamoDbActions.read,
+            Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
               { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -97,12 +97,12 @@ describe('AuthKeyStoreTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: DynamoDbActions.readWrite,
-            Effect: 'Allow',
+            Action:   DynamoDbActions.readWrite,
+            Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
               { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

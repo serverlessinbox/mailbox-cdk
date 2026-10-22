@@ -26,9 +26,9 @@ import {
 } from './content-deployer-helpers';
 
 jest.mock('../../../runtime/handler-kit/content-ops', () => ({
-  deletePrefix: jest.fn(),
+  deletePrefix:      jest.fn(),
   deployZipToPrefix: jest.fn(),
-  writeObject: jest.fn(),
+  writeObject:       jest.fn(),
 }));
 jest.mock('../../../runtime/handler-kit/cloudfront-invalidation', () => ({
   invalidateCloudFront: jest.fn(),
@@ -62,21 +62,21 @@ describe('ContentDeployerRequestHandler', () => {
       const response = await requestHandler.handle(
         createRequest({
           targetBucket: 'my-bucket',
-          sources: [dataSource({ contentType: 'application/json', cacheControl: 'no-store' })],
+          sources:      [dataSource({ contentType: 'application/json', cacheControl: 'no-store' })],
         }),
         invocation,
       );
 
       expect(writeObject).toHaveBeenCalledWith(s3, {
         targetBucket: 'my-bucket',
-        key: 'config/config.json',
-        body: '{"a":1}',
-        contentType: 'application/json',
+        key:          'config/config.json',
+        body:         '{"a":1}',
+        contentType:  'application/json',
         cacheControl: 'no-store',
       });
       expect(response).toEqual({
         PhysicalResourceId: PHYSICAL_RESOURCE_ID,
-        Data: { deleted: '0', objectsWritten: '1', cacheInvalidated: 'false' },
+        Data:               { deleted: '0', objectsWritten: '1', cacheInvalidated: 'false' },
       });
     });
 
@@ -88,11 +88,11 @@ describe('ContentDeployerRequestHandler', () => {
 
       expect(deletePrefix).toHaveBeenCalledWith(s3, 'my-bucket', 'content/');
       expect(deployZipToPrefix).toHaveBeenCalledWith(s3, {
-        sourceBucket: 'artifacts-bucket',
-        sourceKey: 'bundle.zip',
+        sourceBucket:    'artifacts-bucket',
+        sourceKey:       'bundle.zip',
         sourceVersionId: 'v7',
-        targetBucket: 'my-bucket',
-        targetPrefix: 'content/',
+        targetBucket:    'my-bucket',
+        targetPrefix:    'content/',
       });
       expect(jest.mocked(deletePrefix).mock.invocationCallOrder[0]).toBeLessThan(
         jest.mocked(deployZipToPrefix).mock.invocationCallOrder[0],
@@ -123,17 +123,17 @@ describe('ContentDeployerRequestHandler', () => {
 
       const response = await requestHandler.handle(
         updateRequest({
-          targetBucket: 'my-bucket',
-          sources: [dataSource()],
-          distributionId: 'E123ABC',
+          targetBucket:      'my-bucket',
+          sources:           [dataSource()],
+          distributionId:    'E123ABC',
           invalidationPaths: ['/*'],
         }),
         invocation,
       );
 
       expect(invalidateCloudFront).toHaveBeenCalledWith(cloudFront, {
-        distributionId: 'E123ABC',
-        paths: ['/*'],
+        distributionId:  'E123ABC',
+        paths:           ['/*'],
         callerReference: REQUEST_ID,
       });
       expect(jest.mocked(writeObject).mock.invocationCallOrder[0]).toBeLessThan(
@@ -161,7 +161,7 @@ describe('ContentDeployerRequestHandler', () => {
 
       expect(response).toEqual({
         PhysicalResourceId: 'physical-id-from-cloudformation',
-        Data: { deleted: '0', objectsWritten: '0', cacheInvalidated: '0' },
+        Data:               { deleted: '0', objectsWritten: '0', cacheInvalidated: '0' },
       });
       expect(writeObject).not.toHaveBeenCalled();
       expect(deletePrefix).not.toHaveBeenCalled();
@@ -216,9 +216,9 @@ describe('ContentDeployerRequestHandler', () => {
       const failure = await rejectionOf(
         requestHandler.handle(
           createRequest({
-            targetBucket: 'my-bucket',
-            sources: [dataSource()],
-            distributionId: 'E123ABC',
+            targetBucket:      'my-bucket',
+            sources:           [dataSource()],
+            distributionId:    'E123ABC',
             invalidationPaths: ['/*'],
           }),
           { ...invocation, getRemainingTimeInMillis: remainingTime },

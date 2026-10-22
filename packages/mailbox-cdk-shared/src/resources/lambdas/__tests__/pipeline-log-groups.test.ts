@@ -95,8 +95,8 @@ describe('PipelineLogGroup', () => {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'logs:FilterLogEvents',
-            Effect: 'Allow',
+            Action:   'logs:FilterLogEvents',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [logGroupLogicalId, 'Arn'] },
           }),
         ]),

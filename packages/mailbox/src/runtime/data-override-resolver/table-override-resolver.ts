@@ -35,10 +35,10 @@ export class TableOverrideResolver {
     const props = this.parseProperties(resourceProperties);
 
     return {
-      configTableArn: await this.resolveTable('configTable', props.configTableIncomingArn, props.configTableOverrideArn),
-      itemTableArn: await this.resolveTable('itemTable', props.itemTableIncomingArn, props.itemTableOverrideArn),
-      changelogTableArn: await this.resolveTable('changelogTable', props.changelogTableIncomingArn, props.changelogTableOverrideArn),
-      auditLogTableArn: await this.resolveTable('auditLogTable', props.auditLogTableIncomingArn, props.auditLogTableOverrideArn),
+      configTableArn:       await this.resolveTable('configTable', props.configTableIncomingArn, props.configTableOverrideArn),
+      itemTableArn:         await this.resolveTable('itemTable', props.itemTableIncomingArn, props.itemTableOverrideArn),
+      changelogTableArn:    await this.resolveTable('changelogTable', props.changelogTableIncomingArn, props.changelogTableOverrideArn),
+      auditLogTableArn:     await this.resolveTable('auditLogTable', props.auditLogTableIncomingArn, props.auditLogTableOverrideArn),
       mailFeedbackTableArn: await this.resolveTable('mailFeedbackTable', props.mailFeedbackTableIncomingArn, props.mailFeedbackTableOverrideArn),
     };
   }

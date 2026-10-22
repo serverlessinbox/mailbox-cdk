@@ -19,17 +19,17 @@ export type JmapOAuthHandlerConfig = {
 };
 
 export interface ApiHandlerLambdaProps {
-  configTable: IDataTable;
-  itemTable: IDataTable;
-  changelogTable: IDataTable;
-  authKeyStoreTable: IAuthKeyStoreTable;
-  blobStore: IDataBlobStore;
+  configTable:          IDataTable;
+  itemTable:            IDataTable;
+  changelogTable:       IDataTable;
+  authKeyStoreTable:    IAuthKeyStoreTable;
+  blobStore:            IDataBlobStore;
   emailSubmissionQueue: IEmailSendingQueue;
-  auditEventsQueue: IAuditEventsQueue;
-  cdnHost: string;
-  apiBaseUrl: string;
-  artifactResolver: IArtifactResolver;
-  identityProvisioner: IIdentityProvisioner;
+  auditEventsQueue:     IAuditEventsQueue;
+  cdnHost:              string;
+  apiBaseUrl:           string;
+  artifactResolver:     IArtifactResolver;
+  identityProvisioner:  IIdentityProvisioner;
   /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
   oauthHandlerConfig: JmapOAuthHandlerConfig;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
@@ -42,27 +42,27 @@ export interface ApiHandlerLambdaProps {
 export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
   constructor(scope: Construct, id: string, props: ApiHandlerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'jmap-api',
-      pipeline: 'jmap',
+      lambdaId:         'jmap-api',
+      pipeline:         'jmap',
       artifactResolver: props.artifactResolver,
-      memorySize: 640,
-      timeout: Duration.seconds(30),
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
-        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
-        CDN_HOST: props.cdnHost,
-        API_BASE_URL: props.apiBaseUrl,
-        BLOB_STORE_NAME: props.blobStore.bucketName,
-        EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+      memorySize:       640,
+      timeout:          Duration.seconds(30),
+      environment:      {
+        CONFIG_TABLE_NAME:                  props.configTable.tableName,
+        ITEM_TABLE_NAME:                    props.itemTable.tableName,
+        CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
+        AUTH_KEY_STORE_TABLE_NAME:          props.authKeyStoreTable.tableName,
+        CDN_HOST:                           props.cdnHost,
+        API_BASE_URL:                       props.apiBaseUrl,
+        BLOB_STORE_NAME:                    props.blobStore.bucketName,
+        EMAIL_SUBMISSION_QUEUE_URL:         props.emailSubmissionQueue.queueUrl,
+        AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
-        OAUTH_HANDLER_CONFIG: JSON.stringify({
+        OAUTH_HANDLER_CONFIG:               JSON.stringify({
           // Go expects map[string][]string; Permission[] is string[] at runtime.
           scopeMap: props.oauthHandlerConfig.scopeMap,
         }),
-        OAUTH_PROTECTED_RESOURCE_URL: props.oauthProtectedResourceUrl ?? '',
+        OAUTH_PROTECTED_RESOURCE_URL:       props.oauthProtectedResourceUrl ?? '',
       },
     });
 
@@ -98,7 +98,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['execute-api:Invoke'],
+      actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,

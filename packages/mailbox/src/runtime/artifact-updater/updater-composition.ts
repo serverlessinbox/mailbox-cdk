@@ -56,7 +56,7 @@ export class UpdaterComposition implements TriggerBuilder {
       // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
       registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
       deployment,
-      edge: deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
+      edge:       deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
       cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
     };
   }
@@ -64,7 +64,7 @@ export class UpdaterComposition implements TriggerBuilder {
   private static buildRegionClients(region: Region): RegionClients {
     return {
       region,
-      lambda: new LambdaClient({ region }),
+      lambda:  new LambdaClient({ region }),
       tagging: new ResourceGroupsTaggingAPIClient({ region }),
     };
   }

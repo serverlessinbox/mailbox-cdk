@@ -5,12 +5,12 @@ import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
 export interface MailboxDataDeployerWorkerLambdaProps {
-  readonly artifactResolver: IArtifactResolver;
-  readonly stack: Stack;
-  readonly dataStackArn: string;
-  readonly dataStackName: string;
+  readonly artifactResolver:  IArtifactResolver;
+  readonly stack:             Stack;
+  readonly dataStackArn:      string;
+  readonly dataStackName:     string;
   readonly templateObjectArn: string;
-  readonly nameBase: string | IResolvable;
+  readonly nameBase:          string | IResolvable;
 }
 
 /**
@@ -21,7 +21,7 @@ export interface MailboxDataDeployerWorkerLambdaProps {
 export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
   constructor(scope: Construct, id: string, props: MailboxDataDeployerWorkerLambdaProps) {
     super(scope, id, {
-      artifactResolver: props.artifactResolver,
+      artifactResolver:  props.artifactResolver,
       deployedStackName: 'data',
     });
 
@@ -42,7 +42,7 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
   private grantDynamoDbTableManagement(stack: Stack, nameBase: string | IResolvable): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'dynamodb:CreateTable',
           'dynamodb:DeleteTable',
           'dynamodb:DescribeTable',
@@ -65,7 +65,7 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
   private grantS3BucketManagement(stack: Stack, nameBase: string | IResolvable): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           's3:CreateBucket',
           's3:DeleteBucket',
           's3:PutBucketPolicy',
@@ -94,9 +94,9 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
   private grantKmsAccess(stack: Stack): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['kms:DescribeKey', 'kms:CreateGrant'],
-        effect: Effect.ALLOW,
-        resources: [
+        actions:    ['kms:DescribeKey', 'kms:CreateGrant'],
+        effect:     Effect.ALLOW,
+        resources:  [
           `arn:aws:kms:${stack.region}:${stack.account}:alias/aws/dynamodb`,
           `arn:aws:kms:${stack.region}:${stack.account}:alias/aws/s3`,
           `arn:aws:kms:${stack.region}:${stack.account}:key/*`,

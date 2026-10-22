@@ -66,8 +66,8 @@ export class AuditEventsQueue extends Construct implements IAuditEventsQueueCons
     this.queue    = new BaseQueue(this, 'audit-events', {
       ...queueProps,
       visibilityTimeout: Duration.minutes(5),
-      deadLetterQueue: {
-        queue: dlq,
+      deadLetterQueue:   {
+        queue:           dlq,
         maxReceiveCount: 5,
       },
     });

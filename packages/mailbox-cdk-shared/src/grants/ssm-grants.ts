@@ -22,7 +22,7 @@ export type SsmAction = typeof READ[number];
 export function grantParameterActions(grantee: IGrantable, parameter: IParameter, actions: readonly SsmAction[]): Grant {
   return Grant.addToPrincipal({
     grantee,
-    actions: [...actions],
+    actions:      [...actions],
     resourceArns: [parameter.parameterArn],
   });
 }

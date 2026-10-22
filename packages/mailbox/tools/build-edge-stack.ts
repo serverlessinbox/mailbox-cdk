@@ -17,9 +17,9 @@ async function main() {
   const app = new App();
 
   const stack = new MailboxEdgeStack(app, 'MailboxEdge', {
-    env: {
+    env:         {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000',
-      region: 'us-east-1',
+      region:  'us-east-1',
     },
     synthesizer: new BootstraplessSynthesizer(),
   });

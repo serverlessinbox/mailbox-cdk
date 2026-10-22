@@ -23,7 +23,7 @@ export class StackDeployerWorkerRequestHandler {
   async handle(event: unknown, logStreamName: string | undefined): Promise<WorkerResult> {
     const invoke = this.events.readSfnInvokeEvent(event);
     console.info('stack-deployer-worker dispatch', {
-      mode: invoke.mode,
+      mode:    invoke.mode,
       attempt: invoke.attempt,
     });
 

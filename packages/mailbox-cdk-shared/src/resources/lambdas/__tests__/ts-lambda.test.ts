@@ -15,21 +15,21 @@ import type { TypeScriptLambdaProps }            from '../ts-lambda';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
 
 function newTypeScriptLambda(stack: Stack, overrides: Partial<TypeScriptLambdaProps> = {}): TypeScriptLambda {
   const artifactResolver = new PinnedArtifactResolver({
-    packages: { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   return new TypeScriptLambda(stack, 'lambda', {
-    lambdaId: 'stack-deployer',
+    lambdaId:    'stack-deployer',
     packageName: 'mailbox-cdk',
-    pipeline: 'infra',
+    pipeline:    'infra',
     artifactResolver,
     ...overrides,
   });

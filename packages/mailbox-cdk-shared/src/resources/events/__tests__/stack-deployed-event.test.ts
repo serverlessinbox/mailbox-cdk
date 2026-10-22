@@ -21,14 +21,14 @@ describe('StackDeployedEvent', () => {
     template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
       EventPattern: {
-        source: ['aws.cloudformation'],
+        source:        ['aws.cloudformation'],
         'detail-type': ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [{ Ref: 'AWS::StackId' }],
+        detail:        {
+          'stack-id':       [{ Ref: 'AWS::StackId' }],
           'status-details': { status: ['CREATE_COMPLETE', 'UPDATE_COMPLETE'] },
         },
       },
-      State: 'ENABLED',
+      State:        'ENABLED',
     });
   });
 

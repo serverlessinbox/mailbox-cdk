@@ -4,7 +4,7 @@ import * as t from 'typanion';
 const isSdkErrorMetadata = t.isPartial({
   $metadata: t.isOptional(t.isPartial({
     httpStatusCode: t.isOptional(t.isNumber()),
-    requestId: t.isOptional(t.isString()),
+    requestId:      t.isOptional(t.isString()),
   })),
 });
 

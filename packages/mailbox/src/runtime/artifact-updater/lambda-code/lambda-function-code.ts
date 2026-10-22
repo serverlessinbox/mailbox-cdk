@@ -31,8 +31,8 @@ export class LambdaFunctionCode {
     await lambda.send(
       new UpdateFunctionCodeCommand({
         FunctionName: functionArn,
-        S3Bucket: location.bucket,
-        S3Key: location.key,
+        S3Bucket:     location.bucket,
+        S3Key:        location.key,
       }),
     );
   }
@@ -69,7 +69,7 @@ export class LambdaFunctionCode {
     await lambda.send(
       new TagResourceCommand({
         Resource: functionArn,
-        Tags: { [ServerlessInboxTagKeys.artifactVersion]: version },
+        Tags:     { [ServerlessInboxTagKeys.artifactVersion]: version },
       }),
     );
   }

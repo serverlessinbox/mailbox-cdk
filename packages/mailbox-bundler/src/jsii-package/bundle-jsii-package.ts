@@ -25,8 +25,8 @@ export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: st
       typescriptDeclarationsPlugin(absoluteFolder),
     ],
     entryPoints,
-    outdir: join(absoluteFolder, 'lib'),
-    bundle: true,
+    outdir:   join(absoluteFolder, 'lib'),
+    bundle:   true,
     platform: 'node',
     logLevel: 'info',
   });

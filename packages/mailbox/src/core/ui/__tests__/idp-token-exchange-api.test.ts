@@ -21,7 +21,7 @@ import { IdpTokenExchangeApi }                           from '../idp-token-exch
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };
-  DependsOn?: string[];
+  DependsOn?:  string[];
 }
 
 describe('IdpTokenExchangeApi', () => {
@@ -30,19 +30,19 @@ describe('IdpTokenExchangeApi', () => {
   function createApi(dependsOn?: cdk.CfnResource[]): IdpTokenExchangeApi {
     return new IdpTokenExchangeApi(stack, 'oauth-api', {
       artifactResolver: new PinnedArtifactResolver({
-        packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      configTable: new DataTable(new dynamodb.Table(stack, 'config-table', {
+      configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authPolicyName: AUTH_POLICY_JMAP_API,
-      oauthClientName: OAUTH_CLIENT_WEBMAIL_UI,
+      authPolicyName:   AUTH_POLICY_JMAP_API,
+      oauthClientName:  OAUTH_CLIENT_WEBMAIL_UI,
       dependsOn,
       serviceName: 'idp-token-exchange-test',
-      pipeline: 'jmap',
+      pipeline:    'jmap',
     });
   }
 
@@ -56,7 +56,7 @@ describe('IdpTokenExchangeApi', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });

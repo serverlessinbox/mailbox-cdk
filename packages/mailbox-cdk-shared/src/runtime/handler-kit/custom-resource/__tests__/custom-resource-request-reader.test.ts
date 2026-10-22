@@ -8,8 +8,8 @@ import { ExpectedFailure }            from '../../errors/expected-failure';
 import { readCustomResourceRequest }  from '../custom-resource-request-reader';
 
 const IDS = {
-  StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
-  RequestId: 'request-123',
+  StackId:           'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',
+  RequestId:         'request-123',
   LogicalResourceId: 'TestResource',
 };
 
@@ -32,9 +32,9 @@ describe('readCustomResourceRequest', () => {
   it('reads an Update with the physical id and the old properties CloudFormation sent', () => {
     const event = {
       ...IDS,
-      RequestType: 'Update',
-      PhysicalResourceId: 'physical-1',
-      ResourceProperties: { bucketName: 'new' },
+      RequestType:           'Update',
+      PhysicalResourceId:    'physical-1',
+      ResourceProperties:    { bucketName: 'new' },
       OldResourceProperties: { bucketName: 'old' },
     };
 

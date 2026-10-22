@@ -11,15 +11,15 @@ import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { load } from '../config';
 
 const ENVIRONMENT = {
-  SERVICE_NAME: 'artifact-updater',
-  AWS_REGION: 'eu-west-1',
+  SERVICE_NAME:             'artifact-updater',
+  AWS_REGION:               'eu-west-1',
   AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
-  PROJECT: 'serverlessinbox',
-  DIST_TAG: 'latest',
-  GRANULARITY: 'major',
-  ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
-  ROOT_STACK_TAG_VALUE: 'my-stack',
-  ROOT_STACK_ID: 'guid-1',
+  PROJECT:                  'serverlessinbox',
+  DIST_TAG:                 'latest',
+  GRANULARITY:              'major',
+  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE:     'my-stack',
+  ROOT_STACK_ID:            'guid-1',
 };
 
 describe('artifact-updater config', () => {
@@ -38,14 +38,14 @@ describe('artifact-updater config', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.config).toMatchObject({
-      region: 'eu-west-1',
-      functionName: 'artifact-updater-function',
-      project: 'serverlessinbox',
-      distTag: 'latest',
-      granularity: 'major',
+      region:             'eu-west-1',
+      functionName:       'artifact-updater-function',
+      project:            'serverlessinbox',
+      distTag:            'latest',
+      granularity:        'major',
       artifactBucketBase: 'mailbox-artifacts',
-      rootStackTagValue: 'my-stack',
-      rootStackId: 'guid-1',
+      rootStackTagValue:  'my-stack',
+      rootStackId:        'guid-1',
     });
   });
 

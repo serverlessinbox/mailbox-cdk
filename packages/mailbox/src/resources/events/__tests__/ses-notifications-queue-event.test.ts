@@ -27,12 +27,12 @@ describe('SesNotificationsQueueEvent', () => {
 
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
-      FunctionName: Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
-      BatchSize: 100,
+      EventSourceArn:                 queueArn,
+      FunctionName:                   Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
+      BatchSize:                      100,
       MaximumBatchingWindowInSeconds: 30,
-      ScalingConfig: Match.objectEquals({ MaximumConcurrency: 5 }),
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
+      ScalingConfig:                  Match.objectEquals({ MaximumConcurrency: 5 }),
+      FunctionResponseTypes:          Match.arrayEquals(['ReportBatchItemFailures']),
     });
   });
 });

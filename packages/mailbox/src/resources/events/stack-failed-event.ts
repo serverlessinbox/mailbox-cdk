@@ -7,7 +7,7 @@ import type { Construct }                    from 'constructs';
 
 /** What the sweeper needs to find and remove the retained rule. */
 export interface IStackFailedEvent {
-  readonly ruleArn: string;
+  readonly ruleArn:      string;
   readonly ruleTargetId: string;
 }
 
@@ -30,10 +30,10 @@ export class StackFailedEvent extends events.Rule implements IStackFailedEvent {
     // CREATE_FAILED/UPDATE_FAILED are excluded: they are only terminal when rollback is disabled.
     super(scope, id, {
       eventPattern: {
-        source: ['aws.cloudformation'],
+        source:     ['aws.cloudformation'],
         detailType: ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [Stack.of(scope).stackId],
+        detail:     {
+          'stack-id':       [Stack.of(scope).stackId],
           'status-details': {
             status: [
               'ROLLBACK_COMPLETE',

@@ -33,15 +33,15 @@ export class LambdaCodeRollback {
     this.logger.error('smoke test did not pass, rolling back', {
       lambdaArn: target.arn,
       verdict,
-      failedVersion: stale.version,
+      failedVersion:   stale.version,
       deployedVersion: target.deployedVersion,
     });
 
     this.logger.info('rolling back lambda to deployed version', {
-      lambdaArn: target.arn,
+      lambdaArn:         target.arn,
       oldArtifactBucket: deployedLocation.bucket,
-      oldArtifactKey: deployedLocation.key,
-      version: target.deployedVersion,
+      oldArtifactKey:    deployedLocation.key,
+      version:           target.deployedVersion,
     });
 
     await this.functionCode.update(lambda, target.arn, deployedLocation);
@@ -55,8 +55,8 @@ export class LambdaCodeRollback {
     } catch (thrown) {
       this.logger.error('rollback settle-wait failed', {
         lambdaArn: target.arn,
-        error: new CaughtError(thrown).message,
-        note: 'function may still be on failed code; manual intervention may be needed',
+        error:     new CaughtError(thrown).message,
+        note:      'function may still be on failed code; manual intervention may be needed',
       });
       throw thrown;
     }

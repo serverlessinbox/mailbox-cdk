@@ -35,9 +35,9 @@ export class SupportAddonProvider implements IAdminApiAddonProvider {
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new SupportAddon(scope, 'support-addon', {
-        mode: this.props.mode,
+        mode:             this.props.mode,
         artifactResolver: ctx.artifactResolver,
-        configTable: ctx.configTable,
+        configTable:      ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
       }),
     ];

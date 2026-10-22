@@ -30,7 +30,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
     const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -39,7 +39,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
     };
     const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -53,7 +53,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
       configTable: new DataTable(configTable),
       artifactResolver,
       serviceName: 'jmap',
-      pipeline: 'jmap',
+      pipeline:    'jmap',
     });
 
     template = Template.fromStack(stack);
@@ -78,8 +78,8 @@ describe('AuthorizerLambda auth-key-store grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.read]),
-            Effect: 'Allow',
+            Action:   Match.arrayEquals([...DynamoDbActions.read]),
+            Effect:   'Allow',
             Resource: expectedResource,
           }),
         ]),

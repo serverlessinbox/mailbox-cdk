@@ -29,7 +29,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -38,7 +38,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     };
     const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -72,8 +72,8 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.readWrite]),
-            Effect: 'Allow',
+            Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Effect:   'Allow',
             Resource: expectedResource,
           }),
         ]),
@@ -97,7 +97,7 @@ describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
     template.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(6 hours)', Targets: targets });
     template.hasResourceProperties('AWS::Events::Rule', {
       EventPattern: Match.objectLike({ source: ['aws.cloudformation'] }),
-      Targets: targets,
+      Targets:      targets,
     });
   });
 

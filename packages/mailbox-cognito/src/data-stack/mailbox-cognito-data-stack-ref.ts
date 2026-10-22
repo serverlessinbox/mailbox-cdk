@@ -2,7 +2,7 @@ import * as cognito  from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 
 export interface MailboxCognitoDataStackRefProps {
-  readonly userPoolId: string;
+  readonly userPoolId:  string;
   readonly userPoolArn: string;
   readonly oauthDomain: string;
 }

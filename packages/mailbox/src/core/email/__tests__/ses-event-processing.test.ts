@@ -20,15 +20,15 @@ import { SESEventProcessing, type SESEventProcessingProps } from '../ses-event-p
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
 
 function createProps(stack: cdk.Stack): SESEventProcessingProps {
   const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
-    packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   const dataTable                           = (id: string) => new DataTable(new Table(stack, id, {
@@ -36,12 +36,12 @@ function createProps(stack: cdk.Stack): SESEventProcessingProps {
   }));
 
   return {
-    itemTable: dataTable('item-table'),
-    changelogTable: dataTable('changelog-table'),
+    itemTable:         dataTable('item-table'),
+    changelogTable:    dataTable('changelog-table'),
     mailFeedbackTable: dataTable('mail-feedback-table'),
-    configTable: dataTable('config-table'),
-    blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    configTable:       dataTable('config-table'),
+    blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
+    auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
     artifactResolver,
   };
 }
@@ -55,8 +55,8 @@ describe('SESEventProcessing', () => {
 
     template.hasResourceProperties('AWS::SES::ConfigurationSetEventDestination', {
       ConfigurationSetName: stack.resolve(sut.sesConfigSetName),
-      EventDestination: Match.objectLike({
-        Enabled: true,
+      EventDestination:     Match.objectLike({
+        Enabled:        true,
         SnsDestination: { TopicARN: stack.resolve(sut.sesEventTopic.topicArn) },
       }),
     });
@@ -88,7 +88,7 @@ describe('SESEventProcessing', () => {
     const sut                                       = new SESEventProcessing(stack, 'ses-event-processing', createProps(stack));
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
-      grantInvoke: () => undefined,
+      grantInvoke:  () => undefined,
     };
 
     sut.enableWebSocketPublishing(broadcaster);

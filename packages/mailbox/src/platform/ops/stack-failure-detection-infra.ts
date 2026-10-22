@@ -52,7 +52,7 @@ export class StackFailureDetectionInfra extends Construct {
     const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
 
     const detectorRole = new iam.Role(this, 'detector-role', {
-      roleName: detectorRoleName,
+      roleName:  detectorRoleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
     this.retainOnEveryOperation(detectorRole, 'detector-role');
@@ -62,9 +62,9 @@ export class StackFailureDetectionInfra extends Construct {
     const infraLogGroup = PipelineLogGroup.getOrCreate(this, 'infra');
 
     const detector = new StackFailureDetectorLambda(this, 'detector', {
-      artifactResolver: props.artifactResolver,
-      role: detectorRole,
-      functionName: detectorFunctionName,
+      artifactResolver:  props.artifactResolver,
+      role:              detectorRole,
+      functionName:      detectorFunctionName,
       infraLogGroupName: infraLogGroup.logGroupName,
     });
     this.retainOnEveryOperation(detector, 'detector');
@@ -85,21 +85,21 @@ export class StackFailureDetectionInfra extends Construct {
       policyName: DETECTOR_POLICY_NAME,
       statements: [
         new iam.PolicyStatement({
-          actions: ['cloudformation:DescribeStackEvents', 'cloudformation:DescribeStacks'],
+          actions:   ['cloudformation:DescribeStackEvents', 'cloudformation:DescribeStacks'],
           resources: [Aws.STACK_ID],
         }),
         new iam.PolicyStatement({
-          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+          actions:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
           resources: [infraLogGroupArn],
         }),
         // FilterLogEvents is for recovery and troubleshooting.
         new iam.PolicyStatement({
-          actions: ['logs:FilterLogEvents'],
+          actions:   ['logs:FilterLogEvents'],
           resources: [infraLogGroupArn],
         }),
         // Cross-account SigV4 calls to the vendor API need an identity-side allow in addition to its resource policy.
         new iam.PolicyStatement({
-          actions: ['execute-api:Invoke'],
+          actions:   ['execute-api:Invoke'],
           resources: vendorAccountIds.map(
             (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/issue-stack-failure-upload`,
           ),

@@ -33,7 +33,7 @@ describe('RootStackResources', () => {
     const matcher  = { TagFilters: [{ Key: tagKey, Values: [tagKey === ID_KEY ? 'guid-1' : 'my-stack'] }] };
     const answers  = pages.map((page, index) => ({
       ResourceTagMappingList: page,
-      PaginationToken: index < pages.length - 1 ? `page-${index + 2}` : '',
+      PaginationToken:        index < pages.length - 1 ? `page-${index + 2}` : '',
     }));
     const behavior = taggingMock.on(GetResourcesCommand, matcher);
     answers.forEach((answer) => behavior.resolvesOnce(answer));

@@ -15,13 +15,13 @@ import { CloudFormationStacks }                                                 
 import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack, STACK_NAME, US_EAST_1 } from './stack-deployer-helpers';
 
 const isStackEventOnTheWire = t.isObject({
-  StackId: t.isString(),
-  EventId: t.isString(),
-  StackName: t.isString(),
-  Timestamp: t.isString(),
+  StackId:           t.isString(),
+  EventId:           t.isString(),
+  StackName:         t.isString(),
+  Timestamp:         t.isString(),
   LogicalResourceId: t.isString(),
-  ResourceType: t.isString(),
-  ResourceStatus: t.isString(),
+  ResourceType:      t.isString(),
+  ResourceStatus:    t.isString(),
 });
 
 // A status the SDK's enum does not list, as CloudFormation could send it: the wire is JSON, so the fixture is too.
@@ -181,13 +181,13 @@ describe('CloudFormationStacks', () => {
 
     it('lists at most eight events', async () => {
       const failed = Array.from(Array(10).keys(), (index) => ({
-        StackId: 's',
-        EventId: String(index),
-        StackName: STACK_NAME,
-        Timestamp: new Date(),
-        LogicalResourceId: `Resource${index}`,
-        ResourceType: 'AWS::S3::Bucket',
-        ResourceStatus: 'CREATE_FAILED' as const,
+        StackId:              's',
+        EventId:              String(index),
+        StackName:            STACK_NAME,
+        Timestamp:            new Date(),
+        LogicalResourceId:    `Resource${index}`,
+        ResourceType:         'AWS::S3::Bucket',
+        ResourceStatus:       'CREATE_FAILED' as const,
         ResourceStatusReason: 'failed',
       }));
       cfn.on(DescribeStackEventsCommand).resolves({ StackEvents: failed });
@@ -213,11 +213,11 @@ describe('CloudFormationStacks', () => {
 
       expect(commandNames()).toEqual(['DescribeStacksCommand', 'CreateStackCommand']);
       expect(cfn.commandCalls(CreateStackCommand)[0].args[0].input).toEqual({
-        StackName: STACK_NAME,
-        TemplateURL: 'https://example.com/template.json',
-        Parameters: [{ ParameterKey: 'nameBase', ParameterValue: 'mail' }],
-        Tags: [{ Key: 'owner', Value: 'team' }],
-        Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
+        StackName:                   STACK_NAME,
+        TemplateURL:                 'https://example.com/template.json',
+        Parameters:                  [{ ParameterKey: 'nameBase', ParameterValue: 'mail' }],
+        Tags:                        [{ Key: 'owner', Value: 'team' }],
+        Capabilities:                ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
         EnableTerminationProtection: true,
       });
     });
@@ -250,10 +250,10 @@ describe('CloudFormationStacks', () => {
 
       expect(commandNames()).toEqual(['DescribeStacksCommand', 'UpdateStackCommand']);
       expect(cfn.commandCalls(UpdateStackCommand)[0].args[0].input).toEqual({
-        StackName: STACK_NAME,
-        TemplateURL: 'https://example.com/template.json',
-        Parameters: [{ ParameterKey: 'nameBase', ParameterValue: 'mail' }],
-        Tags: [{ Key: 'owner', Value: 'team' }],
+        StackName:    STACK_NAME,
+        TemplateURL:  'https://example.com/template.json',
+        Parameters:   [{ ParameterKey: 'nameBase', ParameterValue: 'mail' }],
+        Tags:         [{ Key: 'owner', Value: 'team' }],
         Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'],
       });
     });

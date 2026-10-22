@@ -69,9 +69,9 @@ export class StackDeployerStarter {
   private readProperties(request: CfnRequest): BrandedStackDeployerProperties {
     const properties = this.events.readProperties(request.ResourceProperties, request.RequestType);
     this.logger.debug('CFN handler invoked', {
-      requestType: request.RequestType,
+      requestType:       request.RequestType,
       logicalResourceId: request.LogicalResourceId,
-      stackName: properties.stackName,
+      stackName:         properties.stackName,
     });
     return properties;
   }
@@ -153,7 +153,7 @@ export class StackDeployerStarter {
 
   private logStartFailed(caught: CaughtError): void {
     this.logger.error('Failed to start Step Functions execution', {
-      errorName: caught.name,
+      errorName:    caught.name,
       errorMessage: caught.describeWithMetadata(),
     });
   }
@@ -246,8 +246,8 @@ export class StackDeployerStarter {
     await this.stepFunctions.send(
       new StartExecutionCommand({
         stateMachineArn: this.stateMachineArn,
-        name: executionName,
-        input: JSON.stringify(input),
+        name:            executionName,
+        input:           JSON.stringify(input),
       }),
     );
   }

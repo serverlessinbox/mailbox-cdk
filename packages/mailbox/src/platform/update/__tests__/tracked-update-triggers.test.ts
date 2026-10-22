@@ -17,13 +17,13 @@ import { TrackedUpdateTriggers }                                                
 const TRACKING_CONDITION = 'IsTracking';
 
 interface TriggersFixture {
-  readonly stack: Stack;
+  readonly stack:    Stack;
   readonly triggers: TrackedUpdateTriggers;
 }
 
 function build(): TriggersFixture {
   const stack      = new Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const updater    = new LambdaFunction(stack, 'updater', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });

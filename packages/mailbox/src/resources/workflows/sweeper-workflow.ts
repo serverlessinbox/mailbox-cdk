@@ -39,7 +39,7 @@ export interface SweeperWorkflowProps {
 /** What a step is wired to: the step that follows it, and the state the whole execution ends in. */
 interface StepSuccessors {
   readonly next: sfn.IChainable;
-  readonly end: sfn.IChainable;
+  readonly end:  sfn.IChainable;
 }
 
 /** A step of the sequence: builds its state, wired to its successors. */
@@ -75,7 +75,7 @@ export class SweeperWorkflow extends Construct {
 
     this.stateMachineArn = props.stateMachineArn;
     this.stateMachine    = new sfn.StateMachine(this, 'StateMachine', {
-      definition: this.inOrder([
+      definition:       this.inOrder([
         ...props.removals.map((removal) => this.sweepRemoval(removal, props)),
         ({ next }) => this.describeOwnResource()
           .addCatch(this.captureOwnResourceGone().next(next), { errors: ['cloudformation.ValidationError'], resultPath: sfn.JsonPath.DISCARD })
@@ -93,15 +93,15 @@ export class SweeperWorkflow extends Construct {
         ({ end }) => this.deleteStateMachine(props)
           .addCatch(end, { errors: ['States.ALL'], resultPath: sfn.JsonPath.DISCARD }),
       ], () => this.succeed()),
-      role: props.executionRole,
-      timeout: props.timeout ?? SweeperWorkflow.defaultTimeout,
+      role:             props.executionRole,
+      timeout:          props.timeout ?? SweeperWorkflow.defaultTimeout,
       stateMachineName: props.stateMachineName,
     });
   }
 
   public grantStartExecution(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['states:StartExecution'],
+      actions:   ['states:StartExecution'],
       resources: [this.stateMachineArn],
     }));
   }
@@ -111,7 +111,7 @@ export class SweeperWorkflow extends Construct {
    */
   public grantExecutionReaping(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['states:ListExecutions', 'states:StopExecution'],
+      actions:   ['states:ListExecutions', 'states:StopExecution'],
       resources: [this.stateMachineArn],
     }));
   }
@@ -152,13 +152,13 @@ export class SweeperWorkflow extends Construct {
    */
   private describeOwnResource(): tasks.CallAwsService {
     return new tasks.CallAwsService(this, 'SelfCleanupDescribeOwnResource', {
-      service: 'cloudformation',
-      action: 'describeStackResource',
-      parameters: {
-        StackName: Aws.STACK_NAME,
+      service:      'cloudformation',
+      action:       'describeStackResource',
+      parameters:   {
+        StackName:         Aws.STACK_NAME,
         LogicalResourceId: Lazy.string({ produce: () => defaultCfnResource(this.stateMachine).logicalId }),
       },
-      resultPath: '$.selfCheck',
+      resultPath:   '$.selfCheck',
       iamResources: [Aws.STACK_ID],
     });
   }
@@ -182,49 +182,49 @@ export class SweeperWorkflow extends Construct {
 
   private deleteWorker(props: SweeperWorkflowProps): tasks.CallAwsService {
     return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorker', {
-      service: 'lambda',
-      action: 'deleteFunction',
-      parameters: {
+      service:      'lambda',
+      action:       'deleteFunction',
+      parameters:   {
         FunctionName: props.worker.functionArn,
       },
-      resultPath: sfn.JsonPath.DISCARD,
+      resultPath:   sfn.JsonPath.DISCARD,
       iamResources: [props.worker.functionArn],
     });
   }
 
   private deleteWorkerRolePolicy(props: SweeperWorkflowProps): tasks.CallAwsService {
     return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRolePolicy', {
-      service: 'iam',
-      action: 'deleteRolePolicy',
-      parameters: {
-        RoleName: props.workerRoleName,
+      service:      'iam',
+      action:       'deleteRolePolicy',
+      parameters:   {
+        RoleName:   props.workerRoleName,
         PolicyName: SweeperPolicyNames.workerPolicy,
       },
-      resultPath: sfn.JsonPath.DISCARD,
+      resultPath:   sfn.JsonPath.DISCARD,
       iamResources: [props.workerRoleArn],
     });
   }
 
   private deleteWorkerRole(props: SweeperWorkflowProps): tasks.CallAwsService {
     return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRole', {
-      service: 'iam',
-      action: 'deleteRole',
-      parameters: {
+      service:      'iam',
+      action:       'deleteRole',
+      parameters:   {
         RoleName: props.workerRoleName,
       },
-      resultPath: sfn.JsonPath.DISCARD,
+      resultPath:   sfn.JsonPath.DISCARD,
       iamResources: [props.workerRoleArn],
     });
   }
 
   private deleteStateMachine(props: SweeperWorkflowProps): tasks.CallAwsService {
     return new tasks.CallAwsService(this, 'SelfCleanupDeleteStateMachine', {
-      service: 'sfn',
-      action: 'deleteStateMachine',
-      parameters: {
+      service:      'sfn',
+      action:       'deleteStateMachine',
+      parameters:   {
         StateMachineArn: props.stateMachineArn,
       },
-      resultPath: sfn.JsonPath.DISCARD,
+      resultPath:   sfn.JsonPath.DISCARD,
       iamResources: [props.stateMachineArn],
     });
   }

@@ -12,7 +12,7 @@ describe('TemplateDiffer', () => {
   const nonceRule: NonDeterministicProperty = {
     resourceType: 'Custom::ContentInvalidation',
     propertyPath: 'Properties.deploymentNonce',
-    reason: 'unstable',
+    reason:       'unstable',
   };
   const differ                              = new TemplateDiffer([nonceRule]);
 
@@ -41,20 +41,20 @@ describe('TemplateDiffer', () => {
   it('reports the property paths of an entry that changed, through objects and arrays', () => {
     const before = resources({
       Fn: {
-        Type: 'AWS::Lambda::Function',
+        Type:       'AWS::Lambda::Function',
         Properties: { Environment: { Variables: { KEPT: 'a', CHANGED: 'old', REMOVED: 'x' } }, Tags: [{ Key: 'a' }, { Key: 'b' }] },
       },
     });
     const after  = resources({
       Fn: {
-        Type: 'AWS::Lambda::Function',
+        Type:       'AWS::Lambda::Function',
         Properties: { Environment: { Variables: { KEPT: 'a', CHANGED: 'new', ADDED: 'y' } }, Tags: [{ Key: 'a' }, { Key: 'c' }, { Key: 'd' }] },
       },
     });
 
     expect(differ.diff(before, after).changed).toEqual([
       {
-        entryId: 'Resources/Fn',
+        entryId:       'Resources/Fn',
         propertyPaths: [
           'Properties.Environment.Variables.ADDED',
           'Properties.Environment.Variables.CHANGED',

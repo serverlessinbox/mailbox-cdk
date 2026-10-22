@@ -22,15 +22,15 @@ function synthSection(stack: Stack): SearchSection {
   }));
   const section   = new SearchSection(stack, 'search', {
     artifactResolver: new PinnedArtifactResolver({
-      packages: { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      packages:         { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     }),
-    data: {
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
+    data:             {
+      configTable:    dataTable('config-table'),
+      itemTable:      dataTable('item-table'),
       changelogTable: dataTable('changelog-table'),
-      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+      blobStore:      new DataBlobStore(new Bucket(stack, 'blob-store')),
     },
   });
   Template.fromStack(stack);

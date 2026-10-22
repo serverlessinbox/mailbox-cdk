@@ -131,7 +131,7 @@ describe('jmap-oauth-dcr handler', () => {
 
     expect(answer).toMatchObject({
       statusCode: 500,
-      body: JSON.stringify({ error: 'server_error', error_description: 'Internal error processing registration' }),
+      body:       JSON.stringify({ error: 'server_error', error_description: 'Internal error processing registration' }),
     });
     expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', { error: 'Error: unexpected failure' });
     expect(debugLog).toHaveBeenCalledWith('buffered_before_failure');

@@ -30,23 +30,23 @@ describe('MailboxUi', () => {
 
   function propsWith(overrides: Partial<MailboxUiProps> = {}): MailboxUiProps {
     return {
-      domainName: 'admin.example.com',
-      label: 'admin',
+      domainName:               'admin.example.com',
+      label:                    'admin',
       tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
-      tokenExchangePipeline: 'admin',
-      configTable: new DataTable(new dynamodb.Table(stack, 'config-table', {
+      tokenExchangePipeline:    'admin',
+      configTable:              new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authPolicyName: AUTH_POLICY_ADMIN_API,
-      oauthClientName: OAUTH_CLIENT_ADMIN_UI,
-      artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      auditEventsQueue:         new AuditEventsQueue(stack, 'audit-events-queue'),
+      authPolicyName:           AUTH_POLICY_ADMIN_API,
+      oauthClientName:          OAUTH_CLIENT_ADMIN_UI,
+      artifactResolver:         new PinnedArtifactResolver({
+        packages:         {
+          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       ...overrides,
@@ -66,7 +66,7 @@ describe('MailboxUi', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -109,7 +109,7 @@ describe('MailboxUi', () => {
       const configBehavior = behaviors.find((behavior) => behavior.PathPattern === '/config/*');
       expect(configBehavior).toMatchObject({
         // CloudFront's managed CachingDisabled policy.
-        CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+        CachePolicyId:  '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
         AllowedMethods: ['GET', 'HEAD', 'OPTIONS'],
       });
     });
@@ -121,8 +121,8 @@ describe('MailboxUi', () => {
       const authBehavior = behaviors.find((behavior) => behavior.PathPattern === '/auth/*');
       expect(authBehavior).toMatchObject({
         ViewerProtocolPolicy: 'https-only',
-        CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
-        AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+        CachePolicyId:        '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+        AllowedMethods:       ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
         FunctionAssociations: [expect.objectContaining({ EventType: 'viewer-request' })],
       });
     });
@@ -163,10 +163,10 @@ describe('MailboxUi', () => {
       template.resourceCountIs('Custom::ContentDeployment', 1);
       template.hasResourceProperties('Custom::ContentDeployment', {
         sources: [Match.objectLike({
-          kind: 'data',
-          key: 'config/config.json',
-          body: '{"apiUrl":"https://api.example.com"}',
-          contentType: 'application/json; charset=utf-8',
+          kind:         'data',
+          key:          'config/config.json',
+          body:         '{"apiUrl":"https://api.example.com"}',
+          contentType:  'application/json; charset=utf-8',
           cacheControl: 'no-store',
         })],
       });
@@ -197,9 +197,9 @@ describe('MailboxUi', () => {
       new MailboxUi(stack, 'admin-ui', propsWith({ uiBundle: { packageName: 'mailbox-cdk', objectPath: 'ui/admin.zip' } }));
 
       expect(distributionTags()).toMatchObject({
-        [ServerlessInboxTagKeys.autoUpdateType]: 'ui',
+        [ServerlessInboxTagKeys.autoUpdateType]:  'ui',
         [ServerlessInboxTagKeys.artifactPackage]: 'mailbox-cdk',
-        [ServerlessInboxTagKeys.artifactName]: 'ui/admin.zip',
+        [ServerlessInboxTagKeys.artifactName]:    'ui/admin.zip',
         [ServerlessInboxTagKeys.artifactVersion]: '1.0.0',
       });
     });
@@ -217,13 +217,13 @@ describe('MailboxUi', () => {
       const objectsUnder   = (prefix: string): unknown => ({ 'Fn::Join': ['', [bucketArn, `/${prefix}/*`]] });
       const writeAndDelete = ['s3:PutObject', 's3:DeleteObject'];
       const listOnly       = (prefix: string): unknown => Match.objectEquals({
-        Action: 's3:ListBucket',
-        Effect: 'Allow',
-        Resource: bucketArn,
+        Action:    's3:ListBucket',
+        Effect:    'Allow',
+        Resource:  bucketArn,
         Condition: { StringLike: { 's3:prefix': `${prefix}/*` } },
       });
       template.hasResourceProperties('AWS::IAM::Policy', {
-        Roles: [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
+        Roles:          [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
         PolicyDocument: {
           Statement: Match.arrayEquals([
             Match.objectEquals({ Action: writeAndDelete, Effect: 'Allow', Resource: objectsUnder('content') }),

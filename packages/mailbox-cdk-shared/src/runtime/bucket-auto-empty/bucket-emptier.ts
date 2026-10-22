@@ -18,7 +18,7 @@ const DELETE_ATTEMPTS = 3;
 
 /** Where a page of a bucket's object versions starts; empty for the first page. */
 interface VersionListingPosition {
-  readonly keyMarker?: string;
+  readonly keyMarker?:       string;
   readonly versionIdMarker?: string;
 }
 
@@ -65,8 +65,8 @@ export class BucketEmptier {
   ): Promise<ListObjectVersionsCommandOutput> {
     return this.s3.send(
       new ListObjectVersionsCommand({
-        Bucket: bucketName,
-        KeyMarker: position.keyMarker,
+        Bucket:          bucketName,
+        KeyMarker:       position.keyMarker,
         VersionIdMarker: position.versionIdMarker,
       }),
     );

@@ -15,23 +15,23 @@ describe('LicenseRefresherLambda', () => {
 
   beforeEach(() => {
     const stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
     new LicenseRefresherLambda(stack, 'license-refresher', {
-      configTable: new DataTable(new Table(stack, 'config-table', {
+      configTable:      new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
       })),
       artifactResolver: new PinnedArtifactResolver({
-        packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      coreDomain: 'example.com',
+      coreDomain:       'example.com',
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      scheduleHour: '5',
-      scheduleMinute: '9',
+      scheduleHour:     '5',
+      scheduleMinute:   '9',
     });
 
     template = Template.fromStack(stack);
@@ -44,7 +44,7 @@ describe('LicenseRefresherLambda', () => {
     template.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'cron(9 5 * * ? *)', Targets: targets });
     template.hasResourceProperties('AWS::Events::Rule', {
       EventPattern: Match.objectLike({ source: ['aws.cloudformation'] }),
-      Targets: targets,
+      Targets:      targets,
     });
   });
 });

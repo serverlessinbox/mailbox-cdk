@@ -34,18 +34,18 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from './webso
  * addons that mount further routes, and the optional custom domain.
  */
 export interface AdminApiProps {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly auditLogTable: IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly mailFeedbackTable: IDataTable;
-  readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly blobStore: IDataBlobStore;
+  readonly configTable:          IDataTable;
+  readonly itemTable:            IDataTable;
+  readonly auditLogTable:        IDataTable;
+  readonly changelogTable:       IDataTable;
+  readonly mailFeedbackTable:    IDataTable;
+  readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
-  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly auditEventsQueue:     IAuditEventsQueue;
   /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
-  readonly allowedOrigins?: string[];
-  readonly artifactResolver: IArtifactResolver;
+  readonly allowedOrigins?:     string[];
+  readonly artifactResolver:    IArtifactResolver;
   readonly identityProvisioner: IIdentityProvisioner;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
@@ -88,16 +88,16 @@ export class AdminApi extends Construct {
     ComponentDescription.describe(this, 'Administrative API for managing domains, users, configuration and audit.');
 
     const api = new HttpApi(this, 'admin-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} Admin API`,
+      apiName:     `Mailbox ${Aws.STACK_NAME} Admin API`,
       description: 'This service serves mailbox admin api endpoints.',
       corsPreflight:
         props.allowedOrigins && props.allowedOrigins.length > 0
           ? {
-            allowOrigins: props.allowedOrigins,
-            allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-            allowHeaders: ['Content-Type', 'Authorization'],
+            allowOrigins:     props.allowedOrigins,
+            allowMethods:     [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+            allowHeaders:     ['Content-Type', 'Authorization'],
             allowCredentials: true,
-            maxAge: Duration.hours(1),
+            maxAge:           Duration.hours(1),
           }
           : undefined,
     });
@@ -108,9 +108,9 @@ export class AdminApi extends Construct {
       }
 
       const domain = new DomainName(this, 'domain', {
-        domainName: props.domainName,
-        certificate: props.certificate,
-        endpointType: EndpointType.REGIONAL,
+        domainName:     props.domainName,
+        certificate:    props.certificate,
+        endpointType:   EndpointType.REGIONAL,
         securityPolicy: SecurityPolicy.TLS_1_2,
       });
 
@@ -122,7 +122,7 @@ export class AdminApi extends Construct {
       new ApiMapping(this, 'mapping', {
         api,
         domainName: domain,
-        stage: api.defaultStage!,
+        stage:      api.defaultStage!,
       });
 
       this.url          = `https://${props.domainName}`;
@@ -132,30 +132,30 @@ export class AdminApi extends Construct {
     }
 
     const apiHandlerLambda = new AdminApiLambda(this, 'api-handler', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      auditLogTable: props.auditLogTable,
-      changelogTable: props.changelogTable,
-      mailFeedbackTable: props.mailFeedbackTable,
-      blobStore: props.blobStore,
+      configTable:          props.configTable,
+      itemTable:            props.itemTable,
+      auditLogTable:        props.auditLogTable,
+      changelogTable:       props.changelogTable,
+      mailFeedbackTable:    props.mailFeedbackTable,
+      blobStore:            props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
-      auditEventsQueue: props.auditEventsQueue,
-      artifactResolver: props.artifactResolver,
-      sesRuleSetName: props.sesRuleSetName,
-      sesConfigSetName: props.sesConfigSetName,
-      identityProvisioner: props.identityProvisioner,
-      systemSenderAddress: props.systemSenderAddress,
-      vendorLink: props.vendorLink,
+      auditEventsQueue:     props.auditEventsQueue,
+      artifactResolver:     props.artifactResolver,
+      sesRuleSetName:       props.sesRuleSetName,
+      sesConfigSetName:     props.sesConfigSetName,
+      identityProvisioner:  props.identityProvisioner,
+      systemSenderAddress:  props.systemSenderAddress,
+      vendorLink:           props.vendorLink,
     });
     this.apiHandlerLambda  = apiHandlerLambda;
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,
-      configTable: props.configTable,
-      artifactResolver: props.artifactResolver,
-      authPolicyName: AUTH_POLICY_ADMIN_API,
-      serviceName: 'authorizer-admin-api',
-      pipeline: 'admin',
+      configTable:       props.configTable,
+      artifactResolver:  props.artifactResolver,
+      authPolicyName:    AUTH_POLICY_ADMIN_API,
+      serviceName:       'authorizer-admin-api',
+      pipeline:          'admin',
     });
 
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
@@ -167,9 +167,9 @@ export class AdminApi extends Construct {
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
     api.addRoutes({
       integration: httpLambdaIntegration,
-      path: '/{proxy+}',
-      methods: [HttpMethod.POST],
-      authorizer: httpLambdaAuthorize,
+      path:        '/{proxy+}',
+      methods:     [HttpMethod.POST],
+      authorizer:  httpLambdaAuthorize,
     });
   }
 

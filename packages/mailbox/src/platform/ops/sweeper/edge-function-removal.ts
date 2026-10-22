@@ -40,10 +40,10 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
 
   public buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
     const payload: EdgeFunctionWorkerInput = {
-      removalType: 'edge-fn',
-      edgeFnArn: targetField(this.id, 'edgeFnArn'),
+      removalType:   'edge-fn',
+      edgeFnArn:     targetField(this.id, 'edgeFnArn'),
       rootStackName: Stack.of(this).stackName,
-      rootStackId: StackIdentity.guid,
+      rootStackId:   StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'EdgeFn', {
@@ -59,7 +59,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
 
   private grantEdgeFunctionInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['lambda:GetFunction'],
+      actions:   ['lambda:GetFunction'],
       resources: [EdgeFunctionRemoval.anyEdgeFunctionArn],
     });
   }
@@ -68,7 +68,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
     return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid }).map(
       (conditions) =>
         new iam.PolicyStatement({
-          actions: ['lambda:DeleteFunction'],
+          actions:   ['lambda:DeleteFunction'],
           resources: [EdgeFunctionRemoval.anyEdgeFunctionArn],
           conditions,
         }),

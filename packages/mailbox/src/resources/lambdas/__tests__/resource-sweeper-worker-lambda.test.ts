@@ -19,7 +19,7 @@ import { ResourceSweeperWorkerLambda }                    from '../resource-swee
 describe('ResourceSweeperWorkerLambda', () => {
   function newStack(id: string): Stack {
     return new Stack(new App(), id, {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   }
@@ -28,7 +28,7 @@ describe('ResourceSweeperWorkerLambda', () => {
     const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
     const artifactResolver                      = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
     const role                                  = new iam.Role(stack, 'worker-role', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });

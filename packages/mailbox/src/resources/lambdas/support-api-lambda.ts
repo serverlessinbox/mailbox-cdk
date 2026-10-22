@@ -60,21 +60,21 @@ export class SupportApiLambda extends GoLambda {
     // SUPPORT_HOP_ROLE_ARN, CONFIG_TABLE_NAME, AUDIT_EVENTS_QUEUE_URL, STACK_ID, then tier vars (from registry order)
     const tierEnv                             = buildSupportTierEnvironment(props.tierRoleArns);
     const environment: Record<string, string> = {
-      SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
-      CONFIG_TABLE_NAME: props.configTable.tableName,
-      AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-      STACK_ID: Stack.of(scope).stackId,
-      SUPPORT_DIAG_TAG_KEY: props.supportDiagTagKey,
+      SUPPORT_HOP_ROLE_ARN:        props.supportHopRoleArn,
+      CONFIG_TABLE_NAME:           props.configTable.tableName,
+      AUDIT_EVENTS_QUEUE_URL:      props.auditEventsQueue.queueUrl,
+      STACK_ID:                    Stack.of(scope).stackId,
+      SUPPORT_DIAG_TAG_KEY:        props.supportDiagTagKey,
       SUPPORT_CONFIG_READ_TAG_KEY: props.supportConfigReadTagKey,
       ...tierEnv,
     };
 
     super(scope, id, {
-      lambdaId: 'support-api',
-      pipeline: 'admin',
+      lambdaId:         'support-api',
+      pipeline:         'admin',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
       environment,
     });
 
@@ -98,11 +98,11 @@ export class SupportApiLambda extends GoLambda {
     // serverless-inbox:support:diag and serverless-inbox:support:config-read. Do not "simplify" this back to StringEquals — that change
     // would silently break all tag writes.
     this.addToRolePolicy(new PolicyStatement({
-      actions: [
+      actions:    [
         'iam:TagRole',
         'iam:UntagRole',
       ],
-      resources: [props.supportHopRoleArn],
+      resources:  [props.supportHopRoleArn],
       conditions: {
         'ForAllValues:StringEquals': {
           'aws:TagKeys': props.supportTierTagKeys,
@@ -115,8 +115,8 @@ export class SupportApiLambda extends GoLambda {
     // Grant CloudTrail LookupEvents for querying assume-role events in the live read path.
     // CloudTrail actions declare no resource types, so resources: ['*'] is correct per IAM scoping.
     this.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
+      effect:    Effect.ALLOW,
+      actions:   [
         'cloudtrail:LookupEvents',
       ],
       resources: ['*'],
@@ -129,7 +129,7 @@ export class SupportApiLambda extends GoLambda {
     const resources = props.vendorAccountIds.map(accountId => `arn:aws:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
 
     this.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
+      effect:  Effect.ALLOW,
       actions: ['execute-api:Invoke'],
       resources,
     }));

@@ -6,9 +6,9 @@ export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 export type MailboxKmsResource = 'dynamodb' | 'sqs';
 
 export interface MailboxKmsPerResourceConfig {
-  readonly blobStore?: kms.IKey;
+  readonly blobStore?:    kms.IKey;
   readonly dynamoTables?: kms.IKey;
-  readonly queues?: kms.IKey;
+  readonly queues?:       kms.IKey;
 }
 
 export interface MailboxKmsConfig {

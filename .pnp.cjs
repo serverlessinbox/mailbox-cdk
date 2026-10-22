@@ -1672,10 +1672,6 @@ const RAW_RUNTIME_STATE =
       "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.13.0"\
     ],\
     [\
-      "eslint-plugin-align-assignments",\
-      "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:1.1.2"\
-    ],\
-    [\
       "eslint-plugin-arca",\
       "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.17.0"\
     ],\
@@ -3166,7 +3162,6 @@ const RAW_RUNTIME_STATE =
           ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
           ["constructs", "npm:10.6.0"],\
           ["eslint", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.13.0"],\
-          ["eslint-plugin-align-assignments", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:1.1.2"],\
           ["eslint-plugin-arca", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.17.0"],\
           ["jest", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:29.7.0"],\
           ["mailbox-cdk", "workspace:."],\
@@ -8287,7 +8282,7 @@ const RAW_RUNTIME_STATE =
     ]],\
     ["aws-sdk", [\
       ["npm:2.1693.0", {\
-        "packageLocation": "./.yarn/unplugged/aws-sdk-npm-2.1693.0-1e4ea9456e/node_modules/aws-sdk/",\
+        "packageLocation": "../../../../../.yarn/berry/cache/aws-sdk-npm-2.1693.0-1e4ea9456e-10c0.zip/node_modules/aws-sdk/",\
         "packageDependencies": [\
           ["aws-sdk", "npm:2.1693.0"],\
           ["buffer", "npm:4.9.2"],\
@@ -9560,7 +9555,7 @@ const RAW_RUNTIME_STATE =
     ]],\
     ["esbuild", [\
       ["npm:0.27.1", {\
-        "packageLocation": "./.yarn/unplugged/esbuild-npm-0.27.1-1f2d625e1a/node_modules/esbuild/",\
+        "packageLocation": "../../../../../.yarn/berry/cache/esbuild-npm-0.27.1-1f2d625e1a-10c0.zip/node_modules/esbuild/",\
         "packageDependencies": [\
           ["@esbuild/aix-ppc64", "npm:0.27.1"],\
           ["@esbuild/android-arm", "npm:0.27.1"],\
@@ -9666,28 +9661,6 @@ const RAW_RUNTIME_STATE =
         "packagePeers": [\
           "@types/jiti",\
           "jiti"\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["eslint-plugin-align-assignments", [\
-      ["npm:1.1.2", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/eslint-plugin-align-assignments-npm-1.1.2-7357997e55-10c0.zip/node_modules/eslint-plugin-align-assignments/",\
-        "packageDependencies": [\
-          ["eslint-plugin-align-assignments", "npm:1.1.2"]\
-        ],\
-        "linkType": "SOFT"\
-      }],\
-      ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:1.1.2", {\
-        "packageLocation": "./.yarn/__virtual__/eslint-plugin-align-assignments-virtual-32226b835d/6/.yarn/berry/cache/eslint-plugin-align-assignments-npm-1.1.2-7357997e55-10c0.zip/node_modules/eslint-plugin-align-assignments/",\
-        "packageDependencies": [\
-          ["@types/eslint", null],\
-          ["eslint", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.13.0"],\
-          ["eslint-plugin-align-assignments", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:1.1.2"]\
-        ],\
-        "packagePeers": [\
-          "@types/eslint",\
-          "eslint"\
         ],\
         "linkType": "HARD"\
       }]\
@@ -11969,7 +11942,6 @@ const RAW_RUNTIME_STATE =
           ["clipanion", "virtual:b80567f1f726ad28b5f69c2f4d583115762754ed5e643c8ffc700d555267034c078163b8acf27ac9e54b95573c3afeb591dde0dc0755beb1e2c159d60551a612#npm:4.0.0-rc.4"],\
           ["constructs", "npm:10.6.0"],\
           ["eslint", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:10.13.0"],\
-          ["eslint-plugin-align-assignments", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:1.1.2"],\
           ["eslint-plugin-arca", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.17.0"],\
           ["jest", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:29.7.0"],\
           ["mailbox-cdk", "workspace:."],\

@@ -34,14 +34,14 @@ export interface JmapOAuthDcrLambdaProps {
 export class JmapOAuthDcrLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: JmapOAuthDcrLambdaProps) {
     super(scope, id, {
-      lambdaId: 'jmap-oauth-dcr',
-      pipeline: 'jmap',
+      lambdaId:         'jmap-oauth-dcr',
+      pipeline:         'jmap',
       artifactResolver: props.artifactResolver,
-      packageName: COGNITO_ARTIFACT_PACKAGE,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
-      environment: {
-        USER_POOL_ID: props.userPoolId,
+      packageName:      COGNITO_ARTIFACT_PACKAGE,
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
+      environment:      {
+        USER_POOL_ID:                       props.userPoolId,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
       },
     });
@@ -51,8 +51,8 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
 
     this.addToRolePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['cognito-idp:CreateUserPoolClient', 'cognito-idp:DeleteUserPoolClient'],
+        effect:    Effect.ALLOW,
+        actions:   ['cognito-idp:CreateUserPoolClient', 'cognito-idp:DeleteUserPoolClient'],
         resources: [props.userPoolArn],
       }),
     );

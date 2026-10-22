@@ -30,7 +30,7 @@ function createAddon(inputs: SupportTestStack, mode: SupportMode): SupportAddon 
   return new SupportAddon(inputs.stack, 'addon', {
     mode,
     artifactResolver: inputs.artifactResolver,
-    configTable: inputs.configTable,
+    configTable:      inputs.configTable,
     auditEventsQueue: inputs.auditEventsQueue,
   });
 }
@@ -113,7 +113,7 @@ describe('SupportAddon', () => {
       createAddon(inputs, SupportMode.ENABLED).addRoutes(api, authorizer);
 
       Template.fromStack(inputs.stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
-        RouteKey: 'POST /support/{proxy+}',
+        RouteKey:          'POST /support/{proxy+}',
         AuthorizationType: 'CUSTOM',
       });
     });
@@ -123,29 +123,29 @@ describe('SupportAddon', () => {
 
       it('gives the support-api Lambda the hop role, tier roles, config table and audit queue', () => {
         expect(findFunction(template, SUPPORT_API).environment).toEqual(expect.objectContaining({
-          SUPPORT_HOP_ROLE_ARN: expect.anything(),
-          SUPPORT_DIAG_ROLE_ARN: expect.anything(),
+          SUPPORT_HOP_ROLE_ARN:         expect.anything(),
+          SUPPORT_DIAG_ROLE_ARN:        expect.anything(),
           SUPPORT_CONFIG_READ_ROLE_ARN: expect.anything(),
-          CONFIG_TABLE_NAME: expect.anything(),
-          AUDIT_EVENTS_QUEUE_URL: expect.anything(),
-          SUPPORT_DIAG_TAG_KEY: DIAG_TAG_KEY,
-          SUPPORT_CONFIG_READ_TAG_KEY: CONFIG_READ_TAG_KEY,
+          CONFIG_TABLE_NAME:            expect.anything(),
+          AUDIT_EVENTS_QUEUE_URL:       expect.anything(),
+          SUPPORT_DIAG_TAG_KEY:         DIAG_TAG_KEY,
+          SUPPORT_CONFIG_READ_TAG_KEY:  CONFIG_READ_TAG_KEY,
         }));
       });
 
       it('gives the collector Lambda the hop role, tier roles and config table', () => {
         expect(findFunction(template, COLLECTOR).environment).toEqual(expect.objectContaining({
-          SUPPORT_HOP_ROLE_ARN: expect.anything(),
-          SUPPORT_DIAG_ROLE_ARN: expect.anything(),
+          SUPPORT_HOP_ROLE_ARN:         expect.anything(),
+          SUPPORT_DIAG_ROLE_ARN:        expect.anything(),
           SUPPORT_CONFIG_READ_ROLE_ARN: expect.anything(),
-          CONFIG_TABLE_NAME: expect.anything(),
+          CONFIG_TABLE_NAME:            expect.anything(),
         }));
       });
 
       it('triggers the collector hourly', () => {
         template.hasResourceProperties('AWS::Events::Rule', {
           ScheduleExpression: 'cron(0 * * * ? *)',
-          Targets: [Match.objectLike({ Arn: { 'Fn::GetAtt': [findFunction(template, COLLECTOR).logicalId, 'Arn'] } })],
+          Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [findFunction(template, COLLECTOR).logicalId, 'Arn'] } })],
         });
       });
     });
@@ -160,7 +160,7 @@ describe('SupportAddon', () => {
           AssumeRolePolicyDocument: {
             Statement: [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root` } }],
           },
-          MaxSessionDuration: 3600,
+          MaxSessionDuration:       3600,
         });
       });
 
@@ -173,8 +173,8 @@ describe('SupportAddon', () => {
         expect(role.Properties.MaxSessionDuration).toBe(3600);
         expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
           expect.objectContaining({
-            Effect: 'Allow',
-            Action: 'sts:AssumeRole',
+            Effect:    'Allow',
+            Action:    'sts:AssumeRole',
             Condition: { StringLike: { [`aws:PrincipalTag/${tagKey}`]: '*/${sts:ExternalId}/*' } },
           }),
         ]);
@@ -209,10 +209,10 @@ describe('SupportAddon', () => {
 
       it('may only tag and untag the hop role, with only the two tier tag keys', () => {
         expect(statements).toContainEqual({
-          Effect: 'Allow',
-          Action: ['iam:TagRole', 'iam:UntagRole'],
+          Effect:    'Allow',
+          Action:    ['iam:TagRole', 'iam:UntagRole'],
           Condition: { 'ForAllValues:StringEquals': { 'aws:TagKeys': [DIAG_TAG_KEY, CONFIG_READ_TAG_KEY] } },
-          Resource: fn.environment.SUPPORT_HOP_ROLE_ARN,
+          Resource:  fn.environment.SUPPORT_HOP_ROLE_ARN,
         });
       });
 
@@ -220,7 +220,7 @@ describe('SupportAddon', () => {
         const tableArn = { 'Fn::GetAtt': [(fn.environment.CONFIG_TABLE_NAME as { Ref: string }).Ref, 'Arn'] };
 
         expect(statements).toContainEqual(expect.objectContaining({
-          Action: expect.arrayContaining(['dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem']),
+          Action:   expect.arrayContaining(['dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem']),
           Resource: expect.arrayContaining([tableArn]),
         }));
       });

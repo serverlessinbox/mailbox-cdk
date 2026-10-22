@@ -11,12 +11,12 @@ import type { IEmailSendingQueueConsumer }                         from '../queu
 import type { IDataTable }                                         from '../tables/data-tables';
 
 export interface EmailSenderLambdaProps {
-  configTable: IDataTable;
-  itemTable: IDataTable;
-  changelogTable: IDataTable;
-  blobStore: IDataBlobStore;
+  configTable:      IDataTable;
+  itemTable:        IDataTable;
+  changelogTable:   IDataTable;
+  blobStore:        IDataBlobStore;
   sesConfigSetName: string;
-  submissionQueue: IEmailSendingQueueConsumer;
+  submissionQueue:  IEmailSendingQueueConsumer;
   artifactResolver: IArtifactResolver;
 }
 
@@ -27,17 +27,17 @@ export interface EmailSenderLambdaProps {
 export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: EmailSenderLambdaProps) {
     super(scope, id, {
-      lambdaId: 'email-sender',
-      pipeline: 'mail-out',
+      lambdaId:         'email-sender',
+      pipeline:         'mail-out',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.minutes(5),
-      memorySize: 512,
-      environment: {
-        BLOB_STORE_NAME: props.blobStore.bucketName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
+      timeout:          Duration.minutes(5),
+      memorySize:       512,
+      environment:      {
+        BLOB_STORE_NAME:      props.blobStore.bucketName,
+        CONFIG_TABLE_NAME:    props.configTable.tableName,
+        ITEM_TABLE_NAME:      props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        SES_CONFIG_SET_NAME: props.sesConfigSetName,
+        SES_CONFIG_SET_NAME:  props.sesConfigSetName,
       },
     });
 
@@ -59,8 +59,8 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.
     this.addToRolePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['ses:SendRawEmail'],
+        effect:    Effect.ALLOW,
+        actions:   ['ses:SendRawEmail'],
         resources: [
           `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
           `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,

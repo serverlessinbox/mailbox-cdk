@@ -21,9 +21,9 @@ import { UserEnsurer, type BootstrapUser }       from '../ensure-user';
 
 function bootstrapUser(overrides: Partial<BootstrapUser> = {}): BootstrapUser {
   return {
-    userPoolId: toUserPoolId('us-east-1_12345678'),
-    username: toUsername('admin'),
-    groups: [],
+    userPoolId:        toUserPoolId('us-east-1_12345678'),
+    username:          toUsername('admin'),
+    groups:            [],
     temporaryPassword: 'Temp1Password',
     ...overrides,
   };
@@ -49,9 +49,9 @@ describe('UserEnsurer', () => {
 
     expect(userWasCreated).toBe(true);
     expect(cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input).toEqual({
-      UserPoolId: 'us-east-1_12345678',
-      Username: 'admin',
-      MessageAction: 'SUPPRESS',
+      UserPoolId:        'us-east-1_12345678',
+      Username:          'admin',
+      MessageAction:     'SUPPRESS',
       TemporaryPassword: 'Temp1Password',
     });
   });
@@ -64,8 +64,8 @@ describe('UserEnsurer', () => {
     expect(userWasCreated).toBe(false);
     expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)[0].args[0].input).toEqual({
       UserPoolId: 'us-east-1_12345678',
-      Username: 'admin',
-      GroupName: 'admin',
+      Username:   'admin',
+      GroupName:  'admin',
     });
   });
 

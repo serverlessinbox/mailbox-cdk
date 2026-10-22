@@ -62,8 +62,8 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
     this.queue    = new BaseQueue(this, 'email-processing-queue', {
       ...queueEncryptionProps,
       visibilityTimeout: Duration.minutes(6),
-      deadLetterQueue: {
-        queue: this.dlq,
+      deadLetterQueue:   {
+        queue:           this.dlq,
         maxReceiveCount: 3,
       },
     });

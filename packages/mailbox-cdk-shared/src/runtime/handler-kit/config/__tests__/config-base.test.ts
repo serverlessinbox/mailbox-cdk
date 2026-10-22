@@ -25,7 +25,7 @@ describe('base config', () => {
 
       expect(tryLoad(loadBaseConfig)).toEqual({
         config: { logLevel: 'info', serviceName: 'test-service' },
-        error: undefined,
+        error:  undefined,
       });
     });
 

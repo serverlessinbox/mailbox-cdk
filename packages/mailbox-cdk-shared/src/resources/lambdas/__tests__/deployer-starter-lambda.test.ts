@@ -18,7 +18,7 @@ const DEPLOYED_STACK_ARN = 'arn:aws:cloudformation:us-east-1:123456789012:stack/
 function synthStarter() {
   const { stack, artifactResolver } = newDeployerTestStack();
   const workflow                    = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-    handler: newWorkerStandIn(stack, 'worker'),
+    handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });
   new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName: 'edge', deployedStackArn: DEPLOYED_STACK_ARN });
@@ -30,9 +30,9 @@ describe('DeployerStarterLambda', () => {
     const { template } = synthStarter();
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Handler: 'index.starterHandler',
-      Timeout: 60,
-      MemorySize: 256,
+      Handler:     'index.starterHandler',
+      Timeout:     60,
+      MemorySize:  256,
       Environment: { Variables: { SERVICE_NAME: 'stack-deployer-edge-starter' } },
     });
   });
@@ -42,7 +42,7 @@ describe('DeployerStarterLambda', () => {
 
     const stateMachineArn: unknown = stack.resolve(workflow.stateMachineArn);
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Handler: 'index.starterHandler',
+      Handler:     'index.starterHandler',
       Environment: {
         Variables: { MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN: stateMachineArn },
       },

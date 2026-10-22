@@ -16,16 +16,16 @@ export enum CognitoScope {
 
 /** The Cognito scope that grants each mailbox permission. */
 export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
-  [Permission.MAIL_READ]: CognitoScope.MAIL_READ,
-  [Permission.MAIL_WRITE]: CognitoScope.MAIL_WRITE,
-  [Permission.MAIL_SEND]: CognitoScope.MAIL_SEND,
-  [Permission.ACCOUNT_READ]: CognitoScope.ACCOUNT_READ,
-  [Permission.ALIAS_READ]: CognitoScope.ALIAS_READ,
-  [Permission.ALIAS_WRITE]: CognitoScope.ALIAS_WRITE,
-  [Permission.USER_READ]: CognitoScope.USER_READ,
-  [Permission.CONTACTS_READ]: CognitoScope.CONTACTS_READ,
+  [Permission.MAIL_READ]:      CognitoScope.MAIL_READ,
+  [Permission.MAIL_WRITE]:     CognitoScope.MAIL_WRITE,
+  [Permission.MAIL_SEND]:      CognitoScope.MAIL_SEND,
+  [Permission.ACCOUNT_READ]:   CognitoScope.ACCOUNT_READ,
+  [Permission.ALIAS_READ]:     CognitoScope.ALIAS_READ,
+  [Permission.ALIAS_WRITE]:    CognitoScope.ALIAS_WRITE,
+  [Permission.USER_READ]:      CognitoScope.USER_READ,
+  [Permission.CONTACTS_READ]:  CognitoScope.CONTACTS_READ,
   [Permission.CONTACTS_WRITE]: CognitoScope.CONTACTS_WRITE,
-  [Permission.ADMIN]: CognitoScope.ADMIN,
+  [Permission.ADMIN]:          CognitoScope.ADMIN,
 };
 
 /** The mailbox permissions each Cognito scope grants; the inverse of `PermissionToCognitoScope`, in the order of `CognitoScope`. */

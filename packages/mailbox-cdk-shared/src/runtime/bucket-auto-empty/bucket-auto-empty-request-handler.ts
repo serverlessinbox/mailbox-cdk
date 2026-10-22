@@ -24,7 +24,7 @@ export type BucketAutoEmptyResponseData = {
 /** The answer sent to CloudFormation for a request that succeeded. */
 export interface BucketAutoEmptyResponse {
   readonly PhysicalResourceId: PhysicalResourceId;
-  readonly Data: BucketAutoEmptyResponseData;
+  readonly Data:               BucketAutoEmptyResponseData;
 }
 
 /**

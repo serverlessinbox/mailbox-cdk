@@ -32,11 +32,11 @@ export class ChangelogTable extends StackNamedTable {
 
   constructor(scope: Construct, props: DataTableProps) {
     super(scope, 'changelog-table', {
-      partitionKey: {
+      partitionKey:        {
         name: 'pk',
         type: AttributeType.STRING,
       },
-      sortKey: {
+      sortKey:             {
         name: 'sk',
         type: AttributeType.NUMBER,
       },

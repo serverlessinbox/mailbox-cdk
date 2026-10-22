@@ -35,13 +35,13 @@ describe('cognito-idp-users-api config', () => {
 
     expect(env.tryLoad(load)).toMatchObject({
       config: {
-        userPoolId: 'pool-123',
-        auditEventsQueueUrl: 'https://sqs.us-east-1.amazonaws.com/123/audit',
+        userPoolId:                      'pool-123',
+        auditEventsQueueUrl:             'https://sqs.us-east-1.amazonaws.com/123/audit',
         identityProvisionerFunctionName: 'identity-provisioner',
-        adminGroups: ['admin', 'superuser'],
-        userGroups: ['user', 'viewer'],
+        adminGroups:                     ['admin', 'superuser'],
+        userGroups:                      ['user', 'viewer'],
       },
-      error: undefined,
+      error:  undefined,
     });
   });
 
@@ -58,7 +58,7 @@ describe('cognito-idp-users-api config', () => {
 
     expect(env.tryLoad(load)).toMatchObject({
       config: { serviceName: '', adminGroups: undefined, userGroups: undefined },
-      error: undefined,
+      error:  undefined,
     });
   });
 

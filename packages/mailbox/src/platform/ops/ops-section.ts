@@ -37,8 +37,8 @@ export interface OpsSectionProps {
   readonly vendorAccountIds: string[];
   /** Default: {@link SendStackFailuresMode.ENABLED}. */
   readonly sendStackFailures?: SendStackFailuresMode;
-  readonly data: IOpsDataInputs;
-  readonly edge: IOpsEdgeInputs;
+  readonly data:               IOpsDataInputs;
+  readonly edge:               IOpsEdgeInputs;
 }
 
 /** The operational pieces around the mail server: license refresh, stack-failure detection and the cleanup of retained resources. */
@@ -48,9 +48,9 @@ export class OpsSection extends Construct {
     applyServerlessInboxComponentTag(this, 'ops');
 
     new LicenseRefresh(this, 'license-refresh', {
-      configTable: props.data.configTable,
+      configTable:      props.data.configTable,
       artifactResolver: props.artifactResolver,
-      coreDomain: props.data.derivedDomainName,
+      coreDomain:       props.data.derivedDomainName,
       vendorAccountIds: props.vendorAccountIds,
     });
 
@@ -62,7 +62,7 @@ export class OpsSection extends Construct {
     // rule/function/role are registered below as one removal, and the sweeper's worker IAM policy
     // is assembled from the registered removals.
     const stackFailureDetection = new StackFailureDetection(this, 'stack-failure-detection', {
-      mode: props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
+      mode:             props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
       artifactResolver: props.artifactResolver,
       vendorAccountIds: props.vendorAccountIds,
     });

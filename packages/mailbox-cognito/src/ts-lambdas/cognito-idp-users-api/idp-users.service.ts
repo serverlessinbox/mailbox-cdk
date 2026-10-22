@@ -30,10 +30,10 @@ type IdpUsersContext = HandlerContext<AdminAuthContext, AuditContext>;
 type CognitoFailureName = 'UserNotFoundException' | 'InvalidParameterException' | 'InvalidPasswordException' | 'UsernameExistsException';
 
 const ADMIN_API_ERROR_FOR: Record<CognitoFailureName, (failure: CaughtError) => Error> = {
-  UserNotFoundException: () => new NotFoundError('User not found'),
+  UserNotFoundException:     () => new NotFoundError('User not found'),
   InvalidParameterException: (failure) => new InvalidInputError(failure.message),
-  InvalidPasswordException: (failure) => new InvalidInputError(failure.message),
-  UsernameExistsException: () => new ConflictError('User already exists', 'already exists'),
+  InvalidPasswordException:  (failure) => new InvalidInputError(failure.message),
+  UsernameExistsException:   () => new ConflictError('User already exists', 'already exists'),
 };
 
 const DEFAULT_GROUP   = 'user';
@@ -42,10 +42,10 @@ const MASKED_PASSWORD = '***';
 /** What {@link CognitoIdpUsersService} needs besides the Cognito client and the user pool. */
 export interface CognitoIdpUsersServiceDeps {
   readonly identityProvisioner: IdentityProvisionerClient;
-  readonly userMapper: IdpUserMapper;
+  readonly userMapper:          IdpUserMapper;
   /** The names of the groups whose members are admins; compared case-insensitively. */
   readonly adminGroups?: GroupName[];
-  readonly logger: LoggerBuffer;
+  readonly logger:       LoggerBuffer;
 }
 
 /**
@@ -73,15 +73,15 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
   public async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {
     const output = await this.cognito.send(
       new ListUsersCommand({
-        UserPoolId: this.userPoolId,
-        Limit: req.pageSize,
+        UserPoolId:      this.userPoolId,
+        Limit:           req.pageSize,
         PaginationToken: req.pageToken,
-        Filter: req.filter,
+        Filter:          req.filter,
       }),
     );
 
     return create(ListIdpUsersResponseSchema, {
-      users: (output.Users ?? []).map((user) => this.userMapper.fromListedUser(user)),
+      users:         (output.Users ?? []).map((user) => this.userMapper.fromListedUser(user)),
       nextPageToken: output.PaginationToken,
     });
   }
@@ -140,9 +140,9 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
       .send(
         new AdminSetUserPasswordCommand({
           UserPoolId: this.userPoolId,
-          Username: username,
-          Password: req.password,
-          Permanent: req.permanent ?? true,
+          Username:   username,
+          Password:   req.password,
+          Permanent:  req.permanent ?? true,
         }),
       )
       .catch((thrown: unknown) => {
@@ -201,11 +201,11 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     await this.cognito
       .send(
         new AdminCreateUserCommand({
-          UserPoolId: this.userPoolId,
-          Username: username,
+          UserPoolId:        this.userPoolId,
+          Username:          username,
           TemporaryPassword: temporaryPassword,
-          MessageAction: 'SUPPRESS',
-          UserAttributes: email ? [{ Name: 'email', Value: email }] : [],
+          MessageAction:     'SUPPRESS',
+          UserAttributes:    email ? [{ Name: 'email', Value: email }] : [],
         }),
       )
       .catch((thrown: unknown) => {

@@ -39,7 +39,7 @@ function synthWorker(): Template {
   new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     templateObjectArn: TEMPLATE_OBJECT_ARN,
-    deployedStackArn: DEPLOYED_STACK_ARN,
+    deployedStackArn:  DEPLOYED_STACK_ARN,
   });
   return Template.fromStack(stack);
 }

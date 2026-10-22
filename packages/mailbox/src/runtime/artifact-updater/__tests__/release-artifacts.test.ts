@@ -15,8 +15,8 @@ import { ReleaseArtifacts }                                                     
 import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack: jest.fn(),
-  buildArtifactKey: jest.fn(),
+  deriveTrack:        jest.fn(),
+  buildArtifactKey:   jest.fn(),
   readReleasePointer: jest.fn(),
 }));
 
@@ -90,13 +90,13 @@ describe('ReleaseArtifacts', () => {
 
       expect(location).toEqual({
         bucket: 'mailbox-artifacts-eu-west-1',
-        key: 'serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip',
+        key:    'serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip',
       });
       expect(buildArtifactKey).toHaveBeenCalledWith('package', 'mailbox-go', {
-        type: 'release',
-        version: release,
+        type:       'release',
+        version:    release,
         objectName: 'lambdas/mailbox-go.zip',
-        project: 'serverlessinbox',
+        project:    'serverlessinbox',
       });
     });
   });

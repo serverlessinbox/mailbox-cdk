@@ -7,15 +7,15 @@ export type AdminAuthType = 'anonymous' | 'authenticated';
 
 /** Who a request comes from, as read from the Lambda authorizer output. */
 export type AdminAuthContext = {
-  authType: AdminAuthType;
-  sub?: string;
-  iss?: string;
-  email?: string;
+  authType:  AdminAuthType;
+  sub?:      string;
+  iss?:      string;
+  email?:    string;
   username?: string;
-  groups: string[];
-  isAdmin: boolean;
-  roles: string[];
-  scopes: string[];
+  groups:    string[];
+  isAdmin:   boolean;
+  roles:     string[];
+  scopes:    string[];
   /** Tenant ID from the authorizer's Lambda-authorizer context. Never resolved, defaulted, or
    *  guessed here — absent if the authorizer did not supply one. */
   tenantId?: string;
@@ -94,8 +94,8 @@ export class AdminAuthExtractor {
       username: this.usernameOf(raw, email, sub),
       groups,
       isAdmin,
-      roles: this.rolesOf(isAdmin, authType, groups),
-      scopes: this.scopesOf(raw),
+      roles:    this.rolesOf(isAdmin, authType, groups),
+      scopes:   this.scopesOf(raw),
       tenantId: this.pickString(raw, ['tenantId']),
       raw,
     };

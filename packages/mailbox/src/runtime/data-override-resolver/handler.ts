@@ -42,7 +42,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     const tableOverrideResolver = new TableOverrideResolver(dynamodb, logger);
     return {
       PhysicalResourceId: toPhysicalResourceId(request.LogicalResourceId),
-      Data: await tableOverrideResolver.resolve(request.ResourceProperties),
+      Data:               await tableOverrideResolver.resolve(request.ResourceProperties),
     };
   } catch (thrown) {
     logger.error(thrown instanceof Error ? thrown.message : String(thrown));

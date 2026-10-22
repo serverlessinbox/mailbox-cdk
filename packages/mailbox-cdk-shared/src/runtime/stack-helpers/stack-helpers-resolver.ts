@@ -24,7 +24,7 @@ const LAST_RESORT_COGNITO_PREFIX = 'installer';
  * only accepts a response `Data` assignable to `Record<string, string>`, which an interface is not.
  */
 export type StackHelpersData = {
-  readonly domainName: string;
+  readonly domainName:          string;
   readonly s3SafeDataStackName: string;
   readonly cognitoDomainPrefix: string;
   /** A number in `[0, Range)`; absent when the properties carry no `Range`. */

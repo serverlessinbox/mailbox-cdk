@@ -14,9 +14,9 @@ export type DnsRecordType = 'CNAME' | 'SRV';
 /** One DNS record for the operator to create by hand, because no hosted zone was given. */
 export interface DnsRecordDescriptor {
   /** Fully qualified record name. */
-  readonly name: string;
-  readonly type: DnsRecordType;
-  readonly value: string;
+  readonly name:       string;
+  readonly type:       DnsRecordType;
+  readonly value:      string;
   readonly ttlSeconds: string;
 }
 
@@ -70,16 +70,16 @@ export class MailboxDns extends Construct {
   private publishCname(props: MailboxDnsProps, endpoint: MailboxEndpoint, target: string, ttl: cdk.Duration): void {
     if (props.hostedZone) {
       new route53.CnameRecord(this, `${endpoint}-cname`, {
-        zone: props.hostedZone,
+        zone:       props.hostedZone,
         recordName: props.names.relativeLabel(endpoint),
         domainName: target,
         ttl,
       });
     } else {
       this.manualModeRecords.push({
-        name: props.names.fqdn(endpoint),
-        type: 'CNAME',
-        value: target,
+        name:       props.names.fqdn(endpoint),
+        type:       'CNAME',
+        value:      target,
         ttlSeconds: ttl.toSeconds().toString(),
       });
     }
@@ -92,23 +92,23 @@ export class MailboxDns extends Construct {
   private publishJmapSrv(props: MailboxDnsProps, jmapTarget: string, ttl: cdk.Duration): void {
     if (props.hostedZone) {
       new route53.SrvRecord(this, 'jmap-srv', {
-        zone: props.hostedZone,
+        zone:       props.hostedZone,
         recordName: '_jmap._tcp',
         ttl,
         values: [
           {
             priority: 0,
-            weight: 1,
-            port: 443,
+            weight:   1,
+            port:     443,
             hostName: jmapTarget,
           },
         ],
       });
     } else {
       this.manualModeRecords.push({
-        name: `_jmap._tcp.${props.names.domainName}`,
-        type: 'SRV',
-        value: `0 1 443 ${jmapTarget}`,
+        name:       `_jmap._tcp.${props.names.domainName}`,
+        type:       'SRV',
+        value:      `0 1 443 ${jmapTarget}`,
         ttlSeconds: ttl.toSeconds().toString(),
       });
     }

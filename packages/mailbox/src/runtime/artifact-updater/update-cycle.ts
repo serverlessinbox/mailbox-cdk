@@ -21,13 +21,13 @@ import {
  * from. Its values are as the tags hold them, not yet checked to be of the kinds the updaters take.
  */
 interface UpdatableResource {
-  readonly arn: string;
-  readonly service: string | undefined;
-  readonly autoUpdateType: string;
-  readonly packageName: string;
-  readonly artifactName: string;
+  readonly arn:             string;
+  readonly service:         string | undefined;
+  readonly autoUpdateType:  string;
+  readonly packageName:     string;
+  readonly artifactName:    string;
   readonly deployedVersion: string;
-  readonly bucketName: string | undefined;
+  readonly bucketName:      string | undefined;
 }
 
 /**
@@ -91,9 +91,9 @@ export class UpdateCycle {
 
     this.logger.info('artifact update cycle started', {
       rootStackTag: this.config.rootStackTagValue,
-      rootStackId: this.config.rootStackId,
-      regions: scanTargets.map((target) => target.region),
-      granularity: this.config.granularity,
+      rootStackId:  this.config.rootStackId,
+      regions:      scanTargets.map((target) => target.region),
+      granularity:  this.config.granularity,
     });
     return scanTargets;
   }
@@ -157,7 +157,7 @@ export class UpdateCycle {
       this.logger.warn('resource missing artifact tags', {
         arn,
         resourceType: service,
-        pkg: packageName,
+        pkg:          packageName,
         artifactName,
         deployedVersion,
       });
@@ -191,7 +191,7 @@ export class UpdateCycle {
   private async advanceDistribution(resource: UpdatableResource): Promise<boolean> {
     if (resource.autoUpdateType !== 'ui') {
       this.logger.debug('unsupported auto-update-type for CloudFront distribution', {
-        arn: resource.arn,
+        arn:  resource.arn,
         type: resource.autoUpdateType,
       });
       return false;
@@ -231,19 +231,19 @@ export class UpdateCycle {
 
   private lambdaTarget(resource: UpdatableResource): LambdaTarget {
     return {
-      arn: toLambdaFunctionArn(resource.arn),
-      packageName: toArtifactPackageName(resource.packageName),
-      artifactName: toArtifactName(resource.artifactName),
+      arn:             toLambdaFunctionArn(resource.arn),
+      packageName:     toArtifactPackageName(resource.packageName),
+      artifactName:    toArtifactName(resource.artifactName),
       deployedVersion: toArtifactVersion(resource.deployedVersion),
     };
   }
 
   private uiTarget(resource: UpdatableResource, bucketName: string): UiTarget {
     return {
-      arn: toDistributionArn(resource.arn),
-      bucketName: toContentBucketName(bucketName),
-      packageName: toArtifactPackageName(resource.packageName),
-      artifactName: toArtifactName(resource.artifactName),
+      arn:             toDistributionArn(resource.arn),
+      bucketName:      toContentBucketName(bucketName),
+      packageName:     toArtifactPackageName(resource.packageName),
+      artifactName:    toArtifactName(resource.artifactName),
       deployedVersion: toArtifactVersion(resource.deployedVersion),
     };
   }

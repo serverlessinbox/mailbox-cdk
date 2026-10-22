@@ -16,7 +16,7 @@ export class BakeArtifactVersionsCommand extends Command {
   static paths = [Command.Default];
   static usage = Command.Usage({
     description: 'Write the artifact-versions.json of the mailbox and mailbox-cognito packages: the externally released packages from a resolve-artifacts output, plus the packages this repo releases itself at the version the bump wrote into their package.json.',
-    examples: [
+    examples:    [
       [
         'Bake after resolving the external pins',
         'yarn resolve-artifacts --output /tmp/mailbox-external-pins.json && yarn bake-artifact-versions --mailbox-pins /tmp/mailbox-external-pins.json',
@@ -25,7 +25,7 @@ export class BakeArtifactVersionsCommand extends Command {
   });
 
   mailboxPins = Option.String('--mailbox-pins', {
-    required: true,
+    required:    true,
     description: 'Path to the artifact-registry resolve-artifacts output holding the externally released packages the mailbox package needs, relative to the current directory or absolute. Required; given once.',
   });
   root = Option.String('--root', {
@@ -42,16 +42,16 @@ export class BakeArtifactVersionsCommand extends Command {
     const sharedDirectory  = path.join(root, 'packages', 'mailbox-cdk-shared');
     return [
       {
-        outputFile: path.join(mailboxDirectory, 'artifact-versions.json'),
+        outputFile:       path.join(mailboxDirectory, 'artifact-versions.json'),
         externalPinsFile: mailboxPinsFile,
-        ownArtifacts: [
+        ownArtifacts:     [
           { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: mailboxDirectory },
           { key: 'mailbox-cdk-edge', zone: ArtifactZone.EDGE, manifestDirectory: mailboxDirectory },
           { key: 'mailbox-cdk-shared', zone: ArtifactZone.REGIONAL, manifestDirectory: sharedDirectory },
         ],
       },
       {
-        outputFile: path.join(cognitoDirectory, 'artifact-versions.json'),
+        outputFile:   path.join(cognitoDirectory, 'artifact-versions.json'),
         ownArtifacts: [
           { key: 'mailbox-cognito', zone: ArtifactZone.REGIONAL, manifestDirectory: cognitoDirectory },
           { key: 'mailbox-cdk-shared', zone: ArtifactZone.REGIONAL, manifestDirectory: sharedDirectory },

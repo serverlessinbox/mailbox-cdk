@@ -49,7 +49,7 @@ describe('SupportAddonProvider', () => {
     const [configTableId] = Object.keys(template.findResources('AWS::DynamoDB::Table')).filter((id) => id.startsWith('configtable'));
     const [auditQueueId]  = Object.keys(template.findResources('AWS::SQS::Queue')).filter((id) => id.startsWith('auditqueue') && !id.includes('dlq'));
     expect(findFunction(template, SUPPORT_API).environment).toEqual(expect.objectContaining({
-      CONFIG_TABLE_NAME: { Ref: configTableId },
+      CONFIG_TABLE_NAME:      { Ref: configTableId },
       AUDIT_EVENTS_QUEUE_URL: { Ref: auditQueueId },
     }));
   });

@@ -29,12 +29,12 @@ describe('addServerlessInboxResourceGroup', () => {
     addServerlessInboxResourceGroup(stack, 'resource-group');
 
     expect(groupResourceIn(stack)).toMatchObject({
-      Name: { 'Fn::Join': ['', [{ Ref: 'AWS::StackName' }, '-serverless-inbox']] },
+      Name:          { 'Fn::Join': ['', [{ Ref: 'AWS::StackName' }, '-serverless-inbox']] },
       ResourceQuery: {
-        Type: 'TAG_FILTERS_1_0',
+        Type:  'TAG_FILTERS_1_0',
         Query: {
           ResourceTypeFilters: ['AWS::AllSupported'],
-          TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: [{ Ref: 'AWS::StackName' }] }],
+          TagFilters:          [{ Key: 'serverless-inbox:root-stack', Values: [{ Ref: 'AWS::StackName' }] }],
         },
       },
     });
@@ -45,7 +45,7 @@ describe('addServerlessInboxResourceGroup', () => {
     addServerlessInboxResourceGroup(stack, 'resource-group', { rootStackValue: 'root', groupName: 'custom-group' });
 
     expect(groupResourceIn(stack)).toMatchObject({
-      Name: 'custom-group',
+      Name:          'custom-group',
       ResourceQuery: { Query: { TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['root'] }] } },
     });
   });

@@ -10,7 +10,7 @@ describe('grantTableActions', () => {
   it('grants exactly one Allow statement scoped to the table and its indexes', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -27,12 +27,12 @@ describe('grantTableActions', () => {
     const tableId  = stack.getLogicalId(table.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: [...DynamoDbActions.read],
-            Effect: 'Allow',
+            Action:   [...DynamoDbActions.read],
+            Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
               { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

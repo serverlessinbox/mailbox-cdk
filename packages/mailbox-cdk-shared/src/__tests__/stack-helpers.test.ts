@@ -56,10 +56,10 @@ describe('StackHelpers', () => {
 
     it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
-        ServiceToken: Match.objectLike({ 'Fn::GetAtt': Match.arrayWith(['Arn']) }),
+        ServiceToken:   Match.objectLike({ 'Fn::GetAtt': Match.arrayWith(['Arn']) }),
         ServiceTimeout: '90',
-        HostedZoneId: 'Z123',
-        DataStackName: 'my-data-stack',
+        HostedZoneId:   'Z123',
+        DataStackName:  'my-data-stack',
       });
     });
 
@@ -85,7 +85,7 @@ describe('StackHelpers', () => {
     it('attaches a Custom::StackHelpers resource falling back to the stack name', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
         HostedZoneId: 'Z456',
-        Fallback: { Ref: 'AWS::StackName' },
+        Fallback:     { Ref: 'AWS::StackName' },
       });
     });
 
@@ -108,8 +108,8 @@ describe('StackHelpers', () => {
     it('attaches a Custom::StackHelpers resource sending the salt and the range as strings', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
         ServiceTimeout: '90',
-        Salt: 'some-purpose',
-        Range: '24',
+        Salt:           'some-purpose',
+        Range:          '24',
       });
     });
 

@@ -17,7 +17,7 @@ import { WebSocketTable }                from '../websocket-table';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -28,17 +28,17 @@ describe('WebSocketTable', () => {
     new WebSocketTable(stack, 'websocket-table');
 
     Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
-      KeySchema: [
+      KeySchema:                        [
         { AttributeName: 'pk', KeyType: 'HASH' },
         { AttributeName: 'sk', KeyType: 'RANGE' },
       ],
-      BillingMode: 'PAY_PER_REQUEST',
-      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
+      BillingMode:                      'PAY_PER_REQUEST',
+      TimeToLiveSpecification:          { AttributeName: 'ttl', Enabled: true },
       PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
-      GlobalSecondaryIndexes: [
+      GlobalSecondaryIndexes:           [
         {
-          IndexName: 'gsi1',
-          KeySchema: [
+          IndexName:  'gsi1',
+          KeySchema:  [
             { AttributeName: 'gsi1pk', KeyType: 'HASH' },
             { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
           ],
@@ -75,12 +75,12 @@ describe('WebSocketTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: DynamoDbActions.write,
-            Effect: 'Allow',
+            Action:   DynamoDbActions.write,
+            Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
               { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -104,12 +104,12 @@ describe('WebSocketTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: DynamoDbActions.readWrite,
-            Effect: 'Allow',
+            Action:   DynamoDbActions.readWrite,
+            Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },
               { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

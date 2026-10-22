@@ -22,7 +22,7 @@ import { WebmailUi }                            from '../webmail-ui';
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };
-  DependsOn?: string[];
+  DependsOn?:  string[];
 }
 
 describe('WebmailUi', () => {
@@ -31,13 +31,13 @@ describe('WebmailUi', () => {
 
   function createAuthProvider(): IMailboxAuthProvider {
     return {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                {},
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
       provisionJmapApiClient,
       createAdminApiAddons: () => [],
@@ -46,18 +46,18 @@ describe('WebmailUi', () => {
 
   function createWebmailUi(dependsOn?: cdk.CfnResource[]): WebmailUi {
     return new WebmailUi(stack, 'webmail-ui', {
-      domainName: 'webmail.example.com',
-      configTable: new DataTable(new dynamodb.Table(stack, 'config-table', {
+      domainName:       'webmail.example.com',
+      configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authProvider: createAuthProvider(),
+      authProvider:     createAuthProvider(),
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       dependsOn,
@@ -75,7 +75,7 @@ describe('WebmailUi', () => {
   beforeEach(() => {
     provisionJmapApiClient.mockClear();
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -85,10 +85,10 @@ describe('WebmailUi', () => {
 
     expect(provisionJmapApiClient).toHaveBeenCalledTimes(1);
     expect(provisionJmapApiClient).toHaveBeenCalledWith({
-      name: 'webmail-ui',
-      permissions: Object.values(Permission),
+      name:         'webmail-ui',
+      permissions:  Object.values(Permission),
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
-      logoutUrls: [`https://${webmailUi.distributionDomainName}/`],
+      logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],
     });
   });
 

@@ -20,16 +20,16 @@ describe('AdminAuthExtractor', () => {
 
       expect(context).toEqual({
         authType: 'authenticated',
-        sub: 'user-1',
-        iss: 'https://issuer',
-        email: 'a@example.com',
+        sub:      'user-1',
+        iss:      'https://issuer',
+        email:    'a@example.com',
         username: 'a@example.com',
-        groups: [],
-        isAdmin: false,
-        roles: ['user'],
-        scopes: [],
+        groups:   [],
+        isAdmin:  false,
+        roles:    ['user'],
+        scopes:   [],
         tenantId: 'tenant-1',
-        raw: lambda,
+        raw:      lambda,
       });
     });
 

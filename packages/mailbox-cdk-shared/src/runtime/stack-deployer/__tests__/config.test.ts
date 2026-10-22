@@ -53,10 +53,10 @@ describe('stack-deployer starter config', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.config).toEqual({
-      logLevel: 'error',
-      serviceName: 'deployer-service',
+      logLevel:        'error',
+      serviceName:     'deployer-service',
       stateMachineArn: 'arn:aws:states:us-east-1:123:stateMachine:deployer',
-      region: 'eu-west-1',
+      region:          'eu-west-1',
     });
   });
 

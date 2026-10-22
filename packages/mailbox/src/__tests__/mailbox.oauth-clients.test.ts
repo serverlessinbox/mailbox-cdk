@@ -21,22 +21,22 @@ import { Mailbox }                       from '../mailbox';
 
 interface SynthesizedResource {
   Properties?: Record<string, unknown>;
-  DependsOn?: string[];
+  DependsOn?:  string[];
 }
 
 describe('Mailbox OAuth client wiring', () => {
   function createAuthProvider(): IMailboxAuthProvider {
     return {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: { 'mail.read': [Permission.MAIL_READ] },
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                { 'mail.read': [Permission.MAIL_READ] },
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'test-webmail-ui', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
+      provisionJmapApiClient:  () => ({ clientId: 'test-webmail-ui', requestScopeList: [], groups: [] }),
+      createAdminApiAddons:    () => [],
     };
   }
 
@@ -45,19 +45,19 @@ describe('Mailbox OAuth client wiring', () => {
       context: {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-go': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+          packages:   {
+            'mailbox-go':         { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
             'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
-            'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
+            'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
             'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
           },
         },
       },
     });
     const stack = new cdk.Stack(app, 'TestMailboxOAuthClients', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -85,7 +85,7 @@ describe('Mailbox OAuth client wiring', () => {
 
       expect(bootstrap.Properties).toMatchObject({
         oauthClients: {
-          adminUi: { clientId: 'test-admin-ui' },
+          adminUi:   { clientId: 'test-admin-ui' },
           webmailUi: { clientId: 'test-webmail-ui' },
         },
       });

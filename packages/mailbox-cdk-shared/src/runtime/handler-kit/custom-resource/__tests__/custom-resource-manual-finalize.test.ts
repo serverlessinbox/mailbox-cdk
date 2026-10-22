@@ -9,11 +9,11 @@ import { emitManualFinalize }              from '../custom-resource-manual-final
 
 describe('emitManualFinalize', () => {
   const cfnEvent = {
-    ResponseURL: 'https://example.com/response',
-    StackId: toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid'),
-    RequestId: 'request-1',
-    LogicalResourceId: 'MyResource',
-    RequestType: 'Delete' as const,
+    ResponseURL:        'https://example.com/response',
+    StackId:            toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/mail/guid'),
+    RequestId:          'request-1',
+    LogicalResourceId:  'MyResource',
+    RequestType:        'Delete' as const,
     ResourceProperties: { stackName: 'mail-data' },
   };
   let consoleLogSpy: jest.SpyInstance;

@@ -160,8 +160,8 @@ export class CloudFormationStacks {
     this.logger.debug('CloudFormation parameters', { parameterKeys });
     this.logger.debug('CloudFormation tags', { tags: this.tags(op) });
     this.logger.debug('Stack operation', {
-      stackName: op.stackName,
-      templateUrl: op.templateUrl,
+      stackName:             op.stackName,
+      templateUrl:           op.templateUrl,
       terminationProtection: op.terminationProtection,
     });
   }
@@ -222,11 +222,11 @@ export class CloudFormationStacks {
   private async createStack(op: OperationInput): Promise<void> {
     await this.clientFor(op).send(
       new CreateStackCommand({
-        StackName: op.stackName,
-        TemplateURL: op.templateUrl,
-        Parameters: this.parameters(op),
-        Tags: this.tags(op),
-        Capabilities: STACK_CAPABILITIES,
+        StackName:                   op.stackName,
+        TemplateURL:                 op.templateUrl,
+        Parameters:                  this.parameters(op),
+        Tags:                        this.tags(op),
+        Capabilities:                STACK_CAPABILITIES,
         EnableTerminationProtection: isSwitchedOn(op.terminationProtection),
       }),
     );
@@ -236,10 +236,10 @@ export class CloudFormationStacks {
     try {
       await this.clientFor(op).send(
         new UpdateStackCommand({
-          StackName: op.stackName,
-          TemplateURL: op.templateUrl,
-          Parameters: this.parameters(op),
-          Tags: this.tags(op),
+          StackName:    op.stackName,
+          TemplateURL:  op.templateUrl,
+          Parameters:   this.parameters(op),
+          Tags:         this.tags(op),
           Capabilities: STACK_CAPABILITIES,
         }),
       );

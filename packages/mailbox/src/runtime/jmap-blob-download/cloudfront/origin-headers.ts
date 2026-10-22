@@ -10,6 +10,6 @@ export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
  */
 export type BlobDownloadOriginHeaders = {
   'x-auth-key-store-table': string;
-  'x-region': string;
-  'x-jwt-algorithms': SupportedAlgorithm;
+  'x-region':               string;
+  'x-jwt-algorithms':       SupportedAlgorithm;
 };

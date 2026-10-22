@@ -4806,15 +4806,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-align-assignments@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "eslint-plugin-align-assignments@npm:1.1.2"
-  peerDependencies:
-    eslint: ">=0.8.0"
-  checksum: 10c0/ad4ebab2ccc76640792f61ca6ddf67c6879e4d845d1b5c2bf7b6a447fe1e86bb7fa4dd654ce43bf6d0131e9929a24ea58a7ef89c2c2c8c2b88fdcb2e13ba3105
-  languageName: node
-  linkType: hard
-
 "eslint-plugin-arca@npm:^0.17.0":
   version: 0.17.0
   resolution: "eslint-plugin-arca@npm:0.17.0"
@@ -6828,7 +6819,6 @@ __metadata:
     clipanion: "npm:^4.0.0-rc.2"
     constructs: "npm:^10.5.0"
     eslint: "npm:^10"
-    eslint-plugin-align-assignments: "npm:^1.1.2"
     eslint-plugin-arca: "npm:^0.17.0"
     jest: "npm:^29.0.0"
     ts-jest: "npm:^29.0.0"

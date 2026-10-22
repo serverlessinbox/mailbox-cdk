@@ -3,11 +3,11 @@ import * as t                  from 'typanion';
 import { isPositiveIntString } from '../handler-kit/config/config-env';
 
 export const isStackHelpersResourceProperties = t.isPartial({
-  HostedZoneId: t.isOptional(t.isString()),
+  HostedZoneId:  t.isOptional(t.isString()),
   DataStackName: t.isOptional(t.isString()),
-  Fallback: t.isOptional(t.isString()),
-  Salt: t.isOptional(t.isString()),
-  Range: t.isOptional(t.cascade(t.isString(), [isPositiveIntString])),
+  Fallback:      t.isOptional(t.isString()),
+  Salt:          t.isOptional(t.isString()),
+  Range:         t.isOptional(t.cascade(t.isString(), [isPositiveIntString])),
 });
 
 /**

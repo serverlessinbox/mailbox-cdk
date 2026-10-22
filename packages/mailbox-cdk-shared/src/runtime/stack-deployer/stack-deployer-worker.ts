@@ -73,12 +73,12 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
   private logInvocation(event: SfnInvokeEvent): void {
     this.logger.info('Stack deployer op', {
-      mode: event.mode,
-      requestType: event.op.requestType,
-      stackName: event.op.stackName,
-      templateUrl: event.op.templateUrl,
+      mode:                  event.mode,
+      requestType:           event.op.requestType,
+      stackName:             event.op.stackName,
+      templateUrl:           event.op.templateUrl,
       terminationProtection: event.op.terminationProtection,
-      parameterKeys: Object.keys(event.op.parameters ?? {}),
+      parameterKeys:         Object.keys(event.op.parameters ?? {}),
     });
   }
 
@@ -189,11 +189,11 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     }
 
     this.logger.info('Stack status check', {
-      stackName: op.stackName,
-      stackId: stack.StackId,
-      status: stack.StackStatus,
+      stackName:    op.stackName,
+      stackId:      stack.StackId,
+      status:       stack.StackStatus,
       statusReason: stack.StackStatusReason,
-      outputCount: (stack.Outputs ?? []).length,
+      outputCount:  (stack.Outputs ?? []).length,
     });
 
     const status   = new StackStatus(stack.StackStatus);
@@ -211,7 +211,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     // A Create that fails on a KMS key that is not available yet succeeds when tried again: wait for the rollback to end.
     if (op.requestType === 'Create' && status.isRollbackInProgress() && kmsRace) {
       this.logger.info('Stack in ROLLBACK_IN_PROGRESS with KMS transient error; waiting for rollback', {
-        stackName: op.stackName,
+        stackName:        op.stackName,
         createRetryCount: retries.createRetryCount,
       });
       return WorkerResult.pollAgain(retries);
@@ -242,7 +242,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
   private async recreateAfterKmsRace(op: OperationInput, retries: RetryCounts): Promise<WorkerResult> {
     this.logger.info('Stack requires recreation due to KMS transient error', {
-      stackName: op.stackName,
+      stackName:        op.stackName,
       createRetryCount: retries.createRetryCount,
       MAX_KMS_CREATE_RETRIES,
     });
@@ -257,7 +257,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
   private async answerSuccess(op: OperationInput, stack: Stack, retries: RetryCounts, target: CfnReplyTarget): Promise<WorkerResult> {
     const outputs = this.stacks.outputsOf(stack);
     this.logger.info('Stack reached terminal success state', {
-      stackName: op.stackName,
+      stackName:   op.stackName,
       outputCount: Object.keys(outputs).length,
     });
     await this.responder.succeed(target, { data: outputs });

@@ -78,7 +78,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
   private allowTopicToUseKey(key: IKey, topic: ITopic): void {
     key.addToResourcePolicy(
       new PolicyStatement({
-        actions: [
+        actions:    [
           'kms:Decrypt',
           'kms:Encrypt',
           'kms:ReEncrypt*',
@@ -86,12 +86,12 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
           'kms:DescribeKey',
         ],
         principals: [new ServicePrincipal('sns.amazonaws.com')],
-        resources: ['*'],
+        resources:  ['*'],
         conditions: {
           StringEquals: {
             'aws:SourceAccount': Aws.ACCOUNT_ID,
           },
-          ArnEquals: {
+          ArnEquals:    {
             'aws:SourceArn': topic.topicArn,
           },
         },

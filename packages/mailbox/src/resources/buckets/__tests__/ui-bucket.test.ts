@@ -15,7 +15,7 @@ import { UiBucket }                          from '../ui-bucket';
 
 function newStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -32,9 +32,9 @@ describe('UiBucket', () => {
   it('blocks all public access', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
       PublicAccessBlockConfiguration: {
-        BlockPublicAcls: true,
-        BlockPublicPolicy: true,
-        IgnorePublicAcls: true,
+        BlockPublicAcls:       true,
+        BlockPublicPolicy:     true,
+        IgnorePublicAcls:      true,
         RestrictPublicBuckets: true,
       },
     });
@@ -104,10 +104,10 @@ describe('UiBucket origins', () => {
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 's3:GetObject',
-            Effect: 'Allow',
+            Action:    's3:GetObject',
+            Effect:    'Allow',
             Principal: { Service: 'cloudfront.amazonaws.com' },
-            Resource: { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            Resource:  { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
             Condition: {
               StringEquals: {
                 'AWS:SourceArn': {
@@ -132,10 +132,10 @@ describe('UiBucket.grantContentDeploy', () => {
     const bucketArn    = { 'Fn::GetAtt': [Match.anyValue(), 'Arn'] };
     const objectsUnder = (prefix: string) => ({ 'Fn::Join': ['', [bucketArn, `/${prefix}/*`]] });
     const listUnder    = (prefix: string) => ({
-      Action: 's3:ListBucket',
+      Action:    's3:ListBucket',
       Condition: { StringLike: { 's3:prefix': `${prefix}/*` } },
-      Effect: 'Allow',
-      Resource: bucketArn,
+      Effect:    'Allow',
+      Resource:  bucketArn,
     });
 
     bucket.grantContentDeploy(new Role(stack, 'deployer', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') }));

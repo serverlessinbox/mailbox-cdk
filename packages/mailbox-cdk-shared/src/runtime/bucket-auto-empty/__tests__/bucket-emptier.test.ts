@@ -34,9 +34,9 @@ describe('BucketEmptier', () => {
 
   it('deletes versions and delete markers quietly from the named bucket', async () => {
     s3Mock.on(ListObjectVersionsCommand).resolves({
-      Versions: [{ Key: 'file1.txt', VersionId: 'v1' }],
+      Versions:      [{ Key: 'file1.txt', VersionId: 'v1' }],
       DeleteMarkers: [{ Key: 'deleted-file.txt', VersionId: 'dm1' }],
-      IsTruncated: false,
+      IsTruncated:   false,
     });
 
     const deleted = await emptier.empty('versioned-bucket', PLENTY_OF_TIME);
@@ -49,20 +49,20 @@ describe('BucketEmptier', () => {
           { Key: 'file1.txt', VersionId: 'v1' },
           { Key: 'deleted-file.txt', VersionId: 'dm1' },
         ],
-        Quiet: true,
+        Quiet:   true,
       },
     });
   });
 
   it('skips entries that lack a Key or a VersionId', async () => {
     s3Mock.on(ListObjectVersionsCommand).resolves({
-      Versions: [
+      Versions:      [
         { Key: 'file1.txt', VersionId: 'v1' },
         { Key: undefined, VersionId: 'v2' },
         { Key: 'file3.txt', VersionId: undefined },
       ],
       DeleteMarkers: [{ Key: 'file4.txt', VersionId: 'dm1' }],
-      IsTruncated: false,
+      IsTruncated:   false,
     });
 
     const deleted = await emptier.empty('partial-bucket', PLENTY_OF_TIME);
@@ -78,9 +78,9 @@ describe('BucketEmptier', () => {
     s3Mock
       .on(ListObjectVersionsCommand)
       .resolvesOnce({
-        Versions: [{ Key: 'file1.txt', VersionId: 'v1' }, { Key: 'file2.txt', VersionId: 'v2' }],
-        IsTruncated: true,
-        NextKeyMarker: 'file2.txt',
+        Versions:            [{ Key: 'file1.txt', VersionId: 'v1' }, { Key: 'file2.txt', VersionId: 'v2' }],
+        IsTruncated:         true,
+        NextKeyMarker:       'file2.txt',
         NextVersionIdMarker: 'v2',
       })
       .resolvesOnce({ Versions: [{ Key: 'file3.txt', VersionId: 'v3' }], IsTruncated: false });
@@ -123,7 +123,7 @@ describe('BucketEmptier', () => {
 
   describe('when S3 reports versions it did not delete', () => {
     const TWO_VERSIONS  = {
-      Versions: [
+      Versions:    [
         { Key: 'file1.txt', VersionId: 'v1' },
         { Key: 'file2.txt', VersionId: 'v2' },
       ],
@@ -183,9 +183,9 @@ describe('BucketEmptier', () => {
     s3Mock
       .on(ListObjectVersionsCommand)
       .resolvesOnce({
-        Versions: [{ Key: 'file1.txt', VersionId: 'v1' }],
-        IsTruncated: true,
-        NextKeyMarker: 'file1.txt',
+        Versions:            [{ Key: 'file1.txt', VersionId: 'v1' }],
+        IsTruncated:         true,
+        NextKeyMarker:       'file1.txt',
         NextVersionIdMarker: 'v1',
       })
       .resolves({ Versions: [{ Key: 'file2.txt', VersionId: 'v2' }], IsTruncated: false });

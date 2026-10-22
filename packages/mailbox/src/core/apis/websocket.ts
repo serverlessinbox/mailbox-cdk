@@ -52,8 +52,8 @@ export interface IWebSocketPushApi {
 
 /** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
+  readonly configTable:    IDataTable;
+  readonly itemTable:      IDataTable;
   readonly changelogTable: IDataTable;
   /** Authorizer Lambda for the `$connect` route. */
   readonly authorizerLambda: IFunction;
@@ -100,14 +100,14 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     this.webSocketTable = new WebSocketTable(this, 'connections-table');
 
     this.api = new WebSocketApi(this, 'websocket-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
+      apiName:     `Mailbox ${Aws.STACK_NAME} WebSocket Push`,
       description: 'WebSocket API for JMAP Push State notifications',
     });
 
     const stage = new WebSocketStage(this, 'websocket-stage', {
       webSocketApi: this.api,
-      stageName: WebSocketPush.STAGE_NAME,
-      autoDeploy: true,
+      stageName:    WebSocketPush.STAGE_NAME,
+      autoDeploy:   true,
     });
 
     this.managementEndpoint = `https://${this.api.apiId}.execute-api.${Aws.REGION}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
@@ -118,9 +118,9 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       }
 
       const domain = new DomainName(this, 'domain', {
-        domainName: props.domainName,
-        certificate: props.certificate,
-        endpointType: EndpointType.REGIONAL,
+        domainName:     props.domainName,
+        certificate:    props.certificate,
+        endpointType:   EndpointType.REGIONAL,
         securityPolicy: SecurityPolicy.TLS_1_2,
       });
 
@@ -130,7 +130,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       this.domainCfnResource = domain.node.defaultChild as CfnResource;
 
       new ApiMapping(this, 'mapping', {
-        api: this.api,
+        api:        this.api,
         domainName: domain,
         stage,
       });
@@ -144,22 +144,22 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     // Lambda: $connect
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.webSocketTable,
-      configTable: props.configTable,
+      configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: $disconnect
     const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
       connectionsTable: this.webSocketTable,
-      configTable: props.configTable,
+      configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
     // Lambda: $default
     const messageLambda = new WebSocketMessageLambda(this, 'message-handler', {
       connectionsTable: this.webSocketTable,
-      configTable: props.configTable,
-      itemTable: props.itemTable,
+      configTable:      props.configTable,
+      itemTable:        props.itemTable,
       maxSubscriptions: maxSubscriptions,
       webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
@@ -168,14 +168,14 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     // Lambda: broadcast
     const broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.webSocketTable,
-      configTable: props.configTable,
+      configTable:      props.configTable,
       webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });
 
     this.broadcaster = {
       functionName: broadcastLambda.functionName,
-      grantInvoke: (grantee) => {
+      grantInvoke:  (grantee) => {
         broadcastLambda.grantInvoke(grantee);
       },
     };
@@ -203,8 +203,8 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
   /** Allows `execute-api:ManageConnections` on every connection of this API (`<apiId>/*`). */
   public grantManageConnections(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['execute-api:ManageConnections'],
+      effect:    Effect.ALLOW,
+      actions:   ['execute-api:ManageConnections'],
       resources: [`arn:${Aws.PARTITION}:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${this.api.apiId}/*`],
     }));
   }

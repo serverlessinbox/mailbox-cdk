@@ -41,32 +41,32 @@ describe('AdminApi', () => {
 
   function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
     return {
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
-      auditLogTable: dataTable('audit-log-table'),
-      changelogTable: dataTable('changelog-table'),
-      mailFeedbackTable: dataTable('mail-feedback-table'),
-      authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
-      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+      configTable:          dataTable('config-table'),
+      itemTable:            dataTable('item-table'),
+      auditLogTable:        dataTable('audit-log-table'),
+      changelogTable:       dataTable('changelog-table'),
+      mailFeedbackTable:    dataTable('mail-feedback-table'),
+      authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
+      blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
       emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      artifactResolver: new PinnedArtifactResolver({
-        packages: {
+      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue'),
+      artifactResolver:     new PinnedArtifactResolver({
+        packages:         {
           'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      identityProvisioner: LambdaFunction.fromFunctionArn(
+      identityProvisioner:  LambdaFunction.fromFunctionArn(
         stack,
         'identity-provisioner-ref',
         'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
       ),
-      sesRuleSetName: 'test-rule-set',
-      sesConfigSetName: 'test-config-set',
-      systemSenderAddress: 'noreply@example.com',
-      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+      sesRuleSetName:       'test-rule-set',
+      sesConfigSetName:     'test-config-set',
+      systemSenderAddress:  'noreply@example.com',
+      vendorLink:           { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     };
   }
@@ -80,7 +80,7 @@ describe('AdminApi', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -109,7 +109,7 @@ describe('AdminApi', () => {
       expect(sut.url).toBe('https://api.example.com');
       expect(sut.domainTarget).toBeDefined();
       template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-        DomainName: 'api.example.com',
+        DomainName:               'api.example.com',
         DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
       });
       template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
@@ -142,11 +142,11 @@ describe('AdminApi', () => {
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
         CorsConfiguration: {
-          AllowOrigins: ['https://admin.example.com'],
-          AllowMethods: ['POST', 'OPTIONS'],
-          AllowHeaders: ['Content-Type', 'Authorization'],
+          AllowOrigins:     ['https://admin.example.com'],
+          AllowMethods:     ['POST', 'OPTIONS'],
+          AllowHeaders:     ['Content-Type', 'Authorization'],
           AllowCredentials: true,
-          MaxAge: 3600,
+          MaxAge:           3600,
         },
       });
     });
@@ -165,9 +165,9 @@ describe('AdminApi', () => {
       new AdminApi(stack, 'admin-api', propsWith());
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
-        RouteKey: 'POST /{proxy+}',
+        RouteKey:          'POST /{proxy+}',
         AuthorizationType: 'CUSTOM',
-        AuthorizerId: Match.anyValue(),
+        AuthorizerId:      Match.anyValue(),
       });
     });
 

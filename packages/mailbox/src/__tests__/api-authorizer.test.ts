@@ -42,34 +42,34 @@ import {
  */
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
-    issuer: 'https://example.com/issuer',
-    tokenEndpoint: 'https://example.com/token',
-    authorizationEndpoint: 'https://example.com/authorize',
-    authMethod: 'header',
-    usePkce: false,
-    scopeMap: {
-      'mail.read': [Permission.MAIL_READ],
+    issuer:                  'https://example.com/issuer',
+    tokenEndpoint:           'https://example.com/token',
+    authorizationEndpoint:   'https://example.com/authorize',
+    authMethod:              'header',
+    usePkce:                 false,
+    scopeMap:                {
+      'mail.read':  [Permission.MAIL_READ],
       'mail.write': [Permission.MAIL_WRITE],
     },
-    policies: {
+    policies:                {
       adminApi: {
         audiences: ['admin-api'],
       },
-      jmapApi: {
+      jmapApi:  {
         audiences: ['jmap-api'],
       },
     },
     provisionAdminApiClient: () => ({
-      clientId: 'test-admin-ui',
+      clientId:         'test-admin-ui',
       requestScopeList: [],
-      groups: [],
+      groups:           [],
     }),
-    provisionJmapApiClient: () => ({
-      clientId: 'test-jmap-ui',
+    provisionJmapApiClient:  () => ({
+      clientId:         'test-jmap-ui',
       requestScopeList: [],
-      groups: [],
+      groups:           [],
     }),
-    createAdminApiAddons: () => [],
+    createAdminApiAddons:    () => [],
   };
 }
 
@@ -136,45 +136,45 @@ describe('API Authorizer Wiring', () => {
   beforeEach(() => {
     app   = new App();
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
     // Create artifact resolver
     const packages: Record<string, ArtifactPin> = {
       'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
     // Create minimal required resources
     configTable = new DataTable(new dynamodb.Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
     }));
 
     itemTable = new DataTable(new dynamodb.Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
     }));
 
     changelogTable = new DataTable(new dynamodb.Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
     }));
 
     auditLogTable = new DataTable(new dynamodb.Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
     }));
 
     mailFeedbackTable = new DataTable(new dynamodb.Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
     }));
 
     authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
@@ -187,7 +187,7 @@ describe('API Authorizer Wiring', () => {
     identityProvisionerFunction = new lambda.Function(stack, 'identity-provisioner', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     mockAuthProvider = createMockAuthProvider();
@@ -214,10 +214,10 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         identityProvisioner: identityProvisionerFunction,
-        sesRuleSetName: 'test-rule-set',
-        sesConfigSetName: 'test-config-set',
+        sesRuleSetName:      'test-rule-set',
+        sesConfigSetName:    'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
+        vendorLink:          { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template  = Template.fromStack(stack);
@@ -259,10 +259,10 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         identityProvisioner: identityProvisionerFunction,
-        sesRuleSetName: 'test-rule-set',
-        sesConfigSetName: 'test-config-set',
+        sesRuleSetName:      'test-rule-set',
+        sesConfigSetName:    'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
+        vendorLink:          { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template  = Template.fromStack(stack);
@@ -291,10 +291,10 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         artifactResolver,
         identityProvisioner: identityProvisionerFunction,
-        sesRuleSetName: 'test-rule-set',
-        sesConfigSetName: 'test-config-set',
+        sesRuleSetName:      'test-rule-set',
+        sesConfigSetName:    'test-config-set',
         systemSenderAddress: 'noreply@example.com',
-        vendorLink: { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
+        vendorLink:          { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
       });
 
       const template = Template.fromStack(stack);
@@ -321,9 +321,9 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         cdnHost: 'cdn.example.com',
         artifactResolver,
-        authProvider: mockAuthProvider,
+        authProvider:        mockAuthProvider,
         identityProvisioner: identityProvisionerFunction,
-        vendorAccountIds: ['123456789012'],
+        vendorAccountIds:    ['123456789012'],
       });
 
       const template  = Template.fromStack(stack);
@@ -360,9 +360,9 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         cdnHost: 'cdn.example.com',
         artifactResolver,
-        authProvider: mockAuthProvider,
+        authProvider:        mockAuthProvider,
         identityProvisioner: identityProvisionerFunction,
-        vendorAccountIds: ['123456789012'],
+        vendorAccountIds:    ['123456789012'],
       });
 
       const template  = Template.fromStack(stack);
@@ -402,19 +402,19 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         cdnHost: 'cdn.example.com',
         artifactResolver,
-        authProvider: mockAuthProvider,
+        authProvider:        mockAuthProvider,
         identityProvisioner: identityProvisionerFunction,
-        vendorAccountIds: ['123456789012'],
+        vendorAccountIds:    ['123456789012'],
       });
 
       // Create McpApi with the JMAP authorizer
       new McpApi(apiGroup, 'mcp-api', {
-        jmapApiGateway: jmapApi.httpApi,
+        jmapApiGateway:   jmapApi.httpApi,
         authorizerLambda: jmapApi.authorizerLambda,
         certificate,
         domainName: 'example.com',
-        scopeMap: {
-          'mail.read': ['read'],
+        scopeMap:   {
+          'mail.read':  ['read'],
           'mail.write': ['write'],
         },
         artifactResolver,
@@ -456,18 +456,18 @@ describe('API Authorizer Wiring', () => {
         auditEventsQueue,
         cdnHost: 'cdn.example.com',
         artifactResolver,
-        authProvider: mockAuthProvider,
+        authProvider:        mockAuthProvider,
         identityProvisioner: identityProvisionerFunction,
-        vendorAccountIds: ['123456789012'],
+        vendorAccountIds:    ['123456789012'],
       });
 
       new McpApi(apiGroup, 'mcp-api', {
-        jmapApiGateway: jmapApi.httpApi,
+        jmapApiGateway:   jmapApi.httpApi,
         authorizerLambda: jmapApi.authorizerLambda,
         certificate,
         domainName: 'example.com',
-        scopeMap: {
-          'mail.read': ['read'],
+        scopeMap:   {
+          'mail.read':  ['read'],
           'mail.write': ['write'],
         },
         artifactResolver,

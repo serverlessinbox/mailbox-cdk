@@ -23,16 +23,16 @@ export class PublicStaticAssetsBucket extends StackNamedBucket {
   private constructor(sharedGroup: Construct, artifactResolver: IArtifactResolver) {
     super(sharedGroup, PublicStaticAssetsBucket.BUCKET_ID, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy:     RemovalPolicy.DESTROY,
     });
 
     BucketAutoEmpty.getOrCreate(sharedGroup, artifactResolver).attach(sharedGroup, 'public-assets-auto-empty', this);
 
     this.addToResourcePolicy(
       new iam.PolicyStatement({
-        actions: ['s3:GetObject'],
+        actions:    ['s3:GetObject'],
         principals: [new iam.AnyPrincipal()],
-        resources: [this.arnForObjects('*')],
+        resources:  [this.arnForObjects('*')],
       }),
     );
   }

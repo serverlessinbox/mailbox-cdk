@@ -33,10 +33,10 @@ const CONFIG_TABLE_ARN         = 'arn:aws:dynamodb:us-west-2:111122223333:table/
 const AUTH_KEY_STORE_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/auth-keys';
 
 interface SynthesizedDeployer {
-  readonly stack: Stack;
+  readonly stack:            Stack;
   readonly artifactResolver: IArtifactResolver;
-  readonly deployer: MailboxEdgeDeployer;
-  readonly template: Template;
+  readonly deployer:         MailboxEdgeDeployer;
+  readonly template:         Template;
 }
 
 function dataTable(stack: Stack, id: string, tableArn: string): DataTable {
@@ -51,13 +51,13 @@ function synthDeployer(
   const parent                      = parentId === undefined ? stack : new Construct(stack, parentId);
   const deployer                    = new MailboxEdgeDeployer(parent, 'edge-deployer', {
     artifactResolver,
-    domainName: 'example.com',
-    itemTable: dataTable(stack, 'item-table', ITEM_TABLE_ARN),
-    configTable: dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
+    domainName:        'example.com',
+    itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
+    configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
     authKeyStoreTable: dataTable(stack, 'auth-key-store-table', AUTH_KEY_STORE_TABLE_ARN),
-    productVersion: '1.2.3',
-    logGroupName: 'test-log-group',
-    deployerType: 'cfn',
+    productVersion:    '1.2.3',
+    logGroupName:      'test-log-group',
+    deployerType:      'cfn',
     ...extraProps(stack),
   });
   return { stack, artifactResolver, deployer, template: Template.fromStack(stack) };
@@ -67,7 +67,7 @@ function withHostedZone(stack: Stack): Partial<MailboxEdgeDeployerProps> {
   return {
     hostedZone: route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', {
       hostedZoneId: 'Z0TESTZONE',
-      zoneName: 'example.com',
+      zoneName:     'example.com',
     }),
   };
 }
@@ -78,9 +78,9 @@ describe('MailboxEdgeDeployer', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName: EDGE_STACK_NAME,
-        templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json')),
-        region: 'us-east-1',
+        stackName:             EDGE_STACK_NAME,
+        templateUrl:           stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json')),
+        region:                'us-east-1',
         terminationProtection: false,
       });
     });
@@ -114,9 +114,9 @@ describe('MailboxEdgeDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         tags: {
-          'serverless-inbox:product': 'mailbox',
+          'serverless-inbox:product':    'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
-          'serverless-inbox:stack': EDGE_STACK_NAME,
+          'serverless-inbox:stack':      EDGE_STACK_NAME,
         },
       });
     });
@@ -126,7 +126,7 @@ describe('MailboxEdgeDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({ rootStackId: STACK_GUID }),
-        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
+        tags:       Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
       });
     });
 
@@ -136,16 +136,16 @@ describe('MailboxEdgeDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({
-          domainName: 'example.com',
-          artifactBucket: jmapBlobDownload.bucket,
-          jmapBlobDownloadKey: jmapBlobDownload.key,
-          itemTableArn: ITEM_TABLE_ARN,
-          configTableArn: CONFIG_TABLE_ARN,
+          domainName:           'example.com',
+          artifactBucket:       jmapBlobDownload.bucket,
+          jmapBlobDownloadKey:  jmapBlobDownload.key,
+          itemTableArn:         ITEM_TABLE_ARN,
+          configTableArn:       CONFIG_TABLE_ARN,
           authKeyStoreTableArn: AUTH_KEY_STORE_TABLE_ARN,
-          logGroupName: 'test-log-group',
-          rootStack: STACK_NAME_REF,
-          productVersion: '1.2.3',
-          deployerType: 'cfn',
+          logGroupName:         'test-log-group',
+          rootStack:            STACK_NAME_REF,
+          productVersion:       '1.2.3',
+          deployerType:         'cfn',
         }),
       });
     });
@@ -271,7 +271,7 @@ describe('MailboxEdgeDeployer', () => {
             { Action: 'sts:AssumeRole', Effect: 'Allow', Principal: { Service: 'edgelambda.amazonaws.com' } },
           ],
         },
-        ManagedPolicyArns: [
+        ManagedPolicyArns:        [
           { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':iam::aws:policy/service-role/AWSLambdaBasicExecutionRole']] },
         ],
       });

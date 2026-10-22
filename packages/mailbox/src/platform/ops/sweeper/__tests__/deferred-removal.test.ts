@@ -21,7 +21,7 @@ describe('DeferredRemoval', () => {
   function synthesize(withCertificate: boolean): Template {
     const stack          = newTestStack('DeferredRemovalStack');
     const sweeperStarter = lambda.Function.fromFunctionAttributes(stack, 'starter', {
-      functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
+      functionArn:     'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
       sameEnvironment: true,
     });
     const removals       = withCertificate
@@ -35,7 +35,7 @@ describe('DeferredRemoval', () => {
     const template = synthesize(true);
 
     template.hasResourceProperties('Custom::DeferredRemoval', {
-      ServiceToken: 'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
+      ServiceToken:   'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
       ServiceTimeout: Duration.minutes(2).toSeconds().toString(),
     });
   });
@@ -45,7 +45,7 @@ describe('DeferredRemoval', () => {
     const sweeperStarter = new lambda.Function(stack, 'starter', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => ({});'),
+      code:    lambda.Code.fromInline('exports.handler = async () => ({});'),
     });
     sweeperStarter.addToRolePolicy(new iam.PolicyStatement({ actions: ['cloudformation:DescribeStacks'], resources: ['*'] }));
     new DeferredRemoval(stack, 'deferred-removal', { sweeperStarter, removals: [newEdgeFunctionRemoval(stack)] });

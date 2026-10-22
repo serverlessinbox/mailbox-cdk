@@ -18,12 +18,12 @@ import { StackFailureDetectorLambda }           from '../stack-failure-detector-
 
 function createDetector(): { stack: cdk.Stack; role: iam.Role; detector: StackFailureDetectorLambda } {
   const stack            = new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const artifactResolver = new PinnedArtifactResolver({
-    packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   const role             = new iam.Role(stack, 'DetectorRole', {
@@ -33,7 +33,7 @@ function createDetector(): { stack: cdk.Stack; role: iam.Role; detector: StackFa
   const detector = new StackFailureDetectorLambda(stack, 'detector', {
     artifactResolver,
     role,
-    functionName: 'pinned-detector-name',
+    functionName:      'pinned-detector-name',
     infraLogGroupName: '/test/infra-log-group',
   });
 
@@ -46,9 +46,9 @@ describe('StackFailureDetectorLambda', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'pinned-detector-name',
-      Role: stack.resolve(role.roleArn),
-      Timeout: 120,
-      MemorySize: 256,
+      Role:         stack.resolve(role.roleArn),
+      Timeout:      120,
+      MemorySize:   256,
     });
   });
 

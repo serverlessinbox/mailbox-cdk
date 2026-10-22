@@ -42,4 +42,4 @@ export function toClientId(raw: string): ClientId {
 }
 
 export const isGroupName = isBrandedString(toGroupName);
-export const isClientId = isBrandedString(toClientId);
+export const isClientId  = isBrandedString(toClientId);

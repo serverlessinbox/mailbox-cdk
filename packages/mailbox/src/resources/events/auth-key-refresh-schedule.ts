@@ -13,7 +13,7 @@ export class AuthKeyRefreshSchedule extends Rule {
   constructor(scope: Construct, id: string, props: AuthKeyRefreshScheduleProps) {
     super(scope, id, {
       schedule: Schedule.rate(Duration.hours(6)),
-      targets: [new LambdaFunction(props.target)],
+      targets:  [new LambdaFunction(props.target)],
     });
   }
 }

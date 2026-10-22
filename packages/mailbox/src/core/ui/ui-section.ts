@@ -20,7 +20,7 @@ import { WebmailUi }                         from './webmail-ui';
 
 /** What {@link UiSection} uses of the data section. */
 export interface IUiDataInputs {
-  readonly configTable: IDataTable;
+  readonly configTable:      IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
 }
 
@@ -49,22 +49,22 @@ export interface IUiEdgeInputs {
 /** Props of {@link UiSection}. */
 export interface UiSectionProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
-  readonly enableAdminUi: boolean;
-  readonly enableWebmailUi: boolean;
+  readonly authProvider:     IMailboxAuthProvider;
+  readonly enableAdminUi:    boolean;
+  readonly enableWebmailUi:  boolean;
   /** The endpoint names the UIs are served on and call. */
   readonly mailboxDomains: IMailboxDomainNames;
   /** The operator's own certificates; the adminUi and webmailUi ones are read here, and the edge section's UI certificate serves a UI without one. */
   readonly certificateOverrides?: MailboxCertificateOverrides;
-  readonly data: IUiDataInputs;
-  readonly auth: IUiAuthInputs;
-  readonly apis: IUiApisInputs;
-  readonly edge: IUiEdgeInputs;
+  readonly data:                  IUiDataInputs;
+  readonly auth:                  IUiAuthInputs;
+  readonly apis:                  IUiApisInputs;
+  readonly edge:                  IUiEdgeInputs;
 }
 
 /** What the bootstrap needs of a UI: the OAuth client it registered and where the client lands after login. */
 export interface IOAuthUi {
-  readonly oauthClient: AuthClientConfig;
+  readonly oauthClient:      AuthClientConfig;
   readonly oauthRedirectUri: string;
 }
 
@@ -110,16 +110,16 @@ export class UiSection extends Construct {
     const webmailUiCertificate = props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate;
 
     const adminUi = new AdminUi(this, 'admin-ui', {
-      domainName: props.mailboxDomains.admin,
-      certificate: props.certificateOverrides?.adminUi ?? props.edge.uiCertificate,
-      configTable: props.data.configTable,
+      domainName:       props.mailboxDomains.admin,
+      certificate:      props.certificateOverrides?.adminUi ?? props.edge.uiCertificate,
+      configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
-      authProvider: props.authProvider,
-      apiUrl: props.edge.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
-      webmailUrl: props.enableWebmailUi && webmailUiCertificate
+      authProvider:     props.authProvider,
+      apiUrl:           props.edge.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
+      webmailUrl:       props.enableWebmailUi && webmailUiCertificate
         ? `https://${props.mailboxDomains.webmail}`
         : undefined,
-      uiConfig: this.mergeAdminUiConfig(props),
+      uiConfig:         this.mergeAdminUiConfig(props),
       artifactResolver: props.artifactResolver,
     });
 
@@ -130,15 +130,15 @@ export class UiSection extends Construct {
 
   private addWebmailUi(props: UiSectionProps): WebmailUi {
     const webmailUi = new WebmailUi(this, 'webmail-ui', {
-      domainName: props.mailboxDomains.webmail,
-      certificate: props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate,
-      configTable: props.data.configTable,
+      domainName:       props.mailboxDomains.webmail,
+      certificate:      props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate,
+      configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
-      authProvider: props.authProvider,
-      apiUrl: props.edge.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
-      uiBundle: { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
+      authProvider:     props.authProvider,
+      apiUrl:           props.edge.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
+      uiBundle:         { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       artifactResolver: props.artifactResolver,
-      dependsOn: [props.auth.oauthClientsProvisioned],
+      dependsOn:        [props.auth.oauthClientsProvisioned],
     });
 
     this.grantUiContentDeployIfGrantable(webmailUi, props.artifactResolver);
@@ -156,7 +156,7 @@ export class UiSection extends Construct {
           authorization: {
             roles: {
               adminGroups: providerAuthz.adminGroups,
-              userGroups: providerAuthz.userGroups,
+              userGroups:  providerAuthz.userGroups,
             },
           },
         }

@@ -4,9 +4,9 @@ import { Aws }  from 'aws-cdk-lib';
 /** The resources the execution role acts on, each as a plain ARN string so no grant adds a CloudFormation dependency edge. */
 export interface SweeperExecutionTargets {
   readonly workerFunctionArn: string;
-  readonly workerRoleArn: string;
-  readonly stateMachineArn: string;
-  readonly executionRoleArn: string;
+  readonly workerRoleArn:     string;
+  readonly stateMachineArn:   string;
+  readonly executionRoleArn:  string;
 }
 
 /**
@@ -35,35 +35,35 @@ export class SweeperExecutionGrants {
 
   private grantWorkerInvocation(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['lambda:InvokeFunction'],
+      actions:   ['lambda:InvokeFunction'],
       resources: [this.targets.workerFunctionArn],
     });
   }
 
   private grantWorkerFunctionDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['lambda:DeleteFunction'],
+      actions:   ['lambda:DeleteFunction'],
       resources: [this.targets.workerFunctionArn],
     });
   }
 
   private grantWorkerRoleDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
+      actions:   ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
       resources: [this.targets.workerRoleArn],
     });
   }
 
   private grantStateMachineDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['states:DeleteStateMachine'],
+      actions:   ['states:DeleteStateMachine'],
       resources: [this.targets.stateMachineArn],
     });
   }
 
   private grantOwnRolePolicyDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['iam:DeleteRolePolicy'],
+      actions:   ['iam:DeleteRolePolicy'],
       resources: [this.targets.executionRoleArn],
     });
   }
@@ -71,7 +71,7 @@ export class SweeperExecutionGrants {
   /** `Aws.STACK_ID` is the exact stack ARN, so the check reads only the sweeper's own stack. */
   private grantOwnStackResourceDescription(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['cloudformation:DescribeStackResource'],
+      actions:   ['cloudformation:DescribeStackResource'],
       resources: [Aws.STACK_ID],
     });
   }

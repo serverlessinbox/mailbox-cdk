@@ -22,9 +22,9 @@ export class BucketAutoEmpty extends TypeScriptLambda {
       pipeline: 'infra',
       artifactResolver,
       packageName: KIT_ARTIFACT_PACKAGE,
-      handler: 'index.handler',
-      timeout: Duration.minutes(15),
-      memorySize: 512,
+      handler:     'index.handler',
+      timeout:     Duration.minutes(15),
+      memorySize:  512,
     });
 
     this.addToRolePolicy(parentStackStatusReadStatement());
@@ -57,14 +57,14 @@ export class BucketAutoEmpty extends TypeScriptLambda {
     // On rollback CloudFormation reverts an updated DefaultPolicy before it invokes this resource's
     // Delete, which then fails with AccessDenied and leaves the bucket undeletable.
     const policy = new iam.Policy(scope, `${id}-policy`, {
-      roles: [this.role],
+      roles:      [this.role],
       statements: [
         new iam.PolicyStatement({
-          actions: ['s3:ListBucket', 's3:ListBucketVersions'],
+          actions:   ['s3:ListBucket', 's3:ListBucketVersions'],
           resources: [bucket.bucketArn],
         }),
         new iam.PolicyStatement({
-          actions: ['s3:DeleteObject', 's3:DeleteObjectVersion'],
+          actions:   ['s3:DeleteObject', 's3:DeleteObjectVersion'],
           resources: [bucket.arnForObjects('*')],
         }),
       ],
@@ -72,9 +72,9 @@ export class BucketAutoEmpty extends TypeScriptLambda {
 
     const properties: BucketAutoEmptyResourceProperties = { bucketName: bucket.bucketName };
     const resource                                      = new CustomResource(scope, id, {
-      serviceToken: this.functionArn,
+      serviceToken:   this.functionArn,
       serviceTimeout: Duration.minutes(15),
-      resourceType: 'Custom::BucketAutoEmpty',
+      resourceType:   'Custom::BucketAutoEmpty',
       properties,
     });
 

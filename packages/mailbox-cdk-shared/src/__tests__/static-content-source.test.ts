@@ -17,15 +17,15 @@ describe('StaticContentSource', () => {
   describe('data', () => {
     it('embeds the key and body, with the write options when given', () => {
       const source = StaticContentSource.data('config/config.json', '{"a":1}', {
-        contentType: 'application/json',
+        contentType:  'application/json',
         cacheControl: 'no-store',
       });
 
       expect(source.spec).toEqual({
-        kind: 'data',
-        key: 'config/config.json',
-        body: '{"a":1}',
-        contentType: 'application/json',
+        kind:         'data',
+        key:          'config/config.json',
+        body:         '{"a":1}',
+        contentType:  'application/json',
         cacheControl: 'no-store',
       });
     });
@@ -51,10 +51,10 @@ describe('StaticContentSource', () => {
       });
 
       expect(source.spec).toEqual({
-        kind: 'zip',
-        sourceBucket: 'artifacts-bucket',
-        sourceKey: 'ui/admin-ui.zip',
-        targetPrefix: 'content/',
+        kind:            'zip',
+        sourceBucket:    'artifacts-bucket',
+        sourceKey:       'ui/admin-ui.zip',
+        targetPrefix:    'content/',
         sourceVersionId: 'v7',
       });
     });

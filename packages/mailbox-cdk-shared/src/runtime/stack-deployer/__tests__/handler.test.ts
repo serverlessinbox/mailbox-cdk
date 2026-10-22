@@ -23,10 +23,10 @@ import {
 } from './stack-deployer-helpers';
 
 interface LoadedHandlers {
-  readonly handlers: typeof HandlerModule;
-  readonly sfn: AwsClientStub<SfnSdk.SFNClient>;
-  readonly cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
-  readonly sfnClient: typeof SfnSdk.SFNClient;
+  readonly handlers:             typeof HandlerModule;
+  readonly sfn:                  AwsClientStub<SfnSdk.SFNClient>;
+  readonly cloudFormation:       AwsClientStub<CloudFormationSdk.CloudFormationClient>;
+  readonly sfnClient:            typeof SfnSdk.SFNClient;
   readonly cloudFormationClient: typeof CloudFormationSdk.CloudFormationClient;
 }
 
@@ -71,10 +71,10 @@ describe('stack-deployer handlers', () => {
       const sfnSdk            = jest.requireActual<typeof SfnSdk>('@aws-sdk/client-sfn');
       const cloudFormationSdk = jest.requireActual<typeof CloudFormationSdk>('@aws-sdk/client-cloudformation');
       loaded                  = {
-        handlers: jest.requireActual<typeof HandlerModule>('../handler'),
-        sfn: mockClient(sfnSdk.SFNClient),
-        cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
-        sfnClient: sfnSdk.SFNClient,
+        handlers:             jest.requireActual<typeof HandlerModule>('../handler'),
+        sfn:                  mockClient(sfnSdk.SFNClient),
+        cloudFormation:       mockClient(cloudFormationSdk.CloudFormationClient),
+        sfnClient:            sfnSdk.SFNClient,
         cloudFormationClient: cloudFormationSdk.CloudFormationClient,
       };
     });
@@ -135,8 +135,8 @@ describe('stack-deployer handlers', () => {
 
       expect(endpoint.answers()).toEqual([
         expect.objectContaining({
-          Status: status,
-          Reason: 'Configuration error: MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set',
+          Status:             status,
+          Reason:             'Configuration error: MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is not set',
           PhysicalResourceId: 'test-data-stack',
         }),
       ]);

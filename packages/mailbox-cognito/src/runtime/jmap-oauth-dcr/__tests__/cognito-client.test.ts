@@ -34,15 +34,15 @@ describe('CognitoUserPoolClientManager', () => {
 
     expect(clientId).toBe('abc123');
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input).toEqual({
-      UserPoolId: 'pool-1',
-      ClientName: 'My App',
-      GenerateSecret: false,
-      AllowedOAuthFlows: ['code'],
+      UserPoolId:                      'pool-1',
+      ClientName:                      'My App',
+      GenerateSecret:                  false,
+      AllowedOAuthFlows:               ['code'],
       AllowedOAuthFlowsUserPoolClient: true,
-      AllowedOAuthScopes: ['openid', 'email'],
-      CallbackURLs: ['http://127.0.0.1/cb'],
-      SupportedIdentityProviders: ['COGNITO'],
-      ExplicitAuthFlows: ['ALLOW_REFRESH_TOKEN_AUTH'],
+      AllowedOAuthScopes:              ['openid', 'email'],
+      CallbackURLs:                    ['http://127.0.0.1/cb'],
+      SupportedIdentityProviders:      ['COGNITO'],
+      ExplicitAuthFlows:               ['ALLOW_REFRESH_TOKEN_AUTH'],
     });
   });
 

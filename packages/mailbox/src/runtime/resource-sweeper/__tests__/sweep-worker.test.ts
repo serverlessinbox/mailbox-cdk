@@ -28,23 +28,23 @@ class FakeSweeper<TInput> implements TargetSweeper<TInput> {
 const DONE: TargetResult = { target: 'cert', status: 'done' };
 
 const CERT_INPUT: CertRemovalInput                     = {
-  certArn: 'arn:aws:acm:us-west-2:123456789012:certificate/abc',
+  certArn:       'arn:aws:acm:us-west-2:123456789012:certificate/abc',
   rootStackName: 'test-stack',
-  rootStackId: 'guid-1',
+  rootStackId:   'guid-1',
 };
 const EDGE_INPUT: EdgeFunctionRemovalInput             = {
-  edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge',
+  edgeFnArn:     'arn:aws:lambda:us-east-1:123456789012:function:edge',
   rootStackName: 'test-stack',
-  rootStackId: 'guid-1',
+  rootStackId:   'guid-1',
 };
 const DETECTOR_INPUT: StackFailureDetectorRemovalInput = {
-  ruleArn: 'arn:aws:events:us-west-2:123456789012:rule/r',
-  ruleTargetId: 'Target0',
-  detectorFnArn: 'arn:aws:lambda:us-west-2:123456789012:function:f',
-  detectorRoleArn: 'arn:aws:iam::123456789012:role/ro',
+  ruleArn:                'arn:aws:events:us-west-2:123456789012:rule/r',
+  ruleTargetId:           'Target0',
+  detectorFnArn:          'arn:aws:lambda:us-west-2:123456789012:function:f',
+  detectorRoleArn:        'arn:aws:iam::123456789012:role/ro',
   detectorRolePolicyName: 'p',
-  rootStackName: 'test-stack',
-  rootStackId: 'guid-1',
+  rootStackName:          'test-stack',
+  rootStackId:            'guid-1',
 };
 
 function workerWith(results: { cert?: TargetResult; edge?: TargetResult; detector?: TargetResult } = {}) {

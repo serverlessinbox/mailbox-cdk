@@ -25,36 +25,36 @@ jest.mock('https', () => ({
 }));
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack: jest.fn(),
-  buildArtifactKey: jest.fn(),
+  deriveTrack:        jest.fn(),
+  buildArtifactKey:   jest.fn(),
   readReleasePointer: jest.fn(),
 }));
 
 interface CfnResponseBody {
-  Status: string;
-  Reason?: string;
+  Status:              string;
+  Reason?:             string;
   PhysicalResourceId?: string;
 }
 
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
-  tagging: AwsClientStub<TaggingSdk.ResourceGroupsTaggingAPIClient>;
-  lambda: AwsClientStub<LambdaSdk.LambdaClient>;
-  taggingSdk: typeof TaggingSdk;
-  lambdaSdk: typeof LambdaSdk;
+  tagging:       AwsClientStub<TaggingSdk.ResourceGroupsTaggingAPIClient>;
+  lambda:        AwsClientStub<LambdaSdk.LambdaClient>;
+  taggingSdk:    typeof TaggingSdk;
+  lambdaSdk:     typeof LambdaSdk;
   lambdaRuntime: typeof LambdaRuntime;
 }
 
 const GOOD_ENVIRONMENT = {
-  SERVICE_NAME: 'artifact-updater',
-  AWS_REGION: 'us-east-1',
+  SERVICE_NAME:             'artifact-updater',
+  AWS_REGION:               'us-east-1',
   AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
-  PROJECT: 'serverlessinbox',
-  DIST_TAG: 'latest',
-  GRANULARITY: 'major',
-  ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
-  ROOT_STACK_TAG_VALUE: 'my-stack',
-  ROOT_STACK_ID: 'guid-1',
+  PROJECT:                  'serverlessinbox',
+  DIST_TAG:                 'latest',
+  GRANULARITY:              'major',
+  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE:     'my-stack',
+  ROOT_STACK_ID:            'guid-1',
 };
 const BAD_ENVIRONMENT  = { ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
 
@@ -97,7 +97,7 @@ describe('artifact-updater handler', () => {
     const lambdaRuntime = require('@serverlessinbox/mailbox-cdk-shared/lambda-runtime') as typeof LambdaRuntime;
     const fakes: Fakes  = {
       tagging: mockClient(taggingSdk.ResourceGroupsTaggingAPIClient),
-      lambda: mockClient(lambdaSdk.LambdaClient),
+      lambda:  mockClient(lambdaSdk.LambdaClient),
       taggingSdk,
       lambdaSdk,
       lambdaRuntime,
@@ -240,8 +240,8 @@ describe('artifact-updater handler', () => {
 
       expect(result).toMatchObject({ statusCode: 500, body: expect.stringContaining('AccessDeniedException') });
       expect(console.debug).toHaveBeenCalledWith('http trigger received', {
-        method: 'POST',
-        path: '/artifact-updates/trigger',
+        method:  'POST',
+        path:    '/artifact-updates/trigger',
         service: 'artifact-updater',
       });
     });

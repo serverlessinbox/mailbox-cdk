@@ -12,7 +12,7 @@ export class DiffCommand extends BaselineCommand {
   static paths = [['diff']];
   static usage = BaselineCommand.Usage({
     description: 'Synthesize every stack the product deploys and report, per stack, the logical IDs added, removed, and changed (with the property paths that changed) against the baseline captured under the label. Exits 0 when all stacks are identical, 1 otherwise. Properties known to vary between synths of identical code are listed apart and do not fail the run.',
-    examples: [
+    examples:    [
       ['Compare against the default baseline', 'yarn template-baseline diff'],
       ['Compare against a named baseline', 'yarn template-baseline diff --label before-resource-split'],
     ],

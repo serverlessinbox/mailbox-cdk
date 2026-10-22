@@ -24,7 +24,7 @@ export class AuthKeyStore extends Construct {
 
     new AuthKeyStoreUpdaterLambda(this, 'handler', {
       authKeyStoreTable,
-      issuers: props.issuers,
+      issuers:          props.issuers,
       artifactResolver: props.artifactResolver,
     });
 

@@ -14,15 +14,15 @@ import {
 
 /** A release newer than the deployed version: its version as published and parsed, and the deployed version parsed. */
 export interface StaleTarget {
-  readonly version: ArtifactVersion;
-  readonly parsed: SemVer;
+  readonly version:  ArtifactVersion;
+  readonly parsed:   SemVer;
   readonly deployed: SemVer;
 }
 
 /** Where one release object of a package is stored. */
 export interface ArtifactLocation {
   readonly bucket: ArtifactBucketName;
-  readonly key: string;
+  readonly key:    string;
 }
 
 /**
@@ -68,8 +68,8 @@ export class ReleaseArtifacts {
     if (!semverValid(pointer.version) || !semverValid(deployedVersion)) {
       this.logger.debug('invalid version format, skipping', {
         deployedVersion,
-        candidateVersion: pointer.version,
-        deployedVersionValid: semverValid(deployedVersion),
+        candidateVersion:      pointer.version,
+        deployedVersionValid:  semverValid(deployedVersion),
         candidateVersionValid: semverValid(pointer.version),
       });
       return null;
@@ -103,7 +103,7 @@ export class ReleaseArtifacts {
     objectName: string,
   ): ArtifactLocation {
     const key = buildArtifactKey('package', packageName, {
-      type: 'release',
+      type:    'release',
       version: release,
       objectName,
       project: this.config.project,

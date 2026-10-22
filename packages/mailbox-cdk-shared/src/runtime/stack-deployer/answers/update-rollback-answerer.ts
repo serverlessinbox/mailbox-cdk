@@ -9,8 +9,8 @@ import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
 /** The request that failed, as far as it could be read. */
 export interface FailedRequest {
   readonly requestType: RequestType | undefined;
-  readonly stackName: StackName | undefined;
-  readonly region?: Region | undefined;
+  readonly stackName:   StackName | undefined;
+  readonly region?:     Region | undefined;
 }
 
 /** Answers an Update that failed while the parent stack rolls back, so that the failure does not strand the rollback. */

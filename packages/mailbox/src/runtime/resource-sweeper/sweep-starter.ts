@@ -41,13 +41,13 @@ export class SweepStarter {
     emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: this.config.serviceName });
 
     console.info('resource-sweeper-starter dispatch', {
-      requestType: event.RequestType,
-      requestId: event.RequestId,
+      requestType:       event.RequestType,
+      requestId:         event.RequestId,
       logicalResourceId: event.LogicalResourceId,
     });
 
     this.logger.debug('Starter invoked', {
-      requestType: event.RequestType,
+      requestType:       event.RequestType,
       logicalResourceId: event.LogicalResourceId,
     });
   }
@@ -127,8 +127,8 @@ export class SweepStarter {
     await this.sfnClient.send(
       new StartExecutionCommand({
         stateMachineArn: this.config.sweeperStateMachineArn,
-        name: event.RequestId,
-        input: JSON.stringify({ toSweep }),
+        name:            event.RequestId,
+        input:           JSON.stringify({ toSweep }),
       }),
     );
 
@@ -146,7 +146,7 @@ export class SweepStarter {
     // Any other error is logged, not thrown. error() (not warn()) so a real StartExecution failure
     // (e.g. StateMachineDeleting) is written at the default emit level.
     this.logger.error('Failed to start SFN execution (best-effort, will not propagate)', {
-      errorName: error.name,
+      errorName:    error.name,
       errorMessage: error.message,
     });
   }

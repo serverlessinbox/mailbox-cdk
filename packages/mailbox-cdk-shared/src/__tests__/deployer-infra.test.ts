@@ -20,17 +20,17 @@ import type { StackDeployerProperties }                                         
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
 
 const DEPLOYMENT: StackDeployerProperties = {
-  stackName: 'sub-stack',
-  templateUrl: 'https://bucket.s3.amazonaws.com/template.json',
-  parameters: { nameBase: 'base' },
+  stackName:        'sub-stack',
+  templateUrl:      'https://bucket.s3.amazonaws.com/template.json',
+  parameters:       { nameBase: 'base' },
   preserveOnDelete: true,
-  region: 'us-east-1',
+  region:           'us-east-1',
 };
 
 interface SynthesizedInfra {
-  readonly stack: Stack;
+  readonly stack:        Stack;
   readonly createWorker: jest.Mock<IFunction, [Construct, string]>;
-  readonly infra: DeployerInfra;
+  readonly infra:        DeployerInfra;
 }
 
 function newInfra(): SynthesizedInfra {
@@ -39,8 +39,8 @@ function newInfra(): SynthesizedInfra {
   const infra                       = new DeployerInfra(stack, 'infra', {
     artifactResolver,
     stateMachineNamePrefix: 'test-deployer-',
-    deployedStackName: 'cognito',
-    deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/sub-stack/*',
+    deployedStackName:      'cognito',
+    deployedStackArn:       'arn:aws:cloudformation:us-east-1:123456789012:stack/sub-stack/*',
     createWorker,
   });
   return { stack, createWorker, infra };
@@ -68,7 +68,7 @@ describe('DeployerInfra', () => {
     const { stack } = newInfra();
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
-      Handler: 'index.starterHandler',
+      Handler:     'index.starterHandler',
       Environment: { Variables: { SERVICE_NAME: starterServiceName('cognito') } },
     });
   });
@@ -95,7 +95,7 @@ describe('DeployerInfra', () => {
         Properties: { Handler: 'index.starterHandler' },
       }))[0];
       template.hasResourceProperties('Custom::TestDeployer', {
-        ServiceToken: { 'Fn::GetAtt': [starter, 'Arn'] },
+        ServiceToken:   { 'Fn::GetAtt': [starter, 'Arn'] },
         ServiceTimeout: '3600',
       });
     });

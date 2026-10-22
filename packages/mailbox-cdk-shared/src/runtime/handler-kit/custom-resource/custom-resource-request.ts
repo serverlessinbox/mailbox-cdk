@@ -9,8 +9,8 @@ import {
 } from './custom-resource-identifiers';
 
 const requestFields = {
-  StackId: isStackId,
-  RequestId: isRequestId,
+  StackId:           isStackId,
+  RequestId:         isRequestId,
   LogicalResourceId: isLogicalResourceId,
 };
 

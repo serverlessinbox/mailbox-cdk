@@ -14,12 +14,12 @@ const DELETE = ['s3:DeleteObject'] as const;
  * covers both.
  */
 export const S3Actions = {
-  read: READ,
-  write: WRITE,
-  delete: DELETE,
-  readWrite: [...READ, ...WRITE],
+  read:            READ,
+  write:           WRITE,
+  delete:          DELETE,
+  readWrite:       [...READ, ...WRITE],
   readWriteDelete: [...READ, ...WRITE, ...DELETE],
-  readDelete: [...READ, ...DELETE],
+  readDelete:      [...READ, ...DELETE],
 } as const;
 
 /** One S3 object action of the sets in {@link S3Actions}. */
@@ -36,7 +36,7 @@ export type S3Action = typeof READ[number] | typeof WRITE[number] | typeof DELET
 export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions: readonly S3Action[], keyPattern: string): Grant {
   const grant = Grant.addToPrincipal({
     grantee,
-    actions: [...actions],
+    actions:      [...actions],
     resourceArns: [bucket.arnForObjects(keyPattern)],
   });
 
@@ -75,9 +75,9 @@ export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions
 export function grantListBucket(grantee: IGrantable, bucket: IBucket, prefixPattern: string): Grant {
   return Grant.addToPrincipal({
     grantee,
-    actions: ['s3:ListBucket'],
+    actions:      ['s3:ListBucket'],
     resourceArns: [bucket.bucketArn],
-    conditions: {
+    conditions:   {
       StringLike: {
         's3:prefix': prefixPattern,
       },

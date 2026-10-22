@@ -15,24 +15,24 @@
  * `/`. `region` and `account` are empty strings for services whose ARNs omit them (S3, IAM).
  */
 export interface ParsedArn {
-  readonly partition: string;
-  readonly service: string;
-  readonly region: string;
-  readonly account: string;
-  readonly resource: string;
+  readonly partition:    string;
+  readonly service:      string;
+  readonly region:       string;
+  readonly account:      string;
+  readonly resource:     string;
   readonly resourceType: string | undefined;
-  readonly resourceId: string;
+  readonly resourceId:   string;
   readonly resourceName: string;
-  readonly qualifier: string | undefined;
+  readonly qualifier:    string | undefined;
 }
 
 /** The parts an ARN is written from; `resource` is the whole resource part, such as `execution:name:id`. */
 export interface ArnParts {
   readonly partition: string;
-  readonly service: string;
-  readonly region: string;
-  readonly account: string;
-  readonly resource: string;
+  readonly service:   string;
+  readonly region:    string;
+  readonly account:   string;
+  readonly resource:  string;
 }
 
 /** The breakdown of an ARN's resource part: the fields of `ParsedArn` that depend on its separator form. */

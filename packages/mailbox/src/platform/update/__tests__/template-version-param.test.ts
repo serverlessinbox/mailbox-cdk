@@ -8,7 +8,7 @@ import { TemplateVersionParam }          from '../template-version-param';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -34,12 +34,12 @@ describe('TemplateVersionParam', () => {
     const paramId  = stack.getLogicalId(sut.parameter.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 'ssm:GetParameter',
-            Effect: 'Allow',
+            Action:   'ssm:GetParameter',
+            Effect:   'Allow',
             Resource: {
               'Fn::Join': [
                 '',

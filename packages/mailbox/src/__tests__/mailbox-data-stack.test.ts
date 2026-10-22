@@ -35,7 +35,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: all taggable resources have correct root-stack tag', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -68,7 +68,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: declares a mandatory rootStackId parameter and tags its tables and buckets with it', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -96,7 +96,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -153,7 +153,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: Template.fromStack succeeds with sane resource counts', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -172,7 +172,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: S3 buckets exist in template', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -197,7 +197,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: template has expected parameter schema', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -220,7 +220,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: S3 buckets have proper configuration', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -261,7 +261,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: DynamoDB tables are retained on delete/update (not accidentally destroyable)', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -297,7 +297,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data deployer worker: DynamoDB/S3 write actions are scoped to the deterministic resource-name pattern, never Resource "*"', () => {
       const app       = new App();
       const testStack = new cdk.Stack(app, 'TestDataDeployerStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -306,17 +306,17 @@ describe('MailboxDataStack Template Synthesis', () => {
       };
       const artifactResolver                      = new PinnedArtifactResolver({
         packages,
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: testStack.region,
       });
 
       new MailboxDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        stack: testStack,
-        dataStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*',
-        dataStackName: 'test-root-data',
+        stack:             testStack,
+        dataStackArn:      'arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*',
+        dataStackName:     'test-root-data',
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        nameBase: 'test-root-data',
+        nameBase:          'test-root-data',
       });
 
       const template  = Template.fromStack(testStack);
@@ -362,7 +362,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack (non-dev): all five data tables have PITR enabled', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -397,7 +397,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: DeleteUploadedBlobs rule uses prefix filter for uploads/', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -441,7 +441,7 @@ describe('MailboxDataStack Template Synthesis', () => {
     it('data stack: incoming-emails rule still uses prefix filter', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 

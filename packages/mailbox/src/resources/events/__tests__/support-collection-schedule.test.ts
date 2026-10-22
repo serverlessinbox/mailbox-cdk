@@ -21,9 +21,9 @@ describe('SupportCollectionSchedule', () => {
     template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'cron(0 * * * ? *)',
-      Description: 'Hourly trigger for support role assumption collector and expiry enforcement',
-      State: 'ENABLED',
-      Targets: [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
+      Description:        'Hourly trigger for support role assumption collector and expiry enforcement',
+      State:              'ENABLED',
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
     });
   });
 

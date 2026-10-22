@@ -27,9 +27,9 @@ type CacheBehaviorsOf = Pick<DistributionConfig, 'DefaultCacheBehavior' | 'Cache
 
 /** The CloudFront distribution that uses a function, with the configuration and ETag an update must send back. */
 interface DistributionOfFunction {
-  readonly id: string;
+  readonly id:     string;
   readonly config: DistributionConfig;
-  readonly etag: string;
+  readonly etag:   string;
 }
 
 /**
@@ -100,8 +100,8 @@ export class EdgeLambdaUpdater {
         edgeLambdaArn: target.arn,
         newVersionArn,
         distributionId: distribution.id,
-        oldVersion: target.deployedVersion,
-        newVersion: stale.version,
+        oldVersion:     target.deployedVersion,
+        newVersion:     stale.version,
       });
       return true;
     } catch (thrown) {
@@ -112,10 +112,10 @@ export class EdgeLambdaUpdater {
 
   private async deployNewCode(target: LambdaTarget, stale: StaleTarget, location: ArtifactLocation): Promise<void> {
     this.logger.info('updating edge lambda code', {
-      edgeLambdaArn: target.arn,
+      edgeLambdaArn:  target.arn,
       artifactBucket: location.bucket,
-      artifactKey: location.key,
-      newVersion: stale.version,
+      artifactKey:    location.key,
+      newVersion:     stale.version,
     });
 
     await this.updateCodeRetryingConflicts(target, location);
@@ -146,7 +146,7 @@ export class EdgeLambdaUpdater {
       edgeLambdaArn: target.arn,
       attempt,
       nextRetryDelayMs: delayMs,
-      error: caught.message,
+      error:            caught.message,
     });
     await this.sleep(delayMs);
   }
@@ -231,9 +231,9 @@ export class EdgeLambdaUpdater {
 
     await this.cloudFront.send(
       new UpdateDistributionCommand({
-        Id: distribution.id,
+        Id:                 distribution.id,
         DistributionConfig: distribution.config,
-        IfMatch: distribution.etag,
+        IfMatch:            distribution.etag,
       }),
     );
   }
@@ -257,7 +257,7 @@ export class EdgeLambdaUpdater {
   private recordFailedUpdate(target: LambdaTarget, thrown: unknown): void {
     this.logger.error('failed to update edge lambda', {
       edgeLambdaArn: target.arn,
-      error: new CaughtError(thrown).message,
+      error:         new CaughtError(thrown).message,
     });
   }
 }

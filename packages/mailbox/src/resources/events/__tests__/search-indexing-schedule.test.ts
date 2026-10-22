@@ -23,9 +23,9 @@ describe('SearchIndexingSchedule', () => {
     template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'rate(6 hours)',
-      Description: 'Trigger Tantivy indexing every 6 hours',
-      State: 'ENABLED',
-      Targets: [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
+      Description:        'Trigger Tantivy indexing every 6 hours',
+      State:              'ENABLED',
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
     });
   });
 

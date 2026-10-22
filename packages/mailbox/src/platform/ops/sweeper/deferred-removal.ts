@@ -40,10 +40,10 @@ export class DeferredRemoval extends Construct {
     }
 
     const cr = new cdk.CustomResource(this, 'resource', {
-      serviceToken: props.sweeperStarter.functionArn,
+      serviceToken:   props.sweeperStarter.functionArn,
       serviceTimeout: DeferredRemoval.serviceTimeout,
-      resourceType: 'Custom::DeferredRemoval',
-      properties: { ...properties },
+      resourceType:   'Custom::DeferredRemoval',
+      properties:     { ...properties },
     });
 
     // Depends on everything in the starter's construct, not only the function the service token resolves to,

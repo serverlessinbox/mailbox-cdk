@@ -24,7 +24,7 @@ describe('StackFailureDetectorRemoval', () => {
   const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null: { [idKey]: 'true' },
+    Null:         { [idKey]: 'true' },
   };
   const anyRule              = {
     'Fn::Join': ['', ['arn:aws:events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*']],
@@ -42,8 +42,8 @@ describe('StackFailureDetectorRemoval', () => {
     const roleArn = stack.resolve(role.roleArn);
     expect(statements).toEqual([
       {
-        Action: ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
-        Effect: 'Allow',
+        Action:   ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
+        Effect:   'Allow',
         Resource: anyRule,
       },
       { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: ownedById },
@@ -61,10 +61,10 @@ describe('StackFailureDetectorRemoval', () => {
     const { removal, stackFailedEvent, role } = newDetectorRemoval(stack);
 
     expect(stack.resolve(removal.crProperties())).toEqual({
-      ruleArn: stack.resolve(stackFailedEvent.ruleArn),
-      ruleTargetId: 'Target0',
-      detectorFnArn: 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
-      detectorRoleArn: stack.resolve(role.roleArn),
+      ruleArn:                stack.resolve(stackFailedEvent.ruleArn),
+      ruleTargetId:           'Target0',
+      detectorFnArn:          'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
+      detectorRoleArn:        stack.resolve(role.roleArn),
       detectorRolePolicyName: 'stack-failure-detector-policy',
     });
   });

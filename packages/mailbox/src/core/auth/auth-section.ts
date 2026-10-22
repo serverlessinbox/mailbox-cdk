@@ -22,18 +22,18 @@ import type { IMailboxAuthProvider, OAuthClientsConfig } from './types';
 
 /** What {@link AuthSection} uses of the data section. */
 export interface IAuthDataInputs {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly changelogTable: IDataTable;
+  readonly configTable:      IDataTable;
+  readonly itemTable:        IDataTable;
+  readonly changelogTable:   IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
-  readonly blobStore: IDataBlobStore;
+  readonly blobStore:        IDataBlobStore;
   /** The domain name of the hosted zone, a deploy-time token. */
   readonly derivedDomainName: string;
 }
 
 /** What {@link AuthSection} uses of the email section. */
 export interface IAuthEmailInputs {
-  readonly submissionQueue: IEmailSendingQueue;
+  readonly submissionQueue:  IEmailSendingQueue;
   readonly sesConfigSetName: string;
 }
 
@@ -59,19 +59,19 @@ export interface IAuthBootstrapEdgeInputs {
 /** Props of {@link AuthSection}: what the auth key store and the identity provisioner are built from. */
 export interface AuthSectionProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
-  readonly data: IAuthDataInputs;
-  readonly email: IAuthEmailInputs;
-  readonly vendorLink: VendorLink;
+  readonly authProvider:     IMailboxAuthProvider;
+  readonly data:             IAuthDataInputs;
+  readonly email:            IAuthEmailInputs;
+  readonly vendorLink:       VendorLink;
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
   readonly adminUiUrl?: string;
 }
 
 /** Props of {@link AuthSection.addBootstrap}: the values that exist only after the UIs. */
 export interface AuthBootstrapProps {
-  readonly email: IAuthBootstrapEmailInputs;
-  readonly ui: IAuthBootstrapUiInputs;
-  readonly edge: IAuthBootstrapEdgeInputs;
+  readonly email:             IAuthBootstrapEmailInputs;
+  readonly ui:                IAuthBootstrapUiInputs;
+  readonly edge:              IAuthBootstrapEdgeInputs;
   readonly sesReceivingMode?: SesReceivingMode;
 }
 
@@ -96,24 +96,24 @@ export class AuthSection extends Construct {
     this.oauthClientsProvisioned      = this.oauthClientsProvisionedGroup;
 
     const authKeyStore = new AuthKeyStore(this, 'auth-key-store', {
-      issuers: [props.authProvider.issuer],
+      issuers:          [props.authProvider.issuer],
       artifactResolver: props.artifactResolver,
     });
 
     this.authKeyStoreTable = authKeyStore.authKeyStoreTable;
 
     this.identityProvisioner = new IdentityProvisionerLambda(this, 'identity-provisioner', {
-      configTable: props.data.configTable,
-      itemTable: props.data.itemTable,
-      changelogTable: props.data.changelogTable,
-      auditEventsQueue: props.data.auditEventsQueue,
-      artifactResolver: props.artifactResolver,
-      adminUIURL: props.adminUiUrl,
-      blobStore: props.data.blobStore,
+      configTable:          props.data.configTable,
+      itemTable:            props.data.itemTable,
+      changelogTable:       props.data.changelogTable,
+      auditEventsQueue:     props.data.auditEventsQueue,
+      artifactResolver:     props.artifactResolver,
+      adminUIURL:           props.adminUiUrl,
+      blobStore:            props.data.blobStore,
       emailSubmissionQueue: props.email.submissionQueue,
-      sesConfigSetName: props.email.sesConfigSetName,
-      systemSenderAddress: `noreply@${props.data.derivedDomainName}`,
-      vendorAccountIds: props.vendorLink.vendorAccountIds,
+      sesConfigSetName:     props.email.sesConfigSetName,
+      systemSenderAddress:  `noreply@${props.data.derivedDomainName}`,
+      vendorAccountIds:     props.vendorLink.vendorAccountIds,
     });
   }
 
@@ -126,31 +126,31 @@ export class AuthSection extends Construct {
       ?? undefined;
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
-      domain: this.props.data.derivedDomainName,
-      oidcIssuer: authProvider.issuer,
-      configTable: this.props.data.configTable,
+      domain:            this.props.data.derivedDomainName,
+      oidcIssuer:        authProvider.issuer,
+      configTable:       this.props.data.configTable,
       authKeyStoreTable: this.authKeyStoreTable,
-      artifactResolver: this.props.artifactResolver,
-      sesRuleSet: props.email.sesRuleSet,
-      sesReceivingMode: props.sesReceivingMode,
-      sesSendEnabled: true,
-      hostedZone: props.edge.hostedZone,
-      vendorLink: this.props.vendorLink,
+      artifactResolver:  this.props.artifactResolver,
+      sesRuleSet:        props.email.sesRuleSet,
+      sesReceivingMode:  props.sesReceivingMode,
+      sesSendEnabled:    true,
+      hostedZone:        props.edge.hostedZone,
+      vendorLink:        this.props.vendorLink,
 
       oidcProvider: {
-        tokenEndpoint: authProvider.tokenEndpoint,
+        tokenEndpoint:         authProvider.tokenEndpoint,
         authorizationEndpoint: authProvider.authorizationEndpoint,
-        authMethod: authProvider.authMethod,
-        usePkce: authProvider.usePkce,
+        authMethod:            authProvider.authMethod,
+        usePkce:               authProvider.usePkce,
       },
       authPolicies: {
         adminApi: {
-          audiences: authProvider.policies.adminApi.audiences,
+          audiences:          authProvider.policies.adminApi.audiences,
           requireAnyOfGroups: adminRequiredGroups,
-          requireAllScopes: authProvider.policies.adminApi.requireAllScopes,
+          requireAllScopes:   authProvider.policies.adminApi.requireAllScopes,
         },
-        jmapApi: {
-          audiences: authProvider.policies.jmapApi.audiences,
+        jmapApi:  {
+          audiences:        authProvider.policies.jmapApi.audiences,
           requireAllScopes: authProvider.policies.jmapApi.requireAllScopes,
         },
       },
@@ -165,22 +165,22 @@ export class AuthSection extends Construct {
 
     return (adminUi || webmailUi)
       ? {
-        adminUi: adminUi
+        adminUi:   adminUi
           ? {
-            flow: 'authorization_code',
-            clientId: adminUi.oauthClient.clientId,
+            flow:         'authorization_code',
+            clientId:     adminUi.oauthClient.clientId,
             clientSecret: adminUi.oauthClient.clientSecret,
-            scopes: ['openid', 'email', 'profile', ...adminUi.oauthClient.requestScopeList],
-            redirectUri: adminUi.oauthRedirectUri,
+            scopes:       ['openid', 'email', 'profile', ...adminUi.oauthClient.requestScopeList],
+            redirectUri:  adminUi.oauthRedirectUri,
           }
           : undefined,
         webmailUi: webmailUi
           ? {
-            flow: 'authorization_code',
-            clientId: webmailUi.oauthClient.clientId,
+            flow:         'authorization_code',
+            clientId:     webmailUi.oauthClient.clientId,
             clientSecret: webmailUi.oauthClient.clientSecret,
-            scopes: ['openid', 'email', 'profile', ...webmailUi.oauthClient.requestScopeList],
-            redirectUri: webmailUi.oauthRedirectUri,
+            scopes:       ['openid', 'email', 'profile', ...webmailUi.oauthClient.requestScopeList],
+            redirectUri:  webmailUi.oauthRedirectUri,
           }
           : undefined,
       }

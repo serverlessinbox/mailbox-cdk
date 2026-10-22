@@ -19,7 +19,7 @@ const KID    = 'kid-1';
 
 interface SigningKey {
   readonly privateKey: crypto.KeyObject;
-  readonly jwk: crypto.JsonWebKey;
+  readonly jwk:        crypto.JsonWebKey;
 }
 
 function rsaSigningKey(): SigningKey {
@@ -42,10 +42,10 @@ const SIGNATURE_DIGEST: Record<string, string> = {
 };
 
 interface JwtOptions {
-  readonly alg?: string;
+  readonly alg?:      string;
   readonly signWith?: SigningKey;
-  readonly header?: Record<string, unknown>;
-  readonly payload?: Record<string, unknown>;
+  readonly header?:   Record<string, unknown>;
+  readonly payload?:  Record<string, unknown>;
 }
 
 function nowSeconds(): number {
@@ -300,7 +300,7 @@ describe('JwtVerifier', () => {
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(1);
       expect(dynamodb.commandCalls(GetItemCommand)[0].args[0].input).toEqual({
         TableName: AUTH_KEY_STORE_TABLE,
-        Key: { pk: { S: 'jwks' }, sk: { S: ISSUER } },
+        Key:       { pk: { S: 'jwks' }, sk: { S: ISSUER } },
       });
     });
 

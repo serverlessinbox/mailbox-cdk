@@ -22,10 +22,10 @@ export interface IMailboxDataResolver {
 /** Props of {@link DataSection}. */
 export interface DataSectionProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly deployerType: ServerlessInboxDeployerType;
-  readonly stackHelpers: IMailboxDataResolver;
-  readonly hostedZoneId?: string;
-  readonly queueProps?: Partial<BaseQueueProps>;
+  readonly deployerType:     ServerlessInboxDeployerType;
+  readonly stackHelpers:     IMailboxDataResolver;
+  readonly hostedZoneId?:    string;
+  readonly queueProps?:      Partial<BaseQueueProps>;
 }
 
 /** The retained data resources, the audit writer, and the stack names derived from the hosted zone. */
@@ -73,8 +73,8 @@ export class DataSection extends Construct {
     // an `IDataTable` grant interface; no raw `ITable` reaches this scope.
     const dataRef = new MailboxDataDeployer(this, 'data-deployer', {
       artifactResolver: props.artifactResolver,
-      nameBase: this.nameBase,
-      deployerType: props.deployerType,
+      nameBase:         this.nameBase,
+      deployerType:     props.deployerType,
     });
 
     this.blobStoreBucket   = dataRef.blobStoreBucket;
@@ -86,9 +86,9 @@ export class DataSection extends Construct {
     this.mailFeedbackTable = dataRef.mailFeedbackTable;
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
-      auditLogTable: this.auditLogTable,
+      auditLogTable:    this.auditLogTable,
       artifactResolver: props.artifactResolver,
-      queueProps: props.queueProps,
+      queueProps:       props.queueProps,
     });
 
     this.auditEventsQueue = auditWriting.auditEventsQueue;

@@ -37,7 +37,7 @@ const { config: workerConfig, error: workerConfigError }   = env.tryLoad(loadWor
 const sweepTargetPlanner = new SweepTargetPlanner();
 const STARTER_RESPONSE   = {
   PhysicalResourceId: 'mailbox-deferred-removal',
-  Data: {},
+  Data:               {},
 };
 
 /**

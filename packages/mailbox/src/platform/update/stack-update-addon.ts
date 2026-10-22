@@ -81,9 +81,9 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
     this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn,
-      configTable: props.configTable,
-      artifactBucketBase: artifactLocation.bucketBase,
-      artifactResolver: props.artifactResolver,
+      configTable:              props.configTable,
+      artifactBucketBase:       artifactLocation.bucketBase,
+      artifactResolver:         props.artifactResolver,
       templateVersionParamName: templateVersionParam.parameterName,
       pointerBucket,
       pointerKey,
@@ -96,8 +96,8 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
-      path: '/stack-update/{proxy+}',
-      methods: [HttpMethod.POST],
+      path:        '/stack-update/{proxy+}',
+      methods:     [HttpMethod.POST],
       integration: new HttpLambdaIntegration('stack-update', this.lambdaConstruct),
       authorizer,
     });
@@ -158,12 +158,12 @@ export class StackUpdateAddonProvider implements IAdminApiAddonProvider {
   createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new StackUpdateAddon(scope, 'stack-update-addon', {
-        configTable: ctx.configTable,
+        configTable:      ctx.configTable,
         auditEventsQueue: ctx.auditEventsQueue,
         artifactResolver: this.props.artifactResolver,
-        templateName: this.props.templateName,
-        templateVersion: this.props.templateVersion,
-        distTag: this.props.distTag,
+        templateName:     this.props.templateName,
+        templateVersion:  this.props.templateVersion,
+        distTag:          this.props.distTag,
       }),
     ];
   }

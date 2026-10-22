@@ -34,10 +34,10 @@ jest.mock('https', () => ({
 }));
 
 const isCfnResponseBody = t.isPartial({
-  Status: t.isString(),
-  Reason: t.isOptional(t.isString()),
+  Status:             t.isString(),
+  Reason:             t.isOptional(t.isString()),
   PhysicalResourceId: t.isOptional(t.isString()),
-  Data: t.isOptional(t.isRecord(t.isString())),
+  Data:               t.isOptional(t.isRecord(t.isString())),
 });
 
 /** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
@@ -45,12 +45,12 @@ type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
-  s3: AwsClientStub<S3Sdk.S3Client>;
-  cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
-  cloudFront: AwsClientStub<CloudFrontSdk.CloudFrontClient>;
-  s3Sdk: typeof S3Sdk;
+  s3:                AwsClientStub<S3Sdk.S3Client>;
+  cloudFormation:    AwsClientStub<CloudFormationSdk.CloudFormationClient>;
+  cloudFront:        AwsClientStub<CloudFrontSdk.CloudFrontClient>;
+  s3Sdk:             typeof S3Sdk;
   cloudFormationSdk: typeof CloudFormationSdk;
-  cloudFrontSdk: typeof CloudFrontSdk;
+  cloudFrontSdk:     typeof CloudFrontSdk;
 }
 
 const GOOD_ENVIRONMENT = { SERVICE_NAME: 'content-deployer' };
@@ -88,9 +88,9 @@ describe('content-deployer handler', () => {
     const cloudFormationSdk = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
     const cloudFrontSdk     = require('@aws-sdk/client-cloudfront') as typeof CloudFrontSdk;
     const fakes: Fakes      = {
-      s3: mockClient(s3Sdk.S3Client),
+      s3:             mockClient(s3Sdk.S3Client),
       cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
-      cloudFront: mockClient(cloudFrontSdk.CloudFrontClient),
+      cloudFront:     mockClient(cloudFrontSdk.CloudFrontClient),
       s3Sdk,
       cloudFormationSdk,
       cloudFrontSdk,
@@ -168,7 +168,7 @@ describe('content-deployer handler', () => {
 
     expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
       requestType: 'Create',
-      service: 'content-deployer',
+      service:     'content-deployer',
     });
   });
 
@@ -189,7 +189,7 @@ describe('content-deployer handler', () => {
     expect(response.Reason).toContain('AccessDenied');
     expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
       requestType: 'Create',
-      service: 'content-deployer',
+      service:     'content-deployer',
     });
   });
 

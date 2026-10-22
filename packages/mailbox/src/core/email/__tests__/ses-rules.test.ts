@@ -25,7 +25,7 @@ describe('SesRules', () => {
 
   beforeEach(() => {
     stack     = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     blobStore = new Bucket(stack, 'blob-store');
@@ -34,8 +34,8 @@ describe('SesRules', () => {
       delivery: {
         blobStore,
         artifactResolver: new PinnedArtifactResolver({
-          packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-          location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+          packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+          location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
           deploymentRegion: stack.region,
         }),
       },

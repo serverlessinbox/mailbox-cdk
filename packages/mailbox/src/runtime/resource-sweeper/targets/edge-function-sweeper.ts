@@ -67,7 +67,7 @@ export class EdgeFunctionSweeper implements TargetSweeper<EdgeFunctionRemovalInp
 
     // Any other error is retried, because it may be transient, e.g. CloudFront replicas of the function still draining.
     this.logger.warn('Lambda function deletion error (will retry)', {
-      errorName: error.name,
+      errorName:    error.name,
       errorMessage: error.message,
     });
     return this.results.retry(error.describe());

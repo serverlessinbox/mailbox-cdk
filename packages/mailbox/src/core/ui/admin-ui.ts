@@ -84,29 +84,29 @@ export class AdminUi extends MailboxUi {
     } : undefined;
 
     super(scope, id, {
-      label: 'Admin UI',
+      label:                    'Admin UI',
       tokenExchangeServiceName: 'idp-token-exchange-admin-ui',
-      tokenExchangePipeline: 'admin',
-      domainName: props.domainName,
-      certificate: props.certificate,
-      configTable: props.configTable,
-      auditEventsQueue: props.auditEventsQueue,
-      authPolicyName: AUTH_POLICY_ADMIN_API,
-      oauthClientName: OAUTH_CLIENT_ADMIN_UI,
-      uiBundle: {
+      tokenExchangePipeline:    'admin',
+      domainName:               props.domainName,
+      certificate:              props.certificate,
+      configTable:              props.configTable,
+      auditEventsQueue:         props.auditEventsQueue,
+      authPolicyName:           AUTH_POLICY_ADMIN_API,
+      oauthClientName:          OAUTH_CLIENT_ADMIN_UI,
+      uiBundle:                 {
         packageName: 'mailbox-admin-ui',
-        objectPath: 'admin-ui.zip',
+        objectPath:  'admin-ui.zip',
       },
-      uiConfig: staticUiConfig,
-      artifactResolver: props.artifactResolver,
+      uiConfig:                 staticUiConfig,
+      artifactResolver:         props.artifactResolver,
     });
     ComponentDescription.describe(this, 'Admin web console — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');
 
     const uiHost     = this.distributionDomainName;
     this.oauthClient = props.authProvider.provisionAdminApiClient({
-      name: 'admin-ui',
+      name:         'admin-ui',
       callbackUrls: [`https://${uiHost}/auth/callback`],
-      logoutUrls: [`https://${uiHost}/`],
+      logoutUrls:   [`https://${uiHost}/`],
     });
 
     this.oauthRedirectUri = '/'; // Land on '/' so PortalLanding can route to /welcome (onboarding) vs /home.

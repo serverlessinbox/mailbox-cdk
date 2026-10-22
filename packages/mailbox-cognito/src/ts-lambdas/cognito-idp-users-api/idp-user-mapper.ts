@@ -10,10 +10,10 @@ const UNKNOWN_USERNAME = toUsername('unknown');
 
 /** What an IdP user is built from, however Cognito reported the user. */
 interface IdpUserFields {
-  readonly username: Username;
-  readonly enabled: boolean;
+  readonly username:    Username;
+  readonly enabled:     boolean;
   readonly userStatus?: UserStatusType;
-  readonly createdAt?: Date;
+  readonly createdAt?:  Date;
   readonly modifiedAt?: Date;
   readonly attributes?: AttributeType[];
 }
@@ -26,10 +26,10 @@ export class IdpUserMapper {
   /** A listed user without a username is named `unknown` and one without an enabled flag is disabled. */
   public fromListedUser(user: UserType): IdpUser {
     return this.toIdpUser({
-      username: this.usernameOf(user.Username, UNKNOWN_USERNAME),
-      enabled: user.Enabled ?? false,
+      username:   this.usernameOf(user.Username, UNKNOWN_USERNAME),
+      enabled:    user.Enabled ?? false,
       userStatus: user.UserStatus,
-      createdAt: user.UserCreateDate,
+      createdAt:  user.UserCreateDate,
       modifiedAt: user.UserLastModifiedDate,
       attributes: user.Attributes,
     });
@@ -41,10 +41,10 @@ export class IdpUserMapper {
    */
   public fromFetchedUser(output: FetchedUser, requestedUsername: Username, enabledFallback?: boolean): IdpUser {
     return this.toIdpUser({
-      username: this.usernameOf(output.Username, requestedUsername),
-      enabled: output.Enabled ?? enabledFallback ?? false,
+      username:   this.usernameOf(output.Username, requestedUsername),
+      enabled:    output.Enabled ?? enabledFallback ?? false,
       userStatus: output.UserStatus,
-      createdAt: output.UserCreateDate,
+      createdAt:  output.UserCreateDate,
       modifiedAt: output.UserLastModifiedDate,
       attributes: output.UserAttributes,
     });
@@ -56,10 +56,10 @@ export class IdpUserMapper {
 
   private toIdpUser(fields: IdpUserFields): IdpUser {
     return create(IdpUserSchema, {
-      username: fields.username,
-      enabled: fields.enabled,
+      username:   fields.username,
+      enabled:    fields.enabled,
       userStatus: fields.userStatus,
-      createdAt: fields.createdAt ? timestampFromDate(fields.createdAt) : undefined,
+      createdAt:  fields.createdAt ? timestampFromDate(fields.createdAt) : undefined,
       modifiedAt: fields.modifiedAt ? timestampFromDate(fields.modifiedAt) : undefined,
       attributes: this.attributesToMap(fields.attributes),
     });

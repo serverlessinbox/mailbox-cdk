@@ -37,13 +37,13 @@ const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUD
 const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, accountIds: [ACCOUNT_ID] };
 
 interface DownloadOptions {
-  readonly blob?: string;
+  readonly blob?:      string;
   readonly accountId?: string | undefined;
-  readonly type?: string | undefined;
-  readonly name?: string | undefined;
-  readonly auth?: string | undefined;
-  readonly blobId?: string | undefined;
-  readonly request?: OriginRequestOptions;
+  readonly type?:      string | undefined;
+  readonly name?:      string | undefined;
+  readonly auth?:      string | undefined;
+  readonly blobId?:    string | undefined;
+  readonly request?:   OriginRequestOptions;
 }
 
 function downloadRequest(options: DownloadOptions = {}): CloudFrontRequest {
@@ -51,10 +51,10 @@ function downloadRequest(options: DownloadOptions = {}): CloudFrontRequest {
   return originRequestOf({
     querystring: downloadQuery({
       accountId: has('accountId') ? options.accountId : 'account-1',
-      blobId: has('blobId') ? options.blobId : encodedBlobIdOf(options.blob ?? 'eml:email-1:document.pdf:mac-value'),
-      type: has('type') ? options.type : 'application/pdf',
-      name: has('name') ? options.name : 'test.pdf',
-      auth: has('auth') ? options.auth : 'session-token',
+      blobId:    has('blobId') ? options.blobId : encodedBlobIdOf(options.blob ?? 'eml:email-1:document.pdf:mac-value'),
+      type:      has('type') ? options.type : 'application/pdf',
+      name:      has('name') ? options.name : 'test.pdf',
+      auth:      has('auth') ? options.auth : 'session-token',
     }),
     ...options.request,
   });
@@ -372,9 +372,9 @@ describe('BlobDownloadAuthorizer', () => {
   describe('answerFailure', () => {
     it('answers a rejection with its own status and message', () => {
       expect(authorizer.answerFailure(new BlobRequestRejected(403, 'Access denied: invalid blob'))).toMatchObject({
-        status: '403',
+        status:            '403',
         statusDescription: 'Access denied: invalid blob',
-        body: '{"error":"Access denied: invalid blob"}',
+        body:              '{"error":"Access denied: invalid blob"}',
       });
       expect(consoleError).not.toHaveBeenCalled();
     });

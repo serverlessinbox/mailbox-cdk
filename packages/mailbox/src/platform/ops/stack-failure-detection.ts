@@ -16,7 +16,7 @@ export enum SendStackFailuresMode {
 }
 
 export interface StackFailureDetectionProps {
-  readonly mode: SendStackFailuresMode;
+  readonly mode:             SendStackFailuresMode;
   readonly artifactResolver: IArtifactResolver;
   /** AWS account IDs hosting the vendor license API, resolved by the caller. */
   readonly vendorAccountIds: string[];
@@ -27,9 +27,9 @@ export interface StackFailureDetectionProps {
  * without the others.
  */
 export interface StackFailureDetectorSweepTargets {
-  readonly stackFailedEvent: IStackFailedEvent;
-  readonly detector: lambda.IFunction;
-  readonly role: iam.IRole;
+  readonly stackFailedEvent:       IStackFailedEvent;
+  readonly detector:               lambda.IFunction;
+  readonly role:                   iam.IRole;
   readonly detectorRolePolicyName: string;
 }
 
@@ -57,9 +57,9 @@ export class StackFailureDetection extends Construct {
       vendorAccountIds: props.vendorAccountIds,
     });
     this.sweepTargets = {
-      stackFailedEvent: infra.stackFailedEvent,
-      detector: infra.detector,
-      role: infra.role,
+      stackFailedEvent:       infra.stackFailedEvent,
+      detector:               infra.detector,
+      role:                   infra.role,
       detectorRolePolicyName: infra.detectorRolePolicyName,
     };
 

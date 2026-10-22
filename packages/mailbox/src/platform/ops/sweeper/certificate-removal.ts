@@ -40,10 +40,10 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
 
   public buildChain(worker: IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
     const payload: CertWorkerInput = {
-      removalType: 'cert',
-      certArn: targetField(this.id, 'certArn'),
+      removalType:   'cert',
+      certArn:       targetField(this.id, 'certArn'),
       rootStackName: Stack.of(this).stackName,
-      rootStackId: StackIdentity.guid,
+      rootStackId:   StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'Cert', {
@@ -59,7 +59,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
 
   private grantCertificateInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
+      actions:   ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
       resources: [CertificateRemoval.anyCertificateArn],
     });
   }
@@ -68,7 +68,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
     return rootStackResourceTagConditions({ name: Aws.STACK_NAME, id: StackIdentity.guid }).map(
       (conditions) =>
         new iam.PolicyStatement({
-          actions: ['acm:DeleteCertificate'],
+          actions:   ['acm:DeleteCertificate'],
           resources: [CertificateRemoval.anyCertificateArn],
           conditions,
         }),

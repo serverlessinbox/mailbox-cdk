@@ -5,9 +5,9 @@ type LogData = Record<string, unknown>;
 
 /** One log call: written at once when its level reaches the emit level, otherwise held until a flush. */
 export interface LogEntry {
-  level: LogLevel;
+  level:   LogLevel;
   message: string;
-  data?: LogData;
+  data?:   LogData;
 }
 
 /**

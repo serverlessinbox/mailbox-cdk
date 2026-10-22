@@ -1,7 +1,7 @@
 import { readCustomResourceRequest }               from '../custom-resource-request-reader';
 import type { CustomResourceRequest, RequestType } from '../custom-resource-request';
 
-export const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid';
+export const STACK_ID             = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid';
 export const PHYSICAL_RESOURCE_ID = 'physical-id-from-cloudformation';
 
 /**
@@ -10,9 +10,9 @@ export const PHYSICAL_RESOURCE_ID = 'physical-id-from-cloudformation';
  */
 export function cfnRequest(requestType: RequestType, resourceProperties?: unknown): CustomResourceRequest {
   const fields = {
-    StackId: STACK_ID,
-    RequestId: 'request-123',
-    LogicalResourceId: 'TestResource',
+    StackId:            STACK_ID,
+    RequestId:          'request-123',
+    LogicalResourceId:  'TestResource',
     ResourceProperties: resourceProperties,
   };
   if (requestType === 'Create') {

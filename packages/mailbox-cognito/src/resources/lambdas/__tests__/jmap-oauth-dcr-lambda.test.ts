@@ -25,9 +25,9 @@ const isEnvironment = t.isRecord(t.isString());
 
 describe('JmapOAuthDcrLambda', () => {
   const identityProvisioner: IIdentityProvisioner = {
-    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     functionName: 'identity-provisioner',
-    grantInvoke: jest.fn(),
+    grantInvoke:  jest.fn(),
   };
   let template: Template;
   let lambda: JmapOAuthDcrLambda;
@@ -36,12 +36,12 @@ describe('JmapOAuthDcrLambda', () => {
   beforeEach(() => {
     originalEnvironment    = { ...process.env };
     const stack            = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const artifactResolver = new PinnedArtifactResolver({
-      packages: { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      packages:         { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -68,7 +68,7 @@ describe('JmapOAuthDcrLambda', () => {
 
     expect(env.tryLoad(load)).toMatchObject({
       config: { userPoolId: USER_POOL_ID, identityProvisionerFunctionName: 'identity-provisioner' },
-      error: undefined,
+      error:  undefined,
     });
   });
 

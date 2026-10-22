@@ -5,7 +5,7 @@ import type { Duration }  from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
 export interface ArtifactUpdateScheduleProps {
-  target: IFunction;
+  target:   IFunction;
   interval: Duration;
 }
 
@@ -14,7 +14,7 @@ export class ArtifactUpdateSchedule extends Rule {
   constructor(scope: Construct, id: string, props: ArtifactUpdateScheduleProps) {
     super(scope, id, {
       schedule: Schedule.rate(props.interval),
-      targets: [new targets.LambdaFunction(props.target)],
+      targets:  [new targets.LambdaFunction(props.target)],
     });
   }
 }

@@ -7,13 +7,13 @@ import type { UpdaterTrigger }                       from './updater-trigger';
 /** The response to an HTTP API request. */
 export interface HttpTriggerResponse {
   readonly statusCode: number;
-  readonly body: string;
+  readonly body:       string;
 }
 
 /** The method and path of an HTTP API request; an absent one reads as empty. */
 interface RequestLine {
   readonly method: string;
-  readonly path: string;
+  readonly path:   string;
 }
 
 /**
@@ -63,7 +63,7 @@ export class HttpTrigger implements UpdaterTrigger<HttpTriggerResponse> {
   public answerFailure(thrown: unknown): HttpTriggerResponse {
     const caught = new CaughtError(thrown);
     this.logger.error('Failed to trigger update', {
-      errorName: caught.name,
+      errorName:    caught.name,
       errorMessage: caught.message,
     });
     return HttpTrigger.serverError(`Failed to trigger update: ${caught.message}`);
@@ -92,7 +92,7 @@ export class HttpTrigger implements UpdaterTrigger<HttpTriggerResponse> {
     }
     return {
       method: event.requestContext.http?.method ?? '',
-      path: event.requestContext.http?.path ?? event.rawPath ?? '',
+      path:   event.requestContext.http?.path ?? event.rawPath ?? '',
     };
   }
 
@@ -101,9 +101,9 @@ export class HttpTrigger implements UpdaterTrigger<HttpTriggerResponse> {
     this.logger.debug('dispatching self-invoke');
     await this.deploymentLambda().send(
       new InvokeCommand({
-        FunctionName: this.functionName,
+        FunctionName:   this.functionName,
         InvocationType: 'Event',
-        Payload: JSON.stringify({}),
+        Payload:        JSON.stringify({}),
       }),
     );
     this.logger.debug('self-invoke dispatched');

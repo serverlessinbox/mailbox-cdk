@@ -24,10 +24,10 @@ describe('StackFailedEvent', () => {
     template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
       EventPattern: {
-        source: ['aws.cloudformation'],
+        source:        ['aws.cloudformation'],
         'detail-type': ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [{ Ref: 'AWS::StackId' }],
+        detail:        {
+          'stack-id':       [{ Ref: 'AWS::StackId' }],
           'status-details': {
             status: Match.arrayEquals(['ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED', 'DELETE_FAILED']),
           },

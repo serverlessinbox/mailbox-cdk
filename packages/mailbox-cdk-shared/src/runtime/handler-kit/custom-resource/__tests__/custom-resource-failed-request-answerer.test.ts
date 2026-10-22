@@ -42,7 +42,7 @@ describe('FailedRequestAnswerer', () => {
 
     expect(answer).toEqual({ PhysicalResourceId: PHYSICAL_RESOURCE_ID });
     expect(console.warn).toHaveBeenCalledWith('Suppressing error during stack rollback', {
-      error: 'boom',
+      error:   'boom',
       service: 'test-service',
     });
   });

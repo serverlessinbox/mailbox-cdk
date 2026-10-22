@@ -16,15 +16,15 @@ import { SqsAuditEmitter }               from '../sqs-audit-emitter';
 const QUEUE_URL = toQueueUrl('https://sqs.us-east-1.amazonaws.com/123456789012/audit-events');
 
 const EVENT: AuditEvent = {
-  tenantId: 'tenant-1',
+  tenantId:   'tenant-1',
   entityType: 'idp-users',
-  entityId: 'alice',
+  entityId:   'alice',
   entityName: 'alice@example.com',
-  action: 'IdpUsersService/CreateIdpUser',
-  status: 'success',
-  actor: { actorType: 'user', actorId: 'sub-1', username: 'admin' },
-  changes: [{ op: 'create', path: '/user' }],
-  metadata: { requestId: 'req-1' },
+  action:     'IdpUsersService/CreateIdpUser',
+  status:     'success',
+  actor:      { actorType: 'user', actorId: 'sub-1', username: 'admin' },
+  changes:    [{ op: 'create', path: '/user' }],
+  metadata:   { requestId: 'req-1' },
 };
 
 describe('SqsAuditEmitter', () => {
@@ -52,7 +52,7 @@ describe('SqsAuditEmitter', () => {
 
     expect(sentMessage().body).toMatchObject({
       tenantId: 'unknown',
-      actor: { actorType: 'system', actorId: 'admin-api', username: 'admin-api' },
+      actor:    { actorType: 'system', actorId: 'admin-api', username: 'admin-api' },
     });
   });
 

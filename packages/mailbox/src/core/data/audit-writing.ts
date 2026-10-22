@@ -8,7 +8,7 @@ import { AuditEventsQueue, type IAuditEventsQueue }  from '../../resources/queue
 import type { IDataTable }                           from '../../resources/tables/data-tables';
 
 export interface AuditWritingProps {
-  readonly auditLogTable: IDataTable;
+  readonly auditLogTable:    IDataTable;
   readonly artifactResolver: IArtifactResolver;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */

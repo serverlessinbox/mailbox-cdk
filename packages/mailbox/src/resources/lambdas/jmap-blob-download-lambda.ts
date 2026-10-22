@@ -29,13 +29,13 @@ export interface JmapBlobDownloadLambdaProps {
 export class JmapBlobDownloadLambda extends lambda.Function {
   constructor(scope: Construct, id: string, props: JmapBlobDownloadLambdaProps) {
     super(scope, id, {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromBucket(props.artifactBucket, props.artifact.key, props.artifact.versionId),
-      role: props.role,
-      memorySize: 512,
+      runtime:     lambda.Runtime.NODEJS_24_X,
+      handler:     'index.handler',
+      code:        lambda.Code.fromBucket(props.artifactBucket, props.artifact.key, props.artifact.versionId),
+      role:        props.role,
+      memorySize:  512,
       description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge (${Aws.STACK_NAME})`,
-      logGroup: props.logGroup,
+      logGroup:    props.logGroup,
     });
   }
 }

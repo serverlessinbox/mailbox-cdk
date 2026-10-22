@@ -75,10 +75,10 @@ describe('StackDeployerStarter', () => {
       expect(calls).toHaveLength(1);
       expect(calls[0].args[0].input).toEqual({
         stateMachineArn: STATE_MACHINE_ARN,
-        name: 'request-123',
-        input: JSON.stringify({
+        name:            'request-123',
+        input:           JSON.stringify({
           cfn: replyTarget().cfn,
-          op: { stackName: 'test-data-stack', templateUrl: 'https://example.com/template.json', parameters: { nameBase: 'mail' }, requestType: 'Create' },
+          op:  { stackName: 'test-data-stack', templateUrl: 'https://example.com/template.json', parameters: { nameBase: 'mail' }, requestType: 'Create' },
         }),
       });
       expect(endpoint.answers()).toEqual([]);

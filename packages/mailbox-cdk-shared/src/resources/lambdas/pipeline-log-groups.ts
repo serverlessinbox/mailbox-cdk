@@ -21,12 +21,12 @@ export interface IPipelineLogGroup extends logs.ILogGroup {
 
 /** Log retention, settable per pipeline. */
 const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
-  infra: RetentionDays.ONE_MONTH,
-  'mail-in': RetentionDays.ONE_MONTH,
+  infra:      RetentionDays.ONE_MONTH,
+  'mail-in':  RetentionDays.ONE_MONTH,
   'mail-out': RetentionDays.ONE_MONTH,
-  jmap: RetentionDays.ONE_MONTH,
-  admin: RetentionDays.ONE_MONTH,
-  audit: RetentionDays.ONE_MONTH,
+  jmap:       RetentionDays.ONE_MONTH,
+  admin:      RetentionDays.ONE_MONTH,
+  audit:      RetentionDays.ONE_MONTH,
 };
 
 /**
@@ -35,12 +35,12 @@ const PIPELINE_RETENTION: Record<Pipeline, RetentionDays> = {
  * must survive that failure.
  */
 const PIPELINE_REMOVAL_POLICY: Record<Pipeline, cdk.RemovalPolicy> = {
-  infra: cdk.RemovalPolicy.RETAIN,
-  'mail-in': cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  infra:      cdk.RemovalPolicy.RETAIN,
+  'mail-in':  cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
   'mail-out': cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-  jmap: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-  admin: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-  audit: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  jmap:       cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  admin:      cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+  audit:      cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
 };
 
 /**
@@ -70,8 +70,8 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
     }
 
     return new PipelineLogGroup(shared, childId, {
-      logGroupName: PipelineLogGroup.logGroupNameFor(pipeline),
-      retention: PIPELINE_RETENTION[pipeline],
+      logGroupName:  PipelineLogGroup.logGroupNameFor(pipeline),
+      retention:     PIPELINE_RETENTION[pipeline],
       removalPolicy: PIPELINE_REMOVAL_POLICY[pipeline],
     });
   }
@@ -94,7 +94,7 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
   grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
     return iam.Grant.addToPrincipal({
       grantee,
-      actions: ['logs:FilterLogEvents'],
+      actions:      ['logs:FilterLogEvents'],
       resourceArns: [this.logGroupArn],
     });
   }

@@ -29,21 +29,21 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
   const { stack, artifactResolver } = newDeployerTestStack();
   const section                     = new EdgeSection(stack, 'edge', {
     artifactResolver,
-    deployerType: 'cfn',
+    deployerType:   'cfn',
     productVersion: '1.2.3',
-    data: {
-      configTable: dataTable(stack, 'config-table'),
-      itemTable: dataTable(stack, 'item-table'),
+    data:           {
+      configTable:       dataTable(stack, 'config-table'),
+      itemTable:         dataTable(stack, 'item-table'),
       derivedDomainName: 'example.com',
-      blobStoreBucket: new Bucket(stack, 'blob-store'),
+      blobStoreBucket:   new Bucket(stack, 'blob-store'),
     },
-    auth: { authKeyStoreTable: dataTable(stack, 'auth-key-store-table') },
-    addressing: {
-      domains: new MailboxDomains({ domainName: 'example.com' }),
+    auth:           { authKeyStoreTable: dataTable(stack, 'auth-key-store-table') },
+    addressing:     {
+      domains:    new MailboxDomains({ domainName: 'example.com' }),
       edgePrefix: 'mail',
-      zone: route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
+      zone:       route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
     },
-    hostedZoneId: 'Z0TESTZONE',
+    hostedZoneId:   'Z0TESTZONE',
     ...overrides,
   });
   return { stack, section };
@@ -52,9 +52,9 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
 const BLOB_CDN_PROPS: BlobCdnProps = { ui: { adminUiOrigins: [], webmailUiOrigins: [] }, extraAllowedOrigins: [] };
 
 const DNS_PROPS: EdgeDnsProps = {
-  ui: {},
+  ui:      {},
   blobCdn: { host: 'https://cdn.example.com', distributionDomainName: 'd111111abcdef8.cloudfront.net' },
-  apis: {},
+  apis:    {},
 };
 
 function componentTagsUnder(section: EdgeSection): string[] {

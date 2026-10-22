@@ -11,7 +11,7 @@ type MailboxAddressingProps = Pick<MailboxProps, 'hostedZoneId' | 'subdomainName
 
 /** Which UIs the Mailbox serves; a disabled UI gets no URL. */
 export interface MailboxEnabledUis {
-  readonly adminUi: boolean;
+  readonly adminUi:   boolean;
   readonly webmailUi: boolean;
 }
 
@@ -41,7 +41,7 @@ export class MailboxAddressing {
   ): MailboxAddressing {
     const zone = route53.HostedZone.fromHostedZoneAttributes(scope, 'zone', {
       hostedZoneId: props.hostedZoneId ?? '',
-      zoneName: domainName,
+      zoneName:     domainName,
     });
 
     const subdomainNamespaceCondition = props.subdomainNamespace !== undefined
@@ -54,8 +54,8 @@ export class MailboxAddressing {
 
     const domains = new MailboxDomains({
       domainName,
-      prefix: props.subdomainNamespace,
-      subdomainOverrides: props.overrides?.subdomains,
+      prefix:              props.subdomainNamespace,
+      subdomainOverrides:  props.overrides?.subdomains,
       prefixConditionName: subdomainNamespaceCondition?.logicalId,
     });
 

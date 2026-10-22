@@ -45,12 +45,12 @@ function synthWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}):
   new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
-    edgeStackNamePattern: 'test-stack-edge*',
-    edgeStackArn: EDGE_STACK_ARN,
-    rootStack: 'test-stack',
-    rootStackId: 'test-guid',
-    templateObjectArn: TEMPLATE_OBJECT_ARN,
-    artifactObjectArns: [ARTIFACT_OBJECT_ARN],
+    edgeStackNamePattern:    'test-stack-edge*',
+    edgeStackArn:            EDGE_STACK_ARN,
+    rootStack:               'test-stack',
+    rootStackId:             'test-guid',
+    templateObjectArn:       TEMPLATE_OBJECT_ARN,
+    artifactObjectArns:      [ARTIFACT_OBJECT_ARN],
     jmapBlobDownloadRoleArn: JMAP_BLOB_DOWNLOAD_ROLE_ARN,
     ...props,
   });

@@ -13,10 +13,10 @@ export interface EdgeFunctionRemovalTarget {
  * `ResourceProperties` entry carries them. They are swept together as one removal.
  */
 export interface StackFailureDetectorRemovalTarget {
-  readonly ruleArn: string;
-  readonly ruleTargetId: string;
-  readonly detectorFnArn: string;
-  readonly detectorRoleArn: string;
+  readonly ruleArn:                string;
+  readonly ruleTargetId:           string;
+  readonly detectorFnArn:          string;
+  readonly detectorRoleArn:        string;
   readonly detectorRolePolicyName: string;
 }
 
@@ -25,9 +25,9 @@ export interface StackFailureDetectorRemovalTarget {
  * also the key of its target in the sweep's `toSweep` map.
  */
 export interface RemovalTargets {
-  readonly cert: CertRemovalTarget;
+  readonly cert:      CertRemovalTarget;
   readonly 'edge-fn': EdgeFunctionRemovalTarget;
-  readonly detector: StackFailureDetectorRemovalTarget;
+  readonly detector:  StackFailureDetectorRemovalTarget;
 }
 
 /** The id of a removal type. */
@@ -36,7 +36,7 @@ export type RemovalId = keyof RemovalTargets;
 /** The root stack whose resources are swept, by the name tagged `root-stack` and the guid tagged `root-stack-id`. */
 export interface RootStack {
   readonly rootStackName: string;
-  readonly rootStackId: string;
+  readonly rootStackId:   string;
 }
 
 /** The ACM certificate to sweep, and the root stack it must belong to. */
@@ -80,14 +80,14 @@ export type WorkerInput = CertWorkerInput | EdgeFunctionWorkerInput | StackFailu
  * - FAILED: hard error or root stack mismatch.
  */
 export interface WorkerOutput {
-  status: 'SUCCESS' | 'RETRY' | 'FAILED';
+  status:  'SUCCESS' | 'RETRY' | 'FAILED';
   reason?: string;
 }
 
 /** Outcome of sweeping one removal target. */
 export interface TargetResult {
-  target: string;
-  status: 'done' | 'retry' | 'failed';
+  target:  string;
+  status:  'done' | 'retry' | 'failed';
   reason?: string;
 }
 

@@ -17,7 +17,7 @@ function newStack(): Stack {
 
 /** A name made of a literal head and the deploy-time guid prefix, as the stack renders it. */
 interface RenderedName {
-  readonly head: string;
+  readonly head:       string;
   readonly guidPrefix: unknown;
 }
 

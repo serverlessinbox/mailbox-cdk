@@ -24,7 +24,7 @@ export class StackDeployerStarterRequestHandler {
   async handle(event: unknown, logStreamName: string | undefined): Promise<void> {
     const request = this.events.readCfnRequest(event);
     console.info('stack-deployer-starter dispatch', {
-      requestType: request.RequestType,
+      requestType:       request.RequestType,
       logicalResourceId: request.LogicalResourceId,
     });
     const target = this.responder.targetForRequest(request, logStreamName);

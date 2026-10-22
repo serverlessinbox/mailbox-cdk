@@ -35,7 +35,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -44,7 +44,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 

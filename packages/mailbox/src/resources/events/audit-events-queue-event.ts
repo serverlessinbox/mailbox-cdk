@@ -7,17 +7,17 @@ import type { IAuditEventsQueueConsumer } from '../queues/audit-events-queue';
 
 export interface AuditEventsQueueEventProps {
   target: IFunction;
-  queue: IAuditEventsQueueConsumer;
+  queue:  IAuditEventsQueueConsumer;
 }
 
 /** Invokes the target with batches of up to 100 audit events, reporting partial batch failures. */
 export class AuditEventsQueueEvent extends EventSourceMapping {
   constructor(scope: Construct, id: string, props: AuditEventsQueueEventProps) {
     super(scope, id, {
-      target: props.target,
-      eventSourceArn: props.queue.queueArn,
-      batchSize: 100,
-      maxBatchingWindow: Duration.seconds(30),
+      target:                  props.target,
+      eventSourceArn:          props.queue.queueArn,
+      batchSize:               100,
+      maxBatchingWindow:       Duration.seconds(30),
       reportBatchItemFailures: true,
     });
   }

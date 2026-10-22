@@ -35,7 +35,7 @@ describe('handler cold start with an invalid configuration', () => {
 
     return {
       loadHandler: () => jest.requireActual('../handler'),
-      awsCalls: () => lambdaMock.commandCalls(InvokeCommand).length + cognitoMock.commandCalls(CreateUserPoolClientCommand).length,
+      awsCalls:    () => lambdaMock.commandCalls(InvokeCommand).length + cognitoMock.commandCalls(CreateUserPoolClientCommand).length,
     };
   }
 

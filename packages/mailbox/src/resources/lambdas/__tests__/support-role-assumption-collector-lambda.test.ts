@@ -29,7 +29,7 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
     app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -38,7 +38,7 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -48,15 +48,15 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
 
     new SupportRoleAssumptionCollectorLambda(stack, 'support-role-assumption-collector', {
       supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
-      tierRoleArns: {
-        'support-diag': 'arn:aws:iam::123456789012:role/support-diag',
+      tierRoleArns:      {
+        'support-diag':        'arn:aws:iam::123456789012:role/support-diag',
         'support-config-read': 'arn:aws:iam::123456789012:role/support-config-read',
       },
       configTable,
       artifactResolver,
-      supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+      supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
       supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-      supportTierTagKeys: getSupportTierTagKeys(),
+      supportTierTagKeys:      getSupportTierTagKeys(),
     });
   });
 
@@ -65,7 +65,7 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectLike({
-          SUPPORT_DIAG_TAG_KEY: SUPPORT_DIAG_TAG_KEY,
+          SUPPORT_DIAG_TAG_KEY:        SUPPORT_DIAG_TAG_KEY,
           SUPPORT_CONFIG_READ_TAG_KEY: SUPPORT_CONFIG_READ_TAG_KEY,
         }),
       },
@@ -78,7 +78,7 @@ describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
 
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'cron(0 * * * ? *)',
-      Targets: [{ Arn: { 'Fn::GetAtt': [functionLogicalId, 'Arn'] }, Id: 'Target0' }],
+      Targets:            [{ Arn: { 'Fn::GetAtt': [functionLogicalId, 'Arn'] }, Id: 'Target0' }],
     });
   });
 });

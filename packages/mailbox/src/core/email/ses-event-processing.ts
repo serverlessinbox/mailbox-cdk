@@ -13,13 +13,13 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../
 
 /** Props of {@link SESEventProcessing}. */
 export interface SESEventProcessingProps {
-  readonly itemTable: IDataTable;
-  readonly changelogTable: IDataTable;
+  readonly itemTable:         IDataTable;
+  readonly changelogTable:    IDataTable;
   readonly mailFeedbackTable: IDataTable;
-  readonly configTable: IDataTable;
-  readonly blobStore: IDataBlobStore;
-  readonly auditEventsQueue: IAuditEventsQueue;
-  readonly artifactResolver: IArtifactResolver;
+  readonly configTable:       IDataTable;
+  readonly blobStore:         IDataBlobStore;
+  readonly auditEventsQueue:  IAuditEventsQueue;
+  readonly artifactResolver:  IArtifactResolver;
 
   /** Optional default props applied to all queues created by this construct (e.g. encryption). */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -48,7 +48,7 @@ export class SESEventProcessing extends Construct {
     // SNS cannot be granted use of the AWS-managed SQS key (alias/aws/sqs), so a queue encrypted
     // with it never receives the topic's messages.
     const sesEventQueue = new SesEventQueue(this, 'ses-event-queue', {
-      topic: sesEventTopic,
+      topic:      sesEventTopic,
       queueProps: props.queueProps,
     });
     this.sesEventQueue  = sesEventQueue;
@@ -60,11 +60,11 @@ export class SESEventProcessing extends Construct {
 
     new CfnConfigurationSetEventDestination(this, 'ses-notification-destination', {
       configurationSetName: this.sesConfigSetName,
-      eventDestination: {
-        snsDestination: {
+      eventDestination:     {
+        snsDestination:     {
           topicArn: this.sesEventTopic.topicArn,
         },
-        enabled: true,
+        enabled:            true,
         matchingEventTypes: [
           'bounce',
           'complaint',
@@ -77,12 +77,12 @@ export class SESEventProcessing extends Construct {
     });
 
     this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
+      itemTable:         props.itemTable,
+      changelogTable:    props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
-      configTable: props.configTable,
-      blobStore: props.blobStore,
-      auditEventsQueue: props.auditEventsQueue,
+      configTable:       props.configTable,
+      blobStore:         props.blobStore,
+      auditEventsQueue:  props.auditEventsQueue,
       sesEventQueue,
       artifactResolver: props.artifactResolver,
     });

@@ -29,41 +29,41 @@ import { CloudFormationResource, isResourceOfType } from './iam-test-helpers';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
-  packages: {
-    'mailbox-go': { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+  packages:   {
+    'mailbox-go':         { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
     'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
-    'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
+    'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
     'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
   },
 };
 
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
-    issuer: 'https://example.com/issuer',
-    tokenEndpoint: 'https://example.com/token',
-    authorizationEndpoint: 'https://example.com/authorize',
-    authMethod: 'header',
-    usePkce: false,
-    scopeMap: {
-      'mail.read': [Permission.MAIL_READ],
+    issuer:                  'https://example.com/issuer',
+    tokenEndpoint:           'https://example.com/token',
+    authorizationEndpoint:   'https://example.com/authorize',
+    authMethod:              'header',
+    usePkce:                 false,
+    scopeMap:                {
+      'mail.read':  [Permission.MAIL_READ],
       'mail.write': [Permission.MAIL_WRITE],
     },
-    policies: {
+    policies:                {
       adminApi: { audiences: ['admin-api'] },
-      jmapApi: { audiences: ['jmap-api'] },
+      jmapApi:  { audiences: ['jmap-api'] },
     },
     provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapApiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
-    createAdminApiAddons: () => [],
+    provisionJmapApiClient:  () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
+    createAdminApiAddons:    () => [],
   };
 }
 
 function buildStack(stackId: string): cdk.Stack {
   const app = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
   return new cdk.Stack(app, stackId, {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -109,7 +109,7 @@ describe('Mailbox with a grantable artifact resolver (AutoUpdater)', () => {
     const stack       = buildStack('TestAutoUpdaterGrantable');
     const autoUpdater = new AutoUpdater(stack, 'auto-updater');
     new Mailbox(stack, 'mailbox', {
-      authProvider: createMockAuthProvider(),
+      authProvider:     createMockAuthProvider(),
       artifactResolver: autoUpdater,
     });
 
@@ -153,7 +153,7 @@ describe('Mailbox with a resolver that has no principal (the default pinned reso
 
     expect(() => {
       new Mailbox(stack, 'mailbox', {
-        authProvider: createMockAuthProvider(),
+        authProvider:     createMockAuthProvider(),
         artifactResolver: pinnedResolver,
       });
     }).not.toThrow();

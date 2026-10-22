@@ -37,10 +37,10 @@ describe('TableOverrideResolver', () => {
     const arns = await resolver.resolve(PROPERTIES_WITHOUT_OVERRIDES);
 
     expect(arns).toEqual({
-      configTableArn: INCOMING_ARNS.configTable,
-      itemTableArn: INCOMING_ARNS.itemTable,
-      changelogTableArn: INCOMING_ARNS.changelogTable,
-      auditLogTableArn: INCOMING_ARNS.auditLogTable,
+      configTableArn:       INCOMING_ARNS.configTable,
+      itemTableArn:         INCOMING_ARNS.itemTable,
+      changelogTableArn:    INCOMING_ARNS.changelogTable,
+      auditLogTableArn:     INCOMING_ARNS.auditLogTable,
       mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
     });
     expect(dynamodbMock.calls()).toHaveLength(0);
@@ -65,10 +65,10 @@ describe('TableOverrideResolver', () => {
       const arns = await resolver.resolve(PROPERTIES_WITH_ITEM_OVERRIDE);
 
       expect(arns).toEqual({
-        configTableArn: INCOMING_ARNS.configTable,
-        itemTableArn: OVERRIDE_ITEM_ARN,
-        changelogTableArn: INCOMING_ARNS.changelogTable,
-        auditLogTableArn: INCOMING_ARNS.auditLogTable,
+        configTableArn:       INCOMING_ARNS.configTable,
+        itemTableArn:         OVERRIDE_ITEM_ARN,
+        changelogTableArn:    INCOMING_ARNS.changelogTable,
+        auditLogTableArn:     INCOMING_ARNS.auditLogTable,
         mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
       });
       expect(dynamodbMock.commandCalls(DescribeTableCommand)).toHaveLength(1);

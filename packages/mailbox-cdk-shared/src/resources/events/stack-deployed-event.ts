@@ -9,16 +9,16 @@ export class StackDeployedEvent extends Rule {
   constructor(scope: Construct, id: string, target: IFunction) {
     super(scope, id, {
       eventPattern: {
-        source: ['aws.cloudformation'],
+        source:     ['aws.cloudformation'],
         detailType: ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [Stack.of(scope).stackId],
+        detail:     {
+          'stack-id':       [Stack.of(scope).stackId],
           'status-details': {
             status: ['CREATE_COMPLETE', 'UPDATE_COMPLETE'],
           },
         },
       },
-      targets: [new LambdaFunction(target)],
+      targets:      [new LambdaFunction(target)],
     });
   }
 }

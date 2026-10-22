@@ -8,9 +8,9 @@ import type { IDataTable }                    from '../../resources/tables/data-
 
 /** Inputs of the license refresher Lambda. */
 export interface LicenseRefreshProps {
-  readonly configTable: IDataTable;
+  readonly configTable:      IDataTable;
   readonly artifactResolver: IArtifactResolver;
-  readonly coreDomain: string;
+  readonly coreDomain:       string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];
 }
@@ -30,12 +30,12 @@ export class LicenseRefresh extends Construct {
     const minute       = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
 
     this.licenseFunction = new LicenseRefresherLambda(this, 'handler', {
-      configTable: props.configTable,
+      configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
-      coreDomain: props.coreDomain,
+      coreDomain:       props.coreDomain,
       vendorAccountIds: props.vendorAccountIds,
-      scheduleHour: hour,
-      scheduleMinute: minute,
+      scheduleHour:     hour,
+      scheduleMinute:   minute,
     });
   }
 }

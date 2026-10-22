@@ -18,15 +18,15 @@ export interface ResourceSweeperStarterLambdaProps {
 export class ResourceSweeperStarterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ResourceSweeperStarterLambdaProps) {
     super(scope, id, {
-      lambdaId: 'resource-sweeper',
-      pipeline: 'infra',
-      serviceName: 'resource-sweeper-starter',
+      lambdaId:         'resource-sweeper',
+      pipeline:         'infra',
+      serviceName:      'resource-sweeper-starter',
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.starterHandler',
-      timeout: Duration.minutes(1),
-      memorySize: 256,
-      environment: {
+      packageName:      'mailbox-cdk',
+      handler:          'index.starterHandler',
+      timeout:          Duration.minutes(1),
+      memorySize:       256,
+      environment:      {
         MAILBOX_SWEEPER_STATE_MACHINE_ARN: props.stateMachineArn,
       },
     });
@@ -37,7 +37,7 @@ export class ResourceSweeperStarterLambda extends TypeScriptLambda {
   private grantDescribeOwnStack(): void {
     this.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['cloudformation:DescribeStacks'],
+        actions:   ['cloudformation:DescribeStacks'],
         resources: [Aws.STACK_ID],
       }),
     );

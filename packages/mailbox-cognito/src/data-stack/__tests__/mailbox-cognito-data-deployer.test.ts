@@ -24,10 +24,10 @@ const COGNITO_STACK_NAME     = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] 
 const DEPLOYER_RESOURCE_ID   = expect.stringMatching(/^deployerresource/);
 
 interface SynthesizedDeployer {
-  readonly stack: Stack;
+  readonly stack:            Stack;
   readonly artifactResolver: IArtifactResolver;
-  readonly deployer: MailboxCognitoDataDeployer;
-  readonly template: Template;
+  readonly deployer:         MailboxCognitoDataDeployer;
+  readonly template:         Template;
 }
 
 function synthDeployer(props: Partial<MailboxCognitoDataDeployerProps> = {}): SynthesizedDeployer {
@@ -35,7 +35,7 @@ function synthDeployer(props: Partial<MailboxCognitoDataDeployerProps> = {}): Sy
   const deployer                    = new MailboxCognitoDataDeployer(stack, 'deployer', {
     artifactResolver,
     cognitoDomainPrefix: 'test-prefix',
-    deployerType: 'cdk',
+    deployerType:        'cdk',
     ...props,
   });
   return { stack, artifactResolver, deployer, template: Template.fromStack(stack) };
@@ -47,9 +47,9 @@ describe('MailboxCognitoDataDeployer', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName: COGNITO_STACK_NAME,
-        templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json')),
-        region: { Ref: 'AWS::Region' },
+        stackName:        COGNITO_STACK_NAME,
+        templateUrl:      stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json')),
+        region:           { Ref: 'AWS::Region' },
         preserveOnDelete: true,
       });
     });
@@ -59,7 +59,7 @@ describe('MailboxCognitoDataDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({ rootStackId: STACK_GUID }),
-        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
+        tags:       Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
       });
     });
 
@@ -68,9 +68,9 @@ describe('MailboxCognitoDataDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         tags: {
-          'serverless-inbox:product': 'mailbox',
+          'serverless-inbox:product':    'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
-          'serverless-inbox:stack': COGNITO_STACK_NAME,
+          'serverless-inbox:stack':      COGNITO_STACK_NAME,
         },
       });
     });
@@ -81,10 +81,10 @@ describe('MailboxCognitoDataDeployer', () => {
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: {
           cognitoDomainPrefix: 'test-prefix',
-          mfaMode: 'OPTIONAL',
-          passwordMinLength: '8',
-          rootStack: STACK_NAME_REF,
-          deployerType: 'cdk',
+          mfaMode:             'OPTIONAL',
+          passwordMinLength:   '8',
+          rootStack:           STACK_NAME_REF,
+          deployerType:        'cdk',
         },
       });
     });
@@ -104,7 +104,7 @@ describe('MailboxCognitoDataDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({
-          customDomainName: 'auth.example.com',
+          customDomainName:    'auth.example.com',
           customDomainCertArn: 'arn:aws:acm:us-east-1:111122223333:certificate/abc',
         }),
       });

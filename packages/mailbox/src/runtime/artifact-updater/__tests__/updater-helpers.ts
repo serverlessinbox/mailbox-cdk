@@ -34,39 +34,39 @@ import type { NewUpdateCycle }              from '../triggers/updater-trigger';
 /** The functions of the faked release registry package, which a suite sets up per test. */
 export interface RegistryMocks {
   readonly readReleasePointer: jest.Mock;
-  readonly deriveTrack: jest.Mock;
-  readonly buildArtifactKey: jest.Mock;
+  readonly deriveTrack:        jest.Mock;
+  readonly buildArtifactKey:   jest.Mock;
 }
 
 /** The values of a target in the plain strings tests write; the helpers brand them. */
 export interface TargetValues {
-  readonly arn?: string;
-  readonly packageName?: string;
-  readonly artifactName?: string;
+  readonly arn?:             string;
+  readonly packageName?:     string;
+  readonly artifactName?:    string;
   readonly deployedVersion?: string;
-  readonly bucketName?: string;
+  readonly bucketName?:      string;
 }
 
-export const LAMBDA_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go';
-export const DISTRIBUTION_ARN = 'arn:aws:cloudfront::123456789012:distribution/ABCD1234';
-export const EU_WEST_1 = toRegion('eu-west-1');
-export const US_WEST_2 = toRegion('us-west-2');
+export const LAMBDA_ARN                = 'arn:aws:lambda:us-east-1:123456789012:function:mailbox-go';
+export const DISTRIBUTION_ARN          = 'arn:aws:cloudfront::123456789012:distribution/ABCD1234';
+export const EU_WEST_1                 = toRegion('eu-west-1');
+export const US_WEST_2                 = toRegion('us-west-2');
 export const ARTIFACT_BUCKET_US_EAST_1 = toArtifactBucketName('mailbox-artifacts-us-east-1');
 
 /** The release a target deployed at 1.2.3 is behind on. */
 export const NEWER_VERSION = toArtifactVersion('1.2.4');
 
 export const testConfig: Config = {
-  logLevel: 'error',
-  serviceName: 'artifact-updater',
-  region: EDGE_REGION,
-  functionName: 'artifact-updater-function',
-  project: 'serverlessinbox',
-  distTag: 'latest',
-  granularity: 'major',
+  logLevel:           'error',
+  serviceName:        'artifact-updater',
+  region:             EDGE_REGION,
+  functionName:       'artifact-updater-function',
+  project:            'serverlessinbox',
+  distTag:            'latest',
+  granularity:        'major',
   artifactBucketBase: 'mailbox-artifacts',
-  rootStackTagValue: 'my-stack',
-  rootStackId: 'guid-1',
+  rootStackTagValue:  'my-stack',
+  rootStackId:        'guid-1',
 };
 
 /** The resources of the root stack the updater tests run against. */
@@ -91,26 +91,26 @@ export function fakeUpdaterClients(deploymentRegion: Region = EDGE_REGION): Upda
   return {
     registryS3: new S3Client({ region: deploymentRegion }),
     deployment,
-    edge: deploymentRegion === EDGE_REGION ? deployment : regionClients(EDGE_REGION),
+    edge:       deploymentRegion === EDGE_REGION ? deployment : regionClients(EDGE_REGION),
     cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
   };
 }
 
 export function lambdaTarget(values: TargetValues = {}): LambdaTarget {
   return {
-    arn: toLambdaFunctionArn(values.arn ?? LAMBDA_ARN),
-    packageName: toArtifactPackageName(values.packageName ?? 'mailbox-go'),
-    artifactName: toArtifactName(values.artifactName ?? 'mailbox-go'),
+    arn:             toLambdaFunctionArn(values.arn ?? LAMBDA_ARN),
+    packageName:     toArtifactPackageName(values.packageName ?? 'mailbox-go'),
+    artifactName:    toArtifactName(values.artifactName ?? 'mailbox-go'),
     deployedVersion: toArtifactVersion(values.deployedVersion ?? '1.2.3'),
   };
 }
 
 export function uiTarget(values: TargetValues = {}): UiTarget {
   return {
-    arn: toDistributionArn(values.arn ?? DISTRIBUTION_ARN),
-    bucketName: toContentBucketName(values.bucketName ?? 'ui-content-bucket'),
-    packageName: toArtifactPackageName(values.packageName ?? 'ui-bundle'),
-    artifactName: toArtifactName(values.artifactName ?? 'ui-bundle.zip'),
+    arn:             toDistributionArn(values.arn ?? DISTRIBUTION_ARN),
+    bucketName:      toContentBucketName(values.bucketName ?? 'ui-content-bucket'),
+    packageName:     toArtifactPackageName(values.packageName ?? 'ui-bundle'),
+    artifactName:    toArtifactName(values.artifactName ?? 'ui-bundle.zip'),
     deployedVersion: toArtifactVersion(values.deployedVersion ?? '1.2.3'),
   };
 }
@@ -174,12 +174,12 @@ export function fakeCloudFormationClient(): CloudFormationClient {
  */
 export function deployEndTriggerEvent(requestType: 'Create' | 'Update' | 'Delete'): CloudFormationCustomResourceEvent {
   const base       = {
-    ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
-    ResponseURL: 'https://cloudformation-custom-resource-response-url.example.com/',
-    StackId: 'arn:aws:cloudformation:us-east-1:123456789012:stack/my-stack/guid',
-    RequestId: 'request-id-1',
+    ServiceToken:      'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
+    ResponseURL:       'https://cloudformation-custom-resource-response-url.example.com/',
+    StackId:           'arn:aws:cloudformation:us-east-1:123456789012:stack/my-stack/guid',
+    RequestId:         'request-id-1',
     LogicalResourceId: 'autoupdatertrackedupdatetriggersdeployendcr3655FAB6',
-    ResourceType: 'Custom::DeployEndTrigger',
+    ResourceType:      'Custom::DeployEndTrigger',
   };
   const properties = { ServiceToken: base.ServiceToken, ServiceTimeout: '600', Nonce: '1700000000000' };
 
@@ -191,9 +191,9 @@ export function deployEndTriggerEvent(requestType: 'Create' | 'Update' | 'Delete
   }
   return {
     ...base,
-    RequestType: 'Update',
-    PhysicalResourceId: 'deploy-end-physical-id',
-    ResourceProperties: properties,
+    RequestType:           'Update',
+    PhysicalResourceId:    'deploy-end-physical-id',
+    ResourceProperties:    properties,
     OldResourceProperties: { ...properties, Nonce: '1600000000000' },
   };
 }
@@ -201,23 +201,23 @@ export function deployEndTriggerEvent(requestType: 'Create' | 'Update' | 'Delete
 /** An API Gateway v2 request with every field the gateway sends, for the given method and path. */
 export function httpApiEvent(method: string, path: string): HttpTriggerEvent {
   const event: APIGatewayProxyEventV2 = {
-    version: '2.0',
-    routeKey: `${method} ${path}`,
-    rawPath: path,
-    rawQueryString: '',
-    headers: { 'content-type': 'application/json' },
+    version:         '2.0',
+    routeKey:        `${method} ${path}`,
+    rawPath:         path,
+    rawQueryString:  '',
+    headers:         { 'content-type': 'application/json' },
     isBase64Encoded: false,
-    requestContext: {
-      accountId: '123456789012',
-      apiId: 'api-id',
-      domainName: 'example.com',
+    requestContext:  {
+      accountId:    '123456789012',
+      apiId:        'api-id',
+      domainName:   'example.com',
       domainPrefix: 'example',
-      http: { method, path, protocol: 'HTTP/1.1', sourceIp: '127.0.0.1', userAgent: 'test' },
-      requestId: 'request-id',
-      routeKey: `${method} ${path}`,
-      stage: '$default',
-      time: '26/Jul/2026:14:30:45 +0000',
-      timeEpoch: 1753616445000,
+      http:         { method, path, protocol: 'HTTP/1.1', sourceIp: '127.0.0.1', userAgent: 'test' },
+      requestId:    'request-id',
+      routeKey:     `${method} ${path}`,
+      stage:        '$default',
+      time:         '26/Jul/2026:14:30:45 +0000',
+      timeEpoch:    1753616445000,
     },
   };
   return { ...event, requestContext: { ...event.requestContext, http: { ...event.requestContext.http } } };
@@ -227,17 +227,17 @@ export function httpApiEvent(method: string, path: string): HttpTriggerEvent {
 export function fakeLambdaContext(): Context {
   return {
     callbackWaitsForEmptyEventLoop: false,
-    functionName: 'artifact-updater',
-    functionVersion: '$LATEST',
-    invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
-    memoryLimitInMB: '256',
-    awsRequestId: 'test-request-id',
-    logGroupName: '/aws/lambda/artifact-updater',
-    logStreamName: 'test-log-stream',
-    getRemainingTimeInMillis: () => 300000,
-    done: () => undefined,
-    fail: () => undefined,
-    succeed: () => undefined,
+    functionName:                   'artifact-updater',
+    functionVersion:                '$LATEST',
+    invokedFunctionArn:             'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
+    memoryLimitInMB:                '256',
+    awsRequestId:                   'test-request-id',
+    logGroupName:                   '/aws/lambda/artifact-updater',
+    logStreamName:                  'test-log-stream',
+    getRemainingTimeInMillis:       () => 300000,
+    done:                           () => undefined,
+    fail:                           () => undefined,
+    succeed:                        () => undefined,
   };
 }
 
@@ -245,7 +245,7 @@ export function fakeLambdaContext(): Context {
 export function invokeResponse(payload: string): InvokeCommandOutput {
   return {
     StatusCode: 200,
-    Payload: new TextEncoder().encode(payload) as InvokeCommandOutput['Payload'],
-    $metadata: {},
+    Payload:    new TextEncoder().encode(payload) as InvokeCommandOutput['Payload'],
+    $metadata:  {},
   };
 }

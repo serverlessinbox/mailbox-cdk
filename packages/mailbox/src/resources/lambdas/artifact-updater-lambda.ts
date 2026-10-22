@@ -10,13 +10,13 @@ import type { Granularity }                                                     
 import { ArtifactUpdateSchedule }                                                                          from '../events/artifact-update-schedule';
 
 export interface ArtifactUpdaterLambdaProps {
-  artifactResolver: IArtifactResolver;
-  distTag: string;
-  granularity: Granularity;
-  rootStackTagValue: string;
-  rootStackId: string;
+  artifactResolver:   IArtifactResolver;
+  distTag:            string;
+  granularity:        Granularity;
+  rootStackTagValue:  string;
+  rootStackId:        string;
   artifactBucketBase: string;
-  updateInterval: Duration;
+  updateInterval:     Duration;
   /** The scheduled update exists only while this condition holds; the function itself always exists. */
   isTracking: CfnCondition;
 }
@@ -32,19 +32,19 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
 
   constructor(scope: Construct, id: string, props: ArtifactUpdaterLambdaProps) {
     super(scope, id, {
-      lambdaId: 'artifact-updater',
-      pipeline: 'infra',
+      lambdaId:         'artifact-updater',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      timeout: Duration.minutes(5),
-      memorySize: 256,
-      environment: {
+      packageName:      'mailbox-cdk',
+      timeout:          Duration.minutes(5),
+      memorySize:       256,
+      environment:      {
         ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
-        DIST_TAG: props.distTag,
-        GRANULARITY: props.granularity,
-        PROJECT: ArtifactUpdaterLambda.project,
+        DIST_TAG:             props.distTag,
+        GRANULARITY:          props.granularity,
+        PROJECT:              ArtifactUpdaterLambda.project,
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
-        ROOT_STACK_ID: props.rootStackId,
+        ROOT_STACK_ID:        props.rootStackId,
       },
     });
 
@@ -68,7 +68,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   private grantTagDiscovery(): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['tag:GetResources'],
+        actions:   ['tag:GetResources'],
         resources: ['*'],
       }),
     );
@@ -78,7 +78,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
+          actions:   ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
           resources: [ArtifactUpdaterLambda.anyFunctionArn],
           conditions,
         }),
@@ -95,7 +95,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
+          actions:   ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
           resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
           conditions,
         }),
@@ -108,7 +108,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+          actions:   ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
           resources: [ArtifactUpdaterLambda.anyDistributionArn],
           conditions,
         }),
@@ -123,7 +123,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   private grantArtifactReleaseAccess(artifactBucketBase: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['s3:GetObject'],
+        actions:   ['s3:GetObject'],
         resources: [`arn:aws:s3:::${artifactBucketBase}-*/${ArtifactUpdaterLambda.project}/packages/*/releases/*`],
       }),
     );
@@ -133,7 +133,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   private grantParentStackStatusRead(): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['cloudformation:DescribeStacks'],
+        actions:   ['cloudformation:DescribeStacks'],
         resources: [Aws.STACK_ID],
       }),
     );
@@ -142,7 +142,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
   private grantSelfInvoke(): void {
     this.addPermission('self-invoke', {
       principal: this.grantPrincipal,
-      action: 'lambda:InvokeFunction',
+      action:    'lambda:InvokeFunction',
     });
   }
 
@@ -154,8 +154,8 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: [action],
-          resources: [resourceArn],
+          actions:    [action],
+          resources:  [resourceArn],
           conditions: {
             ...conditions,
             'ForAllValues:StringEquals': {

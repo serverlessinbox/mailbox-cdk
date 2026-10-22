@@ -14,8 +14,8 @@ export class ArtifactUpdaterAddon implements IAdminApiAddon {
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
-      path: '/artifact-updates/{proxy+}',
-      methods: [HttpMethod.POST, HttpMethod.GET],
+      path:        '/artifact-updates/{proxy+}',
+      methods:     [HttpMethod.POST, HttpMethod.GET],
       integration: new HttpLambdaIntegration('artifact-updates', this.updaterFunction),
       authorizer,
     });

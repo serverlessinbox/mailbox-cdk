@@ -10,7 +10,7 @@ const isAccountIdList = t.isArray(t.isString());
  * the tag key that identifies the stack in their policies. They are always supplied together.
  */
 export interface VendorLink {
-  readonly vendorAccountIds: string[];
+  readonly vendorAccountIds:    string[];
   readonly stackIdentityTagKey: string;
 }
 

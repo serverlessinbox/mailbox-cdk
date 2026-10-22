@@ -20,7 +20,7 @@ interface GetAtt {
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -45,7 +45,7 @@ function objectsArnOf(stack: cdk.Stack, bucket: s3.Bucket, keyPattern: string): 
 
 function expectRolePolicy(stack: cdk.Stack, role: iam.Role, statements: unknown): void {
   Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-    Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+    Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
     PolicyDocument: { Statement: statements },
   });
 }
@@ -60,8 +60,8 @@ describe('grantObjectActions', () => {
 
     expectRolePolicy(stack, role, Match.arrayEquals([
       Match.objectEquals({
-        Action: ['s3:GetObject', 's3:DeleteObject'],
-        Effect: 'Allow',
+        Action:   ['s3:GetObject', 's3:DeleteObject'],
+        Effect:   'Allow',
         Resource: objectsArnOf(stack, bucket, 'email/*'),
       }),
     ]));
@@ -77,13 +77,13 @@ describe('grantObjectActions', () => {
 
     expectRolePolicy(stack, role, Match.arrayEquals([
       Match.objectEquals({
-        Action: ['s3:GetObject', 's3:PutObject'],
-        Effect: 'Allow',
+        Action:   ['s3:GetObject', 's3:PutObject'],
+        Effect:   'Allow',
         Resource: objectsArnOf(stack, bucket, 'email/*'),
       }),
       Match.objectEquals({
-        Action: ['kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey'],
-        Effect: 'Allow',
+        Action:   ['kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey'],
+        Effect:   'Allow',
         Resource: arnOf(stack, key),
       }),
     ]));
@@ -99,13 +99,13 @@ describe('grantObjectActions', () => {
 
     expectRolePolicy(stack, role, Match.arrayEquals([
       Match.objectEquals({
-        Action: 's3:GetObject',
-        Effect: 'Allow',
+        Action:   's3:GetObject',
+        Effect:   'Allow',
         Resource: objectsArnOf(stack, bucket, 'email/*'),
       }),
       Match.objectEquals({
-        Action: ['kms:Decrypt', 'kms:DescribeKey'],
-        Effect: 'Allow',
+        Action:   ['kms:Decrypt', 'kms:DescribeKey'],
+        Effect:   'Allow',
         Resource: arnOf(stack, key),
       }),
     ]));
@@ -121,8 +121,8 @@ describe('grantObjectActions', () => {
 
     expectRolePolicy(stack, role, Match.arrayEquals([
       Match.objectEquals({
-        Action: 's3:DeleteObject',
-        Effect: 'Allow',
+        Action:   's3:DeleteObject',
+        Effect:   'Allow',
         Resource: objectsArnOf(stack, bucket, 'email/*'),
       }),
     ]));
@@ -139,10 +139,10 @@ describe('grantListBucket', () => {
 
     expectRolePolicy(stack, role, Match.arrayEquals([
       Match.objectEquals({
-        Action: 's3:ListBucket',
+        Action:    's3:ListBucket',
         Condition: { StringLike: { 's3:prefix': 'email/*' } },
-        Effect: 'Allow',
-        Resource: arnOf(stack, bucket),
+        Effect:    'Allow',
+        Resource:  arnOf(stack, bucket),
       }),
     ]));
   });

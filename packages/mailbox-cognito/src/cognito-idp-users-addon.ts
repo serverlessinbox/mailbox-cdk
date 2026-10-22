@@ -63,19 +63,19 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
 
     const authorization = props.pool.authorizationConfig?.();
     this.lambdaFunction = new CognitoIdpUsersApiLambda(this, 'idp-users', {
-      artifactResolver: props.artifactResolver,
-      auditEventsQueue: props.auditEventsQueue,
+      artifactResolver:    props.artifactResolver,
+      auditEventsQueue:    props.auditEventsQueue,
       identityProvisioner: props.identityProvisioner,
-      pool: props.pool,
-      adminGroups: authorization?.adminGroups,
-      userGroups: authorization?.userGroups,
+      pool:                props.pool,
+      adminGroups:         authorization?.adminGroups,
+      userGroups:          authorization?.userGroups,
     });
   }
 
   public addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
     api.addRoutes({
-      path: `${this.basePath}/{proxy+}`,
-      methods: [HttpMethod.POST],
+      path:        `${this.basePath}/{proxy+}`,
+      methods:     [HttpMethod.POST],
       integration: new HttpLambdaIntegration('cognito-idp-users', this.lambdaFunction),
       authorizer,
     });

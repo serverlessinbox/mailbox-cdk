@@ -24,8 +24,8 @@ const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 const idpUsersAdminApi = new IdpUsersAdminApi(
   new CognitoIdpUsersService(cognitoClient, config.userPoolId, {
     identityProvisioner: new IdentityProvisionerClient(config.identityProvisionerFunctionName, lambdaClient),
-    userMapper: new IdpUserMapper(),
-    adminGroups: config.adminGroups,
+    userMapper:          new IdpUserMapper(),
+    adminGroups:         config.adminGroups,
     logger,
   }),
   new IdpUsersRequestValidator(),

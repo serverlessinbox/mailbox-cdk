@@ -24,34 +24,34 @@ describe('AdminUi', () => {
 
   function createAuthProvider(): IMailboxAuthProvider {
     return {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
+      issuer:                'https://example.com/issuer',
+      tokenEndpoint:         'https://example.com/token',
       authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      authMethod:            'header',
+      usePkce:               false,
+      scopeMap:              {},
+      policies:              { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient,
       provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
+      createAdminApiAddons:   () => [],
     };
   }
 
   function createAdminUi(): AdminUi {
     return new AdminUi(stack, 'admin-ui', {
-      domainName: 'admin.example.com',
-      configTable: new DataTable(new dynamodb.Table(stack, 'config-table', {
+      domainName:       'admin.example.com',
+      configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authProvider: createAuthProvider(),
+      authProvider:     createAuthProvider(),
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-admin-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-admin-ui':   { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
     });
@@ -60,7 +60,7 @@ describe('AdminUi', () => {
   beforeEach(() => {
     provisionAdminApiClient.mockClear();
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -70,9 +70,9 @@ describe('AdminUi', () => {
 
     expect(provisionAdminApiClient).toHaveBeenCalledTimes(1);
     expect(provisionAdminApiClient).toHaveBeenCalledWith({
-      name: 'admin-ui',
+      name:         'admin-ui',
       callbackUrls: [`https://${adminUi.distributionDomainName}/auth/callback`],
-      logoutUrls: [`https://${adminUi.distributionDomainName}/`],
+      logoutUrls:   [`https://${adminUi.distributionDomainName}/`],
     });
   });
 

@@ -21,15 +21,15 @@ const PINNED_VERSION = '0.0.1-test';
 
 function newStack(app: App = new App()): Stack {
   return new Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
 
 function pinnedResolver(stack: Stack, packageNames: string[]): PinnedArtifactResolver {
   return new PinnedArtifactResolver({
-    packages: Object.fromEntries(packageNames.map(name => [name, { zone: ArtifactZone.REGIONAL, version: PINNED_VERSION }])),
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         Object.fromEntries(packageNames.map(name => [name, { zone: ArtifactZone.REGIONAL, version: PINNED_VERSION }])),
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
@@ -38,7 +38,7 @@ function pinnedResolver(stack: Stack, packageNames: string[]): PinnedArtifactRes
 function createUserPool(overrides: Partial<MailboxUserPoolProps> = {}): { pool: MailboxUserPool; stack: Stack } {
   const stack = newStack();
   const pool  = new MailboxUserPool(stack, 'user-pool', {
-    domain: { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
+    domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
     artifactResolver: pinnedResolver(stack, ['mailbox-cognito', 'mailbox-cdk-shared']),
     ...overrides,
   });
@@ -50,8 +50,8 @@ describe('MailboxUserPool without an injected artifactResolver', () => {
     const app = new App();
     app.node.setContext('serverlessinbox:artifacts', {
       bucketBase: 'test-artifacts',
-      packages: {
-        'mailbox-cognito': { zone: 'regional', version: PINNED_VERSION },
+      packages:   {
+        'mailbox-cognito':    { zone: 'regional', version: PINNED_VERSION },
         'mailbox-cdk-shared': { zone: 'regional', version: PINNED_VERSION },
       },
     });
@@ -81,7 +81,7 @@ describe('MailboxUserPool with an injected artifactResolver', () => {
 
     expect(() => {
       new MailboxUserPool(stack, 'user-pool', {
-        domain: { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
+        domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
         artifactResolver: resolverWithoutSharedPackage,
       });
     }).toThrow("No resolved data for package 'mailbox-cdk-shared'");
@@ -105,7 +105,7 @@ describe('MailboxUserPool domain', () => {
     Template.fromStack(stack).hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
       parameters: Match.objectLike({
         cognitoDomainPrefix: { Ref: 'AWS::StackName' },
-        customDomainName: 'auth.example.com',
+        customDomainName:    'auth.example.com',
         customDomainCertArn: 'arn:aws:acm:us-east-1:123456789012:certificate/abc',
       }),
     });
@@ -127,10 +127,10 @@ describe('MailboxUserPool UI client provisioning', () => {
     const { pool, stack } = createUserPool();
 
     pool.provisionJmapApiClient({
-      name: 'webmail-ui',
-      permissions: [Permission.MAIL_READ],
+      name:         'webmail-ui',
+      permissions:  [Permission.MAIL_READ],
       callbackUrls: ['https://w.example.com/cb'],
-      logoutUrls: ['https://w.example.com/'],
+      logoutUrls:   ['https://w.example.com/'],
     });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
@@ -144,11 +144,11 @@ describe('MailboxUserPool UI client provisioning', () => {
     pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: ['https://a.example.com/cb'], logoutUrls: ['https://a.example.com/'] });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
-      GenerateSecret: false,
-      AllowedOAuthFlows: ['code'],
+      GenerateSecret:     false,
+      AllowedOAuthFlows:  ['code'],
       AllowedOAuthScopes: ['openid', 'email', 'profile', 'si/admin'],
-      CallbackURLs: ['https://a.example.com/cb'],
-      LogoutURLs: ['https://a.example.com/'],
+      CallbackURLs:       ['https://a.example.com/cb'],
+      LogoutURLs:         ['https://a.example.com/'],
     });
   });
 
@@ -156,10 +156,10 @@ describe('MailboxUserPool UI client provisioning', () => {
     const { pool, stack } = createUserPool();
 
     const client = pool.provisionJmapApiClient({
-      name: 'webmail-ui',
-      permissions: [Permission.MAIL_READ, Permission.MAIL_SEND],
+      name:         'webmail-ui',
+      permissions:  [Permission.MAIL_READ, Permission.MAIL_SEND],
       callbackUrls: ['https://w.example.com/cb'],
-      logoutUrls: ['https://w.example.com/'],
+      logoutUrls:   ['https://w.example.com/'],
     });
 
     expect(client.requestScopeList).toEqual(['si/mail.read', 'si/mail.send']);
@@ -209,12 +209,12 @@ describe('MailboxUserPool headless client provisioning', () => {
     pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
-      ClientName: 'mailbox-client-sweeper',
-      GenerateSecret: true,
-      AllowedOAuthFlows: ['client_credentials'],
+      ClientName:         'mailbox-client-sweeper',
+      GenerateSecret:     true,
+      AllowedOAuthFlows:  ['client_credentials'],
       AllowedOAuthScopes: ['si/mail.read'],
-      CallbackURLs: Match.absent(),
-      LogoutURLs: Match.absent(),
+      CallbackURLs:       Match.absent(),
+      LogoutURLs:         Match.absent(),
     });
   });
 
@@ -289,7 +289,7 @@ describe('MailboxUserPool.grantAdminAccess', () => {
     const fn              = new lambda.Function(stack, 'fn', {
       runtime: lambda.Runtime.NODEJS_LATEST,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     pool.grantAdminAccess(fn);
@@ -298,7 +298,7 @@ describe('MailboxUserPool.grantAdminAccess', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: Match.arrayWith(['cognito-idp:ListUsers', 'cognito-idp:AdminDeleteUser']),
+            Action:   Match.arrayWith(['cognito-idp:ListUsers', 'cognito-idp:AdminDeleteUser']),
             Resource: Match.not('*'),
           }),
         ]),

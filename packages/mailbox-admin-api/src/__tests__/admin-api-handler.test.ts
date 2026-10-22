@@ -12,7 +12,7 @@ import type { HandlerContext, MethodSpec }                                 from 
  */
 
 interface TestAuth {
-  readonly sub: string;
+  readonly sub:      string;
   readonly tenantId: string;
 }
 
@@ -312,15 +312,15 @@ describe('AdminApiHandler', () => {
 
       expect(emitAuditEvent).toHaveBeenCalledTimes(1);
       expect(emitAuditEvent.mock.calls[0][0]).toEqual({
-        tenantId: 'tenant-1',
+        tenantId:   'tenant-1',
         entityType: 'idp-users',
-        entityId: 'user-9',
+        entityId:   'user-9',
         entityName: 'Nine',
-        action: 'IdpUsers/CreateUser',
-        status: 'success',
-        actor: { id: 'user-1' },
-        changes: [{ field: 'enabled' }],
-        metadata: { requestId: 'req-1' },
+        action:     'IdpUsers/CreateUser',
+        status:     'success',
+        actor:      { id: 'user-1' },
+        changes:    [{ field: 'enabled' }],
+        metadata:   { requestId: 'req-1' },
       });
     });
 
@@ -376,7 +376,7 @@ describe('AdminApiHandler', () => {
     it('answers the original error when the actor lookup throws while describing a failure', async () => {
       const handler = buildHandler({ DeleteUser: method(failing(new NotFoundError('no such user'))) }, {
         emitAuditEvent: auditSink(),
-        getActor: () => {
+        getActor:       () => {
           throw new Error('no actor');
         },
       });

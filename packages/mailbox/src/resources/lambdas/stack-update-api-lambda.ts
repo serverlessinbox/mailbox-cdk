@@ -8,15 +8,15 @@ import type { IDataTable }         from '../tables/data-tables';
 import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
 
 export interface StackUpdateApiLambdaProps {
-  readonly rootStackArn: string;
-  readonly configTable: IDataTable;
-  readonly artifactBucketBase: string;
-  readonly artifactResolver: IArtifactResolver;
+  readonly rootStackArn:             string;
+  readonly configTable:              IDataTable;
+  readonly artifactBucketBase:       string;
+  readonly artifactResolver:         IArtifactResolver;
   readonly templateVersionParamName: string;
-  readonly pointerBucket: string;
-  readonly pointerKey: string;
-  readonly templateUrlTemplate: string;
-  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly pointerBucket:            string;
+  readonly pointerKey:               string;
+  readonly templateUrlTemplate:      string;
+  readonly auditEventsQueue:         IAuditEventsQueue;
 }
 
 /**
@@ -33,19 +33,19 @@ export interface StackUpdateApiLambdaProps {
 export class StackUpdateApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
     super(scope, id, {
-      lambdaId: 'stack-update-api',
-      pipeline: 'infra',
+      lambdaId:         'stack-update-api',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
-      environment: {
-        ROOT_STACK_ARN: props.rootStackArn,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
+      environment:      {
+        ROOT_STACK_ARN:              props.rootStackArn,
+        CONFIG_TABLE_NAME:           props.configTable.tableName,
         TEMPLATE_VERSION_PARAM_NAME: props.templateVersionParamName,
-        POINTER_BUCKET: props.pointerBucket,
-        POINTER_KEY: props.pointerKey,
-        TEMPLATE_URL_TEMPLATE: props.templateUrlTemplate,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+        POINTER_BUCKET:              props.pointerBucket,
+        POINTER_KEY:                 props.pointerKey,
+        TEMPLATE_URL_TEMPLATE:       props.templateUrlTemplate,
+        AUDIT_EVENTS_QUEUE_URL:      props.auditEventsQueue.queueUrl,
       },
     });
 
@@ -66,8 +66,8 @@ export class StackUpdateApiLambda extends GoLambda {
     // Human executes ChangeSets in AWS console under their own credentials
     this.addToRolePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: [
+        effect:    Effect.ALLOW,
+        actions:   [
           'cloudformation:CreateChangeSet',
           'cloudformation:DescribeChangeSet',
           'cloudformation:DeleteChangeSet',
@@ -85,8 +85,8 @@ export class StackUpdateApiLambda extends GoLambda {
     // Schema: {bucketBase}-{region}/serverlessinbox/templates/*/releases/*
     this.addToRolePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['s3:GetObject'],
+        effect:    Effect.ALLOW,
+        actions:   ['s3:GetObject'],
         resources: [
           `arn:aws:s3:::${artifactBucketBase}-*/serverlessinbox/templates/*/releases/*`,
         ],
@@ -100,9 +100,9 @@ export class StackUpdateApiLambda extends GoLambda {
     // Scoped to the root stack ARN only (not account-wide read of all stacks).
     this.addToRolePolicy(
       new PolicyStatement({
-        sid: 'SelfStackCfnMeta',
-        effect: Effect.ALLOW,
-        actions: [
+        sid:       'SelfStackCfnMeta',
+        effect:    Effect.ALLOW,
+        actions:   [
           'cloudformation:DescribeStacks',
           'cloudformation:DescribeStackEvents',
           'cloudformation:GetTemplate',

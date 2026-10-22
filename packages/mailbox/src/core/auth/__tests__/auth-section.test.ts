@@ -30,38 +30,38 @@ describe('AuthSection', () => {
 
   function newSection(): AuthSection {
     const authProvider: IMailboxAuthProvider = {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                {},
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
+      provisionJmapApiClient:  () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
+      createAdminApiAddons:    () => [],
     };
     return new AuthSection(stack, 'auth', {
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       authProvider,
-      data: {
-        configTable: dataTable('config-table'),
-        itemTable: dataTable('item-table'),
-        changelogTable: dataTable('changelog-table'),
-        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-        blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+      data:       {
+        configTable:       dataTable('config-table'),
+        itemTable:         dataTable('item-table'),
+        changelogTable:    dataTable('changelog-table'),
+        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+        blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
         derivedDomainName: 'example.com',
       },
-      email: {
-        submissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
+      email:      {
+        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
         sesConfigSetName: 'config-set',
       },
       vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
@@ -70,7 +70,7 @@ describe('AuthSection', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -79,8 +79,8 @@ describe('AuthSection', () => {
     const section = newSection();
     section.addBootstrap({
       email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
-      ui: {},
-      edge: {},
+      ui:    {},
+      edge:  {},
     });
 
     Template.fromStack(stack);
@@ -106,8 +106,8 @@ describe('AuthSection', () => {
 
     section.addBootstrap({
       email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
-      ui: {},
-      edge: {},
+      ui:    {},
+      edge:  {},
     });
 
     expect(section.node.tryFindChild('bootstrap')).toBeDefined();

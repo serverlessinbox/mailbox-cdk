@@ -29,7 +29,7 @@ describe('ResourceSweeperStarterLambda', () => {
 
   beforeEach(() => {
     const stack                                 = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const packages: Record<string, ArtifactPin> = {
@@ -38,10 +38,10 @@ describe('ResourceSweeperStarterLambda', () => {
     new ResourceSweeperStarterLambda(stack, 'starter', {
       artifactResolver: new PinnedArtifactResolver({
         packages,
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      stateMachineArn: STATE_MACHINE_ARN,
+      stateMachineArn:  STATE_MACHINE_ARN,
     });
     template = Template.fromStack(stack);
   });

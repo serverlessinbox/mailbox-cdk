@@ -62,10 +62,10 @@ describe('IdentityProvisionerClient', () => {
 
     expect(result).toEqual({ status: 'proceed' });
     expect(sentEnvelope()).toEqual({
-      kind: 'DCR_CHECK',
-      tenantId: 't1',
+      kind:         'DCR_CHECK',
+      tenantId:     't1',
       redirectUris: ['http://127.0.0.1/cb'],
-      clientName: 'My App',
+      clientName:   'My App',
     });
   });
 
@@ -73,21 +73,21 @@ describe('IdentityProvisionerClient', () => {
     lambdaMock.on(InvokeCommand).resolves({ Payload: payloadOf({ status: 'success' }) });
 
     const result = await client.dcrPersist({
-      tenantId: TENANT_ID,
-      clientId: toClientId('client-1'),
+      tenantId:     TENANT_ID,
+      clientId:     toClientId('client-1'),
       redirectUris: REDIRECT_URIS,
-      clientName: 'My App',
-      scope: 'openid email',
+      clientName:   'My App',
+      scope:        'openid email',
     });
 
     expect(result).toEqual({ status: 'success' });
     expect(sentEnvelope()).toEqual({
-      kind: 'DCR_PERSIST',
-      tenantId: 't1',
-      clientId: 'client-1',
+      kind:         'DCR_PERSIST',
+      tenantId:     't1',
+      clientId:     'client-1',
       redirectUris: ['http://127.0.0.1/cb'],
-      clientName: 'My App',
-      scope: 'openid email',
+      clientName:   'My App',
+      scope:        'openid email',
     });
   });
 
@@ -96,23 +96,23 @@ describe('IdentityProvisionerClient', () => {
 
     const result = await client.provisionUser({
       tenantId: TENANT_ID,
-      subject: toUserSubject('cognito-sub-abc'),
+      subject:  toUserSubject('cognito-sub-abc'),
       username: toUsername('newuser'),
-      email: toEmailAddress('newuser@example.com'),
-      groups: [toGroupName('user')],
-      isAdmin: false,
+      email:    toEmailAddress('newuser@example.com'),
+      groups:   [toGroupName('user')],
+      isAdmin:  false,
     });
 
     expect(result).toEqual({ principalId: 'p1', primaryAccountId: 'a1', isNewUser: true });
     expect(sentEnvelope()).toEqual({
-      kind: 'PROVISION_USER',
+      kind:     'PROVISION_USER',
       tenantId: 't1',
       provider: 'cognito',
-      subject: 'cognito-sub-abc',
+      subject:  'cognito-sub-abc',
       username: 'newuser',
-      email: 'newuser@example.com',
-      groups: ['user'],
-      isAdmin: false,
+      email:    'newuser@example.com',
+      groups:   ['user'],
+      isAdmin:  false,
     });
   });
 
@@ -132,10 +132,10 @@ describe('IdentityProvisionerClient', () => {
     lambdaMock.on(InvokeCommand).resolves({});
 
     await expect(client.provisionUser({
-      subject: toUserSubject('sub'),
+      subject:  toUserSubject('sub'),
       username: toUsername('u'),
-      groups: [],
-      isAdmin: false,
+      groups:   [],
+      isAdmin:  false,
     })).rejects.toThrow(/unexpected shape/);
   });
 });

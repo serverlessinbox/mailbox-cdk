@@ -29,7 +29,7 @@ describe('SupportApiLambda tag-key env vars', () => {
     app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -38,7 +38,7 @@ describe('SupportApiLambda tag-key env vars', () => {
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -49,17 +49,17 @@ describe('SupportApiLambda tag-key env vars', () => {
 
     new SupportApiLambda(stack, 'support-api', {
       supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
-      tierRoleArns: {
-        'support-diag': 'arn:aws:iam::123456789012:role/support-diag',
+      tierRoleArns:      {
+        'support-diag':        'arn:aws:iam::123456789012:role/support-diag',
         'support-config-read': 'arn:aws:iam::123456789012:role/support-config-read',
       },
       configTable,
       auditEventsQueue,
       artifactResolver,
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
-      supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+      vendorAccountIds:        [VENDOR_ACCOUNT_ID],
+      supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
       supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-      supportTierTagKeys: getSupportTierTagKeys(),
+      supportTierTagKeys:      getSupportTierTagKeys(),
     });
   });
 
@@ -68,7 +68,7 @@ describe('SupportApiLambda tag-key env vars', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectLike({
-          SUPPORT_DIAG_TAG_KEY: SUPPORT_DIAG_TAG_KEY,
+          SUPPORT_DIAG_TAG_KEY:        SUPPORT_DIAG_TAG_KEY,
           SUPPORT_CONFIG_READ_TAG_KEY: SUPPORT_CONFIG_READ_TAG_KEY,
         }),
       },

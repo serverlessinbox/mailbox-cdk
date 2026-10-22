@@ -35,8 +35,8 @@ jest.mock('https', () => ({
 }));
 
 const isCfnResponseBody = t.isPartial({
-  Status: t.isString(),
-  Reason: t.isOptional(t.isString()),
+  Status:             t.isString(),
+  Reason:             t.isOptional(t.isString()),
   PhysicalResourceId: t.isOptional(t.isString()),
 });
 

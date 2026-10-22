@@ -16,11 +16,11 @@ describe('DiffReportFormatter', () => {
 
   it('lists added, removed and changed entries with their paths, and known non-deterministic ones under their own heading', () => {
     const diff: TemplateDiff = {
-      added: ['Resources/New'],
-      removed: ['Resources/Old'],
-      changed: [{ entryId: 'Resources/Fn', propertyPaths: ['Properties.Timeout'] }],
+      added:                 ['Resources/New'],
+      removed:               ['Resources/Old'],
+      changed:               [{ entryId: 'Resources/Fn', propertyPaths: ['Properties.Timeout'] }],
       knownNonDeterministic: [{ entryId: 'Resources/Inv', propertyPaths: ['Properties.deploymentNonce'] }],
-      identical: false,
+      identical:             false,
     };
 
     expect(formatter.format('mailbox', diff)).toBe(

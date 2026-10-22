@@ -39,14 +39,14 @@ export function addServerlessInboxResourceGroup(
     name: groupName,
     // AWS::ResourceGroups::Group description charset is strict: [\sa-zA-Z0-9_.-]* only.
     // No parentheses, no em/en dash, no ':' or '/'. Keep this literal within that set.
-    description: 'ServerlessInbox - all resources for this deployment matched by the root-stack tag.',
+    description:   'ServerlessInbox - all resources for this deployment matched by the root-stack tag.',
     resourceQuery: {
-      type: 'TAG_FILTERS_1_0',
+      type:  'TAG_FILTERS_1_0',
       query: {
         resourceTypeFilters: ['AWS::AllSupported'],
-        tagFilters: [
+        tagFilters:          [
           {
-            key: ServerlessInboxTagKeys.rootStack,
+            key:    ServerlessInboxTagKeys.rootStack,
             values: [rootStackValue],
           },
         ],

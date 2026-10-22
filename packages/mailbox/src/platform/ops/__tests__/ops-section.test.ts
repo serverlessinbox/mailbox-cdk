@@ -23,22 +23,22 @@ const VERSION_ARN = 'arn:aws:lambda:us-east-1:111122223333:function:jmap-blob-do
 
 function newSection(stack: Stack, overrides: Partial<OpsSectionProps> = {}): OpsSection {
   const artifactResolver = new PinnedArtifactResolver({
-    packages: {
-      'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
-      'mailbox-cdk': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
+    packages:         {
+      'mailbox-go':         { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
+      'mailbox-cdk':        { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
       'mailbox-cdk-shared': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
     },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   const section          = new OpsSection(stack, 'ops', {
     artifactResolver,
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
-    data: {
-      configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+    data:             {
+      configTable:       new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
       derivedDomainName: 'example.com',
     },
-    edge: { jmapBlobDownloadVersionArn: VERSION_ARN },
+    edge:             { jmapBlobDownloadVersionArn: VERSION_ARN },
     ...overrides,
   });
   Template.fromStack(stack);
@@ -76,7 +76,7 @@ describe('OpsSection', () => {
     const withCert             = newSection(stack, {
       edge: {
         jmapBlobDownloadVersionArn: VERSION_ARN,
-        regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
+        regionalCertificate:        acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
       },
     });
     const { stack: bareStack } = newDeployerTestStack();

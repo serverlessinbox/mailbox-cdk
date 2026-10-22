@@ -21,28 +21,28 @@ const USER_POOL_ID = 'us-west-2_abcdefgh';
 
 describe('CognitoIdpUsersAdminApiAddon', () => {
   const auditEventsQueue: IAuditEventsQueue       = {
-    queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
-    queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
+    queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+    queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: () => {},
   };
   const identityProvisioner: IIdentityProvisioner = {
-    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     functionName: 'identity-provisioner',
-    grantInvoke: () => {},
+    grantInvoke:  () => {},
   };
 
   function synthesize(options: { authorization?: CognitoIdpUsersAuthorizationConfig; basePath?: string }): Template {
     const stack                            = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const artifactResolver                 = new PinnedArtifactResolver({
-      packages: { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      packages:         { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
     const pool: ICognitoIdpUsersPoolConfig = {
-      userPoolId: USER_POOL_ID,
+      userPoolId:       USER_POOL_ID,
       grantAdminAccess: () => {},
       ...(options.authorization ? { authorizationConfig: () => options.authorization! } : {}),
     };
@@ -52,7 +52,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     const authorizerFunction = new LambdaFunction(stack, 'authorizer-stub', {
       runtime: Runtime.NODEJS_24_X,
       handler: 'index.handler',
-      code: Code.fromInline('exports.handler = async () => {};'),
+      code:    Code.fromInline('exports.handler = async () => {};'),
     });
     addon.addRoutes(new HttpApi(stack, 'api'), new HttpLambdaAuthorizer('authorizer', authorizerFunction, { responseTypes: [HttpLambdaResponseType.SIMPLE] }));
     return Template.fromStack(stack);
@@ -85,10 +85,10 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     const template = synthesize({ basePath });
 
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: routeKey,
+      RouteKey:          routeKey,
       AuthorizationType: 'CUSTOM',
-      AuthorizerId: Match.anyValue(),
-      Target: Match.anyValue(),
+      AuthorizerId:      Match.anyValue(),
+      Target:            Match.anyValue(),
     });
     template.resourceCountIs('AWS::ApiGatewayV2::Route', 1);
   });

@@ -15,12 +15,12 @@ import { DataSection }                                 from '../data-section';
 
 function synthSection(stack: Stack): DataSection {
   const artifactResolver = new PinnedArtifactResolver({
-    packages: {
-      'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
-      'mailbox-cdk': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
+    packages:         {
+      'mailbox-go':         { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
+      'mailbox-cdk':        { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
       'mailbox-cdk-shared': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
     },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   const section          = new DataSection(stack, 'data', {

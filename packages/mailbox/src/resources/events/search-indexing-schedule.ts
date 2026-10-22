@@ -6,7 +6,7 @@ import { Duration }       from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
 export interface SearchIndexingScheduleProps {
-  target: IFunction;
+  target:          IFunction;
   deadLetterQueue: IQueue;
 }
 
@@ -14,9 +14,9 @@ export interface SearchIndexingScheduleProps {
 export class SearchIndexingSchedule extends Rule {
   constructor(scope: Construct, id: string, props: SearchIndexingScheduleProps) {
     super(scope, id, {
-      schedule: Schedule.rate(Duration.hours(6)),
+      schedule:    Schedule.rate(Duration.hours(6)),
       description: 'Trigger Tantivy indexing every 6 hours',
-      targets: [new targets.LambdaFunction(props.target, { deadLetterQueue: props.deadLetterQueue })],
+      targets:     [new targets.LambdaFunction(props.target, { deadLetterQueue: props.deadLetterQueue })],
     });
   }
 }

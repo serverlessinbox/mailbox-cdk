@@ -42,7 +42,7 @@ const KNOWN_PLACEHOLDER_ACCOUNT = '000000000000';
 const POSTPONED_NAMED_RESOURCES = ['blob-store', 'config-table', 'item-table', 'changelog-table', 'auditlog-table', 'mailfeedback-table'];
 
 interface AccountLiteralViolation {
-  path: string;
+  path:  string;
   value: string;
 }
 
@@ -137,9 +137,9 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
   it('MailboxDataStack, synthesized like tools/build-data-stack.ts, leaks no real account literal', () => {
     const app   = new App();
     const stack = new MailboxDataStack(app, 'MailboxData', {
-      env: {
+      env:         {
         account: FAKE_ACCOUNT,
-        region: 'eu-west-1',
+        region:  'eu-west-1',
       },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -157,9 +157,9 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
   it('MailboxEdgeStack, synthesized like tools/build-edge-stack.ts, leaks no real account literal', () => {
     const app   = new App();
     const stack = new MailboxEdgeStack(app, 'MailboxEdge', {
-      env: {
+      env:         {
         account: FAKE_ACCOUNT,
-        region: 'us-east-1',
+        region:  'us-east-1',
       },
       synthesizer: new BootstraplessSynthesizer(),
     });

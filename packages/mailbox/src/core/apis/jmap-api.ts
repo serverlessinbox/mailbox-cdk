@@ -38,20 +38,20 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '
  * switches on the protected-resource metadata document.
  */
 export interface JMapApiProps {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly blobStore: IDataBlobStore;
+  readonly configTable:          IDataTable;
+  readonly itemTable:            IDataTable;
+  readonly changelogTable:       IDataTable;
+  readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
-  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly auditEventsQueue:     IAuditEventsQueue;
 
   readonly cdnHost: string;
   /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
   readonly allowedOrigins?: string[];
 
   readonly artifactResolver: IArtifactResolver;
-  readonly authProvider: IMailboxAuthProvider;
+  readonly authProvider:     IMailboxAuthProvider;
 
   /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */
   readonly identityProvisioner: IIdentityProvisioner;
@@ -77,7 +77,7 @@ export interface JMapApiProps {
 /** Per-route throttle settings, keyed PascalCase because CloudFormation receives them unmapped. */
 interface RouteThrottleSettings {
   readonly ThrottlingBurstLimit: number;
-  readonly ThrottlingRateLimit: number;
+  readonly ThrottlingRateLimit:  number;
 }
 
 /** The `RouteSettings` of an API Gateway stage, keyed by route key (`<METHOD> <path>`). */
@@ -115,26 +115,26 @@ export class JMapApi extends Construct {
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,
-      configTable: props.configTable,
-      artifactResolver: props.artifactResolver,
-      anonymousRoutes: ['GET /.well-known/jmap'],
-      serviceName: 'authorizer-jmap-api',
-      pipeline: 'jmap',
+      configTable:       props.configTable,
+      artifactResolver:  props.artifactResolver,
+      anonymousRoutes:   ['GET /.well-known/jmap'],
+      serviceName:       'authorizer-jmap-api',
+      pipeline:          'jmap',
     });
 
     this.authorizerLambda = lambdaAuthorizer;
 
     const api = new HttpApi(this, 'jmap-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} JMAP API`,
+      apiName:     `Mailbox ${Aws.STACK_NAME} JMAP API`,
       description: 'This service serves mailbox operations.',
       corsPreflight:
         props.allowedOrigins && props.allowedOrigins.length > 0
           ? {
-            allowOrigins: props.allowedOrigins,
-            allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-            allowHeaders: ['Content-Type', 'Authorization'],
+            allowOrigins:     props.allowedOrigins,
+            allowMethods:     [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+            allowHeaders:     ['Content-Type', 'Authorization'],
             allowCredentials: true,
-            maxAge: Duration.hours(1),
+            maxAge:           Duration.hours(1),
           }
           : undefined,
     });
@@ -145,9 +145,9 @@ export class JMapApi extends Construct {
       }
 
       const domain = new DomainName(this, 'domain', {
-        domainName: props.domainName,
-        certificate: props.certificate,
-        endpointType: EndpointType.REGIONAL,
+        domainName:     props.domainName,
+        certificate:    props.certificate,
+        endpointType:   EndpointType.REGIONAL,
         securityPolicy: SecurityPolicy.TLS_1_2,
       });
 
@@ -159,7 +159,7 @@ export class JMapApi extends Construct {
       new ApiMapping(this, 'mapping', {
         api,
         domainName: domain,
-        stage: api.defaultStage!,
+        stage:      api.defaultStage!,
       });
 
       this.url          = `https://${props.domainName}`;
@@ -171,19 +171,19 @@ export class JMapApi extends Construct {
     this.httpApi = api;
 
     const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
-      configTable: props.configTable,
-      itemTable: props.itemTable,
-      changelogTable: props.changelogTable,
-      authKeyStoreTable: props.authKeyStoreTable,
-      blobStore: props.blobStore,
-      emailSubmissionQueue: props.emailSubmissionQueue,
-      auditEventsQueue: props.auditEventsQueue,
-      cdnHost: props.cdnHost,
-      apiBaseUrl: this.url,
-      artifactResolver: props.artifactResolver,
-      identityProvisioner: props.identityProvisioner,
-      vendorAccountIds: props.vendorAccountIds,
-      oauthHandlerConfig: {
+      configTable:               props.configTable,
+      itemTable:                 props.itemTable,
+      changelogTable:            props.changelogTable,
+      authKeyStoreTable:         props.authKeyStoreTable,
+      blobStore:                 props.blobStore,
+      emailSubmissionQueue:      props.emailSubmissionQueue,
+      auditEventsQueue:          props.auditEventsQueue,
+      cdnHost:                   props.cdnHost,
+      apiBaseUrl:                this.url,
+      artifactResolver:          props.artifactResolver,
+      identityProvisioner:       props.identityProvisioner,
+      vendorAccountIds:          props.vendorAccountIds,
+      oauthHandlerConfig:        {
         scopeMap: props.authProvider.scopeMap,
       } satisfies JmapOAuthHandlerConfig,
       oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,
@@ -194,28 +194,28 @@ export class JMapApi extends Construct {
     const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
     // Instance B: no identity source, no caching for anonymous discovery route
     const httpLambdaAuthorizeAnonymous = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
-      identitySource: [],
+      identitySource:  [],
       resultsCacheTtl: Duration.seconds(0),
     });
 
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
 
     api.addRoutes({
-      path: '/.well-known/jmap',
-      methods: [HttpMethod.GET],
-      authorizer: httpLambdaAuthorizeAnonymous,
+      path:        '/.well-known/jmap',
+      methods:     [HttpMethod.GET],
+      authorizer:  httpLambdaAuthorizeAnonymous,
       integration: httpLambdaIntegration,
     });
     api.addRoutes({
-      path: '/',
-      methods: [HttpMethod.POST],
-      authorizer: httpLambdaAuthorize,
+      path:        '/',
+      methods:     [HttpMethod.POST],
+      authorizer:  httpLambdaAuthorize,
       integration: httpLambdaIntegration,
     });
     api.addRoutes({
-      path: '/upload/{accountId}',
-      methods: [HttpMethod.POST],
-      authorizer: httpLambdaAuthorize,
+      path:        '/upload/{accountId}',
+      methods:     [HttpMethod.POST],
+      authorizer:  httpLambdaAuthorize,
       integration: httpLambdaIntegration,
     });
 
@@ -240,7 +240,7 @@ export class JMapApi extends Construct {
    */
   private addOAuthProtectedResourceRoute(api: HttpApi, oauthIssuerUrl: string, artifactResolver: IArtifactResolver): void {
     const protectedResourceDoc = {
-      resource: this.url,
+      resource:              this.url,
       authorization_servers: [oauthIssuerUrl],
     };
 
@@ -249,7 +249,7 @@ export class JMapApi extends Construct {
 
     deployer.deploy(this, 'oauth-protected-resource', {
       targetBucket: bucket,
-      source: StaticContentSource.data(
+      source:       StaticContentSource.data(
         JMapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
         JSON.stringify(protectedResourceDoc),
         { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
@@ -262,8 +262,8 @@ export class JMapApi extends Construct {
     );
 
     const protectedResourceRoutes = api.addRoutes({
-      path: JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
-      methods: [HttpMethod.GET],
+      path:        JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
+      methods:     [HttpMethod.GET],
       integration: protectedResourceIntegration,
     });
 
@@ -281,7 +281,7 @@ export class JMapApi extends Construct {
       ...existingSettings,
       [`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`]: {
         ThrottlingBurstLimit: 20,
-        ThrottlingRateLimit: 10,
+        ThrottlingRateLimit:  10,
       },
     };
 

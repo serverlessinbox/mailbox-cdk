@@ -36,10 +36,10 @@ export enum SupportMode {
 
 /** Inputs of `SupportAddon`, as threaded in by `SupportAddonProvider`. */
 export interface SupportAddonProps {
-  readonly mode: SupportMode;
+  readonly mode:             SupportMode;
   readonly artifactResolver: IArtifactResolver;
   /** Config table that also holds the support grant records. */
-  readonly configTable: IDataTable;
+  readonly configTable:      IDataTable;
   readonly auditEventsQueue: IAuditEventsQueue;
 }
 
@@ -100,23 +100,23 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       // Support API Lambda: case RPCs and tag-based access control via the support-hop role.
       this.apiHandler = new SupportApiLambda(this, 'lambda', {
         supportHopRoleArn: rolesInfra.supportHopRoleArn,
-        tierRoleArns: rolesInfra.tierArns,
-        configTable: props.configTable,
-        auditEventsQueue: props.auditEventsQueue,
-        artifactResolver: props.artifactResolver,
+        tierRoleArns:      rolesInfra.tierArns,
+        configTable:       props.configTable,
+        auditEventsQueue:  props.auditEventsQueue,
+        artifactResolver:  props.artifactResolver,
         vendorAccountIds,
-        supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+        supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
         supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
         supportTierTagKeys,
       });
 
       // Role-assumption collector Lambda.
       new SupportRoleAssumptionCollectorLambda(this, 'collector', {
-        supportHopRoleArn: rolesInfra.supportHopRoleArn,
-        tierRoleArns: rolesInfra.tierArns,
-        configTable: props.configTable,
-        artifactResolver: props.artifactResolver,
-        supportDiagTagKey: SUPPORT_DIAG_TAG_KEY,
+        supportHopRoleArn:       rolesInfra.supportHopRoleArn,
+        tierRoleArns:            rolesInfra.tierArns,
+        configTable:             props.configTable,
+        artifactResolver:        props.artifactResolver,
+        supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
         supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
         supportTierTagKeys,
       });
@@ -131,8 +131,8 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       return;
     }
     api.addRoutes({
-      path: '/support/{proxy+}',
-      methods: [HttpMethod.POST],
+      path:        '/support/{proxy+}',
+      methods:     [HttpMethod.POST],
       integration: new HttpLambdaIntegration('support', this.apiHandler),
       authorizer,
     });

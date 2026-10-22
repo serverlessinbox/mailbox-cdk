@@ -31,7 +31,7 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
   };
   const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 
@@ -47,7 +47,7 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
   const authorizerLambda = new lambda.Function(stack, 'authorizer', {
     runtime: lambda.Runtime.NODEJS_18_X,
     handler: 'index.handler',
-    code: lambda.Code.fromInline('exports.handler = async () => {};'),
+    code:    lambda.Code.fromInline('exports.handler = async () => {};'),
   });
 
   return new WebSocketPush(stack, 'websocket-push', {
@@ -62,7 +62,7 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
 
 function newStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -78,7 +78,7 @@ describe('WebSocketPush.grantManageConnections', () => {
   it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -93,12 +93,12 @@ describe('WebSocketPush.grantManageConnections', () => {
     const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 'execute-api:ManageConnections',
-            Effect: 'Allow',
+            Action:   'execute-api:ManageConnections',
+            Effect:   'Allow',
             Resource: {
               'Fn::Join': ['', [
                 'arn:', { Ref: 'AWS::Partition' }, ':execute-api:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':',
@@ -140,7 +140,7 @@ describe('WebSocketPush with a custom domain', () => {
     expect(sut.domainTarget).toBeDefined();
     expect(sut.domainCfnResource?.cfnResourceType).toBe('AWS::ApiGatewayV2::DomainName');
     template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-      DomainName: 'ws.example.com',
+      DomainName:               'ws.example.com',
       DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
     });
     template.hasResourceProperties('AWS::ApiGatewayV2::ApiMapping', { Stage: 'prod' });
@@ -175,7 +175,7 @@ describe('WebSocketPush routes', () => {
       IdentitySource: ['route.request.header.Sec-WebSocket-Protocol'],
     });
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: '$connect',
+      RouteKey:          '$connect',
       AuthorizationType: 'CUSTOM',
     });
     template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: '$disconnect', AuthorizationType: 'NONE' });
@@ -218,7 +218,7 @@ describe('WebSocketPush.broadcaster', () => {
       .find((id) => id.toLowerCase().includes('broadcasthandler'));
     expect(stack.resolve(sut.broadcaster.functionName)).toEqual({ Ref: broadcastFunctionId });
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
+      Roles:          [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
       PolicyDocument: {
         Statement: [Match.objectLike({ Action: 'lambda:InvokeFunction', Resource: Match.arrayWith([{ 'Fn::GetAtt': [broadcastFunctionId, 'Arn'] }]) })],
       },
@@ -230,7 +230,7 @@ describe('WebSocketPush.managementEndpoint', () => {
   it('builds the ApiGatewayManagementApi endpoint URL for the given stage', () => {
     const app   = new App();
     const stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 

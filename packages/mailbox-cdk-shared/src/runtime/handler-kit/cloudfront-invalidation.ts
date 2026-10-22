@@ -8,7 +8,7 @@ const HASHED_CALLER_REFERENCE_LENGTH = 64;
 /** What to invalidate: the distribution, the paths on it and the caller reference that makes the request idempotent. */
 export interface InvalidationRequest {
   readonly distributionId?: string;
-  readonly paths?: readonly string[];
+  readonly paths?:          readonly string[];
   readonly callerReference: string;
 }
 
@@ -38,7 +38,7 @@ export async function invalidateCloudFront(
 
   await cloudFront.send(
     new CreateInvalidationCommand({
-      DistributionId: dist,
+      DistributionId:    dist,
       InvalidationBatch: {
         CallerReference:
           callerReference.length <= MAX_CALLER_REFERENCE_LENGTH
@@ -46,7 +46,7 @@ export async function invalidateCloudFront(
             : createHash('sha256').update(callerReference).digest('hex').slice(0, HASHED_CALLER_REFERENCE_LENGTH),
         Paths: {
           Quantity: items.length,
-          Items: items,
+          Items:    items,
         },
       },
     }),

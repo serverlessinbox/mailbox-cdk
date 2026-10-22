@@ -10,8 +10,8 @@ import { TantivySearch }                     from './tantivy-search';
 
 /** What {@link SearchSection} uses of the data section. */
 export interface ISearchDataInputs {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
+  readonly configTable:    IDataTable;
+  readonly itemTable:      IDataTable;
   readonly changelogTable: IDataTable;
   /** The store the search index is kept in. */
   readonly blobStore: IDataBlobStore;
@@ -20,8 +20,8 @@ export interface ISearchDataInputs {
 /** Props of {@link SearchSection}. */
 export interface SearchSectionProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly data: ISearchDataInputs;
-  readonly queueProps?: Partial<BaseQueueProps>;
+  readonly data:             ISearchDataInputs;
+  readonly queueProps?:      Partial<BaseQueueProps>;
 }
 
 /** Full-text search over the mailbox items. */
@@ -31,12 +31,12 @@ export class SearchSection extends Construct {
     applyServerlessInboxComponentTag(this, 'search');
 
     new TantivySearch(this, 'tantivy-search', {
-      indexBucket: props.data.blobStore,
-      itemTable: props.data.itemTable,
-      configTable: props.data.configTable,
-      changelogTable: props.data.changelogTable,
+      indexBucket:      props.data.blobStore,
+      itemTable:        props.data.itemTable,
+      configTable:      props.data.configTable,
+      changelogTable:   props.data.changelogTable,
       artifactResolver: props.artifactResolver,
-      queueProps: props.queueProps,
+      queueProps:       props.queueProps,
     });
   }
 }

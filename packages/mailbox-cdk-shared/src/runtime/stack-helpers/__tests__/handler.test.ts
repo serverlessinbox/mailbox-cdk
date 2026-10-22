@@ -25,9 +25,9 @@ jest.mock('https', () => ({
 }));
 
 interface CfnResponseBody {
-  Status: string;
+  Status:  string;
   Reason?: string;
-  Data?: Record<string, string>;
+  Data?:   Record<string, string>;
 }
 
 describe('stack-helpers handler', () => {
@@ -124,7 +124,7 @@ describe('stack-helpers handler', () => {
     expect(hostedZoneLookups[0].args[0].input).toEqual({ Id: 'Z123' });
     expect(response).toMatchObject({
       Status: 'SUCCESS',
-      Data: { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },
+      Data:   { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },
     });
   });
 
@@ -139,7 +139,7 @@ describe('stack-helpers handler', () => {
     expect(response.Reason).toContain('AccessDenied');
     expect(console.debug).toHaveBeenCalledWith('stack_helpers_looking_up_hosted_zone', {
       hostedZoneId: 'Z123',
-      service: 'stack-helpers',
+      service:      'stack-helpers',
     });
   });
 

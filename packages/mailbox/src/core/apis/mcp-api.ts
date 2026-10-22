@@ -28,7 +28,7 @@ export interface McpApiProps {
   readonly certificate: acm.ICertificate;
   /** Base domain; the API is served on `mcp.<domainName>`. */
   readonly domainName: string;
-  readonly scopeMap: Record<string, string[]>;
+  readonly scopeMap:   Record<string, string[]>;
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
 }
@@ -49,16 +49,16 @@ export class McpApi extends Construct {
     ComponentDescription.describe(this, 'Model Context Protocol (MCP) endpoint exposing mailbox tools to AI clients.');
 
     const api = new HttpApi(this, 'mcp-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} MCP API`,
+      apiName:     `Mailbox ${Aws.STACK_NAME} MCP API`,
       description: 'This service serves MCP (Model Context Protocol) endpoints.',
     });
 
     const mcpDomainName = `mcp.${props.domainName}`;
 
     const domain = new DomainName(this, 'domain', {
-      domainName: mcpDomainName,
-      certificate: props.certificate,
-      endpointType: EndpointType.REGIONAL,
+      domainName:     mcpDomainName,
+      certificate:    props.certificate,
+      endpointType:   EndpointType.REGIONAL,
       securityPolicy: SecurityPolicy.TLS_1_2,
     });
 
@@ -70,12 +70,12 @@ export class McpApi extends Construct {
     new ApiMapping(this, 'mapping', {
       api,
       domainName: domain,
-      stage: api.defaultStage!,
+      stage:      api.defaultStage!,
     });
 
     const handlerLambda = new McpApiLambda(this, 'handler', {
-      jmapApiGateway: props.jmapApiGateway,
-      scopeMap: props.scopeMap,
+      jmapApiGateway:   props.jmapApiGateway,
+      scopeMap:         props.scopeMap,
       artifactResolver: props.artifactResolver,
     });
 
@@ -84,9 +84,9 @@ export class McpApi extends Construct {
     const httpLambdaIntegration = new HttpLambdaIntegration('handler', handlerLambda);
 
     api.addRoutes({
-      path: '/{proxy+}',
-      methods: [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT],
-      authorizer: httpLambdaAuthorize,
+      path:        '/{proxy+}',
+      methods:     [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PUT],
+      authorizer:  httpLambdaAuthorize,
       integration: httpLambdaIntegration,
     });
   }

@@ -6,8 +6,8 @@ import * as path     from 'node:path';
 export function run(cmd: string, args: string[], opts?: { cwd?: string }) {
   const res = spawnSync(cmd, args, {
     stdio: 'inherit',
-    cwd: opts?.cwd,
-    env: process.env,
+    cwd:   opts?.cwd,
+    env:   process.env,
   });
   if (res.status !== 0) {
     throw new Error(`Command failed: ${cmd} ${args.join(' ')}`);

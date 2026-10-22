@@ -20,18 +20,18 @@ import type { ArtifactLambdaProps }              from '../artifact-lambda';
 import { PipelineLogGroup }                      from '../pipeline-log-groups';
 
 interface LambdaFixture {
-  readonly stack: Stack;
+  readonly stack:            Stack;
   readonly artifactResolver: IArtifactResolver;
 }
 
 function newFixture(): LambdaFixture {
   const stack            = new Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const artifactResolver = new PinnedArtifactResolver({
-    packages: { 'test-package': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'test-package': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   return { stack, artifactResolver };
@@ -42,12 +42,12 @@ class TestArtifactLambda extends ArtifactLambda {}
 
 function newLambda(fixture: LambdaFixture, overrides: Partial<ArtifactLambdaProps> = {}): ArtifactLambda {
   return new TestArtifactLambda(fixture.stack, 'lambda', {
-    lambdaId: 'stack-deployer',
-    packageName: 'test-package',
-    pipeline: 'infra',
+    lambdaId:         'stack-deployer',
+    packageName:      'test-package',
+    pipeline:         'infra',
     artifactResolver: fixture.artifactResolver,
-    runtime: Runtime.NODEJS_24_X,
-    handler: 'index.handler',
+    runtime:          Runtime.NODEJS_24_X,
+    handler:          'index.handler',
     ...overrides,
   });
 }
@@ -65,7 +65,7 @@ describe('ArtifactLambda', () => {
     newLambda(fixture);
 
     Template.fromStack(fixture.stack).hasResourceProperties('AWS::Lambda::Function', {
-      Code: { S3Key: Match.stringLikeRegexp('test-package.*lambdas/stack-deployer\\.zip') },
+      Code:          { S3Key: Match.stringLikeRegexp('test-package.*lambdas/stack-deployer\\.zip') },
       Architectures: ['arm64'],
     });
   });
@@ -78,7 +78,7 @@ describe('ArtifactLambda', () => {
 
       Template.fromStack(fixture.stack).hasResourceProperties('AWS::Lambda::Function', {
         Environment: { Variables: { SERVICE_NAME: 'stack-deployer' } },
-        Tags: Match.arrayWith([{ Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' }]),
+        Tags:        Match.arrayWith([{ Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' }]),
       });
     });
 
@@ -89,8 +89,8 @@ describe('ArtifactLambda', () => {
 
       Template.fromStack(fixture.stack).hasResourceProperties('AWS::Lambda::Function', {
         Environment: { Variables: { SERVICE_NAME: 'stack-deployer-data-starter' } },
-        Code: { S3Key: Match.stringLikeRegexp('lambdas/stack-deployer\\.zip') },
-        Tags: Match.arrayWith([{ Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' }]),
+        Code:        { S3Key: Match.stringLikeRegexp('lambdas/stack-deployer\\.zip') },
+        Tags:        Match.arrayWith([{ Key: 'serverless-inbox:artifact-name', Value: 'stack-deployer' }]),
       });
     });
 

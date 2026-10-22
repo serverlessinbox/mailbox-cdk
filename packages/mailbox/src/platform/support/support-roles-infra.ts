@@ -91,33 +91,33 @@ interface SupportTier {
   /** Role name slug used in Fn::join construction */
   readonly roleNameSlug: string;
   /** IAM tag key used in trust policy condition */
-  readonly tagKey: string;
+  readonly tagKey:           string;
   readonly inlinePolicyName: string;
-  readonly actions: string[];
+  readonly actions:          string[];
   /** Environment variable name for the role ARN */
-  readonly envVarName: string;
+  readonly envVarName:  string;
   readonly description: string;
 }
 
 /** The support tiers. Order is significant: roles are created, and environment entries built, in this order. */
 const SUPPORT_TIERS: SupportTier[] = [
   {
-    constructId: 'support-diag',
-    roleNameSlug: 'diag',
-    tagKey: 'serverless-inbox:support:diag',
+    constructId:      'support-diag',
+    roleNameSlug:     'diag',
+    tagKey:           'serverless-inbox:support:diag',
     inlinePolicyName: 'support-diag-access',
-    actions: SUPPORT_DIAG_ALLOWED_ACTIONS,
-    envVarName: 'SUPPORT_DIAG_ROLE_ARN',
-    description: 'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support:diag tag.',
+    actions:          SUPPORT_DIAG_ALLOWED_ACTIONS,
+    envVarName:       'SUPPORT_DIAG_ROLE_ARN',
+    description:      'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support:diag tag.',
   },
   {
-    constructId: 'support-config-read',
-    roleNameSlug: 'config-read',
-    tagKey: 'serverless-inbox:support:config-read',
+    constructId:      'support-config-read',
+    roleNameSlug:     'config-read',
+    tagKey:           'serverless-inbox:support:config-read',
     inlinePolicyName: 'support-config-read-access',
-    actions: SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
-    envVarName: 'SUPPORT_CONFIG_READ_ROLE_ARN',
-    description: 'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support:config-read tag.',
+    actions:          SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
+    envVarName:       'SUPPORT_CONFIG_READ_ROLE_ARN',
+    description:      'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support:config-read tag.',
   },
 ];
 
@@ -170,9 +170,9 @@ export class SupportRolesInfra extends Construct {
 
   private formatRoleArn(roleName: string): string {
     return Stack.of(this).formatArn({
-      service: 'iam',
-      region: '',
-      resource: 'role',
+      service:      'iam',
+      region:       '',
+      resource:     'role',
       resourceName: roleName,
     });
   }
@@ -180,14 +180,14 @@ export class SupportRolesInfra extends Construct {
   private createHopRole(roleName: string, vendorAccountIds: string[]): iam.Role {
     const hopRole = new iam.Role(this, 'support-hop', {
       roleName,
-      assumedBy: new iam.ServicePrincipal('sts.amazonaws.com'),
+      assumedBy:          new iam.ServicePrincipal('sts.amazonaws.com'),
       maxSessionDuration: SUPPORT_ROLE_MAX_SESSION_DURATION,
-      inlinePolicies: {
+      inlinePolicies:     {
         'support-hop-assume': new iam.PolicyDocument({
           statements: [this.buildHopRoleAssumeStatement()],
         }),
       },
-      description: 'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
+      description:        'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
     });
 
     const hopCfnRole = hopRole.node.defaultChild;
@@ -196,14 +196,14 @@ export class SupportRolesInfra extends Construct {
     }
     const vendorPrincipals              = vendorAccountIds.map((accountId) => `arn:aws:iam::${accountId}:root`);
     hopCfnRole.assumeRolePolicyDocument = {
-      Version: '2012-10-17',
+      Version:   '2012-10-17',
       Statement: [
         {
-          Effect: 'Allow',
+          Effect:    'Allow',
           Principal: {
             AWS: vendorPrincipals.length === 1 ? vendorPrincipals[0] : vendorPrincipals,
           },
-          Action: 'sts:AssumeRole',
+          Action:    'sts:AssumeRole',
         },
       ],
     };
@@ -214,7 +214,7 @@ export class SupportRolesInfra extends Construct {
   private createTierRole(tier: SupportTier, roleName: string, hopRole: iam.Role): void {
     const supportRole = new iam.Role(this, tier.constructId, {
       roleName,
-      assumedBy: new iam.PrincipalWithConditions(new iam.ArnPrincipal(this.supportHopRoleArn), {
+      assumedBy:          new iam.PrincipalWithConditions(new iam.ArnPrincipal(this.supportHopRoleArn), {
         StringLike: {
           // Delimiter is '/' not '|': IAM tag values reject '|' (not in [\p{L}\p{Z}\p{N}_.:/=+\-@]).
           // Nanoid IDs use alphabet A-Za-z0-9_- so '/' never appears in case IDs, making it a safe separator.
@@ -222,10 +222,10 @@ export class SupportRolesInfra extends Construct {
         },
       }),
       maxSessionDuration: SUPPORT_ROLE_MAX_SESSION_DURATION,
-      inlinePolicies: {
+      inlinePolicies:     {
         [tier.inlinePolicyName]: new iam.PolicyDocument({ statements: this.buildTierStatements(tier) }),
       },
-      description: tier.description,
+      description:        tier.description,
     });
 
     // IAM validates principals in trust policies at creation time, so the hop role the tier role trusts
@@ -258,8 +258,8 @@ export class SupportRolesInfra extends Construct {
 
   private buildHopRoleAssumeStatement(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ['sts:AssumeRole'],
+      effect:    iam.Effect.ALLOW,
+      actions:   ['sts:AssumeRole'],
       resources: Object.values(this.tierArns),
     });
   }
@@ -310,8 +310,8 @@ export class SupportRolesInfra extends Construct {
     ]);
 
     return new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
+      effect:    iam.Effect.ALLOW,
+      actions:   [
         'logs:DescribeLogStreams',
         'logs:GetLogEvents',
         'logs:FilterLogEvents',
@@ -329,8 +329,8 @@ export class SupportRolesInfra extends Construct {
    */
   private buildCloudFormationReadStatement(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
+      effect:    iam.Effect.ALLOW,
+      actions:   [
         'cloudformation:DescribeStacks',
         'cloudformation:ListStackResources',
         'cloudformation:DescribeStackEvents',

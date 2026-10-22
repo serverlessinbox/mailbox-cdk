@@ -1,10 +1,10 @@
 import * as t from 'typanion';
 
 const isDataSourceSpec = t.isPartial({
-  kind: t.isLiteral('data'),
-  key: t.isString(),
-  body: t.isString(),
-  contentType: t.isOptional(t.isString()),
+  kind:         t.isLiteral('data'),
+  key:          t.isString(),
+  body:         t.isString(),
+  contentType:  t.isOptional(t.isString()),
   cacheControl: t.isOptional(t.isString()),
 });
 
@@ -12,10 +12,10 @@ const isDataSourceSpec = t.isPartial({
 export type DataSourceSpec = t.InferType<typeof isDataSourceSpec>;
 
 const isZipSourceSpec = t.isPartial({
-  kind: t.isLiteral('zip'),
-  sourceBucket: t.isString(),
-  sourceKey: t.isString(),
-  targetPrefix: t.isString(),
+  kind:            t.isLiteral('zip'),
+  sourceBucket:    t.isString(),
+  sourceKey:       t.isString(),
+  targetPrefix:    t.isString(),
   sourceVersionId: t.isOptional(t.isString()),
 });
 
@@ -28,10 +28,10 @@ const isStaticContentSourceSpec = t.isOneOf([isDataSourceSpec, isZipSourceSpec])
 export type StaticContentSourceSpec = t.InferType<typeof isStaticContentSourceSpec>;
 
 export const isContentDeployerResourceProperties = t.isPartial({
-  targetBucket: t.isOptional(t.isString()),
-  deploymentNonce: t.isOptional(t.isString()),
-  sources: t.isOptional(t.isArray(isStaticContentSourceSpec)),
-  distributionId: t.isOptional(t.isString()),
+  targetBucket:      t.isOptional(t.isString()),
+  deploymentNonce:   t.isOptional(t.isString()),
+  sources:           t.isOptional(t.isArray(isStaticContentSourceSpec)),
+  distributionId:    t.isOptional(t.isString()),
   invalidationPaths: t.isOptional(t.isArray(t.isString())),
 });
 

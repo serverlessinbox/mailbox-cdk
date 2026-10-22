@@ -12,9 +12,9 @@ import type { Verifiers }                                                       
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {
   readonly accountId: AccountId;
-  readonly blobId: EncodedBlobId;
-  readonly type?: string;
-  readonly name?: string;
+  readonly blobId:    EncodedBlobId;
+  readonly type?:     string;
+  readonly name?:     string;
 }
 
 /**
@@ -96,9 +96,9 @@ export class BlobDownloadAuthorizer {
     this.logger.debug('Download parameters extracted', { accountId });
     return {
       accountId: toAccountId(accountId),
-      blobId: toEncodedBlobId(blobId),
-      type: query.get('type') || undefined,
-      name: query.get('name') || undefined,
+      blobId:    toEncodedBlobId(blobId),
+      type:      query.get('type') || undefined,
+      name:      query.get('name') || undefined,
     };
   }
 
@@ -238,7 +238,7 @@ export class BlobDownloadAuthorizer {
 
     if (params.name) {
       // RFC 6266 Content-Disposition for a download.
-      const disposition = `attachment; filename="${params.name.replace(/"/g, '\\"')}"`;
+      const disposition                        = `attachment; filename="${params.name.replace(/"/g, '\\"')}"`;
       request.headers['x-content-disposition'] = [{ key: 'X-Content-Disposition', value: disposition }];
     }
   }

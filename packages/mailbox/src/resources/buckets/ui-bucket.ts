@@ -33,8 +33,8 @@ export class UiBucket extends StackNamedBucket {
   constructor(scope: Construct, id: string) {
     super(scope, id, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.DESTROY,
-      abacStatus: true,
+      removalPolicy:     RemovalPolicy.DESTROY,
+      abacStatus:        true,
     });
 
     this.originAccessControl = new S3OriginAccessControl(this, 'origin-access-control', {
@@ -46,7 +46,7 @@ export class UiBucket extends StackNamedBucket {
   contentOrigin(): IOrigin {
     return S3BucketOrigin.withOriginAccessControl(this, {
       originAccessControl: this.originAccessControl,
-      originPath: '/content',
+      originPath:          '/content',
     });
   }
 
@@ -54,7 +54,7 @@ export class UiBucket extends StackNamedBucket {
   configOrigin(): IOrigin {
     return S3BucketOrigin.withOriginAccessControl(this, {
       originAccessControl: this.originAccessControl,
-      originPath: '',
+      originPath:          '',
     });
   }
 

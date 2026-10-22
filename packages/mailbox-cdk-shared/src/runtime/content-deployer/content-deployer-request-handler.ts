@@ -19,15 +19,15 @@ import {
 
 /** The attributes a content-deployer resource returns, all as strings. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type ContentDeployerResponseData = {
-  readonly deleted: string;
-  readonly objectsWritten: string;
+  readonly deleted:          string;
+  readonly objectsWritten:   string;
   readonly cacheInvalidated: string;
 };
 
 /** The answer sent to CloudFormation for a request that succeeded. */
 export interface ContentDeployerResponse {
   readonly PhysicalResourceId?: PhysicalResourceId;
-  readonly Data?: ContentDeployerResponseData;
+  readonly Data?:               ContentDeployerResponseData;
 }
 
 /**
@@ -118,8 +118,8 @@ export class ContentDeployerRequestHandler {
     // The prefix is emptied first so the deployment is a full overwrite.
     await deletePrefix(this.s3, targetBucket, source.targetPrefix);
     const { uploaded } = await deployZipToPrefix(this.s3, {
-      sourceBucket: source.sourceBucket,
-      sourceKey: source.sourceKey,
+      sourceBucket:    source.sourceBucket,
+      sourceKey:       source.sourceKey,
       sourceVersionId: source.sourceVersionId,
       targetBucket,
       targetPrefix: source.targetPrefix,
@@ -134,9 +134,9 @@ export class ContentDeployerRequestHandler {
 
     await writeObject(this.s3, {
       targetBucket,
-      key: source.key,
-      body: source.body,
-      contentType: source.contentType,
+      key:          source.key,
+      body:         source.body,
+      contentType:  source.contentType,
       cacheControl: source.cacheControl,
     });
 
@@ -152,8 +152,8 @@ export class ContentDeployerRequestHandler {
     this.assertTimeLeft(deadline, 'all sources were deployed; the cache invalidation was not run');
 
     const { invalidated } = await invalidateCloudFront(this.cloudFront, {
-      distributionId: properties.distributionId,
-      paths: properties.invalidationPaths,
+      distributionId:  properties.distributionId,
+      paths:           properties.invalidationPaths,
       callerReference: request.RequestId,
     });
     return invalidated;
@@ -184,7 +184,7 @@ export class ContentDeployerRequestHandler {
   ): ContentDeployerResponse {
     return {
       PhysicalResourceId: physicalResourceId,
-      Data: { deleted: '0', objectsWritten: String(objectsWritten), cacheInvalidated },
+      Data:               { deleted: '0', objectsWritten: String(objectsWritten), cacheInvalidated },
     };
   }
 }

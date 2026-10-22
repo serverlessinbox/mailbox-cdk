@@ -80,8 +80,8 @@ export class BootstrapUserRequestHandler {
   private toBootstrapUser(properties: BootstrapUserProperties, temporaryPassword: string): BootstrapUser {
     return {
       userPoolId: toUserPoolId(properties.userPoolId),
-      username: toUsername(properties.username ?? DEFAULT_USERNAME),
-      groups: (properties.groups ?? []).filter(Boolean).map(toGroupName),
+      username:   toUsername(properties.username ?? DEFAULT_USERNAME),
+      groups:     (properties.groups ?? []).filter(Boolean).map(toGroupName),
       temporaryPassword,
     };
   }

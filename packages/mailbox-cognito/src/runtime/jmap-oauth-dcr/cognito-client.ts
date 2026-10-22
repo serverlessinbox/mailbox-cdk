@@ -21,15 +21,15 @@ export class CognitoUserPoolClientManager {
   public async createClient(userPoolId: UserPoolId, clientName: string, redirectUris: RedirectUri[], scopes: Scope[]): Promise<ClientId> {
     const result = await this.cognito.send(
       new CreateUserPoolClientCommand({
-        UserPoolId: userPoolId,
-        ClientName: clientName,
-        GenerateSecret: false,
-        AllowedOAuthFlows: ['code'],
+        UserPoolId:                      userPoolId,
+        ClientName:                      clientName,
+        GenerateSecret:                  false,
+        AllowedOAuthFlows:               ['code'],
         AllowedOAuthFlowsUserPoolClient: true,
-        AllowedOAuthScopes: scopes,
-        CallbackURLs: redirectUris,
-        SupportedIdentityProviders: ['COGNITO'],
-        ExplicitAuthFlows: ['ALLOW_REFRESH_TOKEN_AUTH'],
+        AllowedOAuthScopes:              scopes,
+        CallbackURLs:                    redirectUris,
+        SupportedIdentityProviders:      ['COGNITO'],
+        ExplicitAuthFlows:               ['ALLOW_REFRESH_TOKEN_AUTH'],
       }),
     );
 

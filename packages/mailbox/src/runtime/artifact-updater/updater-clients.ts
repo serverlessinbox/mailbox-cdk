@@ -13,8 +13,8 @@ export const EDGE_REGION = toRegion('us-east-1');
 
 /** The clients the updater needs in one region it scans for artifacts. */
 export interface RegionClients {
-  readonly region: Region;
-  readonly lambda: LambdaClient;
+  readonly region:  Region;
+  readonly lambda:  LambdaClient;
   readonly tagging: ResourceGroupsTaggingAPIClient;
 }
 
@@ -27,7 +27,7 @@ export interface UpdaterClients {
   readonly registryS3: S3Client;
   readonly deployment: RegionClients;
   /** The same instance as `deployment` when the deployment region is the edge region. */
-  readonly edge: RegionClients;
+  readonly edge:       RegionClients;
   readonly cloudFront: CloudFrontClient;
 }
 
@@ -61,9 +61,9 @@ export class RootStackResources {
     do {
       const page = await tagging.send(
         new GetResourcesCommand({
-          TagFilters: [{ Key: tagKey, Values: [tagValue] }],
+          TagFilters:          [{ Key: tagKey, Values: [tagValue] }],
           ResourceTypeFilters: resourceTypeFilters,
-          PaginationToken: paginationToken,
+          PaginationToken:     paginationToken,
         }),
       );
       mappings.push(...(page.ResourceTagMappingList ?? []));

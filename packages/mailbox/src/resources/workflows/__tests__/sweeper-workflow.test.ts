@@ -23,8 +23,8 @@ const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sw
 
 describe('SweeperWorkflow', () => {
   interface Synthesized {
-    readonly template: Template;
-    readonly definition: string;
+    readonly template:              Template;
+    readonly definition:            string;
     readonly stateMachineLogicalId: string;
   }
 
@@ -32,13 +32,13 @@ describe('SweeperWorkflow', () => {
     const stack    = newTestStack(stackId);
     const group    = new Construct(stack, 'ops');
     const workflow = new SweeperWorkflow(stack, 'workflow', {
-      executionRole: new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
-      workerRoleArn: 'arn:aws:iam::123456789012:role/worker-role',
-      workerRoleName: 'worker-role',
-      worker: newWorkerFunction(stack),
+      executionRole:    new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
+      workerRoleArn:    'arn:aws:iam::123456789012:role/worker-role',
+      workerRoleName:   'worker-role',
+      worker:           newWorkerFunction(stack),
       stateMachineName: 'sweeper-machine',
-      stateMachineArn: STATE_MACHINE_ARN,
-      removals: newRemovals(group),
+      stateMachineArn:  STATE_MACHINE_ARN,
+      removals:         newRemovals(group),
       ...overrides,
     });
     const grantee  = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });

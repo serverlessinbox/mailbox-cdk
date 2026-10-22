@@ -62,24 +62,24 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
 
   public crProperties(): StackFailureDetectorRemovalTarget {
     return {
-      ruleArn: this.targets.stackFailedEvent.ruleArn,
-      ruleTargetId: this.targets.stackFailedEvent.ruleTargetId,
-      detectorFnArn: this.targets.detector.functionArn,
-      detectorRoleArn: this.targets.role.roleArn,
+      ruleArn:                this.targets.stackFailedEvent.ruleArn,
+      ruleTargetId:           this.targets.stackFailedEvent.ruleTargetId,
+      detectorFnArn:          this.targets.detector.functionArn,
+      detectorRoleArn:        this.targets.role.roleArn,
       detectorRolePolicyName: this.targets.detectorRolePolicyName,
     };
   }
 
   public buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
     const payload: StackFailureDetectorWorkerInput = {
-      removalType: 'detector',
-      ruleArn: targetField(this.id, 'ruleArn'),
-      ruleTargetId: targetField(this.id, 'ruleTargetId'),
-      detectorFnArn: targetField(this.id, 'detectorFnArn'),
-      detectorRoleArn: targetField(this.id, 'detectorRoleArn'),
+      removalType:            'detector',
+      ruleArn:                targetField(this.id, 'ruleArn'),
+      ruleTargetId:           targetField(this.id, 'ruleTargetId'),
+      detectorFnArn:          targetField(this.id, 'detectorFnArn'),
+      detectorRoleArn:        targetField(this.id, 'detectorRoleArn'),
       detectorRolePolicyName: targetField(this.id, 'detectorRolePolicyName'),
-      rootStackName: Stack.of(this).stackName,
-      rootStackId: StackIdentity.guid,
+      rootStackName:          Stack.of(this).stackName,
+      rootStackId:            StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'Detector', {
@@ -88,7 +88,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       retryInterval,
       onSuccess,
       failureCause: 'Detector removal failed',
-      gracePeriod: this.gracePeriod,
+      gracePeriod:  this.gracePeriod,
     });
 
     return withTargetPresenceGuard(this, 'DetectorHasTarget', this.id, retryLoop, onSuccess);
@@ -97,7 +97,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   /** Rules are auto-named, so there is no per-rule ARN to scope a read to; it carries no condition. */
   private grantRuleInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
+      actions:   ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
       resources: [StackFailureDetectorRemoval.anyRuleArn],
     });
   }
@@ -107,7 +107,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     return this.rootStackConditions().map(
       (conditions) =>
         new iam.PolicyStatement({
-          actions: ['events:RemoveTargets', 'events:DeleteRule'],
+          actions:   ['events:RemoveTargets', 'events:DeleteRule'],
           resources: [StackFailureDetectorRemoval.anyRuleArn],
           conditions,
         }),
@@ -117,7 +117,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   /** The detector is a regular regional function, not Lambda@Edge, so the scope is the stack's own region. */
   private grantDetectorFunctionInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['lambda:GetFunction'],
+      actions:   ['lambda:GetFunction'],
       resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
     });
   }
@@ -126,7 +126,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     return this.rootStackConditions().map(
       (conditions) =>
         new iam.PolicyStatement({
-          actions: ['lambda:DeleteFunction'],
+          actions:   ['lambda:DeleteFunction'],
           resources: [StackFailureDetectorRemoval.anyRegionalFunctionArn],
           conditions,
         }),
@@ -136,14 +136,14 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   /** Scoped to the role's own ARN: `iam:DeleteRole` and `iam:DeleteRolePolicy` take no `aws:ResourceTag` condition. */
   private grantDetectorRoleInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['iam:ListRoleTags'],
+      actions:   ['iam:ListRoleTags'],
       resources: [this.targets.role.roleArn],
     });
   }
 
   private grantDetectorRoleDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
+      actions:   ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
       resources: [this.targets.role.roleArn],
     });
   }

@@ -5,8 +5,8 @@ export type PinsByPackage = { [packageName: string]: ArtifactPin };
 
 /** A package this repo releases itself, with the package folder whose bumped manifest carries its version. */
 export type OwnArtifact = {
-  readonly key: string;
-  readonly zone: ArtifactZone;
+  readonly key:               string;
+  readonly zone:              ArtifactZone;
   readonly manifestDirectory: string;
 };
 
@@ -16,7 +16,7 @@ export type OwnArtifact = {
  * needs none), and the packages this repo releases itself.
  */
 export type BakedPackage = {
-  readonly outputFile: string;
+  readonly outputFile:        string;
   readonly externalPinsFile?: string;
-  readonly ownArtifacts: readonly OwnArtifact[];
+  readonly ownArtifacts:      readonly OwnArtifact[];
 };

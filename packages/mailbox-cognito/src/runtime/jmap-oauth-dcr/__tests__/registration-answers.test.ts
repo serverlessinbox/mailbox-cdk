@@ -9,30 +9,30 @@ import { RegistrationAnswers } from '../registration-answers';
 
 describe('RegistrationAnswers', () => {
   const uncacheableJson = {
-    'content-type': 'application/json',
+    'content-type':  'application/json',
     'cache-control': 'no-store',
-    pragma: 'no-cache',
+    pragma:          'no-cache',
   };
 
   it('answers a created registration with 201 and the client information as JSON', () => {
     const answer = RegistrationAnswers.created({
-      client_id: 'client-1',
-      client_id_issued_at: 1_700_000_000,
-      redirect_uris: ['http://127.0.0.1/cb'],
+      client_id:                  'client-1',
+      client_id_issued_at:        1_700_000_000,
+      redirect_uris:              ['http://127.0.0.1/cb'],
       token_endpoint_auth_method: 'none',
-      client_name: 'My App',
-      scope: 'openid email',
+      client_name:                'My App',
+      scope:                      'openid email',
     });
 
     expect(answer.statusCode).toBe(201);
     expect(answer.headers).toEqual(uncacheableJson);
     expect(JSON.parse(answer.body ?? '')).toEqual({
-      client_id: 'client-1',
-      client_id_issued_at: 1_700_000_000,
-      redirect_uris: ['http://127.0.0.1/cb'],
+      client_id:                  'client-1',
+      client_id_issued_at:        1_700_000_000,
+      redirect_uris:              ['http://127.0.0.1/cb'],
       token_endpoint_auth_method: 'none',
-      client_name: 'My App',
-      scope: 'openid email',
+      client_name:                'My App',
+      scope:                      'openid email',
     });
   });
 
@@ -42,7 +42,7 @@ describe('RegistrationAnswers', () => {
     expect(answer.statusCode).toBe(429);
     expect(answer.headers).toEqual(uncacheableJson);
     expect(JSON.parse(answer.body ?? '')).toEqual({
-      error: 'invalid_client_metadata',
+      error:             'invalid_client_metadata',
       error_description: 'Registration cap exceeded for this tenant',
     });
   });
@@ -57,7 +57,7 @@ describe('RegistrationAnswers', () => {
 
     expect(answer.statusCode).toBe(500);
     expect(JSON.parse(answer.body ?? '')).toEqual({
-      error: 'server_error',
+      error:             'server_error',
       error_description: 'Internal error processing registration',
     });
   });

@@ -85,44 +85,44 @@ export class MailboxEdgeDeployer extends Construct {
     // whose resource is deleted with this policy in force.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
     const edgeStackArn         = stack.formatArn({
-      service: 'cloudformation',
-      region: 'us-east-1',
-      resource: 'stack',
+      service:      'cloudformation',
+      region:       'us-east-1',
+      resource:     'stack',
       resourceName: `${edgeStackNamePattern}/*`,
     });
 
     const infra = new DeployerInfra(this, 'infra', {
-      artifactResolver: props.artifactResolver,
+      artifactResolver:       props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
-      deployedStackName: 'edge',
-      deployedStackArn: edgeStackArn,
-      createWorker: (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
+      deployedStackName:      'edge',
+      deployedStackArn:       edgeStackArn,
+      createWorker:           (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         edgeStackNamePattern,
         edgeStackArn,
-        rootStack: Aws.STACK_NAME,
-        rootStackId: StackIdentity.guid,
-        templateObjectArn: props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
-        artifactObjectArns: [
+        rootStack:               Aws.STACK_NAME,
+        rootStackId:             StackIdentity.guid,
+        templateObjectArn:       props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
+        artifactObjectArns:      [
           props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),
         ],
-        hostedZoneId: props.hostedZone?.hostedZoneId,
+        hostedZoneId:            props.hostedZone?.hostedZoneId,
         jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
       }),
     });
 
     this.resource = infra.deployStack(this, MailboxEdgeDeployer.EDGE_STACK_RESOURCE_ID, 'Custom::MailboxEdgeDeployer', {
-      stackName: edgeStackName,
-      templateUrl: props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
-      parameters: this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
-      tags: serverlessInboxSubStackTags({
-        rootStack: Aws.STACK_NAME,
+      stackName:             edgeStackName,
+      templateUrl:           props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
+      parameters:            this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
+      tags:                  serverlessInboxSubStackTags({
+        rootStack:   Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
-        stack: edgeStackName,
+        stack:       edgeStackName,
       }),
       terminationProtection: props.terminationProtection ?? false,
-      region: 'us-east-1',
+      region:                'us-east-1',
     });
 
     this.edgeStackId = this.resource.ref;
@@ -155,11 +155,11 @@ export class MailboxEdgeDeployer extends Construct {
    */
   private createJmapBlobDownloadRole(authKeyStoreTable: IDataTable): iam.Role {
     const role = new iam.Role(this, 'jmap-blob-download-role', {
-      assumedBy: new iam.CompositePrincipal(
+      assumedBy:       new iam.CompositePrincipal(
         new iam.ServicePrincipal('lambda.amazonaws.com'),
         new iam.ServicePrincipal('edgelambda.amazonaws.com'),
       ),
-      description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
+      description:     `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
@@ -173,21 +173,21 @@ export class MailboxEdgeDeployer extends Construct {
 
   private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): Record<string, string> {
     return {
-      domainName: props.domainName,
-      artifactBucket: jmapBlobDownload.bucket,
-      jmapBlobDownloadKey: jmapBlobDownload.key,
-      jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
-      itemTableArn: props.itemTable.tableArn,
-      configTableArn: props.configTable.tableArn,
-      authKeyStoreTableArn: props.authKeyStoreTable.tableArn,
-      logGroupName: props.logGroupName,
-      rootStack: Aws.STACK_NAME,
-      rootStackId: StackIdentity.guid,
-      rootRegion: Stack.of(this).region,
-      productVersion: props.productVersion,
-      deployerType: props.deployerType,
+      domainName:                  props.domainName,
+      artifactBucket:              jmapBlobDownload.bucket,
+      jmapBlobDownloadKey:         jmapBlobDownload.key,
+      jmapBlobDownloadRoleArn:     this.jmapBlobDownloadRole.roleArn,
+      itemTableArn:                props.itemTable.tableArn,
+      configTableArn:              props.configTable.tableArn,
+      authKeyStoreTableArn:        props.authKeyStoreTable.tableArn,
+      logGroupName:                props.logGroupName,
+      rootStack:                   Aws.STACK_NAME,
+      rootStackId:                 StackIdentity.guid,
+      rootRegion:                  Stack.of(this).region,
+      productVersion:              props.productVersion,
+      deployerType:                props.deployerType,
       jmapBlobDownloadS3VersionId: jmapBlobDownload.versionId ?? '',
-      prefix: this.dotWrappedPrefix(props.prefix),
+      prefix:                      this.dotWrappedPrefix(props.prefix),
       ...(props.hostedZone
         ? { hostedZoneId: props.hostedZone.hostedZoneId, hostedZoneName: props.hostedZone.zoneName }
         : {}),

@@ -82,9 +82,9 @@ describe('RootStackMembership', () => {
     buffered.mismatchInTagMap(ROOT_STACK, 'Lambda function', { [ID_TAG_KEY]: 'guid-2', [NAME_TAG_KEY]: 'someone-elses-stack' });
     expect(warn).toHaveBeenCalledWith('Lambda function root stack mismatch', {
       expectedStackId: 'guid-1',
-      expectedStack: 'test-stack',
-      actualStackId: 'guid-2',
-      actualStack: 'someone-elses-stack',
+      expectedStack:   'test-stack',
+      actualStackId:   'guid-2',
+      actualStack:     'someone-elses-stack',
     });
     warn.mockRestore();
   });

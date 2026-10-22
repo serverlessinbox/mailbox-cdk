@@ -31,9 +31,9 @@ export class FunctionSmokeTester {
     try {
       const response = await lambda.send(
         new InvokeCommand({
-          FunctionName: functionArn,
+          FunctionName:   functionArn,
           InvocationType: 'RequestResponse',
-          Payload: JSON.stringify({ serverlessInboxSmokeTest: true }),
+          Payload:        JSON.stringify({ serverlessInboxSmokeTest: true }),
         }),
       );
 
@@ -104,7 +104,7 @@ export class FunctionSmokeTester {
     this.logger.warn('smoke test unprobeable: invoke failed', {
       functionArn,
       error: caught.message,
-      code: caught.name,
+      code:  caught.name,
     });
     return 'unprobeable';
   }

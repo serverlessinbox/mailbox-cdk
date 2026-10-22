@@ -26,11 +26,11 @@ describe('EmailProcessingQueueEvent', () => {
 
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
-      FunctionName: Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
-      BatchSize: 10,
+      EventSourceArn:                 queueArn,
+      FunctionName:                   Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
+      BatchSize:                      10,
       MaximumBatchingWindowInSeconds: 15,
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
+      FunctionResponseTypes:          Match.arrayEquals(['ReportBatchItemFailures']),
     });
   });
 });

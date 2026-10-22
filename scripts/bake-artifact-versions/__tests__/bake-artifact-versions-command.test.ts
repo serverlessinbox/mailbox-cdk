@@ -72,13 +72,13 @@ describe('BakeArtifactVersionsCommand', () => {
       expect(exitCode).toBe(0);
       expect(readdirSync(emptyCwd)).toEqual([]);
       expect(JSON.parse(readFileSync(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'), 'utf8'))).toEqual({
-        'mailbox-go': { version: '7.8.9', zone: 'regional' },
-        'mailbox-cdk': { version: '4.5.6', zone: 'regional' },
-        'mailbox-cdk-edge': { version: '4.5.6', zone: 'edge' },
+        'mailbox-go':         { version: '7.8.9', zone: 'regional' },
+        'mailbox-cdk':        { version: '4.5.6', zone: 'regional' },
+        'mailbox-cdk-edge':   { version: '4.5.6', zone: 'edge' },
         'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
       });
       expect(JSON.parse(readFileSync(path.join(root, 'packages', 'mailbox-cognito', 'artifact-versions.json'), 'utf8'))).toEqual({
-        'mailbox-cognito': { version: '4.5.6', zone: 'regional' },
+        'mailbox-cognito':    { version: '4.5.6', zone: 'regional' },
         'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
       });
       expect(stdout.join('')).toContain(`Written: ${path.join(root, 'packages', 'mailbox', 'artifact-versions.json')}`);

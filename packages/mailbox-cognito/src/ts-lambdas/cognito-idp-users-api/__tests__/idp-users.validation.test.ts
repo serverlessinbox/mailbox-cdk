@@ -41,9 +41,9 @@ describe('IdpUsersRequestValidator', () => {
     it('accepts a missing body and a body with paging arguments', () => {
       expect(validator.validateListIdpUsers(undefined).pageSize).toBeUndefined();
       expect(validator.validateListIdpUsers({ pageSize: 50, pageToken: 'token', filter: 'username ^= "a"' })).toMatchObject({
-        pageSize: 50,
+        pageSize:  50,
         pageToken: 'token',
-        filter: 'username ^= "a"',
+        filter:    'username ^= "a"',
       });
     });
 

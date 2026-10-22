@@ -33,7 +33,7 @@ const TEST_REGION  = 'us-west-2';
 function buildTemplate(): Template {
   const app   = new App();
   const stack = new cdk.Stack(app, 'TestStackUpdateRecovery', {
-    env: { account: TEST_ACCOUNT, region: TEST_REGION },
+    env:         { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
@@ -42,7 +42,7 @@ function buildTemplate(): Template {
   };
   const artifactResolver                      = new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 
@@ -57,7 +57,7 @@ function buildTemplate(): Template {
     configTable,
     auditEventsQueue,
     artifactResolver,
-    templateName: 'mailbox-standard',
+    templateName:    'mailbox-standard',
     templateVersion: '1.0.0',
   });
 

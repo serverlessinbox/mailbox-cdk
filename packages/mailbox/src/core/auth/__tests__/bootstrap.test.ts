@@ -32,26 +32,26 @@ describe('Bootstrap', () => {
 
   function createBootstrap(overrides: Partial<BootstrapProps> = {}): Bootstrap {
     return new Bootstrap(stack, 'bootstrap', {
-      configTable: new DataTable(new Table(stack, 'config-table', {
+      configTable:       new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
       })),
       authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store'),
-      artifactResolver: new PinnedArtifactResolver({
-        packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      artifactResolver:  new PinnedArtifactResolver({
+        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      domain: 'example.com',
-      oidcIssuer: 'https://example.com/issuer',
-      sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}),
-      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+      domain:            'example.com',
+      oidcIssuer:        'https://example.com/issuer',
+      sesRuleSet:        new ReceiptRuleSet(stack, 'ses-rule-set', {}),
+      vendorLink:        { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
       ...overrides,
     });
   }
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -62,7 +62,7 @@ describe('Bootstrap', () => {
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
         webmailUi: Match.objectLike({ clientId: 'webmail-client', redirectUri: '/' }),
-        adminUi: Match.absent(),
+        adminUi:   Match.absent(),
       },
     });
   });
@@ -70,14 +70,14 @@ describe('Bootstrap', () => {
   it('requests the client id as audience unless a requested audience is given', () => {
     createBootstrap({
       oauthClients: {
-        adminUi: client('admin-client'),
+        adminUi:   client('admin-client'),
         webmailUi: { ...client('webmail-client'), requestedAudience: 'webmail-audience' },
       },
     });
 
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
-        adminUi: Match.objectLike({ requestedAudience: 'admin-client' }),
+        adminUi:   Match.objectLike({ requestedAudience: 'admin-client' }),
         webmailUi: Match.objectLike({ requestedAudience: 'webmail-audience' }),
       },
     });
@@ -94,7 +94,7 @@ describe('Bootstrap', () => {
   it('sends the default tenant name and local part when none are given', () => {
     createBootstrap();
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
-      tenantName: 'default-tenant',
+      tenantName:       'default-tenant',
       defaultLocalPart: '{username}',
     });
   });
@@ -120,7 +120,7 @@ describe('Bootstrap', () => {
 
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       oauthClients: {
-        adminUi: Match.objectLike({ clientId: 'admin-client' }),
+        adminUi:   Match.objectLike({ clientId: 'admin-client' }),
         webmailUi: Match.absent(),
       },
     });

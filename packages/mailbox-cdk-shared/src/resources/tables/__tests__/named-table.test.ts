@@ -23,7 +23,7 @@ const stackNameRef = { Ref: 'AWS::StackName' };
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }

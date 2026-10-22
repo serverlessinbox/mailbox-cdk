@@ -25,7 +25,7 @@ const OPENID_CONFIGURATION_ROUTE_KEY = `GET ${OPENID_CONFIGURATION_PATH}`;
  */
 interface RouteThrottle {
   readonly ThrottlingBurstLimit: number;
-  readonly ThrottlingRateLimit: number;
+  readonly ThrottlingRateLimit:  number;
 }
 
 /** The throttling of each route of a stage, by route key. A value is a token when the route is gated on a condition. */
@@ -36,11 +36,11 @@ const REGISTRATION_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 5, Throttli
 
 /** What the addon needs from the Cognito user pool providing OAuth: its identity and its OAuth endpoints. */
 export interface JmapOAuthPool {
-  readonly userPool: IUserPool;
-  readonly userPoolId: string;
-  readonly issuer: string;
+  readonly userPool:              IUserPool;
+  readonly userPoolId:            string;
+  readonly issuer:                string;
   readonly authorizationEndpoint: string;
-  readonly tokenEndpoint: string;
+  readonly tokenEndpoint:         string;
 }
 
 export interface JmapOAuthAddonProps {
@@ -102,10 +102,10 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
 
       // Constructed unconditionally: the Lambda must exist in the template for the condition to gate it.
       this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
-        artifactResolver: props.artifactResolver,
+        artifactResolver:    props.artifactResolver,
         identityProvisioner: props.identityProvisioner,
-        userPoolId: props.pool.userPoolId,
-        userPoolArn: props.pool.userPool.userPoolArn,
+        userPoolId:          props.pool.userPoolId,
+        userPoolArn:         props.pool.userPool.userPoolArn,
       });
       cdk.Aspects.of(this.dcrLambda).add(new GateOnConditionAspect(this.registrationEnabled));
     }
@@ -123,7 +123,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
 
     StaticContentDeployer.getOrCreate(this, props.artifactResolver).deploy(this, 'openid-config', {
       targetBucket: this.bucket,
-      source: StaticContentSource.data(
+      source:       StaticContentSource.data(
         '.well-known/openid-configuration',
         openidConfigurationBody,
         { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
@@ -150,24 +150,24 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
 
   private openidConfigurationBody(props: JmapOAuthAddonProps, withRegistration: boolean): string {
     return JSON.stringify({
-      issuer: props.pool.issuer,
+      issuer:                 props.pool.issuer,
       authorization_endpoint: props.pool.authorizationEndpoint,
-      token_endpoint: props.pool.tokenEndpoint,
-      userinfo_endpoint: `${props.pool.issuer}/oauth2/userInfo`,
+      token_endpoint:         props.pool.tokenEndpoint,
+      userinfo_endpoint:      `${props.pool.issuer}/oauth2/userInfo`,
       ...(withRegistration
         ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
-      scopes_supported: ['openid', 'email', 'profile', 'offline_access'],
-      response_types_supported: ['code'],
-      response_modes_supported: ['query'],
-      grant_types_supported: ['authorization_code', 'refresh_token'],
-      subject_types_supported: ['public'],
+      scopes_supported:                      ['openid', 'email', 'profile', 'offline_access'],
+      response_types_supported:              ['code'],
+      response_modes_supported:              ['query'],
+      grant_types_supported:                 ['authorization_code', 'refresh_token'],
+      subject_types_supported:               ['public'],
       id_token_signing_alg_values_supported: ['RS256'],
-      claims_supported: ['sub', 'email', 'email_verified', 'name'],
-      claim_types_supported: ['normal'],
-      claims_parameter_supported: false,
-      request_parameter_supported: false,
-      request_uri_parameter_supported: false,
+      claims_supported:                      ['sub', 'email', 'email_verified', 'name'],
+      claim_types_supported:                 ['normal'],
+      claims_parameter_supported:            false,
+      request_parameter_supported:           false,
+      request_uri_parameter_supported:       false,
     });
   }
 
@@ -175,7 +175,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
   private addDiscoveryRoute(api: HttpApi, stage: CfnStage): RouteSettings {
     const integration = new HttpUrlIntegration('openid-config', `https://${this.bucket.bucketRegionalDomainName}${OPENID_CONFIGURATION_PATH}`);
     const routes      = api.addRoutes({
-      path: OPENID_CONFIGURATION_PATH,
+      path:    OPENID_CONFIGURATION_PATH,
       methods: [HttpMethod.GET],
       integration,
     });
@@ -197,8 +197,8 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
 
     const registrationEnabled = this.registrationEnabled;
     const routes              = api.addRoutes({
-      path: REGISTRATION_PATH,
-      methods: [HttpMethod.POST],
+      path:        REGISTRATION_PATH,
+      methods:     [HttpMethod.POST],
       integration: new HttpLambdaIntegration('dcr-integration', this.dcrLambda),
     });
     routes.forEach((route) => cdk.Aspects.of(route).add(new GateOnConditionAspect(registrationEnabled)));

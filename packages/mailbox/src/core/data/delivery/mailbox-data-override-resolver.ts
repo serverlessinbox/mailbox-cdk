@@ -8,12 +8,12 @@ import type { ResourceProperties, TableRole } from '../../../runtime/data-overri
 
 /** Incoming data table ARNs, one per table role, and the artifact resolver for the resolver Lambda's code. */
 export interface MailboxDataOverrideResolverProps {
-  readonly configTableArn: string;
-  readonly itemTableArn: string;
-  readonly changelogTableArn: string;
-  readonly auditLogTableArn: string;
+  readonly configTableArn:       string;
+  readonly itemTableArn:         string;
+  readonly changelogTableArn:    string;
+  readonly auditLogTableArn:     string;
   readonly mailFeedbackTableArn: string;
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver:     IArtifactResolver;
 }
 
 /**
@@ -41,23 +41,23 @@ export class MailboxDataOverrideResolver extends Construct {
     const mailFeedbackTableOverride = this.createOverrideParameter('mailfeedback-table-override', 'mailFeedbackTable', 'mail feedback table', props.mailFeedbackTableArn);
 
     const resolverProps: ResourceProperties = {
-      configTableIncomingArn: props.configTableArn,
-      configTableOverrideArn: this.resolveParameterValue(configTableOverride),
-      itemTableIncomingArn: props.itemTableArn,
-      itemTableOverrideArn: this.resolveParameterValue(itemTableOverride),
-      changelogTableIncomingArn: props.changelogTableArn,
-      changelogTableOverrideArn: this.resolveParameterValue(changelogTableOverride),
-      auditLogTableIncomingArn: props.auditLogTableArn,
-      auditLogTableOverrideArn: this.resolveParameterValue(auditLogTableOverride),
+      configTableIncomingArn:       props.configTableArn,
+      configTableOverrideArn:       this.resolveParameterValue(configTableOverride),
+      itemTableIncomingArn:         props.itemTableArn,
+      itemTableOverrideArn:         this.resolveParameterValue(itemTableOverride),
+      changelogTableIncomingArn:    props.changelogTableArn,
+      changelogTableOverrideArn:    this.resolveParameterValue(changelogTableOverride),
+      auditLogTableIncomingArn:     props.auditLogTableArn,
+      auditLogTableOverrideArn:     this.resolveParameterValue(auditLogTableOverride),
       mailFeedbackTableIncomingArn: props.mailFeedbackTableArn,
       mailFeedbackTableOverrideArn: this.resolveParameterValue(mailFeedbackTableOverride),
     };
 
     this.resource = new cdk.CustomResource(this, 'resource', {
-      serviceToken: fn.functionArn,
-      resourceType: 'Custom::MailboxDataOverrideResolver',
+      serviceToken:   fn.functionArn,
+      resourceType:   'Custom::MailboxDataOverrideResolver',
       serviceTimeout: cdk.Duration.seconds(120),
-      properties: resolverProps,
+      properties:     resolverProps,
     });
   }
 
@@ -89,8 +89,8 @@ export class MailboxDataOverrideResolver extends Construct {
   private createOverrideParameter(id: string, role: TableRole, tableLabel: string, incomingArn: string): ssm.StringParameter {
     return new ssm.StringParameter(this, id, {
       parameterName: `/serverlessinbox/${cdk.Aws.STACK_NAME}/data-override/${role}`,
-      stringValue: incomingArn,
-      description: `Operator-overridable ARN for the ${tableLabel}. Replace with a restored table ARN to redirect this role.`,
+      stringValue:   incomingArn,
+      description:   `Operator-overridable ARN for the ${tableLabel}. Replace with a restored table ARN to redirect this role.`,
       // The name is a token that starts with "/", which CDK rejects for a simple name.
       simpleName: false,
     });

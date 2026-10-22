@@ -4,13 +4,13 @@ import type { RootStack }                            from './removal';
 
 /** One key/value tag as the ACM, EventBridge and IAM tag listings return it. */
 export interface TagEntry {
-  readonly Key?: string;
+  readonly Key?:   string;
   readonly Value?: string;
 }
 
 /** The root-stack tags a resource carries; either may be absent. */
 interface RootStackTags {
-  readonly id: string | undefined;
+  readonly id:   string | undefined;
   readonly name: string | undefined;
 }
 
@@ -62,9 +62,9 @@ export class RootStackMembership {
 
     this.logger.warn(`${resourceLabel} root stack mismatch`, {
       expectedStackId: rootStack.rootStackId,
-      expectedStack: rootStack.rootStackName,
-      actualStackId: tags.id,
-      actualStack: tags.name,
+      expectedStack:   rootStack.rootStackName,
+      actualStackId:   tags.id,
+      actualStack:     tags.name,
     });
     return `Root stack mismatch (expected ${rootStack.rootStackName} / ${rootStack.rootStackId}, got ${tags.name} / ${tags.id})`;
   }

@@ -12,19 +12,19 @@ export type ManagedAutoUpdateType = Extract<AutoUpdateType, 'code' | 'edge'>;
 
 /** A function of a synthesized template that the artifact updater manages, as the template describes it. */
 export interface ManagedLambda {
-  readonly logicalId: string;
-  readonly artifactName: string;
-  readonly packageName: string;
+  readonly logicalId:      string;
+  readonly artifactName:   string;
+  readonly packageName:    string;
   readonly autoUpdateType: ManagedAutoUpdateType;
-  readonly handlerExport: string;
-  readonly environment: Record<string, string>;
+  readonly handlerExport:  string;
+  readonly environment:    Record<string, string>;
 }
 
 /** An invocation outcome: whether the handler answered the probe, whether it was reached at all, and what happened. */
 export interface ProbeOutcome {
-  readonly answered: boolean;
+  readonly answered:       boolean;
   readonly handlerReached: boolean;
-  readonly detail: string;
+  readonly detail:         string;
 }
 
 const MANAGED_UPDATE_TYPES  = ['code', 'edge'] as const satisfies readonly ManagedAutoUpdateType[];
@@ -38,8 +38,8 @@ const isTemplateValue = t.isOneOf([t.isString(), t.isPartial({})]);
 const isLambdaFunctionResource = t.isPartial({
   Properties: t.isOptional(
     t.isPartial({
-      Handler: t.isOptional(t.isString()),
-      Tags: t.isOptional(t.isArray(t.isPartial({ Key: t.isString(), Value: isTemplateValue }))),
+      Handler:     t.isOptional(t.isString()),
+      Tags:        t.isOptional(t.isArray(t.isPartial({ Key: t.isString(), Value: isTemplateValue }))),
       Environment: t.isOptional(t.isPartial({ Variables: t.isOptional(t.isRecord(isTemplateValue)) })),
     }),
   ),
@@ -78,7 +78,7 @@ export function managedLambdasOf(template: Template): ManagedLambda[] {
       packageName,
       autoUpdateType,
       handlerExport: (resource.Properties?.Handler ?? '').split('.').slice(1).join('.'),
-      environment: environmentOf(resource.Properties?.Environment?.Variables ?? {}),
+      environment:   environmentOf(resource.Properties?.Environment?.Variables ?? {}),
     });
   }
   return managed;

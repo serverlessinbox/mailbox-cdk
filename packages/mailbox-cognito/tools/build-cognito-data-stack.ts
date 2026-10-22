@@ -12,9 +12,9 @@ async function main() {
 
   const app   = new App();
   const stack = new MailboxCognitoDataStack(app, 'MailboxCognitoData', {
-    env: {
+    env:         {
       account: process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000',
-      region: process.env.CDK_DEFAULT_REGION ?? 'eu-west-1',
+      region:  process.env.CDK_DEFAULT_REGION ?? 'eu-west-1',
     },
     synthesizer: new BootstraplessSynthesizer(),
   });

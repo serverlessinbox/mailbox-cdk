@@ -15,7 +15,7 @@ describe('loadEmbeddedArtifactVersions', () => {
   it('loads the pins at the given path', () => {
     const filePath = path.join(workDir, 'valid-versions.json');
     const versions = {
-      'mailbox-go': { version: '1.2.3', zone: 'regional' },
+      'mailbox-go':       { version: '1.2.3', zone: 'regional' },
       'mailbox-cdk-edge': { version: '1.2.3', zone: 'edge' },
     };
     writeFileSync(filePath, JSON.stringify(versions));

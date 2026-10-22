@@ -16,12 +16,12 @@ export interface StackHelpersLambdaProps {
 export class StackHelpersLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackHelpersLambdaProps) {
     super(scope, id, {
-      lambdaId: 'stack-helpers',
-      packageName: KIT_ARTIFACT_PACKAGE,
-      pipeline: 'infra',
+      lambdaId:         'stack-helpers',
+      packageName:      KIT_ARTIFACT_PACKAGE,
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
+      timeout:          cdk.Duration.seconds(30),
+      memorySize:       256,
     });
 
     this.grantRoute53HostedZoneRead();
@@ -29,7 +29,7 @@ export class StackHelpersLambda extends TypeScriptLambda {
 
   private grantRoute53HostedZoneRead(): void {
     this.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['route53:GetHostedZone'],
+      actions:   ['route53:GetHostedZone'],
       resources: ['*'],
     }));
   }

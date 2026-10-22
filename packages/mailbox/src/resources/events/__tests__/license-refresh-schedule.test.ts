@@ -21,8 +21,8 @@ describe('LicenseRefreshSchedule', () => {
     template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'cron(47 13 * * ? *)',
-      State: 'ENABLED',
-      Targets: [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] }, Id: 'Target0' }],
+      State:              'ENABLED',
+      Targets:            [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] }, Id: 'Target0' }],
     });
     template.resourceCountIs('AWS::Lambda::Permission', 1);
   });

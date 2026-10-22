@@ -18,15 +18,15 @@ const UNNAMED_STACK_RESOURCE_ID = toPhysicalResourceId('MailboxStack');
 
 /** Where an answer goes and which resource it concerns: the CloudFormation envelope, the physical id and the log stream a reason can point to. */
 export interface CfnReplyTarget {
-  readonly cfn: CfnEnvelope;
+  readonly cfn:                CfnEnvelope;
   readonly physicalResourceId: PhysicalResourceId;
-  readonly logStreamName: string | undefined;
+  readonly logStreamName:      string | undefined;
 }
 
 /** What a SUCCESS answer carries besides the status: a reason, and the stack outputs the resource exposes as attributes. */
 export interface CfnSuccessAnswer {
   readonly reason?: string;
-  readonly data?: Record<string, string>;
+  readonly data?:   Record<string, string>;
 }
 
 /** The two statuses CloudFormation accepts in an answer. */
@@ -35,7 +35,7 @@ type CfnStatus ='SUCCESS' | 'FAILED';
 /** Why one PUT of an answer did not succeed, and whether another attempt can. */
 interface PutRejection {
   readonly retryable: boolean;
-  readonly message: string;
+  readonly message:   string;
 }
 
 /**
@@ -54,12 +54,12 @@ export class CfnResponder {
 
   targetForRequest(request: CfnRequest, logStreamName: string | undefined): CfnReplyTarget {
     return {
-      cfn: {
-        ResponseURL: request.ResponseURL,
-        StackId: request.StackId,
-        RequestId: request.RequestId,
-        LogicalResourceId: request.LogicalResourceId,
-        ResourceType: request.ResourceType,
+      cfn:                {
+        ResponseURL:        request.ResponseURL,
+        StackId:            request.StackId,
+        RequestId:          request.RequestId,
+        LogicalResourceId:  request.LogicalResourceId,
+        ResourceType:       request.ResourceType,
         PhysicalResourceId: request.PhysicalResourceId,
       },
       physicalResourceId: request.PhysicalResourceId ?? this.physicalIdOfNewResource(request.ResourceProperties.stackName),
@@ -69,7 +69,7 @@ export class CfnResponder {
 
   targetForStep(event: SfnInvokeEvent, logStreamName: string | undefined): CfnReplyTarget {
     return {
-      cfn: event.cfn,
+      cfn:                event.cfn,
       physicalResourceId: event.cfn.PhysicalResourceId ?? this.physicalIdOfNewResource(event.op.stackName),
       logStreamName,
     };
@@ -82,7 +82,7 @@ export class CfnResponder {
    */
   targetForAnswerable(event: AnswerableEvent, logStreamName: string | undefined): CfnReplyTarget {
     return {
-      cfn: event.cfn,
+      cfn:                event.cfn,
       physicalResourceId: event.physicalResourceId ?? this.physicalIdOfNewResource(event.stackName),
       logStreamName,
     };
@@ -111,14 +111,14 @@ export class CfnResponder {
 
   private async put(target: CfnReplyTarget, status: CfnStatus, reason: string | undefined, data: Record<string, string> | undefined): Promise<void> {
     const body = JSON.stringify({
-      Status: status,
-      Reason: this.reasonOf(target, reason),
+      Status:             status,
+      Reason:             this.reasonOf(target, reason),
       PhysicalResourceId: target.physicalResourceId,
-      StackId: target.cfn.StackId,
-      RequestId: target.cfn.RequestId,
-      LogicalResourceId: target.cfn.LogicalResourceId,
-      NoEcho: false,
-      Data: data ?? {},
+      StackId:            target.cfn.StackId,
+      RequestId:          target.cfn.RequestId,
+      LogicalResourceId:  target.cfn.LogicalResourceId,
+      NoEcho:             false,
+      Data:               data ?? {},
     });
 
     for (let attempt = 1; ; attempt++) {

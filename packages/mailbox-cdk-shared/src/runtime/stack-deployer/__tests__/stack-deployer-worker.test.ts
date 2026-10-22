@@ -38,13 +38,13 @@ import {
 
 function failedEvent(reason: string): StackEvent {
   return {
-    StackId: 's',
-    EventId: reason,
-    StackName: STACK_NAME,
-    Timestamp: new Date(),
-    LogicalResourceId: 'DynamoDBTable',
-    ResourceType: 'AWS::DynamoDB::Table',
-    ResourceStatus: 'CREATE_FAILED',
+    StackId:              's',
+    EventId:              reason,
+    StackName:            STACK_NAME,
+    Timestamp:            new Date(),
+    LogicalResourceId:    'DynamoDBTable',
+    ResourceType:         'AWS::DynamoDB::Table',
+    ResourceStatus:       'CREATE_FAILED',
     ResourceStatusReason: reason,
   };
 }

@@ -62,19 +62,19 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     // CONFIG_TABLE_NAME, SUPPORT_HOP_ROLE_ARN, then tier vars (from registry order)
     const tierEnv                             = buildSupportTierEnvironment(props.tierRoleArns);
     const environment: Record<string, string> = {
-      CONFIG_TABLE_NAME: props.configTable.tableName,
-      SUPPORT_HOP_ROLE_ARN: props.supportHopRoleArn,
-      SUPPORT_DIAG_TAG_KEY: props.supportDiagTagKey,
+      CONFIG_TABLE_NAME:           props.configTable.tableName,
+      SUPPORT_HOP_ROLE_ARN:        props.supportHopRoleArn,
+      SUPPORT_DIAG_TAG_KEY:        props.supportDiagTagKey,
       SUPPORT_CONFIG_READ_TAG_KEY: props.supportConfigReadTagKey,
       ...tierEnv,
     };
 
     super(scope, id, {
-      lambdaId: 'support-role-assumption-collector',
-      pipeline: 'admin',
+      lambdaId:         'support-role-assumption-collector',
+      pipeline:         'admin',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
       environment,
     });
 
@@ -92,8 +92,8 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     // Grant read-only CloudTrail access for querying assume-role events.
     // CloudTrail actions declare no resource types, so resources: ['*'] is correct per IAM scoping.
     this.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
+      effect:    Effect.ALLOW,
+      actions:   [
         'cloudtrail:LookupEvents',
       ],
       resources: ['*'],
@@ -111,11 +111,11 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     // serverless-inbox:support:diag and serverless-inbox:support:config-read. Do not "simplify" this back to StringEquals — that change
     // would silently break all tag removals.
     this.addToRolePolicy(new PolicyStatement({
-      actions: [
+      actions:    [
         'iam:TagRole',
         'iam:UntagRole',
       ],
-      resources: [supportHopRoleArn],
+      resources:  [supportHopRoleArn],
       conditions: {
         'ForAllValues:StringEquals': {
           'aws:TagKeys': supportTierTagKeys,
@@ -127,7 +127,7 @@ export class SupportRoleAssumptionCollectorLambda extends GoLambda {
     // Scoped to the support-hop role only, no conditions — ListRoleTags carries no request
     // tag keys, so the TagKeys condition would be fragile and obscure intent.
     this.addToRolePolicy(new PolicyStatement({
-      actions: [
+      actions:   [
         'iam:ListRoleTags',
       ],
       resources: [supportHopRoleArn],

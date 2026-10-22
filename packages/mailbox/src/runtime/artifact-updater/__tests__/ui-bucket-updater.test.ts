@@ -18,26 +18,26 @@ import { UiBucketUpdater }                                                      
 import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack: jest.fn(),
-  buildArtifactKey: jest.fn(),
+  deriveTrack:        jest.fn(),
+  buildArtifactKey:   jest.fn(),
   readReleasePointer: jest.fn(),
 }));
 
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
-  deployZipToPrefix: jest.fn(),
+  deployZipToPrefix:    jest.fn(),
   invalidateCloudFront: jest.fn(),
 }));
 
 /** The content operations the suite fakes, which it sets up per test. */
 interface ContentOperationMocks {
-  readonly deployZipToPrefix: jest.Mock;
+  readonly deployZipToPrefix:    jest.Mock;
   readonly invalidateCloudFront: jest.Mock;
 }
 
 /** The updater under test and the registry S3 client it was given. */
 interface UpdaterFixture {
-  readonly updater: UiBucketUpdater;
+  readonly updater:    UiBucketUpdater;
   readonly registryS3: S3Client;
 }
 
@@ -98,18 +98,18 @@ describe('UiBucketUpdater', () => {
     expect(updated).toBe(true);
     expect(deployZipToPrefix).toHaveBeenCalledWith(registryS3, {
       sourceBucket: 'mailbox-artifacts-us-east-1',
-      sourceKey: 'ui-bundle/release/1.2.4/ui-bundle.zip',
+      sourceKey:    'ui-bundle/release/1.2.4/ui-bundle.zip',
       targetBucket: 'ui-content-bucket',
       targetPrefix: 'content/',
     });
     expect(invalidateCloudFront).toHaveBeenCalledWith(expect.anything(), {
-      distributionId: 'ABCD1234',
-      paths: ['/*'],
+      distributionId:  'ABCD1234',
+      paths:           ['/*'],
       callerReference: expect.stringContaining('ui-update:ui-content-bucket:1.2.4:'),
     });
     expect(cloudFrontMock.commandCalls(TagResourceCommand)[0].args[0].input).toEqual({
       Resource: DISTRIBUTION_ARN,
-      Tags: { Items: [{ Key: 'serverless-inbox:artifact-version', Value: '1.2.4' }] },
+      Tags:     { Items: [{ Key: 'serverless-inbox:artifact-version', Value: '1.2.4' }] },
     });
   });
 
@@ -130,9 +130,9 @@ describe('UiBucketUpdater', () => {
     expect(invalidateCloudFront).not.toHaveBeenCalled();
     expect(cloudFrontMock.commandCalls(TagResourceCommand)).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith('failed to update UI bucket', {
-      bucketName: 'ui-content-bucket',
+      bucketName:     'ui-content-bucket',
       distributionId: 'ABCD1234',
-      error: 'S3 GetObject returned empty body',
+      error:          'S3 GetObject returned empty body',
     });
   });
 });

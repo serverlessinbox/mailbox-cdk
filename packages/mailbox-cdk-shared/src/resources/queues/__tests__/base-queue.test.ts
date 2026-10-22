@@ -19,7 +19,7 @@ import type { BaseQueueProps }                     from '../base-queue';
 
 function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Template {
   const stack               = new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const encryptionMasterKey = keyProps ? new kms.Key(stack, 'TestKey', keyProps) : undefined;
@@ -30,24 +30,24 @@ function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Templat
 describe('BaseQueue', () => {
   it('defaults to a 6 minute visibility timeout and 20 second long polling', () => {
     queueTemplate().hasResourceProperties('AWS::SQS::Queue', {
-      VisibilityTimeout: 360,
+      VisibilityTimeout:             360,
       ReceiveMessageWaitTimeSeconds: 20,
     });
   });
 
   it('uses the given visibility timeout and wait time instead of the defaults', () => {
     queueTemplate({
-      visibilityTimeout: Duration.minutes(2),
+      visibilityTimeout:      Duration.minutes(2),
       receiveMessageWaitTime: Duration.seconds(5),
     }).hasResourceProperties('AWS::SQS::Queue', {
-      VisibilityTimeout: 120,
+      VisibilityTimeout:             120,
       ReceiveMessageWaitTimeSeconds: 5,
     });
   });
 
   it('names the queue after its own position in the tree and the install', () => {
     const stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const group = new Construct(stack, 'group');

@@ -16,7 +16,7 @@ import { EmailProcessingQueue }          from '../email-processing-queue';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -35,12 +35,12 @@ describe('EmailProcessingQueue', () => {
     const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 'sqs:SendMessage',
-            Effect: 'Allow',
+            Action:   'sqs:SendMessage',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
         ]),
@@ -61,12 +61,12 @@ describe('EmailProcessingQueue', () => {
     const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-            Effect: 'Allow',
+            Action:   ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
         ]),
@@ -82,7 +82,7 @@ describe('EmailProcessingQueue', () => {
 
     template.hasResourceProperties('AWS::SQS::Queue', {
       VisibilityTimeout: 360,
-      RedrivePolicy: Match.anyValue(),
+      RedrivePolicy:     Match.anyValue(),
     });
   });
 

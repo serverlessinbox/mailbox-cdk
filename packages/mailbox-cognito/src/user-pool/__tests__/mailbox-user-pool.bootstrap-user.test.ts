@@ -21,12 +21,12 @@ const BOOTSTRAP_USER_TYPE = 'Custom::CognitoBootstrapUser';
 function synthesizeBootstrapUser(): Record<string, unknown> {
   const app   = new App({
     context: {
-      'serverlessinbox:artifacts': {
+      'serverlessinbox:artifacts':         {
         bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
-          'mailbox-cdk': { zone: 'regional', version: '0.0.1-test' },
-          'mailbox': { zone: 'regional', version: '0.0.1-test' },
+        packages:   {
+          'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
+          'mailbox-cdk':        { zone: 'regional', version: '0.0.1-test' },
+          'mailbox':            { zone: 'regional', version: '0.0.1-test' },
           'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
         },
       },
@@ -34,11 +34,11 @@ function synthesizeBootstrapUser(): Record<string, unknown> {
     },
   });
   const stack = new Stack(app, 'TestBootstrapUser', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const pool  = new MailboxUserPool(stack, 'user-pool', {
-    domain: { kind: 'cognito', cognitoDomainPrefix: 'test-bootstrap' },
+    domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-bootstrap' },
     artifactResolver: MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions()),
   });
 

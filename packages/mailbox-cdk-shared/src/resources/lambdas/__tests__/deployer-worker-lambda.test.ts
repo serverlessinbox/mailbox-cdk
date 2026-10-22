@@ -60,9 +60,9 @@ describe('DeployerWorkerLambda', () => {
     const template = synthProbe(() => undefined);
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Handler: 'index.workerHandler',
-      Timeout: 900,
-      MemorySize: 512,
+      Handler:     'index.workerHandler',
+      Timeout:     900,
+      MemorySize:  512,
       Environment: { Variables: { SERVICE_NAME: 'stack-deployer-data-worker' } },
     });
   });

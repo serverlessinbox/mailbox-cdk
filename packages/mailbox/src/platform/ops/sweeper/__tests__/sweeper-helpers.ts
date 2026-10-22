@@ -20,7 +20,7 @@ import { StackFailureDetectorRemoval }                    from '../stack-failure
 
 export function newTestStack(id: string): Stack {
   return new Stack(new App(), id, {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -31,7 +31,7 @@ export function newArtifactResolver(stack: Stack): IArtifactResolver {
   };
   return new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
@@ -56,15 +56,15 @@ export function newEdgeFunctionRemoval(scope: Construct): EdgeFunctionRemoval {
 
 /** A detector removal and the CDK objects it was built over. */
 export interface DetectorRemovalFixture {
-  readonly removal: StackFailureDetectorRemoval;
+  readonly removal:          StackFailureDetectorRemoval;
   readonly stackFailedEvent: StackFailedEvent;
-  readonly role: iam.Role;
-  readonly detector: lambda.IFunction;
+  readonly role:             iam.Role;
+  readonly detector:         lambda.IFunction;
 }
 
 export function newDetectorRemoval(scope: Construct, gracePeriod?: Duration): DetectorRemovalFixture {
   const role             = new iam.Role(scope, 'detector-role', {
-    roleName: 'mailbox-diag-role-test',
+    roleName:  'mailbox-diag-role-test',
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
   const detector         = lambda.Function.fromFunctionArn(

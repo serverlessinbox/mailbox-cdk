@@ -26,47 +26,47 @@ describe('UiSection', () => {
 
   function newSection(overrides: Partial<UiSectionProps> = {}): UiSection {
     const authProvider: IMailboxAuthProvider = {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                {},
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
+      provisionJmapApiClient:  () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
+      createAdminApiAddons:    () => [],
     };
     return new UiSection(stack, 'ui', {
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-admin-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-admin-ui':   { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-webmail-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       authProvider,
-      enableAdminUi: true,
+      enableAdminUi:   true,
       enableWebmailUi: true,
-      mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
-      data: {
-        configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+      mailboxDomains:  new MailboxDomains({ domainName: 'example.com' }),
+      data:            {
+        configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
         auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       },
-      auth: { oauthClientsProvisioned: new DependencyGroup() },
-      apis: { adminApiAddons: [] },
-      edge: {},
+      auth:            { oauthClientsProvisioned: new DependencyGroup() },
+      apis:            { adminApiAddons: [] },
+      edge:            {},
       ...overrides,
     });
   }
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });

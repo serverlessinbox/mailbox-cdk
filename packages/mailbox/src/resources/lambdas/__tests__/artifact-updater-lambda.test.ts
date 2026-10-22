@@ -38,9 +38,9 @@ function accountArn(prefix: string, suffix: string): unknown {
 
 interface FunctionResource {
   readonly Properties: {
-    readonly Timeout: number;
-    readonly MemorySize: number;
-    readonly Role: unknown;
+    readonly Timeout:     number;
+    readonly MemorySize:  number;
+    readonly Role:        unknown;
     readonly Environment: { readonly Variables: Record<string, unknown> };
   };
 }
@@ -54,23 +54,23 @@ describe('ArtifactUpdaterLambda', () => {
 
   beforeAll(() => {
     const stack                                 = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
-      artifactResolver: new PinnedArtifactResolver({
+      artifactResolver:   new PinnedArtifactResolver({
         packages,
-        location: { bucketBase: BUCKET_BASE, project: 'serverlessinbox' },
+        location:         { bucketBase: BUCKET_BASE, project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      distTag: 'stable',
-      granularity: 'minor',
-      rootStackTagValue: ROOT_STACK,
-      rootStackId: ROOT_STACK_ID,
+      distTag:            'stable',
+      granularity:        'minor',
+      rootStackTagValue:  ROOT_STACK,
+      rootStackId:        ROOT_STACK_ID,
       artifactBucketBase: BUCKET_BASE,
-      updateInterval: Duration.hours(3),
-      isTracking: new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') }),
+      updateInterval:     Duration.hours(3),
+      isTracking:         new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') }),
     });
 
     template           =Template.fromStack(stack);
@@ -90,9 +90,9 @@ describe('ArtifactUpdaterLambda', () => {
     it('sets the variables its configuration reads from the template', () => {
       expect(updater.Properties.Environment.Variables).toMatchObject({
         ARTIFACT_BUCKET_BASE: BUCKET_BASE,
-        DIST_TAG: 'stable',
-        GRANULARITY: 'minor',
-        PROJECT: 'serverlessinbox',
+        DIST_TAG:             'stable',
+        GRANULARITY:          'minor',
+        PROJECT:              'serverlessinbox',
         ROOT_STACK_TAG_VALUE: ROOT_STACK,
         ROOT_STACK_ID,
       });
@@ -112,9 +112,9 @@ describe('ArtifactUpdaterLambda', () => {
 
     it('grants the role to invoke the function itself', () => {
       template.hasResourceProperties('AWS::Lambda::Permission', {
-        Action: 'lambda:InvokeFunction',
+        Action:       'lambda:InvokeFunction',
         FunctionName: { 'Fn::GetAtt': [updaterLogicalId, 'Arn'] },
-        Principal: { 'Fn::GetAtt': [roleLogicalId, 'Arn'] },
+        Principal:    { 'Fn::GetAtt': [roleLogicalId, 'Arn'] },
       });
     });
   });
@@ -137,7 +137,7 @@ describe('ArtifactUpdaterLambda', () => {
     it('invokes this function at the given interval', () => {
       template.hasResourceProperties('AWS::Events::Rule', {
         ScheduleExpression: 'rate(3 hours)',
-        Targets: [{ Arn: { 'Fn::GetAtt': [updaterLogicalId, 'Arn'] }, Id: 'Target0' }],
+        Targets:            [{ Arn: { 'Fn::GetAtt': [updaterLogicalId, 'Arn'] }, Id: 'Target0' }],
       });
     });
   });
@@ -158,8 +158,8 @@ describe('ArtifactUpdaterLambda', () => {
     const expectedStatements: Array<[string, PolicyStatementJson]> = [
       ['tag discovery, unscoped', { Action: 'tag:GetResources', Effect: 'Allow', Resource: '*' }],
       ...ownedStatements('function management in the root stack', {
-        Action: ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
-        Effect: 'Allow',
+        Action:   ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
+        Effect:   'Allow',
         Resource: accountArn('arn:aws:lambda:*:', ':function:*'),
       }),
       ...ownedStatements(
@@ -168,13 +168,13 @@ describe('ArtifactUpdaterLambda', () => {
         ARTIFACT_VERSION_ONLY,
       ),
       ...ownedStatements('edge function publishing in us-east-1', {
-        Action: ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
-        Effect: 'Allow',
+        Action:   ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
+        Effect:   'Allow',
         Resource: accountArn('arn:aws:lambda:us-east-1:', ':function:*'),
       }),
       ...ownedStatements('distribution management in the root stack', {
-        Action: ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
-        Effect: 'Allow',
+        Action:   ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
+        Effect:   'Allow',
         Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
       }),
       ...ownedStatements(
@@ -185,8 +185,8 @@ describe('ArtifactUpdaterLambda', () => {
       [
         'release artifact download from the registry buckets',
         {
-          Action: 's3:GetObject',
-          Effect: 'Allow',
+          Action:   's3:GetObject',
+          Effect:   'Allow',
           Resource: `arn:aws:s3:::${BUCKET_BASE}-*/serverlessinbox/packages/*/releases/*`,
         },
       ],

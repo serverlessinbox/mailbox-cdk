@@ -31,15 +31,15 @@ export interface CognitoIdpUsersApiLambdaProps {
 export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoIdpUsersApiLambdaProps) {
     super(scope, id, {
-      lambdaId: 'cognito-idp-users-api',
-      pipeline: 'admin',
+      lambdaId:         'cognito-idp-users-api',
+      pipeline:         'admin',
       artifactResolver: props.artifactResolver,
-      packageName: COGNITO_ARTIFACT_PACKAGE,
-      timeout: Duration.seconds(15),
-      memorySize: 256,
-      environment: {
-        USER_POOL_ID: props.pool.userPoolId,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
+      packageName:      COGNITO_ARTIFACT_PACKAGE,
+      timeout:          Duration.seconds(15),
+      memorySize:       256,
+      environment:      {
+        USER_POOL_ID:                       props.pool.userPoolId,
+        AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         ...(props.adminGroups === undefined ? {} : { ADMIN_GROUPS: JSON.stringify(props.adminGroups) }),
         ...(props.userGroups === undefined ? {} : { USER_GROUPS: JSON.stringify(props.userGroups) }),

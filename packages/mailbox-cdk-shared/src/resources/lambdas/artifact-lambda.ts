@@ -79,10 +79,10 @@ export abstract class ArtifactLambda extends LambdaFunction {
     } = props;
 
     super(scope, id, {
-      code: new ArtifactCode(scope, artifactResolver, packageName, `lambdas/${lambdaId}.zip`),
+      code:         new ArtifactCode(scope, artifactResolver, packageName, `lambdas/${lambdaId}.zip`),
       architecture: Architecture.ARM_64,
-      description: description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
-      logGroup: logGroup ?? PipelineLogGroup.getOrCreate(scope, pipeline),
+      description:  description ?? `Serverless Inbox Mailbox: ${lambdaId} (${Aws.STACK_NAME})`,
+      logGroup:     logGroup ?? PipelineLogGroup.getOrCreate(scope, pipeline),
       // SERVICE_NAME is the stable name every log line is attributed to.
       // Not AWS_LAMBDA_FUNCTION_NAME: that CFN-generated suffix changes on logical-id churn.
       environment: {

@@ -9,7 +9,7 @@ import { Construct }         from 'constructs';
  * Specifies the encryption mode and optional KMS key.
  */
 export interface DynamoTableEncryptionProps {
-  readonly encryption: TableEncryption;
+  readonly encryption:     TableEncryption;
   readonly encryptionKey?: kms.IKey;
 }
 
@@ -54,7 +54,7 @@ type DataTableCommonProps = Pick<
  */
 export function dataTableProps(scope: Construct, props: DataTableProps): DataTableCommonProps {
   return {
-    nameBase: props.nameBase,
+    nameBase:   props.nameBase,
     encryption: props.encryption,
     ...(props.encryptionKey && { encryptionKey: props.encryptionKey }),
     pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: !isDevelopmentMode(scope) },

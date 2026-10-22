@@ -30,12 +30,12 @@ describe('jmap-oauth-dcr config', () => {
 
     expect(env.tryLoad(load)).toEqual({
       config: {
-        logLevel: 'error',
-        serviceName: '',
+        logLevel:                        'error',
+        serviceName:                     '',
         identityProvisionerFunctionName: 'fn-provisioner',
-        userPoolId: 'pool-123',
+        userPoolId:                      'pool-123',
       },
-      error: undefined,
+      error:  undefined,
     });
   });
 

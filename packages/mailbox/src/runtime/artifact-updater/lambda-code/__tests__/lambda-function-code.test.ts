@@ -36,13 +36,13 @@ describe('LambdaFunctionCode', () => {
 
       await functionCode.update(lambda, functionArn, {
         bucket: ARTIFACT_BUCKET_US_EAST_1,
-        key: 'releases/v1.2.4/lambdas/mailbox-go.zip',
+        key:    'releases/v1.2.4/lambdas/mailbox-go.zip',
       });
 
       expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input).toEqual({
         FunctionName: functionArn,
-        S3Bucket: 'mailbox-artifacts-us-east-1',
-        S3Key: 'releases/v1.2.4/lambdas/mailbox-go.zip',
+        S3Bucket:     'mailbox-artifacts-us-east-1',
+        S3Key:        'releases/v1.2.4/lambdas/mailbox-go.zip',
       });
     });
   });
@@ -75,7 +75,7 @@ describe('LambdaFunctionCode', () => {
 
     it('throws with the reason AWS gives when the update failed', async () => {
       lambdaMock.on(GetFunctionConfigurationCommand).resolves({
-        LastUpdateStatus: 'Failed',
+        LastUpdateStatus:       'Failed',
         LastUpdateStatusReason: 'Insufficient IAM permissions to write to code signing config',
       });
 
@@ -112,7 +112,7 @@ describe('LambdaFunctionCode', () => {
 
       expect(lambdaMock.commandCalls(TagResourceCommand)[0].args[0].input).toEqual({
         Resource: functionArn,
-        Tags: { 'serverless-inbox:artifact-version': '1.2.4' },
+        Tags:     { 'serverless-inbox:artifact-version': '1.2.4' },
       });
     });
   });

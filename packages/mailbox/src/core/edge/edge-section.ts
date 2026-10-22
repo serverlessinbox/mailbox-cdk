@@ -21,7 +21,7 @@ import { MailboxEdgeDeployer }                                                  
 /** What {@link EdgeSection} uses of the data section. */
 export interface IEdgeDataInputs {
   readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
+  readonly itemTable:   IDataTable;
   /** The domain name of the hosted zone, a deploy-time token. */
   readonly derivedDomainName: string;
   /** The raw bucket the CDN fronts. */
@@ -36,9 +36,9 @@ export interface IEdgeAuthInputs {
 /** Where the mailbox is reachable, as {@link EdgeSection} uses it. */
 export interface IEdgeAddressing {
   /** The endpoint names; the regional certificate covers the api, jmap and ws names. */
-  readonly domains: IMailboxDomainNames;
+  readonly domains:    IMailboxDomainNames;
   readonly edgePrefix: string;
-  readonly zone: route53.IHostedZone;
+  readonly zone:       route53.IHostedZone;
 }
 
 /** What {@link EdgeSection.addBlobCdn} uses of the ui section. */
@@ -52,11 +52,11 @@ export interface IEdgeUiInputs {
 /** Props of {@link EdgeSection}. */
 export interface EdgeSectionProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly deployerType: ServerlessInboxDeployerType;
-  readonly productVersion: string;
-  readonly data: IEdgeDataInputs;
-  readonly auth: IEdgeAuthInputs;
-  readonly addressing: IEdgeAddressing;
+  readonly deployerType:     ServerlessInboxDeployerType;
+  readonly productVersion:   string;
+  readonly data:             IEdgeDataInputs;
+  readonly auth:             IEdgeAuthInputs;
+  readonly addressing:       IEdgeAddressing;
   /** Set when the mailbox has a hosted zone; the certificates validate and the DNS records are written into it. */
   readonly hostedZoneId?: string;
   /** The operator's own certificates; the api, jmap, ws and cloudFront ones are read here. */
@@ -100,9 +100,9 @@ export interface IEdgeDnsApisInputs {
 
 /** Props of {@link EdgeSection.addDns}: the targets that exist only after the UIs, the CDN and the API endpoints. */
 export interface EdgeDnsProps {
-  readonly ui: IEdgeDnsUiInputs;
+  readonly ui:      IEdgeDnsUiInputs;
   readonly blobCdn: IBlobCdnEndpoint;
-  readonly apis: IEdgeDnsApisInputs;
+  readonly apis:    IEdgeDnsApisInputs;
 }
 
 /**
@@ -141,16 +141,16 @@ export class EdgeSection extends Construct {
     const provided = props.certificateOverrides;
 
     this.edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
-      domainName: props.data.derivedDomainName,
-      artifactResolver: props.artifactResolver,
-      prefix: props.addressing.edgePrefix,
-      hostedZone: this.hostedZone,
-      itemTable: props.data.itemTable,
-      configTable: props.data.configTable,
+      domainName:        props.data.derivedDomainName,
+      artifactResolver:  props.artifactResolver,
+      prefix:            props.addressing.edgePrefix,
+      hostedZone:        this.hostedZone,
+      itemTable:         props.data.itemTable,
+      configTable:       props.data.configTable,
       authKeyStoreTable: props.auth.authKeyStoreTable,
-      productVersion: props.productVersion,
-      deployerType: props.deployerType,
-      logGroupName: PipelineLogGroup.getOrCreate(this, 'jmap').logGroupName,
+      productVersion:    props.productVersion,
+      deployerType:      props.deployerType,
+      logGroupName:      PipelineLogGroup.getOrCreate(this, 'jmap').logGroupName,
     });
 
     this.edgeCertificate            = this.edgeStack.edgeCertificate;
@@ -164,9 +164,9 @@ export class EdgeSection extends Construct {
     let cfnCert: acm.CfnCertificate | undefined;
     if (props.hostedZoneId && (!provided?.api || !provided.jmap)) {
       cfnCert = new acm.CfnCertificate(this, 'regional-api-certificate', {
-        domainName: props.addressing.domains.api,
+        domainName:              props.addressing.domains.api,
         subjectAlternativeNames: [props.addressing.domains.jmap, props.addressing.domains.ws, `mcp.${props.data.derivedDomainName}`],
-        validationMethod: 'DNS',
+        validationMethod:        'DNS',
         domainValidationOptions: [
           { domainName: props.addressing.domains.api, hostedZoneId: props.hostedZoneId },
           { domainName: props.addressing.domains.jmap, hostedZoneId: props.hostedZoneId },
@@ -193,11 +193,11 @@ export class EdgeSection extends Construct {
     const allowedOrigins = [...props.ui.adminUiOrigins, ...props.ui.webmailUiOrigins, ...(props.extraAllowedOrigins ?? [])];
 
     const cdn = new Cdn(this, 'blob-cdn', {
-      blobStore: this.props.data.blobStoreBucket,
-      authKeyStoreTable: this.props.auth.authKeyStoreTable,
-      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : undefined,
+      blobStore:               this.props.data.blobStoreBucket,
+      authKeyStoreTable:       this.props.auth.authKeyStoreTable,
+      allowedOrigins:          allowedOrigins.length > 0 ? allowedOrigins : undefined,
       jmapBlobDownloadVersion: this.edgeStack.jmapBlobDownloadVersion,
-      customDomain: this.blobCdnCustomDomain(),
+      customDomain:            this.blobCdnCustomDomain(),
     });
 
     return { host: cdn.host, distributionDomainName: cdn.distribution.distributionDomainName };
@@ -210,21 +210,21 @@ export class EdgeSection extends Construct {
     }
 
     new MailboxDns(this, 'dns', {
-      names: this.props.addressing.domains,
-      hostedZone: this.hostedZone,
+      names:        this.props.addressing.domains,
+      hostedZone:   this.hostedZone,
       cnameTargets: this.cnameTargets(props),
     });
   }
 
   private cnameTargets(props: EdgeDnsProps): MailboxDnsCnameTargets {
     return {
-      admin: props.ui.adminUiCnameTarget,
+      admin:   props.ui.adminUiCnameTarget,
       webmail: props.ui.webmailUiCnameTarget,
-      cdn: props.blobCdn.distributionDomainName,
-      api: props.apis.adminApiDomainTarget,
-      jmap: props.apis.jmapApiDomainTarget,
-      ws: props.apis.webSocketDomainTarget,
-      mcp: props.apis.mcpApiDomainTarget,
+      cdn:     props.blobCdn.distributionDomainName,
+      api:     props.apis.adminApiDomainTarget,
+      jmap:    props.apis.jmapApiDomainTarget,
+      ws:      props.apis.webSocketDomainTarget,
+      mcp:     props.apis.mcpApiDomainTarget,
     };
   }
 

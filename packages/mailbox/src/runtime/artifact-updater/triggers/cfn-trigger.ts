@@ -16,7 +16,7 @@ import type { NewUpdateCycle, UpdaterTrigger }             from './updater-trigg
 /** The answer to CloudFormation: the physical id when this resource sets one, and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type CfnTriggerAnswer = {
   readonly PhysicalResourceId?: PhysicalResourceId;
-  readonly Data: Record<string, never>;
+  readonly Data:                Record<string, never>;
 };
 
 /**

@@ -27,8 +27,8 @@ describe('invalidateCloudFront', () => {
     cloudFrontMock.on(CreateInvalidationCommand).resolves({});
 
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
-      paths: ['/index.html', '/assets/*'],
+      distributionId:  'DIST123',
+      paths:           ['/index.html', '/assets/*'],
       callerReference: 'test-ref-123',
     });
 
@@ -46,8 +46,8 @@ describe('invalidateCloudFront', () => {
 
   it('returns false when distribution ID is empty', async () => {
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: '',
-      paths: ['/index.html'],
+      distributionId:  '',
+      paths:           ['/index.html'],
       callerReference: 'test-ref',
     });
 
@@ -57,8 +57,8 @@ describe('invalidateCloudFront', () => {
 
   it('returns false when distribution ID is whitespace only', async () => {
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: '   ',
-      paths: ['/index.html'],
+      distributionId:  '   ',
+      paths:           ['/index.html'],
       callerReference: 'test-ref',
     });
 
@@ -68,8 +68,8 @@ describe('invalidateCloudFront', () => {
 
   it('returns false when paths array is empty', async () => {
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
-      paths: [],
+      distributionId:  'DIST123',
+      paths:           [],
       callerReference: 'test-ref',
     });
 
@@ -79,7 +79,7 @@ describe('invalidateCloudFront', () => {
 
   it('returns false when paths array is undefined', async () => {
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
+      distributionId:  'DIST123',
       callerReference: 'test-ref',
     });
 
@@ -91,8 +91,8 @@ describe('invalidateCloudFront', () => {
     cloudFrontMock.on(CreateInvalidationCommand).resolves({});
 
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
-      paths: ['/index.html', '   ', '/assets/*', ''],
+      distributionId:  'DIST123',
+      paths:           ['/index.html', '   ', '/assets/*', ''],
       callerReference: 'test-ref',
     });
 
@@ -109,8 +109,8 @@ describe('invalidateCloudFront', () => {
 
     const longRef = 'a'.repeat(200);
     const result  = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
-      paths: ['/*'],
+      distributionId:  'DIST123',
+      paths:           ['/*'],
       callerReference: longRef,
     });
 
@@ -127,8 +127,8 @@ describe('invalidateCloudFront', () => {
 
     const ref    = 'a'.repeat(128);
     const result = await invalidateCloudFront(mockClient_, {
-      distributionId: 'DIST123',
-      paths: ['/*'],
+      distributionId:  'DIST123',
+      paths:           ['/*'],
       callerReference: ref,
     });
 

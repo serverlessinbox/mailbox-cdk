@@ -8,7 +8,7 @@ export class CaptureCommand extends BaselineCommand {
   static paths = [['capture']];
   static usage = BaselineCommand.Usage({
     description: 'Synthesize every stack the product deploys and write each template as formatted JSON to .template-baseline/<label>/<stack>.template.json (gitignored). Run it before a refactor, then run "diff" after it.',
-    examples: [
+    examples:    [
       ['Capture the baseline before a refactor', 'yarn template-baseline capture'],
       ['Capture under a name', 'yarn template-baseline capture --label before-resource-split'],
     ],

@@ -58,8 +58,8 @@ export class EmailSendingQueue extends Construct implements IEmailSendingQueueCo
     this.queue    = new BaseQueue(this, 'email-submissions', {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
-      deadLetterQueue: {
-        queue: dlq,
+      deadLetterQueue:   {
+        queue:           dlq,
         maxReceiveCount: 5,
       },
     });

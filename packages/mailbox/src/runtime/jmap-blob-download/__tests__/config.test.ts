@@ -15,16 +15,16 @@ describe('extractConfig', () => {
     const request = originRequestOf({
       customHeaders: {
         'x-auth-key-store-table': AUTH_KEY_STORE_TABLE,
-        'x-region': 'eu-central-1',
-        'x-jwt-algorithms': 'RS256, ES256 ,,ES384',
+        'x-region':               'eu-central-1',
+        'x-jwt-algorithms':       'RS256, ES256 ,,ES384',
       },
     });
 
     expect(extractConfig(request)).toEqual({
       config: {
         authKeyStoreTable: AUTH_KEY_STORE_TABLE,
-        region: 'eu-central-1',
-        jwtAlgorithms: ['RS256', 'ES256', 'ES384'],
+        region:            'eu-central-1',
+        jwtAlgorithms:     ['RS256', 'ES256', 'ES384'],
       },
     });
   });

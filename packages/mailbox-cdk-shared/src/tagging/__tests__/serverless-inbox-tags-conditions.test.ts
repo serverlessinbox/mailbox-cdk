@@ -18,7 +18,7 @@ describe('rootStackResourceTagConditions', () => {
       { StringEquals: { [`aws:ResourceTag/${ID_TAG}`]: 'guid-1' } },
       {
         StringEquals: { [`aws:ResourceTag/${NAME_TAG}`]: 'MyRootStack' },
-        Null: { [`aws:ResourceTag/${ID_TAG}`]: 'true' },
+        Null:         { [`aws:ResourceTag/${ID_TAG}`]: 'true' },
       },
     ]);
   });
@@ -30,7 +30,7 @@ describe('rootStackRequestTagConditions', () => {
       { StringEquals: { [`aws:RequestTag/${ID_TAG}`]: 'guid-1' } },
       {
         StringEquals: { [`aws:RequestTag/${NAME_TAG}`]: 'MyRootStack' },
-        Null: { [`aws:RequestTag/${ID_TAG}`]: 'true' },
+        Null:         { [`aws:RequestTag/${ID_TAG}`]: 'true' },
       },
     ]);
   });

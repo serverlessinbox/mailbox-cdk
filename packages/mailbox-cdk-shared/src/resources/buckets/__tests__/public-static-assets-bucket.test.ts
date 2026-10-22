@@ -15,11 +15,11 @@ import { App, Stack }                               from 'aws-cdk-lib';
 import { PublicStaticAssetsBucket }                 from '../public-static-assets-bucket';
 
 const fakeResolver: IArtifactResolver = {
-  getUrl: () => 'https://example.invalid/x.zip',
-  getArn: () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
+  getUrl:     () => 'https://example.invalid/x.zip',
+  getArn:     () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
   getVersion: () => 'dev',
-  location: { bucketBase: 'artifacts', project: 'serverlessinbox' },
-  resolve: (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
+  location:   { bucketBase: 'artifacts', project: 'serverlessinbox' },
+  resolve:    (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
 };
 
 function newStack(): Stack {
@@ -46,10 +46,10 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
       PolicyDocument: {
         Statement: [
           {
-            Action: 's3:GetObject',
-            Effect: 'Allow',
+            Action:    's3:GetObject',
+            Effect:    'Allow',
             Principal: { AWS: '*' },
-            Resource: { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            Resource:  { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
           },
         ],
       },
@@ -62,11 +62,11 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
     PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
 
     Template.fromStack(stack).hasResource('AWS::S3::Bucket', {
-      Properties: {
+      Properties:     {
         PublicAccessBlockConfiguration: Match.objectEquals({
-          BlockPublicAcls: true,
-          BlockPublicPolicy: false,
-          IgnorePublicAcls: true,
+          BlockPublicAcls:       true,
+          BlockPublicPolicy:     false,
+          IgnorePublicAcls:      true,
           RestrictPublicBuckets: false,
         }),
       },

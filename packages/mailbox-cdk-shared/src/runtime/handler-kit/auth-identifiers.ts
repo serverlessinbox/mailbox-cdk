@@ -28,5 +28,5 @@ export function toIssuer(raw: string): Issuer {
   return raw as Issuer;
 }
 
-export const isTenantId = isBrandedString(toTenantId);
+export const isTenantId  = isBrandedString(toTenantId);
 export const isAccountId = isBrandedString(toAccountId);

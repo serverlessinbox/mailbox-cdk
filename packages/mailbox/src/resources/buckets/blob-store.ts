@@ -53,15 +53,15 @@ export class BlobStore extends StackNamedBucket {
 
     const lifecycleRules: LifecycleRule[] = [
       {
-        id: 'DeleteUnhandledIncomingEmails',
-        prefix: BlobStore.INCOMING_EMAIL_PREFIX,
-        enabled: true,
+        id:         'DeleteUnhandledIncomingEmails',
+        prefix:     BlobStore.INCOMING_EMAIL_PREFIX,
+        enabled:    true,
         expiration: Duration.days(7), // Delete emails after 7 days
       },
       {
-        id: 'DeleteUploadedBlobs',
-        prefix: 'uploads/',
-        enabled: true,
+        id:         'DeleteUploadedBlobs',
+        prefix:     'uploads/',
+        enabled:    true,
         expiration: Duration.days(1), // Delete temporary client uploads after 1 day
       },
     ];
@@ -71,24 +71,24 @@ export class BlobStore extends StackNamedBucket {
     if (!dev) {
       lifecycleRules.push(
         {
-          id: 'DeleteNoncurrentVersions',
-          enabled: true,
+          id:                          'DeleteNoncurrentVersions',
+          enabled:                     true,
           noncurrentVersionExpiration: Duration.days(35),
         },
         {
-          id: 'DeleteExpiredObjectDeleteMarkers',
-          enabled: true,
+          id:                        'DeleteExpiredObjectDeleteMarkers',
+          enabled:                   true,
           expiredObjectDeleteMarker: true,
         },
       );
     }
 
     super(scope, 'blob-store', {
-      versioned: !dev,
+      versioned:         !dev,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      encryption: props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
-      encryptionKey: props.encryptionKey,
-      nameBase: props.nameBase,
+      encryption:        props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
+      encryptionKey:     props.encryptionKey,
+      nameBase:          props.nameBase,
       autoDeleteObjects: autoDeleteObjectsInDevelopment(scope),
       lifecycleRules,
       removalPolicy: dev ? RemovalPolicy.DESTROY : removalPolicyForRetainedResources(scope),
@@ -105,7 +105,7 @@ export class BlobStore extends StackNamedBucket {
     // defaults to true), so in that case the user must configure the key policy themselves.
     encryptionKey?.addToResourcePolicy(
       new PolicyStatement({
-        actions: [
+        actions:    [
           'kms:Encrypt',
           'kms:Decrypt',
           'kms:ReEncrypt*',
@@ -113,12 +113,12 @@ export class BlobStore extends StackNamedBucket {
           'kms:DescribeKey',
         ],
         principals: [new ServicePrincipal('s3.amazonaws.com')],
-        resources: ['*'],
+        resources:  ['*'],
         conditions: {
           StringEquals: {
             'aws:SourceAccount': Stack.of(this).account,
           },
-          ArnLike: {
+          ArnLike:      {
             'aws:SourceArn': this.bucketArn,
           },
         },
@@ -133,10 +133,10 @@ export class BlobStore extends StackNamedBucket {
     // addToResourcePolicy on imported buckets is a CDK no-op.
     this.addToResourcePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
+        effect:     Effect.ALLOW,
         principals: [new ServicePrincipal('ses.amazonaws.com')],
-        actions: ['s3:PutObject'],
-        resources: [`${this.bucketArn}/${BlobStore.INCOMING_EMAIL_PREFIX}*`],
+        actions:    ['s3:PutObject'],
+        resources:  [`${this.bucketArn}/${BlobStore.INCOMING_EMAIL_PREFIX}*`],
         conditions: {
           StringEquals: {
             'aws:Referer': Aws.ACCOUNT_ID,
@@ -157,10 +157,10 @@ export class BlobStore extends StackNamedBucket {
     // uploads/* and incoming-emails/* are never legitimately CloudFront-servable.
     this.addToResourcePolicy(
       new PolicyStatement({
-        effect: Effect.ALLOW,
+        effect:     Effect.ALLOW,
         principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
-        actions: ['s3:GetObject'],
-        resources: [`${this.bucketArn}/tenants/*`],
+        actions:    ['s3:GetObject'],
+        resources:  [`${this.bucketArn}/tenants/*`],
         conditions: {
           StringEquals: {
             'aws:SourceAccount': Aws.ACCOUNT_ID,

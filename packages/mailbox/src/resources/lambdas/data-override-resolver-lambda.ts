@@ -16,12 +16,12 @@ export interface DataOverrideResolverLambdaProps {
 export class DataOverrideResolverLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: DataOverrideResolverLambdaProps) {
     super(scope, id, {
-      lambdaId: 'data-override-resolver',
-      packageName: 'mailbox-cdk',
-      pipeline: 'infra',
+      lambdaId:         'data-override-resolver',
+      packageName:      'mailbox-cdk',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout: cdk.Duration.seconds(60),
-      memorySize: 256,
+      timeout:          cdk.Duration.seconds(60),
+      memorySize:       256,
     });
 
     this.grantDescribeAnyTable();
@@ -31,7 +31,7 @@ export class DataOverrideResolverLambda extends TypeScriptLambda {
     // DescribeTable on any table: the override target is operator-chosen, so it cannot be name-scoped to this stack.
     this.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['dynamodb:DescribeTable'],
+        actions:   ['dynamodb:DescribeTable'],
         resources: [`arn:${cdk.Aws.PARTITION}:dynamodb:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:table/*`],
       })
     );

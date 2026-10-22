@@ -26,9 +26,9 @@ export interface SweeperInfraProps {
 
 /** The deterministic physical names of the sweeper's state machine and roles. */
 interface SweeperResourceNames {
-  readonly stateMachine: string;
+  readonly stateMachine:  string;
   readonly executionRole: string;
-  readonly workerRole: string;
+  readonly workerRole:    string;
 }
 
 /**
@@ -62,7 +62,7 @@ export class SweeperInfra extends Construct {
     // Worker Lambda (RETAIN'd — invoked by the state machine after the stack is deleted)
     const worker = new ResourceSweeperWorkerLambda(this, 'worker', {
       artifactResolver: props.artifactResolver,
-      role: workerRole,
+      role:             workerRole,
     });
     retainOnUpdateOrDelete(worker);
 
@@ -117,28 +117,28 @@ export class SweeperInfra extends Construct {
     const guidPrefix   = StackIdentity.guidPrefix;
 
     return {
-      stateMachine: Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),
+      stateMachine:  Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),
       executionRole: Fn.join('', ['mailbox-sweeper-exec-', positionHash, '-', guidPrefix]),
-      workerRole: Fn.join('', ['mailbox-sweeper-worker-', positionHash, '-', guidPrefix]),
+      workerRole:    Fn.join('', ['mailbox-sweeper-worker-', positionHash, '-', guidPrefix]),
     };
   }
 
   private roleArn(roleName: string): string {
     return Stack.of(this).formatArn({
-      service: 'iam',
-      region: '',
-      resource: 'role',
+      service:      'iam',
+      region:       '',
+      resource:     'role',
       resourceName: roleName,
     });
   }
 
   private stateMachineArnOf(stateMachineName: string): string {
     return Stack.of(this).formatArn({
-      service: 'states',
-      region: Aws.REGION,
-      resource: 'stateMachine',
+      service:      'states',
+      region:       Aws.REGION,
+      resource:     'stateMachine',
       resourceName: stateMachineName,
-      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
     });
   }
 

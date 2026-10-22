@@ -12,7 +12,7 @@ import { getOrCreateSharedGroup }              from './tagging/shared-group';
  */
 export interface StackHelpersMailboxDataProps {
   /** An empty string means no hosted zone: the lookup is skipped and `derivedDomainName` is empty. */
-  readonly hostedZoneId: string;
+  readonly hostedZoneId:  string;
   readonly dataStackName: string;
 }
 
@@ -20,7 +20,7 @@ export interface StackHelpersMailboxDataProps {
  * Deploy-time CloudFormation tokens for the derived values, so not usable in synth-time decisions.
  */
 export interface StackHelpersMailboxData {
-  readonly derivedDomainName: string;
+  readonly derivedDomainName:          string;
   readonly derivedS3SafeDataStackName: string;
 }
 
@@ -68,11 +68,11 @@ export class StackHelpers extends Construct {
     props: StackHelpersMailboxDataProps,
   ): StackHelpersMailboxData {
     const cr = this.attach(scope, id, {
-      HostedZoneId: props.hostedZoneId,
+      HostedZoneId:  props.hostedZoneId,
       DataStackName: props.dataStackName,
     });
     return {
-      derivedDomainName: cr.getAttString('domainName'),
+      derivedDomainName:          cr.getAttString('domainName'),
       derivedS3SafeDataStackName: cr.getAttString('s3SafeDataStackName'),
     };
   }
@@ -81,7 +81,7 @@ export class StackHelpers extends Construct {
   resolveCognitoDomainPrefix(scope: Construct, id: string, hostedZoneId: string): string {
     const cr = this.attach(scope, id, {
       HostedZoneId: hostedZoneId,
-      Fallback: cdk.Aws.STACK_NAME,
+      Fallback:     cdk.Aws.STACK_NAME,
     });
     return cr.getAttString('cognitoDomainPrefix');
   }
@@ -92,7 +92,7 @@ export class StackHelpers extends Construct {
    */
   resolveSeededNumber(scope: Construct, id: string, props: StackHelpersSeededNumberProps): string {
     const cr = this.attach(scope, id, {
-      Salt: props.salt,
+      Salt:  props.salt,
       Range: props.range.toString(),
     });
     return cr.getAttString('seededNumber');
@@ -104,9 +104,9 @@ export class StackHelpers extends Construct {
     properties: StackHelpersResourceProperties,
   ): cdk.CustomResource {
     return new cdk.CustomResource(scope, id, {
-      serviceToken: this.fn.functionArn,
+      serviceToken:   this.fn.functionArn,
       serviceTimeout: cdk.Duration.seconds(90),
-      resourceType: 'Custom::StackHelpers',
+      resourceType:   'Custom::StackHelpers',
       properties,
     });
   }

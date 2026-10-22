@@ -9,9 +9,9 @@ import type { GroupName, UserPoolId, Username } from '../shared/cognito-identifi
 
 /** A user that must exist in a user pool, the groups it belongs to, and the password it is created with. */
 export interface BootstrapUser {
-  readonly userPoolId: UserPoolId;
-  readonly username: Username;
-  readonly groups: readonly GroupName[];
+  readonly userPoolId:        UserPoolId;
+  readonly username:          Username;
+  readonly groups:            readonly GroupName[];
   readonly temporaryPassword: string;
 }
 
@@ -49,9 +49,9 @@ export class UserEnsurer {
     try {
       await this.cognito.send(
         new AdminCreateUserCommand({
-          UserPoolId: user.userPoolId,
-          Username: user.username,
-          MessageAction: 'SUPPRESS',
+          UserPoolId:        user.userPoolId,
+          Username:          user.username,
+          MessageAction:     'SUPPRESS',
           TemporaryPassword: user.temporaryPassword,
         }),
       );
@@ -74,8 +74,8 @@ export class UserEnsurer {
       await this.cognito.send(
         new AdminAddUserToGroupCommand({
           UserPoolId: user.userPoolId,
-          Username: user.username,
-          GroupName: groupName,
+          Username:   user.username,
+          GroupName:  groupName,
         }),
       );
     } catch (failure) {

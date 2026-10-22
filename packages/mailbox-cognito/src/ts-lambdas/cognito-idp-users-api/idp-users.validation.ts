@@ -11,9 +11,9 @@ const MAX_PAGE_SIZE         = 1000;
 const MAX_PAGE_TOKEN_LENGTH = 2048;
 
 const isListIdpUsersBody = t.isPartial({
-  pageSize: t.isOptional(t.isNumber()),
+  pageSize:  t.isOptional(t.isNumber()),
   pageToken: t.isOptional(t.isString()),
-  filter: t.isOptional(t.isString()),
+  filter:    t.isOptional(t.isString()),
 });
 /** The body of a request to list users. */
 type ListIdpUsersBody = t.InferType<typeof isListIdpUsersBody>;
@@ -26,24 +26,24 @@ type UserNamedBody = t.InferType<typeof isUserNamedBody>;
 
 const isCreateIdpUserBody = t.isPartial({
   username: t.isOptional(t.isString()),
-  email: t.isOptional(t.isString()),
+  email:    t.isOptional(t.isString()),
   password: t.isOptional(t.isString()),
-  enabled: t.isOptional(t.isBoolean()),
-  groups: t.isOptional(t.isArray(t.isString())),
+  enabled:  t.isOptional(t.isBoolean()),
+  groups:   t.isOptional(t.isArray(t.isString())),
 });
 /** The body of a request to create a user. */
 type CreateIdpUserBody = t.InferType<typeof isCreateIdpUserBody>;
 
 const isSetIdpUserEnabledBody = t.isPartial({
   username: t.isOptional(t.isString()),
-  enabled: t.isOptional(t.isBoolean()),
+  enabled:  t.isOptional(t.isBoolean()),
 });
 /** The body of a request to enable or disable a user. */
 type SetIdpUserEnabledBody = t.InferType<typeof isSetIdpUserEnabledBody>;
 
 const isSetIdpUserPasswordBody = t.isPartial({
-  username: t.isOptional(t.isString()),
-  password: t.isOptional(t.isString()),
+  username:  t.isOptional(t.isString()),
+  password:  t.isOptional(t.isString()),
   permanent: t.isOptional(t.isBoolean()),
 });
 /** The body of a request to set a user's password. */

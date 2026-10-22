@@ -18,8 +18,8 @@ export type SynthesizedResource = ReturnType<Template['findResources']>[string];
 
 /** The shared inputs a support addon is built from, on a stack with an explicit environment. */
 export interface SupportTestStack {
-  readonly stack: cdk.Stack;
-  readonly configTable: DataTable;
+  readonly stack:            cdk.Stack;
+  readonly configTable:      DataTable;
   readonly auditEventsQueue: AuditEventsQueue;
   readonly artifactResolver: IArtifactResolver;
 }
@@ -30,12 +30,12 @@ export interface SupportTestStack {
  */
 export function createSupportTestStack(context?: Record<string, unknown>): SupportTestStack {
   const stack = new cdk.Stack(new App({ context }), 'test-stack', {
-    env: { account: '111122223333', region: 'us-east-1' },
+    env:         { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   return {
     stack,
-    configTable: createDataTable(stack, 'config-table'),
+    configTable:      createDataTable(stack, 'config-table'),
     auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
     artifactResolver: createArtifactResolver(stack, '1.0.0'),
   };
@@ -44,32 +44,32 @@ export function createSupportTestStack(context?: Record<string, unknown>): Suppo
 export function createDataTable(stack: cdk.Stack, id: string): DataTable {
   return new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
-    sortKey: { name: 'sk', type: AttributeType.STRING },
+    sortKey:      { name: 'sk', type: AttributeType.STRING },
   }));
 }
 
 export function createArtifactResolver(stack: cdk.Stack, goVersion: string): IArtifactResolver {
   return new PinnedArtifactResolver({
-    packages: { 'mailbox-go': { version: goVersion, zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-go': { version: goVersion, zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
 
 /** The identity provisioner is required by the addon context but never invoked by the support addon. */
 const unusedIdentityProvisioner: IIdentityProvisioner = {
-  functionArn: 'arn:aws:lambda:us-east-1:111122223333:function:identity-provisioner',
+  functionArn:  'arn:aws:lambda:us-east-1:111122223333:function:identity-provisioner',
   functionName: 'identity-provisioner',
-  grantInvoke: () => {},
+  grantInvoke:  () => {},
 };
 
 export function createAddonContext(inputs: SupportTestStack): AdminApiAddonContext {
   return {
-    configTable: inputs.configTable,
-    auditEventsQueue: inputs.auditEventsQueue,
-    auditLogTable: createDataTable(inputs.stack, 'audit-log-table'),
+    configTable:         inputs.configTable,
+    auditEventsQueue:    inputs.auditEventsQueue,
+    auditLogTable:       createDataTable(inputs.stack, 'audit-log-table'),
     identityProvisioner: unusedIdentityProvisioner,
-    artifactResolver: inputs.artifactResolver,
+    artifactResolver:    inputs.artifactResolver,
   };
 }
 
@@ -78,10 +78,10 @@ export function createApiWithAuthorizer(stack: cdk.Stack): { api: HttpApi; autho
   const authorizerFunction = new lambda.Function(stack, 'authorizer-function', {
     runtime: lambda.Runtime.NODEJS_20_X,
     handler: 'index.handler',
-    code: lambda.Code.fromInline('exports.handler = async () => ({ isAuthorized: true });'),
+    code:    lambda.Code.fromInline('exports.handler = async () => ({ isAuthorized: true });'),
   });
   return {
-    api: new HttpApi(stack, 'api'),
+    api:        new HttpApi(stack, 'api'),
     authorizer: new HttpLambdaAuthorizer('authorizer', authorizerFunction, {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
     }),
@@ -90,8 +90,8 @@ export function createApiWithAuthorizer(stack: cdk.Stack): { api: HttpApi; autho
 
 /** A synthesized Lambda function, found by the `SERVICE_NAME` its environment carries. */
 export interface SynthesizedFunction {
-  readonly logicalId: string;
-  readonly environment: Record<string, unknown>;
+  readonly logicalId:     string;
+  readonly environment:   Record<string, unknown>;
   readonly roleLogicalId: string;
 }
 
@@ -104,7 +104,7 @@ export function findFunction(template: Template, serviceName: string): Synthesiz
   const [logicalId, fn] = matches[0];
   return {
     logicalId,
-    environment: fn.Properties.Environment.Variables,
+    environment:   fn.Properties.Environment.Variables,
     roleLogicalId: fn.Properties.Role['Fn::GetAtt'][0],
   };
 }

@@ -26,7 +26,7 @@ describe('McpApi', () => {
 
   beforeEach(() => {
     stack                  = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     certificate            = new acm.Certificate(stack, 'certificate', {
@@ -37,21 +37,21 @@ describe('McpApi', () => {
     const authorizerLambda = new lambda.Function(stack, 'authorizer', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async () => {};'),
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
     sut = new McpApi(stack, 'mcp-api', {
       jmapApiGateway,
       authorizerLambda,
       certificate,
-      domainName: 'example.com',
-      scopeMap: { 'mail.read': ['read'] },
+      domainName:       'example.com',
+      scopeMap:         { 'mail.read': ['read'] },
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
+        packages:         {
           'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
     });
@@ -62,7 +62,7 @@ describe('McpApi', () => {
 
     expect(sut.domainTarget).toBeDefined();
     template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-      DomainName: 'mcp.example.com',
+      DomainName:               'mcp.example.com',
       DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
     });
     template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
@@ -76,9 +76,9 @@ describe('McpApi', () => {
 
   it.each(['GET', 'POST', 'DELETE', 'PUT'])('routes %s through the authorizer', (method) => {
     Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey: `${method} /{proxy+}`,
+      RouteKey:          `${method} /{proxy+}`,
       AuthorizationType: 'CUSTOM',
-      AuthorizerId: Match.anyValue(),
+      AuthorizerId:      Match.anyValue(),
     });
   });
 });

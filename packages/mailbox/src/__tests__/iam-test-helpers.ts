@@ -6,12 +6,12 @@
  */
 
 export interface CloudFormationTag {
-  Key: string;
+  Key:   string;
   Value: string | { Ref: string } | { 'Fn::Sub': string };
 }
 
 export interface CloudFormationResource {
-  Type: string;
+  Type:        string;
   Properties?: Record<string, unknown>;
 }
 
@@ -25,36 +25,36 @@ export interface CloudFormationResource {
  */
 export const KNOWN_WILDCARDS: Record<string, string> = {
   // CloudFormation needs to read/list any resource to manage stacks
-  'cloudformation:GetTemplateSummary': 'CloudFormation resource introspection (read-only)',
+  'cloudformation:GetTemplateSummary':  'CloudFormation resource introspection (read-only)',
   'cloudformation:DescribeStackEvents': 'CloudFormation stack event retrieval (read-only)',
 
   // Resource Groups Tagging API - scoped to read+tag ops; no dangerous write
-  'tag:GetResources': 'Resource Groups Tagging API (read-only, no delete)',
-  'tag:TagResources': 'Resource Groups Tagging API (tag writes, broad scope accepted)',
+  'tag:GetResources':   'Resource Groups Tagging API (read-only, no delete)',
+  'tag:TagResources':   'Resource Groups Tagging API (tag writes, broad scope accepted)',
   'tag:UntagResources': 'Resource Groups Tagging API (tag removal, broad scope accepted)',
 
   // CloudFormation ACM provisioning - RequestCertificate cannot be scoped by tag (cert created untagged)
-  'acm:RequestCertificate': 'ACM cert creation (certificate ARN random, cannot be pre-scoped)',
-  'acm:DescribeCertificate': 'ACM cert read (informational, no delete)',
+  'acm:RequestCertificate':     'ACM cert creation (certificate ARN random, cannot be pre-scoped)',
+  'acm:DescribeCertificate':    'ACM cert read (informational, no delete)',
   'acm:ListTagsForCertificate': 'ACM cert tags read (informational)',
 
   // ResourceGroups CreateGroup cannot be scoped (group ARN validation unverified)
   'resource-groups:CreateGroup': 'Resource Group creation (group ARN scoping unverified; group name deterministic)',
 
   // CloudFormation resource introspection
-  'iam:GetRole': 'IAM role read (informational)',
-  'iam:ListRolePolicies': 'IAM role policy enumeration (informational)',
+  'iam:GetRole':                  'IAM role read (informational)',
+  'iam:ListRolePolicies':         'IAM role policy enumeration (informational)',
   'iam:ListAttachedRolePolicies': 'IAM role policy attachment read (informational)',
-  'iam:GetRolePolicy': 'IAM inline policy read (informational)',
+  'iam:GetRolePolicy':            'IAM inline policy read (informational)',
 
   // Lambda read-only operations on any function
-  'lambda:GetFunction': 'Lambda function metadata read (informational)',
+  'lambda:GetFunction':            'Lambda function metadata read (informational)',
   'lambda:ListVersionsByFunction': 'Lambda version enumeration (informational)',
 
   // CloudWatch Logs creation - broad scope same as AWS managed policies
-  'logs:CreateLogGroup': 'CloudWatch log group creation (standard Lambda execution permission)',
+  'logs:CreateLogGroup':  'CloudWatch log group creation (standard Lambda execution permission)',
   'logs:CreateLogStream': 'CloudWatch log stream creation (standard Lambda execution permission)',
-  'logs:PutLogEvents': 'CloudWatch log event writes (standard Lambda execution permission)',
+  'logs:PutLogEvents':    'CloudWatch log event writes (standard Lambda execution permission)',
 };
 
 export function getTagValue(tag: CloudFormationTag): string | { Ref: string } | { 'Fn::Sub': string } {

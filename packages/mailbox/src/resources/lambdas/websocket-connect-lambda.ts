@@ -8,21 +8,21 @@ import type { IDataTable }        from '../tables/data-tables';
 
 export interface WebSocketConnectLambdaProps {
   connectionsTable: IWebSocketTable;
-  configTable: IDataTable;
+  configTable:      IDataTable;
   artifactResolver: IArtifactResolver;
 }
 
 export class WebSocketConnectLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketConnectLambdaProps) {
     super(scope, id, {
-      lambdaId: 'websocket-connect',
-      pipeline: 'jmap',
+      lambdaId:         'websocket-connect',
+      pipeline:         'jmap',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
-      environment: {
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
+      environment:      {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
+        CONFIG_TABLE_NAME:      props.configTable.tableName,
       },
     });
 

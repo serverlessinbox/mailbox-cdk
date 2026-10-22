@@ -22,7 +22,7 @@ import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-w
 import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
 
 interface SynthesizedWorkflow {
-  readonly stack: Stack;
+  readonly stack:    Stack;
   readonly workflow: PollingCfnDeployerWorkflow;
   readonly template: Template;
 }
@@ -30,7 +30,7 @@ interface SynthesizedWorkflow {
 function synthWorkflow(props: Partial<PollingCfnDeployerWorkflowProps> = {}): SynthesizedWorkflow {
   const { stack } = newDeployerTestStack();
   const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-    handler: newWorkerStandIn(stack, 'worker'),
+    handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
     ...props,
   });
@@ -41,7 +41,7 @@ function synthWorkflowWithGrantee(): SynthesizedWorkflow {
   const { stack } = newDeployerTestStack();
   const grantee   = newWorkerStandIn(stack, 'grantee');
   const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-    handler: newWorkerStandIn(stack, 'worker'),
+    handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });
   workflow.grantStartAndDescribeExecutions(grantee);
@@ -89,9 +89,9 @@ describe('PollingCfnDeployerWorkflow', () => {
 
       expect(definition.StartAt).toBe('Init');
       expect(definition.States.Init.Parameters).toEqual({
-        'cfn.$': '$.cfn',
-        'op.$': '$.op',
-        attempt: 0,
+        'cfn.$':          '$.cfn',
+        'op.$':           '$.op',
+        attempt:          0,
         deleteRetryCount: 0,
         createRetryCount: 0,
       });
@@ -103,9 +103,9 @@ describe('PollingCfnDeployerWorkflow', () => {
       const start = definition.States.StartStackOperation;
       expect(start.ResultPath).toBe('$.start');
       expect(start.Parameters).toEqual({
-        mode: 'start',
-        'cfn.$': '$.cfn',
-        'op.$': '$.op',
+        mode:        'start',
+        'cfn.$':     '$.cfn',
+        'op.$':      '$.op',
         'attempt.$': '$.attempt',
       });
     });
@@ -116,10 +116,10 @@ describe('PollingCfnDeployerWorkflow', () => {
       const check = definition.States.CheckStackOperation;
       expect(check.ResultPath).toBe('$.check');
       expect(check.Parameters).toEqual({
-        mode: 'check',
-        'cfn.$': '$.cfn',
-        'op.$': '$.op',
-        'attempt.$': '$.attempt',
+        mode:                 'check',
+        'cfn.$':              '$.cfn',
+        'op.$':               '$.op',
+        'attempt.$':          '$.attempt',
         'deleteRetryCount.$': '$.deleteRetryCount',
         'createRetryCount.$': '$.createRetryCount',
       });
@@ -129,11 +129,11 @@ describe('PollingCfnDeployerWorkflow', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
       expect(definition.States.IncrementAttempt.Parameters).toEqual({
-        'cfn.$': '$.cfn',
-        'op.$': '$.op',
-        'start.$': '$.start',
-        'check.$': '$.check',
-        'attempt.$': 'States.MathAdd($.attempt, 1)',
+        'cfn.$':              '$.cfn',
+        'op.$':               '$.op',
+        'start.$':            '$.start',
+        'check.$':            '$.check',
+        'attempt.$':          'States.MathAdd($.attempt, 1)',
         'deleteRetryCount.$': '$.check.deleteRetryCount',
         'createRetryCount.$': '$.check.createRetryCount',
       });
@@ -186,7 +186,7 @@ describe('PollingCfnDeployerWorkflow', () => {
   it('exposes the state machine as the dependable a dependent resource waits for', () => {
     const { stack } = newDeployerTestStack();
     const workflow  = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-      handler: newWorkerStandIn(stack, 'worker'),
+      handler:          newWorkerStandIn(stack, 'worker'),
       stateMachineName: 'test-deployer-machine',
     });
     new CfnResource(stack, 'dependent', { type: 'Custom::Dependent' }).node.addDependency(workflow.stateMachineDependable);

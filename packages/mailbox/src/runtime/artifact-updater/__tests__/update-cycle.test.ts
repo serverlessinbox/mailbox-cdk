@@ -42,16 +42,16 @@ jest.mock('../ui-bucket-updater');
 function resource(arn: string, tags: Record<string, string>): ResourceTagMapping {
   return {
     ResourceARN: arn,
-    Tags: Object.entries(tags).map(([Key, Value]) => ({ Key, Value })),
+    Tags:        Object.entries(tags).map(([Key, Value]) => ({ Key, Value })),
   };
 }
 
 function lambdaWithType(autoUpdateType: string, arn: string = LAMBDA_ARN): ResourceTagMapping {
   return resource(arn, {
-    'serverless-inbox:root-stack': 'my-stack',
-    'serverless-inbox:root-stack-id': 'guid-1',
+    'serverless-inbox:root-stack':       'my-stack',
+    'serverless-inbox:root-stack-id':    'guid-1',
     'serverless-inbox:artifact-package': 'mailbox-go',
-    'serverless-inbox:artifact-name': 'mailbox-go',
+    'serverless-inbox:artifact-name':    'mailbox-go',
     'serverless-inbox:artifact-version': '1.2.3',
     'serverless-inbox:auto-update-type': autoUpdateType,
   });
@@ -59,10 +59,10 @@ function lambdaWithType(autoUpdateType: string, arn: string = LAMBDA_ARN): Resou
 
 function distributionWithType(autoUpdateType: string, bucketName?: string): ResourceTagMapping {
   return resource(DISTRIBUTION_ARN, {
-    'serverless-inbox:root-stack': 'my-stack',
-    'serverless-inbox:root-stack-id': 'guid-1',
+    'serverless-inbox:root-stack':       'my-stack',
+    'serverless-inbox:root-stack-id':    'guid-1',
     'serverless-inbox:artifact-package': 'ui-bundle',
-    'serverless-inbox:artifact-name': 'ui-bundle.zip',
+    'serverless-inbox:artifact-name':    'ui-bundle.zip',
     'serverless-inbox:artifact-version': '1.2.3',
     'serverless-inbox:auto-update-type': autoUpdateType,
     ...(bucketName ? { 'serverless-inbox:bucket-name': bucketName } : {}),
@@ -119,14 +119,14 @@ describe('UpdateCycle', () => {
       const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input);
       expect(filters).toEqual([
         {
-          TagFilters: [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
+          TagFilters:          [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
           ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-          PaginationToken: undefined,
+          PaginationToken:     undefined,
         },
         {
-          TagFilters: [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+          TagFilters:          [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
           ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-          PaginationToken: undefined,
+          PaginationToken:     undefined,
         },
       ]);
     });
@@ -211,7 +211,7 @@ describe('UpdateCycle', () => {
 
       expect(codeUpdater.advanceIfStale).not.toHaveBeenCalled();
       expect(console.debug).toHaveBeenCalledWith('unknown resource type', {
-        arn: 'arn:aws:s3:::some-bucket',
+        arn:          'arn:aws:s3:::some-bucket',
         resourceType: 's3',
       });
     });
@@ -228,7 +228,7 @@ describe('UpdateCycle', () => {
 
       expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(1);
       expect(console.debug).toHaveBeenCalledWith('unknown resource type', {
-        arn: 'not-an-arn',
+        arn:          'not-an-arn',
         resourceType: undefined,
       });
     });
@@ -316,7 +316,7 @@ describe('UpdateCycle', () => {
 
       expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(2);
       expect(console.error).toHaveBeenCalledWith('failed to update resource', {
-        arn: LAMBDA_ARN,
+        arn:   LAMBDA_ARN,
         error: 'UpdateFunctionCode failed',
       });
       expect(console.info).toHaveBeenCalledWith('artifact update cycle completed', { attempted: 2, failed: 1 });

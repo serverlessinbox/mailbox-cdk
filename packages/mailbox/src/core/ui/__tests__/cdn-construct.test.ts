@@ -30,8 +30,8 @@ function importedCertificate(): acm.ICertificate {
 }
 
 interface SynthesizedCdn {
-  readonly stack: cdk.Stack;
-  readonly cdn: Cdn;
+  readonly stack:    cdk.Stack;
+  readonly cdn:      Cdn;
   readonly template: Template;
 }
 
@@ -39,11 +39,11 @@ interface SynthesizedCdn {
 function synthesizeCdn(overrides: Partial<CdnProps> = {}): SynthesizedCdn {
   const stack = new cdk.Stack(new App(), 'TestStack', {
     synthesizer: new BootstraplessSynthesizer(),
-    env: { account: '123456789012', region: 'eu-west-1' },
+    env:         { account: '123456789012', region: 'eu-west-1' },
   });
   const cdn   = new Cdn(stack, 'blob-cdn', {
-    blobStore: s3.Bucket.fromBucketName(stack, 'blob-store', 'blob-bucket'),
-    authKeyStoreTable: fakeAuthKeyStoreTable('auth-key-store-table'),
+    blobStore:               s3.Bucket.fromBucketName(stack, 'blob-store', 'blob-bucket'),
+    authKeyStoreTable:       fakeAuthKeyStoreTable('auth-key-store-table'),
     jmapBlobDownloadVersion: lambda.Version.fromVersionArn(stack, 'edge-version', EDGE_VERSION_ARN),
     ...overrides,
   });
@@ -104,7 +104,7 @@ describe('Cdn', () => {
 
       template.hasResourceProperties('AWS::CloudFront::Distribution', {
         DistributionConfig: Match.objectLike({
-          Aliases: ['cdn.example.com'],
+          Aliases:           ['cdn.example.com'],
           ViewerCertificate: Match.objectLike({ AcmCertificateArn: CERTIFICATE_ARN }),
         }),
       });

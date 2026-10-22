@@ -13,12 +13,12 @@ const DEFAULT_ALLOWED_ALGORITHMS: readonly string[] = ['RS256'];
 const CLOCK_TOLERANCE_SECONDS                       = 300;
 
 const isJwtPayload = t.isPartial({
-  sub: t.isOptional(t.isString()),
-  iss: t.isOptional(t.isString()),
-  aud: t.isOptional(t.isOneOf([t.isString(), t.isArray(t.isString())])),
+  sub:       t.isOptional(t.isString()),
+  iss:       t.isOptional(t.isString()),
+  aud:       t.isOptional(t.isOneOf([t.isString(), t.isArray(t.isString())])),
   client_id: t.isOptional(t.isString()),
-  exp: t.isOptional(t.isNumber()),
-  nbf: t.isOptional(t.isNumber()),
+  exp:       t.isOptional(t.isNumber()),
+  nbf:       t.isOptional(t.isNumber()),
 });
 
 // A JWKS is the issuer's published document (RFC 7517); a key lists every field jose may read when matching it.
@@ -27,11 +27,11 @@ const isJwk = t.isPartial({
   kty: t.isString(),
   use: t.isOptional(t.isString()),
   alg: t.isOptional(t.isString()),
-  n: t.isOptional(t.isString()),
-  e: t.isOptional(t.isString()),
+  n:   t.isOptional(t.isString()),
+  e:   t.isOptional(t.isString()),
   crv: t.isOptional(t.isString()),
-  x: t.isOptional(t.isString()),
-  y: t.isOptional(t.isString()),
+  x:   t.isOptional(t.isString()),
+  y:   t.isOptional(t.isString()),
 });
 
 const isJwks = t.isPartial({
@@ -121,7 +121,7 @@ export class JwtVerifier {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
-        Key: {
+        Key:       {
           pk: { S: 'jwks' },
           sk: { S: issuer },
         },

@@ -28,9 +28,9 @@ export interface PollingCfnDeployerWorkflowProps {
 
 /** The invocation payload of every polling worker call: an `SfnInvokeEvent` whose references into the state the state machine resolves when it runs. */
 interface CheckPayload extends RetryCounts {
-  readonly mode: NonNullable<SfnInvokeEvent['mode']>;
-  readonly cfn: IResolvable;
-  readonly op: IResolvable;
+  readonly mode:    NonNullable<SfnInvokeEvent['mode']>;
+  readonly cfn:     IResolvable;
+  readonly op:      IResolvable;
   readonly attempt: number;
 }
 
@@ -80,7 +80,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
     const done            = this.done();
 
     const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
-      definitionBody: sfn.DefinitionBody.fromChainable(
+      definitionBody:   sfn.DefinitionBody.fromChainable(
         this.init()
           .next(this.startStackOperation(props.handler))
           // A start that already finalized the operation (an early failure) ends the workflow.
@@ -93,8 +93,8 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
                 .when(this.isDone(CHECK_RESULT), done)
                 .otherwise(this.incrementAttempt().next(waitBeforeCheck))))),
       ),
-      timeout: props.timeout ?? Duration.minutes(90),
-      comment: 'Serverless Inbox: sub-stack deployer workflow',
+      timeout:          props.timeout ?? Duration.minutes(90),
+      comment:          'Serverless Inbox: sub-stack deployer workflow',
       stateMachineName: props.stateMachineName,
     });
 
@@ -105,12 +105,12 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
   public grantStartAndDescribeExecutions(grantee: IGrantable): void {
     Grant.addToPrincipal({
       grantee,
-      actions: ['states:StartExecution'],
+      actions:      ['states:StartExecution'],
       resourceArns: [this.stateMachineArn],
     });
     Grant.addToPrincipal({
       grantee,
-      actions: ['states:DescribeExecution'],
+      actions:      ['states:DescribeExecution'],
       resourceArns: [this.executionArnPattern()],
     });
   }
@@ -120,7 +120,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
       parameters: {
         ...this.forward(CFN_FIELD),
         ...this.forward(OP_FIELD),
-        [ATTEMPT_FIELD]: 0,
+        [ATTEMPT_FIELD]:        0,
         [DELETE_RETRIES_FIELD]: 0,
         [CREATE_RETRIES_FIELD]: 0,
       },
@@ -158,7 +158,7 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
         ...this.forward(OP_FIELD),
         ...this.forward(START_RESULT),
         ...this.forward(CHECK_RESULT),
-        [`${ATTEMPT_FIELD}.$`]: `States.MathAdd(${this.path(ATTEMPT_FIELD)}, 1)`,
+        [`${ATTEMPT_FIELD}.$`]:        `States.MathAdd(${this.path(ATTEMPT_FIELD)}, 1)`,
         [`${DELETE_RETRIES_FIELD}.$`]: this.path(CHECK_RESULT, DELETE_RETRIES_FIELD),
         [`${CREATE_RETRIES_FIELD}.$`]: this.path(CHECK_RESULT, CREATE_RETRIES_FIELD),
       },
@@ -167,28 +167,28 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
 
   private workerInvocation(id: string, resultField: ResultField, payload: StartPayload | CheckPayload, handler: IFunction): tasks.LambdaInvoke {
     return new tasks.LambdaInvoke(this, id, {
-      lambdaFunction: handler,
+      lambdaFunction:      handler,
       payloadResponseOnly: true,
-      resultPath: this.path(resultField),
-      payload: sfn.TaskInput.fromObject(payload),
+      resultPath:          this.path(resultField),
+      payload:             sfn.TaskInput.fromObject(payload),
     });
   }
 
   private startPayload(): StartPayload {
     return {
-      mode: 'start',
-      cfn: sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
-      op: sfn.JsonPath.objectAt(this.path(OP_FIELD)),
+      mode:    'start',
+      cfn:     sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
+      op:      sfn.JsonPath.objectAt(this.path(OP_FIELD)),
       attempt: sfn.JsonPath.numberAt(this.path(ATTEMPT_FIELD)),
     };
   }
 
   private checkPayload(): CheckPayload {
     return {
-      mode: 'check',
-      cfn: sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
-      op: sfn.JsonPath.objectAt(this.path(OP_FIELD)),
-      attempt: sfn.JsonPath.numberAt(this.path(ATTEMPT_FIELD)),
+      mode:             'check',
+      cfn:              sfn.JsonPath.objectAt(this.path(CFN_FIELD)),
+      op:               sfn.JsonPath.objectAt(this.path(OP_FIELD)),
+      attempt:          sfn.JsonPath.numberAt(this.path(ATTEMPT_FIELD)),
       deleteRetryCount: sfn.JsonPath.numberAt(this.path(DELETE_RETRIES_FIELD)),
       createRetryCount: sfn.JsonPath.numberAt(this.path(CREATE_RETRIES_FIELD)),
     };
@@ -208,10 +208,10 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
 
   private executionArnPattern(): string {
     return Stack.of(this).formatArn({
-      service: 'states',
-      resource: 'execution',
+      service:      'states',
+      resource:     'execution',
       resourceName: Fn.join(':', [this.stateMachineName, '*']),
-      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
     });
   }
 }

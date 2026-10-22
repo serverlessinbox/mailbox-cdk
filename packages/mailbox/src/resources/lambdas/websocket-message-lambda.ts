@@ -9,8 +9,8 @@ import type { IDataTable }        from '../tables/data-tables';
 
 export interface WebSocketMessageLambdaProps {
   connectionsTable: IWebSocketTable;
-  configTable: IDataTable;
-  itemTable: IDataTable;
+  configTable:      IDataTable;
+  itemTable:        IDataTable;
   maxSubscriptions: number;
   webSocketPushApi: IWebSocketPushApi;
   artifactResolver: IArtifactResolver;
@@ -19,16 +19,16 @@ export interface WebSocketMessageLambdaProps {
 export class WebSocketMessageLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketMessageLambdaProps) {
     super(scope, id, {
-      lambdaId: 'websocket-message',
-      pipeline: 'jmap',
+      lambdaId:         'websocket-message',
+      pipeline:         'jmap',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 256,
-      environment: {
+      timeout:          Duration.seconds(30),
+      memorySize:       256,
+      environment:      {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
-        MAX_SUBSCRIPTIONS: props.maxSubscriptions.toString(),
+        CONFIG_TABLE_NAME:      props.configTable.tableName,
+        ITEM_TABLE_NAME:        props.itemTable.tableName,
+        MAX_SUBSCRIPTIONS:      props.maxSubscriptions.toString(),
         WEBSOCKET_API_ENDPOINT: props.webSocketPushApi.managementEndpoint,
       },
     });

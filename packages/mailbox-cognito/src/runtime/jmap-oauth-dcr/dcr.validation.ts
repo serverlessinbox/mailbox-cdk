@@ -3,13 +3,13 @@ import * as t            from 'typanion';
 import { isRedirectUri } from '../shared/identity-identifiers';
 
 export const isClientRegistrationRequest = t.isPartial({
-  redirect_uris: t.cascade(t.isArray(isRedirectUri), [t.hasMinLength(1)]),
-  client_name: t.isOptional(t.isString()),
-  scope: t.isOptional(t.isString()),
+  redirect_uris:              t.cascade(t.isArray(isRedirectUri), [t.hasMinLength(1)]),
+  client_name:                t.isOptional(t.isString()),
+  scope:                      t.isOptional(t.isString()),
   token_endpoint_auth_method: t.isOptional(t.isString()),
-  grant_types: t.isOptional(t.isArray(t.isString())),
-  response_types: t.isOptional(t.isArray(t.isString())),
-  software_statement: t.isOptional(t.isString()),
+  grant_types:                t.isOptional(t.isArray(t.isString())),
+  response_types:             t.isOptional(t.isArray(t.isString())),
+  software_statement:         t.isOptional(t.isString()),
 });
 
 /**

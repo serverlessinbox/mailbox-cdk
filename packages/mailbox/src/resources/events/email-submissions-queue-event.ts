@@ -7,16 +7,16 @@ import type { IEmailSendingQueueConsumer } from '../queues/email-sending-queue';
 
 export interface EmailSubmissionsQueueEventProps {
   target: IFunction;
-  queue: IEmailSendingQueueConsumer;
+  queue:  IEmailSendingQueueConsumer;
 }
 
 /** Invokes the target with one submitted email per batch. */
 export class EmailSubmissionsQueueEvent extends EventSourceMapping {
   constructor(scope: Construct, id: string, props: EmailSubmissionsQueueEventProps) {
     super(scope, id, {
-      target: props.target,
-      eventSourceArn: props.queue.queueArn,
-      batchSize: 1,
+      target:            props.target,
+      eventSourceArn:    props.queue.queueArn,
+      batchSize:         1,
       maxBatchingWindow: Duration.seconds(15),
     });
   }

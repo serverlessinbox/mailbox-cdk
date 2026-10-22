@@ -37,53 +37,53 @@ describe('BlobIdFormat.decode', () => {
 describe('BlobIdFormat.parse', () => {
   it('splits an email id into entity, path and MAC', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID123:document.pdf:dGVzdG1hY2RhdGE'))).toEqual({
-      type: 'email',
+      type:     'email',
       entityId: 'emailID123',
-      path: 'document.pdf',
-      mac: 'dGVzdG1hY2RhdGE',
+      path:     'document.pdf',
+      mac:      'dGVzdG1hY2RhdGE',
     });
   });
 
   it('takes the MAC of an email id from the last colon, so a path may contain colons', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID:my:file:with:colons.pdf:dGVzdG1hYzI'))).toEqual({
-      type: 'email',
+      type:     'email',
       entityId: 'emailID',
-      path: 'my:file:with:colons.pdf',
-      mac: 'dGVzdG1hYzI',
+      path:     'my:file:with:colons.pdf',
+      mac:      'dGVzdG1hYzI',
     });
   });
 
   it('parses an email id issued without a MAC to a null MAC', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID789:document.pdf'))).toEqual({
-      type: 'email',
+      type:     'email',
       entityId: 'emailID789',
-      path: 'document.pdf',
-      mac: null,
+      path:     'document.pdf',
+      mac:      null,
     });
   });
 
   it('parses an email id that ends in a colon to an empty MAC, not to a null one', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('eml:emailID:document.pdf:'))).toEqual({
-      type: 'email',
+      type:     'email',
       entityId: 'emailID',
-      path: 'document.pdf',
-      mac: '',
+      path:     'document.pdf',
+      mac:      '',
     });
   });
 
   it('parses a contact id with the whole remainder as its path', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('cnt:cardID:path:with:many:colons.jpg'))).toEqual({
-      type: 'contact',
+      type:     'contact',
       entityId: 'cardID',
-      path: 'path:with:many:colons.jpg',
+      path:     'path:with:many:colons.jpg',
     });
   });
 
   it('parses a principal id with the whole remainder as its path', () => {
     expect(BlobIdFormat.parse(decodedBlobIdOf('prn:principalID:avatar:2.png'))).toEqual({
-      type: 'principal',
+      type:     'principal',
       entityId: 'principalID',
-      path: 'avatar:2.png',
+      path:     'avatar:2.png',
     });
   });
 

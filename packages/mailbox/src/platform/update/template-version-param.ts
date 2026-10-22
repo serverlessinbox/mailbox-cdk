@@ -42,7 +42,7 @@ export class TemplateVersionParam implements ITemplateVersionParam {
   constructor(scope: Construct, id: string, props: TemplateVersionParamProps) {
     this.parameter     = new ssm.StringParameter(scope, id, {
       stringValue: props.templateVersion,
-      tier: ssm.ParameterTier.STANDARD,
+      tier:        ssm.ParameterTier.STANDARD,
     });
     this.parameterName = this.parameter.parameterName;
   }

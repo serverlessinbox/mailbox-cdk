@@ -29,14 +29,14 @@ export class StackFailureDetectorLambda extends GoLambda {
 
   constructor(scope: Construct, id: string, props: StackFailureDetectorLambdaProps) {
     super(scope, id, {
-      lambdaId: 'stack-failure-detector',
-      pipeline: 'infra',
+      lambdaId:         'stack-failure-detector',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      role: props.role,
-      functionName: props.functionName,
-      timeout: Duration.minutes(2),
-      memorySize: 256,
-      environment: {
+      role:             props.role,
+      functionName:     props.functionName,
+      timeout:          Duration.minutes(2),
+      memorySize:       256,
+      environment:      {
         INFRA_LOG_GROUP_NAME: props.infraLogGroupName,
       },
     });

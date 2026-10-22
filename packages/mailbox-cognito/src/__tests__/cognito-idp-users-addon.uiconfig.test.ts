@@ -19,41 +19,41 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   let artifactResolver: IArtifactResolver;
   let auditEventsQueue: IAuditEventsQueue;
   const mockPoolConfig = {
-    userPoolId: 'us-west-2_abcdefgh',
+    userPoolId:       'us-west-2_abcdefgh',
     grantAdminAccess: () => {},
   };
   // This suite tests uiConfig merging only — a minimal stub satisfies the required
   // `identityProvisioner` prop without exercising any invoke/grant behaviour.
   const mockIdentityProvisioner: IIdentityProvisioner = {
-    functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     functionName: 'identity-provisioner',
-    grantInvoke: () => {},
+    grantInvoke:  () => {},
   };
 
   beforeEach(() => {
     const app = new App();
     stack     = new Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
     // Set up artifact resolver
     const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-      'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      'mailbox-cognito':    { version: '1.0.0', zone: ArtifactZone.REGIONAL },
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
     // Mock audit events queue
     auditEventsQueue = {
-      queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
-      queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
+      queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+      queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
       grantSend: () => {},
     };
   });
@@ -64,7 +64,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
-        pool: mockPoolConfig,
+        pool:                mockPoolConfig,
       });
 
       expect(addon.basePath).toBe('/idp-users');
@@ -78,8 +78,8 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
-        pool: mockPoolConfig,
-        basePath: customPath,
+        pool:                mockPoolConfig,
+        basePath:            customPath,
       });
 
       expect(addon.basePath).toBe(customPath);
@@ -100,9 +100,9 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
-        pool: mockPoolConfig,
-        basePath: customPath,
-        uiConfig: providerConfig,
+        pool:                mockPoolConfig,
+        basePath:            customPath,
+        uiConfig:            providerConfig,
       });
 
       // Verify the addon's basePath is reflected in uiConfig
@@ -118,14 +118,14 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
-        pool: mockPoolConfig,
-        basePath: '/mine',
-        uiConfig: { branding: { name: 'Acme' }, idp: { users: { basePath: '/theirs', provider: 'other' } } },
+        pool:                mockPoolConfig,
+        basePath:            '/mine',
+        uiConfig:            { branding: { name: 'Acme' }, idp: { users: { basePath: '/theirs', provider: 'other' } } },
       });
 
       expect(addon.uiConfig).toEqual({
         branding: { name: 'Acme' },
-        idp: { users: { provider: 'cognito', basePath: '/mine', features: { setPassword: true } } },
+        idp:      { users: { provider: 'cognito', basePath: '/mine', features: { setPassword: true } } },
       });
     });
   });

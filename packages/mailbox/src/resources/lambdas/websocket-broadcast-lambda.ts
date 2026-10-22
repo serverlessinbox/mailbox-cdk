@@ -9,7 +9,7 @@ import type { IDataTable }        from '../tables/data-tables';
 
 export interface WebSocketBroadcastLambdaProps {
   connectionsTable: IWebSocketTable;
-  configTable: IDataTable;
+  configTable:      IDataTable;
   webSocketPushApi: IWebSocketPushApi;
   artifactResolver: IArtifactResolver;
 }
@@ -17,14 +17,14 @@ export interface WebSocketBroadcastLambdaProps {
 export class WebSocketBroadcastLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketBroadcastLambdaProps) {
     super(scope, id, {
-      lambdaId: 'websocket-broadcast',
-      pipeline: 'jmap',
+      lambdaId:         'websocket-broadcast',
+      pipeline:         'jmap',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(60),
-      memorySize: 512,
-      environment: {
+      timeout:          Duration.seconds(60),
+      memorySize:       512,
+      environment:      {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
+        CONFIG_TABLE_NAME:      props.configTable.tableName,
         WEBSOCKET_API_ENDPOINT: props.webSocketPushApi.managementEndpoint,
       },
     });

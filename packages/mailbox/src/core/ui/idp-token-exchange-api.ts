@@ -16,7 +16,7 @@ import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchan
 
 export interface IdpTokenExchangeApiProps {
   artifactResolver: IArtifactResolver;
-  configTable: IDataTable;
+  configTable:      IDataTable;
   auditEventsQueue: IAuditEventsQueue;
 
   /**
@@ -46,24 +46,24 @@ export class IdpTokenExchangeApi extends Construct {
     super(scope, id);
 
     this.api = new HttpApi(this, 'idp-token-exchange-api', {
-      apiName: `Mailbox ${Aws.STACK_NAME} IDP Token Exchange API`,
+      apiName:     `Mailbox ${Aws.STACK_NAME} IDP Token Exchange API`,
       description: 'This service serves IDP token exchange endpoints.',
     });
 
     const apiHandlerLambda = new IdpTokenExchangeLambda(this, 'idp-token-exchange-lambda', {
-      configTable: props.configTable,
+      configTable:      props.configTable,
       auditEventsQueue: props.auditEventsQueue,
-      authPolicyName: props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
-      oauthClientName: props.oauthClientName,
+      authPolicyName:   props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
+      oauthClientName:  props.oauthClientName,
       artifactResolver: props.artifactResolver,
-      serviceName: props.serviceName,
-      pipeline: props.pipeline,
+      serviceName:      props.serviceName,
+      pipeline:         props.pipeline,
     });
     apiHandlerLambda.node.addDependency(...(props.dependsOn ?? []));
 
     this.api.addRoutes({
-      path: '/auth/{proxy+}',
-      methods: [HttpMethod.ANY],
+      path:        '/auth/{proxy+}',
+      methods:     [HttpMethod.ANY],
       integration: new HttpLambdaIntegration('idp-token-exchange-integration', apiHandlerLambda),
     });
   }

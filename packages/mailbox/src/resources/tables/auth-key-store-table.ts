@@ -13,7 +13,7 @@ import { Construct }                                                        from
  */
 export interface IAuthKeyStoreTable {
   readonly tableName: string;
-  readonly tableArn: string;
+  readonly tableArn:  string;
 
   grantRead(grantee: IGrantable): void;
 
@@ -42,16 +42,16 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
 
     this.table     = new StackNamedTable(this, 'auth-key-store', {
       uniquePerPosition: true,
-      removalPolicy: RemovalPolicy.DESTROY,
-      partitionKey: {
+      removalPolicy:     RemovalPolicy.DESTROY,
+      partitionKey:      {
         name: 'pk',
         type: AttributeType.STRING,
       },
-      sortKey: {
+      sortKey:           {
         name: 'sk',
         type: AttributeType.STRING,
       },
-      billingMode: BillingMode.PAY_PER_REQUEST,
+      billingMode:       BillingMode.PAY_PER_REQUEST,
     });
     this.tableName = this.table.tableName;
     this.tableArn  = this.table.tableArn;

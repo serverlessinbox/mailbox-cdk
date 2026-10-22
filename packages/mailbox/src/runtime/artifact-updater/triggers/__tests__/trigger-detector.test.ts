@@ -30,8 +30,8 @@ describe('TriggerDetector', () => {
   const scheduledTrigger = new ScheduledTrigger(badConfigCycle);
 
   const builder: jest.Mocked<TriggerBuilder> = {
-    cfnTrigger: jest.fn().mockReturnValue(cfnTrigger),
-    httpTrigger: jest.fn().mockReturnValue(httpTrigger),
+    cfnTrigger:       jest.fn().mockReturnValue(cfnTrigger),
+    httpTrigger:      jest.fn().mockReturnValue(httpTrigger),
     scheduledTrigger: jest.fn().mockReturnValue(scheduledTrigger),
   };
   const detector                             = new TriggerDetector(builder);

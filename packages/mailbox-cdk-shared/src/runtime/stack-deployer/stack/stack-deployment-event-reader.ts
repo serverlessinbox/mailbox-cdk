@@ -72,11 +72,11 @@ export class StackDeploymentEventReader {
       return undefined;
     }
     return {
-      cfn: this.responseTargetOf(event),
+      cfn:                this.responseTargetOf(event),
       physicalResourceId: isPhysicalIdOfRequest(event) ? event.PhysicalResourceId : undefined,
-      requestType: isRequestTypeOfRequest(event) ? event.RequestType : undefined,
-      stackName: isStackNameOfRequest(event) ? event.ResourceProperties.stackName : undefined,
-      region: isRegionOfRequest(event) ? event.ResourceProperties.region : undefined,
+      requestType:        isRequestTypeOfRequest(event) ? event.RequestType : undefined,
+      stackName:          isStackNameOfRequest(event) ? event.ResourceProperties.stackName : undefined,
+      region:             isRegionOfRequest(event) ? event.ResourceProperties.region : undefined,
     };
   }
 
@@ -86,21 +86,21 @@ export class StackDeploymentEventReader {
       return undefined;
     }
     return {
-      cfn: this.responseTargetOf(event.cfn),
+      cfn:                this.responseTargetOf(event.cfn),
       physicalResourceId: isPhysicalIdOfStep(event) ? event.cfn.PhysicalResourceId : undefined,
-      requestType: isRequestTypeOfStep(event) ? event.op.requestType : undefined,
-      stackName: isStackNameOfStep(event) ? event.op.stackName : undefined,
-      region: isRegionOfStep(event) ? event.op.region : undefined,
+      requestType:        isRequestTypeOfStep(event) ? event.op.requestType : undefined,
+      stackName:          isStackNameOfStep(event) ? event.op.stackName : undefined,
+      region:             isRegionOfStep(event) ? event.op.region : undefined,
     };
   }
 
   private responseTargetOf(target: CfnTarget): CfnEnvelope {
     return {
-      ResponseURL: target.ResponseURL,
-      StackId: target.StackId,
-      RequestId: target.RequestId,
+      ResponseURL:       target.ResponseURL,
+      StackId:           target.StackId,
+      RequestId:         target.RequestId,
       LogicalResourceId: target.LogicalResourceId,
-      ResourceType: target.ResourceType,
+      ResourceType:      target.ResourceType,
     };
   }
 

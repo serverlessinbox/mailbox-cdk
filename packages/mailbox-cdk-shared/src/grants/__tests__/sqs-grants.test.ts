@@ -10,7 +10,7 @@ import { SqsActions, grantQueueActions } from '../sqs-grants';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -33,12 +33,12 @@ describe('grantQueueActions', () => {
     const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 'sqs:SendMessage',
-            Effect: 'Allow',
+            Action:   'sqs:SendMessage',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
         ]),
@@ -57,12 +57,12 @@ describe('grantQueueActions', () => {
     const queueId  = stack.getLogicalId(queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-            Effect: 'Allow',
+            Action:   ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
         ]),
@@ -83,17 +83,17 @@ describe('grantQueueActions', () => {
     const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: 'sqs:SendMessage',
-            Effect: 'Allow',
+            Action:   'sqs:SendMessage',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
           Match.objectEquals({
-            Action: ['kms:GenerateDataKey*', 'kms:Decrypt'],
-            Effect: 'Allow',
+            Action:   ['kms:GenerateDataKey*', 'kms:Decrypt'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [keyId, 'Arn'] },
           }),
         ]),
@@ -114,17 +114,17 @@ describe('grantQueueActions', () => {
     const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-            Effect: 'Allow',
+            Action:   ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
           Match.objectEquals({
-            Action: 'kms:Decrypt',
-            Effect: 'Allow',
+            Action:   'kms:Decrypt',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [keyId, 'Arn'] },
           }),
         ]),

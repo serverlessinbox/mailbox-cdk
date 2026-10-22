@@ -28,7 +28,7 @@ export interface WorkerConfig extends BaseConfig {
  */
 export interface StarterConfig extends BaseConfig {
   readonly stateMachineArn: StateMachineArn;
-  readonly region: Region;
+  readonly region:          Region;
 }
 
 export function loadWorker(l: env.Loader): WorkerConfig {
@@ -42,6 +42,6 @@ export function loadStarter(l: env.Loader): StarterConfig {
   return {
     ...loadBaseConfig(l),
     stateMachineArn: env.mandatoryAs(l, STATE_MACHINE_ARN_VARIABLE, toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
-    region: env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
+    region:          env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
   };
 }

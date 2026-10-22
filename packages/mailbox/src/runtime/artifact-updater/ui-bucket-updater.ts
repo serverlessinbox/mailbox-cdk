@@ -53,22 +53,22 @@ export class UiBucketUpdater {
 
     try {
       this.logger.info('updating UI bucket', {
-        bucketName: target.bucketName,
-        artifactBucket: location.bucket,
-        artifactKey: location.key,
-        newVersion: stale.version,
+        bucketName:       target.bucketName,
+        artifactBucket:   location.bucket,
+        artifactKey:      location.key,
+        newVersion:       stale.version,
         deploymentRegion: this.deployment.region,
       });
 
       const deployed     = await deployZipToPrefix(this.registryS3, {
         sourceBucket: location.bucket,
-        sourceKey: location.key,
+        sourceKey:    location.key,
         targetBucket: target.bucketName,
         targetPrefix: CONTENT_PREFIX,
       });
       const invalidation = await invalidateCloudFront(this.cloudFront, {
         distributionId,
-        paths: ['/*'],
+        paths:           ['/*'],
         callerReference: `ui-update:${target.bucketName}:${stale.version}:${Date.now()}`,
       });
       await this.tagArtifactVersion(target, stale);
@@ -76,9 +76,9 @@ export class UiBucketUpdater {
       this.logger.info('UI bucket updated', {
         bucketName: target.bucketName,
         distributionId,
-        oldVersion: target.deployedVersion,
-        newVersion: stale.version,
-        filesUploaded: deployed.uploaded,
+        oldVersion:       target.deployedVersion,
+        newVersion:       stale.version,
+        filesUploaded:    deployed.uploaded,
         cacheInvalidated: invalidation.invalidated,
       });
       return true;
@@ -92,7 +92,7 @@ export class UiBucketUpdater {
     await this.cloudFront.send(
       new TagResourceCommand({
         Resource: target.arn,
-        Tags: {
+        Tags:     {
           Items: [{ Key: ServerlessInboxTagKeys.artifactVersion, Value: stale.version }],
         },
       }),

@@ -34,7 +34,7 @@ describe('BootstrapLambda', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -43,7 +43,7 @@ describe('BootstrapLambda', () => {
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -91,11 +91,11 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasEnvironment(template, {
-        CONFIG_TABLE_NAME: Match.anyValue(),
+        CONFIG_TABLE_NAME:         Match.anyValue(),
         AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
-        STACK_IDENTITY_TAG_VALUE: 'TestStack',
-        STACK_IDENTITY_TAG_KEY: ServerlessInboxTagKeys.rootStack,
-        SES_RULE_SET_NAME: Match.anyValue(),
+        STACK_IDENTITY_TAG_VALUE:  'TestStack',
+        STACK_IDENTITY_TAG_KEY:    ServerlessInboxTagKeys.rootStack,
+        SES_RULE_SET_NAME:         Match.anyValue(),
       });
     });
 
@@ -110,7 +110,7 @@ describe('BootstrapLambda', () => {
 
       hasEnvironment(template, {
         SES_RECEIVING_MODE: Match.absent(),
-        SES_SEND_ENABLED: Match.absent(),
+        SES_SEND_ENABLED:   Match.absent(),
       });
     });
 
@@ -135,8 +135,8 @@ describe('BootstrapLambda', () => {
         PolicyDocument: {
           Statement: Match.arrayWith([
             Match.objectEquals({
-              Action: Match.arrayEquals([...DynamoDbActions.readWrite]),
-              Effect: 'Allow',
+              Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+              Effect:   'Allow',
               Resource: stack.resolve([authKeyStoreTable.tableArn, `${authKeyStoreTable.tableArn}/index/*`]),
             }),
           ]),
@@ -148,8 +148,8 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasStatement(template, {
-        Action: 'iam:CreateServiceLinkedRole',
-        Resource: '*',
+        Action:    'iam:CreateServiceLinkedRole',
+        Resource:  '*',
         Condition: { StringEquals: { 'iam:AWSServiceName': 'servicequotas.amazonaws.com' } },
       });
     });
@@ -158,7 +158,7 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasStatement(template, {
-        Action: 'execute-api:Invoke',
+        Action:   'execute-api:Invoke',
         Resource: [
           `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/bootstrap`,
           `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`,
@@ -171,8 +171,8 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasStatement(template, {
-        Action: ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
-        Resource: '*',
+        Action:    ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
+        Resource:  '*',
         Condition: Match.absent(),
       });
     });
@@ -182,7 +182,7 @@ describe('BootstrapLambda', () => {
       const template   = synthBootstrap({ hostedZone });
 
       hasStatement(template, {
-        Action: ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
+        Action:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
         Resource: 'arn:aws:route53:::hostedzone/Z0123456789',
       });
     });
@@ -197,7 +197,7 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasStatement(template, {
-        Action: ['ses:CreateEmailIdentity', 'ses:GetEmailIdentity', 'ses:PutEmailIdentityDkimSigningAttributes'],
+        Action:   ['ses:CreateEmailIdentity', 'ses:GetEmailIdentity', 'ses:PutEmailIdentityDkimSigningAttributes'],
         Resource: identityArn('example.com'),
       });
     });
@@ -206,8 +206,8 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasStatement(template, {
-        Action: 'cloudformation:DescribeStacks',
-        Resource: { Ref: 'AWS::StackId' },
+        Action:    'cloudformation:DescribeStacks',
+        Resource:  { Ref: 'AWS::StackId' },
         Condition: Match.absent(),
       });
     });
@@ -217,19 +217,19 @@ describe('BootstrapLambda', () => {
       const tagKeys  = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
 
       hasStatement(template, {
-        Action: 'ses:TagResource',
-        Resource: identityArn('example.com'),
+        Action:    'ses:TagResource',
+        Resource:  identityArn('example.com'),
         Condition: Match.objectEquals({
-          StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
           'ForAllValues:StringEquals': tagKeys,
         }),
       });
       hasStatement(template, {
-        Action: 'ses:TagResource',
-        Resource: identityArn('example.com'),
+        Action:    'ses:TagResource',
+        Resource:  identityArn('example.com'),
         Condition: Match.objectEquals({
-          StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
-          Null: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
+          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
+          Null:                        { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
           'ForAllValues:StringEquals': tagKeys,
         }),
       });

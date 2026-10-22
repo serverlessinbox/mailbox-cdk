@@ -43,23 +43,23 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: './index.html',
-          type: 'File',
+          path:   './index.html',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('<html>test</html>')),
         },
         {
-          path: 'app.js',
-          type: 'File',
+          path:   'app.js',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('console.log("test");')),
         },
         {
-          path: 'style.css',
-          type: 'File',
+          path:   'style.css',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('body { color: red; }')),
         },
         {
-          path: 'config.json',
-          type: 'File',
+          path:   'config.json',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('{"key":"value"}')),
         },
       ],
@@ -75,7 +75,7 @@ describe('deployZipToPrefix', () => {
     const s3Client = new S3Client({});
     const result   = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });
@@ -86,8 +86,8 @@ describe('deployZipToPrefix', () => {
     const getCalls = s3Mock.commandCalls(GetObjectCommand);
     expect(getCalls).toHaveLength(1);
     expect(getCalls[0].args[0].input).toEqual({
-      Bucket: 'source-bucket',
-      Key: 'ui.zip',
+      Bucket:    'source-bucket',
+      Key:       'ui.zip',
       VersionId: undefined,
     });
 
@@ -99,29 +99,29 @@ describe('deployZipToPrefix', () => {
     const putInputs = putCalls.map((call) => call.args[0].input);
     expect(putInputs).toContainEqual(
       expect.objectContaining({
-        Bucket: 'target-bucket',
-        Key: 'v1/index.html',
+        Bucket:      'target-bucket',
+        Key:         'v1/index.html',
         ContentType: 'text/html; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
-        Bucket: 'target-bucket',
-        Key: 'v1/app.js',
+        Bucket:      'target-bucket',
+        Key:         'v1/app.js',
         ContentType: 'application/javascript; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
-        Bucket: 'target-bucket',
-        Key: 'v1/style.css',
+        Bucket:      'target-bucket',
+        Key:         'v1/style.css',
         ContentType: 'text/css; charset=utf-8',
       }),
     );
     expect(putInputs).toContainEqual(
       expect.objectContaining({
-        Bucket: 'target-bucket',
-        Key: 'v1/config.json',
+        Bucket:      'target-bucket',
+        Key:         'v1/config.json',
         ContentType: 'application/json; charset=utf-8',
       }),
     );
@@ -131,13 +131,13 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: 'dir/',
-          type: 'Directory',
+          path:   'dir/',
+          type:   'Directory',
           buffer: jest.fn(),
         },
         {
-          path: 'file.txt',
-          type: 'File',
+          path:   'file.txt',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('content')),
         },
       ],
@@ -153,7 +153,7 @@ describe('deployZipToPrefix', () => {
     const s3Client = new S3Client({});
     const result   = await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });
@@ -169,8 +169,8 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: 'file.txt',
-          type: 'File',
+          path:   'file.txt',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('content')),
         },
       ],
@@ -185,11 +185,11 @@ describe('deployZipToPrefix', () => {
 
     const s3Client = new S3Client({});
     await deployZipToPrefix(s3Client, {
-      sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceBucket:    'source-bucket',
+      sourceKey:       'ui.zip',
       sourceVersionId: 'v123',
-      targetBucket: 'target-bucket',
-      targetPrefix: 'v1/',
+      targetBucket:    'target-bucket',
+      targetPrefix:    'v1/',
     });
 
     const getCalls = s3Mock.commandCalls(GetObjectCommand);
@@ -203,7 +203,7 @@ describe('deployZipToPrefix', () => {
     await expect(
       deployZipToPrefix(s3Client, {
         sourceBucket: 'source-bucket',
-        sourceKey: 'ui.zip',
+        sourceKey:    'ui.zip',
         targetBucket: 'target-bucket',
         targetPrefix: 'v1/',
       }),
@@ -214,8 +214,8 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: 'file.txt',
-          type: 'File',
+          path:   'file.txt',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('test content here')),
         },
       ],
@@ -231,7 +231,7 @@ describe('deployZipToPrefix', () => {
     const s3Client = new S3Client({});
     await deployZipToPrefix(s3Client, {
       sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });
@@ -251,8 +251,8 @@ describe('deployZipToPrefix', () => {
     const mockDirectory = {
       files: [
         {
-          path: 'test.txt',
-          type: 'File',
+          path:   'test.txt',
+          type:   'File',
           buffer: jest.fn().mockResolvedValue(Buffer.from('test')),
         },
       ],
@@ -282,7 +282,7 @@ describe('deployZipToPrefix', () => {
 
     await deployZipToPrefix(fakeS3 as any, {
       sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });
@@ -397,17 +397,17 @@ describe('writeObject', () => {
   it('writes the body under the key in the target bucket with its content type and cache control', async () => {
     await writeObject(new S3Client({}), {
       targetBucket: 'target-bucket',
-      key: 'config.json',
-      body: '{"a":1}',
-      contentType: 'application/json',
+      key:          'config.json',
+      body:         '{"a":1}',
+      contentType:  'application/json',
       cacheControl: 'no-store',
     });
 
     expect(s3Mock.commandCalls(PutObjectCommand)[0].args[0].input).toEqual({
-      Bucket: 'target-bucket',
-      Key: 'config.json',
-      Body: '{"a":1}',
-      ContentType: 'application/json',
+      Bucket:       'target-bucket',
+      Key:          'config.json',
+      Body:         '{"a":1}',
+      ContentType:  'application/json',
       CacheControl: 'no-store',
     });
   });
@@ -431,7 +431,7 @@ describe('deployZipToPrefix, for one entry', () => {
 
     await deployZipToPrefix(new S3Client({}), {
       sourceBucket: 'source-bucket',
-      sourceKey: 'ui.zip',
+      sourceKey:    'ui.zip',
       targetBucket: 'target-bucket',
       targetPrefix: 'v1/',
     });

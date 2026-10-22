@@ -49,8 +49,8 @@ import {
 } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack: jest.fn(),
-  buildArtifactKey: jest.fn(),
+  deriveTrack:        jest.fn(),
+  buildArtifactKey:   jest.fn(),
   readReleasePointer: jest.fn(),
 }));
 
@@ -68,8 +68,8 @@ function association(arn: string, eventType: 'origin-request' | 'viewer-request'
 
 function cacheBehavior(associations: LambdaFunctionAssociation[]): DefaultCacheBehavior {
   return {
-    TargetOriginId: 'origin',
-    ViewerProtocolPolicy: 'allow-all',
+    TargetOriginId:             'origin',
+    ViewerProtocolPolicy:       'allow-all',
     LambdaFunctionAssociations: { Quantity: associations.length, Items: associations },
   } as DefaultCacheBehavior;
 }
@@ -77,9 +77,9 @@ function cacheBehavior(associations: LambdaFunctionAssociation[]): DefaultCacheB
 function behaviorsOf(defaults: LambdaFunctionAssociation[], additional: LambdaFunctionAssociation[]) {
   return {
     DefaultCacheBehavior: cacheBehavior(defaults),
-    CacheBehaviors: {
+    CacheBehaviors:       {
       Quantity: additional.length,
-      Items: additional.length > 0 ? [{ ...cacheBehavior(additional), PathPattern: '/api/*' }] : [],
+      Items:    additional.length > 0 ? [{ ...cacheBehavior(additional), PathPattern: '/api/*' }] : [],
     },
   };
 }
@@ -120,7 +120,7 @@ describe('EdgeLambdaUpdater', () => {
     taggingMock.on(GetResourcesCommand).resolves({
       ResourceTagMappingList: ids.map((id) => ({
         ResourceARN: distributionArn(id),
-        Tags: [{ Key: 'serverless-inbox:root-stack-id', Value: 'guid-1' }],
+        Tags:        [{ Key: 'serverless-inbox:root-stack-id', Value: 'guid-1' }],
       })),
     });
   }
@@ -176,8 +176,8 @@ describe('EdgeLambdaUpdater', () => {
     expect(updated).toBe(true);
     expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input).toEqual({
       FunctionName: EDGE_ARN,
-      S3Bucket: 'mailbox-artifacts-us-east-1',
-      S3Key: 'edge-pkg/release/1.2.4/lambdas/edge-lambda.zip',
+      S3Bucket:     'mailbox-artifacts-us-east-1',
+      S3Key:        'edge-pkg/release/1.2.4/lambdas/edge-lambda.zip',
     });
     expect(lambdaMock.commandCalls(PublishVersionCommand)[0].args[0].input).toEqual({ FunctionName: EDGE_ARN });
     expect(lambdaMock.commandCalls(InvokeCommand)[0].args[0].input.FunctionName).toBe(NEW_VERSION_ARN);
@@ -234,9 +234,9 @@ describe('EdgeLambdaUpdater', () => {
         'edge-pkg/release/1.2.3/lambdas/edge-lambda.zip',
       ]);
       expect(console.error).toHaveBeenCalledWith('smoke test did not pass, rolling back', {
-        lambdaArn: EDGE_ARN,
-        verdict: expectedVerdict,
-        failedVersion: '1.2.4',
+        lambdaArn:       EDGE_ARN,
+        verdict:         expectedVerdict,
+        failedVersion:   '1.2.4',
         deployedVersion: '1.2.3',
       });
     });
@@ -280,7 +280,7 @@ describe('EdgeLambdaUpdater', () => {
       expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
       expect(console.error).toHaveBeenCalledWith('failed to update edge lambda', {
         edgeLambdaArn: EDGE_ARN,
-        error: `No CloudFront distribution found for edge lambda ${EDGE_ARN}`,
+        error:         `No CloudFront distribution found for edge lambda ${EDGE_ARN}`,
       });
     });
 

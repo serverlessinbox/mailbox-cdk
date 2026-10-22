@@ -5,18 +5,18 @@ import { toAudience }                                                           
 import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobId } from '../blob-id/blob-id';
 import { readOriginRequest, type CloudFrontRequest }                                from '../cloudfront/cloudfront-event';
 
-export const AUTH_KEY_STORE_TABLE = toTableName('auth-key-store');
+export const AUTH_KEY_STORE_TABLE       = toTableName('auth-key-store');
 export const OTHER_AUTH_KEY_STORE_TABLE = toTableName('other-auth-key-store');
-export const EU_CENTRAL_1 = toRegion('eu-central-1');
-export const EU_WEST_1 = toRegion('eu-west-1');
-export const US_EAST_1 = toRegion('us-east-1');
-export const TENANT_ID = toTenantId('tenant-1');
-export const ACCOUNT_ID = toAccountId('account-1');
-export const ISSUER = toIssuer('https://idp.example.com/pool');
-export const AUDIENCE = toAudience('client-1');
-export const ANOTHER_ISSUER = toIssuer('https://another-idp.example.com');
-export const ANOTHER_AUDIENCE = toAudience('client-2');
-export const NO_AUDIENCE = toAudience('');
+export const EU_CENTRAL_1               = toRegion('eu-central-1');
+export const EU_WEST_1                  = toRegion('eu-west-1');
+export const US_EAST_1                  = toRegion('us-east-1');
+export const TENANT_ID                  = toTenantId('tenant-1');
+export const ACCOUNT_ID                 = toAccountId('account-1');
+export const ISSUER                     = toIssuer('https://idp.example.com/pool');
+export const AUDIENCE                   = toAudience('client-1');
+export const ANOTHER_ISSUER             = toIssuer('https://another-idp.example.com');
+export const ANOTHER_AUDIENCE           = toAudience('client-2');
+export const NO_AUDIENCE                = toAudience('');
 
 /** The unpadded base64url form of a decoded blob id, as a download URL carries it. */
 export function encodedBlobIdOf(decoded: string): EncodedBlobId {
@@ -58,7 +58,7 @@ export interface OriginRequestOptions {
 
 const DEFAULT_CUSTOM_HEADERS: Record<string, string> = {
   'x-auth-key-store-table': AUTH_KEY_STORE_TABLE,
-  'x-region': 'eu-west-1',
+  'x-region':               'eu-west-1',
 };
 
 /** The query string of a JMAP download URL; a parameter left `undefined` is not in it. */
@@ -99,8 +99,8 @@ export function originRequestOf(options: OriginRequestOptions = {}): CloudFrontR
     };
 
   return readOriginRequest(cloudFrontEventOf({
-    method: options.method ?? 'GET',
-    uri: '/download',
+    method:      options.method ?? 'GET',
+    uri:         '/download',
     querystring: options.querystring,
     headers,
     origin,

@@ -30,7 +30,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -39,7 +39,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     };
     const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -76,8 +76,8 @@ describe('WebSocketConnectLambda connections-table grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.readWrite]),
-            Effect: 'Allow',
+            Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
+            Effect:   'Allow',
             Resource: expectedResource,
           }),
         ]),

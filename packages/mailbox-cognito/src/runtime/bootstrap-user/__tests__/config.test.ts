@@ -24,7 +24,7 @@ describe('bootstrap-user config', () => {
   it('loads an empty service name when SERVICE_NAME is absent', () => {
     expect(env.tryLoad(load)).toEqual({
       config: { logLevel: 'error', serviceName: '' },
-      error: undefined,
+      error:  undefined,
     });
   });
 

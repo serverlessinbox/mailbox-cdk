@@ -34,8 +34,8 @@ import {
 } from '../../__tests__/updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack: jest.fn(),
-  buildArtifactKey: jest.fn(),
+  deriveTrack:        jest.fn(),
+  buildArtifactKey:   jest.fn(),
   readReleasePointer: jest.fn(),
 }));
 
@@ -97,8 +97,8 @@ describe('LambdaCodeUpdater', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].args[0].input).toEqual({
       FunctionName: lambdaTarget().arn,
-      S3Bucket: 'mailbox-artifacts-us-east-1',
-      S3Key: 'releases/v1.2.4/lambdas/mailbox-go.zip',
+      S3Bucket:     'mailbox-artifacts-us-east-1',
+      S3Key:        'releases/v1.2.4/lambdas/mailbox-go.zip',
     });
     const tags = lambdaMock.commandCalls(TagResourceCommand);
     expect(tags).toHaveLength(1);
@@ -140,9 +140,9 @@ describe('LambdaCodeUpdater', () => {
       ]);
       expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
       expect(console.error).toHaveBeenCalledWith('smoke test did not pass, rolling back', {
-        lambdaArn: lambdaTarget().arn,
-        verdict: expectedVerdict,
-        failedVersion: '1.2.4',
+        lambdaArn:       lambdaTarget().arn,
+        verdict:         expectedVerdict,
+        failedVersion:   '1.2.4',
         deployedVersion: '1.2.3',
       });
     });
@@ -151,7 +151,7 @@ describe('LambdaCodeUpdater', () => {
   it('throws and logs, without probing or rolling back, when the new code does not settle', async () => {
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
     lambdaMock.on(GetFunctionConfigurationCommand).resolves({
-      LastUpdateStatus: 'Failed',
+      LastUpdateStatus:       'Failed',
       LastUpdateStatusReason: 'Insufficient permissions',
     });
 
@@ -164,7 +164,7 @@ describe('LambdaCodeUpdater', () => {
     expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith('failed to update lambda', {
       lambdaArn: lambdaTarget().arn,
-      error: `Function code update failed for ${lambdaTarget().arn}: Insufficient permissions`,
+      error:     `Function code update failed for ${lambdaTarget().arn}: Insufficient permissions`,
     });
   });
 });

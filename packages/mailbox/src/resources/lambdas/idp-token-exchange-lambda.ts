@@ -9,9 +9,9 @@ import type { IDataTable }                 from '../tables/data-tables';
 import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
 
 export interface IdpTokenExchangeLambdaProps {
-  configTable: IDataTable;
+  configTable:      IDataTable;
   auditEventsQueue: IAuditEventsQueue;
-  authPolicyName?: AuthPolicyName;
+  authPolicyName?:  AuthPolicyName;
   oauthClientName?: OAuthClientName;
   artifactResolver: IArtifactResolver;
 
@@ -25,16 +25,16 @@ export interface IdpTokenExchangeLambdaProps {
 export class IdpTokenExchangeLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: IdpTokenExchangeLambdaProps) {
     super(scope, id, {
-      lambdaId: 'idp-token-exchange',
-      pipeline: props.pipeline,
-      serviceName: props.serviceName,
+      lambdaId:         'idp-token-exchange',
+      pipeline:         props.pipeline,
+      serviceName:      props.serviceName,
       artifactResolver: props.artifactResolver,
-      memorySize: 256,
-      timeout: Duration.seconds(30),
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        AUTH_POLICY_NAME: props.authPolicyName ?? 'ADMIN_API',
-        OAUTH_CLIENT_NAME: props.oauthClientName ?? 'ADMIN_UI',
+      memorySize:       256,
+      timeout:          Duration.seconds(30),
+      environment:      {
+        CONFIG_TABLE_NAME:      props.configTable.tableName,
+        AUTH_POLICY_NAME:       props.authPolicyName ?? 'ADMIN_API',
+        OAUTH_CLIENT_NAME:      props.oauthClientName ?? 'ADMIN_UI',
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
       },
     });

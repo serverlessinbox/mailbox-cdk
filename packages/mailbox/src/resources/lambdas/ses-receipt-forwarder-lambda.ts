@@ -7,7 +7,7 @@ import type { IEmailProcessingQueue } from '../queues/email-processing-queue';
 
 export interface SesReceiptForwarderLambdaProps {
   emailProcessorQueue: IEmailProcessingQueue;
-  artifactResolver: IArtifactResolver;
+  artifactResolver:    IArtifactResolver;
 }
 
 /**
@@ -23,12 +23,12 @@ export interface SesReceiptForwarderLambdaProps {
 export class SesReceiptForwarderLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: SesReceiptForwarderLambdaProps) {
     super(scope, id, {
-      lambdaId: 'ses-receipt-forwarder',
-      pipeline: 'mail-in',
+      lambdaId:         'ses-receipt-forwarder',
+      pipeline:         'mail-in',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      memorySize: 128,
-      environment: {
+      timeout:          Duration.seconds(30),
+      memorySize:       128,
+      environment:      {
         EMAIL_PROCESSOR_QUEUE_URL: props.emailProcessorQueue.queueUrl,
       },
     });

@@ -19,7 +19,7 @@ import { MailboxCognitoDataDeployerWorkerLambda }       from '../resources/lambd
 import { MailboxUserPool }                              from '../user-pool/mailbox-user-pool';
 
 interface CloudFormationResource {
-  Type: string;
+  Type:        string;
   Properties?: Record<string, unknown>;
 }
 
@@ -28,18 +28,18 @@ interface CloudFormationResource {
  * Each entry is pre-verified to be essential and scoped by Condition or Service Principal.
  */
 const KNOWN_WILDCARDS: Record<string, string> = {
-  'cloudformation:GetTemplateSummary': 'CloudFormation resource introspection (read-only)',
+  'cloudformation:GetTemplateSummary':  'CloudFormation resource introspection (read-only)',
   'cloudformation:DescribeStackEvents': 'CloudFormation stack event retrieval (read-only)',
-  'tag:GetResources': 'Resource Groups Tagging API (read-only, no delete)',
-  'tag:TagResources': 'Resource Groups Tagging API (tag writes, broad scope accepted)',
-  'tag:UntagResources': 'Resource Groups Tagging API (tag removal, broad scope accepted)',
-  'iam:GetRole': 'IAM role read (informational)',
-  'iam:ListRolePolicies': 'IAM role policy enumeration (informational)',
-  'iam:ListAttachedRolePolicies': 'IAM role policy attachment read (informational)',
-  'iam:GetRolePolicy': 'IAM inline policy read (informational)',
-  'logs:CreateLogGroup': 'CloudWatch log group creation (standard Lambda execution permission)',
-  'logs:CreateLogStream': 'CloudWatch log stream creation (standard Lambda execution permission)',
-  'logs:PutLogEvents': 'CloudWatch log event writes (standard Lambda execution permission)',
+  'tag:GetResources':                   'Resource Groups Tagging API (read-only, no delete)',
+  'tag:TagResources':                   'Resource Groups Tagging API (tag writes, broad scope accepted)',
+  'tag:UntagResources':                 'Resource Groups Tagging API (tag removal, broad scope accepted)',
+  'iam:GetRole':                        'IAM role read (informational)',
+  'iam:ListRolePolicies':               'IAM role policy enumeration (informational)',
+  'iam:ListAttachedRolePolicies':       'IAM role policy attachment read (informational)',
+  'iam:GetRolePolicy':                  'IAM inline policy read (informational)',
+  'logs:CreateLogGroup':                'CloudWatch log group creation (standard Lambda execution permission)',
+  'logs:CreateLogStream':               'CloudWatch log stream creation (standard Lambda execution permission)',
+  'logs:PutLogEvents':                  'CloudWatch log event writes (standard Lambda execution permission)',
 };
 
 function isResourceOfType(resource: CloudFormationResource, type: string): boolean {
@@ -54,7 +54,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: Cognito resources have tag structure for correlation', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -83,7 +83,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: declares a mandatory rootStackId parameter and tags the user pool with it', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -105,7 +105,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -166,7 +166,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: Template.fromStack succeeds with expected resources', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -189,7 +189,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: template has expected parameter schema', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -206,7 +206,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: has Cognito UserPool resource with RETAIN policy', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -232,7 +232,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
     it('cognito-data stack: has UserPoolResourceServer for JMAP scopes', () => {
       const app   = new App();
       const stack = new MailboxCognitoDataStack(app, 'TestMailboxCognitoData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -266,14 +266,14 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const app = new App();
       app.node.setContext('serverlessinbox:artifacts', {
         bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
+        packages:   {
+          'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
           'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
         },
       });
       app.node.setContext('serverlessinbox:artifact_versions', {});
       const testStack = new cdk.Stack(app, 'TestCognitoDeployerStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -283,7 +283,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       new MailboxCognitoDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
         templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        deployedStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',
+        deployedStackArn:  'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',
       });
 
       const template  = Template.fromStack(testStack);
@@ -353,10 +353,10 @@ describe('Cognito Data Stack Template Synthesis', () => {
       // Set up CDK context with artifact metadata so the resolver factory can load it
       app.node.setContext('serverlessinbox:artifacts', {
         bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
+        packages:   {
+          'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
           'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
-          'mailbox': { zone: 'regional', version: '0.0.1-test' },
+          'mailbox':            { zone: 'regional', version: '0.0.1-test' },
         },
       });
       app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -371,7 +371,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const app = new App();
       setUpArtifactContext(app);
       const stack = new cdk.Stack(app, 'TestCognitoAutoStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -379,8 +379,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Construct with cognito-auto domain config
       const userPool = new MailboxUserPool(stack, 'user-pool', {
-        domain: {
-          kind: 'cognito-auto',
+        domain:           {
+          kind:         'cognito-auto',
           hostedZoneId: 'Z1234567890ABC',
         },
         artifactResolver: resolver,
@@ -420,7 +420,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const app = new App();
       setUpArtifactContext(app);
       const stack = new cdk.Stack(app, 'TestCognitoExplicitStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -429,8 +429,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Construct with explicit cognito domain config
       const userPool = new MailboxUserPool(stack, 'user-pool', {
-        domain: {
-          kind: 'cognito',
+        domain:           {
+          kind:                'cognito',
           cognitoDomainPrefix: explicitPrefix,
         },
         artifactResolver: resolver,
@@ -467,7 +467,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       const app = new App();
       setUpArtifactContext(app);
       const stack = new cdk.Stack(app, 'TestCustomDomainStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -475,9 +475,9 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Construct with custom domain config
       const userPool = new MailboxUserPool(stack, 'user-pool', {
-        domain: {
-          kind: 'custom',
-          domainName: 'auth.example.com',
+        domain:           {
+          kind:           'custom',
+          domainName:     'auth.example.com',
           certificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test-cert',
         },
         artifactResolver: resolver,
@@ -523,10 +523,10 @@ describe('Cognito Data Stack Template Synthesis', () => {
       function setUpArtifactContext() {
         app.node.setContext('serverlessinbox:artifacts', {
           bucketBase: 'test-artifacts',
-          packages: {
-            'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
+          packages:   {
+            'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
             'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
-            'mailbox': { zone: 'regional', version: '0.0.1-test' },
+            'mailbox':            { zone: 'regional', version: '0.0.1-test' },
           },
         });
         app.node.setContext('serverlessinbox:artifact_versions', {});
@@ -534,7 +534,7 @@ describe('Cognito Data Stack Template Synthesis', () => {
       setUpArtifactContext();
 
       const stack = new cdk.Stack(app, 'TestOAuthDiscoveryStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -542,8 +542,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Construct MailboxUserPool with enableJmapOAuthDiscovery enabled
       const userPool = new MailboxUserPool(stack, 'user-pool-oauth', {
-        domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
-        artifactResolver: resolver,
+        domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
+        artifactResolver:         resolver,
         enableJmapOAuthDiscovery: true,
       });
 

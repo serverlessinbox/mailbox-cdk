@@ -26,11 +26,11 @@ describe('AuditEventsQueueEvent', () => {
 
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
-      FunctionName: Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
-      BatchSize: 100,
+      EventSourceArn:                 queueArn,
+      FunctionName:                   Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
+      BatchSize:                      100,
       MaximumBatchingWindowInSeconds: 30,
-      FunctionResponseTypes: Match.arrayEquals(['ReportBatchItemFailures']),
+      FunctionResponseTypes:          Match.arrayEquals(['ReportBatchItemFailures']),
     });
   });
 });

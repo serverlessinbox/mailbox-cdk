@@ -29,7 +29,7 @@ export interface Loader {
 /** The outcome of `tryLoad`: the loaded config beside the message naming every problem, if any. */
 interface TryLoadResult<T> {
   config: T;
-  error: string | undefined;
+  error:  string | undefined;
 }
 
 /** Validates a string of plain digits without a leading zero, such as `5`; zero, signs and fractions are rejected. */

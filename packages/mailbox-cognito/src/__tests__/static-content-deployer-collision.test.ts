@@ -30,7 +30,7 @@ import { loadMailboxCognitoArtifactVersions }                                   
 import { loadMailboxCognitoRegistryRecord }                                           from '../mailbox-cognito-registry-record';
 
 interface CloudFormationResource {
-  Type: string;
+  Type:        string;
   Properties?: Record<string, unknown>;
 }
 
@@ -43,17 +43,17 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
     // Set up CDK context with artifact metadata so the resolver factory can load it
     app.node.setContext('serverlessinbox:artifacts', {
       bucketBase: 'test-artifacts',
-      packages: {
-        'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
-        'mailbox-cdk': { zone: 'regional', version: '0.0.1-test' },
-        'mailbox': { zone: 'regional', version: '0.0.1-test' },
+      packages:   {
+        'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
+        'mailbox-cdk':        { zone: 'regional', version: '0.0.1-test' },
+        'mailbox':            { zone: 'regional', version: '0.0.1-test' },
         'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
       },
     });
     app.node.setContext('serverlessinbox:artifact_versions', {});
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -67,8 +67,8 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
 
       const userPool = new MailboxUserPool(stack, 'user-pool-with-oauth', {
-        domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth-domain' },
-        artifactResolver: resolver,
+        domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth-domain' },
+        artifactResolver:         resolver,
         enableJmapOAuthDiscovery: true,
       });
 
@@ -113,7 +113,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       const testBucket = new s3.Bucket(stack, 'test-bucket-for-deployer');
       deployer1.deploy(stack, 'test-deployment', {
         targetBucket: testBucket,
-        source: StaticContentSource.data('test.txt', 'test content'),
+        source:       StaticContentSource.data('test.txt', 'test content'),
       });
 
       // Verify template synthesis succeeds (this would fail if the type collision existed

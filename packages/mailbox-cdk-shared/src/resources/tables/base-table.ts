@@ -15,7 +15,7 @@ export class BaseTable extends Table {
   constructor(scope: Construct, id: string, props: TableProps) {
     super(scope, id, {
       ...props,
-      billingMode: props.billingMode ?? BillingMode.PAY_PER_REQUEST,
+      billingMode:   props.billingMode ?? BillingMode.PAY_PER_REQUEST,
       removalPolicy: props.removalPolicy ?? removalPolicyForRetainedResources(scope),
     });
   }
@@ -62,8 +62,8 @@ export class BaseTable extends Table {
   private denyEnumeration(grantee: iam.IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(
       new iam.PolicyStatement({
-        effect: iam.Effect.DENY,
-        actions: [
+        effect:    iam.Effect.DENY,
+        actions:   [
           'dynamodb:Scan',
           'dynamodb:PartiQLSelect',
           'dynamodb:PartiQLInsert',

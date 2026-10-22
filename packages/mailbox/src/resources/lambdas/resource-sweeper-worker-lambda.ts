@@ -18,15 +18,15 @@ export interface ResourceSweeperWorkerLambdaProps {
 export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ResourceSweeperWorkerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'resource-sweeper',
-      pipeline: 'infra',
-      serviceName: 'resource-sweeper-worker',
+      lambdaId:         'resource-sweeper',
+      pipeline:         'infra',
+      serviceName:      'resource-sweeper-worker',
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk',
-      handler: 'index.workerHandler',
-      timeout: Duration.minutes(3),
-      memorySize: 256,
-      role: props.role,
+      packageName:      'mailbox-cdk',
+      handler:          'index.workerHandler',
+      timeout:          Duration.minutes(3),
+      memorySize:       256,
+      role:             props.role,
     });
   }
 
@@ -40,7 +40,7 @@ export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
 
   private grantLogGroupCreation(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['logs:CreateLogGroup'],
+      actions:   ['logs:CreateLogGroup'],
       resources: [`arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
     });
   }
@@ -48,7 +48,7 @@ export class ResourceSweeperWorkerLambda extends TypeScriptLambda {
   /** Write-only, with the same effective scope as AWSLambdaBasicExecutionRole. */
   private grantLogStreamWriting(): iam.PolicyStatement {
     return new iam.PolicyStatement({
-      actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+      actions:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
       resources: [
         `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
         `arn:aws:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,

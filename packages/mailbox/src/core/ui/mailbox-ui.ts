@@ -34,7 +34,7 @@ import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {
   packageName: string;
-  objectPath: string;
+  objectPath:  string;
 };
 
 /** Runtime config of a UI, serialized as-is into the `config.json` that the UI fetches. */
@@ -111,26 +111,26 @@ export class MailboxUi extends Construct {
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
     const distribution = new Distribution(this, 'distribution', {
-      comment: `Mailbox ${props.label}`,
+      comment:           `Mailbox ${props.label}`,
       defaultRootObject: 'index.html',
-      domainNames: props.certificate ? [props.domainName] : undefined,
-      certificate: props.certificate,
-      defaultBehavior: {
-        origin: this.bucket.contentOrigin(),
+      domainNames:       props.certificate ? [props.domainName] : undefined,
+      certificate:       props.certificate,
+      defaultBehavior:   {
+        origin:               this.bucket.contentOrigin(),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
-        compress: true,
+        cachePolicy:          CachePolicy.CACHING_OPTIMIZED,
+        compress:             true,
       },
-      errorResponses: [
+      errorResponses:    [
         {
-          httpStatus: 404,
+          httpStatus:         404,
           responseHttpStatus: 200,
-          responsePagePath: '/index.html',
+          responsePagePath:   '/index.html',
         },
         {
-          httpStatus: 403,
+          httpStatus:         403,
           responseHttpStatus: 200,
-          responsePagePath: '/index.html',
+          responsePagePath:   '/index.html',
         },
       ],
     });
@@ -140,9 +140,9 @@ export class MailboxUi extends Construct {
     // Disable caching so CDK-driven config updates propagate immediately.
     distribution.addBehavior('/config/*', this.bucket.configOrigin(), {
       viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      cachePolicy: CachePolicy.CACHING_DISABLED,
-      compress: true,
-      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+      cachePolicy:          CachePolicy.CACHING_DISABLED,
+      compress:             true,
+      allowedMethods:       AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
     });
 
     this.addAuthBehavior(distribution, props);
@@ -192,7 +192,7 @@ export class MailboxUi extends Construct {
     if (uiResolved) {
       deployer.deploy(this, 'ui-content', {
         targetBucket: this.bucket,
-        source: StaticContentSource.zipFromBucket(uiResolved.bucket, uiResolved.key, 'content/', {
+        source:       StaticContentSource.zipFromBucket(uiResolved.bucket, uiResolved.key, 'content/', {
           sourceVersionId: uiResolved.versionId,
         }),
       });
@@ -202,8 +202,8 @@ export class MailboxUi extends Construct {
     if (props.uiConfig) {
       deployer.deploy(this, 'ui-config', {
         targetBucket: this.bucket,
-        source: StaticContentSource.data('config/config.json', JSON.stringify(props.uiConfig), {
-          contentType: 'application/json; charset=utf-8',
+        source:       StaticContentSource.data('config/config.json', JSON.stringify(props.uiConfig), {
+          contentType:  'application/json; charset=utf-8',
           cacheControl: 'no-store',
         }),
       });
@@ -212,20 +212,20 @@ export class MailboxUi extends Construct {
     // Invalidate CloudFront distribution cache for all UI content
     deployer.invalidate(this, 'ui-invalidate', {
       distributionId: this.distribution.distributionId,
-      paths: ['/*'],
+      paths:          ['/*'],
     });
   }
 
   private addAuthBehavior(distribution: Distribution, props: MailboxUiProps): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver: props.artifactResolver,
-      configTable: props.configTable,
+      configTable:      props.configTable,
       auditEventsQueue: props.auditEventsQueue,
-      authPolicyName: props.authPolicyName,
-      oauthClientName: props.oauthClientName,
-      dependsOn: props.tokenExchangeDependsOn,
-      serviceName: props.tokenExchangeServiceName,
-      pipeline: props.tokenExchangePipeline,
+      authPolicyName:   props.authPolicyName,
+      oauthClientName:  props.oauthClientName,
+      dependsOn:        props.tokenExchangeDependsOn,
+      serviceName:      props.tokenExchangeServiceName,
+      pipeline:         props.tokenExchangePipeline,
     });
 
     // Token exchange API is internal behind CloudFront.
@@ -243,16 +243,16 @@ export class MailboxUi extends Construct {
 
     distribution.addBehavior('/auth/*', oauthOrigin, {
       viewerProtocolPolicy: ViewerProtocolPolicy.HTTPS_ONLY,
-      cachePolicy: CachePolicy.CACHING_DISABLED,
-      originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      cachePolicy:          CachePolicy.CACHING_DISABLED,
+      originRequestPolicy:  OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
       functionAssociations: [
         {
-          function: authViewerRequestFunction,
+          function:  authViewerRequestFunction,
           eventType: FunctionEventType.VIEWER_REQUEST,
         },
       ],
-      compress: false,
-      allowedMethods: AllowedMethods.ALLOW_ALL,
+      compress:             false,
+      allowedMethods:       AllowedMethods.ALLOW_ALL,
     });
   }
 }

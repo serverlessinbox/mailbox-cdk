@@ -56,40 +56,40 @@ export class MailboxDataDeployer extends Construct {
     const stack         = Stack.of(this);
     const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
     const dataStackArn  = stack.formatArn({
-      service: 'cloudformation',
-      resource: 'stack',
+      service:      'cloudformation',
+      resource:     'stack',
       resourceName: `${dataStackName}/*`,
     });
 
     const infra = new DeployerInfra(this, 'infra', {
-      artifactResolver: props.artifactResolver,
+      artifactResolver:       props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
-      deployedStackName: 'data',
-      deployedStackArn: dataStackArn,
-      createWorker: (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorkerLambda(workerScope, workerId, {
+      deployedStackName:      'data',
+      deployedStackArn:       dataStackArn,
+      createWorker:           (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         dataStackArn,
         dataStackName,
         templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
-        nameBase: props.nameBase,
+        nameBase:          props.nameBase,
       }),
     });
 
     const resource = infra.deployStack(this, 'resource', 'Custom::MailboxDataDeployer', {
-      stackName: dataStackName,
-      templateUrl: props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
+      stackName:        dataStackName,
+      templateUrl:      props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
       preserveOnDelete: true,
-      parameters: {
-        nameBase: props.nameBase,
-        rootStack: Aws.STACK_NAME,
-        rootStackId: StackIdentity.guid,
+      parameters:       {
+        nameBase:     props.nameBase,
+        rootStack:    Aws.STACK_NAME,
+        rootStackId:  StackIdentity.guid,
         deployerType: props.deployerType,
       },
-      tags: serverlessInboxSubStackTags({
-        rootStack: Aws.STACK_NAME,
+      tags:             serverlessInboxSubStackTags({
+        rootStack:   Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
-        stack: dataStackName,
+        stack:       dataStackName,
       }),
     });
 
@@ -100,7 +100,7 @@ export class MailboxDataDeployer extends Construct {
       changelogTableArn:    resource.getAttString('changelogTableArn'),
       auditLogTableArn:     resource.getAttString('auditLogTableArn'),
       mailFeedbackTableArn: resource.getAttString('mailFeedbackTableArn'),
-      artifactResolver: props.artifactResolver,
+      artifactResolver:     props.artifactResolver,
     });
     resolver.node.addDependency(resource);
 

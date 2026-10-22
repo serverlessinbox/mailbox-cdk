@@ -34,7 +34,7 @@ type InvalidationProperties = t.InferType<typeof isInvalidationProperties>;
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -45,7 +45,7 @@ function newArtifactResolver(stack: Stack): IArtifactResolver {
   };
   return new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
@@ -81,8 +81,8 @@ describe('StaticContentDeployer', () => {
 
     it('runs a 15 minute, 1024 MB Lambda', () => {
       Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
-        Handler: 'index.handler',
-        Timeout: 900,
+        Handler:    'index.handler',
+        Timeout:    900,
         MemorySize: 1024,
       });
     });
@@ -101,27 +101,27 @@ describe('StaticContentDeployer', () => {
       deployer.deploy(stack, 'ui-config', { targetBucket: targetBucket(stack), source });
 
       Template.fromStack(stack).hasResourceProperties('Custom::ContentDeployment', {
-        ServiceTimeout: '900',
-        targetBucket: 'ui-bucket',
-        sources: [
+        ServiceTimeout:    '900',
+        targetBucket:      'ui-bucket',
+        sources:           [
           { kind: 'data', key: 'config/config.json', body: '{"a":1}', contentType: 'application/json' },
         ],
-        distributionId: Match.absent(),
+        distributionId:    Match.absent(),
         invalidationPaths: Match.absent(),
-        deploymentNonce: Match.absent(),
+        deploymentNonce:   Match.absent(),
       });
     });
 
     it('lets a data source write exactly its own object and nothing else', () => {
       deployer.deploy(stack, 'ui-config', {
         targetBucket: targetBucket(stack),
-        source: StaticContentSource.data('config/config.json', '{"a":1}'),
+        source:       StaticContentSource.data('config/config.json', '{"a":1}'),
       });
 
       const template = Template.fromStack(stack);
       expect(statementsForAction(template, 's3:PutObject')).toEqual([
         expect.objectContaining({
-          Action: ['s3:PutObject', 's3:DeleteObject'],
+          Action:   ['s3:PutObject', 's3:DeleteObject'],
           Resource: 'arn:aws:s3:::ui-bucket/config/config.json',
         }),
       ]);
@@ -132,13 +132,13 @@ describe('StaticContentDeployer', () => {
     it('lets a zip source write under its prefix, list the target bucket and read its source archive', () => {
       deployer.deploy(stack, 'ui-content', {
         targetBucket: targetBucket(stack),
-        source: StaticContentSource.zipFromBucket('artifacts-bucket', 'ui/admin-ui.zip', 'content'),
+        source:       StaticContentSource.zipFromBucket('artifacts-bucket', 'ui/admin-ui.zip', 'content'),
       });
 
       const template = Template.fromStack(stack);
       expect(statementsForAction(template, 's3:PutObject')).toEqual([
         expect.objectContaining({
-          Action: ['s3:PutObject', 's3:DeleteObject'],
+          Action:   ['s3:PutObject', 's3:DeleteObject'],
           Resource: 'arn:aws:s3:::ui-bucket/content/*',
         }),
       ]);
@@ -147,7 +147,7 @@ describe('StaticContentDeployer', () => {
       ]);
       expect(statementsForAction(template, 's3:GetObject')).toEqual([
         expect.objectContaining({
-          Action: ['s3:GetObject', 's3:GetObjectVersion'],
+          Action:   ['s3:GetObject', 's3:GetObjectVersion'],
           Resource: 'arn:aws:s3:::artifacts-bucket/ui/admin-ui.zip',
         }),
       ]);
@@ -159,12 +159,12 @@ describe('StaticContentDeployer', () => {
       deployer.invalidate(stack, 'ui-invalidate', { distributionId: 'E1234567890ABC', paths: ['/*'] });
 
       Template.fromStack(stack).hasResourceProperties('Custom::ContentInvalidation', {
-        ServiceTimeout: '900',
-        sources: [],
-        distributionId: 'E1234567890ABC',
+        ServiceTimeout:    '900',
+        sources:           [],
+        distributionId:    'E1234567890ABC',
         invalidationPaths: ['/*'],
-        targetBucket: Match.absent(),
-        deploymentNonce: Match.absent(),
+        targetBucket:      Match.absent(),
+        deploymentNonce:   Match.absent(),
       });
     });
 
@@ -197,15 +197,15 @@ describe('StaticContentDeployer', () => {
       const otherScope = new Construct(stack, 'other');
       const uiContent  = deployer.deploy(uiScope, 'content', {
         targetBucket: targetBucket(uiScope),
-        source: StaticContentSource.zipFromBucket('artifacts-bucket', 'admin-ui.zip', 'content/'),
+        source:       StaticContentSource.zipFromBucket('artifacts-bucket', 'admin-ui.zip', 'content/'),
       });
       const uiConfig   = deployer.deploy(uiScope, 'config', {
         targetBucket: targetBucket(new Construct(uiScope, 'config-target')),
-        source: StaticContentSource.data('config.json', '{}'),
+        source:       StaticContentSource.data('config.json', '{}'),
       });
       deployer.deploy(otherScope, 'content', {
         targetBucket: targetBucket(otherScope),
-        source: StaticContentSource.data('other.json', '{}'),
+        source:       StaticContentSource.data('other.json', '{}'),
       });
 
       deployer.invalidate(uiScope, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
@@ -314,11 +314,11 @@ describe('StaticContentDeployer', () => {
         const otherScope = new Construct(configuredStack, 'other');
         configuredDeployer.deploy(otherScope, 'content', {
           targetBucket: targetBucket(otherScope),
-          source: zip('other.zip', 'v9'),
+          source:       zip('other.zip', 'v9'),
         });
         configuredDeployer.deploy(uiScope, 'content', {
           targetBucket: targetBucket(uiScope),
-          source: zip('admin-ui.zip', 'v1'),
+          source:       zip('admin-ui.zip', 'v1'),
         });
         configuredDeployer.invalidate(uiScope, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
       });
@@ -331,7 +331,7 @@ describe('StaticContentDeployer', () => {
         const otherScope = new Construct(configuredStack, 'other');
         configuredDeployer.deploy(otherScope, 'content', {
           targetBucket: targetBucket(otherScope),
-          source: zip('other.zip', 'v9'),
+          source:       zip('other.zip', 'v9'),
         });
         configuredDeployer.invalidate(configuredStack, 'invalidate', { distributionId: 'E-UI', paths: ['/*'] });
       });
@@ -343,11 +343,11 @@ describe('StaticContentDeployer', () => {
       const properties = synthInvalidationProperties((configuredDeployer, configuredStack) => {
         configuredDeployer.deploy(configuredStack, 'ui-content', {
           targetBucket: targetBucket(configuredStack),
-          source: zip('admin-ui.zip', 'v1'),
+          source:       zip('admin-ui.zip', 'v1'),
         });
         configuredDeployer.deploy(configuredStack, 'ui-extra', {
           targetBucket: targetBucket(new Construct(configuredStack, 'extra-target')),
-          source: zip('extra.zip', 'v9'),
+          source:       zip('extra.zip', 'v9'),
         });
         configuredDeployer.invalidate(configuredStack, 'ui-invalidate', { distributionId: 'E-UI', paths: ['/*'] });
       });

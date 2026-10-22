@@ -37,7 +37,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
     const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -46,7 +46,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
     };
     const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -77,14 +77,14 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,
-      cdnHost: 'cdn.example.com',
+      cdnHost:    'cdn.example.com',
       apiBaseUrl: 'https://jmap.example.com',
       artifactResolver,
       identityProvisioner: identityProvisionerFunction,
-      oauthHandlerConfig: {
+      oauthHandlerConfig:  {
         scopeMap: { 'mail.read': [Permission.MAIL_READ] },
       },
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
+      vendorAccountIds:    [VENDOR_ACCOUNT_ID],
     });
 
     template = Template.fromStack(stack);
@@ -109,8 +109,8 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: Match.arrayEquals([...DynamoDbActions.read]),
-            Effect: 'Allow',
+            Action:   Match.arrayEquals([...DynamoDbActions.read]),
+            Effect:   'Allow',
             Resource: expectedResource,
           }),
         ]),

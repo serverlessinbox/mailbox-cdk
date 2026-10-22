@@ -8,9 +8,9 @@ import { LicenseRefreshSchedule }        from '../events/license-refresh-schedul
 import type { IDataTable }               from '../tables/data-tables';
 
 export interface LicenseRefresherLambdaProps {
-  configTable: IDataTable;
+  configTable:      IDataTable;
   artifactResolver: IArtifactResolver;
-  coreDomain: string;
+  coreDomain:       string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];
   /** Hour of the daily refresh. */
@@ -22,13 +22,13 @@ export interface LicenseRefresherLambdaProps {
 export class LicenseRefresherLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: LicenseRefresherLambdaProps) {
     super(scope, id, {
-      lambdaId: 'license-refresher',
-      pipeline: 'infra',
+      lambdaId:         'license-refresher',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.seconds(30),
-      environment: {
+      timeout:          Duration.seconds(30),
+      environment:      {
         CONFIG_TABLE_NAME: props.configTable.tableName,
-        CORE_DOMAIN: props.coreDomain,
+        CORE_DOMAIN:       props.coreDomain,
       },
     });
 
@@ -45,7 +45,7 @@ export class LicenseRefresherLambda extends GoLambda {
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['execute-api:Invoke'],
+      actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.map(
         (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/refresh-license`,
       ),

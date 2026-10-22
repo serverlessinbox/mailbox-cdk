@@ -104,11 +104,11 @@ describe('SweepStarter', () => {
       sfnMock.on(ListExecutionsCommand).resolves({
         executions: [
           {
-            executionArn: STALE_EXECUTION_ARN,
+            executionArn:    STALE_EXECUTION_ARN,
             stateMachineArn: STATE_MACHINE_ARN,
-            name: 'stale',
-            status: 'RUNNING',
-            startDate: new Date(),
+            name:            'stale',
+            status:          'RUNNING',
+            startDate:       new Date(),
           },
         ],
       });
@@ -119,7 +119,7 @@ describe('SweepStarter', () => {
       expect(commandNames()).toEqual(['ListExecutionsCommand', 'StopExecutionCommand', 'StartExecutionCommand']);
       expect(sfnMock.commandCalls(ListExecutionsCommand)[0].args[0].input).toMatchObject({
         stateMachineArn: STATE_MACHINE_ARN,
-        statusFilter: 'RUNNING',
+        statusFilter:    'RUNNING',
       });
       expect(sfnMock.commandCalls(StopExecutionCommand)[0].args[0].input).toMatchObject({
         executionArn: STALE_EXECUTION_ARN,
@@ -145,8 +145,8 @@ describe('SweepStarter', () => {
 
       expect(sfnMock.commandCalls(StartExecutionCommand)[0].args[0].input).toEqual({
         stateMachineArn: STATE_MACHINE_ARN,
-        name: 'request-1',
-        input: JSON.stringify({ toSweep: { cert: OLD_REMOVAL_ENTRY } }),
+        name:            'request-1',
+        input:           JSON.stringify({ toSweep: { cert: OLD_REMOVAL_ENTRY } }),
       });
     });
 

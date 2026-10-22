@@ -9,14 +9,14 @@ export type TableRole = 'configTable' | 'itemTable' | 'changelogTable' | 'auditL
  * CloudFormation adds keys of its own (such as `ServiceToken`), so unlisted keys are accepted.
  */
 export const isResourceProperties = t.isPartial({
-  configTableIncomingArn: t.isString(),
-  configTableOverrideArn: t.isString(),
-  itemTableIncomingArn: t.isString(),
-  itemTableOverrideArn: t.isString(),
-  changelogTableIncomingArn: t.isString(),
-  changelogTableOverrideArn: t.isString(),
-  auditLogTableIncomingArn: t.isString(),
-  auditLogTableOverrideArn: t.isString(),
+  configTableIncomingArn:       t.isString(),
+  configTableOverrideArn:       t.isString(),
+  itemTableIncomingArn:         t.isString(),
+  itemTableOverrideArn:         t.isString(),
+  changelogTableIncomingArn:    t.isString(),
+  changelogTableOverrideArn:    t.isString(),
+  auditLogTableIncomingArn:     t.isString(),
+  auditLogTableOverrideArn:     t.isString(),
   mailFeedbackTableIncomingArn: t.isString(),
   mailFeedbackTableOverrideArn: t.isString(),
 });

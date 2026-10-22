@@ -99,10 +99,10 @@ describe('applyServerlessInboxEdgeTags', () => {
 describe('serverlessInboxSubStackTags', () => {
   it('builds the product, root stack, root stack id and stack tags under their canonical keys', () => {
     expect(serverlessInboxSubStackTags({ product: ' acme ', rootStack: 'root', rootStackId: 'root-guid', stack: 'root-data' })).toEqual({
-      'serverless-inbox:product': 'acme',
-      'serverless-inbox:root-stack': 'root',
+      'serverless-inbox:product':       'acme',
+      'serverless-inbox:root-stack':    'root',
       'serverless-inbox:root-stack-id': 'root-guid',
-      'serverless-inbox:stack': 'root-data',
+      'serverless-inbox:stack':         'root-data',
     });
   });
 });

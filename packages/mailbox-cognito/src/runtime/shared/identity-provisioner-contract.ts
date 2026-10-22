@@ -17,19 +17,19 @@ export interface ResolveTenantRequest {
 
 /** Asks whether a dynamic client registration may proceed, or is a duplicate or over the cap. */
 export interface DcrCheckRequest {
-  readonly kind: 'DCR_CHECK';
-  readonly tenantId: TenantId;
+  readonly kind:         'DCR_CHECK';
+  readonly tenantId:     TenantId;
   readonly redirectUris: RedirectUri[];
-  readonly clientName: string;
+  readonly clientName:   string;
 }
 
 /** Records a dynamic client registration that was created in the user pool. */
 export interface DcrPersistRequest {
-  readonly kind: 'DCR_PERSIST';
-  readonly tenantId: TenantId;
-  readonly clientId: ClientId;
+  readonly kind:         'DCR_PERSIST';
+  readonly tenantId:     TenantId;
+  readonly clientId:     ClientId;
   readonly redirectUris: RedirectUri[];
-  readonly clientName: string;
+  readonly clientName:   string;
   /** The granted scopes, separated by spaces. */
   readonly scope: string;
 }
@@ -39,13 +39,13 @@ export interface ProvisionUserRequest {
   readonly kind: 'PROVISION_USER';
   /** Absent, never defaulted, when the authorizer did not supply a tenant. */
   readonly tenantId?: TenantId;
-  readonly provider: 'cognito';
+  readonly provider:  'cognito';
   /** Cognito's immutable `sub`, never the username: a username can be deleted and recreated under a new `sub`. */
-  readonly subject: UserSubject;
+  readonly subject:  UserSubject;
   readonly username: Username;
-  readonly email?: EmailAddress;
-  readonly groups: readonly GroupName[];
-  readonly isAdmin: boolean;
+  readonly email?:   EmailAddress;
+  readonly groups:   readonly GroupName[];
+  readonly isAdmin:  boolean;
 }
 
 /** Every request the `identity-provisioner` Lambda answers. */
@@ -66,9 +66,9 @@ export type ResolveTenantResponse = t.InferType<typeof isResolveTenantResponse>;
 
 const isDcrProceedResponse     = t.isObject({ status: t.isLiteral('proceed') });
 const isDcrDedupHitResponse    = t.isObject({
-  status: t.isLiteral('dedup_hit'),
+  status:   t.isLiteral('dedup_hit'),
   clientId: isClientId,
-  scope: t.isOptional(t.isString()),
+  scope:    t.isOptional(t.isString()),
 });
 const isDcrCapExceededResponse = t.isObject({ status: t.isLiteral('cap_exceeded') });
 
@@ -83,9 +83,9 @@ export const isDcrPersistResponse = t.isObject({
 export type DcrPersistResponse = t.InferType<typeof isDcrPersistResponse>;
 
 export const isProvisionUserResponse = t.isObject({
-  principalId: isPrincipalId,
+  principalId:      isPrincipalId,
   primaryAccountId: isAccountId,
-  isNewUser: t.isBoolean(),
+  isNewUser:        t.isBoolean(),
 });
 /** The mailbox principal and account the user was provisioned with. */
 export type ProvisionUserResponse = t.InferType<typeof isProvisionUserResponse>;

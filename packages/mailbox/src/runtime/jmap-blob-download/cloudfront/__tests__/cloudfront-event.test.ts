@@ -11,12 +11,12 @@ import { firstHeaderValue, readOriginRequest } from '../cloudfront-event';
 import { cloudFrontEventOf }                   from '../../__tests__/jmap-blob-download-helpers';
 
 const VALID_REQUEST = {
-  method: 'GET',
-  uri: '/download',
+  method:      'GET',
+  uri:         '/download',
   querystring: 'accountId=a1&blobId=YWJj',
-  headers: { authorization: [{ key: 'Authorization', value: 'Bearer token' }] },
-  clientIp: '203.0.113.7',
-  origin: { s3: { domainName: 'bucket.s3.amazonaws.com', customHeaders: { 'x-region': [{ key: 'x-region', value: 'eu-west-1' }] } } },
+  headers:     { authorization: [{ key: 'Authorization', value: 'Bearer token' }] },
+  clientIp:    '203.0.113.7',
+  origin:      { s3: { domainName: 'bucket.s3.amazonaws.com', customHeaders: { 'x-region': [{ key: 'x-region', value: 'eu-west-1' }] } } },
 };
 
 describe('readOriginRequest', () => {
@@ -59,10 +59,10 @@ describe('readOriginRequest', () => {
 
 describe('firstHeaderValue', () => {
   const request = readOriginRequest(cloudFrontEventOf({
-    method: 'GET',
+    method:  'GET',
     headers: {
-      origin: [{ key: 'Origin', value: 'https://first.example.com' }, { key: 'Origin', value: 'https://second.example.com' }],
-      empty: [],
+      origin:  [{ key: 'Origin', value: 'https://first.example.com' }, { key: 'Origin', value: 'https://second.example.com' }],
+      empty:   [],
       keyless: [{}],
     },
   }));

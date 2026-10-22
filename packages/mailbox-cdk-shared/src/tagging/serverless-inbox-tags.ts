@@ -54,16 +54,16 @@ export interface ServerlessInboxSubStackTagOptions {
 
 /** The tags of a sub-stack's `AWS::CloudFormation::Stack`: the correlation scheme's product, root stack, root stack id and stack keys. */
 export type ServerlessInboxSubStackTags = {
-  readonly [ServerlessInboxTagKeys.product]: string;
-  readonly [ServerlessInboxTagKeys.rootStack]: string;
+  readonly [ServerlessInboxTagKeys.product]:     string;
+  readonly [ServerlessInboxTagKeys.rootStack]:   string;
   readonly [ServerlessInboxTagKeys.rootStackId]: string;
-  readonly [ServerlessInboxTagKeys.stack]: string;
+  readonly [ServerlessInboxTagKeys.stack]:       string;
 };
 
 /** The root stack whose resources a grant admits: its name as tagged under `root-stack`, and its guid as tagged under `root-stack-id`. */
 export interface RootStack {
   readonly name: string;
-  readonly id: string;
+  readonly id:   string;
 }
 
 /** The `Condition` block of one IAM statement a root-stack tag check produces. */
@@ -134,10 +134,10 @@ export function serverlessInboxSubStackTags(
   options: ServerlessInboxSubStackTagOptions,
 ): ServerlessInboxSubStackTags {
   return {
-    [ServerlessInboxTagKeys.product]: (options.product ?? 'mailbox').trim() || 'mailbox',
-    [ServerlessInboxTagKeys.rootStack]: options.rootStack,
+    [ServerlessInboxTagKeys.product]:     (options.product ?? 'mailbox').trim() || 'mailbox',
+    [ServerlessInboxTagKeys.rootStack]:   options.rootStack,
     [ServerlessInboxTagKeys.rootStackId]: options.rootStackId,
-    [ServerlessInboxTagKeys.stack]: options.stack,
+    [ServerlessInboxTagKeys.stack]:       options.stack,
   };
 }
 

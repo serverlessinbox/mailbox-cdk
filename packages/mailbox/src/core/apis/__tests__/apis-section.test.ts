@@ -39,65 +39,65 @@ describe('ApisSection', () => {
   function newSection(): ApisSection {
     const addon: IAdminApiAddon              = { addRoutes: () => undefined };
     const authProvider: IMailboxAuthProvider = {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                {},
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: (scope) => {
+      provisionJmapApiClient:  () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
+      createAdminApiAddons:    (scope) => {
         addonScope = scope;
         return [addon];
       },
     };
     return new ApisSection(stack, 'apis', {
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       authProvider,
-      data: {
-        configTable: dataTable('config-table'),
-        itemTable: dataTable('item-table'),
-        changelogTable: dataTable('changelog-table'),
-        auditLogTable: dataTable('audit-log-table'),
+      data:           {
+        configTable:       dataTable('config-table'),
+        itemTable:         dataTable('item-table'),
+        changelogTable:    dataTable('changelog-table'),
+        auditLogTable:     dataTable('audit-log-table'),
         mailFeedbackTable: dataTable('mail-feedback-table'),
-        blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
-        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+        blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
+        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
         derivedDomainName: 'example.com',
       },
-      auth: {
-        authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
+      auth:           {
+        authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
         identityProvisioner: LambdaFunction.fromFunctionArn(
           stack,
           'identity-provisioner-ref',
           'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
         ),
       },
-      email: {
-        submissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-        sesRuleSetName: 'rule-set',
+      email:          {
+        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
+        sesRuleSetName:   'rule-set',
         sesConfigSetName: 'config-set',
       },
-      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
+      vendorLink:     { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
       jmapApiBaseUrl: 'https://jmap.example.com',
     });
   }
 
   function endpointsProps(overrides: Partial<ApisEndpointsProps> = {}): ApisEndpointsProps {
     return {
-      cdnHost: 'https://cdn.example.com',
+      cdnHost:        'https://cdn.example.com',
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
-      edge: {},
-      ui: { adminUiOrigins: [], webmailUiOrigins: [] },
+      edge:           {},
+      ui:             { adminUiOrigins: [], webmailUiOrigins: [] },
       ...overrides,
     };
   }
@@ -105,7 +105,7 @@ describe('ApisSection', () => {
   beforeEach(() => {
     addonScope = undefined;
     stack      = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -146,7 +146,7 @@ describe('ApisSection', () => {
 
     section.addEndpoints(endpointsProps({
       enableMcp: true,
-      edge: { regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional') },
+      edge:      { regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional') },
     }));
 
     expect(section.node.tryFindChild('mcp-api')).toBeDefined();

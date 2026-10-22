@@ -15,18 +15,18 @@ const EDGE_FN_ARN   = 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn';
 const SERVICE_TOKEN = 'arn:aws:lambda:us-west-2:123456789012:function:starter';
 
 const COMMON = {
-  ServiceToken: SERVICE_TOKEN,
-  ResponseURL: 'https://example.com/response',
-  StackId: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test/abc',
-  RequestId: 'request-1',
+  ServiceToken:      SERVICE_TOKEN,
+  ResponseURL:       'https://example.com/response',
+  StackId:           'arn:aws:cloudformation:us-west-2:123456789012:stack/test/abc',
+  RequestId:         'request-1',
   LogicalResourceId: 'DeferredRemoval',
-  ResourceType: 'Custom::DeferredRemoval',
+  ResourceType:      'Custom::DeferredRemoval',
 };
 
 function deleteEvent(resourceProperties: Record<string, unknown>): CloudFormationCustomResourceEvent {
   return {
     ...COMMON,
-    RequestType: 'Delete',
+    RequestType:        'Delete',
     PhysicalResourceId: 'mailbox-deferred-removal',
     ResourceProperties: { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
   };
@@ -38,9 +38,9 @@ function updateEvent(
 ): CloudFormationCustomResourceEvent {
   return {
     ...COMMON,
-    RequestType: 'Update',
-    PhysicalResourceId: 'mailbox-deferred-removal',
-    ResourceProperties: { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
+    RequestType:           'Update',
+    PhysicalResourceId:    'mailbox-deferred-removal',
+    ResourceProperties:    { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
     OldResourceProperties: { ServiceToken: SERVICE_TOKEN, ...oldResourceProperties },
   };
 }
@@ -48,7 +48,7 @@ function updateEvent(
 function createEvent(resourceProperties: Record<string, unknown>): CloudFormationCustomResourceEvent {
   return {
     ...COMMON,
-    RequestType: 'Create',
+    RequestType:        'Create',
     ResourceProperties: { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
   };
 }
@@ -59,12 +59,12 @@ describe('SweepTargetPlanner', () => {
   it('Delete: sweeps every registered removal, and never CloudFormation\'s own keys', () => {
     const event = deleteEvent({
       ServiceTimeout: '120',
-      cert: { certArn: CERT_ARN_NEW },
-      'edge-fn': { edgeFnArn: EDGE_FN_ARN },
+      cert:           { certArn: CERT_ARN_NEW },
+      'edge-fn':      { edgeFnArn: EDGE_FN_ARN },
     });
 
     expect(planner.plan(event)).toEqual({
-      cert: { certArn: CERT_ARN_NEW },
+      cert:      { certArn: CERT_ARN_NEW },
       'edge-fn': { edgeFnArn: EDGE_FN_ARN },
     });
   });

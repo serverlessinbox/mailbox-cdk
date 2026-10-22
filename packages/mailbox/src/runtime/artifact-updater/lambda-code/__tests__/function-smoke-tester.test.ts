@@ -35,9 +35,9 @@ describe('FunctionSmokeTester', () => {
     await smokeTester.probe(lambda, functionArn);
 
     expect(lambdaMock.commandCalls(InvokeCommand)[0].args[0].input).toEqual({
-      FunctionName: functionArn,
+      FunctionName:   functionArn,
       InvocationType: 'RequestResponse',
-      Payload: '{"serverlessInboxSmokeTest":true}',
+      Payload:        '{"serverlessInboxSmokeTest":true}',
     });
   });
 
@@ -74,8 +74,8 @@ describe('FunctionSmokeTester', () => {
     await expect(smokeTester.probe(lambda, functionArn)).resolves.toBe('unprobeable');
     expect(console.warn).toHaveBeenCalledWith('smoke test unprobeable: invoke failed', {
       functionArn,
-      error: 'not authorized to invoke',
-      code: 'AccessDeniedException',
+      error:   'not authorized to invoke',
+      code:    'AccessDeniedException',
       service: 'smoke-tester',
     });
   });

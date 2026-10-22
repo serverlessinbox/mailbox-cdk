@@ -14,12 +14,12 @@ import type { IDataTable }                                                      
 export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
 
 export interface BootstrapLambdaProps {
-  readonly configTable: IDataTable;
+  readonly configTable:       IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
-  readonly artifactResolver: IArtifactResolver;
+  readonly artifactResolver:  IArtifactResolver;
   /** The domain whose SES email identity the bootstrap registers. */
-  readonly domain: string;
-  readonly sesRuleSet: IReceiptRuleSet;
+  readonly domain:            string;
+  readonly sesRuleSet:        IReceiptRuleSet;
   readonly sesReceivingMode?: SesReceivingMode;
   /** When true, sets SES_SEND_ENABLED to `on`. */
   readonly sesSendEnabled?: boolean;
@@ -37,17 +37,17 @@ export interface BootstrapLambdaProps {
 export class BootstrapLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: BootstrapLambdaProps) {
     super(scope, id, {
-      lambdaId: 'bootstrap',
-      pipeline: 'infra',
+      lambdaId:         'bootstrap',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout: BOOTSTRAP_LAMBDA_TIMEOUT,
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
+      timeout:          BOOTSTRAP_LAMBDA_TIMEOUT,
+      environment:      {
+        CONFIG_TABLE_NAME:         props.configTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
-        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
-        STACK_IDENTITY_TAG_KEY: props.vendorLink.stackIdentityTagKey,
-        ROOT_STACK_ID: StackIdentity.guid,
-        SES_RULE_SET_NAME: props.sesRuleSet.receiptRuleSetName,
+        STACK_IDENTITY_TAG_VALUE:  Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_KEY:    props.vendorLink.stackIdentityTagKey,
+        ROOT_STACK_ID:             StackIdentity.guid,
+        SES_RULE_SET_NAME:         props.sesRuleSet.receiptRuleSetName,
         ...(props.sesReceivingMode ? { SES_RECEIVING_MODE: props.sesReceivingMode } : {}),
         ...(props.sesSendEnabled ? { SES_SEND_ENABLED: 'on' } : {}),
       },
@@ -72,15 +72,15 @@ export class BootstrapLambda extends GoLambda {
 
   private grantOwnStackStatusRead(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['cloudformation:DescribeStacks'],
+      actions:   ['cloudformation:DescribeStacks'],
       resources: [Aws.STACK_ID],
     }));
   }
 
   private grantServiceQuotasServiceLinkedRoleCreation(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['iam:CreateServiceLinkedRole'],
-      resources: ['*'],
+      actions:    ['iam:CreateServiceLinkedRole'],
+      resources:  ['*'],
       conditions: {
         StringEquals: {
           'iam:AWSServiceName': 'servicequotas.amazonaws.com',
@@ -95,7 +95,7 @@ export class BootstrapLambda extends GoLambda {
     // vendor deploy detail this repo does not own. /grant-resource and /revoke-resource are
     // reached indirectly via shareddomainsvc.NewService(...) — scoping to /bootstrap alone breaks it.
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['execute-api:Invoke'],
+      actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/bootstrap`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
@@ -112,21 +112,21 @@ export class BootstrapLambda extends GoLambda {
     // mode would strand the on -> off -> delete case without the permission needed to release
     // the account's active slot.
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
+      actions:   ['ses:SetActiveReceiptRuleSet', 'ses:DescribeActiveReceiptRuleSet'],
       resources: ['*'],
     }));
   }
 
   private grantHostedZoneRecordManagement(hostedZoneId: string): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
+      actions:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
       resources: [`arn:aws:route53:::hostedzone/${hostedZoneId}`],
     }));
   }
 
   private grantSesEmailIdentityRegistration(domain: string): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: [
+      actions:   [
         'ses:CreateEmailIdentity',
         'ses:GetEmailIdentity',
         'ses:PutEmailIdentityDkimSigningAttributes',
@@ -146,8 +146,8 @@ export class BootstrapLambda extends GoLambda {
     const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(new PolicyStatement({
-        actions: ['ses:TagResource'],
-        resources: [
+        actions:    ['ses:TagResource'],
+        resources:  [
           `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
         ],
         conditions: {

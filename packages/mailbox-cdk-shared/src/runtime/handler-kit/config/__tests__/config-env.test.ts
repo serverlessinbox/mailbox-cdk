@@ -111,7 +111,7 @@ describe('env', () => {
 
       expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, -1))).toEqual({
         config: -1,
-        error: 'COUNT: expected positive integer, got "abc"',
+        error:  'COUNT: expected positive integer, got "abc"',
       });
     });
 
@@ -149,7 +149,7 @@ describe('env', () => {
 
       expect(tryLoad((l) => optionalAs(l, 'COUNT', 8080, positiveInt))).toEqual({
         config: 8080,
-        error: 'COUNT: expected positive integer, got "abc"',
+        error:  'COUNT: expected positive integer, got "abc"',
       });
     });
   });

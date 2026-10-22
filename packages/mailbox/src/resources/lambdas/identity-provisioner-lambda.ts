@@ -16,7 +16,7 @@ import type { IDataTable }                from '../tables/data-tables';
  * `IFunction` itself — this interface is the only thing an addon should receive.
  */
 export interface IIdentityProvisioner {
-  readonly functionArn: string;
+  readonly functionArn:  string;
   readonly functionName: string;
   /** Grants the given principal permission to invoke this function. Call from inside your own
    *  Lambda's constructor — never grant from outside the grantee's own construct. */
@@ -24,9 +24,9 @@ export interface IIdentityProvisioner {
 }
 
 export interface IdentityProvisionerLambdaProps {
-  configTable: IDataTable;
-  itemTable: IDataTable;
-  changelogTable: IDataTable;
+  configTable:      IDataTable;
+  itemTable:        IDataTable;
+  changelogTable:   IDataTable;
   auditEventsQueue: IAuditEventsQueue;
   artifactResolver: IArtifactResolver;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. Absent when no Admin UI is deployed. */
@@ -46,21 +46,21 @@ export interface IdentityProvisionerLambdaProps {
 export class IdentityProvisionerLambda extends GoLambda implements IIdentityProvisioner {
   constructor(scope: Construct, id: string, props: IdentityProvisionerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'identity-provisioner',
-      pipeline: 'admin',
+      lambdaId:         'identity-provisioner',
+      pipeline:         'admin',
       artifactResolver: props.artifactResolver,
-      memorySize: 640,
-      timeout: Duration.seconds(30),
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
-        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
+      memorySize:       640,
+      timeout:          Duration.seconds(30),
+      environment:      {
+        CONFIG_TABLE_NAME:      props.configTable.tableName,
+        ITEM_TABLE_NAME:        props.itemTable.tableName,
+        CHANGELOG_TABLE_NAME:   props.changelogTable.tableName,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         ...(props.adminUIURL ? { ADMIN_UI_URL: props.adminUIURL } : {}),
-        BLOB_STORAGE_NAME: props.blobStore.bucketName,
+        BLOB_STORAGE_NAME:          props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
-        SES_CONFIG_SET_NAME: props.sesConfigSetName,
-        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
+        SES_CONFIG_SET_NAME:        props.sesConfigSetName,
+        SYSTEM_SENDER_ADDRESS:      props.systemSenderAddress,
       },
     });
     ComponentDescription.describe(this, 'Provisions new mailbox users — creates their mailbox structure and initial state.');
@@ -87,7 +87,7 @@ export class IdentityProvisionerLambda extends GoLambda implements IIdentityProv
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
-      actions: ['execute-api:Invoke'],
+      actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,

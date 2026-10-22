@@ -4,7 +4,7 @@ import * as cdk                  from 'aws-cdk-lib';
 import { Construct, IConstruct } from 'constructs';
 
 export interface TrackedUpdateTriggersProps {
-  readonly updater: lambda.IFunction;
+  readonly updater:    lambda.IFunction;
   readonly isTracking: cdk.CfnCondition;
 }
 
@@ -19,10 +19,10 @@ export class TrackedUpdateTriggers extends Construct {
     super(scope, id);
 
     this.deployEnd = new cdk.CustomResource(this, 'deploy-end-cr', {
-      serviceToken: props.updater.functionArn,
+      serviceToken:   props.updater.functionArn,
       serviceTimeout: cdk.Duration.seconds(600),
-      resourceType: 'Custom::DeployEndTrigger',
-      properties: {
+      resourceType:   'Custom::DeployEndTrigger',
+      properties:     {
         // CloudFormation re-invokes a custom resource only when its properties change; the nonce
         // changes on every synth so the trigger fires on every deploy.
         Nonce: Date.now().toString(),

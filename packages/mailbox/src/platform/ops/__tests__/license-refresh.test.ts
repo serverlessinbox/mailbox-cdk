@@ -23,22 +23,22 @@ describe('LicenseRefresh', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     new LicenseRefresh(stack, 'license-refresh', {
-      configTable: new DataTable(new Table(stack, 'config-table', {
+      configTable:      new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
       })),
       artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        packages:         {
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
-      coreDomain: 'example.com',
+      coreDomain:       'example.com',
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
     });
     template = Template.fromStack(stack);

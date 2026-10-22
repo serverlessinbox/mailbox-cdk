@@ -11,23 +11,23 @@ import { DeployerStarterLambda }                from '../resources/lambdas/deplo
 import { PollingCfnDeployerWorkflow }           from '../resources/workflows/polling-cfn-deployer-workflow';
 
 export const TEST_ACCOUNT = '123456789012';
-export const TEST_REGION = 'us-west-2';
+export const TEST_REGION  = 'us-west-2';
 
 const isStateJson = t.isPartial({
-  Type: t.isString(),
-  Next: t.isOptional(t.isString()),
-  End: t.isOptional(t.isBoolean()),
+  Type:       t.isString(),
+  Next:       t.isOptional(t.isString()),
+  End:        t.isOptional(t.isBoolean()),
   Parameters: t.isOptional(t.isRecord(t.isOneOf([t.isString(), t.isNumber()]))),
-  Seconds: t.isOptional(t.isNumber()),
-  Choices: t.isOptional(t.isArray(t.isPartial({ Variable: t.isString(), BooleanEquals: t.isBoolean(), Next: t.isString() }))),
-  Default: t.isOptional(t.isString()),
+  Seconds:    t.isOptional(t.isNumber()),
+  Choices:    t.isOptional(t.isArray(t.isPartial({ Variable: t.isString(), BooleanEquals: t.isBoolean(), Next: t.isString() }))),
+  Default:    t.isOptional(t.isString()),
   ResultPath: t.isOptional(t.isString()),
 });
 
 const isDefinitionJson = t.isPartial({
-  StartAt: t.isString(),
+  StartAt:        t.isString(),
   TimeoutSeconds: t.isNumber(),
-  States: t.isRecord(isStateJson),
+  States:         t.isRecord(isStateJson),
 });
 
 const isStateMachineResource = t.isPartial({
@@ -38,19 +38,19 @@ const isStateMachineResource = t.isPartial({
 export type DefinitionJson = t.InferType<typeof isDefinitionJson>;
 
 export interface DeployerTestStack {
-  readonly stack: Stack;
+  readonly stack:            Stack;
   readonly artifactResolver: IArtifactResolver;
 }
 
 /** A stack with an explicit environment and a resolver that pins the package the deployer Lambdas ship in. */
 export function newDeployerTestStack(): DeployerTestStack {
   const stack            = new Stack(new App(), 'TestStack', {
-    env: { account: TEST_ACCOUNT, region: TEST_REGION },
+    env:         { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const artifactResolver = new PinnedArtifactResolver({
-    packages: { 'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   return { stack, artifactResolver };
@@ -61,7 +61,7 @@ export function newWorkerStandIn(scope: Construct, id: string): lambda.IFunction
   return new lambda.Function(scope, id, {
     runtime: lambda.Runtime.NODEJS_20_X,
     handler: 'index.handler',
-    code: lambda.Code.fromInline('exports.handler = async () => ({});'),
+    code:    lambda.Code.fromInline('exports.handler = async () => ({});'),
   });
 }
 
@@ -78,7 +78,7 @@ const isStarterFunction = t.isPartial({
 export function starterServiceName(deployedStackName: string): string {
   const { stack, artifactResolver } = newDeployerTestStack();
   const workflow                    = new PollingCfnDeployerWorkflow(stack, 'workflow', {
-    handler: newWorkerStandIn(stack, 'worker'),
+    handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'probe-machine',
   });
   new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*' });

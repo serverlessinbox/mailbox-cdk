@@ -3,16 +3,16 @@ import * as t              from 'typanion';
 
 // CloudFront defines the origin-request event; only the fields the authorizer reads or writes are listed.
 const isHeaders = t.isRecord(t.isArray(t.isPartial({
-  key: t.isOptional(t.isString()),
+  key:   t.isOptional(t.isString()),
   value: t.isOptional(t.isString()),
 })));
 
 const isCloudFrontRequest = t.isPartial({
-  method: t.isString(),
-  uri: t.isOptional(t.isString()),
+  method:      t.isString(),
+  uri:         t.isOptional(t.isString()),
   querystring: t.isOptional(t.isString()),
-  headers: isHeaders,
-  origin: t.isOptional(t.isPartial({
+  headers:     isHeaders,
+  origin:      t.isOptional(t.isPartial({
     s3: t.isOptional(t.isPartial({
       customHeaders: t.isOptional(isHeaders),
     })),

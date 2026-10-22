@@ -15,13 +15,13 @@ import { MailboxArtifactResolverFactory }       from '../mailbox-artifact-resolv
 import { TEST_REGISTRY_RECORD }                 from './test-registry-record';
 
 const DEFAULT_PINS = {
-  'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+  'mailbox-go':       { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   'mailbox-cdk-edge': { version: '1.0.0', zone: ArtifactZone.EDGE },
 };
 
 function stackWithContext(context: Record<string, unknown>): Stack {
   return new Stack(new App({ context }), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -39,7 +39,7 @@ describe('MailboxArtifactResolverFactory.fromContext', () => {
     const stack = stackWithContext({
       'serverlessinbox:artifacts': {
         bucketBase: 'dev-artifacts',
-        packages: { 'mailbox-go': { zone: 'regional', channel: 'dev' } },
+        packages:   { 'mailbox-go': { zone: 'regional', channel: 'dev' } },
       },
     });
 

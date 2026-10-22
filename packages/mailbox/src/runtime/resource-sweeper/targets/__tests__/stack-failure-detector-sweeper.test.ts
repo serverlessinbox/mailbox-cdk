@@ -34,13 +34,13 @@ const ROOT_STACK_NAME    = 'test-stack';
 const ROOT_STACK_TAG_KEY = 'serverless-inbox:root-stack';
 
 const INPUT: StackFailureDetectorRemovalInput = {
-  ruleArn: 'arn:aws:events:us-west-2:123456789012:rule/mailbox-diag-rule-abc123',
-  ruleTargetId: 'Target0',
-  detectorFnArn: 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-abc123',
-  detectorRoleArn: 'arn:aws:iam::123456789012:role/mailbox-diag-role-abc123',
+  ruleArn:                'arn:aws:events:us-west-2:123456789012:rule/mailbox-diag-rule-abc123',
+  ruleTargetId:           'Target0',
+  detectorFnArn:          'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-abc123',
+  detectorRoleArn:        'arn:aws:iam::123456789012:role/mailbox-diag-role-abc123',
   detectorRolePolicyName: 'stack-failure-detector-policy',
-  rootStackName: ROOT_STACK_NAME,
-  rootStackId: 'guid-1',
+  rootStackName:          ROOT_STACK_NAME,
+  rootStackId:            'guid-1',
 };
 
 function sweep(input: StackFailureDetectorRemovalInput = INPUT) {
@@ -87,14 +87,14 @@ describe('StackFailureDetectorSweeper', () => {
     expect(result).toEqual({ target: 'detector', status: 'done' });
     expect(eventsMock.commandCalls(RemoveTargetsCommand)[0].args[0].input).toEqual({
       Rule: 'mailbox-diag-rule-abc123',
-      Ids: ['Target0'],
+      Ids:  ['Target0'],
     });
     expect(eventsMock.commandCalls(DeleteRuleCommand)[0].args[0].input).toEqual({ Name: 'mailbox-diag-rule-abc123' });
     expect(lambdaMock.commandCalls(DeleteFunctionCommand)[0].args[0].input).toEqual({
       FunctionName: 'mailbox-diag-fn-abc123',
     });
     expect(iamMock.commandCalls(DeleteRolePolicyCommand)[0].args[0].input).toEqual({
-      RoleName: 'mailbox-diag-role-abc123',
+      RoleName:   'mailbox-diag-role-abc123',
       PolicyName: 'stack-failure-detector-policy',
     });
     expect(iamMock.commandCalls(DeleteRoleCommand)[0].args[0].input).toEqual({ RoleName: 'mailbox-diag-role-abc123' });

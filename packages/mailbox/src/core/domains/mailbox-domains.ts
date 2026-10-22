@@ -22,11 +22,11 @@ export interface MailboxDomainNamesProps {
 
   /** Override the subdomain label for any endpoint. All labels must be valid single DNS labels (no dots). */
   readonly subdomainOverrides?: {
-    admin?: string;
+    admin?:   string;
     webmail?: string;
-    jmap?: string;
-    api?: string;
-    ws?: string;
+    jmap?:    string;
+    api?:     string;
+    ws?:      string;
   };
 
   readonly prefixConditionName?: string;
@@ -34,18 +34,18 @@ export interface MailboxDomainNamesProps {
 
 export interface IMailboxDomainNames {
   readonly domainName: string;
-  readonly prefix?: string;
+  readonly prefix?:    string;
   /** The namespace suffix for relative labels: either ".{prefix}" or "", resolved once at construction. */
   readonly relativeNamespaceSuffix: string;
 
-  readonly ws: string;
-  readonly api: string;
-  readonly jmap: string;
-  readonly cdn: string;
+  readonly ws:      string;
+  readonly api:     string;
+  readonly jmap:    string;
+  readonly cdn:     string;
   readonly webmail: string;
-  readonly admin: string;
-  readonly auth: string;
-  readonly mcp: string;
+  readonly admin:   string;
+  readonly auth:    string;
+  readonly mcp:     string;
 
   fqdn(endpoint: MailboxEndpoint): string;
   /** Subdomain label(s) relative to the hosted zone root, safe to pass as Route53 recordName. */
@@ -165,14 +165,14 @@ export class MailboxDomains implements IMailboxDomainNames {
     // Build relative record names (subdomain label + optional namespace, without the zone).
     // These are safe to pass as Route53 recordName — CDK will append the zone automatically.
     this.relativeLabels = {
-      ws: `${subdomainOverrides?.ws ?? 'ws'}${this.relativeNamespaceSuffix}`,
-      api: `${subdomainOverrides?.api ?? 'api'}${this.relativeNamespaceSuffix}`,
-      jmap: `${subdomainOverrides?.jmap ?? 'jmap'}${this.relativeNamespaceSuffix}`,
+      ws:      `${subdomainOverrides?.ws ?? 'ws'}${this.relativeNamespaceSuffix}`,
+      api:     `${subdomainOverrides?.api ?? 'api'}${this.relativeNamespaceSuffix}`,
+      jmap:    `${subdomainOverrides?.jmap ?? 'jmap'}${this.relativeNamespaceSuffix}`,
       webmail: `${subdomainOverrides?.webmail ?? 'webmail'}${this.relativeNamespaceSuffix}`,
-      admin: `${subdomainOverrides?.admin ?? 'admin'}${this.relativeNamespaceSuffix}`,
-      cdn: `cdn${this.relativeNamespaceSuffix}`,
-      auth: `auth${this.relativeNamespaceSuffix}`,
-      mcp: `mcp${this.relativeNamespaceSuffix}`,
+      admin:   `${subdomainOverrides?.admin ?? 'admin'}${this.relativeNamespaceSuffix}`,
+      cdn:     `cdn${this.relativeNamespaceSuffix}`,
+      auth:    `auth${this.relativeNamespaceSuffix}`,
+      mcp:     `mcp${this.relativeNamespaceSuffix}`,
     };
   }
 
@@ -186,14 +186,14 @@ export class MailboxDomains implements IMailboxDomainNames {
 
   public all(): Record<MailboxEndpoint, string> {
     return {
-      ws: this.ws,
-      api: this.api,
-      jmap: this.jmap,
-      cdn: this.cdn,
+      ws:      this.ws,
+      api:     this.api,
+      jmap:    this.jmap,
+      cdn:     this.cdn,
       webmail: this.webmail,
-      admin: this.admin,
-      auth: this.auth,
-      mcp: this.mcp,
+      admin:   this.admin,
+      auth:    this.auth,
+      mcp:     this.mcp,
     };
   }
 }

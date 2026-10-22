@@ -26,10 +26,10 @@ jest.mock('https', () => ({
 }));
 
 const isCfnResponseBody = t.isPartial({
-  Status: t.isString(),
-  Reason: t.isOptional(t.isString()),
+  Status:             t.isString(),
+  Reason:             t.isOptional(t.isString()),
   PhysicalResourceId: t.isOptional(t.isString()),
-  Data: t.isOptional(t.isRecord(t.isString())),
+  Data:               t.isOptional(t.isRecord(t.isString())),
 });
 
 /** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
@@ -37,9 +37,9 @@ type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
-  s3: AwsClientStub<S3Sdk.S3Client>;
-  cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
-  s3Sdk: typeof S3Sdk;
+  s3:                AwsClientStub<S3Sdk.S3Client>;
+  cloudFormation:    AwsClientStub<CloudFormationSdk.CloudFormationClient>;
+  s3Sdk:             typeof S3Sdk;
   cloudFormationSdk: typeof CloudFormationSdk;
 }
 
@@ -77,7 +77,7 @@ describe('bucket-auto-empty handler', () => {
     const s3Sdk             = require('@aws-sdk/client-s3') as typeof S3Sdk;
     const cloudFormationSdk = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
     const fakes: Fakes      = {
-      s3: mockClient(s3Sdk.S3Client),
+      s3:             mockClient(s3Sdk.S3Client),
       cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
       s3Sdk,
       cloudFormationSdk,
@@ -111,7 +111,7 @@ describe('bucket-auto-empty handler', () => {
 
   function bucketHolds(fakes: Fakes, keys: string[]): void {
     fakes.s3.on(fakes.s3Sdk.ListObjectVersionsCommand).resolves({
-      Versions: keys.map((key) => ({ Key: key, VersionId: `${key}-v1` })),
+      Versions:    keys.map((key) => ({ Key: key, VersionId: `${key}-v1` })),
       IsTruncated: false,
     });
     fakes.s3.on(fakes.s3Sdk.DeleteObjectsCommand).resolves({});
@@ -220,7 +220,7 @@ describe('bucket-auto-empty handler', () => {
     expect(response.Reason).toContain('AccessDenied');
     expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
       requestType: 'Delete',
-      service: 'bucket-auto-empty',
+      service:     'bucket-auto-empty',
     });
   });
 

@@ -16,11 +16,11 @@ const S3_DELETE_OBJECTS_LIMIT = 1000;
 
 /** The zip object to unpack and the bucket and prefix its entries are written under. */
 export interface ZipDeployment {
-  readonly sourceBucket: string;
-  readonly sourceKey: string;
+  readonly sourceBucket:     string;
+  readonly sourceKey:        string;
   readonly sourceVersionId?: string;
-  readonly targetBucket: string;
-  readonly targetPrefix: string;
+  readonly targetBucket:     string;
+  readonly targetPrefix:     string;
 }
 
 /** How many entries of a zip were written. */
@@ -30,10 +30,10 @@ export interface ZipDeploymentResult {
 
 /** One object to write: its key, its body and the optional headers it is stored with. */
 export interface ObjectWrite {
-  readonly targetBucket: string;
-  readonly key: string;
-  readonly body: string;
-  readonly contentType?: string;
+  readonly targetBucket:  string;
+  readonly key:           string;
+  readonly body:          string;
+  readonly contentType?:  string;
   readonly cacheControl?: string;
 }
 
@@ -45,8 +45,8 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
   do {
     const list: ListObjectsV2CommandOutput = await s3.send(
       new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: prefix,
+        Bucket:            bucket,
+        Prefix:            prefix,
         ContinuationToken: token,
       }),
     );
@@ -66,7 +66,7 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
           Bucket: bucket,
           Delete: {
             Objects: batch.map((Key: string) => ({ Key })),
-            Quiet: true,
+            Quiet:   true,
           },
         }),
       );
@@ -109,10 +109,10 @@ export async function writeObject(s3: S3Client, write: ObjectWrite): Promise<voi
 
   await s3.send(
     new PutObjectCommand({
-      Bucket: targetBucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
+      Bucket:       targetBucket,
+      Key:          key,
+      Body:         body,
+      ContentType:  contentType,
       CacheControl: cacheControl,
     }),
   );
@@ -133,8 +133,8 @@ async function readZipDirectory(
 ): Promise<unzipper.CentralDirectory> {
   const obj = await s3.send(
     new GetObjectCommand({
-      Bucket: sourceBucket,
-      Key: sourceKey,
+      Bucket:    sourceBucket,
+      Key:       sourceKey,
       VersionId: sourceVersionId,
     }),
   );
@@ -162,11 +162,11 @@ async function uploadZipEntry(
 
   await s3.send(
     new PutObjectCommand({
-      Bucket: targetBucket,
-      Key: key,
-      Body: content,
+      Bucket:        targetBucket,
+      Key:           key,
+      Body:          content,
       ContentLength: content.length,
-      ContentType: guessContentType(key),
+      ContentType:   guessContentType(key),
     }),
   );
 }

@@ -16,13 +16,13 @@ import type { BlobDownloadOriginHeaders }   from '../../runtime/jmap-blob-downlo
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
 export interface CdnCustomDomain {
-  readonly name: string;
+  readonly name:        string;
   readonly certificate: acm.ICertificate;
 }
 
 /** What the CDN needs: the blob bucket it fronts, the Lambda@Edge authorizer, and the configuration it hands that authorizer. */
 export interface CdnProps {
-  readonly blobStore: IBucket;
+  readonly blobStore:         IBucket;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   /** Origins allowed to download cross-origin. Unset or empty adds no CORS response headers policy. */
@@ -58,25 +58,25 @@ export class Cdn extends Construct {
 
   private createDistribution(props: CdnProps): cloudfront.Distribution {
     return new cloudfront.Distribution(this, 'blob-distribution', {
-      comment: 'CDN for email blob downloads with Lambda@Edge auth',
-      domainNames: props.customDomain ? [props.customDomain.name] : undefined,
-      certificate: props.customDomain?.certificate,
+      comment:         'CDN for email blob downloads with Lambda@Edge auth',
+      domainNames:     props.customDomain ? [props.customDomain.name] : undefined,
+      certificate:     props.customDomain?.certificate,
       defaultBehavior: {
-        origin: this.createBlobOrigin(props),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-        cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
-        compress: true,
-        cachePolicy: this.createCachePolicy(),
+        origin:                this.createBlobOrigin(props),
+        viewerProtocolPolicy:  cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods:        cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachedMethods:         cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        compress:              true,
+        cachePolicy:           this.createCachePolicy(),
         responseHeadersPolicy: this.createResponseHeadersPolicy(props.allowedOrigins),
-        edgeLambdas: [
+        edgeLambdas:           [
           {
             functionVersion: props.jmapBlobDownloadVersion,
-            eventType: cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
+            eventType:       cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
           },
         ],
       },
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+      priceClass:      cloudfront.PriceClass.PRICE_CLASS_100,
     });
   }
 
@@ -99,21 +99,21 @@ export class Cdn extends Construct {
   private authorizerHeaders(props: CdnProps): BlobDownloadOriginHeaders {
     return {
       'x-auth-key-store-table': props.authKeyStoreTable.tableName,
-      'x-region': cdk.Aws.REGION,
-      'x-jwt-algorithms': 'RS256',
+      'x-region':               cdk.Aws.REGION,
+      'x-jwt-algorithms':       'RS256',
     };
   }
 
   private createCachePolicy(): cloudfront.CachePolicy {
     return new cloudfront.CachePolicy(this, 'blob-cache-policy', {
-      comment: 'Cache policy for email blobs with auth',
-      defaultTtl: cdk.Duration.hours(24),
-      maxTtl: cdk.Duration.days(365),
-      minTtl: cdk.Duration.seconds(0),
-      headerBehavior: cloudfront.CacheHeaderBehavior.allowList('Authorization'),
-      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
-      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
-      enableAcceptEncodingGzip: true,
+      comment:                    'Cache policy for email blobs with auth',
+      defaultTtl:                 cdk.Duration.hours(24),
+      maxTtl:                     cdk.Duration.days(365),
+      minTtl:                     cdk.Duration.seconds(0),
+      headerBehavior:             cloudfront.CacheHeaderBehavior.allowList('Authorization'),
+      queryStringBehavior:        cloudfront.CacheQueryStringBehavior.all(),
+      cookieBehavior:             cloudfront.CacheCookieBehavior.none(),
+      enableAcceptEncodingGzip:   true,
       enableAcceptEncodingBrotli: true,
     });
   }
@@ -123,14 +123,14 @@ export class Cdn extends Construct {
       return undefined;
     }
     return new cloudfront.ResponseHeadersPolicy(this, 'blob-response-headers-policy', {
-      comment: 'CORS policy for email blob downloads',
+      comment:      'CORS policy for email blob downloads',
       corsBehavior: {
-        accessControlAllowOrigins: allowedOrigins,
-        accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
-        accessControlAllowHeaders: ['Authorization', 'Content-Type'],
+        accessControlAllowOrigins:     allowedOrigins,
+        accessControlAllowMethods:     ['GET', 'HEAD', 'OPTIONS'],
+        accessControlAllowHeaders:     ['Authorization', 'Content-Type'],
         accessControlAllowCredentials: true,
-        accessControlMaxAge: cdk.Duration.hours(1),
-        originOverride: true,
+        accessControlMaxAge:           cdk.Duration.hours(1),
+        originOverride:                true,
       },
     });
   }

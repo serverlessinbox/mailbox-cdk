@@ -41,33 +41,33 @@ describe('JMapApi', () => {
 
   function propsWith(overrides: Partial<JMapApiProps> = {}): JMapApiProps {
     const authProvider: IMailboxAuthProvider = {
-      issuer: 'https://example.com/issuer',
-      tokenEndpoint: 'https://example.com/token',
-      authorizationEndpoint: 'https://example.com/authorize',
-      authMethod: 'header',
-      usePkce: false,
-      scopeMap: {},
-      policies: { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
+      issuer:                  'https://example.com/issuer',
+      tokenEndpoint:           'https://example.com/token',
+      authorizationEndpoint:   'https://example.com/authorize',
+      authMethod:              'header',
+      usePkce:                 false,
+      scopeMap:                {},
+      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient: () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
-      createAdminApiAddons: () => [],
+      provisionJmapApiClient:  () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
+      createAdminApiAddons:    () => [],
     };
     return {
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
-      changelogTable: dataTable('changelog-table'),
-      authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table'),
-      blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+      configTable:          dataTable('config-table'),
+      itemTable:            dataTable('item-table'),
+      changelogTable:       dataTable('changelog-table'),
+      authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
+      blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
       emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      cdnHost: 'cdn.example.com',
-      artifactResolver: new PinnedArtifactResolver({
-        packages: {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue'),
+      cdnHost:              'cdn.example.com',
+      artifactResolver:     new PinnedArtifactResolver({
+        packages:         {
+          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
       authProvider,
@@ -76,7 +76,7 @@ describe('JMapApi', () => {
         'identity-provisioner-ref',
         'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
       ),
-      vendorAccountIds: [VENDOR_ACCOUNT_ID],
+      vendorAccountIds:    [VENDOR_ACCOUNT_ID],
       ...overrides,
     };
   }
@@ -90,7 +90,7 @@ describe('JMapApi', () => {
 
   beforeEach(() => {
     stack = new cdk.Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
   });
@@ -119,7 +119,7 @@ describe('JMapApi', () => {
       expect(sut.domainTarget).toBeDefined();
       expect(sut.domainCfnResource?.cfnResourceType).toBe('AWS::ApiGatewayV2::DomainName');
       template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-        DomainName: 'jmap.example.com',
+        DomainName:               'jmap.example.com',
         DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
       });
       template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
@@ -146,11 +146,11 @@ describe('JMapApi', () => {
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
         CorsConfiguration: {
-          AllowOrigins: ['https://webmail.example.com'],
-          AllowMethods: ['GET', 'POST', 'OPTIONS'],
-          AllowHeaders: ['Content-Type', 'Authorization'],
+          AllowOrigins:     ['https://webmail.example.com'],
+          AllowMethods:     ['GET', 'POST', 'OPTIONS'],
+          AllowHeaders:     ['Content-Type', 'Authorization'],
           AllowCredentials: true,
-          MaxAge: 3600,
+          MaxAge:           3600,
         },
       });
     });
@@ -179,14 +179,14 @@ describe('JMapApi', () => {
       expect(authenticatedId).toBeDefined();
       expect(authorizers[anonymousId!].Properties.IdentitySource).toEqual([]);
       template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-        RouteKey: 'GET /.well-known/jmap',
+        RouteKey:     'GET /.well-known/jmap',
         AuthorizerId: { Ref: anonymousId },
       });
       for (const routeKey of ['POST /', 'POST /upload/{accountId}']) {
         template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-          RouteKey: routeKey,
+          RouteKey:          routeKey,
           AuthorizationType: 'CUSTOM',
-          AuthorizerId: { Ref: authenticatedId },
+          AuthorizerId:      { Ref: authenticatedId },
         });
       }
     });
@@ -233,7 +233,7 @@ describe('JMapApi', () => {
       expect(route?.Properties.AuthorizationType).toBe('NONE');
       template.hasResourceProperties('AWS::ApiGatewayV2::Integration', {
         IntegrationType: 'HTTP_PROXY',
-        IntegrationUri: { 'Fn::Join': ['', Match.arrayWith(['/.well-known/oauth-protected-resource'])] },
+        IntegrationUri:  { 'Fn::Join': ['', Match.arrayWith(['/.well-known/oauth-protected-resource'])] },
       });
     });
 

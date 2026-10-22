@@ -14,11 +14,11 @@ import { BucketAutoEmpty }                          from '../bucket-auto-empty';
 
 /** Minimal stand-in for the real resolver — resolves everything to a fixed S3 location. */
 const fakeResolver: IArtifactResolver = {
-  getUrl: () => 'https://example.invalid/x.zip',
-  getArn: () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
+  getUrl:     () => 'https://example.invalid/x.zip',
+  getArn:     () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
   getVersion: () => 'dev',
-  location: { bucketBase: 'artifacts', project: 'serverlessinbox' },
-  resolve: (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
+  location:   { bucketBase: 'artifacts', project: 'serverlessinbox' },
+  resolve:    (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
 };
 
 function newStack(): Stack {
@@ -31,9 +31,9 @@ function synth() {
   const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
   bucketAutoEmpty.attach(stack, 'auto-empty', bucket);
   return {
-    template: Template.fromStack(stack),
+    template:        Template.fromStack(stack),
     bucketLogicalId: stack.getLogicalId(bucket.node.defaultChild as CfnBucket),
-    roleLogicalId: stack.getLogicalId(bucketAutoEmpty.role?.node.defaultChild as CfnRole),
+    roleLogicalId:   stack.getLogicalId(bucketAutoEmpty.role?.node.defaultChild as CfnRole),
   };
 }
 
@@ -54,7 +54,7 @@ describe('BucketAutoEmpty', () => {
       const { template } = synth();
 
       template.hasResourceProperties('AWS::Lambda::Function', {
-        Handler: 'index.handler',
+        Handler:     'index.handler',
         Environment: { Variables: Match.objectLike({ SERVICE_NAME: 'bucket-auto-empty' }) },
       });
     });
@@ -83,17 +83,17 @@ describe('BucketAutoEmpty', () => {
       expect(Object.keys(grantPolicies)).toHaveLength(1);
       expect(Object.keys(grantPolicies)[0].toLowerCase()).not.toContain('defaultpolicy');
       template.hasResourceProperties('AWS::IAM::Policy', {
-        Roles: [{ Ref: roleLogicalId }],
+        Roles:          [{ Ref: roleLogicalId }],
         PolicyDocument: {
           Statement: [
             {
-              Action: ['s3:ListBucket', 's3:ListBucketVersions'],
-              Effect: 'Allow',
+              Action:   ['s3:ListBucket', 's3:ListBucketVersions'],
+              Effect:   'Allow',
               Resource: { 'Fn::GetAtt': [bucketLogicalId, 'Arn'] },
             },
             {
-              Action: ['s3:DeleteObject', 's3:DeleteObjectVersion'],
-              Effect: 'Allow',
+              Action:   ['s3:DeleteObject', 's3:DeleteObjectVersion'],
+              Effect:   'Allow',
               Resource: { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketLogicalId, 'Arn'] }, '/*']] },
             },
           ],
@@ -117,7 +117,7 @@ describe('BucketAutoEmpty', () => {
 
       template.resourceCountIs('Custom::BucketAutoEmpty', 1);
       template.hasResourceProperties('Custom::BucketAutoEmpty', {
-        bucketName: { Ref: bucketLogicalId },
+        bucketName:     { Ref: bucketLogicalId },
         ServiceTimeout: '900',
       });
     });

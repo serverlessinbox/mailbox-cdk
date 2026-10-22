@@ -43,13 +43,13 @@ interface SelectToken {
 
 /** The parts of a synthesized CFN resource these assertions read. */
 interface SynthesizedResource {
-  readonly DeletionPolicy?: string;
+  readonly DeletionPolicy?:      string;
   readonly UpdateReplacePolicy?: string;
-  readonly Properties: {
-    readonly RoleName?: JoinToken;
+  readonly Properties:           {
+    readonly RoleName?:     JoinToken;
     readonly FunctionName?: JoinToken;
-    readonly Name?: string;
-    readonly PolicyName?: string;
+    readonly Name?:         string;
+    readonly PolicyName?:   string;
     readonly LogGroupName?: unknown;
   };
 }
@@ -59,24 +59,24 @@ type NamedProperty = 'RoleName' | 'FunctionName';
 function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
   const packages: Record<string, ArtifactPin> = {
     'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+    'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
   return new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
 
 interface SynthesizedDetection {
   readonly template: Template;
-  readonly infra: StackFailureDetectionInfra;
+  readonly infra:    StackFailureDetectionInfra;
 }
 
 function synthesizeDetection(parentId: string): SynthesizedDetection {
   const app   = new App();
   const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
-    env: { account: '111122223333', region: 'us-east-1' },
+    env:         { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
@@ -213,11 +213,11 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
 
     expect(policies).toHaveLength(1);
     expect(findByNamePrefix(roles, 'RoleName', 'mailbox-diag-role-')).toMatchObject({
-      DeletionPolicy: 'Retain',
+      DeletionPolicy:      'Retain',
       UpdateReplacePolicy: 'Retain',
     });
     expect(findByNamePrefix(fns, 'FunctionName', 'mailbox-diag-fn-')).toMatchObject({
-      DeletionPolicy: 'Retain',
+      DeletionPolicy:      'Retain',
       UpdateReplacePolicy: 'Retain',
     });
     expect(policies[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
@@ -245,14 +245,14 @@ describe('StackFailureDetectionInfra — detector role policies', () => {
 
 describe('StackFailureDetectionInfra — vendor license API access', () => {
   interface PolicyStatementJson {
-    readonly Action: string | string[];
+    readonly Action:    string | string[];
     readonly Resource?: string | string[];
   }
 
   /** The synthesized IAM policy resource, as far as this suite reads it. */
   interface SynthesizedPolicy {
     readonly Properties: {
-      readonly PolicyName: string;
+      readonly PolicyName:     string;
       readonly PolicyDocument: { readonly Statement: PolicyStatementJson[] };
     };
   }

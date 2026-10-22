@@ -64,10 +64,10 @@ describe('UpdateRollbackAnswerer', () => {
     expect(answered).toBe(true);
     expect(endpoint.answers()).toEqual([
       expect.objectContaining({
-        Status: 'SUCCESS',
+        Status:             'SUCCESS',
         PhysicalResourceId: 'sent-by-cloudformation',
-        Data: OLD_OUTPUTS,
-        Reason: `Answered SUCCESS because the parent stack is rolling back. The Update failed: ${FAILURE}`,
+        Data:               OLD_OUTPUTS,
+        Reason:             `Answered SUCCESS because the parent stack is rolling back. The Update failed: ${FAILURE}`,
       }),
     ]);
     expect(subStacks.currentOutputs).toHaveBeenCalledWith({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 });

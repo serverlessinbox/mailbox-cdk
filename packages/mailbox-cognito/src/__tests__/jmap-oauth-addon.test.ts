@@ -39,10 +39,10 @@ const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
 function setUpArtifactContext(app: App): void {
   app.node.setContext('serverlessinbox:artifacts', {
     bucketBase: 'test-artifacts',
-    packages: {
-      'mailbox-cognito': { zone: 'regional', version: '0.0.1-test' },
-      'mailbox-cdk': { zone: 'regional', version: '0.0.1-test' },
-      'mailbox': { zone: 'regional', version: '0.0.1-test' },
+    packages:   {
+      'mailbox-cognito':    { zone: 'regional', version: '0.0.1-test' },
+      'mailbox-cdk':        { zone: 'regional', version: '0.0.1-test' },
+      'mailbox':            { zone: 'regional', version: '0.0.1-test' },
       'mailbox-cdk-shared': { zone: 'regional', version: '0.0.1-test' },
     },
   });
@@ -53,7 +53,7 @@ function setUpArtifactContext(app: App): void {
 interface Harness {
   readonly stack: cdk.Stack;
   readonly addon: JmapOAuthAddon;
-  readonly api: HttpApi;
+  readonly api:   HttpApi;
 }
 
 /** A `Fn::Equals` condition: the flag compared and the value it is compared with. */
@@ -73,7 +73,7 @@ function buildHarness(
   const app = new App();
   setUpArtifactContext(app);
   const stack = new cdk.Stack(app, 'TestJmapOAuthAddonStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
@@ -84,8 +84,8 @@ function buildHarness(
     : dynamicClientRegistration;
 
   const pool = new MailboxUserPool(stack, 'user-pool', {
-    domain: { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
-    artifactResolver: resolver,
+    domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
+    artifactResolver:         resolver,
     enableJmapOAuthDiscovery: true,
     ...(mode !== undefined ? { dynamicClientRegistration: mode } : {}),
   });
@@ -93,11 +93,11 @@ function buildHarness(
   const identityProvisionerFn = new lambda.Function(stack, 'identity-provisioner-stub', {
     runtime: lambda.Runtime.NODEJS_24_X,
     handler: 'index.handler',
-    code: lambda.Code.fromInline('exports.handler = async () => {};'),
+    code:    lambda.Code.fromInline('exports.handler = async () => {};'),
   });
 
   const [addon] = pool.createJmapApiAddons(stack, {
-    apiBaseUrl: API_BASE_URL,
+    apiBaseUrl:          API_BASE_URL,
     identityProvisioner: identityProvisionerFn,
   });
   if (!(addon instanceof JmapOAuthAddon)) {
@@ -260,7 +260,7 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     });
     expect(routeSettings['GET /.well-known/openid-configuration']).toEqual({
       ThrottlingBurstLimit: 20,
-      ThrottlingRateLimit: 10,
+      ThrottlingRateLimit:  10,
     });
   });
 

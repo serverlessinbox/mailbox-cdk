@@ -52,29 +52,29 @@ export class WebmailUi extends MailboxUi {
 
   constructor(scope: Construct, id: string, props: WebmailUiProps) {
     super(scope, id, {
-      label: 'Webmail UI',
+      label:                    'Webmail UI',
       tokenExchangeServiceName: 'idp-token-exchange-webmail-ui',
-      tokenExchangePipeline: 'jmap',
-      domainName: props.domainName,
-      certificate: props.certificate,
-      configTable: props.configTable,
-      auditEventsQueue: props.auditEventsQueue,
-      authPolicyName: AUTH_POLICY_JMAP_API,
-      oauthClientName: OAUTH_CLIENT_WEBMAIL_UI,
-      tokenExchangeDependsOn: props.dependsOn,
-      uiBundle: props.uiBundle,
-      uiConfig: props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
-      artifactResolver: props.artifactResolver,
+      tokenExchangePipeline:    'jmap',
+      domainName:               props.domainName,
+      certificate:              props.certificate,
+      configTable:              props.configTable,
+      auditEventsQueue:         props.auditEventsQueue,
+      authPolicyName:           AUTH_POLICY_JMAP_API,
+      oauthClientName:          OAUTH_CLIENT_WEBMAIL_UI,
+      tokenExchangeDependsOn:   props.dependsOn,
+      uiBundle:                 props.uiBundle,
+      uiConfig:                 props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
+      artifactResolver:         props.artifactResolver,
     });
     ComponentDescription.describe(this, 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');
 
     const uiHost         = this.distributionDomainName;
     const allPermissions = Object.values(Permission);
     this.oauthClient     = props.authProvider.provisionJmapApiClient({
-      name: 'webmail-ui',
-      permissions: allPermissions,
+      name:         'webmail-ui',
+      permissions:  allPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],
-      logoutUrls: [`https://${uiHost}/`],
+      logoutUrls:   [`https://${uiHost}/`],
     });
 
     this.oauthRedirectUri = '/';

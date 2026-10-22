@@ -4,7 +4,7 @@ import * as env                               from './config-env';
 
 /** The environment every Lambda reads: the level of its logger and the service name its logs carry. */
 export interface BaseConfig {
-  readonly logLevel: LogLevel;
+  readonly logLevel:    LogLevel;
   readonly serviceName: string;
 }
 
@@ -16,7 +16,7 @@ export function loadLogLevel(l: env.Loader): LogLevel {
 /** Reads the environment every Lambda shares. */
 export function loadBaseConfig(l: env.Loader): BaseConfig {
   return {
-    logLevel: loadLogLevel(l),
+    logLevel:    loadLogLevel(l),
     serviceName: l.mandatory('SERVICE_NAME'),
   };
 }

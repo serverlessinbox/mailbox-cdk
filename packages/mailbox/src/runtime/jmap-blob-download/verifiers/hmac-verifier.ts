@@ -13,12 +13,12 @@ const SESSION_TOKEN_FIELD_COUNT = 4;
  * a key rotation is in flight and is absent otherwise.
  */
 interface HmacKeys {
-  readonly current: Buffer;
+  readonly current:   Buffer;
   readonly previous?: Buffer;
 }
 
 interface CachedHmacKeys {
-  readonly keys: HmacKeys;
+  readonly keys:      HmacKeys;
   readonly fetchedAt: number;
 }
 
@@ -92,7 +92,7 @@ export class HmacVerifier {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
-        Key: {
+        Key:       {
           pk: { S: 'hmac' },
           sk: { S: 'blob-url-signing' },
         },
@@ -136,9 +136,9 @@ export class HmacVerifier {
 
     const [tenantId, issuer, audience, accountIds] = fields;
     return {
-      tenantId: toTenantId(tenantId),
-      issuer: toIssuer(issuer),
-      audience: toAudience(audience),
+      tenantId:   toTenantId(tenantId),
+      issuer:     toIssuer(issuer),
+      audience:   toAudience(audience),
       accountIds: accountIds.split(',').filter(Boolean).map(toAccountId),
     };
   }

@@ -32,15 +32,15 @@ jest.mock('https', () => ({
 }));
 
 const GOOD_ENVIRONMENT = {
-  SERVICE_NAME: 'artifact-updater',
-  AWS_REGION: 'eu-west-1',
+  SERVICE_NAME:             'artifact-updater',
+  AWS_REGION:               'eu-west-1',
   AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
-  PROJECT: 'serverlessinbox',
-  DIST_TAG: 'latest',
-  GRANULARITY: 'major',
-  ARTIFACT_BUCKET_BASE: 'mailbox-artifacts',
-  ROOT_STACK_TAG_VALUE: 'my-stack',
-  ROOT_STACK_ID: 'guid-1',
+  PROJECT:                  'serverlessinbox',
+  DIST_TAG:                 'latest',
+  GRANULARITY:              'major',
+  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE:     'my-stack',
+  ROOT_STACK_ID:            'guid-1',
 };
 
 describe('UpdaterComposition', () => {

@@ -2,12 +2,12 @@ import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
 import * as t                                     from 'typanion';
 
 const hasCfnTriggerFields = t.isPartial({
-  RequestType: t.isString(),
-  StackId: t.isString(),
-  ResponseURL: t.isString(),
-  LogicalResourceId: t.isString(),
+  RequestType:        t.isString(),
+  StackId:            t.isString(),
+  ResponseURL:        t.isString(),
+  LogicalResourceId:  t.isString(),
   PhysicalResourceId: t.isOptional(t.isString()),
-  RequestId: t.isString(),
+  RequestId:          t.isString(),
 });
 
 /**
@@ -33,12 +33,12 @@ export type HttpTriggerEvent = t.InferType<typeof isHttpTriggerEvent>;
 
 /** The part of an HTTP API request the updater reads to route it: the HTTP method and path. */
 export const hasHttpRequestLine = t.isPartial({
-  rawPath: t.isOptional(t.isString()),
+  rawPath:        t.isOptional(t.isString()),
   requestContext: t.isPartial({
     http: t.isOptional(
       t.isPartial({
         method: t.isOptional(t.isString()),
-        path: t.isOptional(t.isString()),
+        path:   t.isOptional(t.isString()),
       }),
     ),
   }),

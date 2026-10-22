@@ -19,15 +19,15 @@ import { EmailSending, type EmailSendingProps }    from '../email-sending';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
 
 function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProps']): EmailSendingProps {
   const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
-    packages: { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
   const dataTable                           = (id: string) => new DataTable(new Table(stack, id, {
@@ -35,10 +35,10 @@ function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProp
   }));
 
   return {
-    configTable: dataTable('config-table'),
-    itemTable: dataTable('item-table'),
+    configTable:    dataTable('config-table'),
+    itemTable:      dataTable('item-table'),
     changelogTable: dataTable('changelog-table'),
-    blobStore: new DataBlobStore(new Bucket(stack, 'blob-store')),
+    blobStore:      new DataBlobStore(new Bucket(stack, 'blob-store')),
     artifactResolver,
     sesConfigSetName: 'test-config-set',
     queueProps,
@@ -65,7 +65,7 @@ describe('EmailSending', () => {
 
     template.hasResourceProperties('AWS::SQS::Queue', {
       MessageRetentionPeriod: 259200,
-      VisibilityTimeout: 360,
+      VisibilityTimeout:      360,
     });
   });
 
@@ -74,7 +74,7 @@ describe('EmailSending', () => {
     const sut                                       = new EmailSending(stack, 'email-sending', createProps(stack));
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
-      grantInvoke: () => undefined,
+      grantInvoke:  () => undefined,
     };
 
     sut.enableWebSocketPublishing(broadcaster);

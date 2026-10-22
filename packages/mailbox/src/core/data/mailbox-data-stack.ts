@@ -40,7 +40,7 @@ export class MailboxDataStack extends cdk.Stack {
     // S3 name base parameter (required).
     // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
     const nameBaseParam = new cdk.CfnParameter(this, 'nameBase', {
-      type: 'String',
+      type:        'String',
       description: 'S3-safe base for bucket names',
     });
 
@@ -48,22 +48,22 @@ export class MailboxDataStack extends cdk.Stack {
     // the deploy metadata flow in from MailboxDataDeployer so this sub-stack's resources carry the
     // same root-stack correlation tags.
     const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
-      type: 'String',
+      type:        'String',
       description: 'Root (main) CloudFormation stack name (regional stack that created this data stack)',
-      default: '',
+      default:     '',
     });
     rootStackParam.overrideLogicalId('rootStack');
 
     const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
-      type: 'String',
+      type:        'String',
       description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
     });
     rootStackIdParam.overrideLogicalId('rootStackId');
 
     const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
-      type: 'String',
-      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
-      default: 'cfn',
+      type:          'String',
+      description:   'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+      default:       'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
     deployerTypeParam.overrideLogicalId('deployerType');
@@ -72,7 +72,7 @@ export class MailboxDataStack extends cdk.Stack {
     // root-stack is the main stack name (via rootStack param); the base helper tags this
     // stack's own name as `stack` (AWS::StackName).
     applyServerlessInboxBaseTagsWithDeployerType(this, {
-      product: 'mailbox',
+      product:   'mailbox',
       rootStack: rootStackParam.valueAsString,
     }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
     applyServerlessInboxComponentTag(this, 'data');

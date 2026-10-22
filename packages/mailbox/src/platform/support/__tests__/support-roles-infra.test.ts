@@ -23,9 +23,9 @@ const CONFIG_READ_POLICY  = 'support-config-read-access';
 const HOP_POLICY          = 'support-hop-assume';
 
 interface StatementJson {
-  readonly Effect: string;
-  readonly Action: string | string[];
-  readonly Resource: unknown;
+  readonly Effect:     string;
+  readonly Action:     string | string[];
+  readonly Resource:   unknown;
   readonly Condition?: unknown;
 }
 
@@ -33,21 +33,21 @@ interface StatementJson {
 interface SynthesizedRole {
   readonly DependsOn?: string[];
   readonly Properties: {
-    readonly MaxSessionDuration: number;
+    readonly MaxSessionDuration:       number;
     readonly AssumeRolePolicyDocument: { readonly Statement: Array<{ Principal: unknown; Condition?: unknown }> };
-    readonly Policies: Array<{ PolicyName: string; PolicyDocument: { Statement: StatementJson[] } }>;
+    readonly Policies:                 Array<{ PolicyName: string; PolicyDocument: { Statement: StatementJson[] } }>;
   };
 }
 
 interface SynthesizedInfra {
-  readonly stack: Stack;
+  readonly stack:    Stack;
   readonly template: Template;
-  readonly infra: SupportRolesInfra;
+  readonly infra:    SupportRolesInfra;
 }
 
 function synthesize(vendorAccountIds: string[]): SynthesizedInfra {
   const stack = new Stack(new App(), 'support-roles-stack', {
-    env: { account: '111122223333', region: 'us-east-1' },
+    env:         { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const infra = new SupportRolesInfra(stack, 'roles-infra', { vendorAccountIds });
@@ -100,8 +100,8 @@ describe('SupportRolesInfra', () => {
 
       expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
         {
-          Effect: 'Allow',
-          Action: 'sts:AssumeRole',
+          Effect:    'Allow',
+          Action:    'sts:AssumeRole',
           Principal: { AWS: ['arn:aws:iam::111111111111:root', 'arn:aws:iam::222222222222:root'] },
         },
       ]);
@@ -114,8 +114,8 @@ describe('SupportRolesInfra', () => {
 
       expect(statementsOf(role)).toEqual([
         {
-          Effect: 'Allow',
-          Action: 'sts:AssumeRole',
+          Effect:   'Allow',
+          Action:   'sts:AssumeRole',
           Resource: [stack.resolve(infra.tierArns['support-diag']), stack.resolve(infra.tierArns['support-config-read'])],
         },
       ]);
@@ -134,8 +134,8 @@ describe('SupportRolesInfra', () => {
       expect(role.Properties.MaxSessionDuration).toBe(3600);
       expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
         {
-          Effect: 'Allow',
-          Action: 'sts:AssumeRole',
+          Effect:    'Allow',
+          Action:    'sts:AssumeRole',
           Principal: { AWS: stack.resolve(infra.supportHopRoleArn) },
           Condition: { StringLike: { [`aws:PrincipalTag/${tagKey}`]: '*/${sts:ExternalId}/*' } },
         },
@@ -214,12 +214,12 @@ describe('SupportRolesInfra', () => {
 
     it('maps each tier role ARN to its environment variable', () => {
       const environment = buildSupportTierEnvironment({
-        'support-diag': 'arn:diag',
+        'support-diag':        'arn:diag',
         'support-config-read': 'arn:config-read',
       });
 
       expect(environment).toEqual({
-        SUPPORT_DIAG_ROLE_ARN: 'arn:diag',
+        SUPPORT_DIAG_ROLE_ARN:        'arn:diag',
         SUPPORT_CONFIG_READ_ROLE_ARN: 'arn:config-read',
       });
     });

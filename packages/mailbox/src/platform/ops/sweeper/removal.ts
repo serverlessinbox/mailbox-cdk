@@ -54,7 +54,7 @@ export interface IResourceRemoval<TId extends RemovalId = RemovalId> extends IRe
 export interface WorkerRetryLoopProps {
   readonly worker: IFunction;
   /** The worker payload; its string fields are state-machine references to the execution input. */
-  readonly payload: WorkerInput;
+  readonly payload:       WorkerInput;
   readonly retryInterval: Duration;
   /** Where the loop continues when the worker reports SUCCESS. */
   readonly onSuccess: sfn.IChainable;
@@ -100,10 +100,10 @@ export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: 
     : new sfn.Wait(scope, `${idPrefix}GraceWait`, { time: sfn.WaitTime.duration(props.gracePeriod) });
 
   const invoke = new tasks.LambdaInvoke(scope, `${idPrefix}Invoke`, {
-    lambdaFunction: props.worker,
-    payloadResponseOnly: true,
-    resultPath: '$.workerResult',
-    payload: sfn.TaskInput.fromObject({ ...props.payload }),
+    lambdaFunction:           props.worker,
+    payloadResponseOnly:      true,
+    resultPath:               '$.workerResult',
+    payload:                  sfn.TaskInput.fromObject({ ...props.payload }),
     retryOnServiceExceptions: true,
   });
 

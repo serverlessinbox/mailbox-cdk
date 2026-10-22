@@ -14,7 +14,7 @@ import { TantivyIndexingScheduleDlq }              from '../tantivy-indexing-sch
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -36,7 +36,7 @@ describe('TantivyIndexingScheduleDlq', () => {
     });
 
     Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
-      VisibilityTimeout: 120,
+      VisibilityTimeout:      120,
       MessageRetentionPeriod: 14 * 24 * 60 * 60,
     });
   });

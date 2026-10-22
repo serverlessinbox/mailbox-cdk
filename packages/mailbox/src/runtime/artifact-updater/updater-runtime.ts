@@ -8,8 +8,8 @@ export interface ReadyUpdater {
   readonly config: Config;
   /** Reads the status of the stack a custom-resource request belongs to. */
   readonly cloudFormation: CloudFormationClient;
-  readonly clients: UpdaterClients;
-  readonly error: undefined;
+  readonly clients:        UpdaterClients;
+  readonly error:          undefined;
 }
 
 /**
@@ -17,10 +17,10 @@ export interface ReadyUpdater {
  * The CloudFormation client exists all the same, because a custom-resource request must still be answered.
  */
 export interface FailedUpdater {
-  readonly config: Config;
+  readonly config:         Config;
   readonly cloudFormation: CloudFormationClient;
-  readonly clients: undefined;
-  readonly error: string;
+  readonly clients:        undefined;
+  readonly error:          string;
 }
 
 /** What the entry point hands to every trigger: either ready to run, or the configuration problem to report. */

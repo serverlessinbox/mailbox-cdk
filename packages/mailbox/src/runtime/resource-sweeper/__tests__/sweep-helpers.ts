@@ -29,8 +29,8 @@ export function createSweepStarter(): SweepStarter {
 }
 
 const isCapturedCfnResponse = t.isPartial({
-  Status: t.isString(),
-  Reason: t.isOptional(t.isString()),
+  Status:             t.isString(),
+  Reason:             t.isOptional(t.isString()),
   PhysicalResourceId: t.isOptional(t.isString()),
 });
 
@@ -38,21 +38,21 @@ const isCapturedCfnResponse = t.isPartial({
 export type CapturedCfnResponse = t.InferType<typeof isCapturedCfnResponse>;
 
 export const PARENT_STACK_ID = 'arn:aws:cloudformation:us-west-2:123456789012:stack/test/abc';
-const OLD_CERT_ARN = 'arn:aws:acm:us-west-2:123456789012:certificate/old';
+const OLD_CERT_ARN           = 'arn:aws:acm:us-west-2:123456789012:certificate/old';
 
 const baseEvent = {
-  ServiceToken: 'arn:aws:lambda:us-west-2:123456789012:function:starter',
-  ResponseURL: 'https://example.com/response',
-  StackId: PARENT_STACK_ID,
-  RequestId: 'request-1',
+  ServiceToken:      'arn:aws:lambda:us-west-2:123456789012:function:starter',
+  ResponseURL:       'https://example.com/response',
+  StackId:           PARENT_STACK_ID,
+  RequestId:         'request-1',
   LogicalResourceId: 'DeferredRemoval',
-  ResourceType: 'Custom::DeferredRemoval',
+  ResourceType:      'Custom::DeferredRemoval',
 };
 
 export function createEvent(): CloudFormationCustomResourceEvent {
   return {
     ...baseEvent,
-    RequestType: 'Create',
+    RequestType:        'Create',
     ResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
   };
 }
@@ -61,7 +61,7 @@ export function createEvent(): CloudFormationCustomResourceEvent {
 export function deleteEvent(): CloudFormationCustomResourceEvent {
   return {
     ...baseEvent,
-    RequestType: 'Delete',
+    RequestType:        'Delete',
     PhysicalResourceId: 'mailbox-deferred-removal',
     ResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
   };
@@ -71,9 +71,9 @@ export function deleteEvent(): CloudFormationCustomResourceEvent {
 export function updateEvent(): CloudFormationCustomResourceEvent {
   return {
     ...baseEvent,
-    RequestType: 'Update',
-    PhysicalResourceId: 'mailbox-deferred-removal',
-    ResourceProperties: { ServiceToken: baseEvent.ServiceToken },
+    RequestType:           'Update',
+    PhysicalResourceId:    'mailbox-deferred-removal',
+    ResourceProperties:    { ServiceToken: baseEvent.ServiceToken },
     OldResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
   };
 }
@@ -83,8 +83,8 @@ export const OLD_REMOVAL_ENTRY = { certArn: OLD_CERT_ARN };
 export function lambdaContext(): Context {
   return {
     getRemainingTimeInMillis: () => 30000,
-    logStreamName: 'log-stream',
-    logGroupName: 'log-group',
+    logStreamName:            'log-stream',
+    logGroupName:             'log-group',
   } as unknown as Context;
 }
 

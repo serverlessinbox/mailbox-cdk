@@ -8,7 +8,7 @@ import { Aws }             from 'aws-cdk-lib';
  */
 export function parentStackStatusReadStatement(): PolicyStatement {
   return new PolicyStatement({
-    actions: ['cloudformation:DescribeStacks'],
+    actions:   ['cloudformation:DescribeStacks'],
     resources: [Aws.STACK_ID],
   });
 }

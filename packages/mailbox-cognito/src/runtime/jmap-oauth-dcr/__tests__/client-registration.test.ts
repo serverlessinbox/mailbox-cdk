@@ -65,19 +65,19 @@ describe('ClientRegistration', () => {
 
       expect(answer.statusCode).toBe(201);
       expect(bodyOf(answer)).toMatchObject({
-        client_id: 'new-client-id',
-        client_id_issued_at: expect.any(Number),
-        redirect_uris: ['http://127.0.0.1:4321/cb'],
+        client_id:                  'new-client-id',
+        client_id_issued_at:        expect.any(Number),
+        redirect_uris:              ['http://127.0.0.1:4321/cb'],
         token_endpoint_auth_method: 'none',
-        client_name: 'My App',
-        scope: 'openid email profile',
+        client_name:                'My App',
+        scope:                      'openid email profile',
       });
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(1);
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input).toMatchObject({
-        UserPoolId: 'pool-1',
-        ClientName: 'My App',
+        UserPoolId:     'pool-1',
+        ClientName:     'My App',
         GenerateSecret: false,
-        CallbackURLs: ['http://127.0.0.1:4321/cb'],
+        CallbackURLs:   ['http://127.0.0.1:4321/cb'],
       });
       expect(sentRequests(lambdaMock).map((request) => request.kind)).toEqual(['RESOLVE_TENANT', 'DCR_CHECK', 'DCR_PERSIST']);
       expect(sentRequests(lambdaMock)[2]).toMatchObject({ clientId: 'new-client-id', scope: 'openid email profile' });
@@ -134,10 +134,10 @@ describe('ClientRegistration', () => {
       await registration.register(
         requestEvent({
           redirect_uris: [LOOPBACK_REDIRECT_URI],
-          tenantId: 'attacker-tenant',
-          tenant_id: 'attacker-tenant',
-          user_id: 'attacker-user',
-          sub: 'attacker-sub',
+          tenantId:      'attacker-tenant',
+          tenant_id:     'attacker-tenant',
+          user_id:       'attacker-user',
+          sub:           'attacker-sub',
         }),
       );
 

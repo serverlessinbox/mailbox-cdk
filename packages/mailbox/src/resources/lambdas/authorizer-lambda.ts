@@ -10,8 +10,8 @@ import type { IAuthKeyStoreTable }              from '../tables/auth-key-store-t
 
 export interface AuthorizerLambdaProps {
   authKeyStoreTable: IAuthKeyStoreTable;
-  configTable: IDataTable;
-  artifactResolver: IArtifactResolver;
+  configTable:       IDataTable;
+  artifactResolver:  IArtifactResolver;
 
   /** Which auth policy record to load from DynamoDB (e.g. ADMIN_API, JMAP_API). */
   authPolicyName?: AuthPolicyName;
@@ -29,17 +29,17 @@ export interface AuthorizerLambdaProps {
 export class AuthorizerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthorizerLambdaProps) {
     super(scope, id, {
-      lambdaId: 'authorizer',
-      pipeline: props.pipeline,
-      serviceName: props.serviceName,
+      lambdaId:         'authorizer',
+      pipeline:         props.pipeline,
+      serviceName:      props.serviceName,
       artifactResolver: props.artifactResolver,
-      memorySize: 256,
-      timeout: Duration.seconds(30),
-      environment: {
+      memorySize:       256,
+      timeout:          Duration.seconds(30),
+      environment:      {
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        AUTH_POLICY_NAME: props.authPolicyName ?? AUTH_POLICY_JMAP_API,
-        ALLOW_ANONYMOUS_ROUTES: (props.anonymousRoutes ?? []).join(','),
+        CONFIG_TABLE_NAME:         props.configTable.tableName,
+        AUTH_POLICY_NAME:          props.authPolicyName ?? AUTH_POLICY_JMAP_API,
+        ALLOW_ANONYMOUS_ROUTES:    (props.anonymousRoutes ?? []).join(','),
       },
     });
 

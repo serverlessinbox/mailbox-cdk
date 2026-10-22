@@ -33,7 +33,7 @@ export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda
 
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerLambdaProps) {
     super(scope, id, {
-      artifactResolver: props.artifactResolver,
+      artifactResolver:  props.artifactResolver,
       deployedStackName: COGNITO_DEPLOYED_STACK_NAME,
     });
 

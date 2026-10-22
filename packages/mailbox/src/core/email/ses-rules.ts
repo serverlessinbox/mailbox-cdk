@@ -11,7 +11,7 @@ import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from '../../
 
 /** Where received email is stored and how it is queued for processing. */
 export interface EmailDelivery {
-  readonly blobStore: IBucket;
+  readonly blobStore:        IBucket;
   readonly artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
   readonly queueProps?: Partial<BaseQueueProps>;
@@ -49,7 +49,7 @@ export class SesRules extends Construct {
     // through a forwarder Lambda that enqueues it on SQS instead.
     const forwarder = new SesReceiptForwarderLambda(this, 'ses-receipt-forwarder', {
       emailProcessorQueue: emailProcessingQueue,
-      artifactResolver: props.delivery.artifactResolver,
+      artifactResolver:    props.delivery.artifactResolver,
     });
 
     const ruleSet    = new ReceiptRuleSet(this, 'email-rule-set', {});
@@ -57,10 +57,10 @@ export class SesRules extends Construct {
     this.ruleSet     = ruleSet;
 
     new ReceiptRule(this, 'email-rule', {
-      ruleSet: ruleSet,
-      actions: [
+      ruleSet:     ruleSet,
+      actions:     [
         new S3({
-          bucket: props.delivery.blobStore,
+          bucket:          props.delivery.blobStore,
           objectKeyPrefix: BlobStore.INCOMING_EMAIL_PREFIX,
         }),
         new Lambda({
@@ -70,9 +70,9 @@ export class SesRules extends Construct {
           invocationType: LambdaInvocationType.EVENT,
         }),
       ],
-      enabled: true,
+      enabled:     true,
       scanEnabled: true,
-      tlsPolicy: TlsPolicy.REQUIRE,
+      tlsPolicy:   TlsPolicy.REQUIRE,
     });
   }
 }

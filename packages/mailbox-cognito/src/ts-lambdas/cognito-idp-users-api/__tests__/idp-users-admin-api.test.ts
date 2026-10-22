@@ -23,8 +23,8 @@ const QUEUE_URL = toQueueUrl('https://sqs.us-east-1.amazonaws.com/123456789012/a
 
 function event(method: string, body: unknown, authorizer: Record<string, unknown> = { sub: 'sub-1' }): ApiGatewayV2EventLike {
   return {
-    rawPath: `/idp-users/IdpUsersService/${method}`,
-    body: JSON.stringify(body),
+    rawPath:        `/idp-users/IdpUsersService/${method}`,
+    body:           JSON.stringify(body),
     requestContext: { requestId: 'req-1', http: { method: 'POST' }, authorizer: { lambda: authorizer } },
   };
 }
@@ -32,12 +32,12 @@ function event(method: string, body: unknown, authorizer: Record<string, unknown
 describe('IdpUsersAdminApi', () => {
   const sqsMock = mockClient(SQSClient);
   const service = {
-    listIdpUsers: jest.fn(),
-    getIdpUser: jest.fn(),
-    createIdpUser: jest.fn(),
-    setIdpUserEnabled: jest.fn(),
+    listIdpUsers:       jest.fn(),
+    getIdpUser:         jest.fn(),
+    createIdpUser:      jest.fn(),
+    setIdpUserEnabled:  jest.fn(),
     setIdpUserPassword: jest.fn(),
-    deleteIdpUser: jest.fn(),
+    deleteIdpUser:      jest.fn(),
   };
 
   function newApi(adminGroups?: GroupName[], userGroups?: GroupName[]): IdpUsersAdminApi {
@@ -92,27 +92,27 @@ describe('IdpUsersAdminApi', () => {
 
   it('names the signed-in caller and its tenant on the audit event of a write', async () => {
     const authorizer = {
-      sub: 'sub-1',
-      iss: 'https://issuer.example.com',
-      username: 'admin',
-      email: 'admin@example.com',
-      tenantId: 'tenant-1',
+      sub:              'sub-1',
+      iss:              'https://issuer.example.com',
+      username:         'admin',
+      email:            'admin@example.com',
+      tenantId:         'tenant-1',
       'cognito:groups': ['admin'],
-      scope: 'openid profile',
+      scope:            'openid profile',
     };
 
     await newApi().handle(event('DeleteIdpUser', { username: 'alice' }, authorizer));
 
     expect(auditMessage()).toMatchObject({
       tenantId: 'tenant-1',
-      actor: {
+      actor:    {
         actorType: 'user',
-        actorId: 'sub-1',
-        username: 'admin',
-        iss: 'https://issuer.example.com',
-        email: 'admin@example.com',
-        groups: ['admin'],
-        scopes: ['openid', 'profile'],
+        actorId:   'sub-1',
+        username:  'admin',
+        iss:       'https://issuer.example.com',
+        email:     'admin@example.com',
+        groups:    ['admin'],
+        scopes:    ['openid', 'profile'],
       },
     });
   });

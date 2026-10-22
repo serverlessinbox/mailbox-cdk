@@ -33,7 +33,7 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     const app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -42,7 +42,7 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     };
     const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 

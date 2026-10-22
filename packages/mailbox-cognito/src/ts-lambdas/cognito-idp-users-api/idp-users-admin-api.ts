@@ -33,12 +33,12 @@ const UNKNOWN_USERNAME = toUsername('unknown');
 /** Who an audit event is attributed to: the signed-in user, or the system when the request carried no subject. */
 interface AuditActor {
   readonly actorType: 'user' | 'system';
-  readonly actorId: UserSubject;
-  readonly username: Username;
-  readonly iss?: Issuer;
-  readonly email?: EmailAddress;
-  readonly groups: GroupName[];
-  readonly scopes: Scope[];
+  readonly actorId:   UserSubject;
+  readonly username:  Username;
+  readonly iss?:      Issuer;
+  readonly email?:    EmailAddress;
+  readonly groups:    GroupName[];
+  readonly scopes:    Scope[];
 }
 
 /**
@@ -59,11 +59,11 @@ export class IdpUsersAdminApi {
   ) {
     this.authExtractor   = new AdminAuthExtractor({ adminGroups: this.adminGroups, userGroups: this.userGroups });
     this.adminApiHandler = new AdminApiHandler({
-      registry: this.createRegistry(),
-      extractAuth: (event) => this.authExtractor.extract(event),
+      registry:       this.createRegistry(),
+      extractAuth:    (event) => this.authExtractor.extract(event),
       emitAuditEvent: (event) => this.auditEmitter.emit(event),
-      getTenantId: (auth) => auth.tenantId,
-      getActor: (auth) => this.actorOf(auth),
+      getTenantId:    (auth) => auth.tenantId,
+      getActor:       (auth) => this.actorOf(auth),
     });
   }
 
@@ -73,12 +73,12 @@ export class IdpUsersAdminApi {
 
   private createRegistry(): ServiceRegistry<AdminAuthContext, AuditContext> {
     const validatorByMethodName = {
-      ListIdpUsers: this.validator.validateListIdpUsers,
-      GetIdpUser: this.validator.validateGetIdpUser,
-      CreateIdpUser: this.validator.validateCreateIdpUser,
-      SetIdpUserEnabled: this.validator.validateSetIdpUserEnabled,
+      ListIdpUsers:       this.validator.validateListIdpUsers,
+      GetIdpUser:         this.validator.validateGetIdpUser,
+      CreateIdpUser:      this.validator.validateCreateIdpUser,
+      SetIdpUserEnabled:  this.validator.validateSetIdpUserEnabled,
       SetIdpUserPassword: this.validator.validateSetIdpUserPassword,
-      DeleteIdpUser: this.validator.validateDeleteIdpUser,
+      DeleteIdpUser:      this.validator.validateDeleteIdpUser,
     } satisfies Record<MethodName, (request: unknown) => unknown>;
     const validators            = new Map(Object.entries(validatorByMethodName));
 
@@ -94,12 +94,12 @@ export class IdpUsersAdminApi {
   private actorOf(auth: AdminAuthContext): AuditActor {
     return {
       actorType: auth.authType === 'anonymous' ? 'system' : 'user',
-      actorId: auth.sub === undefined ? UNKNOWN_SUBJECT : toUserSubject(auth.sub),
-      username: toUsername(auth.username ?? auth.email ?? auth.sub ?? UNKNOWN_USERNAME),
-      iss: auth.iss === undefined ? undefined : toIssuer(auth.iss),
-      email: auth.email === undefined ? undefined : toEmailAddress(auth.email),
-      groups: auth.groups.map(toGroupName),
-      scopes: auth.scopes.map(toScope),
+      actorId:   auth.sub === undefined ? UNKNOWN_SUBJECT : toUserSubject(auth.sub),
+      username:  toUsername(auth.username ?? auth.email ?? auth.sub ?? UNKNOWN_USERNAME),
+      iss:       auth.iss === undefined ? undefined : toIssuer(auth.iss),
+      email:     auth.email === undefined ? undefined : toEmailAddress(auth.email),
+      groups:    auth.groups.map(toGroupName),
+      scopes:    auth.scopes.map(toScope),
     };
   }
 }

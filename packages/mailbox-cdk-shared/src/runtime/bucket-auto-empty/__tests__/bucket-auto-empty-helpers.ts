@@ -2,8 +2,8 @@ import type { handler } from '../handler';
 
 export type HandlerContext = Parameters<typeof handler>[1];
 
-export const STACK_ID = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid';
-export const LOGICAL_RESOURCE_ID = 'TestResource';
+export const STACK_ID             = 'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid';
+export const LOGICAL_RESOURCE_ID  = 'TestResource';
 export const PHYSICAL_RESOURCE_ID = `bucket-auto-empty:${STACK_ID}:${LOGICAL_RESOURCE_ID}`;
 
 /**
@@ -12,28 +12,28 @@ export const PHYSICAL_RESOURCE_ID = `bucket-auto-empty:${STACK_ID}:${LOGICAL_RES
  */
 export function fakeLambdaContext(remainingMs: number = 300_000): HandlerContext {
   return {
-    getRemainingTimeInMillis: () => remainingMs,
-    functionName: 'test-function',
-    functionVersion: '$LATEST',
-    invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test-function',
-    memoryLimitInMB: '512',
-    awsRequestId: 'request-id',
-    logGroupName: 'log-group',
-    logStreamName: 'log-stream',
+    getRemainingTimeInMillis:       () => remainingMs,
+    functionName:                   'test-function',
+    functionVersion:                '$LATEST',
+    invokedFunctionArn:             'arn:aws:lambda:us-east-1:123456789012:function:test-function',
+    memoryLimitInMB:                '512',
+    awsRequestId:                   'request-id',
+    logGroupName:                   'log-group',
+    logStreamName:                  'log-stream',
     callbackWaitsForEmptyEventLoop: true,
-    done: () => undefined,
-    fail: () => undefined,
-    succeed: () => undefined,
+    done:                           () => undefined,
+    fail:                           () => undefined,
+    succeed:                        () => undefined,
   };
 }
 
 interface FakeCfnEventBase {
-  ResponseURL: string;
-  StackId: string;
-  RequestId: string;
-  LogicalResourceId: string;
-  ResourceType: string;
-  ServiceToken: string;
+  ResponseURL:        string;
+  StackId:            string;
+  RequestId:          string;
+  LogicalResourceId:  string;
+  ResourceType:       string;
+  ServiceToken:       string;
   ResourceProperties: Record<string, unknown> & { ServiceToken: string };
 }
 
@@ -42,13 +42,13 @@ export interface FakeCreateEvent extends FakeCfnEventBase {
 }
 
 export interface FakeUpdateEvent extends FakeCfnEventBase {
-  RequestType: 'Update';
-  PhysicalResourceId: string;
+  RequestType:           'Update';
+  PhysicalResourceId:    string;
   OldResourceProperties: Record<string, unknown> & { ServiceToken: string };
 }
 
 export interface FakeDeleteEvent extends FakeCfnEventBase {
-  RequestType: 'Delete';
+  RequestType:        'Delete';
   PhysicalResourceId: string;
 }
 
@@ -57,12 +57,12 @@ export type FakeCfnEvent = FakeCreateEvent | FakeUpdateEvent | FakeDeleteEvent;
 function fakeCfnEventBase(resourceProperties: Record<string, unknown>): FakeCfnEventBase {
   const serviceToken = 'arn:aws:lambda:us-east-1:123456789012:function:bucket-auto-empty';
   return {
-    ResponseURL: 'https://example.com/response',
-    StackId: STACK_ID,
-    RequestId: 'request-123',
-    LogicalResourceId: LOGICAL_RESOURCE_ID,
-    ResourceType: 'Custom::BucketAutoEmpty',
-    ServiceToken: serviceToken,
+    ResponseURL:        'https://example.com/response',
+    StackId:            STACK_ID,
+    RequestId:          'request-123',
+    LogicalResourceId:  LOGICAL_RESOURCE_ID,
+    ResourceType:       'Custom::BucketAutoEmpty',
+    ServiceToken:       serviceToken,
     ResourceProperties: { ...resourceProperties, ServiceToken: serviceToken, ServiceTimeout: '900' },
   };
 }
@@ -75,8 +75,8 @@ export function fakeUpdateEvent(resourceProperties: Record<string, unknown>): Fa
   const base = fakeCfnEventBase(resourceProperties);
   return {
     ...base,
-    RequestType: 'Update',
-    PhysicalResourceId: PHYSICAL_RESOURCE_ID,
+    RequestType:           'Update',
+    PhysicalResourceId:    PHYSICAL_RESOURCE_ID,
     OldResourceProperties: base.ResourceProperties,
   };
 }

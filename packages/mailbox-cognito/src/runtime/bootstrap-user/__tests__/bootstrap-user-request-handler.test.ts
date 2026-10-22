@@ -51,7 +51,7 @@ describe('BootstrapUserRequestHandler', () => {
 
       expect(answer).toEqual({
         PhysicalResourceId: `BootstrapUser:${USER_POOL_ID}:testadmin`,
-        Data: { temporaryPassword: SUPPLIED_PASSWORD },
+        Data:               { temporaryPassword: SUPPLIED_PASSWORD },
       });
     });
 

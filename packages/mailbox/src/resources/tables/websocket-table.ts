@@ -41,21 +41,21 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
 
     // Single-table design: uses shared base repository key names so lambdas can use DynamoBaseRepository.
     const table = new StackNamedTable(this, 'websocket', {
-      uniquePerPosition: true,
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-      sortKey: { name: 'sk', type: AttributeType.STRING },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
-      timeToLiveAttribute: 'ttl',
+      uniquePerPosition:                true,
+      partitionKey:                     { name: 'pk', type: AttributeType.STRING },
+      sortKey:                          { name: 'sk', type: AttributeType.STRING },
+      billingMode:                      BillingMode.PAY_PER_REQUEST,
+      removalPolicy:                    RemovalPolicy.DESTROY,
+      timeToLiveAttribute:              'ttl',
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
     });
 
     // GSI1 for broadcasting by account (subscription items only).
     // Matches shared base repository naming: indexName=gsi1, keys gsi1pk/gsi1sk.
     table.addGlobalSecondaryIndex({
-      indexName: 'gsi1',
+      indexName:    'gsi1',
       partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
+      sortKey:      { name: 'gsi1sk', type: AttributeType.STRING },
     });
 
     this.table     = table;

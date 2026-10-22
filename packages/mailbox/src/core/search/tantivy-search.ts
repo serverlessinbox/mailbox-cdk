@@ -60,11 +60,11 @@ export class TantivySearch extends Construct {
       queueProps: props.queueProps,
     });
     this.indexer              = new TantivyIndexerLambda(this, 'tantivy-indexer', {
-      indexBucket: props.indexBucket,
-      itemTable: props.itemTable,
-      configTable: props.configTable,
-      changelogTable: props.changelogTable,
-      artifactResolver: props.artifactResolver,
+      indexBucket:         props.indexBucket,
+      itemTable:           props.itemTable,
+      configTable:         props.configTable,
+      changelogTable:      props.changelogTable,
+      artifactResolver:    props.artifactResolver,
       indexingScheduleDlq: indexingScheduleDlq.queue,
     });
   }

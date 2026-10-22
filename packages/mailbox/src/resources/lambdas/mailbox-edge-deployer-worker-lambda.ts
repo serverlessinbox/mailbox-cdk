@@ -12,7 +12,7 @@ import { Construct }             from 'constructs';
 
 export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
-  readonly stack: Stack;
+  readonly stack:            Stack;
   /**
    * Wildcard over the names the edge stack has had (`${AWS::StackName}-edge*`). Scopes the grants on the
    * stack's Lambda functions and resource group, which are named after the stack.
@@ -20,9 +20,9 @@ export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly edgeStackNamePattern: string;
   /** ARN pattern of the edge stack, built from the same `edgeStackNamePattern`. */
   readonly edgeStackArn: string;
-  readonly rootStack: string;
+  readonly rootStack:    string;
   /** The guid of the root stack, tagged as `serverless-inbox:root-stack-id`. */
-  readonly rootStackId: string;
+  readonly rootStackId:       string;
   readonly templateObjectArn: string;
   /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
   readonly artifactObjectArns: string[];
@@ -51,7 +51,7 @@ export interface MailboxEdgeDeployerWorkerLambdaProps {
 export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
   constructor(scope: Construct, id: string, props: MailboxEdgeDeployerWorkerLambdaProps) {
     super(scope, id, {
-      artifactResolver: props.artifactResolver,
+      artifactResolver:  props.artifactResolver,
       deployedStackName: 'edge',
     });
 
@@ -89,14 +89,14 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    */
   private grantCertificateLifecycle(stack: Stack, rootStack: RootStack): void {
     const certificateArnPrefix = stack.formatArn({
-      service: 'acm',
-      region: 'us-east-1',
-      resource: 'certificate',
+      service:      'acm',
+      region:       'us-east-1',
+      resource:     'certificate',
       resourceName: '*',
     });
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'acm:RequestCertificate',
         ],
         resources: [certificateArnPrefix],
@@ -104,7 +104,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     );
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'acm:DescribeCertificate',
           'acm:ListTagsForCertificate',
         ],
@@ -114,7 +114,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['acm:AddTagsToCertificate'],
+          actions:   ['acm:AddTagsToCertificate'],
           resources: [certificateArnPrefix],
           conditions,
         })
@@ -123,21 +123,21 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['acm:AddTagsToCertificate'],
+          actions:   ['acm:AddTagsToCertificate'],
           resources: [certificateArnPrefix],
           conditions,
         })
       );
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['acm:RemoveTagsFromCertificate'],
+          actions:   ['acm:RemoveTagsFromCertificate'],
           resources: [certificateArnPrefix],
           conditions,
         })
       );
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: ['acm:DeleteCertificate'],
+          actions:   ['acm:DeleteCertificate'],
           resources: [certificateArnPrefix],
           conditions,
         })
@@ -170,22 +170,22 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
       'lambda:UntagResource',
     ];
     const edgeLambdaArnPrefix = stack.formatArn({
-      service: 'lambda',
-      region: 'us-east-1',
-      resource: 'function',
+      service:      'lambda',
+      region:       'us-east-1',
+      resource:     'function',
       resourceName: edgeStackNamePattern,
-      arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
     });
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: edgeLambdaActions,
+        actions:   edgeLambdaActions,
         resources: [edgeLambdaArnPrefix],
       })
     );
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: edgeLambdaActions,
-        resources: ['*'],
+        actions:    edgeLambdaActions,
+        resources:  ['*'],
         conditions: {
           StringLike: {
             'lambda:FunctionName': edgeStackNamePattern,
@@ -196,7 +196,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions: [
+          actions:   [
             'lambda:DeleteFunction',
             'lambda:UpdateFunctionCode',
             'lambda:UpdateFunctionConfiguration',
@@ -217,8 +217,8 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
   private grantExecutionRolePassage(jmapBlobDownloadRoleArn: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['iam:PassRole'],
-        resources: [jmapBlobDownloadRoleArn],
+        actions:    ['iam:PassRole'],
+        resources:  [jmapBlobDownloadRoleArn],
         conditions: {
           StringEquals: {
             'iam:PassedToService': ['lambda.amazonaws.com', 'edgelambda.amazonaws.com'],
@@ -236,20 +236,20 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    */
   private grantResourceGroupLifecycle(stack: Stack, edgeStackNamePattern: string): void {
     const edgeResourceGroupArn = stack.formatArn({
-      service: 'resource-groups',
-      region: 'us-east-1',
-      resource: 'group',
+      service:      'resource-groups',
+      region:       'us-east-1',
+      resource:     'group',
       resourceName: `${edgeStackNamePattern}-serverless-inbox`,
     });
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['resource-groups:CreateGroup'],
+        actions:   ['resource-groups:CreateGroup'],
         resources: ['*'],
       })
     );
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'resource-groups:DeleteGroup',
           'resource-groups:GetGroup',
           'resource-groups:GetGroupQuery',
@@ -269,7 +269,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
   private grantDnsValidationAccess(hostedZoneId: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: [
+        actions:   [
           'route53:ChangeResourceRecordSets',
           'route53:ListResourceRecordSets',
         ],
@@ -278,7 +278,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     );
     this.addToRolePolicy(
       new PolicyStatement({
-        actions: ['route53:GetChange'],
+        actions:   ['route53:GetChange'],
         resources: [`arn:${Aws.PARTITION}:route53:::change/*`],
       })
     );

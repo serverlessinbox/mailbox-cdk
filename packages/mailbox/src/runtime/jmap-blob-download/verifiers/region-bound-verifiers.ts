@@ -6,7 +6,7 @@ import { JwtVerifier }         from './jwt-verifier';
 
 /** The verifiers of the credentials a blob download carries, reading their keys from one auth key store. */
 export interface Verifiers {
-  readonly jwt: JwtVerifier;
+  readonly jwt:  JwtVerifier;
   readonly hmac: HmacVerifier;
 }
 

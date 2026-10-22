@@ -8,7 +8,7 @@ import type { IAuditEventsQueueConsumer } from '../queues/audit-events-queue';
 import type { IDataTable }                from '../tables/data-tables';
 
 export interface AuditWriterLambdaProps {
-  auditLogTable: IDataTable;
+  auditLogTable:    IDataTable;
   auditEventsQueue: IAuditEventsQueueConsumer;
   artifactResolver: IArtifactResolver;
 }
@@ -20,12 +20,12 @@ export interface AuditWriterLambdaProps {
 export class AuditWriterLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuditWriterLambdaProps) {
     super(scope, id, {
-      lambdaId: 'audit-writer',
-      pipeline: 'audit',
+      lambdaId:         'audit-writer',
+      pipeline:         'audit',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.minutes(2),
-      memorySize: 256,
-      environment: {
+      timeout:          Duration.minutes(2),
+      memorySize:       256,
+      environment:      {
         AUDIT_LOG_TABLE_NAME: props.auditLogTable.tableName,
       },
     });

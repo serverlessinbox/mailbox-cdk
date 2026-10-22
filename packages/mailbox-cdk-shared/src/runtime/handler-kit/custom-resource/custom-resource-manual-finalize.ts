@@ -17,8 +17,8 @@ export interface ManualFinalizeResourceProperties {
  * an event that is not a real request, such as a smoke-test probe, carries none of them.
  */
 export interface ManualFinalizeEvent extends Partial<Unbranded<Pick<CustomResourceRequest, 'RequestType' | 'RequestId' | 'LogicalResourceId'>>> {
-  ResponseURL?: string;
-  StackId?: StackId;
+  ResponseURL?:        string;
+  StackId?:            StackId;
   ResourceProperties?: ManualFinalizeResourceProperties;
 }
 
@@ -49,11 +49,11 @@ export function emitManualFinalize(event: ManualFinalizeEvent, options?: EmitMan
   }
 
   const finalizationBody = JSON.stringify({
-    Status: 'SUCCESS',
+    Status:             'SUCCESS',
     PhysicalResourceId: physicalResourceId ?? event.LogicalResourceId ?? 'unknown',
-    StackId: event.StackId,
-    RequestId: event.RequestId,
-    LogicalResourceId: event.LogicalResourceId,
+    StackId:            event.StackId,
+    RequestId:          event.RequestId,
+    LogicalResourceId:  event.LogicalResourceId,
   });
 
   const requestFields = [

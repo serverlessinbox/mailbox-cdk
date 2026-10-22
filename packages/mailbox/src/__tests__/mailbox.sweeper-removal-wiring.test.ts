@@ -22,22 +22,22 @@ import { Mailbox }                                                              
 
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
-    issuer: 'https://example.com/issuer',
-    tokenEndpoint: 'https://example.com/token',
-    authorizationEndpoint: 'https://example.com/authorize',
-    authMethod: 'header',
-    usePkce: false,
-    scopeMap: {
-      'mail.read': [Permission.MAIL_READ],
+    issuer:                  'https://example.com/issuer',
+    tokenEndpoint:           'https://example.com/token',
+    authorizationEndpoint:   'https://example.com/authorize',
+    authMethod:              'header',
+    usePkce:                 false,
+    scopeMap:                {
+      'mail.read':  [Permission.MAIL_READ],
       'mail.write': [Permission.MAIL_WRITE],
     },
-    policies: {
+    policies:                {
       adminApi: { audiences: ['admin-api'] },
-      jmapApi: { audiences: ['jmap-api'] },
+      jmapApi:  { audiences: ['jmap-api'] },
     },
     provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapApiClient: () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
-    createAdminApiAddons: () => [],
+    provisionJmapApiClient:  () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
+    createAdminApiAddons:    () => [],
   };
 }
 
@@ -46,19 +46,19 @@ function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Templa
     context: {
       'serverlessinbox:artifacts': {
         bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-go': { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+        packages:   {
+          'mailbox-go':         { zone: 'regional', version: '1.0.0' },
+          'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
           'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
-          'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+          'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
+          'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
           'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
         },
       },
     },
   });
   const stack = new cdk.Stack(app, `TestMailboxSweeperRemovalWiring-${sendStackFailures ?? 'default'}`, {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 
@@ -114,10 +114,10 @@ describe('Mailbox: sweeper removal wiring', () => {
     // `detector` are always registered.
     expect(props['edge-fn']).toEqual({ edgeFnArn: expect.anything() });
     expect(props['detector']).toEqual({
-      ruleArn: expect.anything(),
-      ruleTargetId: expect.anything(),
-      detectorFnArn: expect.anything(),
-      detectorRoleArn: expect.anything(),
+      ruleArn:                expect.anything(),
+      ruleTargetId:           expect.anything(),
+      detectorFnArn:          expect.anything(),
+      detectorRoleArn:        expect.anything(),
       detectorRolePolicyName: expect.anything(),
     });
     expect(props.cert).toBeUndefined();

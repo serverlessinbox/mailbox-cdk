@@ -4,7 +4,7 @@ import type { StaticContentSourceSpec } from './runtime/content-deployer/resourc
 
 /** HTTP metadata stored on an object written by a data source. */
 export interface StaticContentWriteOptions {
-  readonly contentType?: string;
+  readonly contentType?:  string;
   readonly cacheControl?: string;
 }
 
@@ -39,7 +39,7 @@ export abstract class StaticContentSource {
   /** A literal write at an exact, known key. IAM is scoped to exactly this one object ARN. */
   static data(key: string, body: string, options: StaticContentWriteOptions = {}): IStaticContentSource {
     return {
-      spec: { kind: 'data', key, body, ...options },
+      spec:       { kind: 'data', key, body, ...options },
       objectArns: (bucket) => [bucket.arnForObjects(key)],
     };
   }
@@ -57,7 +57,7 @@ export abstract class StaticContentSource {
   ): IStaticContentSource {
     const normalizedPrefix = targetPrefix.endsWith('/') ? targetPrefix : `${targetPrefix}/`;
     return {
-      spec: { kind: 'zip', sourceBucket: sourceBucketName, sourceKey, targetPrefix: normalizedPrefix, ...options },
+      spec:       { kind: 'zip', sourceBucket: sourceBucketName, sourceKey, targetPrefix: normalizedPrefix, ...options },
       objectArns: (bucket) => [bucket.arnForObjects(`${normalizedPrefix}*`)],
       sourceArns: () => [`arn:aws:s3:::${sourceBucketName}/${sourceKey}`],
     };

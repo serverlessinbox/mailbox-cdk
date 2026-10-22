@@ -33,34 +33,34 @@ export class MailboxEdgeStack extends cdk.Stack {
       'Serverless JMAP email server on AWS edge tier — CloudFront distribution with Lambda@Edge for authentication and request routing.';
 
     const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
-      type: 'String',
+      type:        'String',
       description: 'Root (main) CloudFormation stack name (regional stack that created this edge stack)',
     });
     rootStackParam.overrideLogicalId('rootStack');
 
     const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
-      type: 'String',
+      type:        'String',
       description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
     });
     rootStackIdParam.overrideLogicalId('rootStackId');
 
     const rootRegionParam = new cdk.CfnParameter(this, 'root-region', {
-      type: 'String',
+      type:        'String',
       description: 'Root (main) AWS region (regional stack region that created this edge stack)',
     });
     rootRegionParam.overrideLogicalId('rootRegion');
 
     const productVersionParam = new cdk.CfnParameter(this, 'product-version', {
-      type: 'String',
+      type:        'String',
       description: 'Serverless Inbox Mailbox stack version (for tagging/support)',
-      default: 'unknown',
+      default:     'unknown',
     });
     productVersionParam.overrideLogicalId('productVersion');
 
     const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
-      type: 'String',
-      description: 'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
-      default: 'cfn',
+      type:          'String',
+      description:   'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
+      default:       'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
     deployerTypeParam.overrideLogicalId('deployerType');
@@ -92,35 +92,35 @@ export class MailboxEdgeStack extends cdk.Stack {
 
     // Define CloudFormation parameters so the template is configurable
     const domainNameParam = new cdk.CfnParameter(this, 'domain-name', {
-      type: 'String',
+      type:        'String',
       description: 'Base domain name (e.g. example.com)',
       // Match ACM domain validation (no trailing dot, no underscores, etc.).
-      allowedPattern: '^(\\*\\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$',
+      allowedPattern:        '^(\\*\\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$',
       constraintDescription: 'Must be a valid DNS name like example.com (no trailing dot).',
     });
     domainNameParam.overrideLogicalId('domainName');
 
     const prefixParam = new cdk.CfnParameter(this, 'prefix', {
-      type: 'String',
+      type:        'String',
       description: 'Prefix with dots: "." for no prefix, or ".{prefix}." for a prefix',
-      default: '.',
+      default:     '.',
       // Allow "." (no prefix) or dot-wrapped labels like ".mailbox.".
-      allowedPattern: '^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$',
+      allowedPattern:        '^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$',
       constraintDescription: 'Use "." for no namespace, or use a dot-wrapped DNS label like ".mailbox."',
     });
     prefixParam.overrideLogicalId('prefix');
 
     const hostedZoneIdParam = new cdk.CfnParameter(this, 'hosted-zone-id', {
-      type: 'String',
+      type:        'String',
       description: 'Route53 hosted zone ID for DNS validation (optional)',
-      default: '',
+      default:     '',
     });
     hostedZoneIdParam.overrideLogicalId('hostedZoneId');
 
     const hostedZoneNameParam = new cdk.CfnParameter(this, 'hosted-zone-name', {
-      type: 'String',
+      type:        'String',
       description: 'Route53 hosted zone name (required if HostedZoneId is provided)',
-      default: '',
+      default:     '',
     });
     hostedZoneNameParam.overrideLogicalId('hostedZoneName');
 
@@ -133,58 +133,58 @@ export class MailboxEdgeStack extends cdk.Stack {
     hasHostedZone.overrideLogicalId('hasHostedZone');
 
     const artifactBucketParam = new cdk.CfnParameter(this, 'artifact-bucket', {
-      type: 'String',
+      type:        'String',
       description: 'S3 bucket containing artifacts',
     });
     artifactBucketParam.overrideLogicalId('artifactBucket');
 
     const jmapBlobDownloadKeyParam = new cdk.CfnParameter(this, 'jmap-blob-download-key', {
-      type: 'String',
+      type:        'String',
       description: 'S3 key for jmap-blob-download Lambda code (full path including artifact prefix)',
     });
     jmapBlobDownloadKeyParam.overrideLogicalId('jmapBlobDownloadKey');
 
     const jmapBlobDownloadS3VersionIdParam = new cdk.CfnParameter(this, 'jmap-blob-download-s3-version-id', {
-      type: 'String',
+      type:        'String',
       description: 'S3 object version ID for jmap-blob-download Lambda code (optional)',
-      default: '',
+      default:     '',
     });
     jmapBlobDownloadS3VersionIdParam.overrideLogicalId('jmapBlobDownloadS3VersionId');
 
     const itemTableArnParam = new cdk.CfnParameter(this, 'item-table-arn', {
-      type: 'String',
+      type:        'String',
       description: 'DynamoDB item table ARN (regional) used by jmap-blob-download',
     });
     itemTableArnParam.overrideLogicalId('itemTableArn');
 
     const configTableArnParam = new cdk.CfnParameter(this, 'config-table-arn', {
-      type: 'String',
+      type:        'String',
       description: 'DynamoDB config table ARN (regional) used by jmap-blob-download',
     });
     configTableArnParam.overrideLogicalId('configTableArn');
 
     const authKeyStoreTableArnParam = new cdk.CfnParameter(this, 'auth-key-store-table-arn', {
-      type: 'String',
+      type:        'String',
       description: 'DynamoDB auth key store table ARN (regional) used by jmap-blob-download',
     });
     authKeyStoreTableArnParam.overrideLogicalId('authKeyStoreTableArn');
 
     const logGroupNameParam = new cdk.CfnParameter(this, 'log-group-name', {
-      type: 'String',
+      type:        'String',
       description: 'Name of the shared "jmap" pipeline log group (home region) that jmap-blob-download logs into',
     });
     logGroupNameParam.overrideLogicalId('logGroupName');
 
     const jmapBlobDownloadRoleArnParam = new cdk.CfnParameter(this, 'jmap-blob-download-role-arn', {
-      type: 'String',
+      type:        'String',
       description: 'ARN of the jmap-blob-download Lambda@Edge execution role (created in root stack)',
     });
     jmapBlobDownloadRoleArnParam.overrideLogicalId('jmapBlobDownloadRoleArn');
 
     // Build artifact reference from parameters
     const jmapBlobDownloadReference: ResolvedArtifact = {
-      key: jmapBlobDownloadKeyParam.valueAsString,
-      bucket: artifactBucketParam.valueAsString,
+      key:       jmapBlobDownloadKeyParam.valueAsString,
+      bucket:    artifactBucketParam.valueAsString,
       versionId: jmapBlobDownloadS3VersionIdParam.valueAsString,
     };
 
@@ -194,15 +194,15 @@ export class MailboxEdgeStack extends cdk.Stack {
       // Prefix is dot-wrapped: "." or ".label.".
       prefix: prefixParam.valueAsString,
       // Pass through parameters verbatim; condition logic must happen at deploy time, not synth time.
-      hostedZoneId: hostedZoneIdParam.valueAsString,
+      hostedZoneId:   hostedZoneIdParam.valueAsString,
       hostedZoneName: hostedZoneNameParam.valueAsString,
       artifactBucket: artifactBucketParam.valueAsString,
       jmapBlobDownloadReference,
-      itemTableArn: itemTableArnParam.valueAsString,
-      configTableArn: configTableArnParam.valueAsString,
-      authKeyStoreTableArn: authKeyStoreTableArnParam.valueAsString,
-      productVersion: productVersionParam.valueAsString,
-      logGroupName: logGroupNameParam.valueAsString,
+      itemTableArn:            itemTableArnParam.valueAsString,
+      configTableArn:          configTableArnParam.valueAsString,
+      authKeyStoreTableArn:    authKeyStoreTableArnParam.valueAsString,
+      productVersion:          productVersionParam.valueAsString,
+      logGroupName:            logGroupNameParam.valueAsString,
       jmapBlobDownloadRoleArn: jmapBlobDownloadRoleArnParam.valueAsString,
     };
 
@@ -225,7 +225,7 @@ export class MailboxEdgeStack extends cdk.Stack {
     // Always expose the output key so the regional stack can safely `GetAtt` it.
     // When HasHostedZone is false, the output value is an empty string.
     const edgeCertificateArnOutput = new cdk.CfnOutput(this, 'edge-certificate-arn', {
-      value: cdk.Fn.conditionIf(
+      value:       cdk.Fn.conditionIf(
         hasHostedZone.logicalId,
         this.construct.certificate.ref,
         '',
@@ -235,7 +235,7 @@ export class MailboxEdgeStack extends cdk.Stack {
     edgeCertificateArnOutput.overrideLogicalId('edgeCertificateArn');
 
     const jmapBlobDownloadVersionArnOutput = new cdk.CfnOutput(this, 'jmap-blob-download-version-arn', {
-      value: this.construct.jmapBlobDownloadVersion.functionArn,
+      value:       this.construct.jmapBlobDownloadVersion.functionArn,
       description: 'ARN of the published jmap-blob-download Lambda@Edge version',
     });
     jmapBlobDownloadVersionArnOutput.overrideLogicalId('jmapBlobDownloadVersionArn');

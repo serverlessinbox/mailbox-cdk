@@ -21,14 +21,14 @@ export enum Permission {
  * Human-readable descriptions for each JMAP scope
  */
 export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
-  [Permission.MAIL_READ]: 'Read emails',
-  [Permission.MAIL_WRITE]: 'Write emails',
-  [Permission.MAIL_SEND]: 'Send emails',
-  [Permission.ACCOUNT_READ]: 'Read account',
-  [Permission.ALIAS_READ]: 'Read aliases',
-  [Permission.ALIAS_WRITE]: 'Write aliases',
-  [Permission.USER_READ]: 'Read user',
-  [Permission.CONTACTS_READ]: 'Read contacts',
+  [Permission.MAIL_READ]:      'Read emails',
+  [Permission.MAIL_WRITE]:     'Write emails',
+  [Permission.MAIL_SEND]:      'Send emails',
+  [Permission.ACCOUNT_READ]:   'Read account',
+  [Permission.ALIAS_READ]:     'Read aliases',
+  [Permission.ALIAS_WRITE]:    'Write aliases',
+  [Permission.USER_READ]:      'Read user',
+  [Permission.CONTACTS_READ]:  'Read contacts',
   [Permission.CONTACTS_WRITE]: 'Write contacts',
-  [Permission.ADMIN]: 'Admin access',
+  [Permission.ADMIN]:          'Admin access',
 };

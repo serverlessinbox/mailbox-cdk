@@ -10,10 +10,10 @@ import { Permission }                                                      from 
 export const DEFAULT_OIDC_PROVIDER_NAME = 'PRIMARY';
 
 export const AUTH_POLICY_ADMIN_API = 'ADMIN_API' as const;
-export const AUTH_POLICY_JMAP_API = 'JMAP_API' as const;
+export const AUTH_POLICY_JMAP_API  = 'JMAP_API' as const;
 export type AuthPolicyName = typeof AUTH_POLICY_ADMIN_API | typeof AUTH_POLICY_JMAP_API;
 
-export const OAUTH_CLIENT_ADMIN_UI = 'ADMIN_UI' as const;
+export const OAUTH_CLIENT_ADMIN_UI   = 'ADMIN_UI' as const;
 export const OAUTH_CLIENT_WEBMAIL_UI = 'WEBMAIL_UI' as const;
 
 export type OAuthClientName =
@@ -24,10 +24,10 @@ export type AuthMethod = 'header' | 'form';
 
 /** OIDC provider configuration needed by the token exchange + UI flows. */
 export interface OidcProviderConfig {
-  readonly tokenEndpoint: string;
+  readonly tokenEndpoint:         string;
   readonly authorizationEndpoint: string;
-  readonly authMethod: AuthMethod;
-  readonly usePkce: boolean;
+  readonly authMethod:            AuthMethod;
+  readonly usePkce:               boolean;
 }
 
 /** Policy configuration for authorizers (audiences + optional group requirement). */
@@ -42,18 +42,18 @@ export interface AuthPolicyConfig {
 
 export interface AuthPoliciesConfig {
   readonly adminApi?: AuthPolicyConfig;
-  readonly jmapApi?: AuthPolicyConfig;
+  readonly jmapApi?:  AuthPolicyConfig;
 }
 
 /** Concrete, policy-split auth configuration used by mailbox components. */
 export interface MailboxAuthPolicies {
   readonly adminApi: AuthPolicyConfig;
-  readonly jmapApi: AuthPolicyConfig;
+  readonly jmapApi:  AuthPolicyConfig;
 }
 
 /** Shared OAuth client credentials (clientId + optional secret). */
 export interface OAuthClientCredentials {
-  readonly clientId: string;
+  readonly clientId:      string;
   readonly clientSecret?: SecretValue;
 }
 
@@ -66,22 +66,22 @@ export type OAuthFlow = 'authorization_code' | 'client_credentials';
  * Some providers treat audience and clientId as the same concept, while others don't.
  */
 export interface OAuthAuthorizationCodeClientConfig extends OAuthClientCredentials {
-  readonly flow: 'authorization_code';
+  readonly flow:               'authorization_code';
   readonly requestedAudience?: string;
-  readonly scopes: string[];
-  readonly redirectUri: string;
+  readonly scopes:             string[];
+  readonly redirectUri:        string;
 }
 
 export interface OAuthClientCredentialsClientConfig extends OAuthClientCredentials {
-  readonly flow: 'client_credentials';
+  readonly flow:               'client_credentials';
   readonly requestedAudience?: string;
-  readonly scopes: string[];
+  readonly scopes:             string[];
 }
 
 export type OAuthClientConfig = OAuthAuthorizationCodeClientConfig | OAuthClientCredentialsClientConfig;
 
 export interface OAuthClientsConfig {
-  readonly adminUi?: OAuthAuthorizationCodeClientConfig;
+  readonly adminUi?:   OAuthAuthorizationCodeClientConfig;
   readonly webmailUi?: OAuthAuthorizationCodeClientConfig;
 }
 
@@ -89,17 +89,17 @@ export interface OAuthClientsConfig {
 
 export type GenerateClientParams =
   | {
-    flow: 'authorization_code';
-    name: string;
-    groups?: string[];
-    permissions: Permission[];
+    flow:         'authorization_code';
+    name:         string;
+    groups?:      string[];
+    permissions:  Permission[];
     callbackUrls: string[];
-    logoutUrls: string[];
+    logoutUrls:   string[];
   }
   | {
-    flow: 'client_credentials';
-    name: string;
-    groups?: string[];
+    flow:        'client_credentials';
+    name:        string;
+    groups?:     string[];
     permissions: Permission[];
   };
 
@@ -109,22 +109,22 @@ export type GenerateClientParams =
  */
 export interface AuthClientConfig extends OAuthClientCredentials {
   readonly requestScopeList: string[];
-  readonly groups: string[];
+  readonly groups:           string[];
 }
 
 /** Parameters for provisioning an OAuth client that may call the Admin API. */
 export interface ProvisionAdminApiClientParams {
-  readonly name: string;
+  readonly name:         string;
   readonly callbackUrls: string[];
-  readonly logoutUrls: string[];
+  readonly logoutUrls:   string[];
 }
 
 /** Parameters for provisioning an OAuth client that may call the JMAP API. */
 export interface ProvisionJmapApiClientParams {
-  readonly name: string;
+  readonly name:         string;
   readonly callbackUrls: string[];
-  readonly logoutUrls: string[];
-  readonly permissions: Permission[];
+  readonly logoutUrls:   string[];
+  readonly permissions:  Permission[];
 }
 
 /**
@@ -136,12 +136,12 @@ export interface ProvisionJmapApiClientParams {
  *   because callback/logout URLs are not known up-front.
  */
 export interface IMailboxAuthProviderBase {
-  readonly issuer: string;
-  readonly tokenEndpoint: string;
+  readonly issuer:                string;
+  readonly tokenEndpoint:         string;
   readonly authorizationEndpoint: string;
-  readonly authMethod: AuthMethod;
-  readonly usePkce: boolean;
-  readonly scopeMap: { [key: string]: Permission[] };
+  readonly authMethod:            AuthMethod;
+  readonly usePkce:               boolean;
+  readonly scopeMap:              { [key: string]: Permission[] };
 
   /** Policy configuration consumed by authorizers (audiences + optional group requirement). */
   readonly policies: MailboxAuthPolicies;
@@ -160,7 +160,7 @@ export type MailboxRole = 'admin' | 'user';
 /** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
 export interface MailboxAuthorizationConfig {
   readonly adminGroups: string[];
-  readonly userGroups: string[];
+  readonly userGroups:  string[];
 }
 
 /** Optional hook for providers to publish an authorization mapping (e.g. which groups grant admin). */

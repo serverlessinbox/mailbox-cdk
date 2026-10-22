@@ -70,10 +70,10 @@ describe('handlers — starter config invalid', () => {
     acmMock.on(DeleteCertificateCommand).resolves({});
 
     const output = await workerHandler({
-      removalType: 'cert',
-      certArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test',
+      removalType:   'cert',
+      certArn:       'arn:aws:acm:us-east-1:123456789012:certificate/test',
       rootStackName: 'test-stack',
-      rootStackId: 'guid-1',
+      rootStackId:   'guid-1',
     });
 
     expect(output).toEqual({ status: 'SUCCESS' });

@@ -27,7 +27,7 @@ describe('CertificateRemoval', () => {
   const ownedById            = { StringEquals: { [idKey]: stackGuid } };
   const ownedByNameWithoutId = {
     StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null: { [idKey]: 'true' },
+    Null:         { [idKey]: 'true' },
   };
 
   it('reads certificates unconditioned and deletes them only when the root stack owns them, by id or by name without an id tag', () => {
@@ -37,8 +37,8 @@ describe('CertificateRemoval', () => {
 
     expect(statements).toEqual([
       {
-        Action: ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
-        Effect: 'Allow',
+        Action:   ['acm:DescribeCertificate', 'acm:ListTagsForCertificate'],
+        Effect:   'Allow',
         Resource: anyCertificate,
       },
       { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: ownedById },

@@ -25,10 +25,10 @@ function synthWorker(): Template {
   new MailboxDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
-    dataStackArn: DATA_STACK_ARN,
-    dataStackName: 'test-stack-data',
+    dataStackArn:      DATA_STACK_ARN,
+    dataStackName:     'test-stack-data',
     templateObjectArn: TEMPLATE_OBJECT_ARN,
-    nameBase: 'test-stack-data',
+    nameBase:          'test-stack-data',
   });
   return Template.fromStack(stack);
 }

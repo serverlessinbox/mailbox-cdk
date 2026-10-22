@@ -18,17 +18,17 @@ describe('IdpUserMapper', () => {
   describe('fromListedUser', () => {
     it('maps every field of a listed user', () => {
       const user = mapper.fromListedUser({
-        Username: 'alice',
-        Enabled: true,
-        UserStatus: 'CONFIRMED',
-        UserCreateDate: CREATED,
+        Username:             'alice',
+        Enabled:              true,
+        UserStatus:           'CONFIRMED',
+        UserCreateDate:       CREATED,
         UserLastModifiedDate: MODIFIED,
-        Attributes: [{ Name: 'email', Value: 'alice@example.com' }],
+        Attributes:           [{ Name: 'email', Value: 'alice@example.com' }],
       });
 
       expect(user).toMatchObject({
-        username: 'alice',
-        enabled: true,
+        username:   'alice',
+        enabled:    true,
         userStatus: 'CONFIRMED',
         attributes: { email: 'alice@example.com' },
       });
@@ -47,7 +47,7 @@ describe('IdpUserMapper', () => {
 
     it('keeps only the attributes that have a name and a string value', () => {
       const user = mapper.fromListedUser({
-        Username: 'alice',
+        Username:   'alice',
         Attributes: [{ Name: 'email', Value: 'alice@example.com' }, { Name: 'nickname' }, { Name: '', Value: 'unnamed' }],
       });
 
@@ -59,19 +59,19 @@ describe('IdpUserMapper', () => {
     it('maps every field of a fetched user, reading its attributes from UserAttributes', () => {
       const user = mapper.fromFetchedUser(
         {
-          Username: 'alice',
-          Enabled: false,
-          UserStatus: 'FORCE_CHANGE_PASSWORD',
-          UserCreateDate: CREATED,
+          Username:             'alice',
+          Enabled:              false,
+          UserStatus:           'FORCE_CHANGE_PASSWORD',
+          UserCreateDate:       CREATED,
           UserLastModifiedDate: MODIFIED,
-          UserAttributes: [{ Name: 'sub', Value: 'sub-1' }],
+          UserAttributes:       [{ Name: 'sub', Value: 'sub-1' }],
         },
         toUsername('requested'),
       );
 
       expect(user).toMatchObject({
-        username: 'alice',
-        enabled: false,
+        username:   'alice',
+        enabled:    false,
         userStatus: 'FORCE_CHANGE_PASSWORD',
         attributes: { sub: 'sub-1' },
       });

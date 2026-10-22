@@ -25,7 +25,7 @@ export interface MailboxEdgeConstructProps {
   readonly hostedZone?: route53.IHostedZone;
 
   /** Alternative to hostedZone: import hosted zone by attributes (token-safe). */
-  readonly hostedZoneId?: string;
+  readonly hostedZoneId?:   string;
   readonly hostedZoneName?: string;
 
   /** S3 bucket containing artifacts */
@@ -77,7 +77,7 @@ export class MailboxEdgeConstruct extends Construct {
       ?? (props.hostedZoneId !== undefined && props.hostedZoneName !== undefined
         ? route53.HostedZone.fromHostedZoneAttributes(this, 'hosted-zone', {
           hostedZoneId: props.hostedZoneId,
-          zoneName: props.hostedZoneName,
+          zoneName:     props.hostedZoneName,
         })
         : undefined);
 
@@ -90,9 +90,9 @@ export class MailboxEdgeConstruct extends Construct {
     // Uses CfnCertificate (L1) with native DNS validation so CloudFormation handles the
     // Route53 record creation without a CDK bootstrap custom resource.
     this.certificate = new acm.CfnCertificate(this, 'edge-certificate', {
-      domainName: webmail,
+      domainName:              webmail,
       subjectAlternativeNames: [admin, auth, cdn],
-      validationMethod: 'DNS',
+      validationMethod:        'DNS',
       domainValidationOptions: [
         { domainName: webmail, hostedZoneId: hostedZone.hostedZoneId },
         { domainName: admin,   hostedZoneId: hostedZone.hostedZoneId },
@@ -117,7 +117,7 @@ export class MailboxEdgeConstruct extends Construct {
     const jmapBlobDownloadFunction = new JmapBlobDownloadLambda(this, 'jmap-blob-download', {
       artifactBucket,
       artifact: props.jmapBlobDownloadReference,
-      role: jmapBlobDownloadRole,
+      role:     jmapBlobDownloadRole,
       // Lambda@Edge sends logs to the SAME custom group name in every invocation region (no
       // Region prefix). In the home region that name already belongs to the CFN-created "jmap"
       // pipeline group, so home-region edge logs merge into it; other regions get same-named,

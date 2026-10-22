@@ -19,12 +19,12 @@ const ROOT_B = path.join(__dirname, 'fixtures', 'root-b');
 
 function managedLambda(overrides: Partial<ManagedLambda> = {}): ManagedLambda {
   return {
-    logicalId: 'FixtureLambda',
-    artifactName: 'answers',
-    packageName: 'fixture-package',
+    logicalId:      'FixtureLambda',
+    artifactName:   'answers',
+    packageName:    'fixture-package',
     autoUpdateType: 'code',
-    handlerExport: 'handler',
-    environment: {},
+    handlerExport:  'handler',
+    environment:    {},
     ...overrides,
   };
 }
@@ -39,7 +39,7 @@ function taggedFunction(stack: Stack, id: string, tags: Record<string, string>, 
   const fn = new lambda.Function(stack, id, {
     runtime: lambda.Runtime.NODEJS_24_X,
     handler: 'index.handler',
-    code: lambda.Code.fromInline('exports.handler = async () => {};'),
+    code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     environment,
   });
   for (const [key, value] of Object.entries(tags)) {
@@ -55,7 +55,7 @@ describe('managedLambdasOf', () => {
         'managed',
         {
           'serverless-inbox:auto-update-type': 'edge',
-          'serverless-inbox:artifact-name': 'answers',
+          'serverless-inbox:artifact-name':    'answers',
           'serverless-inbox:artifact-package': 'fixture-package',
         },
         { FIXTURE_FLAG: 'on' },
@@ -64,11 +64,11 @@ describe('managedLambdasOf', () => {
 
     expect(managedLambdasOf(template)).toEqual([
       expect.objectContaining({
-        artifactName: 'answers',
-        packageName: 'fixture-package',
+        artifactName:   'answers',
+        packageName:    'fixture-package',
         autoUpdateType: 'edge',
-        handlerExport: 'handler',
-        environment: { FIXTURE_FLAG: 'on' },
+        handlerExport:  'handler',
+        environment:    { FIXTURE_FLAG: 'on' },
       }),
     ]);
   });
@@ -77,7 +77,7 @@ describe('managedLambdasOf', () => {
     const template = synthesize((stack) => {
       taggedFunction(stack, 'unmanaged', {
         'serverless-inbox:auto-update-type': 'none',
-        'serverless-inbox:artifact-name': 'answers',
+        'serverless-inbox:artifact-name':    'answers',
         'serverless-inbox:artifact-package': 'fixture-package',
       });
     });

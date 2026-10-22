@@ -1,3 +1,4 @@
+import ts from 'typescript-eslint';
 import base from './eslint.config.mjs';
 import { boundaryConfig } from './eslint.boundary.mjs';
 import { modelConfig } from './eslint.model.mjs';
@@ -20,4 +21,15 @@ const scopedBase = base.map((entry) => {
   };
 });
 
-export default [...scopedBase, ...boundaryConfig, ...modelConfig];
+// The alignment rule applies to every package, joined or not. It reuses the base `custom`
+// plugin object because flat config rejects a second, different object under one name.
+const customPlugin = base.find((entry) => entry.plugins && entry.plugins.custom).plugins.custom;
+
+const alignEverywhere = {
+  files: ['**/*.ts'],
+  languageOptions: { parser: ts.parser },
+  plugins: { custom: customPlugin },
+  rules: { 'custom/align': 'error' },
+};
+
+export default [...scopedBase, alignEverywhere, ...boundaryConfig, ...modelConfig];

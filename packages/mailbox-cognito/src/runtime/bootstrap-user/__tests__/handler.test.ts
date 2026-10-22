@@ -30,11 +30,11 @@ jest.mock('https', () => ({
   request: (...[, onResponse]: [unknown, (res: { statusCode: number; headers: Record<string, string> }) => void]) => {
     const chunks: string[] = [];
     return {
-      on: () => undefined,
+      on:    () => undefined,
       write: (chunk: string) => {
         chunks.push(chunk);
       },
-      end: () => {
+      end:   () => {
         mockSentResponseBodies.push(chunks.join(''));
         onResponse({ statusCode: 200, headers: {} });
       },
@@ -43,9 +43,9 @@ jest.mock('https', () => ({
 }));
 
 const isCfnResponse = t.isPartial({
-  Status: t.isEnum(['SUCCESS', 'FAILED']),
-  Reason: t.isOptional(t.isString()),
-  Data: t.isOptional(t.isObject({ temporaryPassword: t.isOptional(t.isString()) })),
+  Status:             t.isEnum(['SUCCESS', 'FAILED']),
+  Reason:             t.isOptional(t.isString()),
+  Data:               t.isOptional(t.isObject({ temporaryPassword: t.isOptional(t.isString()) })),
   PhysicalResourceId: t.isString(),
 });
 type CfnResponse = t.InferType<typeof isCfnResponse>;
@@ -54,17 +54,17 @@ const RESPONSE_URL = 'https://cloudformation-custom-resource-response.example.co
 
 const context: Context = {
   callbackWaitsForEmptyEventLoop: false,
-  functionName: 'bootstrap-user',
-  functionVersion: '$LATEST',
-  invokedFunctionArn: FUNCTION_ARN,
-  memoryLimitInMB: '256',
-  awsRequestId: 'aws-request-id',
-  logGroupName: '/aws/lambda/bootstrap-user',
-  logStreamName: 'log-stream',
-  getRemainingTimeInMillis: () => 60000,
-  done: () => undefined,
-  fail: () => undefined,
-  succeed: () => undefined,
+  functionName:                   'bootstrap-user',
+  functionVersion:                '$LATEST',
+  invokedFunctionArn:             FUNCTION_ARN,
+  memoryLimitInMB:                '256',
+  awsRequestId:                   'aws-request-id',
+  logGroupName:                   '/aws/lambda/bootstrap-user',
+  logStreamName:                  'log-stream',
+  getRemainingTimeInMillis:       () => 60000,
+  done:                           () => undefined,
+  fail:                           () => undefined,
+  succeed:                        () => undefined,
 };
 
 type ResourceProperties = CloudFormationCustomResourceEvent['ResourceProperties'];
@@ -72,12 +72,12 @@ type ResourceProperties = CloudFormationCustomResourceEvent['ResourceProperties'
 /** The event CloudFormation sends for the resource: the request plus the response URL and the keys of the resource. */
 function cfnEvent(requestType: 'Create' | 'Update' | 'Delete', resourceProperties: ResourceProperties = templateProperties()): CloudFormationCustomResourceEvent {
   const common = {
-    ServiceToken: FUNCTION_ARN,
-    ResponseURL: RESPONSE_URL,
-    StackId: STACK_ID,
-    RequestId: 'request-id-1',
+    ServiceToken:      FUNCTION_ARN,
+    ResponseURL:       RESPONSE_URL,
+    StackId:           STACK_ID,
+    RequestId:         'request-id-1',
     LogicalResourceId: 'BootstrapUserResource',
-    ResourceType: 'Custom::CognitoBootstrapUser',
+    ResourceType:      'Custom::CognitoBootstrapUser',
   };
   switch (requestType) {
     case 'Create':
@@ -85,9 +85,9 @@ function cfnEvent(requestType: 'Create' | 'Update' | 'Delete', resourcePropertie
     case 'Update':
       return {
         ...common,
-        RequestType: 'Update',
-        PhysicalResourceId: PHYSICAL_RESOURCE_ID,
-        ResourceProperties: resourceProperties,
+        RequestType:           'Update',
+        PhysicalResourceId:    PHYSICAL_RESOURCE_ID,
+        ResourceProperties:    resourceProperties,
         OldResourceProperties: resourceProperties,
       };
     case 'Delete':
@@ -203,9 +203,9 @@ describe('bootstrap-user handler', () => {
       const response = await invoke(loadHandlerWithBadConfig(), cfnEvent('Delete'));
 
       expect(response).toMatchObject({
-        Status: 'SUCCESS',
+        Status:             'SUCCESS',
         PhysicalResourceId: PHYSICAL_RESOURCE_ID,
-        Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
+        Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
       });
     });
   });
@@ -215,7 +215,7 @@ describe('bootstrap-user handler', () => {
       const response = await invoke(handler, cfnEvent('Create', templateProperties({ username: 'testadmin' })));
 
       expect(response).toMatchObject({
-        Status: 'SUCCESS',
+        Status:             'SUCCESS',
         PhysicalResourceId: `BootstrapUser:${USER_POOL_ID}:testadmin`,
       });
       expect(response.Data?.temporaryPassword).toBe(cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.TemporaryPassword);
@@ -233,9 +233,9 @@ describe('bootstrap-user handler', () => {
       const response = await invoke(handler, cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
 
       expect(response).toMatchObject({
-        Status: 'SUCCESS',
+        Status:             'SUCCESS',
         PhysicalResourceId: PHYSICAL_RESOURCE_ID,
-        Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
+        Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
       });
     });
 

@@ -16,7 +16,7 @@ import { DataOverrideResolverLambda }           from '../data-override-resolver-
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -24,7 +24,7 @@ function createStack(): cdk.Stack {
 function resolverWithPins(stack: cdk.Stack, packages: Record<string, ArtifactPin>): PinnedArtifactResolver {
   return new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
@@ -40,8 +40,8 @@ describe('DataOverrideResolverLambda', () => {
 
     expect(statements).toEqual([
       {
-        Action: 'dynamodb:DescribeTable',
-        Effect: 'Allow',
+        Action:   'dynamodb:DescribeTable',
+        Effect:   'Allow',
         Resource: {
           'Fn::Join': [
             '',

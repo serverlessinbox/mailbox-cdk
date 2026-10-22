@@ -52,9 +52,9 @@ describe('HmacVerifier', () => {
       const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'https://issuer.example.com', 'client-1', ['acc-1', 'acc-2']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toEqual({
-        tenantId: 'tenant-1',
-        issuer: 'https://issuer.example.com',
-        audience: 'client-1',
+        tenantId:   'tenant-1',
+        issuer:     'https://issuer.example.com',
+        audience:   'client-1',
         accountIds: ['acc-1', 'acc-2'],
       });
     });
@@ -66,7 +66,7 @@ describe('HmacVerifier', () => {
 
       expect(dynamodb.commandCalls(GetItemCommand)[0].args[0].input).toEqual({
         TableName: AUTH_KEY_STORE_TABLE,
-        Key: { pk: { S: 'hmac' }, sk: { S: 'blob-url-signing' } },
+        Key:       { pk: { S: 'hmac' }, sk: { S: 'blob-url-signing' } },
       });
     });
 

@@ -18,39 +18,39 @@ function encode(value: unknown): Uint8Array & { transformToString(encoding?: str
 
 /** The fields of a request to `identity-provisioner` that a test reads. */
 const isSentRequest = t.isPartial({
-  kind: t.isString(),
+  kind:     t.isString(),
   tenantId: t.isOptional(t.isString()),
   clientId: t.isOptional(t.isString()),
-  scope: t.isOptional(t.isString()),
+  scope:    t.isOptional(t.isString()),
 });
 export type SentRequest = t.InferType<typeof isSentRequest>;
 
 /** What the faked `identity-provisioner` answers per request kind; a kind left out gets the answer of a registration that proceeds. An `Error` is thrown by the invoke. */
 export interface IdentityProvisionerAnswers {
   readonly resolveTenant?: unknown;
-  readonly dcrCheck?: unknown;
-  readonly dcrPersist?: unknown;
+  readonly dcrCheck?:      unknown;
+  readonly dcrPersist?:    unknown;
 }
 
 /** The `POST /oauth/register` event of API Gateway for a request body that is sent as it is. */
 export function rawRequestEvent(body: string | undefined, isBase64Encoded = false): APIGatewayProxyEventV2 {
   return {
-    version: '2.0',
-    routeKey: 'POST /oauth/register',
-    rawPath: '/oauth/register',
+    version:        '2.0',
+    routeKey:       'POST /oauth/register',
+    rawPath:        '/oauth/register',
     rawQueryString: '',
-    headers: {},
+    headers:        {},
     requestContext: {
-      accountId: '123456789012',
-      apiId: 'api-id',
-      domainName: 'api.example.com',
+      accountId:    '123456789012',
+      apiId:        'api-id',
+      domainName:   'api.example.com',
       domainPrefix: 'api',
-      http: { method: 'POST', path: '/oauth/register', protocol: 'HTTP/1.1', sourceIp: '203.0.113.1', userAgent: 'test' },
-      requestId: 'request-id',
-      routeKey: 'POST /oauth/register',
-      stage: '$default',
-      time: '01/Jan/2026:00:00:00 +0000',
-      timeEpoch: 1767225600000,
+      http:         { method: 'POST', path: '/oauth/register', protocol: 'HTTP/1.1', sourceIp: '203.0.113.1', userAgent: 'test' },
+      requestId:    'request-id',
+      routeKey:     'POST /oauth/register',
+      stage:        '$default',
+      time:         '01/Jan/2026:00:00:00 +0000',
+      timeEpoch:    1767225600000,
     },
     body,
     isBase64Encoded,

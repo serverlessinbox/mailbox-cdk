@@ -21,15 +21,15 @@ describe('CognitoBootstrapUserLambda', () => {
 
   beforeEach(() => {
     const stack            = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const artifactResolver = new PinnedArtifactResolver({
-      packages: {
+      packages:         {
         'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-        'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        'mailbox-cognito':    { version: '1.0.0', zone: ArtifactZone.REGIONAL },
       },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 

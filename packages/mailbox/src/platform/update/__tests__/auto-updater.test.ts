@@ -24,38 +24,38 @@ import type { AutoUpdaterProps }                          from '../auto-updater'
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',
-  packages: {
-    'mailbox-go': { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+  packages:   {
+    'mailbox-go':         { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
     'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
-    'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+    'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
+    'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
     'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
   },
 };
 
 interface UpdaterFixture {
-  readonly stack: Stack;
+  readonly stack:       Stack;
   readonly autoUpdater: AutoUpdater;
 }
 
 interface FunctionResource {
   readonly Properties: {
-    readonly Role: unknown;
+    readonly Role:         unknown;
     readonly Environment?: { readonly Variables: Record<string, unknown> };
-    readonly Tags?: Array<{ Key: string; Value: string }>;
+    readonly Tags?:        Array<{ Key: string; Value: string }>;
   };
 }
 
 interface UpdaterFunction {
   readonly logicalId: string;
-  readonly resource: FunctionResource;
+  readonly resource:  FunctionResource;
 }
 
 function build(props?: AutoUpdaterProps): UpdaterFixture {
   const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
   const stack = new Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   return { stack, autoUpdater: new AutoUpdater(stack, 'auto-updater', props) };
@@ -97,7 +97,7 @@ describe('AutoUpdater', () => {
 
       expect(resource.Properties.Environment?.Variables).toMatchObject({
         ROOT_STACK_TAG_VALUE: { Ref: 'AWS::StackName' },
-        ROOT_STACK_ID: { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] },
+        ROOT_STACK_ID:        { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] },
       });
     });
 
@@ -160,8 +160,8 @@ describe('AutoUpdater', () => {
       const template      = Template.fromStack(stack);
       const roleLogicalId = getAttLogicalId(updaterOf(template).resource.Properties.Role) ?? '';
       expect(statementsForRole(template, roleLogicalId)).toContainEqual({
-        Action: 's3:PutObject',
-        Effect: 'Allow',
+        Action:   's3:PutObject',
+        Effect:   'Allow',
         Resource: 'arn:aws:s3:::a-bucket/*',
       });
     });

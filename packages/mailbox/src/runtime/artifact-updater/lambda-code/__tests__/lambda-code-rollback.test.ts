@@ -28,13 +28,13 @@ describe('LambdaCodeRollback', () => {
   const lambda                             = new LambdaClient({ region: 'us-east-1' });
   const target                             = lambdaTarget();
   const stale: StaleTarget                 = {
-    version: NEWER_VERSION,
-    parsed: new SemVer('1.2.4'),
+    version:  NEWER_VERSION,
+    parsed:   new SemVer('1.2.4'),
     deployed: new SemVer('1.2.3'),
   };
   const deployedLocation: ArtifactLocation = {
     bucket: ARTIFACT_BUCKET_US_EAST_1,
-    key: 'releases/v1.2.3/lambdas/mailbox-go.zip',
+    key:    'releases/v1.2.3/lambdas/mailbox-go.zip',
   };
 
   function newRollback(): LambdaCodeRollback {
@@ -60,14 +60,14 @@ describe('LambdaCodeRollback', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].args[0].input).toEqual({
       FunctionName: target.arn,
-      S3Bucket: 'mailbox-artifacts-us-east-1',
-      S3Key: 'releases/v1.2.3/lambdas/mailbox-go.zip',
+      S3Bucket:     'mailbox-artifacts-us-east-1',
+      S3Key:        'releases/v1.2.3/lambdas/mailbox-go.zip',
     });
     expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith('smoke test did not pass, rolling back', {
-      lambdaArn: target.arn,
-      verdict: 'unprobeable',
-      failedVersion: '1.2.4',
+      lambdaArn:       target.arn,
+      verdict:         'unprobeable',
+      failedVersion:   '1.2.4',
       deployedVersion: '1.2.3',
     });
   });
@@ -83,8 +83,8 @@ describe('LambdaCodeRollback', () => {
 
     expect(console.error).toHaveBeenCalledWith('rollback settle-wait failed', {
       lambdaArn: target.arn,
-      error: `Function code update failed for ${target.arn}: rollback rejected`,
-      note: 'function may still be on failed code; manual intervention may be needed',
+      error:     `Function code update failed for ${target.arn}: rollback rejected`,
+      note:      'function may still be on failed code; manual intervention may be needed',
     });
   });
 });

@@ -35,10 +35,10 @@ export class IdentityProvisionerClient {
   public async dcrCheck(params: DcrCheckParams): Promise<DcrCheckResponse> {
     return this.invoke(
       {
-        kind: 'DCR_CHECK',
-        tenantId: params.tenantId,
+        kind:         'DCR_CHECK',
+        tenantId:     params.tenantId,
         redirectUris: params.redirectUris,
-        clientName: params.clientName,
+        clientName:   params.clientName,
       },
       isDcrCheckResponse,
     );
@@ -47,12 +47,12 @@ export class IdentityProvisionerClient {
   public async dcrPersist(params: DcrPersistParams): Promise<DcrPersistResponse> {
     return this.invoke(
       {
-        kind: 'DCR_PERSIST',
-        tenantId: params.tenantId,
-        clientId: params.clientId,
+        kind:         'DCR_PERSIST',
+        tenantId:     params.tenantId,
+        clientId:     params.clientId,
         redirectUris: params.redirectUris,
-        clientName: params.clientName,
-        scope: params.scope,
+        clientName:   params.clientName,
+        scope:        params.scope,
       },
       isDcrPersistResponse,
     );
@@ -61,14 +61,14 @@ export class IdentityProvisionerClient {
   public async provisionUser(params: ProvisionUserParams): Promise<ProvisionUserResponse> {
     return this.invoke(
       {
-        kind: 'PROVISION_USER',
+        kind:     'PROVISION_USER',
         tenantId: params.tenantId,
         provider: 'cognito',
-        subject: params.subject,
+        subject:  params.subject,
         username: params.username,
-        email: params.email,
-        groups: params.groups,
-        isAdmin: params.isAdmin,
+        email:    params.email,
+        groups:   params.groups,
+        isAdmin:  params.isAdmin,
       },
       isProvisionUserResponse,
     );
@@ -78,7 +78,7 @@ export class IdentityProvisionerClient {
     const result = await this.lambda.send(
       new InvokeCommand({
         FunctionName: this.functionName,
-        Payload: Buffer.from(JSON.stringify(request)),
+        Payload:      Buffer.from(JSON.stringify(request)),
       }),
     );
 

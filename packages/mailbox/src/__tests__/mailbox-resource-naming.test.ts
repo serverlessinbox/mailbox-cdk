@@ -37,7 +37,7 @@ describe('Mailbox Resource Naming', () => {
 
       const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -83,7 +83,7 @@ describe('Mailbox Resource Naming', () => {
       // data-stack nameBase parameter).
       const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -111,7 +111,7 @@ describe('Mailbox Resource Naming', () => {
       // derived from the construct path rather than a pinned override.
       const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -141,7 +141,7 @@ describe('Mailbox Resource Naming', () => {
     function synthDataDeployerWorker(nameBase: string): Template {
       const app   = new App();
       const stack = new cdk.Stack(app, 'TestStack', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -150,15 +150,15 @@ describe('Mailbox Resource Naming', () => {
       };
       const artifactResolver                      = new PinnedArtifactResolver({
         packages,
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       });
 
       new MailboxDataDeployerWorkerLambda(stack, 'worker', {
         artifactResolver,
         stack,
-        dataStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*',
-        dataStackName: 'test-data',
+        dataStackArn:      'arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*',
+        dataStackName:     'test-data',
         templateObjectArn: 'arn:aws:s3:::test/template.json',
         nameBase, // Already contains 'data'
       });
@@ -206,7 +206,7 @@ describe('Mailbox Resource Naming', () => {
     it('should synthesize all DynamoDB table names with nameBase parameter reference', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -255,7 +255,7 @@ describe('Mailbox Resource Naming', () => {
     it('should synthesize blob-store bucket name with nameBase parameter reference', () => {
       const app   = new App();
       const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env: { account: '123456789012', region: 'us-west-2' },
+        env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 

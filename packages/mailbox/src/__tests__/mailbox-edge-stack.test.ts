@@ -36,7 +36,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: all taggable resources have correct root-stack tag', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -72,7 +72,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: declares a mandatory rootStackId parameter and tags its resources with it', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -100,7 +100,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -169,7 +169,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: contains no IAM policies', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -198,7 +198,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: Template.fromStack succeeds with sane resource counts', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -224,7 +224,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: template has expected parameter schema', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -246,7 +246,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: the Lambda@Edge function, its version and the version output are named jmap-blob-download', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -263,7 +263,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge stack: jmap-blob-download LoggingConfig.LogGroup resolves to a Ref on the logGroupName parameter', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -292,7 +292,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge Lambda functions do NOT use AWS::StackName for root-stack tag', () => {
       const app   = new App();
       const stack = new MailboxEdgeStack(app, 'TestMailboxEdge', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -344,7 +344,7 @@ describe('MailboxEdgeStack Template Synthesis', () => {
     it('edge deployer worker: grants only iam:PassRole on the concrete role ARN, no role authorship', () => {
       const app       = new App();
       const testStack = new cdk.Stack(app, 'TestEdgeDeployerStack', {
-        env: { account: '123456789012', region: 'us-east-1' },
+        env:         { account: '123456789012', region: 'us-east-1' },
         synthesizer: new BootstraplessSynthesizer(),
       });
 
@@ -353,20 +353,20 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       };
       const artifactResolver                      = new PinnedArtifactResolver({
         packages,
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: testStack.region,
       });
 
       new MailboxEdgeDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        stack: testStack,
-        edgeStackNamePattern: 'test-root-edge*',
-        edgeStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*',
-        rootStack: 'test-root',
-        rootStackId: 'test-guid',
-        templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        artifactObjectArns: ['arn:aws:s3:::bucket/lambdas/jmap-blob-download.zip'],
-        hostedZoneId: 'Z123456',
+        stack:                   testStack,
+        edgeStackNamePattern:    'test-root-edge*',
+        edgeStackArn:            'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*',
+        rootStack:               'test-root',
+        rootStackId:             'test-guid',
+        templateObjectArn:       'arn:aws:s3:::bucket/template.json',
+        artifactObjectArns:      ['arn:aws:s3:::bucket/lambdas/jmap-blob-download.zip'],
+        hostedZoneId:            'Z123456',
         jmapBlobDownloadRoleArn: 'arn:aws:iam::123456789012:role/test-role',
       });
 

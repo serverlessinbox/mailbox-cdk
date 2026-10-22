@@ -18,8 +18,8 @@ const isRegionCode = t.cascade(t.isString(), [t.matchesRegExp(/^[a-z]{2}(-[a-z]+
  */
 export interface Config {
   authKeyStoreTable: TableName;
-  region: Region;
-  jwtAlgorithms?: string[];
+  region:            Region;
+  jwtAlgorithms?:    string[];
 }
 
 /** The configuration read from the origin headers. */
@@ -71,7 +71,7 @@ export function extractConfig(request: CloudFrontRequest): ConfigReading {
   return {
     config: {
       authKeyStoreTable: toTableName(authKeyStoreTable),
-      region: toRegion(region),
+      region:            toRegion(region),
       jwtAlgorithms,
     },
   };

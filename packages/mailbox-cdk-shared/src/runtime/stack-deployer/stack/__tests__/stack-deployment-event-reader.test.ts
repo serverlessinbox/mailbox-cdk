@@ -60,9 +60,9 @@ describe('StackDeploymentEventReader', () => {
     it('reads the properties of a stack deployment', () => {
       const properties = stackDeployerProperties({
         ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:starter',
-        parameters: { nameBase: 'mail', skipped: undefined },
-        tags: { 'serverless-inbox:root-stack': 'root' },
-        region: US_EAST_1,
+        parameters:   { nameBase: 'mail', skipped: undefined },
+        tags:         { 'serverless-inbox:root-stack': 'root' },
+        region:       US_EAST_1,
       });
 
       expect(reader.readProperties(properties, 'Create')).toEqual(properties);
@@ -201,9 +201,9 @@ describe('StackDeploymentEventReader', () => {
       const answerable = reader.readAnswerableCfnRequest(cfnRequest({ RequestType: 'Delete' }));
 
       expect(answerable).toEqual({
-        cfn: { ResponseURL: RESPONSE_URL, StackId: STACK_ID, RequestId: REQUEST_ID, LogicalResourceId: LOGICAL_RESOURCE_ID, ResourceType: 'Custom::MailboxDataDeployer' },
+        cfn:         { ResponseURL: RESPONSE_URL, StackId: STACK_ID, RequestId: REQUEST_ID, LogicalResourceId: LOGICAL_RESOURCE_ID, ResourceType: 'Custom::MailboxDataDeployer' },
         requestType: 'Delete',
-        stackName: STACK_NAME,
+        stackName:   STACK_NAME,
       });
     });
 
@@ -211,10 +211,10 @@ describe('StackDeploymentEventReader', () => {
       const event = { ...cfnRequest(), PhysicalResourceId: 'sent-by-cloudformation', RequestType: 'Replace', ResourceProperties: { stackName: 7 } };
 
       expect(reader.readAnswerableCfnRequest(event)).toMatchObject({
-        cfn: { ResponseURL: RESPONSE_URL },
+        cfn:                { ResponseURL: RESPONSE_URL },
         physicalResourceId: 'sent-by-cloudformation',
-        requestType: undefined,
-        stackName: undefined,
+        requestType:        undefined,
+        stackName:          undefined,
       });
     });
 

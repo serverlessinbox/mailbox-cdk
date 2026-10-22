@@ -25,29 +25,29 @@ describe('formatArn', () => {
 describe('parseArn', () => {
   it('parses a bare resource id, with empty region and account as S3 ARNs have them', () => {
     expect(parseArn('arn:aws:s3:::mailbox-blobs')).toEqual({
-      partition: 'aws',
-      service: 's3',
-      region: '',
-      account: '',
-      resource: 'mailbox-blobs',
+      partition:    'aws',
+      service:      's3',
+      region:       '',
+      account:      '',
+      resource:     'mailbox-blobs',
       resourceType: undefined,
-      resourceId: 'mailbox-blobs',
+      resourceId:   'mailbox-blobs',
       resourceName: 'mailbox-blobs',
-      qualifier: undefined,
+      qualifier:    undefined,
     });
   });
 
   it('parses type/id', () => {
     expect(parseArn('arn:aws-cn:iam::123456789012:role/detector-role')).toEqual({
-      partition: 'aws-cn',
-      service: 'iam',
-      region: '',
-      account: '123456789012',
-      resource: 'role/detector-role',
+      partition:    'aws-cn',
+      service:      'iam',
+      region:       '',
+      account:      '123456789012',
+      resource:     'role/detector-role',
       resourceType: 'role',
-      resourceId: 'detector-role',
+      resourceId:   'detector-role',
       resourceName: 'detector-role',
-      qualifier: undefined,
+      qualifier:    undefined,
     });
   });
 
@@ -68,15 +68,15 @@ describe('parseArn', () => {
 
   it('parses type:id', () => {
     expect(parseArn('arn:aws:lambda:us-east-1:123456789012:function:jmap-blob-download')).toEqual({
-      partition: 'aws',
-      service: 'lambda',
-      region: 'us-east-1',
-      account: '123456789012',
-      resource: 'function:jmap-blob-download',
+      partition:    'aws',
+      service:      'lambda',
+      region:       'us-east-1',
+      account:      '123456789012',
+      resource:     'function:jmap-blob-download',
       resourceType: 'function',
-      resourceId: 'jmap-blob-download',
+      resourceId:   'jmap-blob-download',
       resourceName: 'jmap-blob-download',
-      qualifier: undefined,
+      qualifier:    undefined,
     });
   });
 

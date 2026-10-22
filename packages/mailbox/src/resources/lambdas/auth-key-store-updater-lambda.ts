@@ -6,20 +6,20 @@ import { AuthKeyRefreshSchedule }        from '../events/auth-key-refresh-schedu
 import type { IAuthKeyStoreTable }       from '../tables/auth-key-store-table';
 
 export interface AuthKeyStoreUpdaterLambdaProps {
-  issuers: string[];
+  issuers:           string[];
   authKeyStoreTable: IAuthKeyStoreTable;
-  artifactResolver: IArtifactResolver;
+  artifactResolver:  IArtifactResolver;
 }
 
 export class AuthKeyStoreUpdaterLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthKeyStoreUpdaterLambdaProps) {
     super(scope, id, {
-      lambdaId: 'auth-key-store-updater',
-      pipeline: 'infra',
+      lambdaId:         'auth-key-store-updater',
+      pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      memorySize: 128,
-      environment: {
-        ISSUERS: props.issuers.join(','),
+      memorySize:       128,
+      environment:      {
+        ISSUERS:                   props.issuers.join(','),
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
       },
     });

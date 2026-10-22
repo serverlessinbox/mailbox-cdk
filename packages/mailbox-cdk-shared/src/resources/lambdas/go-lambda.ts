@@ -19,8 +19,8 @@ export class GoLambda extends ArtifactLambda {
       memorySize: 640,
       ...props,
       packageName: 'mailbox-go',
-      runtime: Runtime.PROVIDED_AL2023,
-      handler: 'bootstrap',
+      runtime:     Runtime.PROVIDED_AL2023,
+      handler:     'bootstrap',
     });
   }
 }

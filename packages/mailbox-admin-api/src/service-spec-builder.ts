@@ -5,17 +5,17 @@ import type { HandlerContext, MethodSpec, ServiceSpec } from './service-spec';
 
 /** One method of a generated service: the name of the handler that serves it and the protobuf schemas of its messages. */
 export type GeneratedMethodRuntime = {
-  name: string;
-  handlerName: string;
-  requestSchema: DescMessage;
+  name:           string;
+  handlerName:    string;
+  requestSchema:  DescMessage;
   responseSchema: DescMessage;
 };
 
 /** A generated service: its route and its methods by name. */
 export type GeneratedServiceRuntime = {
-  basePath: string;
+  basePath:    string;
   serviceName: string;
-  methods: Record<string, GeneratedMethodRuntime>;
+  methods:     Record<string, GeneratedMethodRuntime>;
 };
 
 /** Overrides for how a generated service validates requests and serializes responses. */
@@ -51,7 +51,7 @@ export class ServiceSpecBuilder<TAuth = unknown, TAudit = unknown> {
     }
 
     return {
-      basePath: this.runtime.basePath,
+      basePath:    this.runtime.basePath,
       serviceName: this.runtime.serviceName,
       methods,
     };
@@ -59,10 +59,10 @@ export class ServiceSpecBuilder<TAuth = unknown, TAudit = unknown> {
 
   private buildMethod(methodName: string, meta: GeneratedMethodRuntime): MethodSpec<unknown, unknown, TAuth, TAudit> {
     return {
-      name: meta.name,
-      validate: this.options.getValidator?.(methodName, meta.handlerName) ?? ((req) => fromJson(meta.requestSchema, req)),
+      name:              meta.name,
+      validate:          this.options.getValidator?.(methodName, meta.handlerName) ?? ((req) => fromJson(meta.requestSchema, req)),
       serializeResponse: (resp) => this.serialize(methodName, meta, resp),
-      handler: (ctx, req) => this.callHandler(methodName, meta, ctx, req),
+      handler:           (ctx, req) => this.callHandler(methodName, meta, ctx, req),
     };
   }
 

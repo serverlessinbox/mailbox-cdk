@@ -76,13 +76,13 @@ export class Mailbox extends Construct {
       data,
       auth,
       addressing,
-      hostedZoneId: props.hostedZoneId,
+      hostedZoneId:         props.hostedZoneId,
       certificateOverrides: props.overrides?.certificates,
     });
 
     const apis = new ApisSection(this, 'apis', {
       artifactResolver,
-      authProvider: props.authProvider,
+      authProvider:           props.authProvider,
       adminApiAddonProviders: props.adminApiAddonProviders,
       data,
       auth,
@@ -93,10 +93,10 @@ export class Mailbox extends Construct {
 
     const ui = new UiSection(this, 'ui', {
       artifactResolver,
-      authProvider: props.authProvider,
-      enableAdminUi: enabledUis.adminUi,
-      enableWebmailUi: enabledUis.webmailUi,
-      mailboxDomains: addressing.domains,
+      authProvider:         props.authProvider,
+      enableAdminUi:        enabledUis.adminUi,
+      enableWebmailUi:      enabledUis.webmailUi,
+      mailboxDomains:       addressing.domains,
       certificateOverrides: props.overrides?.certificates,
       data,
       auth,
@@ -107,12 +107,12 @@ export class Mailbox extends Construct {
     const blobCdn = edge.addBlobCdn({ ui, extraAllowedOrigins: props.extraAllowedOrigins });
 
     const endpoints = apis.addEndpoints({
-      cdnHost: blobCdn.host,
+      cdnHost:        blobCdn.host,
       mailboxDomains: addressing.domains,
       edge,
       ui,
       extraAllowedOrigins: props.extraAllowedOrigins,
-      enableMcp: props.enableMcp,
+      enableMcp:           props.enableMcp,
     });
 
     email.enableWebSocketPublishing(endpoints.broadcaster);

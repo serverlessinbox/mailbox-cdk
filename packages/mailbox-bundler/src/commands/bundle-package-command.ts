@@ -12,12 +12,12 @@ export class BundlePackageCommand extends Command {
   static paths = [['package']];
   static usage = Command.Usage({
     description: 'Bundle a jsii CDK construct package using esbuild',
-    details: `
+    details:     `
       Bundles src/**/*.ts to lib/, marking jsii packages and local imports external, then emits .d.ts files via tsc --emitDeclarationOnly.
 
       The one required argument, \`package-folder\`, is the folder of the jsii package to bundle, relative to the current directory (an absolute path is not accepted). It is given once.
     `,
-    examples: [['Bundle current package', 'mailbox-bundler package .']],
+    examples:    [['Bundle current package', 'mailbox-bundler package .']],
   });
 
   packageFolder = Option.String({ required: true, name: 'package-folder' });

@@ -9,7 +9,7 @@ const BASE64URL_ALPHABET = /^[A-Za-z0-9_-]*$/;
 
 interface EntityAndPath {
   readonly entityId: string;
-  readonly path: string;
+  readonly path:     string;
 }
 
 /**
@@ -79,10 +79,10 @@ export class BlobIdFormat {
     }
 
     return {
-      type: 'email',
+      type:     'email',
       entityId: split.entityId,
-      path: split.path.slice(0, lastColonIdx),
-      mac: split.path.slice(lastColonIdx + 1),
+      path:     split.path.slice(0, lastColonIdx),
+      mac:      split.path.slice(lastColonIdx + 1),
     };
   }
 

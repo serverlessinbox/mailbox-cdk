@@ -17,7 +17,7 @@ const CONSUME = ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttribu
  * separate IAM action for the batch API, `sqs:SendMessage` authorizes both.
  */
 export const SqsActions = {
-  send: SEND,
+  send:    SEND,
   consume: CONSUME,
 } as const;
 
@@ -33,7 +33,7 @@ export type SqsAction = typeof SEND[number] | typeof CONSUME[number];
 export function grantQueueActions(grantee: IGrantable, queue: IQueue, actions: readonly SqsAction[]): Grant {
   const grant = Grant.addToPrincipal({
     grantee,
-    actions: [...actions],
+    actions:      [...actions],
     resourceArns: [queue.queueArn],
   });
 

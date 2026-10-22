@@ -34,24 +34,24 @@ export class ItemTable extends StackNamedTable {
   constructor(scope: Construct, props: DataTableProps) {
     super(scope, `item-table`, {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-      sortKey: { name: 'sk', type: AttributeType.STRING },
+      sortKey:      { name: 'sk', type: AttributeType.STRING },
       ...dataTableProps(scope, props),
       // billing mode inherited from BaseTable (on-demand by default)
     });
     this.addGlobalSecondaryIndex({
-      indexName: 'gsi1',
+      indexName:    'gsi1',
       partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
+      sortKey:      { name: 'gsi1sk', type: AttributeType.STRING },
     });
     this.addGlobalSecondaryIndex({
-      indexName: 'gsi2',
+      indexName:    'gsi2',
       partitionKey: { name: 'gsi2pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi2sk', type: AttributeType.STRING },
+      sortKey:      { name: 'gsi2sk', type: AttributeType.STRING },
     });
     this.addGlobalSecondaryIndex({
-      indexName: 'gsi3',
+      indexName:    'gsi3',
       partitionKey: { name: 'gsi3pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi3sk', type: AttributeType.STRING },
+      sortKey:      { name: 'gsi3sk', type: AttributeType.STRING },
     });
   }
 }

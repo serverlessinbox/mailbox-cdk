@@ -24,7 +24,7 @@ describe('MailboxDns', () => {
 
   function propsWith(overrides: Partial<MailboxDnsProps>): MailboxDnsProps {
     return {
-      names: new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }),
+      names:        new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }),
       cnameTargets: { admin: 'admin.cloudfront.net', jmap: 'jmap.execute-api.example.net' },
       ...overrides,
     };
@@ -34,7 +34,7 @@ describe('MailboxDns', () => {
     stack      = new cdk.Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' } });
     hostedZone = route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', {
       hostedZoneId: 'Z123',
-      zoneName: 'example.com',
+      zoneName:     'example.com',
     });
   });
 
@@ -46,14 +46,14 @@ describe('MailboxDns', () => {
 
       template.resourceCountIs('AWS::Route53::RecordSet', 3);
       template.hasResourceProperties('AWS::Route53::RecordSet', {
-        Type: 'CNAME',
-        Name: 'admin.mail.example.com.',
+        Type:            'CNAME',
+        Name:            'admin.mail.example.com.',
         ResourceRecords: ['admin.cloudfront.net'],
-        TTL: '300',
+        TTL:             '300',
       });
       template.hasResourceProperties('AWS::Route53::RecordSet', {
-        Type: 'CNAME',
-        Name: 'jmap.mail.example.com.',
+        Type:            'CNAME',
+        Name:            'jmap.mail.example.com.',
         ResourceRecords: ['jmap.execute-api.example.net'],
       });
     });
@@ -62,8 +62,8 @@ describe('MailboxDns', () => {
       new MailboxDns(stack, 'dns', propsWith({ hostedZone }));
 
       Template.fromStack(stack).hasResourceProperties('AWS::Route53::RecordSet', {
-        Type: 'SRV',
-        Name: '_jmap._tcp.example.com.',
+        Type:            'SRV',
+        Name:            '_jmap._tcp.example.com.',
         ResourceRecords: ['0 1 443 jmap.execute-api.example.net'],
       });
     });
@@ -95,9 +95,9 @@ describe('MailboxDns', () => {
       const sut = new MailboxDns(stack, 'dns', propsWith({}));
 
       expect(sut.manualModeRecords).toContainEqual({
-        name: 'admin.mail.example.com',
-        type: 'CNAME',
-        value: 'admin.cloudfront.net',
+        name:       'admin.mail.example.com',
+        type:       'CNAME',
+        value:      'admin.cloudfront.net',
         ttlSeconds: '300',
       });
       Template.fromStack(stack).resourceCountIs('AWS::Route53::RecordSet', 0);
@@ -107,9 +107,9 @@ describe('MailboxDns', () => {
       const sut = new MailboxDns(stack, 'dns', propsWith({}));
 
       expect(sut.manualModeRecords).toContainEqual({
-        name: '_jmap._tcp.example.com',
-        type: 'SRV',
-        value: '0 1 443 jmap.execute-api.example.net',
+        name:       '_jmap._tcp.example.com',
+        type:       'SRV',
+        value:      '0 1 443 jmap.execute-api.example.net',
         ttlSeconds: '300',
       });
     });

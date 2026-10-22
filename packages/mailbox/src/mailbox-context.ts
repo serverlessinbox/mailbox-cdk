@@ -40,7 +40,7 @@ export class MailboxContext {
   public static resolve(scope: Construct, props: MailboxContextProps): MailboxContext {
     const deployerType           = resolveDeployerType(scope);
     const vendorLink: VendorLink = {
-      vendorAccountIds: resolveVendorAccountIds(scope),
+      vendorAccountIds:    resolveVendorAccountIds(scope),
       stackIdentityTagKey: ServerlessInboxTagKeys.rootStack,
     };
 
@@ -54,7 +54,7 @@ export class MailboxContext {
     // is the main stack, so it is its own root-stack (the base helper also tags `stack`).
     applyServerlessInboxBaseTags(scope, {
       rootStack: Aws.STACK_NAME,
-      product: 'mailbox',
+      product:   'mailbox',
     });
 
     const encryptionPlan = resolveMailboxEncryptionPlan(scope, props.kms);

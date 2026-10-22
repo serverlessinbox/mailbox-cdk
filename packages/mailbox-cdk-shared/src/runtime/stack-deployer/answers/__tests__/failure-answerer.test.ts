@@ -121,9 +121,9 @@ describe('FailureAnswerer', () => {
       const [offered, target, reason] = rollback.answerSuccess.mock.calls[0];
       expect(offered).toMatchObject({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 });
       expect({ stackId: target.cfn.StackId, physicalResourceId: target.physicalResourceId, logStreamName: target.logStreamName }).toEqual({
-        stackId: STACK_ID,
+        stackId:            STACK_ID,
         physicalResourceId: STACK_NAME,
-        logStreamName: LOG_STREAM_NAME,
+        logStreamName:      LOG_STREAM_NAME,
       });
       expect(reason).toBe('Unexpected error: Boom: it broke');
       expect(endpoint.answers()).toEqual([]);

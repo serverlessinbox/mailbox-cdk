@@ -76,7 +76,7 @@ describe('handler', () => {
     });
 
     await expect(handler(downloadEvent({ 'x-auth-key-store-table': 'auth-key-store', 'x-region': 'eu-west-1' }))).resolves.toMatchObject({
-      status: '500',
+      status:            '500',
       statusDescription: 'Internal server error',
     });
     expect(flush).toHaveBeenCalledTimes(1);

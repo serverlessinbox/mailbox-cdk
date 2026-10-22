@@ -5,7 +5,7 @@ import { toTenantId, type QueueUrl, type TenantId } from '@serverlessinbox/mailb
 /** The message the audit writer reads from the audit events queue: an audit event that always names its tenant and actor. */
 type AuditWriterMessage = Omit<AuditEvent, 'tenantId' | 'actor'> & {
   readonly tenantId: TenantId;
-  readonly actor: unknown;
+  readonly actor:    unknown;
 };
 
 const UNKNOWN_TENANT = toTenantId('unknown');
@@ -27,16 +27,16 @@ export class SqsAuditEmitter {
 
   private toAuditWriterMessage(event: AuditEvent): AuditWriterMessage {
     return {
-      tenantId: event.tenantId === undefined ? UNKNOWN_TENANT : toTenantId(event.tenantId),
+      tenantId:   event.tenantId === undefined ? UNKNOWN_TENANT : toTenantId(event.tenantId),
       entityType: event.entityType,
-      entityId: event.entityId,
+      entityId:   event.entityId,
       entityName: event.entityName,
-      action: event.action,
-      status: event.status,
-      errorMsg: event.errorMsg,
-      actor: event.actor ?? SYSTEM_ACTOR,
-      changes: event.changes,
-      metadata: event.metadata,
+      action:     event.action,
+      status:     event.status,
+      errorMsg:   event.errorMsg,
+      actor:      event.actor ?? SYSTEM_ACTOR,
+      changes:    event.changes,
+      metadata:   event.metadata,
     };
   }
 

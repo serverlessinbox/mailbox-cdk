@@ -27,18 +27,18 @@ function newSection(stack: Stack): EmailSection {
 
   return new EmailSection(stack, 'email', {
     artifactResolver: new PinnedArtifactResolver({
-      packages: { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      packages:         { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     }),
-    data: {
-      configTable: dataTable('config-table'),
-      itemTable: dataTable('item-table'),
-      changelogTable: dataTable('changelog-table'),
+    data:             {
+      configTable:       dataTable('config-table'),
+      itemTable:         dataTable('item-table'),
+      changelogTable:    dataTable('changelog-table'),
       mailFeedbackTable: dataTable('mail-feedback-table'),
-      blobStore: new DataBlobStore(bucket),
-      blobStoreBucket: bucket,
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      blobStore:         new DataBlobStore(bucket),
+      blobStoreBucket:   bucket,
+      auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
     },
   });
 }
@@ -76,7 +76,7 @@ describe('EmailSection', () => {
     const section                                   = newSection(stack);
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
-      grantInvoke: () => undefined,
+      grantInvoke:  () => undefined,
     };
 
     section.enableWebSocketPublishing(broadcaster);

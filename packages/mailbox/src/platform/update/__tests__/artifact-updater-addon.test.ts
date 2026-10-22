@@ -26,7 +26,7 @@ describe('ArtifactUpdaterAddon', () => {
 
   beforeAll(() => {
     const stack      = new Stack(new App(), 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
     const updater    = inlineFunction(stack, 'updater');

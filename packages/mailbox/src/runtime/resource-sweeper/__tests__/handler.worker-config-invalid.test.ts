@@ -19,10 +19,10 @@ describe('workerHandler — worker config invalid', () => {
   it('throws the config problem without calling any AWS API', async () => {
     await expect(
       workerHandler({
-        removalType: 'cert',
-        certArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test',
+        removalType:   'cert',
+        certArn:       'arn:aws:acm:us-east-1:123456789012:certificate/test',
         rootStackName: 'test-stack',
-        rootStackId: 'guid-1',
+        rootStackId:   'guid-1',
       }),
     ).rejects.toThrow('SERVICE_NAME');
 

@@ -8,9 +8,9 @@ import { runWithInheritedStdio } from './utils/run-process';
 /** Everything needed to bundle one Lambda entry file into a zip holding a single `index.js`. */
 export interface LambdaZipSpec {
   readonly entryPath: string;
-  readonly outZip: string;
-  readonly target: string;
-  readonly minify: boolean;
+  readonly outZip:    string;
+  readonly target:    string;
+  readonly minify:    boolean;
   readonly externals: string[];
 }
 
@@ -27,14 +27,14 @@ export async function bundleLambdaZip(spec: LambdaZipSpec): Promise<void> {
     const outJs = join(tmpDir, 'index.js');
     await build({
       entryPoints: [spec.entryPath],
-      outfile: outJs,
-      platform: 'node',
-      target: spec.target,
-      format: 'cjs',
-      bundle: true,
-      sourcemap: false,
-      minify: spec.minify,
-      external: spec.externals,
+      outfile:     outJs,
+      platform:    'node',
+      target:      spec.target,
+      format:      'cjs',
+      bundle:      true,
+      sourcemap:   false,
+      minify:      spec.minify,
+      external:    spec.externals,
     });
     await rm(spec.outZip, { force: true });
     const exitCode = await runWithInheritedStdio('zip', ['-j', spec.outZip, outJs]);

@@ -17,10 +17,10 @@ import { MailboxDataOverrideResolver }          from '../mailbox-data-override-r
 const ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 const INCOMING_ARNS: Record<TableRole, string> = {
-  configTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/config',
-  itemTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/item',
-  changelogTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/changelog',
-  auditLogTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/audit',
+  configTable:       'arn:aws:dynamodb:us-west-2:123456789012:table/config',
+  itemTable:         'arn:aws:dynamodb:us-west-2:123456789012:table/item',
+  changelogTable:    'arn:aws:dynamodb:us-west-2:123456789012:table/changelog',
+  auditLogTable:     'arn:aws:dynamodb:us-west-2:123456789012:table/audit',
   mailFeedbackTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/feedback',
 };
 
@@ -32,17 +32,17 @@ describe('MailboxDataOverrideResolver', () => {
   beforeEach(() => {
     stack    = new cdk.Stack(new App(), 'TestStack', {
       synthesizer: new BootstraplessSynthesizer(),
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
     });
     resolver = new MailboxDataOverrideResolver(stack, 'override-resolver', {
-      configTableArn: INCOMING_ARNS.configTable,
-      itemTableArn: INCOMING_ARNS.itemTable,
-      changelogTableArn: INCOMING_ARNS.changelogTable,
-      auditLogTableArn: INCOMING_ARNS.auditLogTable,
+      configTableArn:       INCOMING_ARNS.configTable,
+      itemTableArn:         INCOMING_ARNS.itemTable,
+      changelogTableArn:    INCOMING_ARNS.changelogTable,
+      auditLogTableArn:     INCOMING_ARNS.auditLogTable,
       mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
-      artifactResolver: new PinnedArtifactResolver({
-        packages: { 'mailbox-cdk': { zone: ArtifactZone.REGIONAL, version: '1.0.0' } },
-        location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      artifactResolver:     new PinnedArtifactResolver({
+        packages:         { 'mailbox-cdk': { zone: ArtifactZone.REGIONAL, version: '1.0.0' } },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
     });
@@ -62,30 +62,30 @@ describe('MailboxDataOverrideResolver', () => {
 
     for (const role of ROLES) {
       template.hasResourceProperties('AWS::SSM::Parameter', {
-        Name: { 'Fn::Join': ['', ['/serverlessinbox/', { Ref: 'AWS::StackName' }, `/data-override/${role}`]] },
+        Name:  { 'Fn::Join': ['', ['/serverlessinbox/', { Ref: 'AWS::StackName' }, `/data-override/${role}`]] },
         Value: INCOMING_ARNS[role],
-        Type: 'String',
+        Type:  'String',
       });
     }
   });
 
   it('passes the resolver Lambda the incoming ARN and a dynamic reference to the override parameter per role', () => {
     const expected: Record<keyof ResourceProperties, unknown> = {
-      configTableIncomingArn: INCOMING_ARNS.configTable,
-      configTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('configTable') }, '}}']] },
-      itemTableIncomingArn: INCOMING_ARNS.itemTable,
-      itemTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('itemTable') }, '}}']] },
-      changelogTableIncomingArn: INCOMING_ARNS.changelogTable,
-      changelogTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('changelogTable') }, '}}']] },
-      auditLogTableIncomingArn: INCOMING_ARNS.auditLogTable,
-      auditLogTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('auditLogTable') }, '}}']] },
+      configTableIncomingArn:       INCOMING_ARNS.configTable,
+      configTableOverrideArn:       { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('configTable') }, '}}']] },
+      itemTableIncomingArn:         INCOMING_ARNS.itemTable,
+      itemTableOverrideArn:         { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('itemTable') }, '}}']] },
+      changelogTableIncomingArn:    INCOMING_ARNS.changelogTable,
+      changelogTableOverrideArn:    { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('changelogTable') }, '}}']] },
+      auditLogTableIncomingArn:     INCOMING_ARNS.auditLogTable,
+      auditLogTableOverrideArn:     { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('auditLogTable') }, '}}']] },
       mailFeedbackTableIncomingArn: INCOMING_ARNS.mailFeedbackTable,
       mailFeedbackTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('mailFeedbackTable') }, '}}']] },
     };
 
     template.resourceCountIs('Custom::MailboxDataOverrideResolver', 1);
     template.hasResourceProperties('Custom::MailboxDataOverrideResolver', Match.objectEquals({
-      ServiceToken: Match.anyValue(),
+      ServiceToken:   Match.anyValue(),
       ServiceTimeout: '120',
       ...expected,
     }));

@@ -18,11 +18,11 @@ describe('JsonBodyReader', () => {
     const body = '{"text":"a","count":1.5,"flag":false,"none":null,"list":[1,"b",[true,null],{"deep":{"x":[]}}]}';
 
     expect(reader.read(body)).toEqual({
-      text: 'a',
+      text:  'a',
       count: 1.5,
-      flag: false,
-      none: null,
-      list: [1, 'b', [true, null], { deep: { x: [] } }],
+      flag:  false,
+      none:  null,
+      list:  [1, 'b', [true, null], { deep: { x: [] } }],
     });
   });
 

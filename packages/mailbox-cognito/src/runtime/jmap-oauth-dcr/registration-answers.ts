@@ -5,12 +5,12 @@ export type RejectionStatus = 400 | 409 | 429 | 500;
 
 /** RFC 7591 §3.2.1 successful client information response: the fields this Lambda writes. */
 export interface ClientRegistrationResponse {
-  readonly client_id: string;
-  readonly client_id_issued_at: number;
-  readonly redirect_uris: string[];
+  readonly client_id:                  string;
+  readonly client_id_issued_at:        number;
+  readonly redirect_uris:              string[];
   readonly token_endpoint_auth_method: 'none';
-  readonly client_name: string;
-  readonly scope: string;
+  readonly client_name:                string;
+  readonly scope:                      string;
 }
 
 /**
@@ -24,7 +24,7 @@ export type ClientRegistrationError = 'invalid_redirect_uri' | 'invalid_client_m
 
 /** RFC 7591 §3.2.2 client registration error response. */
 export interface ClientRegistrationErrorResponse {
-  readonly error: ClientRegistrationError;
+  readonly error:              ClientRegistrationError;
   readonly error_description?: string;
 }
 
@@ -50,11 +50,11 @@ export class RegistrationAnswers {
     return {
       statusCode,
       headers: {
-        'content-type': 'application/json',
+        'content-type':  'application/json',
         'cache-control': 'no-store',
-        pragma: 'no-cache',
+        pragma:          'no-cache',
       },
-      body: JSON.stringify(body),
+      body:    JSON.stringify(body),
     };
   }
 }

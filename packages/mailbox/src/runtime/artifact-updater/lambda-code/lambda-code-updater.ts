@@ -64,10 +64,10 @@ export class LambdaCodeUpdater {
     location: ArtifactLocation,
   ): Promise<void> {
     this.logger.info('updating lambda code', {
-      lambdaArn: target.arn,
+      lambdaArn:      target.arn,
       artifactBucket: location.bucket,
-      artifactKey: location.key,
-      newVersion: stale.version,
+      artifactKey:    location.key,
+      newVersion:     stale.version,
     });
 
     await this.functionCode.update(scan.lambda, target.arn, location);
@@ -83,7 +83,7 @@ export class LambdaCodeUpdater {
     if (verdict === 'pass') {
       await this.functionCode.tagArtifactVersion(scan.lambda, target.arn, stale.version);
       this.logger.info('lambda updated', {
-        lambdaArn: target.arn,
+        lambdaArn:  target.arn,
         oldVersion: target.deployedVersion,
         newVersion: stale.version,
       });

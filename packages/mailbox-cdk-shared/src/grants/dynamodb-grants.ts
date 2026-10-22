@@ -10,8 +10,8 @@ const WRITE = ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']
  * `grantReadWriteData`: those also allow `Scan` and PartiQL (`ExecuteStatement` etc.).
  */
 export const DynamoDbActions = {
-  read: READ,
-  write: WRITE,
+  read:      READ,
+  write:     WRITE,
   readWrite: [...READ, ...WRITE],
 } as const;
 
@@ -26,7 +26,7 @@ export type DynamoDbAction = typeof READ[number] | typeof WRITE[number];
 export function grantTableActions(grantee: IGrantable, table: ITable, actions: readonly DynamoDbAction[]): Grant {
   return Grant.addToPrincipal({
     grantee,
-    actions: [...actions],
+    actions:      [...actions],
     resourceArns: [table.tableArn, `${table.tableArn}/index/*`],
   });
 }

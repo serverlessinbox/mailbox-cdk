@@ -30,8 +30,8 @@ const STACK_GUID                        = { 'Fn::Select': [2, { 'Fn::Split': ['/
 const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 interface SynthesizedDeployer {
-  readonly template: Template;
-  readonly templateUrl: string;
+  readonly template:          Template;
+  readonly templateUrl:       string;
   readonly templateObjectArn: string;
 }
 
@@ -39,13 +39,13 @@ function synthDeployer(props: Partial<MailboxDataDeployerProps> = {}): Synthesiz
   const { stack, artifactResolver } = newDeployerTestStack();
   new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
-    nameBase: 'test-name-base',
+    nameBase:     'test-name-base',
     deployerType: 'cdk',
     ...props,
   });
   return {
-    template: Template.fromStack(stack),
-    templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
+    template:          Template.fromStack(stack),
+    templateUrl:       stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
     templateObjectArn: stack.resolve(artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json')),
   };
 }
@@ -54,13 +54,13 @@ function synthGrantedDeployer(grant: (deployer: MailboxDataDeployer, grantee: ia
   const { stack, artifactResolver } = newDeployerTestStack();
   const deployer                    = new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
-    nameBase: 'test-name-base',
+    nameBase:     'test-name-base',
     deployerType: 'cdk',
   });
   grant(deployer, new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }));
   return {
-    template: Template.fromStack(stack),
-    templateUrl: stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
+    template:          Template.fromStack(stack),
+    templateUrl:       stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
     templateObjectArn: stack.resolve(artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json')),
   };
 }
@@ -77,9 +77,9 @@ describe('MailboxDataDeployer', () => {
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         templateUrl,
         preserveOnDelete: true,
-        parameters: {
-          nameBase: 'test-name-base',
-          rootStack: STACK_NAME_REF,
+        parameters:       {
+          nameBase:     'test-name-base',
+          rootStack:    STACK_NAME_REF,
           deployerType: 'marketplace',
         },
       });
@@ -104,7 +104,7 @@ describe('MailboxDataDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({ rootStackId: STACK_GUID }),
-        tags: Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
+        tags:       Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
       });
     });
 
@@ -113,9 +113,9 @@ describe('MailboxDataDeployer', () => {
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         tags: {
-          'serverless-inbox:product': 'mailbox',
+          'serverless-inbox:product':    'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
-          'serverless-inbox:stack': 'given-data',
+          'serverless-inbox:stack':      'given-data',
         },
       });
     });

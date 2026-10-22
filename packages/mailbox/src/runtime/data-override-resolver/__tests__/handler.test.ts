@@ -24,10 +24,10 @@ import { captureCfnResponse, createEvent, deleteEvent, lambdaContext, PROPERTIES
 jest.mock('https', () => ({ request: jest.fn() }));
 
 const RESOLVED: ResolvedTableArns = {
-  configTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/config',
-  itemTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/item',
-  changelogTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog',
-  auditLogTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog',
+  configTableArn:       'arn:aws:dynamodb:eu-west-1:123456789012:table/config',
+  itemTableArn:         'arn:aws:dynamodb:eu-west-1:123456789012:table/item',
+  changelogTableArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog',
+  auditLogTableArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog',
   mailFeedbackTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback',
 };
 

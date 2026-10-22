@@ -12,8 +12,8 @@ const isConditionValue = t.isOneOf([
 ]);
 
 const isPolicyStatement = t.isPartial({
-  Effect: t.isOptional(t.isEnum(['Allow', 'Deny'] as const)),
-  Action: t.isOneOf([t.isString(), t.isArray(t.isString())]),
+  Effect:    t.isOptional(t.isEnum(['Allow', 'Deny'] as const)),
+  Action:    t.isOneOf([t.isString(), t.isArray(t.isString())]),
   Condition: t.isOptional(t.isRecord(t.isRecord(isConditionValue))),
 });
 
@@ -22,9 +22,9 @@ const isPolicyDocument = t.isPartial({
 });
 
 const isPolicyProperties = t.isPartial({
-  PolicyName: t.isOptional(t.isString()),
+  PolicyName:     t.isOptional(t.isString()),
   PolicyDocument: isPolicyDocument,
-  Roles: t.isOptional(t.isArray(t.isOneOf([t.isString(), t.isPartial({ Ref: t.isOptional(t.isString()) })]))),
+  Roles:          t.isOptional(t.isArray(t.isOneOf([t.isString(), t.isPartial({ Ref: t.isOptional(t.isString()) })]))),
 });
 
 /** The properties of one synthesized `AWS::IAM::Policy`: its name, its document and the roles it is attached to. */

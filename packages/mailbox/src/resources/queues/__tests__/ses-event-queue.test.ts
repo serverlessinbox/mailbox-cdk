@@ -18,7 +18,7 @@ import { SesEventQueue }                 from '../ses-event-queue';
 function createStack(): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, 'TestStack', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }
@@ -41,7 +41,7 @@ describe('SesEventQueue', () => {
     new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'TestTopic') });
 
     Template.fromStack(stack).hasResourceProperties('AWS::SNS::Subscription', {
-      Protocol: 'sqs',
+      Protocol:           'sqs',
       RawMessageDelivery: true,
     });
   });
@@ -56,13 +56,13 @@ describe('SesEventQueue', () => {
       KeyPolicy: {
         Statement: Match.arrayWith([
           Match.objectEquals({
-            Action: ['kms:Decrypt', 'kms:Encrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'],
-            Effect: 'Allow',
+            Action:    ['kms:Decrypt', 'kms:Encrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'],
+            Effect:    'Allow',
             Principal: { Service: 'sns.amazonaws.com' },
-            Resource: '*',
+            Resource:  '*',
             Condition: {
               StringEquals: { 'aws:SourceAccount': { Ref: 'AWS::AccountId' } },
-              ArnEquals: { 'aws:SourceArn': stack.resolve(topic.topicArn) },
+              ArnEquals:    { 'aws:SourceArn': stack.resolve(topic.topicArn) },
             },
           }),
         ]),
@@ -84,12 +84,12 @@ describe('SesEventQueue', () => {
     const queueId  = stack.getLogicalId(sut.queue.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-            Effect: 'Allow',
+            Action:   ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
         ]),
@@ -116,17 +116,17 @@ describe('SesEventQueue', () => {
     const keyId    = stack.getLogicalId(key.node.defaultChild as cdk.CfnResource);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles: Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
-            Effect: 'Allow',
+            Action:   ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'],
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [queueId, 'Arn'] },
           }),
           Match.objectEquals({
-            Action: 'kms:Decrypt',
-            Effect: 'Allow',
+            Action:   'kms:Decrypt',
+            Effect:   'Allow',
             Resource: { 'Fn::GetAtt': [keyId, 'Arn'] },
           }),
         ]),

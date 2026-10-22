@@ -4,28 +4,28 @@
  */
 export type ApiGatewayV2EventLike = {
   [key: string]: unknown;
-  rawPath?: string;
-  body?: string | null;
-  headers?: Record<string, string | undefined>;
+  rawPath?:       string;
+  body?:          string | null;
+  headers?:       Record<string, string | undefined>;
   requestContext: {
     [key: string]: unknown;
-    requestId?: string;
-    http?: {
+    requestId?:  string;
+    http?:       {
       method?: string;
-      path?: string;
+      path?:   string;
     };
     authorizer?: {
       lambda?: unknown;
-      jwt?: unknown;
+      jwt?:    unknown;
     };
   };
 };
 
 /** The response shape API Gateway HTTP APIs (payload format 2.0) accept from a Lambda. */
 export type ApiGatewayV2ResultLike = {
-  statusCode: number;
-  headers?: Record<string, string>;
-  body?: string;
+  statusCode:       number;
+  headers?:         Record<string, string>;
+  body?:            string;
   isBase64Encoded?: boolean;
 };
 

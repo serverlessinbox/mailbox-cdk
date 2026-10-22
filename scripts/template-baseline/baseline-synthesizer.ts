@@ -52,16 +52,16 @@ export class BaselineSynthesizer {
   private createMailboxStack(): cdk.Stack {
     const app   = new App({
       context: {
-        'serverlessinbox:artifacts': {
+        'serverlessinbox:artifacts':         {
           bucketBase: 'baseline-artifacts',
-          packages: {
-            'mailbox-go': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
+          packages:   {
+            'mailbox-go':         { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
             'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-edge': { zone: 'edge', version: '1.0.0' },
-            'mailbox-admin-ui': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
+            'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
             'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cognito': { zone: 'regional', version: '1.0.0' },
+            'mailbox-cognito':    { zone: 'regional', version: '1.0.0' },
           },
         },
         'serverlessinbox:artifact_versions': {},
@@ -71,18 +71,18 @@ export class BaselineSynthesizer {
 
     const autoUpdater  = new AutoUpdater(stack, 'auto-updater');
     const authProvider = new MailboxUserPool(stack, 'user-pool', {
-      domain: { kind: 'cognito', cognitoDomainPrefix: 'baseline-auth' },
-      enableJmapOAuthDiscovery: true,
+      domain:                    { kind: 'cognito', cognitoDomainPrefix: 'baseline-auth' },
+      enableJmapOAuthDiscovery:  true,
       dynamicClientRegistration: DynamicClientRegistrationMode.ENABLED,
     });
     authProvider.addBootstrapUser({ username: 'baseline-admin', groups: ['admin'] });
     new Mailbox(stack, 'mailbox', {
       authProvider,
-      hostedZoneId: 'Z1234567890ABC',
-      enableMcp: true,
-      enableReceiving: 'on',
-      sendStackFailures: SendStackFailuresMode.ENABLED,
-      artifactResolver: autoUpdater,
+      hostedZoneId:           'Z1234567890ABC',
+      enableMcp:              true,
+      enableReceiving:        'on',
+      sendStackFailures:      SendStackFailuresMode.ENABLED,
+      artifactResolver:       autoUpdater,
       adminApiAddonProviders: [
         autoUpdater,
         new StackUpdateAddonProvider({ artifactResolver: autoUpdater, templateName: 'mailbox-standard', templateVersion: '1.0.0' }),
@@ -94,28 +94,28 @@ export class BaselineSynthesizer {
 
   private createEdgeStack(): cdk.Stack {
     return new MailboxEdgeStack(new App(), 'BaselineEdge', {
-      env: { account: BASELINE_ACCOUNT, region: EDGE_REGION },
+      env:         { account: BASELINE_ACCOUNT, region: EDGE_REGION },
       synthesizer: new BootstraplessSynthesizer(),
     });
   }
 
   private createDataStack(): cdk.Stack {
     return new MailboxDataStack(new App(), 'BaselineData', {
-      env: { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
+      env:         { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
       synthesizer: new BootstraplessSynthesizer(),
     });
   }
 
   private createCognitoDataStack(): cdk.Stack {
     return new MailboxCognitoDataStack(new App(), 'BaselineCognitoData', {
-      env: { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
+      env:         { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
       synthesizer: new BootstraplessSynthesizer(),
     });
   }
 
   private createStack(app: App, id: string, region: string): cdk.Stack {
     return new cdk.Stack(app, id, {
-      env: { account: BASELINE_ACCOUNT, region },
+      env:         { account: BASELINE_ACCOUNT, region },
       synthesizer: new BootstraplessSynthesizer(),
     });
   }

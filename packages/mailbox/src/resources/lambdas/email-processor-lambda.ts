@@ -10,12 +10,12 @@ import type { IEmailProcessingQueueConsumer } from '../queues/email-processing-q
 import type { IDataTable }                    from '../tables/data-tables';
 
 export interface EmailProcessorLambdaProps {
-  configTable: IDataTable;
-  itemTable: IDataTable;
-  changelogTable: IDataTable;
-  blobStore: IDataBlobStore;
+  configTable:          IDataTable;
+  itemTable:            IDataTable;
+  changelogTable:       IDataTable;
+  blobStore:            IDataBlobStore;
   emailProcessingQueue: IEmailProcessingQueueConsumer;
-  artifactResolver: IArtifactResolver;
+  artifactResolver:     IArtifactResolver;
 }
 
 /**
@@ -25,15 +25,15 @@ export interface EmailProcessorLambdaProps {
 export class EmailProcessorLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: EmailProcessorLambdaProps) {
     super(scope, id, {
-      lambdaId: 'email-processor',
-      pipeline: 'mail-in',
+      lambdaId:         'email-processor',
+      pipeline:         'mail-in',
       artifactResolver: props.artifactResolver,
-      timeout: Duration.minutes(1),
-      memorySize: 1024,
-      environment: {
-        BLOB_STORE_NAME: props.blobStore.bucketName,
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
+      timeout:          Duration.minutes(1),
+      memorySize:       1024,
+      environment:      {
+        BLOB_STORE_NAME:      props.blobStore.bucketName,
+        CONFIG_TABLE_NAME:    props.configTable.tableName,
+        ITEM_TABLE_NAME:      props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
       },
     });

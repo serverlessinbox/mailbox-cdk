@@ -11,15 +11,15 @@ export class BundleLambdaZipCommand extends Command {
   static paths = [['lambda-zip']];
   static usage = Command.Usage({
     description: 'Bundle a TS/JS Lambda entry into a zip containing a single index.js.',
-    examples: [['Bundle a Lambda', 'mailbox-bundler lambda-zip --entry src/handler.ts --out /tmp/handler.zip']],
+    examples:    [['Bundle a Lambda', 'mailbox-bundler lambda-zip --entry src/handler.ts --out /tmp/handler.zip']],
   });
 
   entry = Option.String('--entry', {
-    required: true,
+    required:    true,
     description: 'Path to the TypeScript or JavaScript Lambda entry file, relative to the current directory or absolute. Required; given once.',
   });
   out = Option.String('--out', {
-    required: true,
+    required:    true,
     description: 'Path of the zip to write, relative to the current directory or absolute. Missing folders are created and an existing zip is replaced. Required; given once.',
   });
   target = Option.String('--target', 'node24', {
@@ -35,9 +35,9 @@ export class BundleLambdaZipCommand extends Command {
   async execute(): Promise<void> {
     await bundleLambdaZip({
       entryPath: resolve(this.entry),
-      outZip: resolve(this.out),
-      target: this.target,
-      minify: this.minify,
+      outZip:    resolve(this.out),
+      target:    this.target,
+      minify:    this.minify,
       externals: this.parseExternals(),
     });
   }

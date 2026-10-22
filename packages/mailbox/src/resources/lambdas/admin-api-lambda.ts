@@ -14,16 +14,16 @@ import type { IDataTable }                                                      
 import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
 
 export interface AdminApiLambdaProps {
-  readonly configTable: IDataTable;
-  readonly itemTable: IDataTable;
-  readonly auditLogTable: IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly mailFeedbackTable: IDataTable;
-  readonly blobStore: IDataBlobStore;
+  readonly configTable:          IDataTable;
+  readonly itemTable:            IDataTable;
+  readonly auditLogTable:        IDataTable;
+  readonly changelogTable:       IDataTable;
+  readonly mailFeedbackTable:    IDataTable;
+  readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
-  readonly auditEventsQueue: IAuditEventsQueue;
-  readonly artifactResolver: IArtifactResolver;
-  readonly identityProvisioner: IIdentityProvisioner;
+  readonly auditEventsQueue:     IAuditEventsQueue;
+  readonly artifactResolver:     IArtifactResolver;
+  readonly identityProvisioner:  IIdentityProvisioner;
   /** Name of the SES receipt rule set. */
   readonly sesRuleSetName: string;
   /** SES configuration set name for outbound email tracking. */
@@ -42,27 +42,27 @@ export interface AdminApiLambdaProps {
 export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
-      lambdaId: 'admin-api',
-      pipeline: 'admin',
+      lambdaId:         'admin-api',
+      pipeline:         'admin',
       artifactResolver: props.artifactResolver,
-      memorySize: 640,
-      timeout: Duration.seconds(30),
-      environment: {
-        CONFIG_TABLE_NAME: props.configTable.tableName,
-        ITEM_TABLE_NAME: props.itemTable.tableName,
-        AUDIT_LOG_TABLE_NAME: props.auditLogTable.tableName,
-        AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
-        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        MAIL_FEEDBACK_TABLE_NAME: props.mailFeedbackTable.tableName,
-        BLOB_STORE_NAME: props.blobStore.bucketName,
-        EMAIL_SUBMISSION_QUEUE_URL: props.emailSubmissionQueue.queueUrl,
-        SES_CONFIG_SET_NAME: props.sesConfigSetName,
+      memorySize:       640,
+      timeout:          Duration.seconds(30),
+      environment:      {
+        CONFIG_TABLE_NAME:                  props.configTable.tableName,
+        ITEM_TABLE_NAME:                    props.itemTable.tableName,
+        AUDIT_LOG_TABLE_NAME:               props.auditLogTable.tableName,
+        AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
+        CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
+        MAIL_FEEDBACK_TABLE_NAME:           props.mailFeedbackTable.tableName,
+        BLOB_STORE_NAME:                    props.blobStore.bucketName,
+        EMAIL_SUBMISSION_QUEUE_URL:         props.emailSubmissionQueue.queueUrl,
+        SES_CONFIG_SET_NAME:                props.sesConfigSetName,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
-        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
-        STACK_IDENTITY_TAG_VALUE: Stack.of(scope).stackName,
-        STACK_IDENTITY_TAG_KEY: props.vendorLink.stackIdentityTagKey,
-        ROOT_STACK_ID: StackIdentity.guid,
-        SES_RULE_SET_NAME: props.sesRuleSetName,
+        SYSTEM_SENDER_ADDRESS:              props.systemSenderAddress,
+        STACK_IDENTITY_TAG_VALUE:           Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_KEY:             props.vendorLink.stackIdentityTagKey,
+        ROOT_STACK_ID:                      StackIdentity.guid,
+        SES_RULE_SET_NAME:                  props.sesRuleSetName,
       },
     });
 
@@ -102,14 +102,14 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
   private grantStatusAccess(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['lambda:GetAccountSettings', 'sts:GetCallerIdentity'],
+      actions:   ['lambda:GetAccountSettings', 'sts:GetCallerIdentity'],
       resources: ['*'],
     }));
   }
 
   private grantSesIdentityManagement(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: [
+      actions:   [
         'ses:CreateEmailIdentity',
         'ses:GetEmailIdentity',
         'ses:DeleteEmailIdentity',
@@ -128,8 +128,8 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(new PolicyStatement({
-        actions: ['ses:TagResource'],
-        resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+        actions:    ['ses:TagResource'],
+        resources:  [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
         conditions: {
           ...conditions,
           'ForAllValues:StringEquals': {
@@ -144,7 +144,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     // SendEmail authorizes against the configuration-set resource as well as the identity
     // resource (it does not bind only to `identity`), so both ARNs must be granted.
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:SendEmail'],
+      actions:   ['ses:SendEmail'],
       resources: [
         `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
         `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
@@ -155,7 +155,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   /** Account-level actions have no resource binding, so they stay on `*`. */
   private grantSesAccountReads(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:GetAccount', 'ses:GetSendStatistics', 'ses:ListEmailIdentities'],
+      actions:   ['ses:GetAccount', 'ses:GetSendStatistics', 'ses:ListEmailIdentities'],
       resources: ['*'],
     }));
   }
@@ -166,20 +166,20 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
    */
   private grantDkimAndDmarcRecordWrites(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['route53:ChangeResourceRecordSets'],
-      resources: ['arn:aws:route53:::hostedzone/*'],
+      actions:    ['route53:ChangeResourceRecordSets'],
+      resources:  ['arn:aws:route53:::hostedzone/*'],
       conditions: {
-        'ForAllValues:StringLike': {
+        'ForAllValues:StringLike':   {
           'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
         },
         'ForAllValues:StringEquals': {
           'route53:ChangeResourceRecordSetsRecordTypes': ['CNAME', 'TXT'],
-          'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
+          'route53:ChangeResourceRecordSetsActions':     ['UPSERT', 'DELETE'],
         },
-        Null: {
+        Null:                        {
           'route53:ChangeResourceRecordSetsNormalizedRecordNames': false,
-          'route53:ChangeResourceRecordSetsRecordTypes': false,
-          'route53:ChangeResourceRecordSetsActions': false,
+          'route53:ChangeResourceRecordSetsRecordTypes':           false,
+          'route53:ChangeResourceRecordSetsActions':               false,
         },
       },
     }));
@@ -192,16 +192,16 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
    */
   private grantApexRecordWrites(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['route53:ChangeResourceRecordSets'],
-      resources: ['arn:aws:route53:::hostedzone/*'],
+      actions:    ['route53:ChangeResourceRecordSets'],
+      resources:  ['arn:aws:route53:::hostedzone/*'],
       conditions: {
         'ForAllValues:StringEquals': {
           'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
-          'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
+          'route53:ChangeResourceRecordSetsActions':     ['UPSERT', 'DELETE'],
         },
-        Null: {
+        Null:                        {
           'route53:ChangeResourceRecordSetsRecordTypes': false,
-          'route53:ChangeResourceRecordSetsActions': false,
+          'route53:ChangeResourceRecordSetsActions':     false,
         },
       },
     }));
@@ -209,7 +209,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
   private grantHostedZoneRecordListing(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['route53:ListResourceRecordSets'],
+      actions:   ['route53:ListResourceRecordSets'],
       resources: ['arn:aws:route53:::hostedzone/*'],
     }));
   }
@@ -217,7 +217,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   /** Listing hosted zones has no resource ARN binding. */
   private grantHostedZoneLookup(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['route53:ListHostedZonesByName'],
+      actions:   ['route53:ListHostedZonesByName'],
       resources: ['*'],
     }));
   }
@@ -225,9 +225,9 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   /** Prevents certificate issuance for arbitrary domains by denying ACME challenge writes in every zone. */
   private denyAcmeChallengeRecordWrites(): void {
     this.addToRolePolicy(new PolicyStatement({
-      effect: Effect.DENY,
-      actions: ['route53:ChangeResourceRecordSets'],
-      resources: ['*'],
+      effect:     Effect.DENY,
+      actions:    ['route53:ChangeResourceRecordSets'],
+      resources:  ['*'],
       conditions: {
         'ForAnyValue:StringLike': {
           'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['_acme-challenge.*'],
@@ -239,7 +239,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   /** Account-level actions have no resource binding, so they stay on `*`. */
   private grantServiceQuotasAccess(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['servicequotas:ListServiceQuotas', 'servicequotas:RequestServiceQuotaIncrease'],
+      actions:   ['servicequotas:ListServiceQuotas', 'servicequotas:RequestServiceQuotaIncrease'],
       resources: ['*'],
     }));
   }
@@ -249,7 +249,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
     // vendor deploy detail this repo does not own.
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['execute-api:Invoke'],
+      actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
         `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
@@ -260,7 +260,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   /** Account-level action with no resource binding, so it stays on `*`. */
   private grantSesReceivingAccess(): void {
     this.addToRolePolicy(new PolicyStatement({
-      actions: ['ses:DescribeActiveReceiptRuleSet'],
+      actions:   ['ses:DescribeActiveReceiptRuleSet'],
       resources: ['*'],
     }));
   }

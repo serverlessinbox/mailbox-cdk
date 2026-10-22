@@ -37,9 +37,9 @@ export type AdminApiHandlerOptions<TAuth> = {
 
 /** The three parts of a request path; the service name is empty when the path does not carry one. */
 type Route = {
-  basePath: string;
+  basePath:    string;
   serviceName: string;
-  methodName: string;
+  methodName:  string;
 };
 
 type AuditBase = Omit<AuditEvent, 'status' | 'errorMsg'>;
@@ -153,22 +153,22 @@ export class AdminApiHandler<TAuth> {
   private auditBaseOf(context: HandlerContext<TAuth, AuditContext>): AuditBase {
     const entityId = context.audit.entityId ?? 'unknown';
     return {
-      tenantId: this.options.getTenantId?.(context.auth),
+      tenantId:   this.options.getTenantId?.(context.auth),
       entityType: context.audit.entityType,
       entityId,
       entityName: context.audit.entityName ?? entityId,
-      action: context.audit.action,
-      actor: this.options.getActor?.(context.auth),
-      changes: context.audit.changes,
-      metadata: context.audit.metadata,
+      action:     context.audit.action,
+      actor:      this.options.getActor?.(context.auth),
+      changes:    context.audit.changes,
+      metadata:   context.audit.metadata,
     };
   }
 
   private newAuditContext(route: Route, service: ServiceSpec<TAuth, AuditContext>, requestId: string | undefined): AuditContext {
     return {
       entityType: route.basePath.replace(/^\//, '').replace(/\/+$/, ''),
-      action: `${service.serviceName}/${route.methodName}`,
-      metadata: requestId ? { requestId } : undefined,
+      action:     `${service.serviceName}/${route.methodName}`,
+      metadata:   requestId ? { requestId } : undefined,
     };
   }
 
@@ -206,7 +206,7 @@ export class AdminApiHandler<TAuth> {
       headers: {
         'content-type': 'application/json; charset=utf-8',
       },
-      body: JSON.stringify(body, (key: string, value: unknown) => this.serializableValue(key, value)),
+      body:    JSON.stringify(body, (key: string, value: unknown) => this.serializableValue(key, value)),
     };
   }
 

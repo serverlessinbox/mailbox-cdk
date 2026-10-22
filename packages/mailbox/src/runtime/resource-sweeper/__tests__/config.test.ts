@@ -29,7 +29,7 @@ describe('resource-sweeper starter config', () => {
 
     expect(env.tryLoad(loadStarter)).toEqual({
       config: { logLevel: 'info', serviceName: 'sweeper-service', sweeperStateMachineArn: STATE_MACHINE_ARN },
-      error: undefined,
+      error:  undefined,
     });
   });
 

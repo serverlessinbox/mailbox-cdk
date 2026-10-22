@@ -138,11 +138,11 @@ export class ClientRegistration {
 
   private answerRegistered(request: ClientRegistrationRequest, clientId: string, scope: string, clientName: string): APIGatewayProxyStructuredResultV2 {
     return RegistrationAnswers.created({
-      client_id: clientId,
-      client_id_issued_at: Math.floor(Date.now() / 1000),
-      redirect_uris: request.redirect_uris,
+      client_id:                  clientId,
+      client_id_issued_at:        Math.floor(Date.now() / 1000),
+      redirect_uris:              request.redirect_uris,
       token_endpoint_auth_method: 'none',
-      client_name: clientName,
+      client_name:                clientName,
       scope,
     });
   }

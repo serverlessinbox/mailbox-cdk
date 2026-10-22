@@ -27,7 +27,7 @@ describe('removal chain helpers', () => {
       const stack     = newTestStack('RetryLoopStack');
       const onSuccess = new sfn.Succeed(stack, 'Done');
       const entry     = buildWorkerRetryLoop(stack, 'Cert', {
-        worker: newWorkerFunction(stack),
+        worker:  newWorkerFunction(stack),
         payload: certPayload(),
         retryInterval,
         onSuccess,

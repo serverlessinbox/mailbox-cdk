@@ -1,15 +1,15 @@
 /** One audit record for a mutating request, handed to the audit sink after the request ran. */
 export type AuditEvent = {
-  tenantId?: string;
-  entityType: string;
-  entityId: string;
+  tenantId?:   string;
+  entityType:  string;
+  entityId:    string;
   entityName?: string;
-  action: string;
-  status: 'success' | 'failure';
-  errorMsg?: string;
-  actor?: unknown;
-  changes?: unknown[];
-  metadata?: Record<string, string>;
+  action:      string;
+  status:      'success' | 'failure';
+  errorMsg?:   string;
+  actor?:      unknown;
+  changes?:    unknown[];
+  metadata?:   Record<string, string>;
 };
 
 /**
@@ -17,10 +17,10 @@ export type AuditEvent = {
  * The pipeline turns them into an `AuditEvent`.
  */
 export type AuditContext = {
-  entityType: string;
-  entityId?: string;
+  entityType:  string;
+  entityId?:   string;
   entityName?: string;
-  changes?: unknown[];
-  metadata?: Record<string, string>;
-  action: string;
+  changes?:    unknown[];
+  metadata?:   Record<string, string>;
+  action:      string;
 };

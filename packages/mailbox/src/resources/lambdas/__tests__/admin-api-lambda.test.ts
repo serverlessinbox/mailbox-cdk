@@ -40,7 +40,7 @@ describe('AdminApiLambda IAM scoping', () => {
     app = new App();
 
     stack = new cdk.Stack(app, 'TestStack', {
-      env: { account: '123456789012', region: 'us-west-2' },
+      env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
 
@@ -49,7 +49,7 @@ describe('AdminApiLambda IAM scoping', () => {
     };
     artifactResolver                            = new PinnedArtifactResolver({
       packages,
-      location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     });
 
@@ -88,10 +88,10 @@ describe('AdminApiLambda IAM scoping', () => {
       auditEventsQueue,
       artifactResolver,
       identityProvisioner: identityProvisionerFunction,
-      sesRuleSetName: 'test-rule-set',
-      sesConfigSetName: 'test-config-set',
+      sesRuleSetName:      'test-rule-set',
+      sesConfigSetName:    'test-config-set',
       systemSenderAddress: 'noreply@example.com',
-      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+      vendorLink:          { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
     });
   });
 
@@ -101,7 +101,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: [
+            Action:   [
               'ses:CreateEmailIdentity',
               'ses:GetEmailIdentity',
               'ses:DeleteEmailIdentity',
@@ -127,12 +127,12 @@ describe('AdminApiLambda IAM scoping', () => {
     const tagKeys     = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
     const conditions  = [
       Match.objectEquals({
-        StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
         'ForAllValues:StringEquals': tagKeys,
       }),
       Match.objectEquals({
-        StringEquals: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
-        Null: { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
+        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
+        Null:                        { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
         'ForAllValues:StringEquals': tagKeys,
       }),
     ];
@@ -159,7 +159,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'ses:SendEmail',
+            Action:   'ses:SendEmail',
             Resource: [
               {
                 'Fn::Join': [
@@ -192,7 +192,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: Match.arrayWith([
+            Action:   Match.arrayWith([
               'ses:GetAccount',
               'ses:GetSendStatistics',
               'ses:ListEmailIdentities',
@@ -210,7 +210,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'execute-api:Invoke',
+            Action:   'execute-api:Invoke',
             Resource: [
               `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`,
               `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/revoke-resource`,
@@ -274,8 +274,8 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ChangeResourceRecordSets',
-            Resource: 'arn:aws:route53:::hostedzone/*',
+            Action:    'route53:ChangeResourceRecordSets',
+            Resource:  'arn:aws:route53:::hostedzone/*',
             Condition: Match.objectLike({
               'ForAllValues:StringLike': Match.objectLike({
                 'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
@@ -293,9 +293,9 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ChangeResourceRecordSets',
+            Action:    'route53:ChangeResourceRecordSets',
             Condition: Match.objectLike({
-              'ForAllValues:StringLike': Match.objectLike({
+              'ForAllValues:StringLike':   Match.objectLike({
                 'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
               }),
               'ForAllValues:StringEquals': Match.objectLike({
@@ -314,7 +314,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ChangeResourceRecordSets',
+            Action:    'route53:ChangeResourceRecordSets',
             Condition: Match.objectLike({
               'ForAllValues:StringEquals': Match.objectLike({
                 'route53:ChangeResourceRecordSetsActions': ['UPSERT', 'DELETE'],
@@ -332,9 +332,9 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Effect: 'Deny',
-            Action: 'route53:ChangeResourceRecordSets',
-            Resource: '*',
+            Effect:    'Deny',
+            Action:    'route53:ChangeResourceRecordSets',
+            Resource:  '*',
             Condition: Match.objectLike({
               'ForAnyValue:StringLike': Match.objectLike({
                 'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['_acme-challenge.*'],
@@ -352,8 +352,8 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ChangeResourceRecordSets',
-            Resource: 'arn:aws:route53:::hostedzone/*',
+            Action:    'route53:ChangeResourceRecordSets',
+            Resource:  'arn:aws:route53:::hostedzone/*',
             Condition: Match.objectLike({
               'ForAllValues:StringEquals': Match.objectLike({
                 'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
@@ -371,7 +371,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ListResourceRecordSets',
+            Action:   'route53:ListResourceRecordSets',
             Resource: 'arn:aws:route53:::hostedzone/*',
           }),
         ]),
@@ -385,7 +385,7 @@ describe('AdminApiLambda IAM scoping', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 'route53:ListHostedZonesByName',
+            Action:   'route53:ListHostedZonesByName',
             Resource: '*',
           }),
         ]),

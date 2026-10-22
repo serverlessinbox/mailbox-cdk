@@ -49,15 +49,15 @@ export class DeployerInfra extends Construct {
     const worker = props.createWorker(this, 'worker');
 
     this.workflow = new PollingCfnDeployerWorkflow(this, 'workflow', {
-      handler: worker,
+      handler:          worker,
       stateMachineName: this.stateMachineName(props.stateMachineNamePrefix),
     });
 
     const starter   = new DeployerStarterLambda(this, 'starter', {
-      artifactResolver: props.artifactResolver,
-      workflow: this.workflow,
+      artifactResolver:  props.artifactResolver,
+      workflow:          this.workflow,
       deployedStackName: props.deployedStackName,
-      deployedStackArn: props.deployedStackArn,
+      deployedStackArn:  props.deployedStackArn,
     });
     this.starterArn = starter.functionArn;
   }

@@ -49,9 +49,9 @@ export function toResponseUrl(raw: string): ResponseUrl {
   return raw as ResponseUrl;
 }
 
-export const isStackName = isBrandedString(toStackName);
-export const isStackId = isBrandedString(toStackId);
-export const isLogicalResourceId = isBrandedString(toLogicalResourceId);
-export const isRequestId = isBrandedString(toRequestId);
-export const isResponseUrl = isBrandedString(toResponseUrl);
+export const isStackName          = isBrandedString(toStackName);
+export const isStackId            = isBrandedString(toStackId);
+export const isLogicalResourceId  = isBrandedString(toLogicalResourceId);
+export const isRequestId          = isBrandedString(toRequestId);
+export const isResponseUrl        = isBrandedString(toResponseUrl);
 export const isPhysicalResourceId = isBrandedString(toPhysicalResourceId);

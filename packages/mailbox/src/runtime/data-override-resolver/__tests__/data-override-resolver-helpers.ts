@@ -16,35 +16,35 @@ export function tableArn(name: string): string {
 }
 
 export const INCOMING_ARNS: Record<TableRole, string> = {
-  configTable: tableArn('incoming-config'),
-  itemTable: tableArn('incoming-item'),
-  changelogTable: tableArn('incoming-changelog'),
-  auditLogTable: tableArn('incoming-auditlog'),
+  configTable:       tableArn('incoming-config'),
+  itemTable:         tableArn('incoming-item'),
+  changelogTable:    tableArn('incoming-changelog'),
+  auditLogTable:     tableArn('incoming-auditlog'),
   mailFeedbackTable: tableArn('incoming-mailfeedback'),
 };
 
 /** The properties as CloudFormation delivers them, `ServiceToken` included, with every override equal to its incoming ARN. */
 export const PROPERTIES_WITHOUT_OVERRIDES: ResourceProperties & { ServiceToken: string } = {
-  ServiceToken: SERVICE_TOKEN,
-  configTableIncomingArn: INCOMING_ARNS.configTable,
-  configTableOverrideArn: INCOMING_ARNS.configTable,
-  itemTableIncomingArn: INCOMING_ARNS.itemTable,
-  itemTableOverrideArn: INCOMING_ARNS.itemTable,
-  changelogTableIncomingArn: INCOMING_ARNS.changelogTable,
-  changelogTableOverrideArn: INCOMING_ARNS.changelogTable,
-  auditLogTableIncomingArn: INCOMING_ARNS.auditLogTable,
-  auditLogTableOverrideArn: INCOMING_ARNS.auditLogTable,
+  ServiceToken:                 SERVICE_TOKEN,
+  configTableIncomingArn:       INCOMING_ARNS.configTable,
+  configTableOverrideArn:       INCOMING_ARNS.configTable,
+  itemTableIncomingArn:         INCOMING_ARNS.itemTable,
+  itemTableOverrideArn:         INCOMING_ARNS.itemTable,
+  changelogTableIncomingArn:    INCOMING_ARNS.changelogTable,
+  changelogTableOverrideArn:    INCOMING_ARNS.changelogTable,
+  auditLogTableIncomingArn:     INCOMING_ARNS.auditLogTable,
+  auditLogTableOverrideArn:     INCOMING_ARNS.auditLogTable,
   mailFeedbackTableIncomingArn: INCOMING_ARNS.mailFeedbackTable,
   mailFeedbackTableOverrideArn: INCOMING_ARNS.mailFeedbackTable,
 };
 
 const baseEvent = {
-  ServiceToken: SERVICE_TOKEN,
-  ResponseURL: 'https://example.com/response',
-  StackId: 'arn:aws:cloudformation:eu-west-1:123456789012:stack/test-stack/guid',
-  RequestId: 'request-id-1',
+  ServiceToken:      SERVICE_TOKEN,
+  ResponseURL:       'https://example.com/response',
+  StackId:           'arn:aws:cloudformation:eu-west-1:123456789012:stack/test-stack/guid',
+  RequestId:         'request-id-1',
   LogicalResourceId: 'DataOverrideResolver',
-  ResourceType: 'Custom::MailboxDataOverrideResolver',
+  ResourceType:      'Custom::MailboxDataOverrideResolver',
 };
 
 export function createEvent(): CloudFormationCustomResourceEvent {
@@ -54,7 +54,7 @@ export function createEvent(): CloudFormationCustomResourceEvent {
 export function deleteEvent(): CloudFormationCustomResourceEvent {
   return {
     ...baseEvent,
-    RequestType: 'Delete',
+    RequestType:        'Delete',
     PhysicalResourceId: baseEvent.LogicalResourceId,
     ResourceProperties: PROPERTIES_WITHOUT_OVERRIDES,
   };
@@ -63,17 +63,17 @@ export function deleteEvent(): CloudFormationCustomResourceEvent {
 export function lambdaContext(): Context {
   return {
     getRemainingTimeInMillis: () => 30000,
-    logStreamName: 'log-stream',
-    logGroupName: 'log-group',
+    logStreamName:            'log-stream',
+    logGroupName:             'log-group',
   } as unknown as Context;
 }
 
 /** The fields of the CloudFormation response that the handler tests assert on. */
 export interface CapturedCfnResponse {
-  Status: string;
-  Reason?: string;
+  Status:              string;
+  Reason?:             string;
   PhysicalResourceId?: string;
-  Data?: Record<string, string>;
+  Data?:               Record<string, string>;
 }
 
 /**

@@ -26,11 +26,11 @@ import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-d
 function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
   const packages: Record<string, ArtifactPin> = {
     'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+    'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
   return new PinnedArtifactResolver({
     packages,
-    location: { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
 }
@@ -38,7 +38,7 @@ function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
 function buildStack(id: string): cdk.Stack {
   const app = new App();
   return new cdk.Stack(app, id, {
-    env: { account: '111122223333', region: 'us-east-1' },
+    env:         { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
 }

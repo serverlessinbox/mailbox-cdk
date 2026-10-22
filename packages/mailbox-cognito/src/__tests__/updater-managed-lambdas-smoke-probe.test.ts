@@ -40,26 +40,26 @@ function sourceFolderOf(artifactName: string): string {
 }
 
 const dataTableStub = {
-  tableName: 'stub-table',
-  tableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/stub-table',
-  grantRead: () => undefined,
+  tableName:      'stub-table',
+  tableArn:       'arn:aws:dynamodb:us-west-2:123456789012:table/stub-table',
+  grantRead:      () => undefined,
   grantReadWrite: () => undefined,
 };
 
 function adminApiAddonContextOf(artifactResolver: IArtifactResolver): AdminApiAddonContext {
   return {
     artifactResolver,
-    auditEventsQueue: {
-      queueUrl: 'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
-      queueArn: 'arn:aws:sqs:us-west-2:123456789012:audit-events',
+    auditEventsQueue:    {
+      queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+      queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
       grantSend: () => undefined,
     },
-    configTable: dataTableStub,
-    auditLogTable: dataTableStub,
+    configTable:         dataTableStub,
+    auditLogTable:       dataTableStub,
     identityProvisioner: {
-      functionArn: 'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+      functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
       functionName: 'identity-provisioner',
-      grantInvoke: () => undefined,
+      grantInvoke:  () => undefined,
     },
   };
 }
@@ -67,12 +67,12 @@ function adminApiAddonContextOf(artifactResolver: IArtifactResolver): AdminApiAd
 function synthesizeUserPool(): Template {
   const app      = new App({
     context: {
-      'serverlessinbox:artifacts': {
+      'serverlessinbox:artifacts':         {
         bucketBase: 'test-artifacts',
-        packages: {
-          'mailbox-cognito': { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk': { zone: 'regional', version: '1.0.0' },
-          'mailbox': { zone: 'regional', version: '1.0.0' },
+        packages:   {
+          'mailbox-cognito':    { zone: 'regional', version: '1.0.0' },
+          'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
+          'mailbox':            { zone: 'regional', version: '1.0.0' },
           'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
         },
       },
@@ -80,7 +80,7 @@ function synthesizeUserPool(): Template {
     },
   });
   const stack    = new cdk.Stack(app, 'TestManagedCognitoLambdas', {
-    env: { account: '123456789012', region: 'us-west-2' },
+    env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
   const resolver = MailboxArtifactResolverFactory.fromContext(
@@ -90,16 +90,16 @@ function synthesizeUserPool(): Template {
   );
 
   const pool = new MailboxUserPool(stack, 'user-pool', {
-    domain: { kind: 'cognito', cognitoDomainPrefix: 'test-managed' },
-    artifactResolver: resolver,
-    enableJmapOAuthDiscovery: true,
+    domain:                    { kind: 'cognito', cognitoDomainPrefix: 'test-managed' },
+    artifactResolver:          resolver,
+    enableJmapOAuthDiscovery:  true,
     dynamicClientRegistration: DynamicClientRegistrationMode.ENABLED,
   });
   pool.addBootstrapUser({ groups: ['admin'] });
   const addonContext = adminApiAddonContextOf(resolver);
   pool.createAdminApiAddons(stack, addonContext);
   pool.createJmapApiAddons(stack, {
-    apiBaseUrl: 'https://api.example.com',
+    apiBaseUrl:          'https://api.example.com',
     identityProvisioner: addonContext.identityProvisioner,
   });
 

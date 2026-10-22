@@ -28,15 +28,15 @@ export class MailboxArtifactResolverFactory {
   ): PinnedArtifactResolver {
     const defaultLocation: RegistryLocation = {
       bucketBase: registryRecord.bucketBase,
-      project: registryRecord.project,
+      project:    registryRecord.project,
       ...(registryRecord.bucketOverrides !== undefined ? { bucketOverrides: registryRecord.bucketOverrides } : {}),
     };
     return PinnedArtifactResolver.fromContext(scope, {
       defaultPins,
       defaultLocation,
-      artifactsContextKey: ARTIFACTS_CONTEXT_KEY,
+      artifactsContextKey:      ARTIFACTS_CONTEXT_KEY,
       objectVersionsContextKey: ARTIFACT_VERSIONS_CONTEXT_KEY,
-      deploymentRegion: Stack.of(scope).region,
+      deploymentRegion:         Stack.of(scope).region,
     });
   }
 }

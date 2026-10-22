@@ -15,7 +15,7 @@ function synthWrapper(): Template {
   new LambdaFunction(wrapper, 'handler', {
     runtime: Runtime.NODEJS_20_X,
     handler: 'index.handler',
-    code: Code.fromInline('exports.handler = async () => ({});'),
+    code:    Code.fromInline('exports.handler = async () => ({});'),
     role,
   });
 
@@ -25,7 +25,7 @@ function synthWrapper(): Template {
 }
 
 interface TemplateTag {
-  readonly Key: string;
+  readonly Key:   string;
   readonly Value: string;
 }
 
@@ -50,7 +50,7 @@ describe('applyArtifactTags', () => {
     const template = synthWrapper();
 
     const expected = {
-      'serverless-inbox:artifact-name': 'probe-lambda',
+      'serverless-inbox:artifact-name':    'probe-lambda',
       'serverless-inbox:artifact-package': 'mailbox-cdk',
       'serverless-inbox:auto-update-type': 'edge',
     };

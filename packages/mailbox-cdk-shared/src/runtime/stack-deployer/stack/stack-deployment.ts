@@ -25,13 +25,13 @@ const isStringMap = t.isRecord(t.isOptional(t.isString()));
 
 const stackDeployerPropertyFields = {
   ServiceToken: t.isOptional(t.isString()),
-  stackName: isStackName,
+  stackName:    isStackName,
   /** Absent only when the stack is being deleted; a create or update without one is rejected before any CloudFormation call. */
   templateUrl: t.isOptional(isTemplateUrl),
   /** CloudFormation stack parameters; an undefined or empty value is not passed on. */
   parameters: t.isOptional(isStringMap),
   /** Tags applied to the AWS::CloudFormation::Stack itself and propagated by CloudFormation to its resources. */
-  tags: t.isOptional(isStringMap),
+  tags:                  t.isOptional(isStringMap),
   terminationProtection: t.isOptional(isStackFlag),
   /** Region of the CloudFormation API calls; the Lambda's own region when absent. */
   region: t.isOptional(isRegion),
@@ -48,8 +48,8 @@ export const isStackDeployerProperties = t.isPartial(stackDeployerPropertyFields
  * that is not a switch is among them: a Delete that cannot tell whether to keep the stack does not delete it.
  */
 export const isDeletionProperties = t.isPartial({
-  stackName: isStackName,
-  region: t.isOptional(isRegion),
+  stackName:        isStackName,
+  region:           t.isOptional(isRegion),
   preserveOnDelete: t.isOptional(isStackFlag),
 });
 
@@ -67,11 +67,11 @@ const isOperationInput = t.isPartial({ ...stackDeployerPropertyFields, requestTy
 export type OperationInput = t.InferType<typeof isOperationInput>;
 
 const cfnTargetFields = {
-  ResponseURL: isResponseUrl,
-  StackId: isStackId,
-  RequestId: isRequestId,
+  ResponseURL:       isResponseUrl,
+  StackId:           isStackId,
+  RequestId:         isRequestId,
   LogicalResourceId: isLogicalResourceId,
-  ResourceType: t.isOptional(t.isString()),
+  ResourceType:      t.isOptional(t.isString()),
 };
 
 /** Where to PUT an answer and which resource it concerns; the physical id is read apart from it. */
@@ -94,7 +94,7 @@ export type CfnEnvelope = t.InferType<typeof isCfnEnvelope>;
 // separately, once the request is known to be answerable.
 export const isCfnRequest = t.isPartial({
   ...cfnEnvelopeFields,
-  RequestType: isRequestType,
+  RequestType:        isRequestType,
   ResourceProperties: t.isPartial({ stackName: t.isOptional(isStackName) }),
 });
 
@@ -103,14 +103,14 @@ export type CfnRequest = t.InferType<typeof isCfnRequest>;
 
 // Each field an answer can use is read on its own, so one that is wrong does not hide the others.
 export const isRequestTypeOfRequest = t.isPartial({ RequestType: isRequestType });
-export const isStackNameOfRequest = t.isPartial({ ResourceProperties: t.isPartial({ stackName: isStackName }) });
-export const isPhysicalIdOfRequest = t.isPartial({ PhysicalResourceId: isPhysicalResourceId });
-export const isTargetOfStep = t.isPartial({ cfn: isCfnTarget });
-export const isPhysicalIdOfStep = t.isPartial({ cfn: t.isPartial({ PhysicalResourceId: isPhysicalResourceId }) });
-export const isRequestTypeOfStep = t.isPartial({ op: t.isPartial({ requestType: isRequestType }) });
-export const isStackNameOfStep = t.isPartial({ op: t.isPartial({ stackName: isStackName }) });
-export const isRegionOfRequest = t.isPartial({ ResourceProperties: t.isPartial({ region: isRegion }) });
-export const isRegionOfStep = t.isPartial({ op: t.isPartial({ region: isRegion }) });
+export const isStackNameOfRequest   = t.isPartial({ ResourceProperties: t.isPartial({ stackName: isStackName }) });
+export const isPhysicalIdOfRequest  = t.isPartial({ PhysicalResourceId: isPhysicalResourceId });
+export const isTargetOfStep         = t.isPartial({ cfn: isCfnTarget });
+export const isPhysicalIdOfStep     = t.isPartial({ cfn: t.isPartial({ PhysicalResourceId: isPhysicalResourceId }) });
+export const isRequestTypeOfStep    = t.isPartial({ op: t.isPartial({ requestType: isRequestType }) });
+export const isStackNameOfStep      = t.isPartial({ op: t.isPartial({ stackName: isStackName }) });
+export const isRegionOfRequest      = t.isPartial({ ResourceProperties: t.isPartial({ region: isRegion }) });
+export const isRegionOfStep         = t.isPartial({ op: t.isPartial({ region: isRegion }) });
 
 /**
  * What an event that could not be read in full still gives to answer it: where to PUT, and the physical id,
@@ -118,24 +118,24 @@ export const isRegionOfStep = t.isPartial({ op: t.isPartial({ region: isRegion }
  * target cannot be answered.
  */
 export interface AnswerableEvent {
-  readonly cfn: CfnEnvelope;
+  readonly cfn:                CfnEnvelope;
   readonly physicalResourceId: PhysicalResourceId | undefined;
-  readonly requestType: RequestType | undefined;
-  readonly stackName: StackName | undefined;
-  readonly region?: Region | undefined;
+  readonly requestType:        RequestType | undefined;
+  readonly stackName:          StackName | undefined;
+  readonly region?:            Region | undefined;
 }
 
 /** The input of the state machine execution that deploys one stack: how to answer CloudFormation and what to do. */
 export interface WorkflowInput {
   readonly cfn: CfnEnvelope;
-  readonly op: OperationInput;
+  readonly op:  OperationInput;
 }
 
 // The workflow definition builds this payload, so a key it adds later must not stop the worker.
 export const isSfnInvokeEvent = t.isPartial({
   mode: t.isEnum(['start', 'check'] as const),
-  cfn: isCfnEnvelope,
-  op: isOperationInput,
+  cfn:  isCfnEnvelope,
+  op:   isOperationInput,
   /** Polling iteration counter injected by the Step Functions workflow. */
   attempt: t.isOptional(t.isNumber()),
   /** Number of DeleteStack retries made so far. */

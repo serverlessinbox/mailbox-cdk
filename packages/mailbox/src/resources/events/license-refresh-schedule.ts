@@ -5,7 +5,7 @@ import type { Construct } from 'constructs';
 
 export interface LicenseRefreshScheduleProps {
   target: IFunction;
-  hour: string;
+  hour:   string;
   minute: string;
 }
 
@@ -14,7 +14,7 @@ export class LicenseRefreshSchedule extends Rule {
   constructor(scope: Construct, id: string, props: LicenseRefreshScheduleProps) {
     super(scope, id, {
       schedule: Schedule.cron({ hour: props.hour, minute: props.minute }),
-      targets: [new LambdaFunction(props.target)],
+      targets:  [new LambdaFunction(props.target)],
     });
   }
 }

@@ -120,13 +120,13 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
     // The updater Lambda exists under 'pinned' too, so it stays invocable from the admin API.
     const updater        = new ArtifactUpdaterLambda(this, 'artifact-updater', {
-      artifactResolver: this.pinned,
+      artifactResolver:   this.pinned,
       artifactBucketBase: this.location.bucketBase,
-      distTag: props.distTag ?? 'stable',
+      distTag:            props.distTag ?? 'stable',
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
-      rootStackId: StackIdentity.guid,
-      updateInterval: props.updateInterval ?? Duration.hours(6),
+      rootStackId:       StackIdentity.guid,
+      updateInterval:    props.updateInterval ?? Duration.hours(6),
       isTracking,
     });
     this.updaterFunction = updater;

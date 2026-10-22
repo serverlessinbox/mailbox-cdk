@@ -11,9 +11,9 @@ import type { HandlerContext }                                                  
  */
 
 const runtime: GeneratedServiceRuntime = {
-  basePath: '/push',
+  basePath:    '/push',
   serviceName: 'PushService',
-  methods: {
+  methods:     {
     Subscribe: { name: 'Subscribe', handlerName: 'subscribe', requestSchema: SubscribeSchema, responseSchema: SubscribeSchema },
   },
 };

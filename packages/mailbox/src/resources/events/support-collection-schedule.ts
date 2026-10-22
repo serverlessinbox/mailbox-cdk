@@ -11,9 +11,9 @@ export interface SupportCollectionScheduleProps {
 export class SupportCollectionSchedule extends Rule {
   constructor(scope: Construct, id: string, props: SupportCollectionScheduleProps) {
     super(scope, id, {
-      schedule: Schedule.cron({ minute: '0' }),
+      schedule:    Schedule.cron({ minute: '0' }),
       description: 'Hourly trigger for support role assumption collector and expiry enforcement',
-      targets: [new targets.LambdaFunction(props.target)],
+      targets:     [new targets.LambdaFunction(props.target)],
     });
   }
 }
