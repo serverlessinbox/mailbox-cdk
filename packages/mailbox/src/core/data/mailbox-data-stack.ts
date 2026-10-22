@@ -1,18 +1,18 @@
-import { isDevelopmentMode }                                                              from '@serverlessinbox/mailbox-cdk-shared';
+import { isDevelopmentMode, removalPolicyForRetainedResources }                           from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxBaseTagsWithDeployerType, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType }                                               from '@serverlessinbox/mailbox-cdk-shared';
 import * as cdk                                                                           from 'aws-cdk-lib';
 import { Construct }                                                                      from 'constructs';
 
-import { AuditLogTable }                                                                  from '../../resources/tables/auditlog-table';
 import { BlobStore }                                                                      from '../../resources/buckets/blob-store';
+import { AuditLogTable }                                                                  from '../../resources/tables/auditlog-table';
 import { ChangelogTable }                                                                 from '../../resources/tables/changelog-table';
 import { ConfigTable }                                                                    from '../../resources/tables/config-table';
 import { ItemTable }                                                                      from '../../resources/tables/item-table';
 import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
+import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
 import { MailboxKmsConfig }                                                               from '../kms';
 import { resolveMailboxEncryptionPlan }                                                   from '../mailbox-encryption';
-import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
 
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
@@ -91,13 +91,20 @@ export class MailboxDataStack extends cdk.Stack {
 
     // Create resources
     const dynamoEncryption = encryptionPlan.dynamoTables;
+    const developmentMode  = isDevelopmentMode(this);
     const dynamoTableProps = {
-      encryption: dynamoEncryption.encryption,
+      nameBase:                   nameBaseParam.valueAsString,
+      encryption:                 dynamoEncryption.encryption,
+      pointInTimeRecoveryEnabled: !developmentMode,
       ...(dynamoEncryption.encryptionKey && { encryptionKey: dynamoEncryption.encryptionKey }),
-      nameBase: nameBaseParam.valueAsString,
     };
 
-    const blobStore         = new BlobStore(this, { encryptionKey: encryptionPlan.blobStore.encryptionKey, nameBase: nameBaseParam.valueAsString });
+    const blobStore         = new BlobStore(this, {
+      encryptionKey: encryptionPlan.blobStore.encryptionKey,
+      nameBase:      nameBaseParam.valueAsString,
+      removalPolicy: removalPolicyForRetainedResources(this),
+      developmentMode,
+    });
     const configTable       = new ConfigTable(this, dynamoTableProps);
     const itemTable         = new ItemTable(this, dynamoTableProps);
     const changelogTable    = new ChangelogTable(this, dynamoTableProps);

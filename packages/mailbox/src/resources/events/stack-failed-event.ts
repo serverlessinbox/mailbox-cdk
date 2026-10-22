@@ -1,9 +1,11 @@
-import * as targets                          from 'aws-cdk-lib/aws-events-targets';
-import * as events                           from 'aws-cdk-lib/aws-events';
-import { CfnPermission }                     from 'aws-cdk-lib/aws-lambda';
-import type { IFunction }                    from 'aws-cdk-lib/aws-lambda';
-import { CfnResource, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import type { Construct }                    from 'constructs';
+import * as targets                      from 'aws-cdk-lib/aws-events-targets';
+import * as events                       from 'aws-cdk-lib/aws-events';
+import { CfnPermission }                 from 'aws-cdk-lib/aws-lambda';
+import type { IFunction }                from 'aws-cdk-lib/aws-lambda';
+import { RemovalPolicy, Stack }          from 'aws-cdk-lib';
+import type { Construct }                from 'constructs';
+
+import { retainOnEveryOperation }        from '../../utils/cfn-resource';
 
 /** What the sweeper needs to find and remove the retained rule. */
 export interface IStackFailedEvent {
@@ -12,7 +14,7 @@ export interface IStackFailedEvent {
 }
 
 export interface StackFailedEventProps {
-  target: IFunction;
+  readonly target: IFunction;
 }
 
 /**
@@ -22,7 +24,8 @@ export interface StackFailedEventProps {
  * construct-tree move cannot collide with a retained orphan.
  */
 export class StackFailedEvent extends events.Rule implements IStackFailedEvent {
-  readonly ruleTargetId = 'Target0';
+  /** CDK gives the first target added to a rule the id `Target0`; the target is the only one added. */
+  public readonly ruleTargetId = 'Target0';
 
   constructor(scope: Construct, id: string, props: StackFailedEventProps) {
     // `CloudFormation Stack Status Change` is a different detail-type from `CloudFormation Resource
@@ -49,18 +52,8 @@ export class StackFailedEvent extends events.Rule implements IStackFailedEvent {
 
     this.addTarget(new targets.LambdaFunction(props.target));
 
-    this.retainRule();
+    retainOnEveryOperation(this);
     this.retainInvokePermission();
-  }
-
-  private retainRule(): void {
-    const defaultChild = this.node.defaultChild;
-    if (!(defaultChild instanceof CfnResource)) {
-      throw new Error(
-        `stack-failed rule: expected defaultChild to be a CfnResource, got ${defaultChild?.constructor?.name ?? String(defaultChild)}`,
-      );
-    }
-    defaultChild.applyRemovalPolicy(RemovalPolicy.RETAIN);
   }
 
   /** `addTarget` creates the invoke permission under the rule with a generated id, so it is found by type. */

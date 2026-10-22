@@ -3,14 +3,14 @@ import { TableEncryption }                                                      
 import { QueueEncryption }                                                                                   from 'aws-cdk-lib/aws-sqs';
 import { Construct }                                                                                         from 'constructs';
 
-import type { BlobStoreProps }                                                                               from '../resources/buckets/blob-store';
+import type { BlobStoreEncryptionProps }                                                                     from '../resources/buckets/blob-store';
 import type { DynamoTableEncryptionProps }                                                                   from '../resources/tables/data-table-props';
 
 import type { MailboxKmsConfig }                                                                             from './kms';
 import { mailboxKmsExcluded, mailboxKmsMode, resolveDynamoTablesKey, resolveBlobStoreKey, resolveQueuesKey } from './kms';
 
 export interface MailboxEncryptionPlan {
-  readonly blobStore:    BlobStoreProps;
+  readonly blobStore:    BlobStoreEncryptionProps;
   readonly dynamoTables: DynamoTableEncryptionProps;
   /**
    * Default props for queues created via BaseQueue.
@@ -64,7 +64,7 @@ export function resolveMailboxEncryptionPlan(scope: Construct, kms?: MailboxKmsC
 
     return {
       encryptionKey: key,
-    } satisfies BlobStoreProps;
+    } satisfies BlobStoreEncryptionProps;
   })();
 
   return {

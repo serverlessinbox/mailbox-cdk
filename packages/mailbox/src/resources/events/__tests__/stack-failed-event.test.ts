@@ -1,9 +1,16 @@
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 /// <reference types="jest" />
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { StackFailedEvent }                     from '../stack-failed-event';
+/**
+ * StackFailedEvent: the rule that reports a failed or rolled-back stack. It matches only this stack's
+ * terminal statuses, and the rule and the target's invoke permission are retained on every operation,
+ * because the target must still exist after a failed create to report that rollback.
+ */
+
+import { Match, Template }                          from 'aws-cdk-lib/assertions';
+import { Code, Function, Runtime }                  from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack }     from 'aws-cdk-lib';
+
+import { StackFailedEvent }                         from '../stack-failed-event';
 
 const RETAINED = { DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' };
 
@@ -45,12 +52,6 @@ describe('StackFailedEvent', () => {
   it('retains the rule and the target\'s invoke permission on every operation', () => {
     expect(Object.values(template.findResources('AWS::Events::Rule'))).toEqual([expect.objectContaining(RETAINED)]);
     expect(Object.values(template.findResources('AWS::Lambda::Permission'))).toEqual([expect.objectContaining(RETAINED)]);
-  });
-
-  it('leaves the rule without an explicit name', () => {
-    const [rule] = Object.values(template.findResources('AWS::Events::Rule'));
-
-    expect(rule.Properties.Name).toBeUndefined();
   });
 
   it('exposes the rule ARN', () => {

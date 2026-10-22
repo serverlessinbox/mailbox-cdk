@@ -21,3 +21,13 @@ export function defaultCfnResource(construct: IConstruct): CfnResource {
 export function retainOnUpdateOrDelete(construct: IConstruct): void {
   defaultCfnResource(construct).applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 }
+
+/**
+ * Applies RETAIN to the CloudFormation resource behind `construct`, so it is kept on update, on delete
+ * and when its creating operation is rolled back. `retainOnUpdateOrDelete` does not cover that last
+ * case: CloudFormation deletes such a resource when its create rolls back. A construct that cannot be
+ * retained fails the synth instead of deploying unprotected.
+ */
+export function retainOnEveryOperation(construct: IConstruct): void {
+  defaultCfnResource(construct).applyRemovalPolicy(RemovalPolicy.RETAIN);
+}
