@@ -19,8 +19,7 @@ import {
 
 /**
  * Typed client of the `identity-provisioner` Lambda's invoke contract. Every response is untrusted external
- * data and is validated against its schema before it is returned. It makes no Cognito calls: the Lambda it
- * invokes stays provider-agnostic.
+ * data and is validated against its schema before it is returned.
  */
 export class IdentityProvisionerClient {
   constructor(

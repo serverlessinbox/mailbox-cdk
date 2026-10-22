@@ -25,6 +25,8 @@ const sharedCognitoSdk = jest.requireActual<typeof CognitoSdk>('@aws-sdk/client-
 
 const MANDATORY_ENVIRONMENT = { IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner-fn', USER_POOL_ID: 'pool-1' };
 
+const UNEXPECTED_SHAPE_ERROR: unknown = expect.stringContaining('identity-provisioner returned an unexpected shape');
+
 /**
  * The handler as a cold start loads it: the handler reads its configuration when it is loaded, so the mandatory
  * variables are set before it is.
@@ -58,13 +60,11 @@ function loadHandlerWhoseRegistrationFails(): Handler {
   return loadHandler(() => {
     jest.doMock('../client-registration', () => ({
       ClientRegistration: class {
-        constructor(
-          _identityProvisioner: unknown,
-          _cognito: unknown,
-          _userPoolId: unknown,
-          _redirectUriPolicy: unknown,
-          private readonly logger: LoggerBuffer,
-        ) {}
+        private readonly logger: LoggerBuffer;
+
+        constructor(...collaborators: [unknown, unknown, unknown, unknown, LoggerBuffer]) {
+          this.logger = collaborators[4];
+        }
 
         async register(): Promise<never> {
           this.logger.debug('buffered_before_failure');
@@ -119,7 +119,7 @@ describe('jmap-oauth-dcr handler', () => {
 
     expect(answer).toMatchObject({ statusCode: 500 });
     expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', {
-      error: expect.stringContaining('identity-provisioner returned an unexpected shape'),
+      error: UNEXPECTED_SHAPE_ERROR,
     });
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
   });

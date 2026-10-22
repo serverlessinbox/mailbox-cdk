@@ -1,37 +1,7 @@
-import { spawnSync } from 'node:child_process';
-import * as fs       from 'node:fs';
-import * as os       from 'node:os';
-import * as path     from 'node:path';
+import * as fs from 'node:fs/promises';
 
-export function run(cmd: string, args: string[], opts?: { cwd?: string }) {
-  const res = spawnSync(cmd, args, {
-    stdio: 'inherit',
-    cwd:   opts?.cwd,
-    env:   process.env,
-  });
-  if (res.status !== 0) {
-    throw new Error(`Command failed: ${cmd} ${args.join(' ')}`);
-  }
-}
-
-export function awsArgs(opts: { profile?: string }): string[] {
-  return opts.profile ? ['--profile', opts.profile] : [];
-}
-
-export function ensureAwsCliAvailable() {
-  const res = spawnSync('aws', ['--version'], { stdio: 'ignore' });
-  if (res.status !== 0) {
-    throw new Error('AWS CLI is required (expected `aws` in PATH)');
-  }
-}
-
-export function mkTempDir(prefix: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  return dir;
-}
-
-export function writeJson(filePath: string, value: unknown) {
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+export async function writeJson(filePath: string, value: unknown): Promise<void> {
+  await fs.writeFile(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
 }
 
 export function parseArgs(argv: string[]): Record<string, string | boolean> {
@@ -51,17 +21,4 @@ export function parseArgs(argv: string[]): Record<string, string | boolean> {
     }
   }
   return out;
-}
-
-export function requireString(args: Record<string, string | boolean>, key: string): string {
-  const v = args[key];
-  if (typeof v !== 'string' || v.trim() === '') {
-    throw new Error(`Missing required flag --${key}`);
-  }
-  return v;
-}
-
-export function optionalString(args: Record<string, string | boolean>, key: string): string | undefined {
-  const v = args[key];
-  return typeof v === 'string' && v.trim() !== '' ? v : undefined;
 }

@@ -9,7 +9,7 @@
 
 import { ArtifactZone, PinnedArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuditEventsQueue, IIdentityProvisioner }                 from '@serverlessinbox/mailbox';
-import { Template }                                                     from 'aws-cdk-lib/assertions';
+import { Match, Template }                                              from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack }                         from 'aws-cdk-lib';
 
 import type { ICognitoIdpUsersPoolConfig }                              from '../../../cognito-idp-users-pool-config';
@@ -43,9 +43,8 @@ describe('CognitoIdpUsersApiLambda', () => {
     return { template: Template.fromStack(stack), lambda };
   }
 
-  function environmentOf(template: Template): Record<string, unknown> {
-    const [lambdaFunction] = Object.values(template.findResources('AWS::Lambda::Function'));
-    return lambdaFunction.Properties.Environment.Variables;
+  function expectEnvironment(template: Template, variables: unknown): void {
+    template.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: variables } });
   }
 
   it('runs for 15 seconds with 256 MB', () => {
@@ -57,21 +56,21 @@ describe('CognitoIdpUsersApiLambda', () => {
   it('reads the pool, the queue, the provisioner and the groups from its environment, the groups as JSON arrays', () => {
     const { template } = synthesize({ adminGroups: ['admin', 'staff'], userGroups: ['user'] });
 
-    expect(environmentOf(template)).toEqual({
+    expectEnvironment(template, Match.exact({
       USER_POOL_ID:                       'us-west-2_abcdefgh',
       AUDIT_EVENTS_QUEUE_URL:             'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
       IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner',
       ADMIN_GROUPS:                       '["admin","staff"]',
       USER_GROUPS:                        '["user"]',
       SERVICE_NAME:                       'cognito-idp-users-api',
-    });
+    }));
   });
 
   it('leaves the group variables out when the user pool defines no groups, and keeps an empty list when it defines an empty one', () => {
-    const withoutGroups = environmentOf(synthesize({}).template);
-    expect(withoutGroups).not.toHaveProperty('ADMIN_GROUPS');
-    expect(withoutGroups).not.toHaveProperty('USER_GROUPS');
-    expect(environmentOf(synthesize({ adminGroups: [], userGroups: [] }).template)).toMatchObject({ ADMIN_GROUPS: '[]', USER_GROUPS: '[]' });
+    const withoutGroups = synthesize({}).template;
+    expectEnvironment(withoutGroups, Match.not(Match.objectLike({ ADMIN_GROUPS: Match.anyValue() })));
+    expectEnvironment(withoutGroups, Match.not(Match.objectLike({ USER_GROUPS: Match.anyValue() })));
+    expectEnvironment(synthesize({ adminGroups: [], userGroups: [] }).template, Match.objectLike({ ADMIN_GROUPS: '[]', USER_GROUPS: '[]' }));
   });
 
   it('grants itself administrative access to the pool, send access to the queue and invoke access to the provisioner', () => {

@@ -21,14 +21,14 @@ const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 const INVALID_PARAMETER_EXCEPTION = 'InvalidParameterException';
 
+/** How `identity-provisioner` answered the recording of a registration. */
 type DcrPersistStatus = DcrPersistResponse['status'];
 
 /**
  * `POST /oauth/register` (RFC 7591 Dynamic Client Registration), unauthenticated: validates a request, creates
  * the client in the user pool and records it with `identity-provisioner`.
  *
- * A rejection is answered, not thrown, and is only logged here: traffic that anyone can generate never reaches
- * `identity-provisioner` or the audit queue.
+ * A rejection is answered, not thrown, and is only logged here.
  */
 export class ClientRegistration {
   constructor(
@@ -114,8 +114,13 @@ export class ClientRegistration {
     try {
       return JSON.parse(raw);
     } catch {
-      return undefined;
+      return this.treatAsNotJson();
     }
+  }
+
+  // A body that is not JSON is reported by an undefined body, which `register` answers as a rejection.
+  private treatAsNotJson(): undefined {
+    return undefined;
   }
 
   /**

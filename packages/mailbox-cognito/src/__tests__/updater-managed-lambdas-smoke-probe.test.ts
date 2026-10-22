@@ -25,10 +25,10 @@ import * as cdk                               from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
 import * as path                              from 'node:path';
 
-import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
-import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
+import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
+import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
 
 const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'ts-lambdas'), path.join(__dirname, '..', 'runtime')];
 

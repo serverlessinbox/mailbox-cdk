@@ -4,6 +4,7 @@ import type { RootStack, ServerlessInboxDeployerType }                          
 import { Aws, Stack }                                                                from 'aws-cdk-lib';
 import { Construct }                                                                 from 'constructs';
 
+import { COGNITO_ARTIFACT_PACKAGE }                                                  from '../cognito-artifact-package';
 import { MailboxCognitoDataDeployerWorkerLambda }                                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
 import type { MfaMode }                                                              from '../user-pool/mfa-mode';
 
@@ -17,6 +18,7 @@ import {
 import { cognitoDataStackName }                                      from './mailbox-cognito-data-stack-name';
 import { MailboxCognitoDataStackRef }                                from './mailbox-cognito-data-stack-ref';
 
+/** The custom domain the OAuth endpoint of the cognito data stack is served from. */
 export interface MailboxCognitoDataDeployerCustomDomain {
   /** Custom domain name for the Cognito OAuth endpoint. */
   readonly domainName: string;
@@ -24,6 +26,7 @@ export interface MailboxCognitoDataDeployerCustomDomain {
   readonly certificateArn: string;
 }
 
+/** What `MailboxCognitoDataDeployer` needs to name, parameterise, tag and grant the deployment of the cognito data stack. */
 export interface MailboxCognitoDataDeployerProps {
   /** The Cognito user pool managed domain prefix (must be globally unique across AWS). */
   readonly cognitoDomainPrefix: string;
@@ -45,9 +48,8 @@ export interface MailboxCognitoDataDeployerProps {
  * Deploys the MailboxCognitoDataStack (Cognito User Pool + OAuth domain + resource server)
  * via a CloudFormation custom resource backed by a Step Functions workflow.
  *
- * The cognito data stack is deployed in the same region as the parent stack. Region and stack
- * name stay `Aws.*` tokens, never `Stack.of(this)` values, so they resolve at deploy time.
- * The custom resource sets `preserveOnDelete`: removing it never deletes the cognito data stack.
+ * The cognito data stack is deployed in the same region as the parent stack. The custom resource sets
+ * `preserveOnDelete`: removing it never deletes the cognito data stack.
  */
 export class MailboxCognitoDataDeployer extends Construct {
   public readonly dataStackRef: MailboxCognitoDataStackRef;
@@ -73,7 +75,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       deployedStack:          cognitoDataStack,
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: artifacts,
-        template:         new ArtifactObject(artifacts, 'mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
+        template:         new ArtifactObject(artifacts, COGNITO_ARTIFACT_PACKAGE, COGNITO_DATA_STACK_TEMPLATE_OBJECT),
         deployedStack:    cognitoDataStack,
         rootStack:        props.rootStack,
       }),
@@ -83,7 +85,7 @@ export class MailboxCognitoDataDeployer extends Construct {
       region:           Aws.REGION,
       preserveOnDelete: true,
       stackName,
-      templateUrl: artifacts.getUrl('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
+      templateUrl: artifacts.getUrl(COGNITO_ARTIFACT_PACKAGE, COGNITO_DATA_STACK_TEMPLATE_OBJECT),
       parameters:  this.templateParameters(props),
       tags:        serverlessInboxSubStackTags({
         rootStack:   props.rootStack.name,

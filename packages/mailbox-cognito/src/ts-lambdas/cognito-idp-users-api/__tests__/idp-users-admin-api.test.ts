@@ -83,7 +83,7 @@ describe('IdpUsersAdminApi', () => {
     await api.handle(event('DeleteIdpUser', { username: 'alice' }, { sub: 'sub-1', 'cognito:groups': ['Staff'] }));
     await api.handle(event('DeleteIdpUser', { username: 'alice' }, { sub: 'sub-2', 'cognito:groups': ['member'] }));
 
-    const callers = service.deleteIdpUser.mock.calls.map(([ctx]) => ctx.auth);
+    const callers = service.deleteIdpUser.mock.calls.map(([ctx]: Array<{ auth: unknown }>) => ctx.auth);
     expect(callers).toMatchObject([
       { isAdmin: true, roles: ['admin'] },
       { isAdmin: false, roles: ['user'] },

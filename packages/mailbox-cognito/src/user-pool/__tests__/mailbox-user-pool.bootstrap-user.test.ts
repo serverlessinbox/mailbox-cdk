@@ -10,6 +10,7 @@
 import { MailboxArtifactResolverFactory }       from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                             from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
 import { loadMailboxCognitoArtifactVersions }   from '../../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }     from '../../mailbox-cognito-registry-record';
@@ -18,7 +19,11 @@ import { MailboxUserPool }                      from '../mailbox-user-pool';
 
 const BOOTSTRAP_USER_TYPE = 'Custom::CognitoBootstrapUser';
 
-function synthesizeBootstrapUser(): Record<string, unknown> {
+const isPropertyValue = t.isOneOf([t.isString(), t.isNumber(), t.isBoolean(), t.isArray(t.isString()), t.isPartial({})]);
+
+const isBootstrapUserResource = t.isPartial({ Properties: t.isRecord(isPropertyValue) });
+
+function synthesizeBootstrapUser(): Record<string, t.InferType<typeof isPropertyValue>> {
   const app   = new App({
     context: {
       'serverlessinbox:artifacts':         {
@@ -46,6 +51,11 @@ function synthesizeBootstrapUser(): Record<string, unknown> {
 
   const resources  = Template.fromStack(stack).findResources(BOOTSTRAP_USER_TYPE);
   const [resource] = Object.values(resources);
+
+  const errors: string[] = [];
+  if (!isBootstrapUserResource(resource, { errors })) {
+    throw new Error(`The ${BOOTSTRAP_USER_TYPE} resource has an unexpected shape: ${errors.join('; ')}`);
+  }
   return resource.Properties;
 }
 

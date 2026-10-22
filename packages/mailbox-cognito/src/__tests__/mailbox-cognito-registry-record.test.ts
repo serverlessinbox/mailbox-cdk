@@ -9,7 +9,7 @@ import { loadMailboxCognitoRegistryRecord } from '../mailbox-cognito-registry-re
  */
 describe('loadMailboxCognitoRegistryRecord', () => {
   it('loads the registry record at the package root', () => {
-    const packageRootRecord = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'registry-record.json'), 'utf8'));
+    const packageRootRecord: unknown = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'registry-record.json'), 'utf8'));
 
     expect(loadMailboxCognitoRegistryRecord()).toEqual(packageRootRecord);
   });

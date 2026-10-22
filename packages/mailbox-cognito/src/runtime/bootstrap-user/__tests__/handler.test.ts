@@ -8,6 +8,7 @@
  * never be fixed.
  */
 
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import {
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
@@ -162,7 +163,8 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
 }
 
 describe('bootstrap-user handler', () => {
-  const cognitoMock = mockClient(CognitoIdentityProviderClient);
+  const cognitoMock        = mockClient(CognitoIdentityProviderClient);
+  const cloudFormationMock = mockClient(CloudFormationClient);
   let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
   let debugLog: jest.SpyInstance;
   let originalEnvironment: NodeJS.ProcessEnv;
@@ -170,6 +172,7 @@ describe('bootstrap-user handler', () => {
   beforeEach(() => {
     originalEnvironment = { ...process.env };
     cognitoMock.reset();
+    cloudFormationMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});
     isRollingBack = jest.spyOn(ParentStackStatus.prototype, 'isRollingBack').mockResolvedValue(false);
     debugLog      = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
@@ -237,6 +240,18 @@ describe('bootstrap-user handler', () => {
         PhysicalResourceId: PHYSICAL_RESOURCE_ID,
         Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
       });
+    });
+
+    it('reads the status of the parent stack from CloudFormation when an Update fails', async () => {
+      isRollingBack.mockRestore();
+      cloudFormationMock.on(DescribeStacksCommand).resolves({
+        Stacks: [{ StackName: 'parent', CreationTime: new Date(0), StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
+      });
+
+      const response = await invoke(handler, cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
+
+      expect(response.Status).toBe('SUCCESS');
+      expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(1);
     });
 
     it('answers a request with invalid properties with FAILED and the reason', async () => {

@@ -70,7 +70,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     this.logger              = deps.logger;
   }
 
-  public async listIdpUsers(_ctx: IdpUsersContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse> {
+  public async listIdpUsers(...[, req]: [IdpUsersContext, ListIdpUsersRequest]): Promise<ListIdpUsersResponse> {
     const output = await this.cognito.send(
       new ListUsersCommand({
         UserPoolId:      this.userPoolId,
@@ -152,7 +152,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
     return create(SetIdpUserPasswordResponseSchema, {});
   }
 
-  /** Deleting a user that no longer exists succeeds. */
+  /** Deleting a user that does not exist succeeds. */
   public async deleteIdpUser(ctx: IdpUsersContext, req: DeleteIdpUserRequest): Promise<DeleteIdpUserResponse> {
     const username = toUsername(req.username);
 

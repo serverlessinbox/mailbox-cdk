@@ -7,13 +7,14 @@
  * during a stack rollback leaves the stack in UPDATE_ROLLBACK_FAILED.
  */
 
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { createCloudFormationClient, ExpectedFailure, LoggerBuffer, ParentStackStatus, toStackId }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ExpectedFailure, LoggerBuffer, ParentStackStatus, toStackId }                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                                                                 from 'aws-sdk-client-mock';
 
 import { PASSWORD_SET_AT_INSTALL_TIME }                                                               from '../bootstrap-user-answers';
@@ -29,7 +30,7 @@ const SUPPLIED_PASSWORD = 'Supplied1Password';
 describe('BootstrapUserRequestHandler', () => {
   const cognitoMock       = mockClient(CognitoIdentityProviderClient);
   const logger            = new LoggerBuffer('test-service', 'error');
-  const parentStackStatus = new ParentStackStatus(createCloudFormationClient(), logger);
+  const parentStackStatus = new ParentStackStatus(new CloudFormationClient({}), logger);
   let isRollingBack: jest.SpiedFunction<ParentStackStatus['isRollingBack']>;
   let requestHandler: BootstrapUserRequestHandler;
 

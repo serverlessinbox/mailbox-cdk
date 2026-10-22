@@ -56,12 +56,10 @@ export class BootstrapUserRequestHandler {
    * the stack in UPDATE_ROLLBACK_FAILED. Every other failure is thrown on.
    */
   public async answerFailure(request: CustomResourceRequest, failure: unknown): Promise<BootstrapUserAnswer> {
-    const reason = new CaughtError(failure).readableMessage();
-    this.logger.error('bootstrap_user_handler_failed', { message: reason });
+    this.logFailure(failure);
 
     if (await this.parentStackIsRollingBack(request)) {
-      this.logger.warn('Suppressing error during stack rollback', { error: reason });
-      return BootstrapUserAnswers.withPasswordMarker();
+      return this.answerSuppressed(failure);
     }
     throw failure;
   }
@@ -100,6 +98,15 @@ export class BootstrapUserRequestHandler {
       return BootstrapUserAnswers.withPassword(reportedPassword, toPhysicalResourceId(`BootstrapUser:${user.userPoolId}:${user.username}`));
     }
     return BootstrapUserAnswers.withPassword(reportedPassword);
+  }
+
+  private logFailure(failure: unknown): void {
+    this.logger.error('bootstrap_user_handler_failed', { message: new CaughtError(failure).readableMessage() });
+  }
+
+  private answerSuppressed(failure: unknown): BootstrapUserAnswer {
+    this.logger.warn('Suppressing error during stack rollback', { error: new CaughtError(failure).readableMessage() });
+    return BootstrapUserAnswers.withPasswordMarker();
   }
 
   // Only an Update is suppressed: a Create that fails must fail, and the detector is not consulted for it.

@@ -32,6 +32,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
   };
 
   function synthesize(options: { authorization?: CognitoIdpUsersAuthorizationConfig; basePath?: string }): Template {
+    const { authorization }                = options;
     const stack                            = new Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
@@ -44,7 +45,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     const pool: ICognitoIdpUsersPoolConfig = {
       userPoolId:       USER_POOL_ID,
       grantAdminAccess: () => {},
-      ...(options.authorization ? { authorizationConfig: () => options.authorization! } : {}),
+      ...(authorization ? { authorizationConfig: () => authorization } : {}),
     };
 
     const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon', { artifactResolver, auditEventsQueue, identityProvisioner, pool, basePath: options.basePath });
@@ -58,24 +59,22 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     return Template.fromStack(stack);
   }
 
-  function environmentOfUsersApiLambda(template: Template): Record<string, unknown> {
-    const [usersApiLambda] = Object.values(
-      template.findResources('AWS::Lambda::Function', { Properties: { Environment: { Variables: { USER_POOL_ID: USER_POOL_ID } } } }),
-    );
-    return usersApiLambda.Properties.Environment.Variables;
-  }
-
   it('hands the Lambda the groups of the user pool as JSON arrays', () => {
     const template = synthesize({ authorization: { adminGroups: ['admin'], userGroups: ['user', 'viewer'] } });
 
-    expect(environmentOfUsersApiLambda(template)).toMatchObject({ ADMIN_GROUPS: '["admin"]', USER_GROUPS: '["user","viewer"]' });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { USER_POOL_ID, ADMIN_GROUPS: '["admin"]', USER_GROUPS: '["user","viewer"]' } },
+    });
   });
 
-  it('hands the Lambda no group variables when the user pool offers no authorization config', () => {
-    const environment = environmentOfUsersApiLambda(synthesize({}));
+  it.each(['ADMIN_GROUPS', 'USER_GROUPS'])('hands the Lambda no %s variable when the user pool offers no authorization config', (variable) => {
+    const template = synthesize({});
 
-    expect(environment).not.toHaveProperty('ADMIN_GROUPS');
-    expect(environment).not.toHaveProperty('USER_GROUPS');
+    template.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: { USER_POOL_ID } } });
+    const lambdasWithVariable = template.findResources('AWS::Lambda::Function', {
+      Properties: { Environment: { Variables: { USER_POOL_ID, [variable]: Match.anyValue() } } },
+    });
+    expect(Object.keys(lambdasWithVariable)).toHaveLength(0);
   });
 
   it.each([

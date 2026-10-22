@@ -42,6 +42,7 @@ export interface JmapOAuthPool {
   readonly tokenEndpoint:         string;
 }
 
+/** What `JmapOAuthAddon` needs to publish the discovery document and, when enabled, to mount and serve the registration endpoint. */
 export interface JmapOAuthAddonProps {
   /** The Cognito user pool providing OAuth. */
   readonly pool: JmapOAuthPool;
@@ -153,7 +154,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       token_endpoint:         props.pool.tokenEndpoint,
       userinfo_endpoint:      `${props.pool.issuer}/oauth2/userInfo`,
       ...(withRegistration
-        ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
+        ? { registration_endpoint:`${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
       scopes_supported:                      ['openid', 'email', 'profile', 'offline_access'],
       response_types_supported:              ['code'],

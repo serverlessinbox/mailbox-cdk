@@ -1,10 +1,11 @@
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as fs                           from 'node:fs';
-import * as path                         from 'node:path';
+import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
+import * as fs                                from 'node:fs/promises';
+import * as path                              from 'node:path';
 
-import { MailboxCognitoDataStack }       from '../src/data-stack/mailbox-cognito-data-stack';
+import { COGNITO_DATA_STACK_TEMPLATE_OBJECT } from '../src/data-stack/mailbox-cognito-data-stack-contract';
+import { MailboxCognitoDataStack }            from '../src/data-stack/mailbox-cognito-data-stack';
 
-import { parseArgs, writeJson }          from './_common';
+import { parseArgs, writeJson }               from './_common';
 
 async function main() {
   const args   = parseArgs(process.argv.slice(2));
@@ -19,23 +20,19 @@ async function main() {
     synthesizer: new BootstraplessSynthesizer(),
   });
 
-  const assembly = app.synth();
-  const artifact = assembly.getStackArtifact(stack.artifactId);
-  const template = artifact.template;
+  const assembly          = app.synth();
+  const artifact          = assembly.getStackArtifact(stack.artifactId);
+  const template: unknown = artifact.template;
 
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-  }
+  await fs.mkdir(outDir, { recursive: true });
 
-  const templatePath = path.join(outDir, 'cognito-data-stack-template.json');
-  writeJson(templatePath, template);
+  const templatePath = path.join(outDir, COGNITO_DATA_STACK_TEMPLATE_OBJECT);
+  await writeJson(templatePath, template);
 
-  // eslint-disable-next-line no-console
   console.log(`✓ Built cognito data stack template: ${templatePath}`);
 }
 
-main().catch((err) => {
-  // eslint-disable-next-line no-console
+main().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });

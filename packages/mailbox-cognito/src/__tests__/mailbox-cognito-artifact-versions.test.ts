@@ -10,7 +10,7 @@ import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-
  */
 describe('loadMailboxCognitoArtifactVersions', () => {
   it('loads the artifact versions at the package root', () => {
-    const packageRootVersions = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'artifact-versions.json'), 'utf8'));
+    const packageRootVersions: unknown = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'artifact-versions.json'), 'utf8'));
 
     expect(loadMailboxCognitoArtifactVersions()).toEqual(packageRootVersions);
   });

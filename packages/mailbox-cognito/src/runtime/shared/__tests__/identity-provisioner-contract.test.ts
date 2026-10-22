@@ -16,11 +16,11 @@ function errorsOf(response: unknown): string[] {
 
 describe('isDcrCheckResponse', () => {
   it.each([
-    ['a duplicate with its client and scope', { status: 'dedup_hit', clientId: 'existing-client', scope: 'openid email' }],
-    ['a duplicate with its client only', { status: 'dedup_hit', clientId: 'existing-client' }],
-    ['a registration that may proceed', { status: 'proceed' }],
-    ['a tenant over its cap', { status: 'cap_exceeded' }],
-  ])('accepts %s', (_label, response) => {
+    { response: { status: 'dedup_hit', clientId: 'existing-client', scope: 'openid email' }, describes: 'a duplicate with its client and scope' },
+    { response: { status: 'dedup_hit', clientId: 'existing-client' }, describes: 'a duplicate with its client only' },
+    { response: { status: 'proceed' }, describes: 'a registration that may proceed' },
+    { response: { status: 'cap_exceeded' }, describes: 'a tenant over its cap' },
+  ])('accepts $describes', ({ response }) => {
     expect(isDcrCheckResponse(response)).toBe(true);
   });
 
@@ -32,9 +32,9 @@ describe('isDcrCheckResponse', () => {
   });
 
   it.each([
-    ['a registration that may proceed', { status: 'proceed', clientId: 'existing-client' }],
-    ['a tenant over its cap', { status: 'cap_exceeded', clientId: 'existing-client' }],
-  ])('rejects %s that carries a client', (_label, response) => {
+    { response: { status: 'proceed', clientId: 'existing-client' }, describes: 'a registration that may proceed' },
+    { response: { status: 'cap_exceeded', clientId: 'existing-client' }, describes: 'a tenant over its cap' },
+  ])('rejects $describes that carries a client', ({ response }) => {
     expect(isDcrCheckResponse(response)).toBe(false);
   });
 });

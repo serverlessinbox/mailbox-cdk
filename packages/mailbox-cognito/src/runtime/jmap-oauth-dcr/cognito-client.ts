@@ -8,8 +8,7 @@ import { toClientId, type ClientId, type UserPoolId } from '../shared/cognito-id
 import type { RedirectUri, Scope }                    from '../shared/identity-identifiers';
 
 /**
- * The Cognito calls of Dynamic Client Registration. They live in this Lambda and not in `identity-provisioner`,
- * which stays provider-agnostic.
+ * The Cognito user pool client calls of Dynamic Client Registration.
  *
  * `offline_access` is never among the scopes passed in: Cognito issues refresh tokens for `authorization_code`
  * through `ExplicitAuthFlows`, and `offline_access` is not a Cognito OAuth scope.

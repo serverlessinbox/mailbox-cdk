@@ -40,9 +40,9 @@ describe('handler cold start with an invalid configuration', () => {
   }
 
   it.each([
-    ['missing', undefined],
-    ['empty', ''],
-  ])('throws naming USER_POOL_ID when it is %s, before any AWS call', (_label, value) => {
+    { is: 'missing', value: undefined },
+    { is: 'empty', value: '' },
+  ])('throws naming USER_POOL_ID when it is $is, before any AWS call', ({ value }) => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner-fn';
     if (value === undefined) {
       delete process.env.USER_POOL_ID;
@@ -56,9 +56,9 @@ describe('handler cold start with an invalid configuration', () => {
   });
 
   it.each([
-    ['missing', undefined],
-    ['empty', ''],
-  ])('throws naming IDENTITY_PROVISIONER_FUNCTION_NAME when it is %s, before any AWS call', (_label, value) => {
+    { is: 'missing', value: undefined },
+    { is: 'empty', value: '' },
+  ])('throws naming IDENTITY_PROVISIONER_FUNCTION_NAME when it is $is, before any AWS call', ({ value }) => {
     if (value === undefined) {
       delete process.env.IDENTITY_PROVISIONER_FUNCTION_NAME;
     } else {

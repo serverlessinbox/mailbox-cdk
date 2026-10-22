@@ -36,7 +36,7 @@ type DeclaredParameters = Readonly<Record<keyof MailboxCognitoDataStackParameter
  * - Default user groups: admin, user
  *
  * All configuration comes from CloudFormation parameters — no synthesis-time CDK values.
- * CloudFormation outputs are published so that callers can read them via a custom resource.
+ * CloudFormation outputs publish the user pool id and ARN and the OAuth domain.
  */
 export class MailboxCognitoDataStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps = {}) {
@@ -109,9 +109,6 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     return new cdk.CfnParameter(this, name, props);
   }
 
-  // Apply product/correlation tags to everything in this cognito data stack.
-  // root-stack is the main stack name (via rootStack param); the base helper tags this
-  // stack's own name as `stack` (AWS::StackName). Cognito is the identity/auth tier.
   private applyCorrelationTags(parameters: DeclaredParameters): void {
     applyServerlessInboxBaseTagsWithDeployerType(this, {
       product:   'mailbox',
@@ -119,8 +116,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     }, parameters.deployerType.valueAsString as ServerlessInboxDeployerType, parameters.rootStackId.valueAsString);
     applyServerlessInboxComponentTag(this, 'auth');
 
-    // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack
-    // component map, so supply an identity-tier fallback sentence; anchor on this stack's own id.
+    // Name tags and native descriptions for every L1 in this stack; the ids here are in no component map, so the fallback description applies.
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
       fallbackDescription: 'ServerlessInbox identity - Cognito user directory.',
     }));
@@ -135,7 +131,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
   }
 
   // L1 (CfnUserPool) is required here because CF parameter token strings cannot be assigned
-  // to L2 enum properties (e.g. cognito.Mfa). All outputs use cfnPool.ref / Fn.sub for ARN.
+  // to L2 enum properties (e.g. cognito.Mfa).
   private createUserPool(parameters: DeclaredParameters): cognito.CfnUserPool {
     const cfnPool = new cognito.CfnUserPool(this, 'user-pool', {
       userPoolName:           Fn.sub('${AWS::AccountId}-${AWS::StackName}-users'),
@@ -177,9 +173,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     cfnDomain.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
   }
 
-  // Scopes are synthesized from platform constants at template build time.
-  // To add scopes: update CognitoScopeToPermissions, release a new package version,
-  // republish the template, and redeploy.
+  // The scopes are fixed in the template at build time, from `CognitoScopeToPermissions`.
   private createResourceServer(cfnPool: cognito.CfnUserPool): void {
     new cognito.CfnUserPoolResourceServer(this, 'user-pool-resource-server', {
       userPoolId: cfnPool.ref,

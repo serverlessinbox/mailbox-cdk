@@ -6061,6 +6061,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:packages/mailbox-cognito", {\
         "packageLocation": "./packages/mailbox-cognito/",\
         "packageDependencies": [\
+          ["@aws-sdk/client-cloudformation", "npm:3.1132.0"],\
           ["@aws-sdk/client-cognito-identity-provider", "npm:3.1132.0"],\
           ["@aws-sdk/client-lambda", "npm:3.1132.0"],\
           ["@aws-sdk/client-sqs", "npm:3.1132.0"],\

@@ -1,19 +1,15 @@
 import * as crypto from 'crypto';
 
-const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
-const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const DIGITS    = '0123456789';
-// Symbols are allowed by Cognito but not required; they are left out for simplicity.
+const LOWERCASE       = 'abcdefghijklmnopqrstuvwxyz';
+const UPPERCASE       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DIGITS          = '0123456789';
 const ALL_CHARACTERS  = LOWERCASE + UPPERCASE + DIGITS;
 const PASSWORD_LENGTH = 16;
 
 /**
- * Generate a cryptographically unpredictable random password that meets Cognito policy requirements.
- * Returns a 16-character password containing lowercase, uppercase, and digits. Never logged.
- *
- * Uses Node's built-in crypto.randomInt (CSPRNG) because this password is the initial admin
- * credential for the entire deployment. Math.random() would be recoverable from observed outputs,
- * violating the security requirement for an initial credential.
+ * Generates a password of lowercase letters, uppercase letters and digits, with at least one of each. Every
+ * choice comes from `crypto.randomInt`, never `Math.random`: the password is an initial credential and must not be
+ * predictable from observed output.
  */
 export function generateSecurePassword(): string {
   const passwordChars: string[] = [];

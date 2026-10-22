@@ -72,7 +72,9 @@ describe('IdP users API handler', () => {
       jest.isolateModules(() => {
         delete process.env[variable];
 
-        expect(() => require('../handler')).toThrow(variable);
+        expect(() => {
+          require('../handler');
+        }).toThrow(variable);
       });
     } finally {
       process.env = saved;

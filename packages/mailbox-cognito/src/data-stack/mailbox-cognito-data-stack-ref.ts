@@ -1,6 +1,7 @@
 import * as cognito  from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 
+/** The outputs of the deployed cognito data stack, as the CloudFormation attribute tokens of its deployer. */
 export interface MailboxCognitoDataStackRefProps {
   readonly userPoolArn: string;
   readonly oauthDomain: string;

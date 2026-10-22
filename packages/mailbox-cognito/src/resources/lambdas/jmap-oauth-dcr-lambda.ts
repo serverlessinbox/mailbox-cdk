@@ -22,8 +22,7 @@ export interface JmapOAuthDcrLambdaProps {
 }
 
 /**
- * The Lambda behind `POST /oauth/register` (RFC 7591 Dynamic Client Registration). It is unauthenticated: no
- * authorizer is attached to its route.
+ * The Lambda behind `POST /oauth/register` (RFC 7591 Dynamic Client Registration).
  *
  * It grants itself invoke access to `identity-provisioner` and `CreateUserPoolClient` and `DeleteUserPoolClient`
  * on the one user pool, and nothing else in Cognito.
@@ -42,7 +41,6 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
       },
     });
-
 
     props.identityProvisioner.grantInvoke(this);
 

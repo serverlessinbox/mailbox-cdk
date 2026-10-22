@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { InvokeCommand, type LambdaClient }                               from '@aws-sdk/client-lambda';
+import { InvokeCommand, type InvokeCommandInput, type LambdaClient }      from '@aws-sdk/client-lambda';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import type { AwsClientStub }                                             from 'aws-sdk-client-mock';
 import * as t                                                             from 'typanion';
@@ -69,7 +69,7 @@ export function bodyOf(answer: APIGatewayProxyStructuredResultV2): unknown {
 
 /** Makes the faked Lambda client answer each request kind of `identity-provisioner` with its own configurable answer. */
 export function mockIdentityProvisioner(lambdaMock: AwsClientStub<LambdaClient>, answers: IdentityProvisionerAnswers): void {
-  lambdaMock.on(InvokeCommand).callsFake((input) => {
+  lambdaMock.on(InvokeCommand).callsFake((input: InvokeCommandInput) => {
     const request = sentRequestOf(input.Payload);
     switch (request.kind) {
       case 'RESOLVE_TENANT':

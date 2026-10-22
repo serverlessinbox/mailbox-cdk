@@ -6,6 +6,8 @@
  * observed outputs.
  */
 
+import type * as Crypto           from 'crypto';
+
 import { generateSecurePassword } from '../secure-password';
 
 describe('secure-password module', () => {
@@ -60,22 +62,15 @@ describe('secure-password module', () => {
 
     it('uses crypto.randomInt (CSPRNG) and never Math.random', () => {
       // Regression test: ensure the implementation uses crypto.randomInt for all randomness.
-      const crypto            = require('crypto');
-      const originalRandomInt = crypto.randomInt;
-
-      let randomIntCallCount = 0;
-      crypto.randomInt       = jest.fn((...args: unknown[]) => {
-        randomIntCallCount++;
-        return (originalRandomInt as typeof originalRandomInt)(...(args as [number, number]));
-      });
+      const randomInt = jest.spyOn(jest.requireActual<typeof Crypto>('crypto'), 'randomInt');
 
       try {
         const password = generateSecurePassword();
 
         expect(validatePassword(password).isValid).toBe(true);
-        expect(randomIntCallCount).toBeGreaterThan(15);
+        expect(randomInt.mock.calls.length).toBeGreaterThan(15);
       } finally {
-        crypto.randomInt = originalRandomInt;
+        randomInt.mockRestore();
       }
     });
   });

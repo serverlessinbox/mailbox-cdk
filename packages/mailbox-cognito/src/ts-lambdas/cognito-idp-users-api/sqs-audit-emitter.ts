@@ -42,7 +42,7 @@ export class SqsAuditEmitter {
 
   // Omits the protobuf `$typeName` and writes a bigint as a string, because JSON.stringify throws on a bigint.
   private serialize(message: AuditWriterMessage): string {
-    return JSON.stringify(message, (key, value) => {
+    return JSON.stringify(message, (key: string, value: unknown): unknown => {
       if (key === '$typeName') {
         return undefined;
       }

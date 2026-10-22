@@ -26,6 +26,9 @@ import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent, sentReq
 
 const LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/cb';
 
+const ANY_NUMBER: unknown             = expect.any(Number);
+const MENTIONS_REDIRECT_URIS: unknown = expect.stringContaining('redirect_uris');
+
 describe('ClientRegistration', () => {
   const lambdaMock  = mockClient(LambdaClient);
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
@@ -66,7 +69,7 @@ describe('ClientRegistration', () => {
       expect(answer.statusCode).toBe(201);
       expect(bodyOf(answer)).toMatchObject({
         client_id:                  'new-client-id',
-        client_id_issued_at:        expect.any(Number),
+        client_id_issued_at:        ANY_NUMBER,
         redirect_uris:              ['http://127.0.0.1:4321/cb'],
         token_endpoint_auth_method: 'none',
         client_name:                'My App',
@@ -104,10 +107,10 @@ describe('ClientRegistration', () => {
     // Cognito rejects a client that is allowed OAuth flows and has no allowed scopes, so a request that reduces
     // to no scope once offline_access is dropped must be granted the default scope.
     it.each([
-      ['only offline_access', 'offline_access'],
-      ['an empty string', ''],
-      ['whitespace only', '   '],
-    ])('grants the default scope when the request asks for %s', async (_label, scope) => {
+      { asks: 'only offline_access', scope: 'offline_access' },
+      { asks: 'an empty string', scope: '' },
+      { asks: 'whitespace only', scope: '   ' },
+    ])('grants the default scope when the request asks for $asks', async ({ scope }) => {
       mockIdentityProvisioner(lambdaMock, {});
 
       const answer = await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], scope }));
@@ -118,9 +121,9 @@ describe('ClientRegistration', () => {
     });
 
     it.each([
-      ['absent', undefined],
-      ['empty after trimming', '   '],
-    ])('names the client "Unnamed JMAP Client" when client_name is %s', async (_label, clientName) => {
+      { clientNameIs: 'absent', clientName: undefined },
+      { clientNameIs: 'empty after trimming', clientName: '   ' },
+    ])('names the client "Unnamed JMAP Client" when client_name is $clientNameIs', async ({ clientName }) => {
       mockIdentityProvisioner(lambdaMock, {});
 
       const answer = await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], client_name: clientName }));
@@ -201,7 +204,7 @@ describe('ClientRegistration', () => {
       const answer = await registration.register(requestEvent({ client_name: 'No redirects here' }));
 
       expect(answer.statusCode).toBe(400);
-      expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata', error_description: expect.stringContaining('redirect_uris') });
+      expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata', error_description: MENTIONS_REDIRECT_URIS });
       expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_rejected', expect.objectContaining({ reason: 'schema_validation' }));
       expect(errorLog).not.toHaveBeenCalled();
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
@@ -221,7 +224,7 @@ describe('ClientRegistration', () => {
       const answer = await registration.register(rawRequestEvent(undefined));
 
       expect(answer.statusCode).toBe(400);
-      expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata', error_description: expect.stringContaining('redirect_uris') });
+      expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata', error_description: MENTIONS_REDIRECT_URIS });
       expect(lambdaMock.commandCalls(InvokeCommand)).toHaveLength(0);
     });
   });

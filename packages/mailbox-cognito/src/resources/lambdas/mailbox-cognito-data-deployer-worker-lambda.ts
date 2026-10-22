@@ -11,6 +11,7 @@ import { Construct }                                       from 'constructs';
 
 import { COGNITO_DEPLOYED_STACK_NAME }                     from '../../data-stack/mailbox-cognito-data-stack-contract';
 
+/** What `MailboxCognitoDataDeployerWorkerLambda` needs to resolve its code, to read the template it deploys and to scope its grants. */
 export interface MailboxCognitoDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /** The cognito data stack CloudFormation template. */
@@ -24,9 +25,6 @@ export interface MailboxCognitoDataDeployerWorkerLambdaProps {
 /**
  * Worker Lambda that deploys the cognito data stack via CloudFormation: manages the stack,
  * reads its template from S3, and creates/manages its Cognito User Pool resources.
- *
- * Every ARN it builds uses `Aws.*` tokens rather than synthesis-time values, so account and
- * region resolve at deploy time.
  */
 export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda {
   private readonly rootStack: RootStack;

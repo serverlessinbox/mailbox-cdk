@@ -1,7 +1,7 @@
+import { CloudFormationClient }          from '@aws-sdk/client-cloudformation';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import {
   answerRequestWithBadConfig,
-  createCloudFormationClient,
   emitManualFinalize,
   env,
   ExpectedFailure,
@@ -19,7 +19,7 @@ import { UserEnsurer }                 from './ensure-user';
 
 const { config, error: configError } = env.tryLoad(load);
 const cognito                        = new CognitoIdentityProviderClient({});
-const cloudFormation                 = createCloudFormationClient();
+const cloudFormation                 = new CloudFormationClient({});
 
 export const handler = withSmokeTest(wrapHandler(async (event) => {
   const request = readCustomResourceRequest(event);

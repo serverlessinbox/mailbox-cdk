@@ -25,16 +25,39 @@ import { HttpApi }                            from 'aws-cdk-lib/aws-apigatewayv2
 import * as lambda                            from 'aws-cdk-lib/aws-lambda';
 import * as cdk                               from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
+import * as t                                 from 'typanion';
+import type { StrictValidator }               from 'typanion';
 
-import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
-import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
+import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
-import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
 import { SUPPORTED_SCOPES }                   from '../runtime/jmap-oauth-dcr/supported-scopes';
+import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
+import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
 
 const API_BASE_URL           = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
+
+const isIntrinsicOrString = t.isOneOf([t.isString(), t.isPartial({ Ref: t.isOptional(t.isString()) })]);
+
+const isEqualsCondition = t.isPartial({ 'Fn::Equals': t.isOptional(t.isTuple([isIntrinsicOrString, isIntrinsicOrString])) });
+
+const isConditions = t.isRecord(isEqualsCondition);
+
+const isStage = t.isPartial({
+  DependsOn:  t.isOptional(t.isArray(t.isString())),
+  Properties: t.isPartial({ RouteSettings: t.isRecord(t.isPartial({})) }),
+});
+
+const isRoute = t.isPartial({ Properties: t.isPartial({ RouteKey: t.isString() }) });
+
+const isContentDeployment = t.isPartial({
+  Properties: t.isPartial({
+    sources: t.isOptional(t.isArray(t.isPartial({ key: t.isOptional(t.isString()), body: t.isOptional(isIntrinsicOrString) }))),
+  }),
+});
+
+const isFnIfBody = t.isPartial({ 'Fn::If': t.isTuple([t.isString(), isIntrinsicOrString, isIntrinsicOrString]) });
 
 function setUpArtifactContext(app: App): void {
   app.node.setContext('serverlessinbox:artifacts', {
@@ -56,9 +79,24 @@ interface Harness {
   readonly api:   HttpApi;
 }
 
-/** A `Fn::Equals` condition: the flag compared and the value it is compared with. */
-interface EqualsCondition {
-  readonly 'Fn::Equals'?: [unknown, unknown];
+/** A synthesized resource or template section that has to match `validator`, so that the tests read typed values; a mismatch throws, naming what is wrong. */
+function validated<Value>(value: unknown, validator: StrictValidator<unknown, Value>, what: string): Value {
+  const errors: string[] = [];
+  if (!validator(value, { errors })) {
+    throw new Error(`${what} has an unexpected shape: ${errors.join('; ')}`);
+  }
+  return value;
+}
+
+/** The resources of one CloudFormation type in the template, each validated against `validator`. */
+function resourcesOfType<Resource>(template: Template, type: string, validator: StrictValidator<unknown, Resource>): Record<string, Resource> {
+  return Object.fromEntries(
+    Object.entries(template.findResources(type)).map(([logicalId, resource]) => [logicalId, validated(resource, validator, `${type} ${logicalId}`)]),
+  );
+}
+
+function conditionsOf(template: Template): t.InferType<typeof isConditions> {
+  return validated(template.toJSON().Conditions ?? {}, isConditions, 'Conditions');
 }
 
 /**
@@ -114,8 +152,7 @@ function buildHarness(
  * resource can be asserted to carry it as its `Condition`. `expectedFlag` is a literal string or a `{ Ref }` token.
  */
 function findGatingConditionLogicalId(template: Template, expectedFlag: unknown): string {
-  const conditions: Record<string, EqualsCondition> = template.toJSON().Conditions ?? {};
-  const matches                                     = Object.entries(conditions).filter(([, expression]) => expression['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
+  const matches = Object.entries(conditionsOf(template)).filter(([, expression]) => expression['Fn::Equals']?.[1] === DynamicClientRegistrationMode.ENABLED);
   expect(matches).toHaveLength(1);
 
   const [logicalId, expression] = matches[0];
@@ -150,8 +187,8 @@ function findRegistrationRoutes(template: Template): Array<Record<string, unknow
  * `Fn::If` between two complete serialized variants (with and without `registration_endpoint`) when gated.
  */
 function findDiscoveryDocumentBody(template: Template): unknown {
-  for (const resource of Object.values(template.findResources('Custom::ContentDeployment'))) {
-    const source = resource.Properties?.sources?.find((candidate: { key?: string }) => candidate.key === '.well-known/openid-configuration');
+  for (const resource of Object.values(resourcesOfType(template, 'Custom::ContentDeployment', isContentDeployment))) {
+    const source = resource.Properties.sources?.find((candidate) => candidate.key === '.well-known/openid-configuration');
     if (source) {
       return source.body;
     }
@@ -164,10 +201,7 @@ function isFnIf(value: unknown): boolean {
 }
 
 function findDiscoveryDocumentFnIfBranches(template: Template): { trueBranch: unknown; falseBranch: unknown } {
-  const body = findDiscoveryDocumentBody(template);
-  if (typeof body !== 'object' || body === null || !('Fn::If' in body) || !Array.isArray(body['Fn::If'])) {
-    throw new Error('expected discovery document body to be an Fn::If');
-  }
+  const body                        = validated(findDiscoveryDocumentBody(template), isFnIfBody, 'the discovery document body');
   const [, trueBranch, falseBranch] = body['Fn::If'];
   return { trueBranch, falseBranch };
 }
@@ -188,7 +222,7 @@ function assertDcrFullyDisabled(harness: Harness): void {
 
   expect(findRegistrationRoutes(template)).toHaveLength(0);
   expect(findDcrFunctionEntries(template)).toHaveLength(0);
-  expect(Object.keys(template.toJSON().Conditions ?? {})).toHaveLength(0);
+  expect(Object.keys(conditionsOf(template))).toHaveLength(0);
 
   const body = findDiscoveryDocumentBody(template);
   expect(isFnIf(body)).toBe(false);
@@ -251,7 +285,7 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
 
     const template    = Template.fromStack(stack);
     const conditionId = findGatingConditionLogicalId(template, DynamicClientRegistrationMode.ENABLED);
-    const stages      = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
+    const stages      = Object.values(resourcesOfType(template, 'AWS::ApiGatewayV2::Stage', isStage));
     expect(stages).toHaveLength(1);
 
     const routeSettings = stages[0].Properties.RouteSettings;
@@ -272,9 +306,9 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     addon.addRoutes(api);
 
     const template            = Template.fromStack(stack);
-    const [stage]             = Object.values(template.findResources('AWS::ApiGatewayV2::Stage'));
+    const [stage]             = Object.values(resourcesOfType(template, 'AWS::ApiGatewayV2::Stage', isStage));
     const routeLogicalIdByKey = new Map<string, string>();
-    for (const [logicalId, route] of Object.entries(template.findResources('AWS::ApiGatewayV2::Route'))) {
+    for (const [logicalId, route] of Object.entries(resourcesOfType(template, 'AWS::ApiGatewayV2::Route', isRoute))) {
       routeLogicalIdByKey.set(route.Properties.RouteKey, logicalId);
     }
 

@@ -25,9 +25,9 @@ import * as s3                                                                  
 import * as cdk                                                                       from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                              from 'aws-cdk-lib';
 
-import { MailboxUserPool }                                                            from '../user-pool/mailbox-user-pool';
 import { loadMailboxCognitoArtifactVersions }                                         from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                           from '../mailbox-cognito-registry-record';
+import { MailboxUserPool }                                                            from '../user-pool/mailbox-user-pool';
 
 interface CloudFormationResource {
   Type:        string;

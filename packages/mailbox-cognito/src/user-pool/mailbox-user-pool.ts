@@ -21,13 +21,14 @@ import { Construct }                                                            
 import { CognitoIdpUsersAdminApiAddon }                                                                          from '../cognito-idp-users-addon';
 import type { CognitoIdpUsersAuthorizationConfig }                                                               from '../cognito-idp-users-pool-config';
 import { MailboxCognitoDataDeployer }                                                                            from '../data-stack/mailbox-cognito-data-deployer';
+import { ADMIN_GROUP_NAME, RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                                         from '../data-stack/mailbox-cognito-data-stack-contract';
 import { JmapOAuthAddon }                                                                                        from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions }                                                                    from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                                                      from '../mailbox-cognito-registry-record';
 import { CognitoBootstrapUserLambda }                                                                            from '../resources/lambdas/bootstrap-user-lambda';
 import type { BootstrapUserProperties }                                                                          from '../runtime/bootstrap-user/properties';
 
-import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './cognito-scopemap';
+import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope }                                     from './cognito-scopemap';
 import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
 import type { MailboxUserPoolAdminUiConfig }                                                                     from './mailbox-user-pool-admin-ui-config';
 import type { MfaMode }                                                                                          from './mfa-mode';
@@ -94,8 +95,10 @@ export interface MailboxUserPoolCognitoDomain {
 export interface MailboxUserPoolCognitoAutoDomain {
   /** Selects this domain setting in `MailboxUserPoolDomainConfig`: always `cognito-auto`. */
   readonly kind: 'cognito-auto';
-  /** Route53 hosted zone ID used to auto-derive `cognitoDomainPrefix`.
-   *  The prefix is derived + sanitized from the mail domain at deploy time via the shared StackHelpers singleton. */
+  /**
+   * Route53 hosted zone ID used to auto-derive `cognitoDomainPrefix`. The prefix is derived from the mail
+   * domain of this hosted zone and sanitized at deploy time.
+   */
   readonly hostedZoneId: string;
 }
 
@@ -209,11 +212,10 @@ export interface BootstrapUserConfig {
  */
 export interface IBootstrapUserHandle {
   /**
-   * Retrieve the temporary password generated or used during bootstrap.
-   * Returns a CloudFormation GetAtt reference to the temporary password attribute
-   * from the custom resource response Data, or the supplied password if one was provided.
-   * The password is only populated when no email address is configured
-   * (email-based invites use Cognito's invite mechanism instead).
+   * The temporary password of the bootstrap user: a CloudFormation `GetAtt` reference to the
+   * `temporaryPassword` attribute of the custom resource, which holds the password the user was created with.
+   * When the user already existed, the attribute holds a marker text instead, because the password of an
+   * existing user cannot be recovered.
    */
   readonly temporaryPassword: string;
 }
@@ -283,8 +285,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    */
   public readonly policies: MailboxAuthPolicies;
 
-  private readonly resourceServerIdentifier: string = 'si';
-
   private readonly supportedIdentityProviders: cognito.UserPoolClientIdentityProvider[] = [
     cognito.UserPoolClientIdentityProvider.COGNITO,
   ];
@@ -308,8 +308,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     this.artifacts                 = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
     this.authzConfig               = {
-      adminGroups: props.authorization?.adminGroups ?? ['admin'],
-      userGroups:  props.authorization?.userGroups ?? ['user'],
+      adminGroups: props.authorization?.adminGroups ?? [ADMIN_GROUP_NAME],
+      userGroups:  props.authorization?.userGroups ?? [USER_GROUP_NAME],
     };
     this.scopeMap                  = this.buildScopeMap();
     this.policies                  = this.buildPolicies();
@@ -651,15 +651,15 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     return this.toOAuthScopeName(PermissionToCognitoScope[permission]);
   }
 
-  private toOAuthScopeName(cognitoScope: string): string {
-    return `${this.resourceServerIdentifier}/${cognitoScope.replace(/\//g, '.')}`;
+  private toOAuthScopeName(cognitoScope: CognitoScope): string {
+    return `${RESOURCE_SERVER_IDENTIFIER}/${cognitoScope}`;
   }
 
   private buildScopeMap(): Record<string, Permission[]> {
     const scopeMap: Record<string, Permission[]> = {};
 
-    for (const [cognitoScope, permissions] of Object.entries(CognitoScopeToPermissions)) {
-      scopeMap[this.toOAuthScopeName(cognitoScope)] = permissions;
+    for (const cognitoScope of Object.values(CognitoScope)) {
+      scopeMap[this.toOAuthScopeName(cognitoScope)] = CognitoScopeToPermissions[cognitoScope];
     }
 
     return scopeMap;

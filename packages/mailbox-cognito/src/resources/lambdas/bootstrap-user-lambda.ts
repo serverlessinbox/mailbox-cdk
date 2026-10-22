@@ -13,12 +13,7 @@ export interface CognitoBootstrapUserLambdaProps {
   userPool:         IUserPool;
 }
 
-/**
- * Artifact-based TypeScript Lambda for Cognito bootstrap user custom resource.
- *
- * Expects an artifact at: `lambdas/cognito-bootstrap-user.zip`
- * with handler: `index.handler`.
- */
+/** The Lambda behind the bootstrap user custom resource: it creates the user in the pool and adds it to its groups. */
 export class CognitoBootstrapUserLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: CognitoBootstrapUserLambdaProps) {
     super(scope, id, {
@@ -30,8 +25,6 @@ export class CognitoBootstrapUserLambda extends TypeScriptLambda {
       memorySize:       256,
     });
 
-    // Grant permission to check parent stack rollback status during custom-resource Update failures.
-    // Scoped to this stack only — the Lambda checks the stack it's invoked for.
     this.grantCloudFormationDescribeStacks();
     this.grantUserPoolBootstrap(props.userPool);
   }
