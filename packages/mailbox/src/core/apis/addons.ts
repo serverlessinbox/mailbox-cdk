@@ -3,9 +3,9 @@ import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authoriz
 import type { HttpApi }              from 'aws-cdk-lib/aws-apigatewayv2';
 import type { Construct }            from 'constructs';
 
-import type { IDataTable }           from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-queue';
 import type { IIdentityProvisioner } from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-queue';
+import type { IDataTable }           from '../../resources/tables/data-tables';
 
 /**
  * A capability that extends the Admin API with extra routes and, optionally, Admin UI
@@ -13,16 +13,6 @@ import type { IIdentityProvisioner } from '../../resources/lambdas/identity-prov
  * own endpoints to the Admin API.
  */
 export interface IAdminApiAddon {
-  /**
-   * Mounts the addon's routes on the Admin API.
-   *
-   * Pass `authorizer` to every route you add so it is protected like the other Admin API routes.
-   *
-   * @param api The Admin API's HTTP API to add routes to.
-   * @param authorizer The authorizer that protects every other Admin API route.
-   */
-  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
-
   /**
    * Configuration this addon contributes to the Admin UI's runtime `config/config.json`, for
    * example a flag that tells the UI the capability is present.
@@ -34,6 +24,16 @@ export interface IAdminApiAddon {
    * @default - the addon contributes no UI configuration
    */
   uiConfig?: Record<string, unknown>;
+
+  /**
+   * Mounts the addon's routes on the Admin API.
+   *
+   * Pass `authorizer` to every route you add so it is protected like the other Admin API routes.
+   *
+   * @param api The Admin API's HTTP API to add routes to.
+   * @param authorizer The authorizer that protects every other Admin API route.
+   */
+  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
 }
 
 /**

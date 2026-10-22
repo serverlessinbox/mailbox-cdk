@@ -6,14 +6,14 @@
  * Pins the exact IAM statement and endpoint URL it hands out through IWebSocketPushApi, which a
  * widened statement or a changed URL shape breaks without failing tsc or synth. Both are asserted
  * in a stack with an explicit env, where a region, account or partition taken from the stack would
- * render as a literal in the template instead of a Ref. Also pins the
- * custom-domain wiring (certificate required, domain deleted before the certificate), that only
- * `$connect` is behind the authorizer, the default subscription limit and the broadcaster handle.
+ * render as a literal in the template instead of a Ref. Also pins the custom-domain wiring (stage
+ * mapped onto the domain, the domain's logical id pin handed out), that only `$connect` is behind
+ * the authorizer, the default subscription limit and the broadcaster handle.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Capture, Match, Template }             from 'aws-cdk-lib/assertions';
 import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
@@ -76,11 +76,7 @@ function newCertificate(stack: cdk.Stack): acm.Certificate {
 
 describe('WebSocketPush.grantManageConnections', () => {
   it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
-    const app   = new App();
-    const stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const stack = newStack();
 
     const sut  = buildWebSocketPush(stack);
     const role = new iam.Role(stack, 'TestRole', {
@@ -124,7 +120,7 @@ describe('WebSocketPush without a custom domain', () => {
       'Fn::Join': ['', ['wss://', { Ref: apiId }, '.execute-api.us-west-2.', { Ref: 'AWS::URLSuffix' }, '/prod']],
     });
     expect(sut.domainTarget).toBeUndefined();
-    expect(sut.domainCfnResource).toBeUndefined();
+    expect(sut.domainLogicalIdPin).toBeUndefined();
     template.resourceCountIs('AWS::ApiGatewayV2::DomainName', 0);
   });
 });
@@ -133,44 +129,36 @@ describe('WebSocketPush with a custom domain', () => {
   it('serves on the domain, maps the stage onto it and publishes its regional target', () => {
     const stack = newStack();
 
-    const sut = buildWebSocketPush(stack, { domainName: 'ws.example.com', certificate: newCertificate(stack) });
+    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: newCertificate(stack) } });
 
     const template = Template.fromStack(stack);
     expect(sut.webSocketUrl).toBe('wss://ws.example.com');
     expect(sut.domainTarget).toBeDefined();
-    expect(sut.domainCfnResource?.cfnResourceType).toBe('AWS::ApiGatewayV2::DomainName');
-    template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-      DomainName:               'ws.example.com',
-      DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
-    });
+    template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'ws.example.com' });
     template.hasResourceProperties('AWS::ApiGatewayV2::ApiMapping', { Stage: 'prod' });
   });
 
-  it('makes the domain depend on the certificate so the domain is deleted first', () => {
-    const stack       = newStack();
-    const certificate = newCertificate(stack);
+  it('hands out the logical id pin of its domain name', () => {
+    const stack = newStack();
 
-    buildWebSocketPush(stack, { domainName: 'ws.example.com', certificate });
+    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: newCertificate(stack) } });
 
-    Template.fromStack(stack).hasResource('AWS::ApiGatewayV2::DomainName', {
-      DependsOn: Match.arrayWith([stack.getLogicalId(certificate.node.defaultChild as cdk.CfnResource)]),
-    });
-  });
+    sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
 
-  it('throws when the certificate is missing', () => {
-    expect(() => buildWebSocketPush(newStack(), { domainName: 'ws.example.com' }))
-      .toThrow('WebSocketPush: certificate is required when domainName is provided');
+    const domainIds = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::DomainName'));
+    expect(domainIds).toEqual(['PinnedDomainName']);
   });
 });
 
 describe('WebSocketPush routes', () => {
-  it('puts only $connect behind the authorizer, reading the Sec-WebSocket-Protocol header', () => {
+  it('puts only $connect behind the kebab-case named authorizer, reading the Sec-WebSocket-Protocol header', () => {
     const stack = newStack();
 
     buildWebSocketPush(stack);
 
     const template = Template.fromStack(stack);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+      Name:           'websocket-authorizer',
       AuthorizerType: 'REQUEST',
       IdentitySource: ['route.request.header.Sec-WebSocket-Protocol'],
     });
@@ -213,26 +201,20 @@ describe('WebSocketPush.broadcaster', () => {
 
     sut.broadcaster.grantInvoke(role);
 
-    const template            = Template.fromStack(stack);
-    const broadcastFunctionId = Object.keys(template.findResources('AWS::Lambda::Function'))
-      .find((id) => id.toLowerCase().includes('broadcasthandler'));
-    expect(stack.resolve(sut.broadcaster.functionName)).toEqual({ Ref: broadcastFunctionId });
-    template.hasResourceProperties('AWS::IAM::Policy', {
+    const broadcastFunctionId = new Capture();
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       Roles:          [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
       PolicyDocument: {
         Statement: [Match.objectLike({ Action: 'lambda:InvokeFunction', Resource: Match.arrayWith([{ 'Fn::GetAtt': [broadcastFunctionId, 'Arn'] }]) })],
       },
     });
+    expect(stack.resolve(sut.broadcaster.functionName)).toEqual({ Ref: broadcastFunctionId.asString() });
   });
 });
 
 describe('WebSocketPush.managementEndpoint', () => {
   it('builds the ApiGatewayManagementApi endpoint URL for the given stage', () => {
-    const app   = new App();
-    const stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const stack = newStack();
 
     const sut      = buildWebSocketPush(stack);
     const template = Template.fromStack(stack);

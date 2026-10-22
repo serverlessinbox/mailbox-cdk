@@ -6,28 +6,27 @@ import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integration
 import {
   ApiMapping,
   CorsHttpMethod,
-  DomainName,
-  EndpointType,
   HttpApi,
   HttpMethod,
-  SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                                                    from 'aws-cdk-lib/aws-certificatemanager';
-import { Duration, Aws, CfnResource }                              from 'aws-cdk-lib';
-import { Construct }                                               from 'constructs';
+import type { CorsPreflightOptions }                                  from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration, Aws }                                              from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
 
-import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
-import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import { AUTH_POLICY_ADMIN_API }                                   from '../auth/types';
+import type { IDataBlobStore }                                        from '../../resources/buckets/data-blob-store';
+import { AdminApiLambda }                                             from '../../resources/lambdas/admin-api-lambda';
+import { AuthorizerLambda }                                           from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                                  from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                     from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                    from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                    from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                            from '../../resources/tables/data-tables';
+import { AUTH_POLICY_ADMIN_API }                                      from '../auth/types';
 
-import type { IAdminApiAddon }                                     from './addons';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from './websocket';
+import type { IAdminApiAddon }                                        from './addons';
+import { ApiCustomDomain }                                            from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }                   from './api-custom-domain';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from './websocket';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, the
@@ -51,11 +50,8 @@ export interface AdminApiProps {
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
 
-  /** Optional custom domain name for this API (e.g. api.example.com). */
-  readonly domainName?: string;
-
-  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). Required when domainName is set. */
-  readonly certificate?: acm.ICertificate;
+  /** Optional custom domain (e.g. api.example.com) to serve this API on. */
+  readonly customDomain?: ApiCustomDomainProps;
 
   /** Name of the SES receipt rule set. Passed to the handler for setup-flow SES readiness checks. */
   readonly sesRuleSetName: string;
@@ -79,8 +75,8 @@ export class AdminApi extends Construct {
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
-  /** L1 CfnDomainName for logical-ID pinning. Present only when domainName is provided. */
-  public readonly domainCfnResource?: CfnResource;
+  /** Fixes the logical id of the custom domain name. Present only when a custom domain is set. */
+  public readonly domainLogicalIdPin?: ILogicalIdPin;
   private readonly apiHandlerLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
@@ -88,50 +84,69 @@ export class AdminApi extends Construct {
     ComponentDescription.describe(this, 'Administrative API for managing domains, users, configuration and audit.');
 
     const api = new HttpApi(this, 'admin-api', {
-      apiName:     `Mailbox ${Aws.STACK_NAME} Admin API`,
-      description: 'This service serves mailbox admin api endpoints.',
-      corsPreflight:
-        props.allowedOrigins && props.allowedOrigins.length > 0
-          ? {
-            allowOrigins:     props.allowedOrigins,
-            allowMethods:     [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-            allowHeaders:     ['Content-Type', 'Authorization'],
-            allowCredentials: true,
-            maxAge:           Duration.hours(1),
-          }
-          : undefined,
+      apiName:       `Mailbox ${Aws.STACK_NAME} Admin API`,
+      description:   'This service serves mailbox admin api endpoints.',
+      corsPreflight: this.corsPreflight(props.allowedOrigins),
     });
 
-    if (props.domainName) {
-      if (!props.certificate) {
-        throw new Error('AdminApi: certificate is required when domainName is provided');
-      }
+    if (props.customDomain) {
+      const domain = this.addCustomDomain(api, props.customDomain);
 
-      const domain = new DomainName(this, 'domain', {
-        domainName:     props.domainName,
-        certificate:    props.certificate,
-        endpointType:   EndpointType.REGIONAL,
-        securityPolicy: SecurityPolicy.TLS_1_2,
-      });
-
-      // Be explicit: the domain must be deleted before the certificate.
-      domain.node.addDependency(props.certificate);
-
-      this.domainCfnResource = domain.node.defaultChild as CfnResource;
-
-      new ApiMapping(this, 'mapping', {
-        api,
-        domainName: domain,
-        stage:      api.defaultStage!,
-      });
-
-      this.url          = `https://${props.domainName}`;
-      this.domainTarget = domain.regionalDomainName;
+      this.url                = `https://${props.customDomain.domainName}`;
+      this.domainTarget       = domain.regionalDomainName;
+      this.domainLogicalIdPin = domain.logicalIdPin;
     } else {
       this.url = api.apiEndpoint;
     }
 
-    const apiHandlerLambda = new AdminApiLambda(this, 'api-handler', {
+    this.apiHandlerLambda = this.createHandlerLambda(props);
+
+    const httpLambdaAuthorize = this.createAuthorizer(props);
+
+    for (const addon of props.addons ?? []) {
+      addon.addRoutes(api, httpLambdaAuthorize);
+    }
+
+    api.addRoutes({
+      integration: new HttpLambdaIntegration('handler', this.apiHandlerLambda),
+      path:        '/{proxy+}',
+      methods:     [HttpMethod.POST],
+      authorizer:  httpLambdaAuthorize,
+    });
+  }
+
+  /** Lets the handler Lambda publish through `broadcaster` to connected WebSocket clients. */
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.apiHandlerLambda.enableWebSocketPush(broadcaster);
+  }
+
+  private corsPreflight(allowedOrigins: string[] | undefined): CorsPreflightOptions | undefined {
+    if (!allowedOrigins || allowedOrigins.length === 0) {
+      return undefined;
+    }
+
+    return {
+      allowOrigins:     allowedOrigins,
+      allowMethods:     [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+      allowHeaders:     ['Content-Type', 'Authorization'],
+      allowCredentials: true,
+      maxAge:           Duration.hours(1),
+    };
+  }
+
+  private addCustomDomain(api: HttpApi, customDomain: ApiCustomDomainProps): ApiCustomDomain {
+    const domain = new ApiCustomDomain(this, 'domain', customDomain);
+
+    new ApiMapping(this, 'mapping', {
+      api,
+      domainName: domain,
+    });
+
+    return domain;
+  }
+
+  private createHandlerLambda(props: AdminApiProps): AdminApiLambda {
+    return new AdminApiLambda(this, 'api-handler', {
       configTable:          props.configTable,
       itemTable:            props.itemTable,
       auditLogTable:        props.auditLogTable,
@@ -147,8 +162,9 @@ export class AdminApi extends Construct {
       systemSenderAddress:  props.systemSenderAddress,
       vendorLink:           props.vendorLink,
     });
-    this.apiHandlerLambda  = apiHandlerLambda;
+  }
 
+  private createAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable:       props.configTable,
@@ -158,23 +174,6 @@ export class AdminApi extends Construct {
       pipeline:          'admin',
     });
 
-    const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
-
-    for (const addon of props.addons ?? []) {
-      addon.addRoutes(api, httpLambdaAuthorize);
-    }
-
-    const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
-    api.addRoutes({
-      integration: httpLambdaIntegration,
-      path:        '/{proxy+}',
-      methods:     [HttpMethod.POST],
-      authorizer:  httpLambdaAuthorize,
-    });
-  }
-
-  /** Lets the handler Lambda publish through `broadcaster` to connected WebSocket clients. */
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.apiHandlerLambda.enableWebSocketPush(broadcaster);
+    return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
   }
 }

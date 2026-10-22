@@ -19,19 +19,13 @@ import type {
   OidcProviderConfig,
 } from './types';
 
-const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
-const SERVICE_TIMEOUT_MARGIN   = Duration.seconds(30);
-
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {
   readonly configTable:       IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
-  readonly tenantName?:       string;
-  readonly defaultLocalPart?: string;
-  readonly domain:            string;
-  readonly oidcIssuer:        string;
-  readonly oidcProviderName?: string;
+  readonly domain:     string;
+  readonly oidcIssuer: string;
 
   readonly oidcProvider?: OidcProviderConfig;
   readonly authPolicies?: AuthPoliciesConfig;
@@ -47,8 +41,21 @@ export interface BootstrapProps {
   readonly vendorLink: VendorLink;
 }
 
+/** One OAuth client as the bootstrap custom resource sends it to the bootstrap Lambda. */
+interface BootstrapOAuthClientProperties {
+  readonly requestedAudience: string;
+  readonly clientId:          string;
+  readonly clientSecret:      string | undefined;
+  readonly scopes:            string[];
+  readonly redirectUri:       string;
+}
+
+const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
+const SERVICE_TIMEOUT_MARGIN   = Duration.seconds(30);
+
 /**
- * CDK Construct for bootstrapping a new tenant.
+ * Runs the one-time deploy-time setup of a mailbox through a custom resource: the Lambda behind it
+ * receives the domain, the OIDC provider, the auth policies and the OAuth clients as properties.
  */
 export class Bootstrap extends Construct {
   /** The Lambda function backing the bootstrap custom resource. */
@@ -80,11 +87,10 @@ export class Bootstrap extends Construct {
       serviceTimeout: BOOTSTRAP_LAMBDA_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),
       properties:     {
         ensureServiceQuotasPrereqs: true,
-        tenantName:                 props.tenantName ?? 'default-tenant',
-        defaultLocalPart:           props.defaultLocalPart ?? '{username}',
+        tenantName:                 'default-tenant',
+        defaultLocalPart:           '{username}',
         domain:                     props.domain,
         oidcIssuer:                 props.oidcIssuer,
-        oidcProviderName:           props.oidcProviderName,
 
         oidcProvider: props.oidcProvider,
         authPolicies: props.authPolicies,
@@ -100,7 +106,7 @@ export class Bootstrap extends Construct {
     this.oauthClientsProvisioned = bootstrapResource;
   }
 
-  private toRequestOAuthClient(client: OAuthAuthorizationCodeClientConfig) {
+  private toRequestOAuthClient(client: OAuthAuthorizationCodeClientConfig): BootstrapOAuthClientProperties {
     return {
       requestedAudience: client.requestedAudience ?? client.clientId,
       clientId:          client.clientId,

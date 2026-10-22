@@ -5,38 +5,37 @@ import { HttpLambdaIntegration, HttpUrlIntegration }                            
 import {
   ApiMapping,
   CorsHttpMethod,
-  CfnStage,
-  DomainName,
-  EndpointType,
   HttpApi,
   HttpMethod,
   IHttpApi,
-  SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                                                           from 'aws-cdk-lib/aws-certificatemanager';
-import type { IFunction }                                                 from 'aws-cdk-lib/aws-lambda';
-import { Duration, Aws, CfnResource }                                     from 'aws-cdk-lib';
-import { Construct }                                                      from 'constructs';
+import type { CorsPreflightOptions }                                         from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                    from 'aws-cdk-lib/aws-lambda';
+import { Duration, Aws, CfnResource }                                        from 'aws-cdk-lib';
+import { Construct }                                                         from 'constructs';
+import type { IConstruct }                                                   from 'constructs';
 
-import type { IDataBlobStore }                                            from '../../resources/buckets/data-blob-store';
-import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                                      from '../../resources/lambdas/identity-provisioner-lambda';
-import { JmapApiLambda }                                                  from '../../resources/lambdas/jmap-api-lambda';
-import type { IAuditEventsQueue }                                         from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                        from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                from '../../resources/tables/data-tables';
-import { AUTH_POLICY_JMAP_API, IMailboxAuthProvider }                     from '../auth/types';
+import type { IDataBlobStore }                                               from '../../resources/buckets/data-blob-store';
+import { AuthorizerLambda }                                                  from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                                         from '../../resources/lambdas/identity-provisioner-lambda';
+import { JmapApiLambda }                                                     from '../../resources/lambdas/jmap-api-lambda';
+import type { IAuditEventsQueue }                                            from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                           from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                           from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                   from '../../resources/tables/data-tables';
+import { AUTH_POLICY_JMAP_API, IMailboxAuthProvider }                        from '../auth/types';
 
-import type { IJmapApiAddon }                                             from './addons';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
+import type { IJmapApiAddon }                                                from './addons';
+import { ApiCustomDomain }                                                   from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }                          from './api-custom-domain';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }    from './websocket';
 
 /**
- * Inputs of {@link JMapApi}: the tables, queues and blob store its handler Lambda works on, the
+ * Inputs of {@link JmapApi}: the tables, queues and blob store its handler Lambda works on, the
  * addons that mount further routes, the optional custom domain and the optional OAuth issuer that
  * switches on the protected-resource metadata document.
  */
-export interface JMapApiProps {
+export interface JmapApiProps {
   readonly configTable:          IDataTable;
   readonly itemTable:            IDataTable;
   readonly changelogTable:       IDataTable;
@@ -55,11 +54,8 @@ export interface JMapApiProps {
   /** Pre-constructed identity-provisioner function. Passed through to JmapApiLambda. */
   readonly identityProvisioner: IIdentityProvisioner;
 
-  /** Optional custom domain name for this API (e.g. jmap.example.com). */
-  readonly domainName?: string;
-
-  /** ACM certificate for domainName (must be regional, in the same region as the stack/API). Required when domainName is set. */
-  readonly certificate?: acm.ICertificate;
+  /** Optional custom domain (e.g. jmap.example.com) to serve this API on. */
+  readonly customDomain?: ApiCustomDomainProps;
 
   /** Optional addon routes (e.g. OAuth DCR). */
   readonly jmapApiAddons?: IJmapApiAddon[];
@@ -73,17 +69,6 @@ export interface JMapApiProps {
   readonly vendorAccountIds: string[];
 }
 
-/** Per-route throttle settings, keyed PascalCase because CloudFormation receives them unmapped. */
-interface RouteThrottleSettings {
-  readonly ThrottlingBurstLimit: number;
-  readonly ThrottlingRateLimit:  number;
-}
-
-/** The `RouteSettings` of an API Gateway stage, keyed by route key (`<METHOD> <path>`). */
-interface StageRouteSettings {
-  [routeKey: string]: RouteThrottleSettings;
-}
-
 /**
  * The JMAP HTTP API: the JMAP session, API and upload routes behind a Lambda authorizer (the
  * session route is anonymous), the routes its addons mount, an optional custom domain, and, when
@@ -92,7 +77,7 @@ interface StageRouteSettings {
  * It does not create the DNS record for the custom domain (it exposes `domainTarget` for that),
  * and it does not decide who is authorized (the authorizer Lambda does).
  */
-export class JMapApi extends Construct {
+export class JmapApi extends Construct {
   /** RFC 9728 OAuth protected-resource well-known path (with leading slash for HTTP routes). */
   private static readonly OAUTH_PROTECTED_RESOURCE_PATH = '/.well-known/oauth-protected-resource';
 
@@ -100,15 +85,15 @@ export class JMapApi extends Construct {
   public readonly url: string;
   /** CNAME target to publish (API Gateway regional domain) when custom domain is enabled. */
   public readonly domainTarget?: string;
+  /** Fixes the logical id of the custom domain name. Present only when a custom domain is set. */
+  public readonly domainLogicalIdPin?: ILogicalIdPin;
   /** The authorizer that protects this API's routes, for other APIs that authorize the same callers. */
   public readonly authorizerLambda: IFunction;
   /** The underlying HTTP API, for constructs that add routes to it. */
   public readonly httpApi: IHttpApi;
-  /** L1 CfnDomainName resource, for logical-ID pinning. Present only when domainName was provided. */
-  public readonly domainCfnResource?: CfnResource;
   private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
 
-  constructor(scope: Construct, id: string, props: JMapApiProps) {
+  constructor(scope: Construct, id: string, props: JmapApiProps) {
     super(scope, id);
     ComponentDescription.describe(this, 'JMAP protocol API — the mail client endpoint for sync, query and message submission.');
 
@@ -125,97 +110,26 @@ export class JMapApi extends Construct {
     this.authorizerLambda = lambdaAuthorizer;
 
     const api = new HttpApi(this, 'jmap-api', {
-      apiName:     `Mailbox ${Aws.STACK_NAME} JMAP API`,
-      description: 'This service serves mailbox operations.',
-      corsPreflight:
-        props.allowedOrigins && props.allowedOrigins.length > 0
-          ? {
-            allowOrigins:     props.allowedOrigins,
-            allowMethods:     [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
-            allowHeaders:     ['Content-Type', 'Authorization'],
-            allowCredentials: true,
-            maxAge:           Duration.hours(1),
-          }
-          : undefined,
+      apiName:       `Mailbox ${Aws.STACK_NAME} JMAP API`,
+      description:   'This service serves mailbox operations.',
+      corsPreflight: this.corsPreflight(props.allowedOrigins),
     });
 
-    if (props.domainName) {
-      if (!props.certificate) {
-        throw new Error('JMapApi: certificate is required when domainName is provided');
-      }
+    if (props.customDomain) {
+      const domain = this.addCustomDomain(api, props.customDomain);
 
-      const domain = new DomainName(this, 'domain', {
-        domainName:     props.domainName,
-        certificate:    props.certificate,
-        endpointType:   EndpointType.REGIONAL,
-        securityPolicy: SecurityPolicy.TLS_1_2,
-      });
-
-      // Be explicit: the domain must be deleted before the certificate.
-      domain.node.addDependency(props.certificate);
-
-      this.domainCfnResource = domain.node.defaultChild as CfnResource;
-
-      new ApiMapping(this, 'mapping', {
-        api,
-        domainName: domain,
-        stage:      api.defaultStage!,
-      });
-
-      this.url          = `https://${props.domainName}`;
-      this.domainTarget = domain.regionalDomainName;
+      this.url                = `https://${props.customDomain.domainName}`;
+      this.domainTarget       = domain.regionalDomainName;
+      this.domainLogicalIdPin = domain.logicalIdPin;
     } else {
       this.url = api.apiEndpoint;
     }
 
     this.httpApi = api;
 
-    const apiHandlerLambda = new JmapApiLambda(this, 'jmap-api-handler', {
-      configTable:               props.configTable,
-      itemTable:                 props.itemTable,
-      changelogTable:            props.changelogTable,
-      authKeyStoreTable:         props.authKeyStoreTable,
-      blobStore:                 props.blobStore,
-      emailSubmissionQueue:      props.emailSubmissionQueue,
-      auditEventsQueue:          props.auditEventsQueue,
-      cdnHost:                   props.cdnHost,
-      apiBaseUrl:                this.url,
-      artifactResolver:          props.artifactResolver,
-      identityProvisioner:       props.identityProvisioner,
-      vendorAccountIds:          props.vendorAccountIds,
-      scopeMap:                  props.authProvider.scopeMap,
-      oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,
-    });
-    this.apiHandlerLambda  = apiHandlerLambda;
+    this.apiHandlerLambda = this.createHandlerLambda(props);
 
-    // Instance A: default identity source and caching for authenticated routes
-    const httpLambdaAuthorize = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
-    // Instance B: no identity source, no caching for anonymous discovery route
-    const httpLambdaAuthorizeAnonymous = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
-      identitySource:  [],
-      resultsCacheTtl: Duration.seconds(0),
-    });
-
-    const httpLambdaIntegration = new HttpLambdaIntegration('handler', apiHandlerLambda);
-
-    api.addRoutes({
-      path:        '/.well-known/jmap',
-      methods:     [HttpMethod.GET],
-      authorizer:  httpLambdaAuthorizeAnonymous,
-      integration: httpLambdaIntegration,
-    });
-    api.addRoutes({
-      path:        '/',
-      methods:     [HttpMethod.POST],
-      authorizer:  httpLambdaAuthorize,
-      integration: httpLambdaIntegration,
-    });
-    api.addRoutes({
-      path:        '/upload/{accountId}',
-      methods:     [HttpMethod.POST],
-      authorizer:  httpLambdaAuthorize,
-      integration: httpLambdaIntegration,
-    });
+    this.addJmapRoutes(api, lambdaAuthorizer);
 
     for (const addon of props.jmapApiAddons ?? []) {
       addon.addRoutes(api);
@@ -229,6 +143,79 @@ export class JMapApi extends Construct {
   /** Lets the handler Lambda publish through `broadcaster` to the WebSocket API at `webSocketUrl`. */
   public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, broadcaster);
+  }
+
+  private corsPreflight(allowedOrigins: string[] | undefined): CorsPreflightOptions | undefined {
+    if (!allowedOrigins || allowedOrigins.length === 0) {
+      return undefined;
+    }
+
+    return {
+      allowOrigins:     allowedOrigins,
+      allowMethods:     [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+      allowHeaders:     ['Content-Type', 'Authorization'],
+      allowCredentials: true,
+      maxAge:           Duration.hours(1),
+    };
+  }
+
+  private addCustomDomain(api: HttpApi, customDomain: ApiCustomDomainProps): ApiCustomDomain {
+    const domain = new ApiCustomDomain(this, 'domain', customDomain);
+
+    new ApiMapping(this, 'mapping', {
+      api,
+      domainName: domain,
+    });
+
+    return domain;
+  }
+
+  private createHandlerLambda(props: JmapApiProps): JmapApiLambda {
+    return new JmapApiLambda(this, 'jmap-api-handler', {
+      configTable:               props.configTable,
+      itemTable:                 props.itemTable,
+      changelogTable:            props.changelogTable,
+      authKeyStoreTable:         props.authKeyStoreTable,
+      blobStore:                 props.blobStore,
+      emailSubmissionQueue:      props.emailSubmissionQueue,
+      auditEventsQueue:          props.auditEventsQueue,
+      cdnHost:                   props.cdnHost,
+      apiBaseUrl:                this.url,
+      artifactResolver:          props.artifactResolver,
+      identityProvisioner:       props.identityProvisioner,
+      vendorAccountIds:          props.vendorAccountIds,
+      scopeMap:                  props.authProvider.scopeMap,
+      oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JmapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,
+    });
+  }
+
+  private addJmapRoutes(api: HttpApi, lambdaAuthorizer: AuthorizerLambda): void {
+    const authenticatedAuthorizer = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+    const anonymousAuthorizer     = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
+      identitySource:  [],
+      resultsCacheTtl: Duration.seconds(0),
+    });
+
+    const httpLambdaIntegration = new HttpLambdaIntegration('handler', this.apiHandlerLambda);
+
+    api.addRoutes({
+      path:        '/.well-known/jmap',
+      methods:     [HttpMethod.GET],
+      authorizer:  anonymousAuthorizer,
+      integration: httpLambdaIntegration,
+    });
+    api.addRoutes({
+      path:        '/',
+      methods:     [HttpMethod.POST],
+      authorizer:  authenticatedAuthorizer,
+      integration: httpLambdaIntegration,
+    });
+    api.addRoutes({
+      path:        '/upload/{accountId}',
+      methods:     [HttpMethod.POST],
+      authorizer:  authenticatedAuthorizer,
+      integration: httpLambdaIntegration,
+    });
   }
 
   /**
@@ -248,7 +235,7 @@ export class JMapApi extends Construct {
     deployer.deploy(this, 'oauth-protected-resource', {
       targetBucket: bucket,
       source:       StaticContentSource.data(
-        JMapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
+        JmapApi.OAUTH_PROTECTED_RESOURCE_PATH.slice(1),
         JSON.stringify(protectedResourceDoc),
         { contentType: 'application/json', cacheControl: 'public, max-age=3600' },
       ),
@@ -256,33 +243,40 @@ export class JMapApi extends Construct {
 
     const protectedResourceIntegration = new HttpUrlIntegration(
       'protected-resource',
-      `https://${bucket.bucketRegionalDomainName}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`,
+      `https://${bucket.bucketRegionalDomainName}${JmapApi.OAUTH_PROTECTED_RESOURCE_PATH}`,
     );
 
     const protectedResourceRoutes = api.addRoutes({
-      path:        JMapApi.OAUTH_PROTECTED_RESOURCE_PATH,
+      path:        JmapApi.OAUTH_PROTECTED_RESOURCE_PATH,
       methods:     [HttpMethod.GET],
       integration: protectedResourceIntegration,
     });
 
-    const cfnStage = api.defaultStage!.node.defaultChild as CfnStage;
+    const cfnStage = this.defaultCfnResource(api.defaultStage);
 
     // API Gateway rejects a RouteSettings entry whose route does not exist yet, and CloudFormation
     // updates the Stage before creating the Route unless told otherwise:
     //   "Unable to find Route by key ... within the provided RouteSettings"
-    protectedResourceRoutes.forEach((route) => {
-      cfnStage.addDependency(route.node.defaultChild as CfnResource);
+    for (const route of protectedResourceRoutes) {
+      cfnStage.addDependency(this.defaultCfnResource(route));
+    }
+
+    // A property override path is split on dots, so the dots of the route key are escaped.
+    const routeKey = `GET ${JmapApi.OAUTH_PROTECTED_RESOURCE_PATH}`.replace(/\./g, '\\.');
+
+    cfnStage.addPropertyOverride(`RouteSettings.${routeKey}`, {
+      ThrottlingBurstLimit: 20,
+      ThrottlingRateLimit:  10,
     });
+  }
 
-    const existingSettings: StageRouteSettings | undefined = cfnStage.routeSettings;
-    const routeSettings: StageRouteSettings                = {
-      ...existingSettings,
-      [`GET ${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}`]: {
-        ThrottlingBurstLimit: 20,
-        ThrottlingRateLimit:  10,
-      },
-    };
+  private defaultCfnResource(construct: IConstruct | undefined): CfnResource {
+    const resource = construct?.node.defaultChild;
 
-    cfnStage.routeSettings = routeSettings;
+    if (!CfnResource.isCfnResource(resource)) {
+      throw new Error(`JmapApi ${this.node.path}: ${construct?.node.path ?? 'the construct'} has no CloudFormation resource as its default child`);
+    }
+
+    return resource;
   }
 }

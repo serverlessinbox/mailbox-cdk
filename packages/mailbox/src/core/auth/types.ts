@@ -5,33 +5,32 @@ import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from 
 
 import { Permission }                                                      from './jmap-scopes';
 
-// ---- Names / keys used in the config table ----
-
-export const DEFAULT_OIDC_PROVIDER_NAME = 'PRIMARY';
-
-export const AUTH_POLICY_ADMIN_API = 'ADMIN_API' as const;
-export const AUTH_POLICY_JMAP_API  = 'JMAP_API' as const;
+/** Name of an auth policy: one per API whose requests are authorized. */
 export type AuthPolicyName = typeof AUTH_POLICY_ADMIN_API | typeof AUTH_POLICY_JMAP_API;
 
-export const OAUTH_CLIENT_ADMIN_UI   = 'ADMIN_UI' as const;
-export const OAUTH_CLIENT_WEBMAIL_UI = 'WEBMAIL_UI' as const;
-
+/** Name of the OAuth client of one of the UIs. */
 export type OAuthClientName =
   | typeof OAUTH_CLIENT_ADMIN_UI
   | typeof OAUTH_CLIENT_WEBMAIL_UI;
 
+/** How the OAuth client authenticates at the token endpoint: `header` or `form`. */
 export type AuthMethod = 'header' | 'form';
 
 /** OIDC provider configuration needed by the token exchange + UI flows. */
 export interface OidcProviderConfig {
+  /** URL of the provider's token endpoint. */
   readonly tokenEndpoint:         string;
+  /** URL of the provider's authorization endpoint. */
   readonly authorizationEndpoint: string;
+  /** How the OAuth client authenticates at the token endpoint. */
   readonly authMethod:            AuthMethod;
+  /** Whether the authorization code flow uses PKCE. */
   readonly usePkce:               boolean;
 }
 
 /** Policy configuration for authorizers (audiences + optional group requirement). */
 export interface AuthPolicyConfig {
+  /** Audiences accepted for requests under this policy. */
   readonly audiences: string[];
   /** Require membership in ANY of these groups/roles. Empty/undefined means no restriction. */
   readonly requireAnyOfGroups?: string[];
@@ -40,6 +39,7 @@ export interface AuthPolicyConfig {
   readonly requireAllScopes?: string[];
 }
 
+/** The auth policy of each API. */
 export interface AuthPoliciesConfig {
   readonly adminApi?: AuthPolicyConfig;
   readonly jmapApi?:  AuthPolicyConfig;
@@ -57,6 +57,7 @@ export interface OAuthClientCredentials {
   readonly clientSecret?: SecretValue;
 }
 
+/** The OAuth grant a client uses to obtain tokens. */
 export type OAuthFlow = 'authorization_code' | 'client_credentials';
 
 /**
@@ -72,21 +73,23 @@ export interface OAuthAuthorizationCodeClientConfig extends OAuthClientCredentia
   readonly redirectUri:        string;
 }
 
+/** OAuth client config for the `client_credentials` flow, which has no redirect URI. */
 export interface OAuthClientCredentialsClientConfig extends OAuthClientCredentials {
   readonly flow:               'client_credentials';
   readonly requestedAudience?: string;
   readonly scopes:             string[];
 }
 
+/** An OAuth client config of either flow. */
 export type OAuthClientConfig = OAuthAuthorizationCodeClientConfig | OAuthClientCredentialsClientConfig;
 
+/** The OAuth clients to bootstrap: one per UI that is enabled. */
 export interface OAuthClientsConfig {
   readonly adminUi?:   OAuthAuthorizationCodeClientConfig;
   readonly webmailUi?: OAuthAuthorizationCodeClientConfig;
 }
 
-// ---- Provider/construct-level auth config (replaces IAuthConfig.ts) ----
-
+/** Parameters for generating an OAuth client; the flow decides which parameters apply. */
 export type GenerateClientParams =
   | {
     flow:         'authorization_code';
@@ -128,7 +131,8 @@ export interface ProvisionJmapApiClientParams {
 }
 
 /**
- * Auth provider contract expected by the top-level Mailbox construct.
+ * The identity and policy part of an auth provider: where its tokens come from, which audiences
+ * and scopes each API accepts, and how OAuth clients for the UIs are provisioned.
  *
  * Key properties:
  * - `policies` explicitly separates Admin vs JMAP audiences.
@@ -136,11 +140,17 @@ export interface ProvisionJmapApiClientParams {
  *   because callback/logout URLs are not known up-front.
  */
 export interface IMailboxAuthProviderBase {
+  /** Issuer URL of the OIDC provider. */
   readonly issuer:                string;
+  /** URL of the provider's token endpoint. */
   readonly tokenEndpoint:         string;
+  /** URL of the provider's authorization endpoint. */
   readonly authorizationEndpoint: string;
+  /** How the OAuth client authenticates at the token endpoint. */
   readonly authMethod:            AuthMethod;
+  /** Whether the authorization code flow uses PKCE. */
   readonly usePkce:               boolean;
+  /** Maps each OAuth scope name the provider issues to the JMAP permissions it stands for. */
   readonly scopeMap:              { [key: string]: Permission[] };
 
   /** Policy configuration consumed by authorizers (audiences + optional group requirement). */
@@ -153,8 +163,7 @@ export interface IMailboxAuthProviderBase {
   provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig;
 }
 
-
-/** Standard roles understood by mailbox components. */
+/** A role understood by mailbox components: `admin` or `user`. */
 export type MailboxRole = 'admin' | 'user';
 
 /** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
@@ -168,22 +177,31 @@ export interface IMailboxAuthorizationConfigProvider {
   authorizationConfig(): MailboxAuthorizationConfig;
 }
 
-
 /**
- * Auth provider contract expected by the top-level Mailbox construct.
+ * An auth provider as the top-level Mailbox construct takes it: the base contract plus the
+ * Admin API addons the provider contributes, and optionally JMAP API addons and an authorization
+ * mapping.
  *
  * Implementations are typically provider-owned CDK constructs (e.g. Cognito's `MailboxUserPool`).
- * They must supply Admin API addons (provider-specific admin endpoints).
  */
 export interface IMailboxAuthProvider extends IMailboxAuthProviderBase, IAdminApiAddonProvider {
   /** Optional: register additional JMAP API routes (provider-specific, e.g. OAuth DCR). */
   createJmapApiAddons?(scope: Construct, ctx: JmapApiAddonContext): IJmapApiAddon[];
-  /** Optional: this provider's OAuth issuer URL, if OAuth DCR/discovery is enabled — undefined otherwise.
-   *  jmap-api core uses this to build its own RFC 9728 protected-resource metadata document (which describes
-   *  jmap-api itself as a resource server, not the authorization server) — deliberately narrower than handing
-   *  the provider a whole document/URL to own, since the document's subject is jmap-api, not the provider. */
+  /** Optional: this provider's OAuth issuer URL, if OAuth DCR/discovery is enabled — undefined otherwise. */
   jmapOAuthIssuerUrl?(): string | undefined;
   /** Optional: publish an authorization mapping. */
   authorizationConfig?(): MailboxAuthorizationConfig;
 }
 
+/** Name of the OIDC provider entry in the config table. */
+export const DEFAULT_OIDC_PROVIDER_NAME = 'PRIMARY';
+
+/** Name of the auth policy that protects the Admin API. */
+export const AUTH_POLICY_ADMIN_API = 'ADMIN_API' as const;
+/** Name of the auth policy that protects the JMAP API. */
+export const AUTH_POLICY_JMAP_API  = 'JMAP_API' as const;
+
+/** Name of the OAuth client of the Admin UI. */
+export const OAUTH_CLIENT_ADMIN_UI   = 'ADMIN_UI' as const;
+/** Name of the OAuth client of the Webmail UI. */
+export const OAUTH_CLIENT_WEBMAIL_UI = 'WEBMAIL_UI' as const;

@@ -16,7 +16,7 @@ import type { IMailboxDomainNames }                                             
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from './addons';
 import { AdminApi }                                                                         from './admin-api';
-import { JMapApi }                                                                          from './jmap-api';
+import { JmapApi }                                                                          from './jmap-api';
 import { McpApi }                                                                           from './mcp-api';
 import { WebSocketPush }                                                                    from './websocket';
 import type { IWebSocketBroadcastPublisher }                                                from './websocket';
@@ -124,35 +124,8 @@ export class ApisSection extends Construct {
 
     this.props = props;
 
-    // Build admin API addons early from all providers (auth provider + optional additional providers).
-    // All addons are known at construction time, so uiConfig merge is eager.
-    this.adminApiAddons = (() => {
-      const addons: IAdminApiAddon[] = [];
-
-      const ctx: AdminApiAddonContext = {
-        auditEventsQueue:    props.data.auditEventsQueue,
-        configTable:         props.data.configTable,
-        auditLogTable:       props.data.auditLogTable,
-        identityProvisioner: props.auth.identityProvisioner,
-        artifactResolver:    props.artifactResolver,
-      };
-
-      addons.push(...props.authProvider.createAdminApiAddons(this, ctx));
-
-      for (const provider of props.adminApiAddonProviders ?? []) {
-        addons.push(...provider.createAdminApiAddons(this, ctx));
-      }
-
-      return addons;
-    })();
-
-    this.jmapApiAddons = (() => {
-      if (typeof props.authProvider.createJmapApiAddons !== 'function') {return [];}
-      return props.authProvider.createJmapApiAddons(this, {
-        apiBaseUrl:          props.jmapApiBaseUrl,
-        identityProvisioner: props.auth.identityProvisioner,
-      });
-    })();
+    this.adminApiAddons = this.createAdminApiAddons(props);
+    this.jmapApiAddons  = this.createJmapApiAddons(props);
   }
 
   /** Adds the JMAP, WebSocket, admin and (when enabled) MCP APIs; their inputs exist only once the UIs and the CDN are built. */
@@ -165,14 +138,9 @@ export class ApisSection extends Construct {
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
 
-    // --- Pin logical IDs to survive reparenting ---
-    // API Gateway custom domain names are globally unique per account/region; a reparented
-    // construct cannot create the replacement alongside the still-existing original, so
-    // create-before-delete would fail on a name collision. Pinning the logical ID keeps
-    // CloudFormation updating the same domain name in place instead of replacing it.
-    adminApi.domainCfnResource?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
-    jmapApi.domainCfnResource?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
-    webSocketPush.domainCfnResource?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
+    adminApi.domainLogicalIdPin?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
+    jmapApi.domainLogicalIdPin?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
+    webSocketPush.domainLogicalIdPin?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     return {
       broadcaster:           webSocketPush.broadcaster,
@@ -183,11 +151,40 @@ export class ApisSection extends Construct {
     };
   }
 
-  private addJmapApi(props: ApisEndpointsProps): JMapApi {
+  private createAdminApiAddons(props: ApisSectionProps): IAdminApiAddon[] {
+    const context: AdminApiAddonContext = {
+      auditEventsQueue:    props.data.auditEventsQueue,
+      configTable:         props.data.configTable,
+      auditLogTable:       props.data.auditLogTable,
+      identityProvisioner: props.auth.identityProvisioner,
+      artifactResolver:    props.artifactResolver,
+    };
+
+    const addons = [...props.authProvider.createAdminApiAddons(this, context)];
+
+    for (const provider of props.adminApiAddonProviders ?? []) {
+      addons.push(...provider.createAdminApiAddons(this, context));
+    }
+
+    return addons;
+  }
+
+  private createJmapApiAddons(props: ApisSectionProps): IJmapApiAddon[] {
+    if (!props.authProvider.createJmapApiAddons) {
+      return [];
+    }
+
+    return props.authProvider.createJmapApiAddons(this, {
+      apiBaseUrl:          props.jmapApiBaseUrl,
+      identityProvisioner: props.auth.identityProvisioner,
+    });
+  }
+
+  private addJmapApi(props: ApisEndpointsProps): JmapApi {
     const { data, auth, email } = this.props;
     const allowedOrigins        = [...props.ui.webmailUiOrigins, ...(props.extraAllowedOrigins ?? [])];
 
-    return new JMapApi(this, 'jmap-api', {
+    return new JmapApi(this, 'jmap-api', {
       configTable:          data.configTable,
       itemTable:            data.itemTable,
       changelogTable:       data.changelogTable,
@@ -201,18 +198,17 @@ export class ApisSection extends Construct {
       authProvider:         this.props.authProvider,
       identityProvisioner:  auth.identityProvisioner,
 
-      domainName:  props.edge.jmapCertificate ? props.mailboxDomains.jmap : undefined,
-      certificate: props.edge.jmapCertificate,
+      customDomain: props.edge.jmapCertificate
+        ? { domainName: props.mailboxDomains.jmap, certificate: props.edge.jmapCertificate }
+        : undefined,
 
       jmapApiAddons:    this.jmapApiAddons,
       oauthIssuerUrl:   this.props.authProvider.jmapOAuthIssuerUrl?.(),
       vendorAccountIds: this.props.vendorLink.vendorAccountIds,
-
-      // WebSocket URL will be passed via environment variable, not here
     });
   }
 
-  private addWebSocketPush(props: ApisEndpointsProps, jmapApi: JMapApi): WebSocketPush {
+  private addWebSocketPush(props: ApisEndpointsProps, jmapApi: JmapApi): WebSocketPush {
     // Created after the JMAP API because it reuses that API's authorizer Lambda.
     const { data } = this.props;
 
@@ -220,14 +216,14 @@ export class ApisSection extends Construct {
       configTable:      data.configTable,
       itemTable:        data.itemTable,
       changelogTable:   data.changelogTable,
-      authorizerLambda: jmapApi.authorizerLambda, // Reuse HTTP API authorizer
+      authorizerLambda: jmapApi.authorizerLambda,
       artifactResolver: this.props.artifactResolver,
-      maxSubscriptions: 10,
 
-      domainName:  (props.edge.hostedZone && props.edge.wsCertificate) ? props.mailboxDomains.ws : undefined,
-      certificate: props.edge.hostedZone ? props.edge.wsCertificate : undefined,
+      customDomain: (props.edge.hostedZone && props.edge.wsCertificate)
+        ? { domainName: props.mailboxDomains.ws, certificate: props.edge.wsCertificate }
+        : undefined,
     });
-    // Keep a deeper messaging override — websocket-push overrides the apis group tag.
+    // The websocket push carries the messaging component tag instead of the section's api tag.
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
     return webSocketPush;
@@ -254,8 +250,9 @@ export class ApisSection extends Construct {
 
       addons: this.adminApiAddons,
 
-      domainName:  props.edge.apiCertificate ? props.mailboxDomains.api : undefined,
-      certificate: props.edge.apiCertificate,
+      customDomain: props.edge.apiCertificate
+        ? { domainName: props.mailboxDomains.api, certificate: props.edge.apiCertificate }
+        : undefined,
 
       sesRuleSetName:      email.sesRuleSetName,
       sesConfigSetName:    email.sesConfigSetName,
@@ -263,7 +260,7 @@ export class ApisSection extends Construct {
     });
   }
 
-  private addMcpApi(props: ApisEndpointsProps, jmapApi: JMapApi): McpApi | undefined {
+  private addMcpApi(props: ApisEndpointsProps, jmapApi: JmapApi): McpApi | undefined {
     if (!props.enableMcp) {
       return undefined;
     }
@@ -276,7 +273,7 @@ export class ApisSection extends Construct {
       authorizerLambda: jmapApi.authorizerLambda,
       certificate:      props.edge.regionalCertificate,
       domainName:       props.mailboxDomains.domainName,
-      scopeMap:         this.props.authProvider.scopeMap as Record<string, string[]>,
+      scopeMap:         this.props.authProvider.scopeMap,
       artifactResolver: this.props.artifactResolver,
     });
   }

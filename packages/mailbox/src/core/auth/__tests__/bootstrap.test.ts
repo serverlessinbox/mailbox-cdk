@@ -91,7 +91,7 @@ describe('Bootstrap', () => {
     });
   });
 
-  it('sends the default tenant name and local part when none are given', () => {
+  it('sends the default tenant name and local part', () => {
     createBootstrap();
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
       tenantName:       'default-tenant',
@@ -109,10 +109,8 @@ describe('Bootstrap', () => {
     createBootstrap();
 
     const template = Template.fromStack(stack);
-    const [lambda] = Object.values(template.findResources('AWS::Lambda::Function'));
-    template.hasResourceProperties('Custom::Bootstrap', {
-      ServiceTimeout: String(lambda.Properties.Timeout + 30),
-    });
+    template.hasResourceProperties('AWS::Lambda::Function', { Timeout: 30 });
+    template.hasResourceProperties('Custom::Bootstrap', { ServiceTimeout: '60' });
   });
 
   it('sends the admin client under oauthClients.adminUi only when one is given', () => {
@@ -134,6 +132,6 @@ describe('Bootstrap', () => {
     const template             = Template.fromStack(stack);
     const [bootstrapLogicalId] = Object.keys(template.findResources('Custom::Bootstrap'));
 
-    expect(template.toJSON().Resources[stack.getLogicalId(dependent)].DependsOn).toContain(bootstrapLogicalId);
+    template.hasResource('Custom::Dependent', { DependsOn: Match.arrayWith([bootstrapLogicalId]) });
   });
 });

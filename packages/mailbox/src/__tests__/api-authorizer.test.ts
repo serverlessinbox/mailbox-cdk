@@ -1,7 +1,7 @@
 /**
  * API Authorizer Tests
  *
- * Tests that AdminApi, JMapApi, and McpApi properly wire HttpLambdaAuthorizer
+ * Tests that AdminApi, JmapApi, and McpApi properly wire HttpLambdaAuthorizer
  * to all their routes (except intentionally public routes, if any).
  *
  * Security requirements:
@@ -22,7 +22,7 @@ import { App, BootstraplessSynthesizer }              from 'aws-cdk-lib';
 import { Construct }                                  from 'constructs';
 
 import { AdminApi }                                   from '../core/apis/admin-api';
-import { JMapApi }                                    from '../core/apis/jmap-api';
+import { JmapApi }                                    from '../core/apis/jmap-api';
 import { McpApi }                                     from '../core/apis/mcp-api';
 import { Permission }                                 from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }                  from '../core/auth/types';
@@ -308,10 +308,10 @@ describe('API Authorizer Wiring', () => {
     });
   });
 
-  describe('JMapApi', () => {
+  describe('JmapApi', () => {
     it('should attach HttpLambdaAuthorizer to the HTTP API', () => {
       const apiGroup = new Construct(stack, 'api-group');
-      new JMapApi(apiGroup, 'jmap-api', {
+      new JmapApi(apiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -350,7 +350,7 @@ describe('API Authorizer Wiring', () => {
 
     it('should verify all three expected routes exist with authorizer', () => {
       const apiGroup = new Construct(stack, 'api-group');
-      new JMapApi(apiGroup, 'jmap-api', {
+      new JmapApi(apiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -369,7 +369,7 @@ describe('API Authorizer Wiring', () => {
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
       if (!resources) {throw new Error('No resources in template');}
 
-      // Find routes for JMapApi
+      // Find routes for JmapApi
       const routes = findRouteResources(resources, 'jmap-api');
 
       // We expect at least the main three routes:
@@ -392,7 +392,7 @@ describe('API Authorizer Wiring', () => {
 
       // First create a JMAP API to get its authorizer lambda
       const jmapApiGroup = new Construct(stack, 'jmap-api-group');
-      const jmapApi      = new JMapApi(jmapApiGroup, 'jmap-api', {
+      const jmapApi      = new JmapApi(jmapApiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -414,8 +414,8 @@ describe('API Authorizer Wiring', () => {
         certificate,
         domainName: 'example.com',
         scopeMap:   {
-          'mail.read':  ['read'],
-          'mail.write': ['write'],
+          'mail.read':  [Permission.MAIL_READ],
+          'mail.write': [Permission.MAIL_WRITE],
         },
         artifactResolver,
       });
@@ -446,7 +446,7 @@ describe('API Authorizer Wiring', () => {
       const apiGroup = new Construct(stack, 'api-group');
 
       const jmapApiGroup = new Construct(stack, 'jmap-api-group');
-      const jmapApi      = new JMapApi(jmapApiGroup, 'jmap-api', {
+      const jmapApi      = new JmapApi(jmapApiGroup, 'jmap-api', {
         configTable,
         itemTable,
         changelogTable,
@@ -467,8 +467,8 @@ describe('API Authorizer Wiring', () => {
         certificate,
         domainName: 'example.com',
         scopeMap:   {
-          'mail.read':  ['read'],
-          'mail.write': ['write'],
+          'mail.read':  [Permission.MAIL_READ],
+          'mail.write': [Permission.MAIL_WRITE],
         },
         artifactResolver,
       });

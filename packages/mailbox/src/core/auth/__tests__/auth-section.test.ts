@@ -18,6 +18,7 @@ import { DataBlobStore }                                              from '../.
 import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
 import { DataTable }                                                  from '../../../resources/tables/data-tables';
+import type { IOAuthUi }                                              from '../../ui/ui-section';
 import { AuthSection }                                                from '../auth-section';
 import type { IMailboxAuthProvider }                                  from '../types';
 
@@ -127,5 +128,55 @@ describe('AuthSection', () => {
       Environment: { Variables: Match.objectLike({ SYSTEM_SENDER_ADDRESS: 'noreply@example.com' }) },
     });
     template.hasResourceProperties('Custom::Bootstrap', { domain: 'example.com' });
+  });
+
+  describe('with enabled UIs', () => {
+    const adminUi: IOAuthUi   = {
+      oauthClient:      { clientId: 'admin-client', requestScopeList: ['admin-api/admin'], groups: ['admins'] },
+      oauthRedirectUri: 'https://admin.example.com/callback',
+    };
+    const webmailUi: IOAuthUi = {
+      oauthClient:      { clientId: 'webmail-client', requestScopeList: ['jmap-api/mail'], groups: [] },
+      oauthRedirectUri: 'https://webmail.example.com/callback',
+    };
+
+    it('bootstraps the OAuth client of each UI with the OIDC scopes and the scopes it requests', () => {
+      const section = newSection();
+
+      section.addBootstrap({
+        email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+        ui:    { adminUi, webmailUi },
+        edge:  {},
+      });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
+        oauthClients: {
+          adminUi:   Match.objectLike({
+            clientId:    'admin-client',
+            scopes:      ['openid', 'email', 'profile', 'admin-api/admin'],
+            redirectUri: 'https://admin.example.com/callback',
+          }),
+          webmailUi: Match.objectLike({
+            clientId:    'webmail-client',
+            scopes:      ['openid', 'email', 'profile', 'jmap-api/mail'],
+            redirectUri: 'https://webmail.example.com/callback',
+          }),
+        },
+      });
+    });
+
+    it('requires the groups of the Admin UI client for the Admin API when the provider requires none', () => {
+      const section = newSection();
+
+      section.addBootstrap({
+        email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+        ui:    { adminUi },
+        edge:  {},
+      });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
+        authPolicies: { adminApi: Match.objectLike({ requireAnyOfGroups: ['admins'] }) },
+      });
+    });
   });
 });

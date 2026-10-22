@@ -4,19 +4,19 @@ import { HttpLambdaAuthorizer }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers
 import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
-  DomainName,
-  EndpointType,
   HttpApi,
   HttpMethod,
   IHttpApi,
-  SecurityPolicy,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm         from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda      from 'aws-cdk-lib/aws-lambda';
-import { Aws }          from 'aws-cdk-lib';
-import { Construct }    from 'constructs';
+import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda                       from 'aws-cdk-lib/aws-lambda';
+import { Aws }                           from 'aws-cdk-lib';
+import { Construct }                     from 'constructs';
 
-import { McpApiLambda } from '../../resources/lambdas/mcp-api-lambda';
+import { McpApiLambda }                  from '../../resources/lambdas/mcp-api-lambda';
+import type { IMailboxAuthProviderBase } from '../auth/types';
+
+import { ApiCustomDomain }               from './api-custom-domain';
 
 /** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */
 export interface McpApiProps {
@@ -28,7 +28,7 @@ export interface McpApiProps {
   readonly certificate: acm.ICertificate;
   /** Base domain; the API is served on `mcp.<domainName>`. */
   readonly domainName: string;
-  readonly scopeMap:   Record<string, string[]>;
+  readonly scopeMap:   IMailboxAuthProviderBase['scopeMap'];
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
 }
@@ -53,24 +53,16 @@ export class McpApi extends Construct {
       description: 'This service serves MCP (Model Context Protocol) endpoints.',
     });
 
-    const mcpDomainName = `mcp.${props.domainName}`;
-
-    const domain = new DomainName(this, 'domain', {
-      domainName:     mcpDomainName,
-      certificate:    props.certificate,
-      endpointType:   EndpointType.REGIONAL,
-      securityPolicy: SecurityPolicy.TLS_1_2,
+    const domain = new ApiCustomDomain(this, 'domain', {
+      domainName:  `mcp.${props.domainName}`,
+      certificate: props.certificate,
     });
 
     this.domainTarget = domain.regionalDomainName;
 
-    // Be explicit: the domain must be deleted before the certificate.
-    domain.node.addDependency(props.certificate);
-
     new ApiMapping(this, 'mapping', {
       api,
       domainName: domain,
-      stage:      api.defaultStage!,
     });
 
     const handlerLambda = new McpApiLambda(this, 'handler', {

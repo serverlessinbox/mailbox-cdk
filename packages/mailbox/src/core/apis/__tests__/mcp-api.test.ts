@@ -3,10 +3,9 @@
 /**
  * McpApi tests: what the construct itself decides.
  *
- * Pins that the API is served on `mcp.<domainName>` with the given certificate, that the domain
- * depends on the certificate so it is deleted first, and that all four proxied methods go through
- * the given authorizer. A method that loses its authorizer stays green in tsc and synth, so these
- * assertions are the only guard.
+ * Pins that the API is served on `mcp.<domainName>` with the given certificate and mapped onto
+ * that domain, and that all four proxied methods go through the given authorizer. A method that
+ * loses its authorizer stays green in tsc and synth, so these assertions are the only guard.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -17,11 +16,11 @@ import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import { Permission }                           from '../../auth/jmap-scopes';
 import { McpApi }                               from '../mcp-api';
 
 describe('McpApi', () => {
   let stack: cdk.Stack;
-  let certificate: acm.Certificate;
   let sut: McpApi;
 
   beforeEach(() => {
@@ -29,7 +28,7 @@ describe('McpApi', () => {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
-    certificate            = new acm.Certificate(stack, 'certificate', {
+    const certificate      = new acm.Certificate(stack, 'certificate', {
       domainName: 'mcp.example.com',
       validation: acm.CertificateValidation.fromDns(),
     });
@@ -45,7 +44,7 @@ describe('McpApi', () => {
       authorizerLambda,
       certificate,
       domainName:       'example.com',
-      scopeMap:         { 'mail.read': ['read'] },
+      scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -57,21 +56,12 @@ describe('McpApi', () => {
     });
   });
 
-  it('serves on mcp.<domainName> as a regional TLS 1.2 domain and publishes its target', () => {
+  it('serves on mcp.<domainName>, maps the API onto the domain and publishes its target', () => {
     const template = Template.fromStack(stack);
 
     expect(sut.domainTarget).toBeDefined();
-    template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-      DomainName:               'mcp.example.com',
-      DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
-    });
+    template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'mcp.example.com' });
     template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
-  });
-
-  it('makes the domain depend on the certificate so the domain is deleted first', () => {
-    Template.fromStack(stack).hasResource('AWS::ApiGatewayV2::DomainName', {
-      DependsOn: Match.arrayWith([stack.getLogicalId(certificate.node.defaultChild as cdk.CfnResource)]),
-    });
   });
 
   it.each(['GET', 'POST', 'DELETE', 'PUT'])('routes %s through the authorizer', (method) => {

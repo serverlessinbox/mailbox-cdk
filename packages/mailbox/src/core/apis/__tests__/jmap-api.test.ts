@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 /**
- * JMapApi tests: what the construct itself decides.
+ * JmapApi tests: what the construct itself decides.
  *
  * Pins which routes are anonymous (only the JMAP session document), that every other route is
  * behind the Lambda authorizer, the custom-domain wiring, the CORS preflight switch, and the
@@ -21,25 +21,25 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IMailboxAuthProvider }            from '../../auth/types';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
-import { DataTable }                            from '../../../resources/tables/data-tables';
-import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import type { IMailboxAuthProvider }            from '../../auth/types';
 import type { IJmapApiAddon }                   from '../addons';
+import { JmapApi }                              from '../jmap-api';
+import type { JmapApiProps }                    from '../jmap-api';
 import type { IWebSocketBroadcastPublisher }    from '../websocket';
-import { JMapApi }                              from '../jmap-api';
-import type { JMapApiProps }                    from '../jmap-api';
 
-describe('JMapApi', () => {
+describe('JmapApi', () => {
   let stack: cdk.Stack;
 
   function dataTable(id: string): DataTable {
     return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
   }
 
-  function propsWith(overrides: Partial<JMapApiProps> = {}): JMapApiProps {
+  function propsWith(overrides: Partial<JmapApiProps> = {}): JmapApiProps {
     const authProvider: IMailboxAuthProvider = {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
@@ -97,52 +97,46 @@ describe('JMapApi', () => {
 
   describe('without a custom domain', () => {
     it('serves on the API Gateway endpoint and publishes no domain target', () => {
-      const sut = new JMapApi(stack, 'jmap-api', propsWith());
+      const sut = new JmapApi(stack, 'jmap-api', propsWith());
 
       const template = Template.fromStack(stack);
       const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
       expect(stack.resolve(sut.url)).toEqual({ 'Fn::GetAtt': [apiId, 'ApiEndpoint'] });
       expect(sut.domainTarget).toBeUndefined();
-      expect(sut.domainCfnResource).toBeUndefined();
+      expect(sut.domainLogicalIdPin).toBeUndefined();
       template.resourceCountIs('AWS::ApiGatewayV2::DomainName', 0);
     });
   });
 
   describe('with a custom domain', () => {
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
-      const sut = new JMapApi(stack, 'jmap-api', propsWith({ domainName: 'jmap.example.com', certificate: certificate() }));
+      const customDomain = { domainName: 'jmap.example.com', certificate: certificate() };
+
+      const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain }));
 
       const template = Template.fromStack(stack);
+      const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
       expect(sut.url).toBe('https://jmap.example.com');
       expect(sut.domainTarget).toBeDefined();
-      expect(sut.domainCfnResource?.cfnResourceType).toBe('AWS::ApiGatewayV2::DomainName');
-      template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', {
-        DomainName:               'jmap.example.com',
-        DomainNameConfigurations: [Match.objectLike({ EndpointType: 'REGIONAL', SecurityPolicy: 'TLS_1_2' })],
-      });
-      template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
+      template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'jmap.example.com' });
+      template.hasResourceProperties('AWS::ApiGatewayV2::ApiMapping', { ApiId: { Ref: apiId }, Stage: '$default' });
     });
 
-    it('makes the domain depend on the certificate so the domain is deleted first', () => {
-      const cert = certificate();
-      new JMapApi(stack, 'jmap-api', propsWith({ domainName: 'jmap.example.com', certificate: cert }));
+    it('hands out the logical id pin of its domain name', () => {
+      const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain: { domainName: 'jmap.example.com', certificate: certificate() } }));
 
-      Template.fromStack(stack).hasResource('AWS::ApiGatewayV2::DomainName', {
-        DependsOn: Match.arrayWith([stack.getLogicalId(cert.node.defaultChild as cdk.CfnResource)]),
-      });
-    });
+      sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
 
-    it('throws when the certificate is missing', () => {
-      expect(() => new JMapApi(stack, 'jmap-api', propsWith({ domainName: 'jmap.example.com' })))
-        .toThrow('JMapApi: certificate is required when domainName is provided');
+      const domainIds = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::DomainName'));
+      expect(domainIds).toEqual(['PinnedDomainName']);
     });
   });
 
   describe('CORS preflight', () => {
     it('allows GET, POST and OPTIONS from the given origins', () => {
-      new JMapApi(stack, 'jmap-api', propsWith({ allowedOrigins: ['https://webmail.example.com'] }));
+      new JmapApi(stack, 'jmap-api', propsWith({ allowedOrigins: ['https://webmail.example.com'] }));
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
         CorsConfiguration: {
@@ -156,28 +150,28 @@ describe('JMapApi', () => {
     });
 
     it.each([[undefined], [[]]])('configures no CORS when allowedOrigins is %p', (allowedOrigins) => {
-      new JMapApi(stack, 'jmap-api', propsWith({ allowedOrigins }));
+      new JmapApi(stack, 'jmap-api', propsWith({ allowedOrigins }));
 
-      const api = Object.values(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Api'))[0];
-
-      expect(api.Properties.CorsConfiguration).toBeUndefined();
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
+        CorsConfiguration: Match.absent(),
+      });
     });
   });
 
   describe('routes', () => {
     it('serves the session document anonymously and everything else behind the authorizer', () => {
-      new JMapApi(stack, 'jmap-api', propsWith());
+      new JmapApi(stack, 'jmap-api', propsWith());
 
-      const template        = Template.fromStack(stack);
-      const authorizers     = template.findResources('AWS::ApiGatewayV2::Authorizer');
-      const anonymousId     = Object.keys(authorizers)
-        .find((id) => authorizers[id].Properties.AuthorizerResultTtlInSeconds === 0);
-      const authenticatedId = Object.keys(authorizers)
-        .find((id) => authorizers[id].Properties.AuthorizerResultTtlInSeconds !== 0);
+      const template          = Template.fromStack(stack);
+      const [anonymousId]     = Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer', {
+        Properties: { AuthorizerResultTtlInSeconds: 0, IdentitySource: [] },
+      }));
+      const [authenticatedId] = Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer', {
+        Properties: { AuthorizerResultTtlInSeconds: Match.not(0) },
+      }));
 
       expect(anonymousId).toBeDefined();
       expect(authenticatedId).toBeDefined();
-      expect(authorizers[anonymousId!].Properties.IdentitySource).toEqual([]);
       template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
         RouteKey:     'GET /.well-known/jmap',
         AuthorizerId: { Ref: anonymousId },
@@ -195,7 +189,7 @@ describe('JMapApi', () => {
       const first: IJmapApiAddon  = { addRoutes: jest.fn() };
       const second: IJmapApiAddon = { addRoutes: jest.fn() };
 
-      new JMapApi(stack, 'jmap-api', propsWith({ jmapApiAddons: [first, second] }));
+      new JmapApi(stack, 'jmap-api', propsWith({ jmapApiAddons: [first, second] }));
 
       for (const addon of [first, second]) {
         expect(addon.addRoutes).toHaveBeenCalledTimes(1);
@@ -204,7 +198,7 @@ describe('JMapApi', () => {
     });
 
     it('exposes the HTTP API it mounts the routes on', () => {
-      const sut = new JMapApi(stack, 'jmap-api', propsWith());
+      const sut = new JmapApi(stack, 'jmap-api', propsWith());
 
       const apiId = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Api'))[0];
 
@@ -216,21 +210,20 @@ describe('JMapApi', () => {
     const protectedResourceRouteKey = 'GET /.well-known/oauth-protected-resource';
 
     it('adds no route when no OAuth issuer is given', () => {
-      new JMapApi(stack, 'jmap-api', propsWith());
+      new JmapApi(stack, 'jmap-api', propsWith());
 
-      const routes = Object.values(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Route'));
-
-      expect(routes.map((route) => route.Properties.RouteKey)).not.toContain(protectedResourceRouteKey);
+      Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: protectedResourceRouteKey }, 0);
     });
 
     it('serves the document from the static-assets bucket without an authorizer', () => {
-      new JMapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
+      new JmapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
 
       const template = Template.fromStack(stack);
-      const route    = Object.values(template.findResources('AWS::ApiGatewayV2::Route'))
-        .find((candidate) => candidate.Properties.RouteKey === protectedResourceRouteKey);
 
-      expect(route?.Properties.AuthorizationType).toBe('NONE');
+      template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
+        RouteKey:          protectedResourceRouteKey,
+        AuthorizationType: 'NONE',
+      });
       template.hasResourceProperties('AWS::ApiGatewayV2::Integration', {
         IntegrationType: 'HTTP_PROXY',
         IntegrationUri:  { 'Fn::Join': ['', Match.arrayWith(['/.well-known/oauth-protected-resource'])] },
@@ -238,7 +231,7 @@ describe('JMapApi', () => {
     });
 
     it('throttles that route with PascalCase settings, which CloudFormation receives unmapped', () => {
-      new JMapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
+      new JmapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
         RouteSettings: {
@@ -248,12 +241,12 @@ describe('JMapApi', () => {
     });
 
     it('creates the stage only after the route that its route settings name', () => {
-      new JMapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
+      new JmapApi(stack, 'jmap-api', propsWith({ oauthIssuerUrl: 'https://auth.example.com' }));
 
-      const template = Template.fromStack(stack);
-      const routes   = template.findResources('AWS::ApiGatewayV2::Route');
-      const routeId  = Object.keys(routes)
-        .find((id) => routes[id].Properties.RouteKey === protectedResourceRouteKey);
+      const template  = Template.fromStack(stack);
+      const [routeId] = Object.keys(template.findResources('AWS::ApiGatewayV2::Route', {
+        Properties: { RouteKey: protectedResourceRouteKey },
+      }));
 
       template.hasResource('AWS::ApiGatewayV2::Stage', {
         DependsOn: Match.arrayWith([routeId]),
@@ -264,7 +257,7 @@ describe('JMapApi', () => {
   describe('enableWebSocketPublishing', () => {
     it('lets the handler Lambda invoke the broadcaster', () => {
       const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut                                       = new JMapApi(stack, 'jmap-api', propsWith());
+      const sut                                       = new JmapApi(stack, 'jmap-api', propsWith());
 
       sut.enableWebSocketPublishing('wss://ws.example.com', broadcaster);
 

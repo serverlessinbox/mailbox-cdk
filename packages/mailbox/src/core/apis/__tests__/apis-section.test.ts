@@ -4,7 +4,8 @@
  * ApisSection takes over the `apis` group node. These tests pin what the section owns: the component
  * tag its subtree carries, the scope the auth provider's addons are created under, and the endpoints
  * it adds on request at fixed ids (their paths are part of every resource's logical ID, so a rename
- * replaces deployed resources).
+ * replaces deployed resources), and the logical ids it pins on the custom domains, which are unique
+ * per account and region and so cannot be replaced next to their old selves.
  */
 import { ArtifactZone, PinnedArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }              from '@serverlessinbox/mailbox-cdk-shared';
@@ -12,6 +13,7 @@ import { Match, Template }                                        from 'aws-cdk-
 import * as acm                                                   from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                                   from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                             from 'aws-cdk-lib/aws-lambda';
+import * as route53                                               from 'aws-cdk-lib/aws-route53';
 import { Bucket }                                                 from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                   from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, CfnResource, TagManager } from 'aws-cdk-lib';
@@ -26,7 +28,7 @@ import type { IMailboxAuthProvider }                              from '../../au
 import { MailboxDomains }                                         from '../../domains/mailbox-domains';
 import type { IAdminApiAddon }                                    from '../addons';
 import { ApisSection }                                            from '../apis-section';
-import type { ApisEndpointsProps }                                from '../apis-section';
+import type { ApisEndpointsProps, IApisEdgeInputs }               from '../apis-section';
 
 describe('ApisSection', () => {
   let stack: cdk.Stack;
@@ -159,6 +161,57 @@ describe('ApisSection', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: Match.objectLike({ SYSTEM_SENDER_ADDRESS: 'noreply@example.com' }) },
+    });
+  });
+
+  describe('addEndpoints custom domains', () => {
+    function importedCertificate(id: string): acm.ICertificate {
+      return acm.Certificate.fromCertificateArn(stack, id, `arn:aws:acm:us-west-2:123456789012:certificate/${id}`);
+    }
+
+    function edgeWithAllCertificates(): IApisEdgeInputs {
+      return {
+        hostedZone:      route53.HostedZone.fromHostedZoneAttributes(stack, 'hosted-zone', { hostedZoneId: 'Z0000000000', zoneName: 'example.com' }),
+        apiCertificate:  importedCertificate('api-certificate'),
+        jmapCertificate: importedCertificate('jmap-certificate'),
+        wsCertificate:   importedCertificate('ws-certificate'),
+      };
+    }
+
+    it('pins the logical ids of the three custom domains so a reparented construct does not replace them', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps({ edge: edgeWithAllCertificates() }));
+
+      const domainIds = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::DomainName'));
+      expect(domainIds.sort()).toEqual([
+        'Mailboxadminapidomain8793AE5D',
+        'Mailboxjmapapidomain47B62A36',
+        'MailboxwebsocketpushdomainCACDAF3B',
+      ]);
+    });
+
+    it('serves the admin, JMAP and WebSocket APIs on their mailbox domains when the edge section has their certificates', () => {
+      const section = newSection();
+
+      const endpoints = section.addEndpoints(endpointsProps({ edge: edgeWithAllCertificates() }));
+
+      const template = Template.fromStack(stack);
+      for (const domainName of ['api.example.com', 'jmap.example.com', 'ws.example.com']) {
+        template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: domainName });
+      }
+      expect(endpoints.adminApiDomainTarget).toBeDefined();
+      expect(endpoints.jmapApiDomainTarget).toBeDefined();
+      expect(endpoints.webSocketDomainTarget).toBeDefined();
+    });
+
+    it('serves the WebSocket API on its domain only when the mailbox has a hosted zone', () => {
+      const section = newSection();
+
+      const endpoints = section.addEndpoints(endpointsProps({ edge: { wsCertificate: importedCertificate('ws-certificate') } }));
+
+      Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::DomainName', { DomainName: 'ws.example.com' }, 0);
+      expect(endpoints.webSocketDomainTarget).toBeUndefined();
     });
   });
 

@@ -1,24 +1,24 @@
-import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                               from '@serverlessinbox/mailbox-cdk-shared';
-import type * as route53                                 from 'aws-cdk-lib/aws-route53';
-import type { IReceiptRuleSet }                          from 'aws-cdk-lib/aws-ses';
-import { Construct, DependencyGroup }                    from 'constructs';
-import type { IDependable }                              from 'constructs';
+import type { IArtifactResolver }                                                            from '@serverlessinbox/artifact-registry-cdk';
+import { applyServerlessInboxComponentTag }                                                  from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                                                   from '@serverlessinbox/mailbox-cdk-shared';
+import type * as route53                                                                     from 'aws-cdk-lib/aws-route53';
+import type { IReceiptRuleSet }                                                              from 'aws-cdk-lib/aws-ses';
+import { Construct, DependencyGroup }                                                        from 'constructs';
+import type { IDependable }                                                                  from 'constructs';
 
-import type { IDataBlobStore }                           from '../../resources/buckets/data-blob-store';
-import { IdentityProvisionerLambda }                     from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IIdentityProvisioner }                     from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                        from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                       from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                       from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                               from '../../resources/tables/data-tables';
-import type { SesReceivingMode }                         from '../email/ses-receiving-mode';
-import type { IOAuthUi }                                 from '../ui/ui-section';
+import type { IDataBlobStore }                                                               from '../../resources/buckets/data-blob-store';
+import { IdentityProvisionerLambda }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                                            from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                                           from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                                           from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                                   from '../../resources/tables/data-tables';
+import type { SesReceivingMode }                                                             from '../email/ses-receiving-mode';
+import type { IOAuthUi }                                                                     from '../ui/ui-section';
 
-import { AuthKeyStore }                                  from './auth-key-store';
-import { Bootstrap }                                     from './bootstrap';
-import type { IMailboxAuthProvider, OAuthClientsConfig } from './types';
+import { AuthKeyStore }                                                                      from './auth-key-store';
+import { Bootstrap }                                                                         from './bootstrap';
+import type { IMailboxAuthProvider, OAuthAuthorizationCodeClientConfig, OAuthClientsConfig } from './types';
 
 /** What {@link AuthSection} uses of the data section. */
 export interface IAuthDataInputs {
@@ -122,8 +122,7 @@ export class AuthSection extends Construct {
     const authProvider = this.props.authProvider;
 
     const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
-      ?? props.ui.adminUi?.oauthClient.groups
-      ?? undefined;
+      ?? props.ui.adminUi?.oauthClient.groups;
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
       domain:            this.props.domainName,
@@ -163,27 +162,23 @@ export class AuthSection extends Construct {
   private bootstrapOAuthClients(props: AuthBootstrapProps): OAuthClientsConfig | undefined {
     const { adminUi, webmailUi } = props.ui;
 
-    return (adminUi || webmailUi)
-      ? {
-        adminUi:   adminUi
-          ? {
-            flow:         'authorization_code',
-            clientId:     adminUi.oauthClient.clientId,
-            clientSecret: adminUi.oauthClient.clientSecret,
-            scopes:       ['openid', 'email', 'profile', ...adminUi.oauthClient.requestScopeList],
-            redirectUri:  adminUi.oauthRedirectUri,
-          }
-          : undefined,
-        webmailUi: webmailUi
-          ? {
-            flow:         'authorization_code',
-            clientId:     webmailUi.oauthClient.clientId,
-            clientSecret: webmailUi.oauthClient.clientSecret,
-            scopes:       ['openid', 'email', 'profile', ...webmailUi.oauthClient.requestScopeList],
-            redirectUri:  webmailUi.oauthRedirectUri,
-          }
-          : undefined,
-      }
-      : undefined;
+    if (!adminUi && !webmailUi) {
+      return undefined;
+    }
+
+    return {
+      adminUi:   adminUi ? this.toOAuthClientConfig(adminUi) : undefined,
+      webmailUi: webmailUi ? this.toOAuthClientConfig(webmailUi) : undefined,
+    };
+  }
+
+  private toOAuthClientConfig(ui: IOAuthUi): OAuthAuthorizationCodeClientConfig {
+    return {
+      flow:         'authorization_code',
+      clientId:     ui.oauthClient.clientId,
+      clientSecret: ui.oauthClient.clientSecret,
+      scopes:       ['openid', 'email', 'profile', ...ui.oauthClient.requestScopeList],
+      redirectUri:  ui.oauthRedirectUri,
+    };
   }
 }
