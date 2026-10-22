@@ -4,6 +4,7 @@ import { IBucket }                                from 'aws-cdk-lib/aws-s3';
 import { Duration, CustomResource, Stack }        from 'aws-cdk-lib';
 import { Construct }                              from 'constructs';
 
+import { KIT_ARTIFACT_PACKAGE }                   from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement }         from '../../grants/parent-stack-status-read';
 import type { BucketAutoEmptyResourceProperties } from '../../runtime/bucket-auto-empty/resource-properties';
 import { getOrCreateSharedGroup }                 from '../../tagging/shared-group';
@@ -20,7 +21,7 @@ export class BucketAutoEmpty extends TypeScriptLambda {
       lambdaId: 'bucket-auto-empty',
       pipeline: 'infra',
       artifactResolver,
-      packageName: 'mailbox-cdk-shared',
+      packageName: KIT_ARTIFACT_PACKAGE,
       handler: 'index.handler',
       timeout: Duration.minutes(15),
       memorySize: 512,

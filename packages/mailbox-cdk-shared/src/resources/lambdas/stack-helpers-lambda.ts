@@ -3,6 +3,8 @@ import * as iam                   from 'aws-cdk-lib/aws-iam';
 import * as cdk                   from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
+import { KIT_ARTIFACT_PACKAGE }   from '../../artifacts/kit-artifact-package';
+
 import { TypeScriptLambda }       from './ts-lambda';
 
 /** The artifact resolver the stack-helpers Lambda's code is loaded through. */
@@ -15,7 +17,7 @@ export class StackHelpersLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: StackHelpersLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-helpers',
-      packageName: 'mailbox-cdk-shared',
+      packageName: KIT_ARTIFACT_PACKAGE,
       pipeline: 'infra',
       artifactResolver: props.artifactResolver,
       timeout: cdk.Duration.seconds(30),

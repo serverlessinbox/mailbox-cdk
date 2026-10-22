@@ -6,6 +6,7 @@ import { Construct, type IDependable }                               from 'const
 import { createHash }                                                from 'node:crypto';
 import * as t                                                        from 'typanion';
 
+import { KIT_ARTIFACT_PACKAGE }                                      from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement }                            from '../../grants/parent-stack-status-read';
 import type {
   ContentDeployerResourceProperties,
@@ -51,7 +52,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       lambdaId: 'content-deployer',
       pipeline: 'infra',
       artifactResolver,
-      packageName: 'mailbox-cdk-shared',
+      packageName: KIT_ARTIFACT_PACKAGE,
       handler: 'index.handler',
       timeout: Duration.minutes(15),
       memorySize: 1024,

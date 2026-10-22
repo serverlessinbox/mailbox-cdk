@@ -4,14 +4,9 @@ import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Stack }          from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
-/** Props for {@link StackDeployedEvent}: the function the rule invokes. */
-export interface StackDeployedEventProps {
-  readonly target: IFunction;
-}
-
-/** Invokes the target each time the stack that contains it reaches CREATE_COMPLETE or UPDATE_COMPLETE. */
+/** Invokes `target` each time the stack that contains it reaches CREATE_COMPLETE or UPDATE_COMPLETE. */
 export class StackDeployedEvent extends Rule {
-  constructor(scope: Construct, id: string, props: StackDeployedEventProps) {
+  constructor(scope: Construct, id: string, target: IFunction) {
     super(scope, id, {
       eventPattern: {
         source: ['aws.cloudformation'],
@@ -23,7 +18,7 @@ export class StackDeployedEvent extends Rule {
           },
         },
       },
-      targets: [new LambdaFunction(props.target)],
+      targets: [new LambdaFunction(target)],
     });
   }
 }

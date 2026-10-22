@@ -3,6 +3,7 @@ import { PolicyStatement }                from 'aws-cdk-lib/aws-iam';
 import { Duration }                       from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
+import { KIT_ARTIFACT_PACKAGE }           from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement } from '../../grants/parent-stack-status-read';
 import { ServerlessInboxTagKeys }         from '../../runtime/handler-kit/tag-keys';
 
@@ -47,7 +48,7 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
       pipeline: 'infra',
       serviceName: `stack-deployer-${props.deployedStackName}-worker`,
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk-shared',
+      packageName: KIT_ARTIFACT_PACKAGE,
       handler: 'index.workerHandler',
       timeout: Duration.minutes(15),
       memorySize: 512,

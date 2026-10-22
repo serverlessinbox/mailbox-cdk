@@ -65,7 +65,6 @@ export type { StaticContentSourceSpec } from './runtime/content-deployer/resourc
 
 // Stack-deployed event
 export { StackDeployedEvent } from './resources/events/stack-deployed-event';
-export type { StackDeployedEventProps } from './resources/events/stack-deployed-event';
 
 // Bucket auto-empty
 export { BucketAutoEmpty } from './resources/lambdas/bucket-auto-empty';

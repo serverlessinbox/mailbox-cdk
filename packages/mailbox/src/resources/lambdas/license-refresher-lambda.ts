@@ -37,7 +37,7 @@ export class LicenseRefresherLambda extends GoLambda {
     this.grantLicenseApiAccess(props.vendorAccountIds);
 
     new LicenseRefreshSchedule(this, 'refresh-schedule', { target: this, hour: props.scheduleHour, minute: props.scheduleMinute });
-    new StackDeployedEvent(this, 'stack-deployed', { target: this });
+    new StackDeployedEvent(this, 'stack-deployed', this);
   }
 
   private grantLicenseApiAccess(vendorAccountIds: string[]) {

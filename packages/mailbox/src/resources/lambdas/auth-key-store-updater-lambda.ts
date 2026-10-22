@@ -28,6 +28,6 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
     props.authKeyStoreTable.grantReadWrite(this);
 
     new AuthKeyRefreshSchedule(this, 'refresh-schedule', { target: this });
-    new StackDeployedEvent(this, 'stack-deployed', { target: this });
+    new StackDeployedEvent(this, 'stack-deployed', this);
   }
 }

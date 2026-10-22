@@ -3,6 +3,7 @@ import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
 import { Duration }                         from 'aws-cdk-lib';
 import { Construct }                        from 'constructs';
 
+import { KIT_ARTIFACT_PACKAGE }             from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement }   from '../../grants/parent-stack-status-read';
 import type { IPollingCfnDeployerWorkflow } from '../workflows/polling-cfn-deployer-workflow';
 
@@ -29,7 +30,7 @@ export class DeployerStarterLambda extends TypeScriptLambda {
       pipeline: 'infra',
       serviceName: `stack-deployer-${props.deployedStackName}-starter`,
       artifactResolver: props.artifactResolver,
-      packageName: 'mailbox-cdk-shared',
+      packageName: KIT_ARTIFACT_PACKAGE,
       handler: 'index.starterHandler',
       timeout: Duration.minutes(1),
       memorySize: 256,

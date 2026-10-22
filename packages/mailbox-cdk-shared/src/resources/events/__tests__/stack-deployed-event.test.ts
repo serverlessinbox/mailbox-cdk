@@ -12,7 +12,7 @@ describe('StackDeployedEvent', () => {
     const stack  = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
     const target = new Function(stack, 'target', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 
-    new StackDeployedEvent(target, 'stack-deployed', { target });
+    new StackDeployedEvent(target, 'stack-deployed', target);
 
     template = Template.fromStack(stack);
   });
