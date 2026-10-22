@@ -8,6 +8,7 @@ import { Construct }                                                         fro
 
 import type { ICognitoIdpUsersPoolConfig }                                   from './cognito-idp-users-pool-config';
 import { CognitoIdpUsersApiLambda }                                          from './resources/lambdas/cognito-idp-users-api-lambda';
+import type { MailboxUserPoolAdminUiConfig }                                 from './user-pool/mailbox-user-pool-admin-ui-config';
 
 /** What `CognitoIdpUsersAdminApiAddon` needs to mount the users API and create the Lambda behind it. */
 export interface CognitoIdpUsersAdminApiAddonProps {
@@ -27,18 +28,30 @@ export interface CognitoIdpUsersAdminApiAddonProps {
   readonly basePath?: string;
 
   /** UI config merged into the admin UI config; the `idp.users` fragment of this addon takes precedence. */
-  readonly uiConfig?: Record<string, unknown>;
+  readonly uiConfig?: MailboxUserPoolAdminUiConfig;
 }
+
+/** The features of the users API that the admin UI offers. */
+type IdpUsersUiFeatures = {
+  readonly setPassword: boolean;
+};
 
 /** The `idp.users` fragment of the admin UI config: where the users API is mounted and what it supports. */
 type IdpUsersUiConfig = {
-  readonly idp: {
-    readonly users: {
-      readonly provider: 'cognito';
-      readonly basePath: string;
-      readonly features: { readonly setPassword: boolean };
-    };
-  };
+  readonly provider: 'cognito';
+  readonly basePath: string;
+  readonly features: IdpUsersUiFeatures;
+};
+
+/** The `idp` section of the admin UI config as this addon completes it: the provider's keys plus `users`. */
+type IdpUiConfig = {
+  readonly type?: string;
+  readonly users: IdpUsersUiConfig;
+};
+
+/** The admin UI config this addon contributes. */
+type CognitoIdpUsersUiConfig = {
+  readonly idp: IdpUiConfig;
 };
 
 const DEFAULT_BASE_PATH = '/idp-users';
@@ -50,7 +63,7 @@ const DEFAULT_BASE_PATH = '/idp-users';
  */
 export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApiAddon {
   public readonly basePath: string;
-  public uiConfig?: Record<string, unknown>;
+  public readonly uiConfig: CognitoIdpUsersUiConfig;
 
   /** The underlying Lambda function. */
   public readonly lambdaFunction: IFunction;
@@ -81,14 +94,10 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
     });
   }
 
-  /** The `idp.users` fragment of this addon wins over the same keys of `providerUiConfig`, which is otherwise kept as given. */
-  private mergeUiConfig(providerUiConfig: Record<string, unknown> | undefined): IdpUsersUiConfig | Record<string, unknown> {
-    const usersUiConfig: IdpUsersUiConfig = {
-      idp: { users: { provider: 'cognito', basePath: this.basePath, features: { setPassword: true } } },
-    };
-    if (!providerUiConfig) {
-      return usersUiConfig;
-    }
-    return { ...providerUiConfig, idp: Object.assign({}, providerUiConfig.idp, usersUiConfig.idp) };
+  /** The `idp.users` fragment of this addon wins over the same key of the provider's `idp` section, which is otherwise kept as given. */
+  private mergeUiConfig(providerUiConfig: MailboxUserPoolAdminUiConfig | undefined): CognitoIdpUsersUiConfig {
+    const users: IdpUsersUiConfig = { provider: 'cognito', basePath: this.basePath, features: { setPassword: true } };
+
+    return { idp: { ...providerUiConfig?.idp, users } };
   }
 }

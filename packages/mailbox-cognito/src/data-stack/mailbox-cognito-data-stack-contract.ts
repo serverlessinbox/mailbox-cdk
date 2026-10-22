@@ -1,12 +1,8 @@
 import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
 
-/** The MFA enforcement modes of the user pool: OFF disables MFA, OPTIONAL lets users enroll TOTP, ON requires TOTP for all users. */
-export const MFA_MODES = ['OFF', 'OPTIONAL', 'ON'] as const;
+import { MfaMode }                          from '../user-pool/mfa-mode';
 
-/** One of `MFA_MODES`. */
-export type MfaMode = (typeof MFA_MODES)[number];
-
-export const DEFAULT_MFA_MODE: MfaMode = 'OPTIONAL';
+export const DEFAULT_MFA_MODE = MfaMode.OPTIONAL;
 
 export const DEFAULT_PASSWORD_MIN_LENGTH = 8;
 

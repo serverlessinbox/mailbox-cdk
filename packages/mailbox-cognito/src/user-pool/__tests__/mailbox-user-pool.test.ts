@@ -9,13 +9,15 @@
  * refused by the API only at runtime, so these tests pin the synthesized clients and the policies.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Permission }                            from '@serverlessinbox/mailbox';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import * as lambda                               from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }   from '@serverlessinbox/artifact-registry-cdk';
+import { Permission }                             from '@serverlessinbox/mailbox';
+import { Match, Template }                        from 'aws-cdk-lib/assertions';
+import * as lambda                                from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack }   from 'aws-cdk-lib';
 
-import { MailboxUserPool, MailboxUserPoolProps } from '../mailbox-user-pool';
+import { MailboxUserPool, MailboxUserPoolProps }  from '../mailbox-user-pool';
+import { MfaMode }                                from '../mfa-mode';
+import { UserPoolAudience }                       from '../user-pool-audience';
 
 const PINNED_VERSION = '0.0.1-test';
 
@@ -206,7 +208,7 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('creates a client-credentials client with a secret, its scopes and no sign-in URLs', () => {
     const { pool, stack } = createUserPool();
 
-    pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
+    pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName:         'mailbox-client-sweeper',
@@ -221,17 +223,27 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('registers the client as an audience of the listed APIs only', () => {
     const { pool } = createUserPool();
 
-    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
+    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
 
     expect(pool.policies.jmapApi.audiences).toEqual([client.clientId]);
     expect(pool.policies.adminApi.audiences).toEqual([]);
   });
 
+  it('registers the client for the audience strings a CloudFormation parameter carries', () => {
+    const { pool } = createUserPool();
+    const audience = 'adminApi' as UserPoolAudience;
+
+    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [audience], permissions: [Permission.MAIL_READ] });
+
+    expect(pool.policies.adminApi.audiences).toEqual([client.clientId]);
+    expect(pool.policies.jmapApi.audiences).toEqual([]);
+  });
+
   it('returns the existing client when the name is provisioned again and registers the audiences it is now listed for', () => {
     const { pool, stack } = createUserPool();
 
-    const first  = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['jmapApi'], permissions: [Permission.MAIL_READ] });
-    const second = pool.provisionHeadlessClient({ name: 'sweeper', audiences: ['adminApi'], permissions: [Permission.MAIL_READ] });
+    const first  = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
+    const second = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.ADMIN_API], permissions: [Permission.MAIL_READ] });
 
     expect(second).toBe(first);
     expect(pool.policies.adminApi.audiences).toEqual([first.clientId]);
@@ -266,6 +278,34 @@ describe('MailboxUserPool authorization', () => {
     expect(pool.scopeMap['si/mail.read']).toEqual([Permission.MAIL_READ]);
     expect(pool.scopeMap['si/admin']).toEqual([Permission.ADMIN]);
     expect(Object.keys(pool.scopeMap).every(scope => scope.startsWith('si/'))).toBe(true);
+  });
+});
+
+describe('MailboxUserPool MFA mode', () => {
+  it('hands the deployer the mfaMode string a CloudFormation parameter carries', () => {
+    const { stack } = createUserPool({ mfaMode: 'ON' as MfaMode });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
+      parameters: Match.objectLike({ mfaMode: 'ON' }),
+    });
+  });
+
+});
+
+describe('MailboxUserPool OAuth endpoints', () => {
+  it('serves the token and authorization endpoints from the OAuth domain', () => {
+    const { pool } = createUserPool();
+
+    expect(pool.tokenEndpoint).toBe(`https://${pool.oauthDomain}/oauth2/token`);
+    expect(pool.authorizationEndpoint).toBe(`https://${pool.oauthDomain}/oauth2/authorize`);
+  });
+});
+
+describe('MailboxUserPool admin UI config', () => {
+  it('names Cognito as the identity provider', () => {
+    const { pool } = createUserPool();
+
+    expect(pool.adminUiConfig()).toEqual({ idp: { type: 'cognito' } });
   });
 });
 

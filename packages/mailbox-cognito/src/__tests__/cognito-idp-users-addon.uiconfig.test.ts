@@ -68,8 +68,7 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
       });
 
       expect(addon.basePath).toBe('/idp-users');
-      const config = addon.uiConfig as Record<string, Record<string, Record<string, unknown>>>;
-      expect(config?.idp?.users?.basePath).toBe('/idp-users');
+      expect(addon.uiConfig.idp.users.basePath).toBe('/idp-users');
     });
 
     it('should include custom basePath in uiConfig when basePath is explicitly set (REGRESSION GUARD)', () => {
@@ -84,48 +83,34 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
 
       expect(addon.basePath).toBe(customPath);
       // Regression guard: the uiConfig must advertise the same basePath the addon actually uses
-      const config = addon.uiConfig as Record<string, Record<string, Record<string, unknown>>>;
-      expect(config?.idp?.users?.basePath).toBe(customPath);
+      expect(addon.uiConfig.idp.users.basePath).toBe(customPath);
     });
 
-    it('should merge provider uiConfig while maintaining addon-owned basePath', () => {
-      const customPath     = '/api/v2/idp-users';
-      const providerConfig = {
-        idp: {
-          someProviderFeature: 'enabled',
-        },
-      };
-
+    it('should keep the idp type of the provider uiConfig next to the addon-owned idp.users', () => {
       const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-merged', {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
         pool:                mockPoolConfig,
-        basePath:            customPath,
-        uiConfig:            providerConfig,
+        basePath:            '/mine',
+        uiConfig:            { idp: { type: 'cognito' } },
       });
 
-      // Verify the addon's basePath is reflected in uiConfig
-      expect(addon.basePath).toBe(customPath);
-      const config = addon.uiConfig as Record<string, Record<string, Record<string, unknown>>>;
-      expect(config?.idp?.users?.basePath).toBe(customPath);
-      // Verify provider config is preserved
-      expect(config?.idp?.someProviderFeature).toBe('enabled');
+      expect(addon.uiConfig).toEqual({
+        idp: { type: 'cognito', users: { provider: 'cognito', basePath: '/mine', features: { setPassword: true } } },
+      });
     });
 
-    it('should keep the top-level keys of the provider uiConfig and let the addon win where both define idp.users', () => {
-      const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-precedence', {
+    it('should contribute only idp.users when the provider supplies no uiConfig', () => {
+      const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon-alone', {
         artifactResolver,
         auditEventsQueue,
         identityProvisioner: mockIdentityProvisioner,
         pool:                mockPoolConfig,
-        basePath:            '/mine',
-        uiConfig:            { branding: { name: 'Acme' }, idp: { users: { basePath: '/theirs', provider: 'other' } } },
       });
 
       expect(addon.uiConfig).toEqual({
-        branding: { name: 'Acme' },
-        idp:      { users: { provider: 'cognito', basePath: '/mine', features: { setPassword: true } } },
+        idp: { users: { provider: 'cognito', basePath: '/idp-users', features: { setPassword: true } } },
       });
     });
   });

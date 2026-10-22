@@ -21,15 +21,21 @@ import { Construct }                                                            
 
 import { CognitoIdpUsersAdminApiAddon }                                                                          from '../cognito-idp-users-addon';
 import type { CognitoIdpUsersAuthorizationConfig }                                                               from '../cognito-idp-users-pool-config';
-import { JmapOAuthAddon }                                                                                        from '../jmap-oauth-addon';
 import { MailboxCognitoDataDeployer }                                                                            from '../data-stack/mailbox-cognito-data-deployer';
-import { CognitoBootstrapUserLambda }                                                                            from '../resources/lambdas/bootstrap-user-lambda';
+import { JmapOAuthAddon }                                                                                        from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions }                                                                    from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                                                      from '../mailbox-cognito-registry-record';
+import { CognitoBootstrapUserLambda }                                                                            from '../resources/lambdas/bootstrap-user-lambda';
 import type { BootstrapUserProperties }                                                                          from '../runtime/bootstrap-user/properties';
 
-import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
 import { CognitoScopeToPermissions, PermissionToCognitoScope }                                                   from './cognito-scopemap';
+import { DynamicClientRegistrationMode }                                                                         from './dynamic-client-registration-mode';
+import type { MailboxUserPoolAdminUiConfig }                                                                     from './mailbox-user-pool-admin-ui-config';
+import type { MfaMode }                                                                                          from './mfa-mode';
+import { UserPoolAudience }                                                                                      from './user-pool-audience';
+
+/** The parameters of a client that signs users in through the authorization-code flow. */
+type AuthorizationCodeClientParams = Extract<GenerateClientParams, { flow: 'authorization_code' }>;
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.
@@ -61,9 +67,11 @@ export interface ProvisionHeadlessClientConfig {
   readonly name: string;
 
   /**
-   * The APIs the client may call. The client's id is added to the audiences of each listed API.
+   * The APIs the client may call. The client's id is added to the audiences of each listed API, and an API
+   * refuses tokens of a client that is not among its audiences. Leave an API out to keep the client from
+   * calling it.
    */
-  readonly audiences: Array<'adminApi' | 'jmapApi'>;
+  readonly audiences: UserPoolAudience[];
 
   /**
    * The permissions the client is allowed to request. Each becomes an allowed OAuth scope on the client.
@@ -75,6 +83,7 @@ export interface ProvisionHeadlessClientConfig {
  * Domain setting for a user pool whose OAuth endpoint lives under an explicit Cognito domain prefix.
  */
 export interface MailboxUserPoolCognitoDomain {
+  /** Selects this domain setting in `MailboxUserPoolDomainConfig`: always `cognito`. */
   readonly kind: 'cognito';
   /** Explicit Cognito domain prefix for the OAuth endpoint. */
   readonly cognitoDomainPrefix: string;
@@ -84,6 +93,7 @@ export interface MailboxUserPoolCognitoDomain {
  * Domain setting for a user pool whose Cognito domain prefix is derived from a hosted zone.
  */
 export interface MailboxUserPoolCognitoAutoDomain {
+  /** Selects this domain setting in `MailboxUserPoolDomainConfig`: always `cognito-auto`. */
   readonly kind: 'cognito-auto';
   /** Route53 hosted zone ID used to auto-derive `cognitoDomainPrefix`.
    *  The prefix is derived + sanitized from the mail domain at deploy time via the shared StackHelpers singleton. */
@@ -94,6 +104,7 @@ export interface MailboxUserPoolCognitoAutoDomain {
  * Domain setting for a user pool whose OAuth endpoint is served from your own domain name.
  */
 export interface MailboxUserPoolCustomDomain {
+  /** Selects this domain setting in `MailboxUserPoolDomainConfig`: always `custom`. */
   readonly kind: 'custom';
   /** Custom domain name for the Cognito OAuth endpoint (e.g. `auth.example.com`). */
   readonly domainName: string;
@@ -128,9 +139,20 @@ export interface MailboxUserPoolProps {
    */
   readonly authFlows?: cognito.AuthFlow;
 
-  /** MFA enforcement mode. @default 'OPTIONAL' */
-  readonly mfaMode?: 'OFF' | 'OPTIONAL' | 'ON';
-  /** Minimum password length (6–99). @default 8 */
+  /**
+   * Whether users must sign in with a second factor (TOTP). Cognito applies the mode to the whole pool.
+   *
+   * To drive this from a CloudFormation parameter, cast the parameter's `valueAsString` to this enum at the
+   * single place it is injected; the parameter's allowed values are the enum's string values.
+   * @default MfaMode.OPTIONAL
+   */
+  readonly mfaMode?: MfaMode;
+
+  /**
+   * The minimum length Cognito enforces on the passwords of the pool's users, from 6 to 99. A temporary
+   * password you supply for a bootstrap user must meet it.
+   * @default 8
+   */
   readonly passwordMinLength?: number;
 
   /**
@@ -162,7 +184,10 @@ export interface MailboxUserPoolProps {
  * Describes the first user to create in the user pool, passed to `MailboxUserPool.addBootstrapUser`.
  */
 export interface BootstrapUserConfig {
-  /** Defaults to `"admin"` if not provided. */
+  /**
+   * The name the user signs in with: the username of the Cognito user created in the pool.
+   * @default 'admin'
+   */
   readonly username?: string;
 
   /**
@@ -206,7 +231,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   /** The Cognito user pool, resolved through the data stack reference of the deployer this construct creates. */
   public readonly userPool: cognito.IUserPool;
 
-  /** The id of the user pool. */
+  /**
+   * The id of the user pool, resolved at deploy time from the data stack the deployer creates, so it is an
+   * unresolved token at synth time. Use it wherever a resource needs to name this pool.
+   */
   public readonly userPoolId: string;
 
   /**
@@ -214,16 +242,40 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    */
   public readonly scopeMap: Record<string, Permission[]>;
 
-  /** Host name of the Cognito OAuth endpoint, without scheme. */
+  /**
+   * Host name of the Cognito OAuth endpoint, without scheme. It is the host of the Cognito domain
+   * prefix or of the custom domain, and an unresolved token at synth time.
+   */
   public readonly oauthDomain: string;
 
-  /** The issuer of the tokens this pool issues: `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`. */
+  /**
+   * URL of the OAuth token endpoint, `https://<oauthDomain>/oauth2/token`, where an OAuth client exchanges an
+   * authorization code or its client credentials for tokens.
+   */
+  public readonly tokenEndpoint: string;
+
+  /**
+   * URL of the OAuth authorization endpoint, `https://<oauthDomain>/oauth2/authorize`, where users sign in
+   * to authorize an OAuth client.
+   */
+  public readonly authorizationEndpoint: string;
+
+  /**
+   * The issuer of the tokens this pool issues: `https://cognito-idp.<region>.amazonaws.com/<userPoolId>`.
+   * It is the value of the `iss` claim of those tokens.
+   */
   public readonly issuer: string;
 
-  /** The token-endpoint authentication method this provider declares to mailbox components: always `form`. */
+  /**
+   * How an OAuth client authenticates at the token endpoint: always `form`, which sends the client
+   * credentials as form fields of the token request.
+   */
   public readonly authMethod = 'form';
 
-  /** Declares to mailbox components that the authorization-code flow uses PKCE: always `true`. */
+  /**
+   * Whether the authorization-code flow of this pool's clients uses PKCE: always `true`, so a client
+   * sends a code challenge with its authorization request.
+   */
   public readonly usePkce = true;
 
   /**
@@ -283,11 +335,13 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     });
     const stackRef        = cognitoDeployer.dataStackRef;
 
-    this.userPool    = stackRef.userPool;
-    this.userPoolId  = stackRef.userPoolId;
-    this.userPoolArn = stackRef.userPoolArn;
-    this.oauthDomain = stackRef.oauthDomain;
-    this.issuer      = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPoolId}`;
+    this.userPool              = stackRef.userPool;
+    this.userPoolId            = stackRef.userPoolId;
+    this.userPoolArn           = stackRef.userPoolArn;
+    this.oauthDomain           = stackRef.oauthDomain;
+    this.tokenEndpoint         = `https://${stackRef.oauthDomain}/oauth2/token`;
+    this.authorizationEndpoint = `https://${stackRef.oauthDomain}/oauth2/authorize`;
+    this.issuer                = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPoolId}`;
   }
 
   /**
@@ -301,16 +355,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
     this.supportedIdentityProviderNames.add(providerName);
     this.supportedIdentityProviders.push(cognito.UserPoolClientIdentityProvider.custom(providerName));
-  }
-
-  /** URL of the OAuth token endpoint. */
-  get tokenEndpoint(): string {
-    return `https://${this.oauthDomain}/oauth2/token`;
-  }
-
-  /** URL of the OAuth authorization endpoint. */
-  get authorizationEndpoint(): string {
-    return `https://${this.oauthDomain}/oauth2/authorize`;
   }
 
   /**
@@ -327,48 +371,32 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   /** Provision the authorization-code OAuth client of an application that calls the Admin API; one per name. */
   public provisionAdminApiClient(config: ProvisionAdminApiClientParams): AuthClientConfig {
-    const resolvedName = `${AUTH_POLICY_ADMIN_API}_${config.name}`;
-    const existing     = this.adminApiClients.get(resolvedName);
-    if (existing) {
-      return existing;
-    }
-
-    const client = this.createOAuthClient({
+    return this.provisionAuthorizationCodeClient(this.adminApiClients, this.policies.adminApi, {
       flow:         'authorization_code',
-      name:         resolvedName,
+      name:         `${AUTH_POLICY_ADMIN_API}_${config.name}`,
       permissions:  [Permission.ADMIN],
       groups:       this.authzConfig.adminGroups,
       callbackUrls: config.callbackUrls,
       logoutUrls:   config.logoutUrls,
     });
-
-    this.addAudience(this.policies.adminApi, client.clientId);
-    this.adminApiClients.set(resolvedName, client);
-    return client;
   }
 
   /** Provision the authorization-code OAuth client of an application that calls the JMAP API; one per name. */
   public provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig {
-    const resolvedName = `${AUTH_POLICY_JMAP_API}_${config.name}`;
-    const existing     = this.jmapApiClients.get(resolvedName);
-    if (existing) {
-      return existing;
-    }
-
-    const client = this.createOAuthClient({
+    return this.provisionAuthorizationCodeClient(this.jmapApiClients, this.policies.jmapApi, {
       flow:         'authorization_code',
-      name:         resolvedName,
+      name:         `${AUTH_POLICY_JMAP_API}_${config.name}`,
       permissions:  config.permissions,
       groups:       this.authzConfig.userGroups,
       callbackUrls: config.callbackUrls,
       logoutUrls:   config.logoutUrls,
     });
-
-    this.addAudience(this.policies.jmapApi, client.clientId);
-    this.jmapApiClients.set(resolvedName, client);
-    return client;
   }
 
+  /**
+   * Creates the admin API addon that manages the users of this pool and contributes `adminUiConfig()` to
+   * the admin UI configuration.
+   */
   public createAdminApiAddons(scope: Construct, ctx: AdminApiAddonContext): IAdminApiAddon[] {
     return [
       new CognitoIdpUsersAdminApiAddon(scope, 'cognito-idp-users-admin-api', {
@@ -381,6 +409,11 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     ];
   }
 
+  /**
+   * Creates the addon that publishes the OIDC discovery document of the JMAP API (RFC 8414) and, per
+   * `dynamicClientRegistration`, its registration endpoint. Returns no addon unless
+   * `enableJmapOAuthDiscovery` is set.
+   */
   public createJmapApiAddons(scope: Construct, ctx: JmapApiAddonContext): IJmapApiAddon[] {
     if (!this.enableJmapOAuthDiscovery) {
       return [];
@@ -397,6 +430,10 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     ];
   }
 
+  /**
+   * The issuer URL to advertise in the JMAP API's OAuth discovery document: the pool's `issuer` when
+   * `enableJmapOAuthDiscovery` is set, `undefined` otherwise.
+   */
   public jmapOAuthIssuerUrl(): string | undefined {
     if (!this.enableJmapOAuthDiscovery) {
       return undefined;
@@ -405,10 +442,18 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     return this.issuer;
   }
 
-  public adminUiConfig(): Record<string, unknown> {
+  /**
+   * The admin UI configuration this pool contributes: it names Cognito as the identity provider the
+   * admin UI's users sign in with.
+   */
+  public adminUiConfig(): MailboxUserPoolAdminUiConfig {
     return { idp: { type: 'cognito' } };
   }
 
+  /**
+   * The Cognito groups that mark administrators and regular users, as set in the `authorization` prop
+   * (`admin` and `user` where it is omitted).
+   */
   public authorizationConfig(): CognitoIdpUsersAuthorizationConfig {
     return this.authzConfig;
   }
@@ -575,9 +620,26 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     return client;
   }
 
-  private addAudiences(audiences: ProvisionHeadlessClientConfig['audiences'], clientId: string): void {
+  private provisionAuthorizationCodeClient(
+    clients: Map<string, AuthClientConfig>,
+    policy: AuthPolicyConfig,
+    params: AuthorizationCodeClientParams,
+  ): AuthClientConfig {
+    const existing = clients.get(params.name);
+    if (existing) {
+      return existing;
+    }
+
+    const client = this.createOAuthClient(params);
+    this.addAudience(policy, client.clientId);
+    clients.set(params.name, client);
+
+    return client;
+  }
+
+  private addAudiences(audiences: UserPoolAudience[], clientId: string): void {
     for (const audience of audiences) {
-      if (audience === 'adminApi') {
+      if (audience === UserPoolAudience.ADMIN_API) {
         this.addAudience(this.policies.adminApi, clientId);
       } else {
         this.addAudience(this.policies.jmapApi, clientId);

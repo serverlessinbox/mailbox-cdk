@@ -5,6 +5,7 @@ import { Aws, Stack }                                                from 'aws-c
 import { Construct }                                                 from 'constructs';
 
 import { MailboxCognitoDataDeployerWorkerLambda }                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+import type { MfaMode }                                              from '../user-pool/mfa-mode';
 
 import {
   COGNITO_DATA_STACK_TEMPLATE_OBJECT,
@@ -28,8 +29,8 @@ export interface MailboxCognitoDataDeployerProps {
   readonly cognitoDomainPrefix: string;
   /** Optional custom domain. When set, overrides the managed domain for the OAuth endpoint. */
   readonly customDomain?: MailboxCognitoDataDeployerCustomDomain;
-  /** MFA enforcement mode. @default 'OPTIONAL' */
-  readonly mfaMode?: 'OFF' | 'OPTIONAL' | 'ON';
+  /** MFA enforcement mode. @default MfaMode.OPTIONAL */
+  readonly mfaMode?: MfaMode;
   /** Minimum password length (6–99). @default 8 */
   readonly passwordMinLength?: number;
   /** Resolver for artifact locations (threaded from parent MailboxUserPool). */

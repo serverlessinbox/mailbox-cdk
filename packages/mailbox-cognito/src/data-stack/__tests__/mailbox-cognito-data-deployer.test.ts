@@ -12,16 +12,17 @@ import { renderWithTokens, statementsForAction }       from '@serverlessinbox/ma
 import { Match, Template }                             from 'aws-cdk-lib/assertions';
 import { Stack }                                       from 'aws-cdk-lib';
 
+import { MfaMode }                                     from '../../user-pool/mfa-mode';
 import { MailboxCognitoDataDeployer }                  from '../mailbox-cognito-data-deployer';
 import type { MailboxCognitoDataDeployerProps }        from '../mailbox-cognito-data-deployer';
 
 import { newDeployerTestStack }                        from './cognito-deployer-helpers';
 
-const DEPLOYER_RESOURCE_TYPE = 'Custom::MailboxCognitoDataDeployer';
-const STACK_NAME_REF         = { Ref: 'AWS::StackName' };
-const STACK_GUID             = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const COGNITO_STACK_NAME     = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
-const DEPLOYER_RESOURCE_ID   = expect.stringMatching(/^deployerresource/);
+const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxCognitoDataDeployer';
+const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
+const STACK_GUID                    = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const COGNITO_STACK_NAME            = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
+const DEPLOYER_RESOURCE_ID: unknown = expect.stringMatching(/^deployerresource/);
 
 interface SynthesizedDeployer {
   readonly stack:            Stack;
@@ -45,10 +46,11 @@ describe('MailboxCognitoDataDeployer', () => {
   describe('custom resource', () => {
     it('deploys the cognito data stack template into the deploying stack’s region, preserved on delete', () => {
       const { stack, artifactResolver, template } = synthDeployer();
+      const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json'));
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         stackName:        COGNITO_STACK_NAME,
-        templateUrl:      stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json')),
+        templateUrl,
         region:           { Ref: 'AWS::Region' },
         preserveOnDelete: true,
       });
@@ -90,7 +92,7 @@ describe('MailboxCognitoDataDeployer', () => {
     });
 
     it('passes the MFA mode and password length as set, the length as a string', () => {
-      const { template } = synthDeployer({ mfaMode: 'ON', passwordMinLength: 12 });
+      const { template } = synthDeployer({ mfaMode: MfaMode.ON, passwordMinLength: 12 });
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({ mfaMode: 'ON', passwordMinLength: '12' }),

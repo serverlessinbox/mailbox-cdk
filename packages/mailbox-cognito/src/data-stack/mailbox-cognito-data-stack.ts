@@ -14,12 +14,12 @@ import { Aws, Fn, RemovalPolicy }    from 'aws-cdk-lib';
 import { Construct }                 from 'constructs';
 
 import { CognitoScopeToPermissions } from '../user-pool/cognito-scopemap';
+import { MfaMode }                   from '../user-pool/mfa-mode';
 
 import {
   ADMIN_GROUP_NAME,
   DEFAULT_MFA_MODE,
   DEFAULT_PASSWORD_MIN_LENGTH,
-  MFA_MODES,
   RESOURCE_SERVER_IDENTIFIER,
   USER_GROUP_NAME,
   type MailboxCognitoDataStackParameters,
@@ -78,7 +78,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
         type:          'String',
         description:   'MFA enforcement: OFF disables MFA, OPTIONAL lets users enroll TOTP, ON requires TOTP for all users.',
         default:       DEFAULT_MFA_MODE,
-        allowedValues: [...MFA_MODES],
+        allowedValues: Object.values(MfaMode),
       }),
       passwordMinLength:   this.declareParameter('passwordMinLength', {
         type:        'Number',
