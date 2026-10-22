@@ -6,6 +6,7 @@ import { Construct }                    from 'constructs';
 import { PositionHash }                 from './naming/position-hash';
 import { StackIdentity }                from './naming/stack-identity';
 import { DeployerStarterLambda }        from './resources/lambdas/deployer-starter-lambda';
+import type { IDeployedStack }          from './resources/stacks/deployed-stack';
 import { PollingCfnDeployerWorkflow }   from './resources/workflows/polling-cfn-deployer-workflow';
 import type { StackDeployerProperties } from './runtime/stack-deployer/stack/stack-deployment';
 
@@ -21,8 +22,8 @@ export interface DeployerInfraProps {
   /** The name of the stack this deployer deploys, e.g. 'data'. Composes into the starter's `SERVICE_NAME`. */
   readonly deployedStackName: string;
 
-  /** ARN pattern of the stack this deployer deploys, e.g. `arn:...:stack/<name>/*`. */
-  readonly deployedStackArn: string;
+  /** The stack this deployer deploys. */
+  readonly deployedStack: IDeployedStack;
 
   /**
    * Builds this deployer's worker Lambda. Called at the fixed id `'worker'`, so every deployer's
@@ -57,7 +58,7 @@ export class DeployerInfra extends Construct {
       artifactResolver:  props.artifactResolver,
       workflow:          this.workflow,
       deployedStackName: props.deployedStackName,
-      deployedStackArn:  props.deployedStackArn,
+      deployedStack:     props.deployedStack,
     });
     this.starterArn = starter.functionArn;
   }

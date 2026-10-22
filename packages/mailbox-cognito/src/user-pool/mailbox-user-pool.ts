@@ -1,5 +1,5 @@
-import type { IArtifactResolver }                                                          from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                                                                         from '@serverlessinbox/artifact-registry-cdk';
+import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel, StackHelpers, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthClientConfig,
   AuthPolicyConfig,
@@ -14,7 +14,6 @@ import {
 } from '@serverlessinbox/mailbox';
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '@serverlessinbox/mailbox';
 import * as cognito                                                                                              from 'aws-cdk-lib/aws-cognito';
-import * as iam                                                                                                  from 'aws-cdk-lib/aws-iam';
 import * as lambda                                                                                               from 'aws-cdk-lib/aws-lambda';
 import { Aws, CustomResource, Duration, SecretValue }                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                             from 'constructs';
@@ -299,7 +298,6 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly artifacts: IArtifactResolver;
   private readonly enableJmapOAuthDiscovery: boolean;
   private readonly dynamicClientRegistration: DynamicClientRegistrationMode;
-  private readonly userPoolArn: string;
   private bootstrapUserCount = 0;
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
@@ -332,16 +330,16 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       passwordMinLength:   props.passwordMinLength,
       artifactResolver:    this.artifacts,
       deployerType,
+      rootStack:           { name: Aws.STACK_NAME, id: StackIdentity.guid },
     });
     const stackRef        = cognitoDeployer.dataStackRef;
 
     this.userPool              = stackRef.userPool;
-    this.userPoolId            = stackRef.userPoolId;
-    this.userPoolArn           = stackRef.userPoolArn;
+    this.userPoolId            = stackRef.userPool.userPoolId;
     this.oauthDomain           = stackRef.oauthDomain;
     this.tokenEndpoint         = `https://${stackRef.oauthDomain}/oauth2/token`;
     this.authorizationEndpoint = `https://${stackRef.oauthDomain}/oauth2/authorize`;
-    this.issuer                = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPoolId}`;
+    this.issuer                = `https://cognito-idp.${Aws.REGION}.amazonaws.com/${stackRef.userPool.userPoolId}`;
   }
 
   /**
@@ -473,7 +471,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     const constructId = `bootstrapped-user-${index}`;
     const handler     = new CognitoBootstrapUserLambda(this, `${constructId}-lambda`, {
       artifactResolver: this.artifacts,
-      userPoolArn:      this.userPoolArn,
+      userPool:         this.userPool,
     });
 
     const properties: BootstrapUserProperties = {
@@ -501,26 +499,22 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    * disable users, reset their passwords, and manage their group membership.
    */
   public grantAdminAccess(fn: lambda.IFunction): void {
-    fn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions:   [
-          'cognito-idp:ListUsers',
-          'cognito-idp:ListUsersInGroup',
-          'cognito-idp:ListGroups',
-          'cognito-idp:AdminListGroupsForUser',
-          'cognito-idp:AdminCreateUser',
-          'cognito-idp:AdminDeleteUser',
-          'cognito-idp:AdminResetUserPassword',
-          'cognito-idp:AdminSetUserPassword',
-          'cognito-idp:AdminUpdateUserAttributes',
-          'cognito-idp:AdminGetUser',
-          'cognito-idp:AdminDisableUser',
-          'cognito-idp:AdminEnableUser',
-          'cognito-idp:AdminAddUserToGroup',
-          'cognito-idp:AdminRemoveUserFromGroup',
-        ],
-        resources: [this.userPoolArn],
-      }),
+    this.userPool.grant(
+      fn,
+      'cognito-idp:ListUsers',
+      'cognito-idp:ListUsersInGroup',
+      'cognito-idp:ListGroups',
+      'cognito-idp:AdminListGroupsForUser',
+      'cognito-idp:AdminCreateUser',
+      'cognito-idp:AdminDeleteUser',
+      'cognito-idp:AdminResetUserPassword',
+      'cognito-idp:AdminSetUserPassword',
+      'cognito-idp:AdminUpdateUserAttributes',
+      'cognito-idp:AdminGetUser',
+      'cognito-idp:AdminDisableUser',
+      'cognito-idp:AdminEnableUser',
+      'cognito-idp:AdminAddUserToGroup',
+      'cognito-idp:AdminRemoveUserFromGroup',
     );
   }
 

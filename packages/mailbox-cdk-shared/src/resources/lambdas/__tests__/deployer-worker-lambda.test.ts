@@ -12,6 +12,8 @@ import { Construct }                                             from 'construct
 
 import { newDeployerTestStack }                                  from '../../../__tests__/deployer-infra-helpers';
 import { statementsForAction, statementsForResource, tagKeysOf } from '../../../cdk-test-support';
+import type { IArtifactObject }                                  from '../../artifacts/artifact-object';
+import type { IDeployedStack }                                   from '../../stacks/deployed-stack';
 import { DeployerWorkerLambda }                                  from '../deployer-worker-lambda';
 
 /** A worker that applies one shared grant per method, because the grants are protected. */
@@ -20,16 +22,20 @@ class ProbeWorker extends DeployerWorkerLambda {
     super(scope, 'worker', { artifactResolver, deployedStackName: 'data' });
   }
 
-  public applyStackLifecycle(stackArn: string, readsTemplate?: boolean): void {
-    this.grantStackLifecycle(stackArn, readsTemplate);
+  public applyStackLifecycle(stack: IDeployedStack): void {
+    this.grantStackLifecycle(stack);
+  }
+
+  public applyStackTemplateRead(stack: IDeployedStack): void {
+    this.grantStackTemplateRead(stack);
   }
 
   public applyTemplateValidation(): void {
     this.grantTemplateValidation();
   }
 
-  public applyArtifactRead(objectArns: string[]): void {
-    this.grantArtifactRead(objectArns);
+  public applyArtifactRead(artifacts: IArtifactObject[]): void {
+    this.grantArtifactRead(artifacts);
   }
 
   public applyTaggingApi(additionalTagKeys?: string[]): void {
@@ -37,7 +43,6 @@ class ProbeWorker extends DeployerWorkerLambda {
   }
 }
 
-const STACK_ARN     = 'arn:aws:cloudformation:us-west-2:123456789012:stack/probe/*';
 const BASE_TAG_KEYS = [
   'serverless-inbox:product',
   'serverless-inbox:root-stack',
@@ -55,6 +60,10 @@ function synthProbe(apply: (worker: ProbeWorker) => void): Template {
   return Template.fromStack(stack);
 }
 
+function newDeployedStackFake(): jest.Mocked<IDeployedStack> {
+  return { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+}
+
 describe('DeployerWorkerLambda', () => {
   it('runs the stack-deployer worker handler with the data deployer service name', () => {
     const template = synthProbe(() => undefined);
@@ -68,39 +77,37 @@ describe('DeployerWorkerLambda', () => {
   });
 
   it('is allowed to read the status of the stack it is deployed as, apart from the stacks it manages', () => {
-    const template = synthProbe((worker) => worker.applyStackLifecycle(STACK_ARN));
+    const template = synthProbe(() => undefined);
 
     const parentStatements = statementsForResource(template, { Ref: 'AWS::StackId' });
     expect(parentStatements).toHaveLength(1);
     expect(parentStatements[0].Action).toBe('cloudformation:DescribeStacks');
-    expect(statementsForAction(template, 'cloudformation:DescribeStacks')).toHaveLength(2);
+    expect(statementsForAction(template, 'cloudformation:DescribeStacks')).toHaveLength(1);
   });
 
   describe('grantStackLifecycle', () => {
-    it('manages the given stack without reading its template by default', () => {
-      const template = synthProbe((worker) => worker.applyStackLifecycle(STACK_ARN));
+    it('grants itself the lifecycle of the given stack', () => {
+      const deployedStack               = newDeployedStackFake();
+      const { stack, artifactResolver } = newDeployerTestStack();
+      const worker                      = new ProbeWorker(stack, artifactResolver);
 
-      const statements = statementsForAction(template, 'cloudformation:CreateStack');
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Resource).toEqual(STACK_ARN);
-      expect(statements[0].Action).toEqual([
-        'cloudformation:CreateStack',
-        'cloudformation:UpdateStack',
-        'cloudformation:DeleteStack',
-        'cloudformation:DescribeStacks',
-        'cloudformation:DescribeStackEvents',
-        'cloudformation:GetTemplateSummary',
-        'cloudformation:GetStackPolicy',
-        'cloudformation:SetStackPolicy',
-      ]);
+      worker.applyStackLifecycle(deployedStack);
+
+      expect(deployedStack.grantLifecycle).toHaveBeenCalledWith(worker);
+      expect(deployedStack.grantTemplateRead).not.toHaveBeenCalled();
     });
+  });
 
-    it('adds GetTemplate when the role reads the stack template', () => {
-      const template = synthProbe((worker) => worker.applyStackLifecycle(STACK_ARN, true));
+  describe('grantStackTemplateRead', () => {
+    it('grants itself the template read of the given stack', () => {
+      const deployedStack               = newDeployedStackFake();
+      const { stack, artifactResolver } = newDeployerTestStack();
+      const worker                      = new ProbeWorker(stack, artifactResolver);
 
-      const statements = statementsForAction(template, 'cloudformation:GetTemplate');
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Action).toContain('cloudformation:CreateStack');
+      worker.applyStackTemplateRead(deployedStack);
+
+      expect(deployedStack.grantTemplateRead).toHaveBeenCalledWith(worker);
+      expect(deployedStack.grantLifecycle).not.toHaveBeenCalled();
     });
   });
 
@@ -113,14 +120,15 @@ describe('DeployerWorkerLambda', () => {
     expect(statements[0].Condition).toBeUndefined();
   });
 
-  it('lets the role read exactly the given artifact objects', () => {
-    const objectArns = ['arn:aws:s3:::bucket/template.json', 'arn:aws:s3:::bucket/lambdas/function.zip'];
-    const template   = synthProbe((worker) => worker.applyArtifactRead(objectArns));
+  it('grants itself the read of each given artifact object', () => {
+    const artifacts                   = [{ grantRead: jest.fn() }, { grantRead: jest.fn() }];
+    const { stack, artifactResolver } = newDeployerTestStack();
+    const worker                      = new ProbeWorker(stack, artifactResolver);
 
-    const statements = statementsForAction(template, 's3:GetObject');
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Action).toEqual(['s3:GetObject', 's3:GetObjectVersion']);
-    expect(statements[0].Resource).toEqual(objectArns);
+    worker.applyArtifactRead(artifacts);
+
+    expect(artifacts[0].grantRead).toHaveBeenCalledWith(worker);
+    expect(artifacts[1].grantRead).toHaveBeenCalledWith(worker);
   });
 
   describe('grantTaggingApi', () => {

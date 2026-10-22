@@ -15,6 +15,7 @@ import { Construct }                                                            
 import { DeployerInfra }                                                                     from '../deployer-infra';
 import { PositionHash }                                                                      from '../naming/position-hash';
 import { StackIdentity }                                                                     from '../naming/stack-identity';
+import { DeployedStack }                                                                     from '../resources/stacks/deployed-stack';
 import type { StackDeployerProperties }                                                      from '../runtime/stack-deployer/stack/stack-deployment';
 
 import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
@@ -40,7 +41,7 @@ function newInfra(): SynthesizedInfra {
     artifactResolver,
     stateMachineNamePrefix: 'test-deployer-',
     deployedStackName:      'cognito',
-    deployedStackArn:       'arn:aws:cloudformation:us-east-1:123456789012:stack/sub-stack/*',
+    deployedStack:          new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/sub-stack/*'),
     createWorker,
   });
   return { stack, createWorker, infra };

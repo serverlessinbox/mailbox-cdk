@@ -37,7 +37,6 @@ const REGISTRATION_THROTTLE: RouteThrottle = { ThrottlingBurstLimit: 5, Throttli
 /** What the addon needs from the Cognito user pool providing OAuth: its identity and its OAuth endpoints. */
 export interface JmapOAuthPool {
   readonly userPool:              IUserPool;
-  readonly userPoolId:            string;
   readonly issuer:                string;
   readonly authorizationEndpoint: string;
   readonly tokenEndpoint:         string;
@@ -104,8 +103,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       this.dcrLambda = new JmapOAuthDcrLambda(this, 'dcr-lambda', {
         artifactResolver:    props.artifactResolver,
         identityProvisioner: props.identityProvisioner,
-        userPoolId:          props.pool.userPoolId,
-        userPoolArn:         props.pool.userPool.userPoolArn,
+        userPool:            props.pool.userPool,
       });
       cdk.Aspects.of(this.dcrLambda).add(new GateOnConditionAspect(this.registrationEnabled));
     }

@@ -1,7 +1,7 @@
 import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
 import { TypeScriptLambda }          from '@serverlessinbox/mailbox-cdk-shared';
 import type { IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { Effect, PolicyStatement }   from 'aws-cdk-lib/aws-iam';
+import type { IUserPool }            from 'aws-cdk-lib/aws-cognito';
 import { Duration }                  from 'aws-cdk-lib';
 import { Construct }                 from 'constructs';
 
@@ -17,11 +17,8 @@ export interface JmapOAuthDcrLambdaProps {
    */
   readonly identityProvisioner: IIdentityProvisioner;
 
-  /** The Cognito user pool that dynamically registered clients are created in. */
-  readonly userPoolId: string;
-
-  /** ARN of the same pool, which scopes the Cognito permissions this Lambda grants itself. */
-  readonly userPoolArn: string;
+  /** The Cognito user pool that dynamically registered clients are created in; scopes the Cognito permissions this Lambda grants itself. */
+  readonly userPool: IUserPool;
 }
 
 /**
@@ -41,7 +38,7 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
       timeout:          Duration.seconds(30),
       memorySize:       256,
       environment:      {
-        USER_POOL_ID:                       props.userPoolId,
+        USER_POOL_ID:                       props.userPool.userPoolId,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
       },
     });
@@ -49,12 +46,6 @@ export class JmapOAuthDcrLambda extends TypeScriptLambda {
 
     props.identityProvisioner.grantInvoke(this);
 
-    this.addToRolePolicy(
-      new PolicyStatement({
-        effect:    Effect.ALLOW,
-        actions:   ['cognito-idp:CreateUserPoolClient', 'cognito-idp:DeleteUserPoolClient'],
-        resources: [props.userPoolArn],
-      }),
-    );
+    props.userPool.grant(this, 'cognito-idp:CreateUserPoolClient', 'cognito-idp:DeleteUserPoolClient');
   }
 }

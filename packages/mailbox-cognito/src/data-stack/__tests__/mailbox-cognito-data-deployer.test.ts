@@ -9,6 +9,7 @@
 
 import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
 import { renderWithTokens, statementsForAction }       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { RootStack }                              from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                             from 'aws-cdk-lib/assertions';
 import { Stack }                                       from 'aws-cdk-lib';
 
@@ -20,7 +21,7 @@ import { newDeployerTestStack }                        from './cognito-deployer-
 
 const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxCognitoDataDeployer';
 const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
-const STACK_GUID                    = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const ROOT_STACK: RootStack         = { name: 'given-root-stack', id: 'given-root-guid' };
 const COGNITO_STACK_NAME            = { 'Fn::Join': ['', [STACK_NAME_REF, '-cognito']] };
 const DEPLOYER_RESOURCE_ID: unknown = expect.stringMatching(/^deployerresource/);
 
@@ -37,6 +38,7 @@ function synthDeployer(props: Partial<MailboxCognitoDataDeployerProps> = {}): Sy
     artifactResolver,
     cognitoDomainPrefix: 'test-prefix',
     deployerType:        'cdk',
+    rootStack:           ROOT_STACK,
     ...props,
   });
   return { stack, artifactResolver, deployer, template: Template.fromStack(stack) };
@@ -56,12 +58,12 @@ describe('MailboxCognitoDataDeployer', () => {
       });
     });
 
-    it('passes the deploying stack’s guid as the root stack id parameter and sub-stack tag', () => {
+    it('passes the given root stack id as the root stack id parameter and sub-stack tag', () => {
       const { template } = synthDeployer();
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        parameters: Match.objectLike({ rootStackId: STACK_GUID }),
-        tags:       Match.objectLike({ 'serverless-inbox:root-stack-id': STACK_GUID }),
+        parameters: Match.objectLike({ rootStackId: ROOT_STACK.id }),
+        tags:       Match.objectLike({ 'serverless-inbox:root-stack-id': ROOT_STACK.id }),
       });
     });
 
@@ -71,7 +73,7 @@ describe('MailboxCognitoDataDeployer', () => {
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         tags: {
           'serverless-inbox:product':    'mailbox',
-          'serverless-inbox:root-stack': STACK_NAME_REF,
+          'serverless-inbox:root-stack': ROOT_STACK.name,
           'serverless-inbox:stack':      COGNITO_STACK_NAME,
         },
       });
@@ -85,7 +87,7 @@ describe('MailboxCognitoDataDeployer', () => {
           cognitoDomainPrefix: 'test-prefix',
           mfaMode:             'OPTIONAL',
           passwordMinLength:   '8',
-          rootStack:           STACK_NAME_REF,
+          rootStack:           ROOT_STACK.name,
           deployerType:        'cdk',
         },
       });
@@ -130,6 +132,13 @@ describe('MailboxCognitoDataDeployer', () => {
       expect(renderWithTokens(statements[0].Resource)).toBe('arn:<token>:cloudformation:<token>:<token>:stack/<token>-cognito/*');
     });
 
+    it('admits the pools of the given root stack in its tag-gated grants', () => {
+      const { template } = synthDeployer();
+
+      const [byId] = statementsForAction(template, 'cognito-idp:DeleteUserPool');
+      expect(byId.Condition?.StringEquals).toEqual({ 'aws:ResourceTag/serverless-inbox:root-stack-id': ROOT_STACK.id });
+    });
+
     it('reads the cognito data stack template it deploys', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 
@@ -141,11 +150,10 @@ describe('MailboxCognitoDataDeployer', () => {
     });
   });
 
-  it('exposes the user pool, its ARN and the OAuth domain from the stack outputs', () => {
+  it('exposes the user pool, located by its ARN, and the OAuth domain from the stack outputs', () => {
     const { stack, deployer } = synthDeployer();
 
-    expect(stack.resolve(deployer.dataStackRef.userPoolId)).toEqual({ 'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'userPoolId'] });
-    expect(stack.resolve(deployer.dataStackRef.userPoolArn)).toEqual({ 'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'userPoolArn'] });
+    expect(stack.resolve(deployer.dataStackRef.userPool.userPoolArn)).toEqual({ 'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'userPoolArn'] });
     expect(stack.resolve(deployer.dataStackRef.oauthDomain)).toEqual({ 'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'oauthDomain'] });
   });
 });

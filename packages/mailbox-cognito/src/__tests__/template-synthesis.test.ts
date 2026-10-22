@@ -5,18 +5,18 @@
  * Verifies that identity/auth tier resources are correctly tagged, scoped, and configured.
  */
 
-import type { IArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxArtifactResolverFactory }               from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                     from 'aws-cdk-lib/assertions';
-import * as cdk                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+import type { IArtifactResolver }                                        from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, resourcesOf, statementsOfDocument }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ArtifactObject, DeployedStack, MailboxArtifactResolverFactory } from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                      from 'aws-cdk-lib/assertions';
+import * as cdk                                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                 from 'aws-cdk-lib';
 
-import { MailboxCognitoDataStack }                      from '../data-stack/mailbox-cognito-data-stack';
-import { loadMailboxCognitoArtifactVersions }           from '../mailbox-cognito-artifact-versions';
-import { loadMailboxCognitoRegistryRecord }             from '../mailbox-cognito-registry-record';
-import { MailboxCognitoDataDeployerWorkerLambda }       from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
-import { MailboxUserPool }                              from '../user-pool/mailbox-user-pool';
+import { MailboxCognitoDataStack }                                       from '../data-stack/mailbox-cognito-data-stack';
+import { loadMailboxCognitoArtifactVersions }                            from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                              from '../mailbox-cognito-registry-record';
+import { MailboxCognitoDataDeployerWorkerLambda }                        from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+import { MailboxUserPool }                                               from '../user-pool/mailbox-user-pool';
 
 interface CloudFormationResource {
   Type:        string;
@@ -193,8 +193,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template   = Template.fromStack(stack);
-      const parameters = template.toJSON().Parameters || {};
+      const template            = Template.fromStack(stack);
+      const parameters: unknown = template.toJSON().Parameters ?? {};
 
       // Cognito data stack should have domain and password policy parameters
       expect(parameters).toHaveProperty('cognitoDomainPrefix');
@@ -282,8 +282,9 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       new MailboxCognitoDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        deployedStackArn:  'arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*',
+        template:      new ArtifactObject(artifactResolver, 'mailbox-cognito', 'template.json'),
+        deployedStack: new DeployedStack('arn:aws:cloudformation:us-west-2:123456789012:stack/test-cognito/*'),
+        rootStack:     { name: 'test-root', id: 'test-root-guid' },
       });
 
       const template  = Template.fromStack(testStack);

@@ -6,6 +6,8 @@ import { Construct }                      from 'constructs';
 import { KIT_ARTIFACT_PACKAGE }           from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement } from '../../grants/parent-stack-status-read';
 import { ServerlessInboxTagKeys }         from '../../runtime/handler-kit/tag-keys';
+import type { IArtifactObject }           from '../artifacts/artifact-object';
+import type { IDeployedStack }            from '../stacks/deployed-stack';
 
 import { TypeScriptLambda }               from './ts-lambda';
 
@@ -68,24 +70,14 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
     this.grantReadParentStackStatus();
   }
 
-  /** Manages the given stack; `readsTemplate` also lets the role read the stack's deployed template. */
-  protected grantStackLifecycle(stackArn: string, readsTemplate = false): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions:   [
-          'cloudformation:CreateStack',
-          'cloudformation:UpdateStack',
-          'cloudformation:DeleteStack',
-          'cloudformation:DescribeStacks',
-          'cloudformation:DescribeStackEvents',
-          ...(readsTemplate ? ['cloudformation:GetTemplate'] : []),
-          'cloudformation:GetTemplateSummary',
-          'cloudformation:GetStackPolicy',
-          'cloudformation:SetStackPolicy',
-        ],
-        resources: [stackArn],
-      })
-    );
+  /** Manages the given stack. */
+  protected grantStackLifecycle(stack: IDeployedStack): void {
+    stack.grantLifecycle(this);
+  }
+
+  /** Lets the role read the deployed template of the given stack. */
+  protected grantStackTemplateRead(stack: IDeployedStack): void {
+    stack.grantTemplateRead(this);
   }
 
   /** ValidateTemplate acts on a template URL rather than a stack, so it cannot be scoped. */
@@ -99,13 +91,10 @@ export class DeployerWorkerLambda extends TypeScriptLambda {
   }
 
   /** CloudFormation fetches the template and any artifact it references with this role's identity, so each object must be readable here. */
-  protected grantArtifactRead(objectArns: string[]): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions:   ['s3:GetObject', 's3:GetObjectVersion'],
-        resources: objectArns,
-      })
-    );
+  protected grantArtifactRead(artifacts: IArtifactObject[]): void {
+    for (const artifact of artifacts) {
+      artifact.grantRead(this);
+    }
   }
 
   /**

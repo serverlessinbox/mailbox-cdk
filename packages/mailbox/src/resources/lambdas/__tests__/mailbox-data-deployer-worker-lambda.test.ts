@@ -8,6 +8,7 @@
  */
 
 import { renderWithTokens, sharedWorkerServiceName, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                       from 'aws-cdk-lib/assertions';
 
 import {
@@ -17,27 +18,28 @@ import {
 } from '../../../__tests__/deployer-test-helpers';
 import { MailboxDataDeployerWorkerLambda } from '../mailbox-data-deployer-worker-lambda';
 
-const DATA_STACK_ARN      = 'arn:aws:cloudformation:us-west-2:111122223333:stack/test-stack-data/*';
-const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-artifacts/templates/data-template.json';
+const dataStack: IDeployedStack     = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+const dataTemplate: IArtifactObject = { grantRead: jest.fn() };
 
-function synthWorker(): Template {
+function synthWorker(): { readonly worker: MailboxDataDeployerWorkerLambda; readonly template: Template } {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxDataDeployerWorkerLambda(stack, 'worker', {
+  const worker                      = new MailboxDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
-    dataStackArn:      DATA_STACK_ARN,
-    dataStackName:     'test-stack-data',
-    templateObjectArn: TEMPLATE_OBJECT_ARN,
-    nameBase:          'test-stack-data',
+    dataStack,
+    dataStackName: 'test-stack-data',
+    template:      dataTemplate,
+    nameBase:      'test-stack-data',
   });
-  return Template.fromStack(stack);
+  return { worker, template: Template.fromStack(stack) };
 }
 
 describe('MailboxDataDeployerWorkerLambda', () => {
   let template: Template;
+  let worker: MailboxDataDeployerWorkerLambda;
 
   beforeAll(() => {
-    template = synthWorker();
+    ({ template, worker } = synthWorker());
   });
 
   it('runs as the data deployer worker', () => {
@@ -46,22 +48,17 @@ describe('MailboxDataDeployerWorkerLambda', () => {
     });
   });
 
-  it('manages only the data stack', () => {
-    const statements = statementsForAction(template, 'cloudformation:CreateStack');
-
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toBe(DATA_STACK_ARN);
+  it('manages the data stack it is given, without reading its template', () => {
+    expect(dataStack.grantLifecycle).toHaveBeenCalledWith(worker);
+    expect(dataStack.grantTemplateRead).not.toHaveBeenCalled();
   });
 
   it('validates templates, which acts on a template URL rather than a stack', () => {
     expect(statementsForAction(template, 'cloudformation:ValidateTemplate')).toHaveLength(1);
   });
 
-  it('reads only the data stack template object', () => {
-    const statements = statementsForAction(template, 's3:GetObject');
-
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toBe(TEMPLATE_OBJECT_ARN);
+  it('reads the data stack template object it is given', () => {
+    expect(dataTemplate.grantRead).toHaveBeenCalledWith(worker);
   });
 
   it('manages only the tables named from the name base', () => {

@@ -1,24 +1,24 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import {
   DeployerWorkerLambda,
-  StackIdentity,
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }              from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement }     from 'aws-cdk-lib/aws-iam';
-import type { PolicyStatementProps }   from 'aws-cdk-lib/aws-iam';
-import { Aws }                         from 'aws-cdk-lib';
-import { Construct }                   from 'constructs';
+import type { IArtifactObject, IDeployedStack, RootStack } from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }                         from 'aws-cdk-lib/aws-iam';
+import type { PolicyStatementProps }                       from 'aws-cdk-lib/aws-iam';
+import { Construct }                                       from 'constructs';
 
-import { COGNITO_DEPLOYED_STACK_NAME } from '../../data-stack/mailbox-cognito-data-stack-contract';
+import { COGNITO_DEPLOYED_STACK_NAME }                     from '../../data-stack/mailbox-cognito-data-stack-contract';
 
 export interface MailboxCognitoDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
-  /** S3 object ARN for the cognito data stack CloudFormation template. */
-  readonly templateObjectArn: string;
-  /** ARN pattern of the cognito data stack the worker manages. */
-  readonly deployedStackArn: string;
+  /** The cognito data stack CloudFormation template. */
+  readonly template: IArtifactObject;
+  /** The cognito data stack the worker manages. */
+  readonly deployedStack: IDeployedStack;
+  /** The root stack whose tagged resources the worker's pool grants admit, resolved once by the composition root. */
+  readonly rootStack: RootStack;
 }
 
 /**
@@ -29,7 +29,7 @@ export interface MailboxCognitoDataDeployerWorkerLambdaProps {
  * region resolve at deploy time.
  */
 export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda {
-  private readonly rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
+  private readonly rootStack: RootStack;
 
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerWorkerLambdaProps) {
     super(scope, id, {
@@ -37,10 +37,13 @@ export class MailboxCognitoDataDeployerWorkerLambda extends DeployerWorkerLambda
       deployedStackName: COGNITO_DEPLOYED_STACK_NAME,
     });
 
+    this.rootStack = props.rootStack;
+
     // Grants inherited from the shared deployer worker
-    this.grantStackLifecycle(props.deployedStackArn, true);
+    this.grantStackLifecycle(props.deployedStack);
+    this.grantStackTemplateRead(props.deployedStack);
     this.grantTemplateValidation();
-    this.grantArtifactRead([props.templateObjectArn]);
+    this.grantArtifactRead([props.template]);
     this.grantTaggingApi();
 
     // Grants for the resources of the cognito data stack

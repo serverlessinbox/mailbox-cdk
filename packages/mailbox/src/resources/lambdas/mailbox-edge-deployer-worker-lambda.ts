@@ -5,10 +5,10 @@ import {
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
 } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }        from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }       from 'aws-cdk-lib/aws-iam';
-import { ArnFormat, Aws, Stack } from 'aws-cdk-lib';
-import { Construct }             from 'constructs';
+import type { IArtifactObject, IDeployedStack, RootStack } from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                 from 'aws-cdk-lib/aws-iam';
+import { ArnFormat, Aws, Stack }                           from 'aws-cdk-lib';
+import { Construct }                                       from 'constructs';
 
 export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
@@ -18,14 +18,14 @@ export interface MailboxEdgeDeployerWorkerLambdaProps {
    * stack's Lambda functions and resource group, which are named after the stack.
    */
   readonly edgeStackNamePattern: string;
-  /** ARN pattern of the edge stack, built from the same `edgeStackNamePattern`. */
-  readonly edgeStackArn: string;
-  readonly rootStack:    string;
+  /** The edge stack, named by the same `edgeStackNamePattern`. */
+  readonly edgeStack: IDeployedStack;
+  readonly rootStack: string;
   /** The guid of the root stack, tagged as `serverless-inbox:root-stack-id`. */
-  readonly rootStackId:       string;
-  readonly templateObjectArn: string;
-  /** Additional S3 object ARNs (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
-  readonly artifactObjectArns: string[];
+  readonly rootStackId: string;
+  readonly template:    IArtifactObject;
+  /** Additional artifact objects (e.g. Lambda zip files) that CloudFormation needs to read during stack deployment. */
+  readonly artifactObjects: IArtifactObject[];
   /** Route53 hosted zone used for the edge certificate's DNS validation (omit when no hosted zone is configured). */
   readonly hostedZoneId?: string;
   /** ARN of the jmap-blob-download Lambda@Edge execution role (created in root stack) */
@@ -56,8 +56,8 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     });
 
     // Grants inherited from the shared deployer worker
-    this.grantStackLifecycle(props.edgeStackArn);
-    this.grantArtifactRead([props.templateObjectArn, ...props.artifactObjectArns]);
+    this.grantStackLifecycle(props.edgeStack);
+    this.grantArtifactRead([props.template, ...props.artifactObjects]);
     this.grantTaggingApi([ServerlessInboxTagKeys.edge, ServerlessInboxTagKeys.rootRegion]);
 
     // Grants for the resources of the edge stack

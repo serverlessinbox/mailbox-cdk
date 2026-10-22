@@ -13,6 +13,7 @@
 import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin }                             from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ArtifactObject, DeployedStack }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                     from 'aws-cdk-lib/assertions';
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
@@ -26,6 +27,7 @@ import {
   KNOWN_WILDCARDS,
   getTagValue,
   isResourceOfType,
+  readTags,
 } from './iam-test-helpers';
 
 describe('MailboxEdgeStack Template Synthesis', () => {
@@ -55,8 +57,8 @@ describe('MailboxEdgeStack Template Synthesis', () => {
           continue;
         }
 
-        const tags = resource.Properties?.Tags;
-        if (!Array.isArray(tags)) {continue;}
+        const tags = readTags(resource);
+        if (tags === undefined) {continue;}
         taggedResourceCount++;
 
         const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
@@ -228,8 +230,8 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template   = Template.fromStack(stack);
-      const parameters = template.toJSON().Parameters || {};
+      const template            = Template.fromStack(stack);
+      const parameters: unknown = template.toJSON().Parameters ?? {};
 
       // Edge stack should have domain, prefix, hosted zone, artifact parameters
       expect(parameters).toHaveProperty('domainName');
@@ -305,8 +307,8 @@ describe('MailboxEdgeStack Template Synthesis', () => {
       for (const [, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::Lambda::Function')) {continue;}
 
-        const tags = resource.Properties?.Tags;
-        if (!Array.isArray(tags)) {continue;}
+        const tags = readTags(resource);
+        if (tags === undefined) {continue;}
 
         const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
 
@@ -361,11 +363,11 @@ describe('MailboxEdgeStack Template Synthesis', () => {
         artifactResolver,
         stack:                   testStack,
         edgeStackNamePattern:    'test-root-edge*',
-        edgeStackArn:            'arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*',
+        edgeStack:               new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*'),
         rootStack:               'test-root',
         rootStackId:             'test-guid',
-        templateObjectArn:       'arn:aws:s3:::bucket/template.json',
-        artifactObjectArns:      ['arn:aws:s3:::bucket/lambdas/jmap-blob-download.zip'],
+        template:                new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
+        artifactObjects:         [new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'lambdas/jmap-blob-download.zip')],
         hostedZoneId:            'Z123456',
         jmapBlobDownloadRoleArn: 'arn:aws:iam::123456789012:role/test-role',
       });

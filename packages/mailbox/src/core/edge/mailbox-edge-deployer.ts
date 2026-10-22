@@ -1,15 +1,15 @@
-import type { IArtifactResolver, ResolvedArtifact }                                                      from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                                              from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                          from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                                                                                          from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                                                       from 'aws-cdk-lib/aws-lambda';
-import * as route53                                                                                      from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Stack, Token }                                                             from 'aws-cdk-lib';
-import { Construct }                                                                                     from 'constructs';
+import type { IArtifactResolver, ResolvedArtifact }                                                                                     from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                                                                             from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                                                                         from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                                                                                         from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                                                                                      from 'aws-cdk-lib/aws-lambda';
+import * as route53                                                                                                                     from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Stack, Token }                                                                                            from 'aws-cdk-lib';
+import { Construct }                                                                                                                    from 'constructs';
 
-import { MailboxEdgeDeployerWorkerLambda }                                                               from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
-import type { IDataTable }                                                                               from '../../resources/tables/data-tables';
+import { MailboxEdgeDeployerWorkerLambda }                                                                                              from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
+import type { IDataTable }                                                                                                              from '../../resources/tables/data-tables';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -54,6 +54,8 @@ export interface MailboxEdgeDeployerProps {
  * and exposes its Outputs back into the current (regional) stack.
  */
 export class MailboxEdgeDeployer extends Construct {
+  private static readonly EDGE_STACK_RESOURCE_ID = 'edge-stack';
+
   public readonly edgeStackId: string;
 
   /** Published Lambda@Edge version for the JMAP blob download (always present). */
@@ -63,8 +65,6 @@ export class MailboxEdgeDeployer extends Construct {
   public readonly edgeCertificate?: acm.ICertificate;
 
   public readonly jmapBlobDownloadRole: iam.IRole;
-
-  private static readonly EDGE_STACK_RESOURCE_ID = 'edge-stack';
 
   private readonly resource: CustomResource;
 
@@ -84,28 +84,28 @@ export class MailboxEdgeDeployer extends Construct {
     // Matches the name above and the unhashed `${Aws.STACK_NAME}-edge` that earlier installs deployed,
     // whose resource is deleted with this policy in force.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
-    const edgeStackArn         = stack.formatArn({
+    const edgeStack            = new DeployedStack(stack.formatArn({
       service:      'cloudformation',
       region:       'us-east-1',
       resource:     'stack',
       resourceName: `${edgeStackNamePattern}/*`,
-    });
+    }));
 
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver:       props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-edge-deployer-',
       deployedStackName:      'edge',
-      deployedStackArn:       edgeStackArn,
+      deployedStack:          edgeStack,
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
         edgeStackNamePattern,
-        edgeStackArn,
+        edgeStack,
         rootStack:               Aws.STACK_NAME,
         rootStackId:             StackIdentity.guid,
-        templateObjectArn:       props.artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json'),
-        artifactObjectArns:      [
-          props.artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),
+        template:                new ArtifactObject(props.artifactResolver, 'mailbox-cdk-edge', 'edge-stack-template.json'),
+        artifactObjects:         [
+          new ArtifactObject(props.artifactResolver, 'mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),
         ],
         hostedZoneId:            props.hostedZone?.hostedZoneId,
         jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,

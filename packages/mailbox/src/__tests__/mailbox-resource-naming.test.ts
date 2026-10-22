@@ -4,23 +4,21 @@
  * Tests for synthesized CloudFormation templates ensuring consistent resource naming
  * across main and data stacks.
  *
- * Catches two regressions:
- * 1. Registry key mismatch: setStackNameBase() and getStackNameBase() keys must match
- * 2. Double `-data-` in grants: nameBase already contains the data stack name
+ * Catches a regression: double `-data-` in grants, since nameBase already contains the data stack name.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
-import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { PositionHash, StackIdentity }          from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                                           from '@serverlessinbox/artifact-registry-cdk';
+import { resourcesOf, statementsForAction }                           from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ArtifactObject, DeployedStack, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                   from 'aws-cdk-lib/assertions';
+import * as cdk                                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                              from 'aws-cdk-lib';
 
-import { MailboxDataStack }                     from '../core/data/mailbox-data-stack';
-import { MailboxDataDeployerWorkerLambda }      from '../resources/lambdas/mailbox-data-deployer-worker-lambda';
-import { AuthKeyStoreTable }                    from '../resources/tables/auth-key-store-table';
-import { WebSocketTable }                       from '../resources/tables/websocket-table';
+import { MailboxDataStack }                                           from '../core/data/mailbox-data-stack';
+import { MailboxDataDeployerWorkerLambda }                            from '../resources/lambdas/mailbox-data-deployer-worker-lambda';
+import { AuthKeyStoreTable }                                          from '../resources/tables/auth-key-store-table';
+import { WebSocketTable }                                             from '../resources/tables/websocket-table';
 
 import {
   CloudFormationResource,
@@ -28,54 +26,6 @@ import {
 } from './iam-test-helpers';
 
 describe('Mailbox Resource Naming', () => {
-  describe('Main Stack: S3 Bucket Naming via StackHelpers', () => {
-    it('should verify StackNamedBucket uses registry-based naming for S3-safe buckets', () => {
-      // Test the core mechanism: StackNamedBucket should use the registered S3 name base
-      // when available, falling back to AWS::StackName otherwise.
-      // The actual main-stack Mailbox test is integration-level; this unit test
-      // validates the infrastructure component.
-
-      const app   = new App();
-      const stack = new cdk.Stack(app, 'TestMainStack', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      // Test: StackNamedBucket construction works with the registry fix
-      try {
-        const { StackNamedBucket } = require('../utils/named-bucket');
-        const { setStackNameBase } = require('@serverlessinbox/mailbox-cdk-shared');
-
-        // Register a name base for this stack
-        setStackNameBase(stack, 'test-stack-safe-name');
-
-        // Create a bucket - should use the registered name base (via Lazy resolution)
-        const bucket = new StackNamedBucket(stack, 'test-bucket', {
-          bucketName: 'test-bucket',
-        });
-
-        expect(bucket.explicitBucketName).toBeDefined();
-
-        // Verify the bucket was created successfully (the fix ensures registry lookup works)
-        const template  = Template.fromStack(stack);
-        const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-        if (resources) {
-          let bucketFound = false;
-          for (const [, resource] of Object.entries(resources)) {
-            if (isResourceOfType(resource, 'AWS::S3::Bucket')) {
-              bucketFound = true;
-              break;
-            }
-          }
-          expect(bucketFound).toBe(true);
-        }
-      } catch (e) {
-        // The test verifies the mechanism works; actual full-stack integration
-        // is tested at the data-stack level which is integration-level
-      }
-    });
-  });
-
   describe('Main Stack: Auth and WebSocket TableNames', () => {
     it('should synthesize the auth-key-store table name referencing AWS::StackName', () => {
       // AuthKeyStoreTable does NOT use the nameBase registry; StackNamedTable falls back to
@@ -157,9 +107,9 @@ describe('Mailbox Resource Naming', () => {
       new MailboxDataDeployerWorkerLambda(stack, 'worker', {
         artifactResolver,
         stack,
-        dataStackArn:      'arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*',
-        dataStackName:     'test-data',
-        templateObjectArn: 'arn:aws:s3:::test/template.json',
+        dataStack:     new DeployedStack('arn:aws:cloudformation:us-west-2:123456789012:stack/test-data/*'),
+        dataStackName: 'test-data',
+        template:      new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
         nameBase, // Already contains 'data'
       });
 

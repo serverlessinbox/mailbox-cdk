@@ -14,6 +14,7 @@ import { Table }                                 from 'aws-cdk-lib/aws-dynamodb'
 import * as route53                              from 'aws-cdk-lib/aws-route53';
 import { Stack, Token }                          from 'aws-cdk-lib';
 import { Construct }                             from 'constructs';
+import * as t                                    from 'typanion';
 
 import {
   TEST_ACCOUNT,
@@ -23,11 +24,19 @@ import { DataTable }                     from '../../../resources/tables/data-ta
 import { MailboxEdgeDeployer }           from '../mailbox-edge-deployer';
 import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
 
-const DEPLOYER_RESOURCE_TYPE   = 'Custom::MailboxEdgeDeployer';
-const STACK_NAME_REF           = { Ref: 'AWS::StackName' };
-const STACK_GUID               = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const EDGE_STACK_NAME          = { 'Fn::Join': ['', [STACK_NAME_REF, Match.stringLikeRegexp('^-edge-[0-9a-f]{8}$')]] };
-const DEPLOYER_RESOURCE_ID     = expect.stringMatching(/^edgedeployeredgestack/);
+const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxEdgeDeployer';
+const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
+const STACK_GUID                    = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const EDGE_STACK_NAME               = { 'Fn::Join': ['', [STACK_NAME_REF, Match.stringLikeRegexp('^-edge-[0-9a-f]{8}$')]] };
+const DEPLOYER_RESOURCE_ID: unknown = expect.stringMatching(/^edgedeployeredgestack/);
+const DEPLOYER_LOGICAL_ID: unknown  = expect.stringMatching(/^edgedeployeredgestack[0-9A-F]{8}$/);
+
+/** The `stackName` property of the edge deployer resource: a `Fn::Join` of a separator and its parts. */
+const isDeployerResource       = t.isPartial({
+  Properties: t.isPartial({
+    stackName: t.isRecord(t.isTuple([t.isString(), t.isArray(t.isOneOf([t.isString(), t.isRecord(t.isString())]))])),
+  }),
+});
 const ITEM_TABLE_ARN           = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
 const CONFIG_TABLE_ARN         = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
 const AUTH_KEY_STORE_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/auth-keys';
@@ -76,10 +85,11 @@ describe('MailboxEdgeDeployer', () => {
   describe('custom resource', () => {
     it('deploys the edge stack template to us-east-1 with termination protection off by default', () => {
       const { stack, artifactResolver, template } = synthDeployer();
+      const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'));
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         stackName:             EDGE_STACK_NAME,
-        templateUrl:           stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json')),
+        templateUrl,
         region:                'us-east-1',
         terminationProtection: false,
       });
@@ -88,14 +98,18 @@ describe('MailboxEdgeDeployer', () => {
     it('is created as the deployer’s child "edge-stack"', () => {
       const { template } = synthDeployer();
 
-      expect(Object.keys(template.findResources(DEPLOYER_RESOURCE_TYPE))).toEqual([
-        expect.stringMatching(/^edgedeployeredgestack[0-9A-F]{8}$/),
-      ]);
+      expect(Object.keys(template.findResources(DEPLOYER_RESOURCE_TYPE))).toEqual([DEPLOYER_LOGICAL_ID]);
     });
 
     it('names the stack after the position of the deployer, so a moved deployer deploys a new stack', () => {
-      const stackNameOf = ({ template }: SynthesizedDeployer): string =>
-        JSON.stringify(Object.values(template.findResources(DEPLOYER_RESOURCE_TYPE))[0].Properties.stackName);
+      const stackNameOf = ({ template }: SynthesizedDeployer): string => {
+        const [deployerResource]: unknown[] = Object.values(template.findResources(DEPLOYER_RESOURCE_TYPE));
+        const errors: string[]              = [];
+        if (!isDeployerResource(deployerResource, { errors })) {
+          throw new Error(`The deployer resource has no stack name: ${errors.join('; ')}`);
+        }
+        return JSON.stringify(deployerResource.Properties.stackName);
+      };
 
       const atTheRoot    = stackNameOf(synthDeployer());
       const underAParent = stackNameOf(synthDeployer(() => ({}), 'moved-here'));
@@ -152,12 +166,12 @@ describe('MailboxEdgeDeployer', () => {
 
     describe('prefix parameter', () => {
       it.each([
-        ['no prefix', undefined, '.'],
-        ['a bare label', 'mailbox', '.mailbox.'],
-        ['an already dot-wrapped label', '.mailbox.', '.mailbox.'],
-        ['a padded label with extra dots', '  ..mailbox..  ', '.mailbox.'],
-        ['a blank prefix', '   ', '.'],
-      ])('wraps %s for the edge template', (_case, prefix, expected) => {
+        { name: 'no prefix', prefix: undefined, expected: '.' },
+        { name: 'a bare label', prefix: 'mailbox', expected: '.mailbox.' },
+        { name: 'an already dot-wrapped label', prefix: '.mailbox.', expected: '.mailbox.' },
+        { name: 'a padded label with extra dots', prefix: '  ..mailbox..  ', expected: '.mailbox.' },
+        { name: 'a blank prefix', prefix: '   ', expected: '.' },
+      ])('wraps $name for the edge template', ({ prefix, expected }) => {
         const { template } = synthDeployer(() => ({ prefix }));
 
         template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
@@ -244,8 +258,7 @@ describe('MailboxEdgeDeployer', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 
       const statements = statementsForAction(template, 's3:GetObject');
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Resource).toEqual([
+      expect(statements.map((statement) => statement.Resource)).toEqual([
         stack.resolve(artifactResolver.getArn('mailbox-cdk-edge', 'edge-stack-template.json')),
         stack.resolve(artifactResolver.getArn('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
       ]);

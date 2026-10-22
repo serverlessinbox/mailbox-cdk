@@ -8,6 +8,7 @@
  */
 
 import { renderWithTokens, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                                  from 'aws-cdk-lib/assertions';
 
 import {
@@ -18,9 +19,6 @@ import { MailboxEdgeDeployerWorkerLambda }           from '../mailbox-edge-deplo
 import type { MailboxEdgeDeployerWorkerLambdaProps } from '../mailbox-edge-deployer-worker-lambda';
 
 const EDGE_REGION                 = 'us-east-1';
-const EDGE_STACK_ARN              = 'arn:aws:cloudformation:us-east-1:111122223333:stack/test-stack-edge*/*';
-const TEMPLATE_OBJECT_ARN         = 'arn:aws:s3:::test-artifacts/templates/edge-template.json';
-const ARTIFACT_OBJECT_ARN         = 'arn:aws:s3:::test-artifacts-us-east-1/lambdas/jmap-blob-download.zip';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
 const ROOT_STACK_TAG              = 'serverless-inbox:root-stack';
 const ROOT_STACK_ID_TAG           = 'serverless-inbox:root-stack-id';
@@ -40,21 +38,29 @@ function ownedByRequestTag(): unknown[] {
   ];
 }
 
-function synthWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): Template {
+const edgeStack: IDeployedStack     = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+const edgeTemplate: IArtifactObject = { grantRead: jest.fn() };
+const edgeArtifact: IArtifactObject = { grantRead: jest.fn() };
+
+function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): { readonly worker: MailboxEdgeDeployerWorkerLambda; readonly template: Template } {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
+  const worker                      = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     stack,
     edgeStackNamePattern:    'test-stack-edge*',
-    edgeStackArn:            EDGE_STACK_ARN,
+    edgeStack,
     rootStack:               'test-stack',
     rootStackId:             'test-guid',
-    templateObjectArn:       TEMPLATE_OBJECT_ARN,
-    artifactObjectArns:      [ARTIFACT_OBJECT_ARN],
+    template:                edgeTemplate,
+    artifactObjects:         [edgeArtifact],
     jmapBlobDownloadRoleArn: JMAP_BLOB_DOWNLOAD_ROLE_ARN,
     ...props,
   });
-  return Template.fromStack(stack);
+  return { worker, template: Template.fromStack(stack) };
+}
+
+function synthWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): Template {
+  return buildWorker(props).template;
 }
 
 function resourceOf(template: Template, action: string, index = 0): string {
@@ -74,18 +80,17 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
     });
   });
 
-  it('manages only the edge stack', () => {
-    const statements = statementsForAction(template, 'cloudformation:CreateStack');
+  it('manages the edge stack it is given', () => {
+    const { worker } = buildWorker();
 
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toBe(EDGE_STACK_ARN);
+    expect(edgeStack.grantLifecycle).toHaveBeenCalledWith(worker);
   });
 
-  it('reads the edge template and every Lambda artifact it references', () => {
-    const statements = statementsForAction(template, 's3:GetObject');
+  it('reads the edge template and every Lambda artifact it is given', () => {
+    const { worker } = buildWorker();
 
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toEqual([TEMPLATE_OBJECT_ARN, ARTIFACT_OBJECT_ARN]);
+    expect(edgeTemplate.grantRead).toHaveBeenCalledWith(worker);
+    expect(edgeArtifact.grantRead).toHaveBeenCalledWith(worker);
   });
 
   it('adds the edge and root-region tag keys to the tagging grant', () => {

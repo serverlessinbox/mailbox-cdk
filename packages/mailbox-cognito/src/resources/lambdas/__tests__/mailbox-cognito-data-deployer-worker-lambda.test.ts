@@ -9,13 +9,15 @@
 
 import { actionsOf, allPolicyStatements, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }                                                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                                                                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                                                                       from 'aws-cdk-lib/assertions';
 
 import { newDeployerTestStack }                                                                                           from '../../../data-stack/__tests__/cognito-deployer-helpers';
 import { MailboxCognitoDataDeployerWorkerLambda }                                                                         from '../mailbox-cognito-data-deployer-worker-lambda';
 
-const TEMPLATE_OBJECT_ARN = 'arn:aws:s3:::test-bucket/template.yaml';
-const DEPLOYED_STACK_ARN  = 'arn:aws:cloudformation:eu-west-1:123456789012:stack/parent-cognito/*';
+const ROOT_STACK                    = { name: 'given-root-stack', id: 'given-root-guid' };
+const deployedStack: IDeployedStack = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+const dataTemplate: IArtifactObject = { grantRead: jest.fn() };
 
 /** The tag source of a root-stack statement: 'id' when it matches the stack's guid, 'name' when it matches the name of a resource without an id tag. */
 function tagSourceOf(statement: PolicyStatementJson, tagSource: 'ResourceTag' | 'RequestTag'): 'id' | 'name' | undefined {
@@ -34,21 +36,23 @@ function tagSourcesOf(statements: PolicyStatementJson[], tagSource: 'ResourceTag
   return statements.map((statement) => tagSourceOf(statement, tagSource));
 }
 
-function synthWorker(): Template {
+function synthWorker(): { readonly worker: MailboxCognitoDataDeployerWorkerLambda; readonly template: Template } {
   const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
+  const worker                      = new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
-    templateObjectArn: TEMPLATE_OBJECT_ARN,
-    deployedStackArn:  DEPLOYED_STACK_ARN,
+    template:      dataTemplate,
+    deployedStack,
+    rootStack:     ROOT_STACK,
   });
-  return Template.fromStack(stack);
+  return { worker, template: Template.fromStack(stack) };
 }
 
 describe('MailboxCognitoDataDeployerWorkerLambda', () => {
   let template: Template;
+  let worker: MailboxCognitoDataDeployerWorkerLambda;
 
   beforeAll(() => {
-    template = synthWorker();
+    ({ template, worker } = synthWorker());
   });
 
   it('runs as the cognito deployer worker', () => {
@@ -58,23 +62,17 @@ describe('MailboxCognitoDataDeployerWorkerLambda', () => {
   });
 
   describe('stack and template', () => {
-    it('manages only the cognito data stack, and may read its deployed template', () => {
-      const statements = statementsForAction(template, 'cloudformation:CreateStack');
-
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Action).toContain('cloudformation:GetTemplate');
-      expect(statements[0].Resource).toBe(DEPLOYED_STACK_ARN);
+    it('manages the cognito data stack it is given, and may read its deployed template', () => {
+      expect(deployedStack.grantLifecycle).toHaveBeenCalledWith(worker);
+      expect(deployedStack.grantTemplateRead).toHaveBeenCalledWith(worker);
     });
 
     it('validates templates, which acts on a template URL rather than a stack', () => {
       expect(statementsForAction(template, 'cloudformation:ValidateTemplate')).toHaveLength(1);
     });
 
-    it('reads only the cognito data stack template object', () => {
-      const statements = statementsForAction(template, 's3:GetObject');
-
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Resource).toBe(TEMPLATE_OBJECT_ARN);
+    it('reads the cognito data stack template object it is given', () => {
+      expect(dataTemplate.grantRead).toHaveBeenCalledWith(worker);
     });
   });
 
@@ -100,6 +98,13 @@ describe('MailboxCognitoDataDeployerWorkerLambda', () => {
         const stmts = statementsForAction(template, action);
         expect(tagSourcesOf(stmts, 'ResourceTag')).toEqual(['id', 'name']);
       }
+    });
+
+    it('admits only the pools of the root stack it is given, by id and by name', () => {
+      const [byId, byName] = statementsForAction(template, 'cognito-idp:DeleteUserPool');
+
+      expect(byId.Condition?.StringEquals).toEqual({ 'aws:ResourceTag/serverless-inbox:root-stack-id': ROOT_STACK.id });
+      expect(byName.Condition?.StringEquals).toEqual({ 'aws:ResourceTag/serverless-inbox:root-stack': ROOT_STACK.name });
     });
 
     it('splits TagResource into RequestTag-gated (create) and ResourceTag-gated (update) statements, each by id and by name', () => {

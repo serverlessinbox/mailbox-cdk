@@ -12,6 +12,7 @@ import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-c
 import { env }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { IIdentityProvisioner }            from '@serverlessinbox/mailbox';
 import { Template }                             from 'aws-cdk-lib/assertions';
+import { UserPool }                             from 'aws-cdk-lib/aws-cognito';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 import * as t                                   from 'typanion';
 
@@ -21,7 +22,7 @@ import { JmapOAuthDcrLambda }                   from '../jmap-oauth-dcr-lambda';
 const USER_POOL_ID  = 'us-west-2_abcdefgh';
 const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
 
-const isEnvironment = t.isRecord(t.isString());
+const isLambdaFunction = t.isPartial({ Properties: t.isPartial({ Environment: t.isPartial({ Variables: t.isRecord(t.isString()) }) }) });
 
 describe('JmapOAuthDcrLambda', () => {
   const identityProvisioner: IIdentityProvisioner = {
@@ -45,7 +46,11 @@ describe('JmapOAuthDcrLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    lambda   = new JmapOAuthDcrLambda(stack, 'dcr-lambda', { artifactResolver, identityProvisioner, userPoolId: USER_POOL_ID, userPoolArn: USER_POOL_ARN });
+    lambda   = new JmapOAuthDcrLambda(stack, 'dcr-lambda', {
+      artifactResolver,
+      identityProvisioner,
+      userPool: UserPool.fromUserPoolArn(stack, 'user-pool', USER_POOL_ARN),
+    });
     template = Template.fromStack(stack);
   });
 
@@ -58,13 +63,12 @@ describe('JmapOAuthDcrLambda', () => {
   });
 
   it('sets the variables its configuration loads from', () => {
-    const [lambdaFunction]   = Object.values(template.findResources('AWS::Lambda::Function'));
-    const variables: unknown = lambdaFunction.Properties.Environment.Variables;
-    const errors: string[]   = [];
-    if (!isEnvironment(variables, { errors })) {
-      throw new Error(`The environment of the Lambda is not a set of strings: ${errors.join('; ')}`);
+    const [lambdaFunction]: unknown[] = Object.values(template.findResources('AWS::Lambda::Function'));
+    const errors: string[]            = [];
+    if (!isLambdaFunction(lambdaFunction, { errors })) {
+      throw new Error(`The Lambda has no environment that is a set of strings: ${errors.join('; ')}`);
     }
-    process.env = { ...variables };
+    process.env = { ...lambdaFunction.Properties.Environment.Variables };
 
     expect(env.tryLoad(load)).toMatchObject({
       config: { userPoolId: USER_POOL_ID, identityProvisionerFunctionName: 'identity-provisioner' },

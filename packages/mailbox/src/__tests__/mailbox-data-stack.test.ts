@@ -12,6 +12,7 @@
 import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin }                             from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ArtifactObject, DeployedStack }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                     from 'aws-cdk-lib/assertions';
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
@@ -25,6 +26,7 @@ import {
   KNOWN_WILDCARDS,
   getTagValue,
   isResourceOfType,
+  readTags,
 } from './iam-test-helpers';
 
 describe('MailboxDataStack Template Synthesis', () => {
@@ -51,8 +53,8 @@ describe('MailboxDataStack Template Synthesis', () => {
         const isBucket = isResourceOfType(resource, 'AWS::S3::Bucket');
         if (!isTable && !isBucket) {continue;}
 
-        const tags = resource.Properties?.Tags;
-        if (!Array.isArray(tags)) {continue;}
+        const tags = readTags(resource);
+        if (tags === undefined) {continue;}
         taggedResourceCount++;
 
         const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
@@ -201,8 +203,8 @@ describe('MailboxDataStack Template Synthesis', () => {
         synthesizer: new BootstraplessSynthesizer(),
       });
 
-      const template   = Template.fromStack(stack);
-      const parameters = template.toJSON().Parameters || {};
+      const template            = Template.fromStack(stack);
+      const parameters: unknown = template.toJSON().Parameters ?? {};
 
       // Data stack should have root stack correlation parameters
       expect(parameters).toHaveProperty('rootStack');
@@ -250,8 +252,6 @@ describe('MailboxDataStack Template Synthesis', () => {
       }
 
       // Should have at least one S3 bucket with public access block configured
-      // Bug caught: if PublicAccessBlockConfiguration was removed, BlockPublicAccess.BLOCK_ALL would be missing,
-      // and this test would fail (previously would pass because only checked if props existed)
       expect(bucketWithBlocksCount).toBeGreaterThan(0);
     });
 
@@ -312,11 +312,11 @@ describe('MailboxDataStack Template Synthesis', () => {
 
       new MailboxDataDeployerWorkerLambda(testStack, 'worker', {
         artifactResolver,
-        stack:             testStack,
-        dataStackArn:      'arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*',
-        dataStackName:     'test-root-data',
-        templateObjectArn: 'arn:aws:s3:::bucket/template.json',
-        nameBase:          'test-root-data',
+        stack:         testStack,
+        dataStack:     new DeployedStack('arn:aws:cloudformation:us-west-2:123456789012:stack/test-root-data/*'),
+        dataStackName: 'test-root-data',
+        template:      new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
+        nameBase:      'test-root-data',
       });
 
       const template  = Template.fromStack(testStack);

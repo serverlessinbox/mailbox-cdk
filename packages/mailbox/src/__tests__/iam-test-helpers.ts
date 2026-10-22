@@ -5,10 +5,14 @@
  * for CloudFormation template introspection and IAM policy analysis.
  */
 
-export interface CloudFormationTag {
-  Key:   string;
-  Value: string | { Ref: string } | { 'Fn::Sub': string };
-}
+import * as t from 'typanion';
+
+const isCloudFormationTags = t.isArray(t.isObject({
+  Key:   t.isString(),
+  Value: t.isOneOf([t.isString(), t.isPartial({ Ref: t.isOptional(t.isString()), 'Fn::Sub': t.isOptional(t.isString()) })]),
+}));
+
+export type CloudFormationTag = t.InferType<typeof isCloudFormationTags>[number];
 
 export interface CloudFormationResource {
   Type:        string;
@@ -57,8 +61,22 @@ export const KNOWN_WILDCARDS: Record<string, string> = {
   'logs:PutLogEvents':    'CloudWatch log event writes (standard Lambda execution permission)',
 };
 
-export function getTagValue(tag: CloudFormationTag): string | { Ref: string } | { 'Fn::Sub': string } {
+export function getTagValue(tag: CloudFormationTag): CloudFormationTag['Value'] {
   return tag.Value;
+}
+
+/** The tags of the resource, or undefined when it has none. A `Tags` property that is not a list of key/value tags fails the test with what was wrong. */
+export function readTags(resource: CloudFormationResource): CloudFormationTag[] | undefined {
+  const tags = resource.Properties?.Tags;
+  if (tags === undefined) {
+    return undefined;
+  }
+
+  const errors: string[] = [];
+  if (!isCloudFormationTags(tags, { errors })) {
+    throw new Error(`The Tags of a ${resource.Type} are not a list of key/value tags: ${errors.join('; ')}`);
+  }
+  return tags;
 }
 
 export function isResourceOfType(resource: CloudFormationResource, type: string): boolean {

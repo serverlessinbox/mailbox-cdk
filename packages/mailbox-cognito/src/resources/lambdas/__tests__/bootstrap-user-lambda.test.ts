@@ -10,6 +10,7 @@
 import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                    from 'aws-cdk-lib/assertions';
+import { UserPool }                                    from 'aws-cdk-lib/aws-cognito';
 import { App, BootstraplessSynthesizer, Stack }        from 'aws-cdk-lib';
 
 import { CognitoBootstrapUserLambda }                  from '../bootstrap-user-lambda';
@@ -33,7 +34,10 @@ describe('CognitoBootstrapUserLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    new CognitoBootstrapUserLambda(stack, 'bootstrap-user-lambda', { artifactResolver, userPoolArn: USER_POOL_ARN });
+    new CognitoBootstrapUserLambda(stack, 'bootstrap-user-lambda', {
+      artifactResolver,
+      userPool: UserPool.fromUserPoolArn(stack, 'user-pool', USER_POOL_ARN),
+    });
     template = Template.fromStack(stack);
   });
 

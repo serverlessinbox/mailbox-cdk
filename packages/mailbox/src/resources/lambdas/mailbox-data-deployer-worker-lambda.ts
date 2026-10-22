@@ -1,16 +1,17 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { DeployerWorkerLambda }    from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Aws, IResolvable, Stack } from 'aws-cdk-lib';
-import { Construct }               from 'constructs';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { DeployerWorkerLambda }                 from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactObject, IDeployedStack } from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }              from 'aws-cdk-lib/aws-iam';
+import { Aws, IResolvable, Stack }              from 'aws-cdk-lib';
+import { Construct }                            from 'constructs';
 
 export interface MailboxDataDeployerWorkerLambdaProps {
-  readonly artifactResolver:  IArtifactResolver;
-  readonly stack:             Stack;
-  readonly dataStackArn:      string;
-  readonly dataStackName:     string;
-  readonly templateObjectArn: string;
-  readonly nameBase:          string | IResolvable;
+  readonly artifactResolver: IArtifactResolver;
+  readonly stack:            Stack;
+  readonly dataStack:        IDeployedStack;
+  readonly dataStackName:    string;
+  readonly template:         IArtifactObject;
+  readonly nameBase:         string | IResolvable;
 }
 
 /**
@@ -26,9 +27,9 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
     });
 
     // Grants inherited from the shared deployer worker
-    this.grantStackLifecycle(props.dataStackArn);
+    this.grantStackLifecycle(props.dataStack);
     this.grantTemplateValidation();
-    this.grantArtifactRead([props.templateObjectArn]);
+    this.grantArtifactRead([props.template]);
     this.grantTaggingApi();
 
     // Grants for the resources of the data stack

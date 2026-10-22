@@ -1,11 +1,11 @@
-import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import { DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType }                          from '@serverlessinbox/mailbox-cdk-shared';
-import { Aws, Stack }                                                from 'aws-cdk-lib';
-import { Construct }                                                 from 'constructs';
+import type { IArtifactResolver }                                                    from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactObject, DeployedStack, DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, ServerlessInboxDeployerType }                               from '@serverlessinbox/mailbox-cdk-shared';
+import { Aws, Stack }                                                                from 'aws-cdk-lib';
+import { Construct }                                                                 from 'constructs';
 
-import { MailboxCognitoDataDeployerWorkerLambda }                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
-import type { MfaMode }                                              from '../user-pool/mfa-mode';
+import { MailboxCognitoDataDeployerWorkerLambda }                                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+import type { MfaMode }                                                              from '../user-pool/mfa-mode';
 
 import {
   COGNITO_DATA_STACK_TEMPLATE_OBJECT,
@@ -37,6 +37,8 @@ export interface MailboxCognitoDataDeployerProps {
   readonly artifactResolver: IArtifactResolver;
   /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
   readonly deployerType: ServerlessInboxDeployerType;
+  /** The root stack (name and guid), resolved once by the composition root and threaded down for tagging and the worker's grants. */
+  readonly rootStack: RootStack;
 }
 
 /**
@@ -53,26 +55,27 @@ export class MailboxCognitoDataDeployer extends Construct {
   constructor(scope: Construct, id: string, props: MailboxCognitoDataDeployerProps) {
     super(scope, id);
 
-    const artifacts           = props.artifactResolver;
-    const stackName           = cognitoDataStackName();
-    const cognitoDataStackArn = Stack.of(this).formatArn({
+    const artifacts        = props.artifactResolver;
+    const stackName        = cognitoDataStackName();
+    const cognitoDataStack = new DeployedStack(Stack.of(this).formatArn({
       service:      'cloudformation',
       partition:    Aws.PARTITION,
       region:       Aws.REGION,
       account:      Aws.ACCOUNT_ID,
       resource:     'stack',
       resourceName: `${stackName}/*`,
-    });
+    }));
 
     const deployerInfra = new DeployerInfra(this, 'infra', {
       artifactResolver:       artifacts,
       stateMachineNamePrefix: 'mailbox-cognito-data-deployer-',
       deployedStackName:      COGNITO_DEPLOYED_STACK_NAME,
-      deployedStackArn:       cognitoDataStackArn,
+      deployedStack:          cognitoDataStack,
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxCognitoDataDeployerWorkerLambda(workerScope, workerId, {
-        artifactResolver:  artifacts,
-        templateObjectArn: artifacts.getArn('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
-        deployedStackArn:  cognitoDataStackArn,
+        artifactResolver: artifacts,
+        template:         new ArtifactObject(artifacts, 'mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
+        deployedStack:    cognitoDataStack,
+        rootStack:        props.rootStack,
       }),
     });
 
@@ -83,14 +86,13 @@ export class MailboxCognitoDataDeployer extends Construct {
       templateUrl: artifacts.getUrl('mailbox-cognito', COGNITO_DATA_STACK_TEMPLATE_OBJECT),
       parameters:  this.templateParameters(props),
       tags:        serverlessInboxSubStackTags({
-        rootStack:   Aws.STACK_NAME,
-        rootStackId: StackIdentity.guid,
+        rootStack:   props.rootStack.name,
+        rootStackId: props.rootStack.id,
         stack:       stackName,
       }),
     });
 
     this.dataStackRef = new MailboxCognitoDataStackRef(this, 'ref', {
-      userPoolId:  resource.getAttString('userPoolId'),
       userPoolArn: resource.getAttString('userPoolArn'),
       oauthDomain: resource.getAttString('oauthDomain'),
     });
@@ -101,8 +103,8 @@ export class MailboxCognitoDataDeployer extends Construct {
       cognitoDomainPrefix: props.cognitoDomainPrefix,
       mfaMode:             props.mfaMode ?? DEFAULT_MFA_MODE,
       passwordMinLength:   String(props.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH),
-      rootStack:           Aws.STACK_NAME,
-      rootStackId:         StackIdentity.guid,
+      rootStack:           props.rootStack.name,
+      rootStackId:         props.rootStack.id,
       deployerType:        props.deployerType,
       ...(props.customDomain !== undefined
         ? {

@@ -1,16 +1,16 @@
-import type { IArtifactResolver }                                                          from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                                from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import { IBucket }                                                                         from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn, Stack }                                                                  from 'aws-cdk-lib';
-import { Construct }                                                                       from 'constructs';
+import type { IArtifactResolver }                                                                                         from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
+import { IBucket }                                                                                                        from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn, Stack }                                                                                                 from 'aws-cdk-lib';
+import { Construct }                                                                                                      from 'constructs';
 
-import type { IDataBlobStore }                                                             from '../../../resources/buckets/data-blob-store';
-import { MailboxDataDeployerWorkerLambda }                                                 from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
-import type { IDataTable }                                                                 from '../../../resources/tables/data-tables';
-import { MailboxDataStackRef }                                                             from '../mailbox-data-stack-ref';
+import type { IDataBlobStore }                                                                                            from '../../../resources/buckets/data-blob-store';
+import { MailboxDataDeployerWorkerLambda }                                                                                from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
+import type { IDataTable }                                                                                                from '../../../resources/tables/data-tables';
+import { MailboxDataStackRef }                                                                                            from '../mailbox-data-stack-ref';
 
-import { MailboxDataOverrideResolver }                                                     from './mailbox-data-override-resolver';
+import { MailboxDataOverrideResolver }                                                                                    from './mailbox-data-override-resolver';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {
@@ -55,24 +55,24 @@ export class MailboxDataDeployer extends Construct {
 
     const stack         = Stack.of(this);
     const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
-    const dataStackArn  = stack.formatArn({
+    const dataStack     = new DeployedStack(stack.formatArn({
       service:      'cloudformation',
       resource:     'stack',
       resourceName: `${dataStackName}/*`,
-    });
+    }));
 
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver:       props.artifactResolver,
       stateMachineNamePrefix: 'mailbox-data-deployer-',
       deployedStackName:      'data',
-      deployedStackArn:       dataStackArn,
+      deployedStack:          dataStack,
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxDataDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         stack,
-        dataStackArn,
+        dataStack,
         dataStackName,
-        templateObjectArn: props.artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json'),
-        nameBase:          props.nameBase,
+        template: new ArtifactObject(props.artifactResolver, 'mailbox-cdk', 'data-stack-template.json'),
+        nameBase: props.nameBase,
       }),
     });
 

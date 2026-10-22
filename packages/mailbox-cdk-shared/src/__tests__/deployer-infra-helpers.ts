@@ -8,6 +8,7 @@ import * as t                                   from 'typanion';
 
 import { renderWithTokens }                     from '../cdk-test-support';
 import { DeployerStarterLambda }                from '../resources/lambdas/deployer-starter-lambda';
+import { DeployedStack }                        from '../resources/stacks/deployed-stack';
 import { PollingCfnDeployerWorkflow }           from '../resources/workflows/polling-cfn-deployer-workflow';
 
 export const TEST_ACCOUNT = '123456789012';
@@ -81,7 +82,7 @@ export function starterServiceName(deployedStackName: string): string {
     handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'probe-machine',
   });
-  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStackArn: 'arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*' });
+  new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStack: new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*') });
 
   const starters         = Object.values(
     Template.fromStack(stack).findResources('AWS::Lambda::Function', { Properties: { Handler: 'index.starterHandler' } }),

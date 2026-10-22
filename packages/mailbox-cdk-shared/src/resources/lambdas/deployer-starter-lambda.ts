@@ -1,10 +1,10 @@
 import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
 import { Duration }                         from 'aws-cdk-lib';
 import { Construct }                        from 'constructs';
 
 import { KIT_ARTIFACT_PACKAGE }             from '../../artifacts/kit-artifact-package';
 import { parentStackStatusReadStatement }   from '../../grants/parent-stack-status-read';
+import type { IDeployedStack }              from '../stacks/deployed-stack';
 import type { IPollingCfnDeployerWorkflow } from '../workflows/polling-cfn-deployer-workflow';
 
 import { TypeScriptLambda }                 from './ts-lambda';
@@ -15,8 +15,8 @@ export interface DeployerStarterLambdaProps {
   readonly workflow:         IPollingCfnDeployerWorkflow;
   /** Composes into `SERVICE_NAME`, which keeps each deployer's function distinguishable while they share the 'stack-deployer' lambdaId. */
   readonly deployedStackName: string;
-  /** ARN pattern of the stack this deployer deploys; the only stack besides the parent that the starter may read. */
-  readonly deployedStackArn: string;
+  /** The stack this deployer deploys; the only stack besides the parent that the starter may read. */
+  readonly deployedStack: IDeployedStack;
 }
 
 /**
@@ -41,21 +41,11 @@ export class DeployerStarterLambda extends TypeScriptLambda {
 
     props.workflow.grantStartAndDescribeExecutions(this);
     this.grantReadParentStackStatus();
-    this.grantDeployedStackRead(props.deployedStackArn);
+    props.deployedStack.grantDescribe(this);
   }
 
   /** Lets the starter ask whether the parent stack is rolling back before it answers a failed Update. */
   private grantReadParentStackStatus(): void {
     this.addToRolePolicy(parentStackStatusReadStatement());
-  }
-
-  /** Lets the starter read the outputs of the deployed stack when it answers a failed Update during a parent rollback. */
-  private grantDeployedStackRead(deployedStackArn: string): void {
-    this.addToRolePolicy(
-      new PolicyStatement({
-        actions:   ['cloudformation:DescribeStacks'],
-        resources: [deployedStackArn],
-      }),
-    );
   }
 }
