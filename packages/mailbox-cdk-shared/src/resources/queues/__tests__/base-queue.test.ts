@@ -67,14 +67,11 @@ describe('BaseQueue', () => {
   });
 
   it('generates the same name when the caller passes queueName: undefined', () => {
-    const generated     = queueTemplate().findResources('AWS::SQS::Queue');
-    const withUndefined = queueTemplate({ queueName: undefined }).findResources('AWS::SQS::Queue');
+    const generated     = queueTemplate().toJSON();
+    const withUndefined = queueTemplate({ queueName: undefined }).toJSON();
 
-    const [{ Properties: generatedProperties }] = Object.values(generated);
-    const [{ Properties: undefinedProperties }] = Object.values(withUndefined);
-
-    expect(generatedProperties.QueueName).toBeDefined();
-    expect(undefinedProperties.QueueName).toEqual(generatedProperties.QueueName);
+    expect(JSON.stringify(generated)).toContain('QueueName');
+    expect(withUndefined).toEqual(generated);
   });
 
   it('encrypts with the SQS-managed KMS key by default', () => {

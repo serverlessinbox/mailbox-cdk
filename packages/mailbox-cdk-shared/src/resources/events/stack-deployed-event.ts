@@ -4,8 +4,9 @@ import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Stack }          from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
+/** Props for {@link StackDeployedEvent}: the function the rule invokes. */
 export interface StackDeployedEventProps {
-  target: IFunction;
+  readonly target: IFunction;
 }
 
 /** Invokes the target each time the stack that contains it reaches CREATE_COMPLETE or UPDATE_COMPLETE. */

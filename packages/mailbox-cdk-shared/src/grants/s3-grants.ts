@@ -6,12 +6,12 @@ const WRITE  = ['s3:PutObject'] as const;
 const DELETE = ['s3:DeleteObject'] as const;
 
 /**
- * Explicit least-privilege S3 object action sets — `read`, `write`, `delete`, and the composed
- * tiers callers actually need — for use with `grantObjectActions`. Kept separate from CDK's
+ * Explicit least-privilege S3 object action sets — `read`, `write`, `delete`, and their
+ * compositions — for use with `grantObjectActions`. Kept separate from CDK's
  * `Bucket.grantRead`/`grantWrite`/`grantReadWrite`/`grantPut`/`grantDelete`: those grant a broader
- * action set (e.g. `grantRead` also allows `s3:GetBucket*` and `s3:List*`) than any caller here
- * uses. There is no `s3:HeadObject` IAM action — `HeadObject` calls are authorized by
- * `s3:GetObject`, so `read` covers both.
+ * action set (e.g. `grantRead` also allows `s3:GetBucket*` and `s3:List*`). There is no
+ * `s3:HeadObject` IAM action — `HeadObject` calls are authorized by `s3:GetObject`, so `read`
+ * covers both.
  */
 export const S3Actions = {
   read: READ,
@@ -22,15 +22,18 @@ export const S3Actions = {
   readDelete: [...READ, ...DELETE],
 } as const;
 
+/** One S3 object action of the sets in {@link S3Actions}. */
+export type S3Action = typeof READ[number] | typeof WRITE[number] | typeof DELETE[number];
+
 /**
- * Grants a caller exactly the given S3 actions on objects matching `keyPattern` (e.g. a per-tenant,
- * per-account email-key prefix). Scoped to `bucket.arnForObjects(keyPattern)` — never the bucket
- * ARN itself, so this can't be used to grant bucket-level actions like `s3:ListBucket`; use
- * `grantListBucket` for that. If the bucket uses a customer-managed KMS key (`encryptionKey`),
- * also grants the matching key actions, so a caller granted S3 object actions never needs to reason
- * about the bucket's encryption separately from its object actions.
+ * Grants a caller exactly the given S3 actions on objects matching `keyPattern`. Scoped to
+ * `bucket.arnForObjects(keyPattern)` — never the bucket ARN itself, so this can't be used to grant
+ * bucket-level actions like `s3:ListBucket`; use `grantListBucket` for that. If the bucket uses a
+ * customer-managed KMS key (`encryptionKey`), also grants the matching key actions, so a caller
+ * granted S3 object actions never needs to reason about the bucket's encryption separately from its
+ * object actions.
  */
-export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions: readonly string[], keyPattern: string): Grant {
+export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions: readonly S3Action[], keyPattern: string): Grant {
   const grant = Grant.addToPrincipal({
     grantee,
     actions: [...actions],
@@ -45,12 +48,10 @@ export function grantObjectActions(grantee: IGrantable, bucket: IBucket, actions
   if (key) {
     const kmsActions: string[] = [];
 
-    // If the caller performs any write operation (PutObject), grant GenerateDataKey*.
     if (actions.includes('s3:PutObject')) {
       kmsActions.push('kms:GenerateDataKey*');
     }
 
-    // If the caller performs any read operation (GetObject), grant Decrypt.
     if (actions.includes('s3:GetObject')) {
       kmsActions.push('kms:Decrypt');
     }

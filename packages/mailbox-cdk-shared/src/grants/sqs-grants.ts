@@ -21,13 +21,16 @@ export const SqsActions = {
   consume: CONSUME,
 } as const;
 
+/** One SQS action of the sets in {@link SqsActions}. */
+export type SqsAction = typeof SEND[number] | typeof CONSUME[number];
+
 /**
  * Grants a caller exactly the given SQS actions on a queue, scoped to the queue's ARN. If the queue
  * uses a customer-managed KMS key (`encryptionMasterKey`), also grants the matching key actions, so
  * a caller granted `SqsActions.send`/`SqsActions.consume` never needs to reason about the queue's
  * encryption separately from its message actions.
  */
-export function grantQueueActions(grantee: IGrantable, queue: IQueue, actions: readonly string[]): Grant {
+export function grantQueueActions(grantee: IGrantable, queue: IQueue, actions: readonly SqsAction[]): Grant {
   const grant = Grant.addToPrincipal({
     grantee,
     actions: [...actions],

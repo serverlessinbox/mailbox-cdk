@@ -38,11 +38,12 @@ describe('StackNamedTable', () => {
 
     const sut = new StackNamedTable(stack, 'orders', propsWith());
 
-    expect(stack.resolve(sut.explicitTableName)).toEqual({
+    const expectedName = {
       'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']],
-    });
+    };
+    expect(stack.resolve(sut.explicitTableName)).toEqual(expectedName);
     Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
-      TableName: stack.resolve(sut.explicitTableName),
+      TableName: expectedName,
     });
   });
 

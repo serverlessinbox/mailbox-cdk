@@ -4,6 +4,13 @@ import { Construct }                         from 'constructs';
 
 import { removalPolicyForRetainedResources } from '../../context/development-mode';
 
+/**
+ * A DynamoDB table with pay-per-request billing and the `removalPolicyForRetainedResources` removal
+ * policy unless the props say otherwise. Every grant method also attaches a Deny on table
+ * enumeration (`Scan` and the PartiQL actions) to the grantee.
+ *
+ * Not responsible for the table's name; a subclass or the caller supplies it.
+ */
 export class BaseTable extends Table {
   constructor(scope: Construct, id: string, props: TableProps) {
     super(scope, id, {
@@ -11,31 +18,6 @@ export class BaseTable extends Table {
       billingMode: props.billingMode ?? BillingMode.PAY_PER_REQUEST,
       removalPolicy: props.removalPolicy ?? removalPolicyForRetainedResources(scope),
     });
-  }
-
-  /**
-   * Apply a Deny statement that blocks table enumeration (Scan and all PartiQL actions).
-   * This is applied unconditionally to all grant methods to prevent any access path
-   * from enumerating table contents across tenant boundaries.
-   *
-   * Each BaseTable instance applies its own Deny scoped to that table's ARNs. A role
-   * granted on multiple tables accumulates one Deny per table, each with its own resource
-   * restriction. This ensures coverage follows the set of tables a principal can access.
-   */
-  private denyEnumeration(grantee: iam.IGrantable): void {
-    grantee.grantPrincipal.addToPrincipalPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.DENY,
-        actions: [
-          'dynamodb:Scan',
-          'dynamodb:PartiQLSelect',
-          'dynamodb:PartiQLInsert',
-          'dynamodb:PartiQLUpdate',
-          'dynamodb:PartiQLDelete',
-        ],
-        resources: [this.tableArn, `${this.tableArn}/index/*`],
-      })
-    );
   }
 
   override grantReadData(grantee: iam.IGrantable): iam.Grant {
@@ -66,5 +48,30 @@ export class BaseTable extends Table {
     const grant = super.grant(grantee, ...actions);
     this.denyEnumeration(grantee);
     return grant;
+  }
+
+  /**
+   * Apply a Deny statement that blocks table enumeration (Scan and all PartiQL actions).
+   * This is applied unconditionally to all grant methods to prevent any access path
+   * from enumerating table contents across tenant boundaries.
+   *
+   * Each BaseTable instance applies its own Deny scoped to that table's ARNs. A role
+   * granted on multiple tables accumulates one Deny per table, each with its own resource
+   * restriction. This ensures coverage follows the set of tables a principal can access.
+   */
+  private denyEnumeration(grantee: iam.IGrantable): void {
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.DENY,
+        actions: [
+          'dynamodb:Scan',
+          'dynamodb:PartiQLSelect',
+          'dynamodb:PartiQLInsert',
+          'dynamodb:PartiQLUpdate',
+          'dynamodb:PartiQLDelete',
+        ],
+        resources: [this.tableArn, `${this.tableArn}/index/*`],
+      })
+    );
   }
 }

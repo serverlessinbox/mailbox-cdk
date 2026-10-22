@@ -4,35 +4,23 @@ import { Construct, IConstruct }                    from 'constructs';
 
 import { getStackNameBase }                         from '../../naming/stack-name-base-registry';
 
+/** A bucket whose explicit physical name is known at synth time, so a holder can reuse the name without a `Ref`. */
 export interface INamedBucket extends IBucket {
   readonly explicitBucketName: string;
 }
 
+/** Props for {@link StackNamedBucket}: the S3 bucket props plus an optional replacement for the stack name in the bucket name. */
 export interface StackNamedBucketProps extends BucketProps {
   /** Optional S3-safe base for bucket names (replaces Aws.STACK_NAME when provided) */
   readonly nameBase?: string | IResolvable;
 }
 
 /**
- * The synth-time bucket-name prefix (`${accountId}-${nameBase}-`) that StackNamedBucket uses to
- * build a bucket's physical name, where `nameBase` is the S3-safe base registered via
- * `setStackNameBase` for this stack, falling back to `Aws.STACK_NAME` when nothing is registered.
+ * A {@link Bucket} with the explicit physical name `<account>-<nameBase>-<bucketName>`, where `nameBase`
+ * is the prop, else the S3-safe base registered via `setStackNameBase` for the stack, else the stack name.
  *
- * Wrapped in `Lazy` because a caller of this function may be constructed before whichever construct
- * in the stack calls `setStackNameBase` — the registry lookup happens at synth time, once
- * construction of the whole tree has completed.
+ * Not responsible for choosing the name base; the caller passes `nameBase` or registers one.
  */
-function resolveBucketNamePrefix(scope: IConstruct): string {
-  const stack = Stack.of(scope);
-  return Lazy.string({
-    produce: () => {
-      const registered = getStackNameBase(stack);
-      const nameBase   = registered ? Token.asString(registered) : Aws.STACK_NAME;
-      return Fn.join('', [Aws.ACCOUNT_ID, '-', nameBase, '-']);
-    },
-  });
-}
-
 export class StackNamedBucket extends Bucket implements INamedBucket {
   readonly explicitBucketName: string;
 
@@ -42,12 +30,32 @@ export class StackNamedBucket extends Bucket implements INamedBucket {
     // Use provided nameBase, or defer to the shared registry-backed prefix
     const prefix: string = (props?.nameBase && props.nameBase !== '')
       ? Fn.join('', [Aws.ACCOUNT_ID, '-', Token.asString(props.nameBase), '-'])
-      : resolveBucketNamePrefix(scope);
+      : StackNamedBucket.resolveBucketNamePrefix(scope);
 
     const fullBucketName = Fn.join('', [prefix, bucketName]);
 
     super(scope, constructId, { ...props, bucketName: fullBucketName });
 
     this.explicitBucketName = fullBucketName;
+  }
+
+  /**
+   * The synth-time bucket-name prefix (`${accountId}-${nameBase}-`), where `nameBase` is the S3-safe
+   * base registered via `setStackNameBase` for this stack, falling back to `Aws.STACK_NAME` when nothing
+   * is registered.
+   *
+   * Wrapped in `Lazy` because a bucket may be constructed before whichever construct in the stack calls
+   * `setStackNameBase` — the registry lookup happens at synth time, once construction of the whole tree
+   * has completed.
+   */
+  private static resolveBucketNamePrefix(scope: IConstruct): string {
+    const stack = Stack.of(scope);
+    return Lazy.string({
+      produce: () => {
+        const registered = getStackNameBase(stack);
+        const nameBase   = registered ? Token.asString(registered) : Aws.STACK_NAME;
+        return Fn.join('', [Aws.ACCOUNT_ID, '-', nameBase, '-']);
+      },
+    });
   }
 }

@@ -14,7 +14,7 @@ describe('parentStackStatusReadStatement', () => {
   const stack = new Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' }, synthesizer: new BootstraplessSynthesizer() });
 
   it('allows DescribeStacks on the stack the template is deployed as, even when it was synthesized with an environment', () => {
-    const statement = stack.resolve(parentStackStatusReadStatement().toStatementJson());
+    const statement: unknown = stack.resolve(parentStackStatusReadStatement().toStatementJson());
 
     expect(statement).toEqual({ Effect: 'Allow', Action: 'cloudformation:DescribeStacks', Resource: { Ref: 'AWS::StackId' } });
   });

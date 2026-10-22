@@ -7,37 +7,26 @@ import { makePhysicalName }                   from '../../naming/resource-names'
 /** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional. */
 export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {
   /**
-   * Optional custom visibility timeout (default: 6 minutes).
+   * Visibility timeout (default: 6 minutes).
    *
-   * IMPORTANT: If this queue has a Lambda event-source mapping, the visibility timeout must exceed
-   * the Lambda's timeout + maxBatchingWindow by a safe margin (typically 30-60 seconds).
-   * Failure to set an appropriate timeout can cause messages to become visible again before the
-   * invocation completes, resulting in duplicate processing.
-   *
-   * Example: A Lambda with 5-minute timeout and 30-second batching window requires at least 5m30s.
-   * Set visibilityTimeout to Duration.minutes(6) or higher as appropriate.
+   * A queue read through a Lambda event-source mapping needs a visibility timeout that exceeds the
+   * function timeout plus the maxBatchingWindow by a safe margin (typically 30-60 seconds); otherwise
+   * messages become visible again before the invocation completes and are processed twice.
+   * Example: a 5-minute function timeout with a 30-second batching window requires at least 5m30s.
    */
-  visibilityTimeout?: Duration;
+  readonly visibilityTimeout?: Duration;
 
-  /**
-   * Optional custom receive message wait time (default: 20 seconds for long polling)
-   */
-  receiveMessageWaitTime?: Duration;
+  /** Receive message wait time (default: 20 seconds, long polling). */
+  readonly receiveMessageWaitTime?: Duration;
 }
 
 /**
- * Base Queue construct with standard settings for Mailbox
+ * An SQS queue with a 6-minute visibility timeout, 20-second long polling and SQS-managed (or, with an
+ * `encryptionMasterKey`, KMS) encryption.
  *
- * Provides sensible defaults:
- * - Visibility timeout: 6 minutes (safe for most Lambda consumers with 5m timeout and <60s batching)
- * - Long polling: 20 seconds
- *
- * WARNING: The default visibility timeout assumes a Lambda consumer with ~5 minute timeout and up to
- * 60 seconds of batching/processing time. If your queue is consumed by a Lambda with different
- * characteristics, you MUST override visibilityTimeout with a value that exceeds:
- * (Lambda timeout) + (maxBatchingWindow) + (processing headroom, e.g. 30 seconds)
- *
- * Queues without Lambda consumers do not need to override this.
+ * The default visibility timeout suits a Lambda consumer with a ~5-minute timeout and up to 60 seconds
+ * of batching. For a consumer with other characteristics, override `visibilityTimeout` with a value
+ * above (function timeout) + (maxBatchingWindow) + (processing headroom, e.g. 30 seconds).
  */
 export class BaseQueue extends Queue {
   constructor(scope: Construct, id: string, props: BaseQueueProps = {}) {
