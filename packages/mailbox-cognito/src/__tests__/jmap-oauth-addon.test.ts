@@ -31,6 +31,7 @@ import { MailboxUserPool }                    from '../user-pool/mailbox-user-po
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
 import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
+import { SUPPORTED_SCOPES }                   from '../runtime/jmap-oauth-dcr/supported-scopes';
 
 const API_BASE_URL           = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
@@ -286,6 +287,17 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
 
   it('disabled literal: DCR is fully off at synth, with no Lambda, no route, no CfnCondition and a plain discovery body', () => {
     assertDcrFullyDisabled(buildHarness(DynamicClientRegistrationMode.DISABLED));
+  });
+
+  it('the discovery document advertises exactly the scopes the registration runtime supports', () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.DISABLED);
+    addon.addRoutes(api);
+
+    const documentText            = renderLiteralText(findDiscoveryDocumentBody(Template.fromStack(stack)));
+    const scopesMatch             = /"scopes_supported":(\[[^\]]*\])/.exec(documentText);
+    const advertisedList: unknown = scopesMatch ? JSON.parse(scopesMatch[1]) : undefined;
+
+    expect(advertisedList).toEqual([...SUPPORTED_SCOPES]);
   });
 
   it('omitted dynamicClientRegistration: defaults to fully disabled, like the disabled literal', () => {
