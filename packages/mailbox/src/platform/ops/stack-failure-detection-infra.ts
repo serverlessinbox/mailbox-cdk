@@ -24,8 +24,8 @@ const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
  * when its creating operation is rolled back, so the detector still exists to report that rollback.
  *
  * The role and function names are explicit: `mailbox-diag-role-<position hash>-<guid prefix>` and
- * `mailbox-diag-fn-<position hash>-<guid prefix>`. The position hash is that of this construct, so a
- * move changes both names; the guid prefix differs per install.
+ * `mailbox-diag-fn-<position hash>-<guid prefix>`. The position hash is that of the named role or
+ * function itself, so a move or a new construct id changes that name; the guid prefix differs per install.
  * `iam:DeleteRole`/`iam:DeleteRolePolicy` don't support the `aws:ResourceTag` condition key at all
  * (verified against the IAM service reference), so the grants that delete this role are scoped to the
  * role's own ARN, taken from `role`.
@@ -45,11 +45,14 @@ export class StackFailureDetectionInfra extends Construct {
     // (re)created stack's resources.
     const guidPrefix = StackIdentity.guidPrefix;
 
-    // Makes names unique per construct position, so a future move doesn't collide with the old name.
-    const positionHash = PositionHash.of(this);
+    // Each name carries the position hash of the resource it names, so a resource created under a new
+    // construct id never shares a name with the retained resource of the old id. The role and the
+    // function are not constructed yet, hence `ofChild`.
+    const detectorRoleHash     = PositionHash.ofChild(this, 'detector-role-v2');
+    const detectorFunctionHash = PositionHash.ofChild(this, 'detector-v2');
 
-    const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', positionHash, '-', guidPrefix]);
-    const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
+    const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', detectorFunctionHash, '-', guidPrefix]);
+    const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', detectorRoleHash, '-', guidPrefix]);
 
     const detectorRole = new iam.Role(this, 'detector-role-v2', {
       roleName:  detectorRoleName,

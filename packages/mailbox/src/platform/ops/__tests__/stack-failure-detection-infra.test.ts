@@ -8,8 +8,9 @@
  * GUID, fails the deploy with "roleName failed to satisfy constraint: Member must have length less
  * than or equal to 64" once that part is long, while a synth that asserts nothing about length passes.
  *
- * Name identity: the names end in the construct's position hash, so moving the construct changes them
- * and the retained original of the old position never shares a name with its replacement.
+ * Name identity: each name carries the position hash of the role or function it names, so moving the
+ * construct or giving the resource a new id changes the name and the retained original never shares a
+ * name with its replacement.
  *
  * Retention: loosening a retained resource to the default policy lets CloudFormation delete the detector
  * while it reports the very rollback that triggered it.
@@ -180,7 +181,7 @@ describe('StackFailureDetectionInfra — physical name length', () => {
     expect(length).toBeLessThanOrEqual(64);
   });
 
-  it('the names start with the infra position hash and differ when the infra sits under another parent', () => {
+  it('each name ends in the position hash of the role or function it names and differs when the infra sits under another parent', () => {
     const first  = synthesizeDetection('group-one');
     const second = synthesizeDetection('group-two');
 
@@ -190,8 +191,8 @@ describe('StackFailureDetectionInfra — physical name length', () => {
     ];
 
     expect(namesOf(first)).toEqual([
-      `mailbox-diag-role-${PositionHash.of(first.infra)}-`,
-      `mailbox-diag-fn-${PositionHash.of(first.infra)}-`,
+      `mailbox-diag-role-${PositionHash.of(first.infra.node.findChild('detector-role-v2'))}-`,
+      `mailbox-diag-fn-${PositionHash.of(first.infra.node.findChild('detector-v2'))}-`,
     ]);
     expect(namesOf(first)).not.toEqual(namesOf(second));
   });
