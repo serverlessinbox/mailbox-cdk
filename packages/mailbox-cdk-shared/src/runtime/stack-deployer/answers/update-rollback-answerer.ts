@@ -1,10 +1,9 @@
 import type { CloudFormationClient }         from '@aws-sdk/client-cloudformation';
 
+import type { Region }                       from '../../../runtime/handler-kit/aws-identifiers';
 import type { StackName }                    from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { isParentStackRollingBack }          from '../../../runtime/handler-kit/custom-resource/custom-resource-rollback-detector';
-import type { Region }                       from '../../../runtime/handler-kit/aws-identifiers';
 import type { LoggerBuffer }                 from '../../../runtime/handler-kit/logger-buffer';
-
 import type { OperationInput, RequestType }  from '../stack/stack-deployment';
 
 import type { CfnReplyTarget, CfnResponder } from './cfn-responder';
@@ -55,23 +54,29 @@ export class UpdateRollbackAnswerer implements UpdateRollbackAnswers {
       return false;
     }
 
-    const outputs = await this.readOutputs(request);
+    const outputs = await this.readOutputs(request, failureReason);
 
     // The parent consumes the attributes of this resource, so an answer without the outputs is never given.
     if (!outputs) {
-      this.logger.error('An Update failed while the parent stack rolls back, and the outputs of the stack cannot be read', { reason: failureReason });
       return false;
     }
 
-    this.logger.error('Answering SUCCESS to an Update that failed while the parent stack rolls back', { reason: failureReason });
-    await this.responder.succeed(target, { reason: `Answered SUCCESS because the parent stack is rolling back. The Update failed: ${failureReason}`, data: outputs });
+    await this.succeedDuringRollback(target, outputs, failureReason);
     return true;
   }
 
-  private async readOutputs(request: FailedRequest): Promise<Record<string, string> | undefined> {
-    if (request.stackName === undefined) {
-      return undefined;
+  private async readOutputs(request: FailedRequest, failureReason: string): Promise<Record<string, string> | undefined> {
+    const outputs = request.stackName === undefined
+      ? undefined
+      : await this.subStacks.currentOutputs({ requestType: 'Update', stackName: request.stackName, region: request.region });
+    if (!outputs) {
+      this.logger.error('An Update failed while the parent stack rolls back, and the outputs of the stack cannot be read', { reason: failureReason });
     }
-    return this.subStacks.currentOutputs({ requestType: 'Update', stackName: request.stackName, region: request.region });
+    return outputs;
+  }
+
+  private async succeedDuringRollback(target: CfnReplyTarget, outputs: Record<string, string>, failureReason: string): Promise<void> {
+    this.logger.error('Answering SUCCESS to an Update that failed while the parent stack rolls back', { reason: failureReason });
+    await this.responder.succeed(target, { reason: `Answered SUCCESS because the parent stack is rolling back. The Update failed: ${failureReason}`, data: outputs });
   }
 }

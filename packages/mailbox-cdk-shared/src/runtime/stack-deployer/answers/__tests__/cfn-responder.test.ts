@@ -1,8 +1,7 @@
 import { toPhysicalResourceId }                                                                                    from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { cfnRequest, fakeCfnEndpoint, LOG_STREAM_NAME, replyTarget, RESPONSE_URL, sfnEvent, STACK_ID, STACK_NAME } from '../../__tests__/stack-deployer-helpers';
 import { AnswerDeliveryFailure }                                                                                   from '../answer-delivery-failure';
 import { CfnResponder }                                                                                            from '../cfn-responder';
-
-import { cfnRequest, fakeCfnEndpoint, LOG_STREAM_NAME, replyTarget, RESPONSE_URL, sfnEvent, STACK_ID, STACK_NAME } from '../../__tests__/stack-deployer-helpers';
 
 /**
  * Pins the answer CloudFormation receives. The deployer answers by PUT to the response URL itself, so a wrong

@@ -1,5 +1,7 @@
 import * as t                    from 'typanion';
 
+import { isRegion, type Region } from '../../../runtime/handler-kit/aws-identifiers';
+import type { Unbranded }        from '../../../runtime/handler-kit/branded';
 import {
   isLogicalResourceId,
   isPhysicalResourceId,
@@ -10,9 +12,6 @@ import {
   type PhysicalResourceId,
   type StackName,
 } from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { isRegion, type Region } from '../../../runtime/handler-kit/aws-identifiers';
-import type { Unbranded }        from '../../../runtime/handler-kit/branded';
-
 import { isTemplateUrl }         from '../deployer-identifiers';
 
 import { isStackFlag }           from './stack-flag';
@@ -78,6 +77,9 @@ const cfnTargetFields = {
 /** Where to PUT an answer and which resource it concerns; the physical id is read apart from it. */
 export const isCfnTarget = t.isPartial(cfnTargetFields);
 
+/** The fields of a request or workflow input that say where to PUT an answer and which resource it concerns. */
+export type CfnTarget = t.InferType<typeof isCfnTarget>;
+
 /** The physical id CloudFormation sent with a request; every Update and Delete carries one, a Create none. */
 const physicalIdField = { PhysicalResourceId: t.isOptional(isPhysicalResourceId) };
 
@@ -136,9 +138,9 @@ export const isSfnInvokeEvent = t.isPartial({
   op: isOperationInput,
   /** Polling iteration counter injected by the Step Functions workflow. */
   attempt: t.isOptional(t.isNumber()),
-  /** Number of DeleteStack retries triggered by Lambda@Edge replica-drain failures. */
+  /** Number of DeleteStack retries made so far. */
   deleteRetryCount: t.isOptional(t.isNumber()),
-  /** Number of CreateStack retries triggered by transient KMS key-availability failures. */
+  /** Number of CreateStack retries made so far. */
   createRetryCount: t.isOptional(t.isNumber()),
 });
 

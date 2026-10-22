@@ -1,13 +1,5 @@
 import { toPhysicalResourceId }                       from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { ExpectedFailure }                            from '../../../../runtime/handler-kit/errors/expected-failure';
-import { StackDeploymentEventReader }                 from '../../stack/stack-deployment-event-reader';
-import { StackOperationFailure }                      from '../../stack/stack-operation-failure';
-import { WorkerResult }                               from '../../worker-result';
-import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
-import { CfnResponder }                               from '../cfn-responder';
-import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';
-import type { UpdateRollbackAnswers }                 from '../update-rollback-answerer';
-
 import {
   awsError,
   cfnRequest,
@@ -25,6 +17,13 @@ import {
   type ConsoleSpies,
   type FakeCfnEndpoint,
 } from '../../__tests__/stack-deployer-helpers';
+import { StackDeploymentEventReader }                 from '../../stack/stack-deployment-event-reader';
+import { StackOperationFailure }                      from '../../stack/stack-operation-failure';
+import { WorkerResult }                               from '../../worker-result';
+import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
+import { CfnResponder }                               from '../cfn-responder';
+import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';
+import type { UpdateRollbackAnswers }                 from '../update-rollback-answerer';
 
 /**
  * Pins that every failure of a deployer invocation is answered to CloudFormation exactly once, from whatever
@@ -60,9 +59,9 @@ describe('FailureAnswerer', () => {
     });
 
     it.each([
-      ['an ExpectedFailure', new ExpectedFailure('rejected on purpose')],
-      ['a StackOperationFailure', new StackOperationFailure('Failed to start', awsError('Denied', 'no'))],
-    ])('answers with the message of %s as it is', async (_description, failure) => {
+      { description: 'an ExpectedFailure', failure: new ExpectedFailure('rejected on purpose') },
+      { description: 'a StackOperationFailure', failure: new StackOperationFailure('Failed to start', awsError('Denied', 'no')) },
+    ])('answers with the message of $description as it is', async ({ failure }) => {
       await answerer.answerCfnRequest(cfnRequest(), failure, LOG_STREAM_NAME);
 
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: failure.message })]);
@@ -118,11 +117,15 @@ describe('FailureAnswerer', () => {
 
       await answererWith(rollback).answerCfnRequest(request, awsError('Boom', 'it broke'), LOG_STREAM_NAME);
 
-      expect(rollback.answerSuccess).toHaveBeenCalledWith(
-        expect.objectContaining({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 }),
-        { cfn: expect.objectContaining({ StackId: STACK_ID }), physicalResourceId: STACK_NAME, logStreamName: LOG_STREAM_NAME },
-        'Unexpected error: Boom: it broke',
-      );
+      expect(rollback.answerSuccess).toHaveBeenCalledTimes(1);
+      const [offered, target, reason] = rollback.answerSuccess.mock.calls[0];
+      expect(offered).toMatchObject({ requestType: 'Update', stackName: STACK_NAME, region: US_WEST_2 });
+      expect({ stackId: target.cfn.StackId, physicalResourceId: target.physicalResourceId, logStreamName: target.logStreamName }).toEqual({
+        stackId: STACK_ID,
+        physicalResourceId: STACK_NAME,
+        logStreamName: LOG_STREAM_NAME,
+      });
+      expect(reason).toBe('Unexpected error: Boom: it broke');
       expect(endpoint.answers()).toEqual([]);
     });
 

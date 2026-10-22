@@ -18,7 +18,9 @@ import {
   isStackNameOfStep,
   isTargetOfStep,
   type AnswerableEvent,
+  type CfnEnvelope,
   type CfnRequest,
+  type CfnTarget,
   type RequestType,
   type BrandedStackDeployerProperties,
   type SfnInvokeEvent,
@@ -70,13 +72,7 @@ export class StackDeploymentEventReader {
       return undefined;
     }
     return {
-      cfn: {
-        ResponseURL: event.ResponseURL,
-        StackId: event.StackId,
-        RequestId: event.RequestId,
-        LogicalResourceId: event.LogicalResourceId,
-        ResourceType: event.ResourceType,
-      },
+      cfn: this.responseTargetOf(event),
       physicalResourceId: isPhysicalIdOfRequest(event) ? event.PhysicalResourceId : undefined,
       requestType: isRequestTypeOfRequest(event) ? event.RequestType : undefined,
       stackName: isStackNameOfRequest(event) ? event.ResourceProperties.stackName : undefined,
@@ -90,17 +86,21 @@ export class StackDeploymentEventReader {
       return undefined;
     }
     return {
-      cfn: {
-        ResponseURL: event.cfn.ResponseURL,
-        StackId: event.cfn.StackId,
-        RequestId: event.cfn.RequestId,
-        LogicalResourceId: event.cfn.LogicalResourceId,
-        ResourceType: event.cfn.ResourceType,
-      },
+      cfn: this.responseTargetOf(event.cfn),
       physicalResourceId: isPhysicalIdOfStep(event) ? event.cfn.PhysicalResourceId : undefined,
       requestType: isRequestTypeOfStep(event) ? event.op.requestType : undefined,
       stackName: isStackNameOfStep(event) ? event.op.stackName : undefined,
       region: isRegionOfStep(event) ? event.op.region : undefined,
+    };
+  }
+
+  private responseTargetOf(target: CfnTarget): CfnEnvelope {
+    return {
+      ResponseURL: target.ResponseURL,
+      StackId: target.StackId,
+      RequestId: target.RequestId,
+      LogicalResourceId: target.LogicalResourceId,
+      ResourceType: target.ResourceType,
     };
   }
 

@@ -2,10 +2,6 @@ import { CloudFormationClient, DescribeStacksCommand }                      from
 import { mockClient }                                                       from 'aws-sdk-client-mock';
 
 import { toPhysicalResourceId }                                             from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type { OperationInput }                                              from '../../stack/stack-deployment';
-import { CfnResponder }                                                     from '../cfn-responder';
-import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';
-
 import {
   defaultLevelLogger,
   fakeCfnEndpoint,
@@ -19,6 +15,9 @@ import {
   type ConsoleSpies,
   type FakeCfnEndpoint,
 } from '../../__tests__/stack-deployer-helpers';
+import type { OperationInput }                                              from '../../stack/stack-deployment';
+import { CfnResponder }                                                     from '../cfn-responder';
+import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';
 
 const OLD_OUTPUTS           = { TableName: 'items-old' };
 const FAILURE               = 'Stack deployer check failed';
@@ -102,10 +101,10 @@ describe('UpdateRollbackAnswerer', () => {
   );
 
   it.each([
-    ['a Create', 'Create'],
-    ['a Delete', 'Delete'],
-    ['an unreadable', undefined],
-  ] as const)('leaves the failure of %s request to the caller without asking the parent stack', async (_description, requestType) => {
+    { description: 'a Create', requestType: 'Create' },
+    { description: 'a Delete', requestType: 'Delete' },
+    { description: 'an unreadable', requestType: undefined },
+  ] as const)('leaves the failure of $description request to the caller without asking the parent stack', async ({ requestType }) => {
     const answered = await answerer.answerSuccess({ ...UPDATE, requestType }, replyTarget(), FAILURE);
 
     expect(answered).toBe(false);

@@ -7,11 +7,11 @@ import { StackStatus } from '../stack-status';
  */
 describe('StackStatus', () => {
   describe('isTerminalSuccess', () => {
-    it.each(['CREATE_COMPLETE', 'UPDATE_COMPLETE'])('is true for %s', (status) => {
+    it.each(['CREATE_COMPLETE', 'UPDATE_COMPLETE'] as const)('is true for %s', (status) => {
       expect(new StackStatus(status).isTerminalSuccess()).toBe(true);
     });
 
-    it.each(['DELETE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'CREATE_ROLLBACK_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'CREATE_IN_PROGRESS', '', undefined])(
+    it.each(['DELETE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'ROLLBACK_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'CREATE_IN_PROGRESS', undefined] as const)(
       'is false for %s',
       (status) => {
         expect(new StackStatus(status).isTerminalSuccess()).toBe(false);
@@ -20,21 +20,24 @@ describe('StackStatus', () => {
   });
 
   describe('isTerminalFailure', () => {
-    it.each(['CREATE_FAILED', 'UPDATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'DELETE_FAILED', 'ROLLBACK_IN_PROGRESS'])('is true for %s', (status) => {
-      expect(new StackStatus(status).isTerminalFailure()).toBe(true);
-    });
+    it.each(['CREATE_FAILED', 'UPDATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'DELETE_FAILED', 'ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_IN_PROGRESS'] as const)(
+      'is true for %s',
+      (status) => {
+        expect(new StackStatus(status).isTerminalFailure()).toBe(true);
+      },
+    );
 
-    it.each(['CREATE_IN_PROGRESS', 'DELETE_IN_PROGRESS', 'CREATE_COMPLETE', '', undefined])('is false for %s', (status) => {
+    it.each(['CREATE_IN_PROGRESS', 'DELETE_IN_PROGRESS', 'CREATE_COMPLETE', undefined] as const)('is false for %s', (status) => {
       expect(new StackStatus(status).isTerminalFailure()).toBe(false);
     });
   });
 
   describe('requiresRecreate', () => {
-    it.each(['ROLLBACK_FAILED', 'ROLLBACK_COMPLETE'])('is true for %s', (status) => {
+    it.each(['ROLLBACK_FAILED', 'ROLLBACK_COMPLETE'] as const)('is true for %s', (status) => {
       expect(new StackStatus(status).requiresRecreate()).toBe(true);
     });
 
-    it.each(['ROLLBACK_IN_PROGRESS', 'CREATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', '', undefined])('is false for %s', (status) => {
+    it.each(['ROLLBACK_IN_PROGRESS', 'CREATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', undefined] as const)('is false for %s', (status) => {
       expect(new StackStatus(status).requiresRecreate()).toBe(false);
     });
   });
@@ -47,11 +50,11 @@ describe('StackStatus', () => {
   });
 
   describe('isDeleting', () => {
-    it.each(['DELETE_IN_PROGRESS', 'DELETE_COMPLETE', 'DELETE_FAILED'])('is true for %s', (status) => {
+    it.each(['DELETE_IN_PROGRESS', 'DELETE_COMPLETE', 'DELETE_FAILED'] as const)('is true for %s', (status) => {
       expect(new StackStatus(status).isDeleting()).toBe(true);
     });
 
-    it.each(['CREATE_COMPLETE', 'ROLLBACK_COMPLETE', undefined])('is false for %s', (status) => {
+    it.each(['CREATE_COMPLETE', 'ROLLBACK_COMPLETE', undefined] as const)('is false for %s', (status) => {
       expect(new StackStatus(status).isDeleting()).toBe(false);
     });
   });

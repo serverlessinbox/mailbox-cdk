@@ -1,6 +1,5 @@
 import { toPhysicalResourceId, type PhysicalResourceId }                              from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { CaughtError }                                                                from '../../../runtime/handler-kit/errors/caught-error';
-
 import type { AnswerableEvent, CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from '../stack/stack-deployment';
 
 import { AnswerDeliveryFailure }                                                      from './answer-delivery-failure';
@@ -10,8 +9,8 @@ const MAX_REASON_LENGTH = 3500;
 const TRUNCATION_MARKER = ' …(truncated)';
 
 // A response URL is a presigned S3 URL, and S3 answers a request now and then with a 5xx that a second try
-// passes. Four attempts with 250, 500 and 1000 ms between them add under two seconds to an answer, far inside
-// the timeout of both functions, and bound how long a failing answer holds the invocation.
+// passes. Four attempts with 250, 500 and 1000 ms between them add under two seconds to an answer and bound
+// how long a failing answer holds the invocation.
 const MAX_ANSWER_ATTEMPTS  = 4;
 const FIRST_RETRY_DELAY_MS = 250;
 
@@ -30,7 +29,8 @@ export interface CfnSuccessAnswer {
   readonly data?: Record<string, string>;
 }
 
-type CfnStatus = 'SUCCESS' | 'FAILED';
+/** The two statuses CloudFormation accepts in an answer. */
+type CfnStatus ='SUCCESS' | 'FAILED';
 
 /** Why one PUT of an answer did not succeed, and whether another attempt can. */
 interface PutRejection {

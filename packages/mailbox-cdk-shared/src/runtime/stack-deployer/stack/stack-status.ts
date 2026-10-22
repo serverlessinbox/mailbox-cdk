@@ -1,11 +1,13 @@
+import type { StackStatus as CloudFormationStackStatus } from '@aws-sdk/client-cloudformation';
+
 /**
  * A CloudFormation stack status, classified for the deployment workflow. It decides only from the status
  * text; where a status leads (retry, recreate, answer) is the worker's call.
  */
 export class StackStatus {
-  readonly value: string | undefined;
+  readonly value: CloudFormationStackStatus | undefined;
 
-  constructor(value: string | undefined) {
+  constructor(value: CloudFormationStackStatus | undefined) {
     this.value = value;
   }
 
@@ -20,6 +22,7 @@ export class StackStatus {
     return this.value.endsWith('_COMPLETE') && !this.value.includes('ROLLBACK');
   }
 
+  /** Any status containing `ROLLBACK` or `FAILED`, the in-progress rollback statuses included. */
   isTerminalFailure(): boolean {
     if (!this.value) {
       return false;
@@ -27,7 +30,7 @@ export class StackStatus {
     return this.value.includes('ROLLBACK') || this.value.includes('FAILED');
   }
 
-  /** A stack CloudFormation can no longer update, so deleting it and creating it again is the recovery. */
+  /** A status from which CloudFormation refuses every update; deleting the stack and creating it again is the recovery. */
   requiresRecreate(): boolean {
     return this.value === 'ROLLBACK_FAILED' || this.value === 'ROLLBACK_COMPLETE';
   }

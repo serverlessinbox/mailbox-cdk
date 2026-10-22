@@ -1,6 +1,5 @@
 import { CaughtError }                          from '../../../runtime/handler-kit/errors/caught-error';
 import { ExpectedFailure }                      from '../../../runtime/handler-kit/errors/expected-failure';
-
 import type { StackDeploymentEventReader }      from '../stack/stack-deployment-event-reader';
 import type { AnswerableEvent, OperationInput } from '../stack/stack-deployment';
 import { StackOperationFailure }                from '../stack/stack-operation-failure';

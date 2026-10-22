@@ -1,6 +1,4 @@
 import { ExpectedFailure }            from '../../../../runtime/handler-kit/errors/expected-failure';
-import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
-
 import {
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
@@ -16,6 +14,7 @@ import {
   stackDeployerProperties,
   US_EAST_1,
 } from '../../__tests__/stack-deployer-helpers';
+import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
 
 /**
  * Pins what the deployer Lambdas accept as input. The properties and the workflow input come from the CDK
@@ -234,9 +233,9 @@ describe('StackDeploymentEventReader', () => {
     });
 
     it.each([
-      ['without a response URL', { ...cfnRequest(), ResponseURL: undefined }],
-      ['that is not an object', 'not an event'],
-    ])('gives nothing for an event %s', (_description, event) => {
+      { description: 'without a response URL', event: { ...cfnRequest(), ResponseURL: undefined } },
+      { description: 'that is not an object', event: 'not an event' },
+    ])('gives nothing for an event $description', ({ event }) => {
       expect(reader.readAnswerableCfnRequest(event)).toBeUndefined();
     });
   });
