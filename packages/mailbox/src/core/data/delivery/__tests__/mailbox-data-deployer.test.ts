@@ -110,7 +110,7 @@ describe('MailboxDataDeployer', () => {
       });
     });
 
-    it('tags the stack with the root stack, its own name and the product version', () => {
+    it('tags the stack with the root stack, and its own name', () => {
       const { template } = synthDeployer({ dataStackName: 'given-data' });
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
@@ -118,7 +118,6 @@ describe('MailboxDataDeployer', () => {
           'serverless-inbox:product': 'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
           'serverless-inbox:stack': 'given-data',
-          'serverless-inbox:version': TEST_ARTIFACT_VERSION,
         },
       });
     });

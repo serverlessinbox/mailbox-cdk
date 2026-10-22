@@ -31,7 +31,7 @@ export interface ApplyServerlessInboxTagsOptions {
    */
   readonly rootStack: string;
 
-  /** Optional version string (e.g. '1.2.3' or 'channel:dev'). */
+  /** Optional version string (e.g. '1.2.3' or 'channel:dev'). Not applied as a resource tag. */
   readonly version?: string;
 
   /** Optional extra tags supplied by the caller. */
@@ -56,10 +56,6 @@ function applyServerlessInboxTags(
   Tags.of(scope).add(ServerlessInboxTagKeys.rootStack, options.rootStack);
   Tags.of(scope).add(ServerlessInboxTagKeys.rootStackId, rootStackId);
   Tags.of(scope).add(ServerlessInboxTagKeys.stack, Aws.STACK_NAME);
-
-  if (options.version) {
-    Tags.of(scope).add(ServerlessInboxTagKeys.version, options.version);
-  }
 
   Tags.of(scope).add(ServerlessInboxTagKeys.deployerType, deployerType);
 
@@ -107,7 +103,7 @@ export interface ServerlessInboxSubStackTagOptions {
   readonly rootStackId: string;
   /** This sub-stack's own CloudFormation stack name. */
   readonly stack: string;
-  /** Product version (e.g. '1.2.3' or 'channel:dev'). */
+  /** Product version (e.g. '1.2.3' or 'channel:dev'). Not included in the tag map. */
   readonly version?: string;
   /** Defaults to 'mailbox'. */
   readonly product?: string;
@@ -116,7 +112,7 @@ export interface ServerlessInboxSubStackTagOptions {
 /**
  * Builds the object-level tag map applied to a sub-stack's AWS::CloudFormation::Stack via the
  * deployer's CreateStack/UpdateStack `Tags` parameter (correlation scheme: root-stack + stack +
- * product + version). Keys use the canonical `serverless-inbox:` prefix.
+ * product). Keys use the canonical `serverless-inbox:` prefix.
  */
 export function serverlessInboxSubStackTags(
   options: ServerlessInboxSubStackTagOptions,
@@ -127,9 +123,6 @@ export function serverlessInboxSubStackTags(
     [ServerlessInboxTagKeys.rootStackId]: options.rootStackId,
     [ServerlessInboxTagKeys.stack]: options.stack,
   };
-  if (options.version) {
-    tags[ServerlessInboxTagKeys.version] = options.version;
-  }
   return tags;
 }
 

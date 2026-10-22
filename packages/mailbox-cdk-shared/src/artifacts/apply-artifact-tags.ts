@@ -40,6 +40,6 @@ export function applyArtifactTags(
 ): void {
   Tags.of(scope).add(ARTIFACT_TAGS.artifactName, artifactName);
   Tags.of(scope).add(ARTIFACT_TAGS.artifactPackage, packageName);
-  Tags.of(scope).add(ARTIFACT_TAGS.artifactVersion, version);
+  Tags.of(scope).add(ARTIFACT_TAGS.artifactVersion, version, { includeResourceTypes: ['AWS::Lambda::Function'] });
   Tags.of(scope).add(ARTIFACT_TAGS.autoUpdateType, updateType);
 }

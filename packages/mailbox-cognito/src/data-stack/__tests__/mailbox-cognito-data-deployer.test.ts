@@ -63,7 +63,7 @@ describe('MailboxCognitoDataDeployer', () => {
       });
     });
 
-    it('tags the stack with the root stack, its own name and the product version', () => {
+    it('tags the stack with the root stack, and its own name', () => {
       const { template } = synthDeployer();
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
@@ -71,7 +71,6 @@ describe('MailboxCognitoDataDeployer', () => {
           'serverless-inbox:product': 'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
           'serverless-inbox:stack': COGNITO_STACK_NAME,
-          'serverless-inbox:version': TEST_ARTIFACT_VERSION,
         },
       });
     });

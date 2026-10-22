@@ -44,7 +44,6 @@ const BASE_TAG_KEYS = [
   'serverless-inbox:root-stack-id',
   'serverless-inbox:stack',
   'serverless-inbox:component',
-  'serverless-inbox:version',
   'serverless-inbox:deployer_type',
   'Name',
   'serverless-inbox:description',
