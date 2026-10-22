@@ -1,5 +1,6 @@
 import base from './eslint.config.mjs';
 import { boundaryConfig } from './eslint.boundary.mjs';
+import { modelConfig } from './eslint.model.mjs';
 
 // Paths the CI lint gate covers with the full rule set: a package joins by adding
 // its path here once `yarn eslint <path>` reports nothing under eslint.config.mjs.
@@ -19,4 +20,4 @@ const scopedBase = base.map((entry) => {
   };
 });
 
-export default [...scopedBase, ...boundaryConfig];
+export default [...scopedBase, ...boundaryConfig, ...modelConfig];

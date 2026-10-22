@@ -33,6 +33,7 @@ const contractFiles = ['core/apis/addons', 'resources/tables/data-tables', 'reso
 
 const mailboxSrc = 'packages/mailbox/src';
 const kitSrc = 'packages/mailbox-cdk-shared/src';
+const cognitoSrc = 'packages/mailbox-cognito/src';
 const outsideRules = ['**/__tests__/**', '**/runtime/**'];
 
 const noPlatformFromCore = {
@@ -66,6 +67,15 @@ const platformListImportsOnlyContracts = {
   message: 'platform-list files import the rest of mailbox only through the four contract files (rule 3).',
 };
 
+// G-model R3: only resources/lambdas/** and resources/events/** import a file of resources/events/**
+// (an event is declared by the resource it invokes). A type-only import of an event's interface is not
+// the event being instantiated, so it stays allowed.
+const noEventsImport = {
+  regex: '(^|/)resources/events/|^\\.\\./events/',
+  allowTypeImports: true,
+  message: 'G-model R3: only resources/lambdas/** imports from resources/events/** (an event is declared by the Lambda wrapper it invokes).',
+};
+
 const noMailboxFromKit = [
   { group: ['@serverlessinbox/mailbox', '@serverlessinbox/mailbox/**'], message: 'the kit never imports the mailbox package (rule 4).' },
   { regex: '(^|/)packages/mailbox(/|$)|^(\\.\\./)+mailbox(/|$)', message: 'the kit never imports a packages/mailbox path (rule 4).' },
@@ -80,10 +90,15 @@ export const boundaryConfig = [
   {
     files: [`${mailboxSrc}/core/**/*.ts`],
     ignores: outsideRules,
-    rules: { 'no-restricted-imports': ['error', { patterns: [noPlatformFromCore, noPlatformListFile] }] },
+    rules: { 'no-restricted-imports': ['error', { patterns: [noPlatformFromCore, noPlatformListFile, noEventsImport] }] },
   },
   {
     files: [`${mailboxSrc}/resources/**/*.ts`],
+    ignores: [...outsideRules, ...platformListFiles.map((path) => `${mailboxSrc}/${path}`), `${mailboxSrc}/resources/lambdas/**`, `${mailboxSrc}/resources/events/**`],
+    rules: { 'no-restricted-imports': ['error', { patterns: [noPlatformListFile, zoneImportsAreTypeOnly, noEventsImport] }] },
+  },
+  {
+    files: [`${mailboxSrc}/resources/lambdas/**/*.ts`, `${mailboxSrc}/resources/events/**/*.ts`],
     ignores: [...outsideRules, ...platformListFiles.map((path) => `${mailboxSrc}/${path}`)],
     rules: { 'no-restricted-imports': ['error', { patterns: [noPlatformListFile, zoneImportsAreTypeOnly] }] },
   },
@@ -95,11 +110,22 @@ export const boundaryConfig = [
   {
     files: [`${mailboxSrc}/platform/**/*.ts`],
     ignores: outsideRules,
-    rules: { 'no-restricted-imports': ['error', { patterns: [platformImportsOnlyContracts] }] },
+    rules: { 'no-restricted-imports': ['error', { patterns: [platformImportsOnlyContracts, noEventsImport] }] },
   },
   {
     files: [`${kitSrc}/**/*.ts`],
+    ignores: [...outsideRules, `${kitSrc}/resources/lambdas/**`, `${kitSrc}/resources/events/**`, `${kitSrc}/index.ts`],
+    rules: { 'no-restricted-imports': ['error', { patterns: [...noMailboxFromKit, noEventsImport] }] },
+  },
+  {
+    files: [`${kitSrc}/resources/lambdas/**/*.ts`, `${kitSrc}/resources/events/**/*.ts`, `${kitSrc}/index.ts`],
     ignores: outsideRules,
     rules: { 'no-restricted-imports': ['error', { patterns: noMailboxFromKit }] },
+  },
+  {
+    files: [`${cognitoSrc}/**/*.ts`],
+    ignores: [...outsideRules, `${cognitoSrc}/resources/lambdas/**`, `${cognitoSrc}/resources/events/**`, `${cognitoSrc}/index.ts`],
+    languageOptions: { parser: ts.parser },
+    rules: { 'no-restricted-imports': ['error', { patterns: [noEventsImport] }] },
   },
 ];
