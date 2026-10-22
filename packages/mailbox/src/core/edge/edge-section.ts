@@ -36,8 +36,6 @@ export interface IEdgeAddressing {
   /** The endpoint names; the regional certificate covers the api, jmap and ws names. */
   readonly domains:    IMailboxDomainNames;
   readonly edgePrefix: string;
-  /** Present when the mailbox has a hosted zone: the certificates validate and the DNS records are written into it. */
-  readonly zone?:      route53.IHostedZone;
 }
 
 /** What {@link EdgeSection.addBlobCdn} uses of the ui section. */
@@ -56,6 +54,8 @@ export interface EdgeSectionProps {
   readonly data:             IEdgeDataInputs;
   readonly auth:             IEdgeAuthInputs;
   readonly addressing:       IEdgeAddressing;
+  /** The hosted zone the mailbox has, if any: the certificates validate and the DNS records are written into it. */
+  readonly hostedZone?:      route53.IHostedZone;
   /** The operator's own certificates; the api, jmap, ws and cloudFront ones are read here. */
   readonly certificateOverrides?: MailboxCertificateOverrides;
 }
@@ -133,7 +133,7 @@ export class EdgeSection extends Construct {
     applyServerlessInboxComponentTag(this, 'edge');
 
     this.props      = props;
-    this.hostedZone = props.addressing.zone;
+    this.hostedZone = props.hostedZone;
 
     const provided   = props.certificateOverrides;
     const domainName = props.addressing.domains.domainName;

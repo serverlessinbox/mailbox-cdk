@@ -1,12 +1,12 @@
 import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
 import { ComponentDescription, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import * as lambda                                   from 'aws-cdk-lib/aws-lambda';
 import { Construct }                                 from 'constructs';
 
 import { AuditWriterLambda }                         from '../../resources/lambdas/audit-writer-lambda';
 import { AuditEventsQueue, type IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                           from '../../resources/tables/data-tables';
 
+/** Props of {@link AuditWriting}: the table the audit events end up in and the code of the writer. */
 export interface AuditWritingProps {
   readonly auditLogTable:    IDataTable;
   readonly artifactResolver: IArtifactResolver;
@@ -16,14 +16,12 @@ export interface AuditWritingProps {
 }
 
 /**
- * Audit Writing Infrastructure
- *
- * Creates an SQS queue for audit events and a consumer Lambda (audit-writer).
+ * The audit pipeline: a queue that buffers audit events and the Lambda that writes them to the audit
+ * log table. It hands out the queue as a send-only handle.
  */
 export class AuditWriting extends Construct {
   /** Send-only handle to the audit-events queue; grant methods only, no raw SQS object. */
   public readonly auditEventsQueue: IAuditEventsQueue;
-  public readonly auditWriterLambda: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props: AuditWritingProps) {
     super(scope, id);
@@ -34,8 +32,8 @@ export class AuditWriting extends Construct {
     });
     this.auditEventsQueue  = auditEventsQueue;
 
-    this.auditWriterLambda = new AuditWriterLambda(this, 'audit-writer', {
-      auditLogTable: props.auditLogTable,
+    new AuditWriterLambda(this, 'audit-writer', {
+      auditLogTable:    props.auditLogTable,
       auditEventsQueue,
       artifactResolver: props.artifactResolver,
     });

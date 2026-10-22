@@ -1,88 +1,71 @@
-import * as kms      from 'aws-cdk-lib/aws-kms';
-import { Construct } from 'constructs';
+import type * as kms from 'aws-cdk-lib/aws-kms';
 
+/**
+ * Who owns the keys that encrypt the Mailbox's data at rest.
+ *
+ * - `'aws-managed'`: AWS-managed encryption. DynamoDB tables use the AWS-managed key, queues use the
+ *   SQS-managed key and the blob store uses S3-managed encryption. No key is created or needed.
+ * - `'customer-managed'`: keys you supply through {@link MailboxKmsConfig.key} and
+ *   {@link MailboxKmsConfig.perResource}. The synth fails when a resource that is not excluded has
+ *   no key.
+ */
 export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
 
+/**
+ * A resource type that can be taken out of KMS encryption through {@link MailboxKmsConfig.excluded}.
+ * The blob store cannot be excluded: it is always encrypted.
+ */
 export type MailboxKmsResource = 'dynamodb' | 'sqs';
 
+/**
+ * The key of each resource type, for when the types do not share {@link MailboxKmsConfig.key}. A
+ * key left out falls back to {@link MailboxKmsConfig.key}.
+ */
 export interface MailboxKmsPerResourceConfig {
-  readonly blobStore?:    kms.IKey;
+  /** Key for the S3 blob store that holds the email content. */
+  readonly blobStore?: kms.IKey;
+  /** Key for the DynamoDB tables. */
   readonly dynamoTables?: kms.IKey;
-  readonly queues?:       kms.IKey;
+  /** Key for the SQS queues. */
+  readonly queues?: kms.IKey;
 }
 
+/**
+ * Settings for the at-rest encryption of the Mailbox's core resources: the DynamoDB tables, the
+ * SQS queues and the S3 blob store. Without any setting, everything uses AWS-managed encryption.
+ */
 export interface MailboxKmsConfig {
   /**
-   * Default: 'aws-managed'
-   * - 'none': do not use KMS for resources that support disabling it (S3/SQS); DynamoDB uses AWS-owned encryption.
-   * - 'aws-managed': use AWS-managed keys (e.g. alias/aws/s3)
-   * - 'customer-managed': use customer-managed CMK(s) provided below
+   * Which keys encrypt the resources. `'none'` is `'aws-managed'` with every excludable resource
+   * excluded: DynamoDB tables use the default AWS-owned encryption, queues are unencrypted and the
+   * blob store keeps S3-managed encryption.
+   *
+   * @default 'aws-managed'
    */
   readonly mode?: MailboxKmsMode | 'none';
 
   /**
-   * Exclude specific resources from KMS usage.
-   * Example: { mode: 'aws-managed', excluded: ['dynamodb'] } keeps DynamoDB on default encryption while SQS remains KMS-encrypted.
+   * Resources to take out of KMS encryption. A DynamoDB table then uses the default AWS-owned
+   * encryption and a queue is unencrypted. For example, `{ mode: 'aws-managed', excluded: ['dynamodb'] }`
+   * keeps DynamoDB on default encryption while the queues stay KMS-encrypted.
+   *
+   * @default - no resource is excluded
    */
   readonly excluded?: MailboxKmsResource[];
 
   /**
-   * Optional “one key for core resources” (regional).
-   * Used when mode='customer-managed' and a perResource key isn't set.
+   * One regional key for every resource type that has no key in `perResource`. Used only when
+   * `mode` is `'customer-managed'`.
+   *
+   * @default - each resource type needs its key in `perResource`
    */
   readonly key?: kms.IKey;
 
-  /** Optional per-resource overrides. */
+  /**
+   * Keys per resource type, taking precedence over `key`. Used only when `mode` is
+   * `'customer-managed'`.
+   *
+   * @default - every resource type uses `key`
+   */
   readonly perResource?: MailboxKmsPerResourceConfig;
-}
-
-export function mailboxKmsMode(config?: MailboxKmsConfig): MailboxKmsMode {
-  const mode = config?.mode ?? 'aws-managed';
-  if (mode === 'none') {return 'aws-managed';}
-  return mode;
-}
-
-export function mailboxKmsDisabled(config?: MailboxKmsConfig): boolean {
-  return config?.mode === 'none';
-}
-
-export function mailboxKmsExcluded(resource: MailboxKmsResource, config?: MailboxKmsConfig): boolean {
-  if (mailboxKmsDisabled(config)) {return true;}
-  return (config?.excluded ?? []).includes(resource);
-}
-
-function awsManagedAlias(scope: Construct, id: string, aliasName: string): kms.IKey {
-  const existing = scope.node.tryFindChild(id);
-  if (existing) {return existing as unknown as kms.IKey;}
-  return kms.Alias.fromAliasName(scope, id, aliasName);
-}
-
-export function resolveBlobStoreKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsMode(config) === 'aws-managed') {
-    return awsManagedAlias(scope, 'aws-managed-kms-s3', 'alias/aws/s3');
-  }
-
-  return config?.perResource?.blobStore ?? config?.key;
-}
-
-export function resolveDynamoTablesKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsExcluded('dynamodb', config)) {return undefined;}
-
-  if (mailboxKmsMode(config) === 'aws-managed') {
-    // DynamoDB's AWS-managed key. We don't strictly need the IKey (TableEncryption.AWS_MANAGED works without it),
-    // but returning it is useful for any downstream constructs that want an explicit key reference.
-    return awsManagedAlias(scope, 'aws-managed-kms-dynamodb', 'alias/aws/dynamodb');
-  }
-
-  return config?.perResource?.dynamoTables ?? config?.key;
-}
-
-export function resolveQueuesKey(scope: Construct, config?: MailboxKmsConfig): kms.IKey | undefined {
-  if (mailboxKmsExcluded('sqs', config)) {return undefined;}
-
-  if (mailboxKmsMode(config) === 'aws-managed') {
-    return awsManagedAlias(scope, 'aws-managed-kms-sqs', 'alias/aws/sqs');
-  }
-
-  return config?.perResource?.queues ?? config?.key;
 }

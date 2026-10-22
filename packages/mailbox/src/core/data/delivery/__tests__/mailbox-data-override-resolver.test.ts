@@ -35,12 +35,8 @@ describe('MailboxDataOverrideResolver', () => {
       env:         { account: '123456789012', region: 'us-west-2' },
     });
     resolver = new MailboxDataOverrideResolver(stack, 'override-resolver', {
-      configTableArn:       INCOMING_ARNS.configTable,
-      itemTableArn:         INCOMING_ARNS.itemTable,
-      changelogTableArn:    INCOMING_ARNS.changelogTable,
-      auditLogTableArn:     INCOMING_ARNS.auditLogTable,
-      mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
-      artifactResolver:     new PinnedArtifactResolver({
+      tableArns:        INCOMING_ARNS,
+      artifactResolver: new PinnedArtifactResolver({
         packages:         { 'mailbox-cdk': { zone: ArtifactZone.REGIONAL, version: '1.0.0' } },
         location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
@@ -91,13 +87,15 @@ describe('MailboxDataOverrideResolver', () => {
     }));
   });
 
-  it('answers each accessor with the resolver custom resource attribute of its role', () => {
+  it.each([
+    ['configTable', 'configTableArn'],
+    ['itemTable', 'itemTableArn'],
+    ['changelogTable', 'changelogTableArn'],
+    ['auditLogTable', 'auditLogTableArn'],
+    ['mailFeedbackTable', 'mailFeedbackTableArn'],
+  ] as const)('answers the effective ARN of the %s with the %s attribute of the resolver custom resource', (role, attribute) => {
     const [resolverId] = Object.keys(template.findResources('Custom::MailboxDataOverrideResolver'));
 
-    expect(stack.resolve(resolver.getConfigTableArn())).toEqual({ 'Fn::GetAtt': [resolverId, 'configTableArn'] });
-    expect(stack.resolve(resolver.getItemTableArn())).toEqual({ 'Fn::GetAtt': [resolverId, 'itemTableArn'] });
-    expect(stack.resolve(resolver.getChangelogTableArn())).toEqual({ 'Fn::GetAtt': [resolverId, 'changelogTableArn'] });
-    expect(stack.resolve(resolver.getAuditLogTableArn())).toEqual({ 'Fn::GetAtt': [resolverId, 'auditLogTableArn'] });
-    expect(stack.resolve(resolver.getMailFeedbackTableArn())).toEqual({ 'Fn::GetAtt': [resolverId, 'mailFeedbackTableArn'] });
+    expect(stack.resolve(resolver.effectiveTableArn(role))).toEqual({ 'Fn::GetAtt': [resolverId, attribute] });
   });
 });

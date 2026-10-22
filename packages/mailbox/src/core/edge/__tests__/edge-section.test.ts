@@ -37,19 +37,14 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
       blobStoreBucket: new Bucket(stack, 'blob-store'),
     },
     auth:           { authKeyStoreTable: dataTable(stack, 'auth-key-store-table') },
-    addressing:     {
-      domains:    new MailboxDomains({ domainName: 'example.com' }),
-      edgePrefix: 'mail',
-      zone:       route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
-    },
+    addressing:     { domains: new MailboxDomains({ domainName: 'example.com' }), edgePrefix: 'mail' },
+    hostedZone:     route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
     ...overrides,
   });
   return { stack, section };
 }
 
-function addressingWithoutZone(): EdgeSectionProps['addressing'] {
-  return { domains: new MailboxDomains({ domainName: 'example.com' }), edgePrefix: 'mail' };
-}
+const WITHOUT_ZONE: Partial<EdgeSectionProps> = { hostedZone: undefined };
 
 const BLOB_CDN_PROPS: BlobCdnProps = { ui: { adminUiOrigins: [], webmailUiOrigins: [] }, extraAllowedOrigins: [] };
 
@@ -86,7 +81,7 @@ describe('EdgeSection', () => {
     expect(section.regionalCertificate).toBeDefined();
   });
 
-  it('validates the regional certificate names, including mcp, in the hosted zone of the addressing', () => {
+  it('validates the regional certificate names, including mcp, in the hosted zone it is given', () => {
     const { stack } = newSection();
 
     Template.fromStack(stack).hasResourceProperties('AWS::CertificateManager::Certificate', {
@@ -115,7 +110,7 @@ describe('EdgeSection', () => {
 
   it('serves the UIs with the edge certificate when the mailbox has a hosted zone and with none otherwise', () => {
     const { section: withZone }    = newSection();
-    const { section: withoutZone } = newSection({ addressing: addressingWithoutZone() });
+    const { section: withoutZone } = newSection(WITHOUT_ZONE);
 
     expect(withZone.edgeCertificate).toBeDefined();
     expect(withZone.uiCertificate).toBe(withZone.edgeCertificate);
@@ -146,7 +141,7 @@ describe('EdgeSection', () => {
   it('addBlobCdn serves the CDN on the cdn domain with the operator CloudFront certificate when there is no hosted zone', () => {
     const { stack: probe }   = newDeployerTestStack();
     const cloudFront         = acm.Certificate.fromCertificateArn(probe, 'cloudfront', 'arn:aws:acm:us-east-1:111122223333:certificate/cloudfront');
-    const { stack, section } = newSection({ addressing: addressingWithoutZone(), certificateOverrides: { cloudFront } });
+    const { stack, section } = newSection({ ...WITHOUT_ZONE, certificateOverrides: { cloudFront } });
 
     section.addBlobCdn(BLOB_CDN_PROPS);
 
@@ -164,7 +159,7 @@ describe('EdgeSection', () => {
   });
 
   it('addDns creates no records when the mailbox has no hosted zone', () => {
-    const { section } = newSection({ addressing: addressingWithoutZone() });
+    const { section } = newSection(WITHOUT_ZONE);
 
     section.addDns(DNS_PROPS);
 

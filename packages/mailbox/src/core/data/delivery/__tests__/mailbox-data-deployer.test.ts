@@ -25,22 +25,24 @@ import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
 
 const DEPLOYER_RESOURCE_TYPE            = 'Custom::MailboxDataDeployer';
 const RESOLVER_RESOURCE_TYPE            = 'Custom::MailboxDataOverrideResolver';
+const DATA_STACK_NAME                   = 'given-data';
 const STACK_NAME_REF                    = { Ref: 'AWS::StackName' };
 const STACK_GUID                        = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
 
 interface SynthesizedDeployer {
   readonly template:          Template;
-  readonly templateUrl:       string;
-  readonly templateObjectArn: string;
+  readonly templateUrl:       unknown;
+  readonly templateObjectArn: unknown;
 }
 
 function synthDeployer(props: Partial<MailboxDataDeployerProps> = {}): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
   new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
-    nameBase:     'test-name-base',
-    deployerType: 'cdk',
+    dataStackName: DATA_STACK_NAME,
+    nameBase:      'test-name-base',
+    deployerType:  'cdk',
     ...props,
   });
   return {
@@ -54,8 +56,9 @@ function synthGrantedDeployer(grant: (deployer: MailboxDataDeployer, grantee: ia
   const { stack, artifactResolver } = newDeployerTestStack();
   const deployer                    = new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
-    nameBase:     'test-name-base',
-    deployerType: 'cdk',
+    dataStackName: DATA_STACK_NAME,
+    nameBase:      'test-name-base',
+    deployerType:  'cdk',
   });
   grant(deployer, new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }));
   return {
@@ -85,18 +88,10 @@ describe('MailboxDataDeployer', () => {
       });
     });
 
-    it('names the stack after the deploying stack unless a name is given', () => {
-      const { template } = synthDeployer();
-
-      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName: { 'Fn::Join': ['', [STACK_NAME_REF, '-data']] },
-      });
-    });
-
     it('names the stack as given', () => {
-      const { template } = synthDeployer({ dataStackName: 'given-data' });
+      const { template } = synthDeployer({ dataStackName: 'other-data' });
 
-      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, { stackName: 'given-data' });
+      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, { stackName: 'other-data' });
     });
 
     it('passes the deploying stack’s guid as the root stack id parameter and sub-stack tag', () => {
@@ -109,13 +104,13 @@ describe('MailboxDataDeployer', () => {
     });
 
     it('tags the stack with the root stack, and its own name', () => {
-      const { template } = synthDeployer({ dataStackName: 'given-data' });
+      const { template } = synthDeployer();
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         tags: {
           'serverless-inbox:product':    'mailbox',
           'serverless-inbox:root-stack': STACK_NAME_REF,
-          'serverless-inbox:stack':      'given-data',
+          'serverless-inbox:stack':      DATA_STACK_NAME,
         },
       });
     });
@@ -128,16 +123,7 @@ describe('MailboxDataDeployer', () => {
       const statements = statementsForAction(template, 'cloudformation:CreateStack');
       expect(statements).toHaveLength(1);
       expect(renderWithTokens(statements[0].Resource)).toBe(
-        `arn:<token>:cloudformation:${TEST_REGION}:${TEST_ACCOUNT}:stack/<token>-data/*`,
-      );
-    });
-
-    it('manages the stack of a given name', () => {
-      const { template } = synthDeployer({ dataStackName: 'given-data' });
-
-      const statements = statementsForAction(template, 'cloudformation:CreateStack');
-      expect(renderWithTokens(statements[0].Resource)).toBe(
-        `arn:<token>:cloudformation:${TEST_REGION}:${TEST_ACCOUNT}:stack/given-data/*`,
+        `arn:<token>:cloudformation:${TEST_REGION}:${TEST_ACCOUNT}:stack/${DATA_STACK_NAME}/*`,
       );
     });
 

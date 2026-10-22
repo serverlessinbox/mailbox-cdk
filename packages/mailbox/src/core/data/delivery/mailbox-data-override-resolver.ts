@@ -6,14 +6,16 @@ import { Construct }                          from 'constructs';
 import { DataOverrideResolverLambda }         from '../../../resources/lambdas/data-override-resolver-lambda';
 import type { ResourceProperties, TableRole } from '../../../runtime/data-override-resolver/resource-properties';
 
-/** Incoming data table ARNs, one per table role, and the artifact resolver for the resolver Lambda's code. */
+/** Incoming data table ARNs by table role, and the artifact resolver for the resolver Lambda's code. */
 export interface MailboxDataOverrideResolverProps {
-  readonly configTableArn:       string;
-  readonly itemTableArn:         string;
-  readonly changelogTableArn:    string;
-  readonly auditLogTableArn:     string;
-  readonly mailFeedbackTableArn: string;
-  readonly artifactResolver:     IArtifactResolver;
+  readonly tableArns:        Record<TableRole, string>;
+  readonly artifactResolver: IArtifactResolver;
+}
+
+/** The child id and the description label of the override parameter of one table role. */
+interface TableOverrideParameter {
+  readonly id:    string;
+  readonly label: string;
 }
 
 /**
@@ -25,6 +27,14 @@ export interface MailboxDataOverrideResolverProps {
  * request), and returns the override only when it differs and the override table exists and is ACTIVE.
  */
 export class MailboxDataOverrideResolver extends Construct {
+  private static readonly PARAMETERS: Record<TableRole, TableOverrideParameter> = {
+    configTable:       { id: 'config-table-override', label: 'config table' },
+    itemTable:         { id: 'item-table-override', label: 'item table' },
+    changelogTable:    { id: 'changelog-table-override', label: 'changelog table' },
+    auditLogTable:     { id: 'auditlog-table-override', label: 'audit log table' },
+    mailFeedbackTable: { id: 'mailfeedback-table-override', label: 'mail feedback table' },
+  };
+
   private readonly resource: cdk.CustomResource;
 
   constructor(scope: Construct, id: string, props: MailboxDataOverrideResolverProps) {
@@ -34,23 +44,19 @@ export class MailboxDataOverrideResolver extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    const configTableOverride       = this.createOverrideParameter('config-table-override', 'configTable', 'config table', props.configTableArn);
-    const itemTableOverride         = this.createOverrideParameter('item-table-override', 'itemTable', 'item table', props.itemTableArn);
-    const changelogTableOverride    = this.createOverrideParameter('changelog-table-override', 'changelogTable', 'changelog table', props.changelogTableArn);
-    const auditLogTableOverride     = this.createOverrideParameter('auditlog-table-override', 'auditLogTable', 'audit log table', props.auditLogTableArn);
-    const mailFeedbackTableOverride = this.createOverrideParameter('mailfeedback-table-override', 'mailFeedbackTable', 'mail feedback table', props.mailFeedbackTableArn);
+    const arns = props.tableArns;
 
     const resolverProps: ResourceProperties = {
-      configTableIncomingArn:       props.configTableArn,
-      configTableOverrideArn:       this.resolveParameterValue(configTableOverride),
-      itemTableIncomingArn:         props.itemTableArn,
-      itemTableOverrideArn:         this.resolveParameterValue(itemTableOverride),
-      changelogTableIncomingArn:    props.changelogTableArn,
-      changelogTableOverrideArn:    this.resolveParameterValue(changelogTableOverride),
-      auditLogTableIncomingArn:     props.auditLogTableArn,
-      auditLogTableOverrideArn:     this.resolveParameterValue(auditLogTableOverride),
-      mailFeedbackTableIncomingArn: props.mailFeedbackTableArn,
-      mailFeedbackTableOverrideArn: this.resolveParameterValue(mailFeedbackTableOverride),
+      configTableIncomingArn:       arns.configTable,
+      configTableOverrideArn:       this.createOverrideReference('configTable', arns.configTable),
+      itemTableIncomingArn:         arns.itemTable,
+      itemTableOverrideArn:         this.createOverrideReference('itemTable', arns.itemTable),
+      changelogTableIncomingArn:    arns.changelogTable,
+      changelogTableOverrideArn:    this.createOverrideReference('changelogTable', arns.changelogTable),
+      auditLogTableIncomingArn:     arns.auditLogTable,
+      auditLogTableOverrideArn:     this.createOverrideReference('auditLogTable', arns.auditLogTable),
+      mailFeedbackTableIncomingArn: arns.mailFeedbackTable,
+      mailFeedbackTableOverrideArn: this.createOverrideReference('mailFeedbackTable', arns.mailFeedbackTable),
     };
 
     this.resource = new cdk.CustomResource(this, 'resource', {
@@ -61,44 +67,27 @@ export class MailboxDataOverrideResolver extends Construct {
     });
   }
 
-  /** The effective config table ARN: the operator's override when honored, otherwise the stack's own table. */
-  public getConfigTableArn(): string {
-    return this.resource.getAttString('configTableArn');
+  /** The effective ARN of the table of `role`: the operator's override when honored, otherwise the stack's own table. */
+  public effectiveTableArn(role: TableRole): string {
+    return this.resource.getAttString(`${role}Arn`);
   }
 
-  /** The effective item table ARN: the operator's override when honored, otherwise the stack's own table. */
-  public getItemTableArn(): string {
-    return this.resource.getAttString('itemTableArn');
-  }
+  /**
+   * Creates the override parameter of `role`, valued with the stack's own table ARN, and returns the
+   * dynamic reference to its live value. CloudFormation resolves the reference before invoking the
+   * Lambda, so the Lambda sees the operator's current choice without calling SSM itself.
+   */
+  private createOverrideReference(role: TableRole, incomingArn: string): string {
+    const { id, label } = MailboxDataOverrideResolver.PARAMETERS[role];
 
-  /** The effective changelog table ARN: the operator's override when honored, otherwise the stack's own table. */
-  public getChangelogTableArn(): string {
-    return this.resource.getAttString('changelogTableArn');
-  }
-
-  /** The effective audit log table ARN: the operator's override when honored, otherwise the stack's own table. */
-  public getAuditLogTableArn(): string {
-    return this.resource.getAttString('auditLogTableArn');
-  }
-
-  /** The effective mail feedback table ARN: the operator's override when honored, otherwise the stack's own table. */
-  public getMailFeedbackTableArn(): string {
-    return this.resource.getAttString('mailFeedbackTableArn');
-  }
-
-  private createOverrideParameter(id: string, role: TableRole, tableLabel: string, incomingArn: string): ssm.StringParameter {
-    return new ssm.StringParameter(this, id, {
+    const parameter = new ssm.StringParameter(this, id, {
       parameterName: `/serverlessinbox/${cdk.Aws.STACK_NAME}/data-override/${role}`,
       stringValue:   incomingArn,
-      description:   `Operator-overridable ARN for the ${tableLabel}. Replace with a restored table ARN to redirect this role.`,
+      description:   `Operator-overridable ARN for the ${label}. Replace with a restored table ARN to redirect this role.`,
       // The name is a token that starts with "/", which CDK rejects for a simple name.
       simpleName: false,
     });
-  }
 
-  // CloudFormation resolves the dynamic reference before invoking the Lambda, so the Lambda sees the
-  // operator's current choice without calling SSM itself.
-  private resolveParameterValue(parameter: ssm.StringParameter): string {
     return cdk.Fn.join('', ['{{resolve:ssm:', parameter.parameterName, '}}']);
   }
 }

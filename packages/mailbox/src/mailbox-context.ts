@@ -10,7 +10,7 @@ import type { ServerlessInboxDeployerType, VendorLink } from '@serverlessinbox/m
 import { Aws }                                          from 'aws-cdk-lib';
 import type { Construct }                               from 'constructs';
 
-import { resolveMailboxEncryptionPlan }                 from './core/mailbox-encryption';
+import { MailboxEncryption }                            from './core/mailbox-encryption';
 import type { MailboxEncryptionPlan }                   from './core/mailbox-encryption';
 import { loadMailboxArtifactVersions }                  from './mailbox-artifact-versions';
 import type { MailboxProps }                            from './mailbox-props';
@@ -23,9 +23,6 @@ type MailboxContextProps = Pick<MailboxProps, 'artifactResolver' | 'kms'>;
  * The foundation values a `Mailbox` resolves once, before any section is built, and threads down
  * as props: the artifact resolver and its version, the deployer type, the vendor values and the
  * encryption plan. Resolving also tags everything under the `Mailbox` with the base tags.
- *
- * Creates constructs (KMS alias imports) directly under the scope it receives, so their ids and
- * paths are those of the `Mailbox` itself.
  */
 export class MailboxContext {
   private constructor(
@@ -50,21 +47,15 @@ export class MailboxContext {
       ?? MailboxArtifactResolverFactory.fromContext(scope, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
     const stackVersion                        = artifactResolver.getVersion('mailbox-cdk');
 
-    // Uses AWS::StackName so this also works when deployed via pure CloudFormation. The Mailbox
-    // is the main stack, so it is its own root-stack (the base helper also tags `stack`).
-    applyServerlessInboxBaseTags(scope, {
-      rootStack: Aws.STACK_NAME,
-      product:   'mailbox',
-    });
-
-    const encryptionPlan = resolveMailboxEncryptionPlan(scope, props.kms);
+    // The Mailbox is the root stack of its own deployment.
+    applyServerlessInboxBaseTags(scope, { rootStack: Aws.STACK_NAME });
 
     return new MailboxContext(
       artifactResolver,
       stackVersion,
       deployerType,
       vendorLink,
-      encryptionPlan,
+      MailboxEncryption.plan(props.kms),
     );
   }
 }

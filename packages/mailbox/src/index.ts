@@ -1,6 +1,4 @@
-/**
- * @mailbox/cdk - CDK Construct Library for Mailbox Infrastructure
- */
+/** The public surface of the Serverless Inbox mailbox construct library. */
 
 // Mailbox construct
 export { Mailbox } from './mailbox';
@@ -71,7 +69,7 @@ export { SupportMode } from './platform/support/support-addon';
 export { SupportAddonProvider } from './platform/support/support-addon-provider';
 export type { SupportAddonProviderProps } from './platform/support/support-addon-provider';
 
-// Utils — tagging & correlation (re-exported from mailbox-cdk-shared)
+// Utils — tagging & correlation
 export {
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
@@ -85,7 +83,6 @@ export type {
 // Utils — resource-descriptions Aspect (Name tags + native descriptions for sub-stacks)
 export { MailboxResourceDescriptions } from './utils/resource-descriptions';
 export type { MailboxResourceDescriptionsOptions } from './utils/resource-descriptions';
-
 
 // Utils — KMS
 export type {

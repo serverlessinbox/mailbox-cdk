@@ -2,21 +2,22 @@ import type { IArtifactResolver }                                               
 import type { ServerlessInboxDeployerType }                                                                               from '@serverlessinbox/mailbox-cdk-shared';
 import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
 import { IBucket }                                                                                                        from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn, Stack }                                                                                                 from 'aws-cdk-lib';
+import { Aws, Stack }                                                                                                     from 'aws-cdk-lib';
 import { Construct }                                                                                                      from 'constructs';
 
 import type { IDataBlobStore }                                                                                            from '../../../resources/buckets/data-blob-store';
 import { MailboxDataDeployerWorkerLambda }                                                                                from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
 import type { IDataTable }                                                                                                from '../../../resources/tables/data-tables';
 import { MailboxDataStackRef }                                                                                            from '../mailbox-data-stack-ref';
+import type { MailboxDataStackParameters }                                                                                from '../mailbox-data-stack';
 
 import { MailboxDataOverrideResolver }                                                                                    from './mailbox-data-override-resolver';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {
   readonly artifactResolver: IArtifactResolver;
-  /** Resolved data stack name. Defaults to `${AWS::StackName}-data` when omitted. */
-  readonly dataStackName?: string;
+  /** The name of the data stack to deploy. */
+  readonly dataStackName: string;
   /** S3-safe base for bucket names */
   readonly nameBase: string;
   /** Deployment mechanism label, resolved once by the composition root and threaded down for tagging. */
@@ -33,6 +34,9 @@ export interface MailboxDataDeployerProps {
  * `MailboxDataStackRef`.
  */
 export class MailboxDataDeployer extends Construct {
+  private static readonly TEMPLATE_PACKAGE = 'mailbox-cdk';
+  private static readonly TEMPLATE_OBJECT  = 'data-stack-template.json';
+
   public readonly configTable: IDataTable;
   public readonly itemTable: IDataTable;
   public readonly changelogTable: IDataTable;
@@ -53,12 +57,11 @@ export class MailboxDataDeployer extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Provisions and retains the data tier (DynamoDB tables + S3 blob store) as a separate stack so mailbox data survives app-stack replacement.');
 
-    const stack         = Stack.of(this);
-    const dataStackName = props.dataStackName ?? Fn.join('', [Aws.STACK_NAME, '-data']);
-    const dataStack     = new DeployedStack(stack.formatArn({
+    const stack     = Stack.of(this);
+    const dataStack = new DeployedStack(stack.formatArn({
       service:      'cloudformation',
       resource:     'stack',
-      resourceName: `${dataStackName}/*`,
+      resourceName: `${props.dataStackName}/*`,
     }));
 
     const infra = new DeployerInfra(this, 'infra', {
@@ -70,46 +73,50 @@ export class MailboxDataDeployer extends Construct {
         artifactResolver: props.artifactResolver,
         stack,
         dataStack,
-        dataStackName,
-        template: new ArtifactObject(props.artifactResolver, 'mailbox-cdk', 'data-stack-template.json'),
-        nameBase: props.nameBase,
+        dataStackName: props.dataStackName,
+        template:      new ArtifactObject(props.artifactResolver, MailboxDataDeployer.TEMPLATE_PACKAGE, MailboxDataDeployer.TEMPLATE_OBJECT),
+        nameBase:      props.nameBase,
       }),
     });
 
+    const parameters: MailboxDataStackParameters = {
+      nameBase:     props.nameBase,
+      rootStack:    Aws.STACK_NAME,
+      rootStackId:  StackIdentity.guid,
+      deployerType: props.deployerType,
+    };
+
     const resource = infra.deployStack(this, 'resource', 'Custom::MailboxDataDeployer', {
-      stackName:        dataStackName,
-      templateUrl:      props.artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json'),
+      stackName:        props.dataStackName,
+      templateUrl:      props.artifactResolver.getUrl(MailboxDataDeployer.TEMPLATE_PACKAGE, MailboxDataDeployer.TEMPLATE_OBJECT),
       preserveOnDelete: true,
-      parameters:       {
-        nameBase:     props.nameBase,
-        rootStack:    Aws.STACK_NAME,
-        rootStackId:  StackIdentity.guid,
-        deployerType: props.deployerType,
-      },
+      parameters,
       tags:             serverlessInboxSubStackTags({
         rootStack:   Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
-        stack:       dataStackName,
+        stack:       props.dataStackName,
       }),
     });
 
     // An operator-supplied SSM override replaces a table's ARN, provided the override table exists and is ACTIVE.
     const resolver = new MailboxDataOverrideResolver(this, 'override-resolver', {
-      configTableArn:       resource.getAttString('configTableArn'),
-      itemTableArn:         resource.getAttString('itemTableArn'),
-      changelogTableArn:    resource.getAttString('changelogTableArn'),
-      auditLogTableArn:     resource.getAttString('auditLogTableArn'),
-      mailFeedbackTableArn: resource.getAttString('mailFeedbackTableArn'),
-      artifactResolver:     props.artifactResolver,
+      tableArns:        {
+        configTable:       resource.getAttString('configTableArn'),
+        itemTable:         resource.getAttString('itemTableArn'),
+        changelogTable:    resource.getAttString('changelogTableArn'),
+        auditLogTable:     resource.getAttString('auditLogTableArn'),
+        mailFeedbackTable: resource.getAttString('mailFeedbackTableArn'),
+      },
+      artifactResolver: props.artifactResolver,
     });
     resolver.node.addDependency(resource);
 
     const ref = new MailboxDataStackRef(this, 'ref', {
-      configTableArn:       resolver.getConfigTableArn(),
-      itemTableArn:         resolver.getItemTableArn(),
-      changelogTableArn:    resolver.getChangelogTableArn(),
-      auditLogTableArn:     resolver.getAuditLogTableArn(),
-      mailFeedbackTableArn: resolver.getMailFeedbackTableArn(),
+      configTableArn:       resolver.effectiveTableArn('configTable'),
+      itemTableArn:         resolver.effectiveTableArn('itemTable'),
+      changelogTableArn:    resolver.effectiveTableArn('changelogTable'),
+      auditLogTableArn:     resolver.effectiveTableArn('auditLogTable'),
+      mailFeedbackTableArn: resolver.effectiveTableArn('mailFeedbackTable'),
       blobStoreArn:         resource.getAttString('blobStoreArn'),
     });
 

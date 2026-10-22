@@ -1,5 +1,4 @@
-import { setStackNameBase }                                                                                    from '@serverlessinbox/mailbox-cdk-shared';
-import { addServerlessInboxResourceGroup, StackHelpers }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { addServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                     from '@serverlessinbox/mailbox-cdk-shared';
 import * as cdk                                                                                                from 'aws-cdk-lib';
 import { Construct }                                                                                           from 'constructs';
 
@@ -7,6 +6,7 @@ import { ApisSection }                                                          
 import { AuthSection }                                                                                         from './core/auth/auth-section';
 import { DataSection }                                                                                         from './core/data/data-section';
 import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
+import type { MailboxEnabledUis }                                                                              from './core/domains/mailbox-addressing';
 import { EdgeSection }                                                                                         from './core/edge/edge-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
 import { SearchSection }                                                                                       from './core/search/search-section';
@@ -41,11 +41,9 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    // Resolved once here, as the composition root, and threaded down as props.
-    const context                                        = MailboxContext.resolve(this, props);
-    const { artifactResolver, deployerType, vendorLink } = context;
-    const queueProps                                     = context.encryptionPlan.queues;
-    const enabledUis                                     = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
+    const context                                                                                = MailboxContext.resolve(this, props);
+    const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queues: queueProps } } = context;
+    const enabledUis                                                                             = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
     const data = new DataSection(this, 'data', {
       artifactResolver,
@@ -55,7 +53,7 @@ export class Mailbox extends Construct {
     });
     setStackNameBase(this, data.mainStackNameBase);
 
-    const addressing = MailboxAddressing.resolve(this, props, enabledUis);
+    const addressing = this.resolveAddressing(props, enabledUis);
 
     const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps });
 
@@ -76,6 +74,7 @@ export class Mailbox extends Construct {
       data,
       auth,
       addressing,
+      hostedZone:           props.hostedZone,
       certificateOverrides: props.overrides?.certificates,
     });
 
@@ -133,11 +132,18 @@ export class Mailbox extends Construct {
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };
     this.oauthClients = ui.oauthClients;
 
-    // Adds Name tags and native descriptions to every L1 resource under this construct.
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(id));
 
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
     // root-stack (this is the main stack, so root-stack = AWS::StackName).
     addServerlessInboxResourceGroup(this, 'resource-group');
+  }
+
+  private resolveAddressing(props: MailboxProps, enabledUis: MailboxEnabledUis): MailboxAddressing {
+    return MailboxAddressing.resolve(this, {
+      domainName:         props.hostedZone?.zoneName,
+      subdomainNamespace: props.subdomainNamespace,
+      overrides:          props.overrides,
+    }, enabledUis);
   }
 }

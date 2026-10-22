@@ -48,6 +48,17 @@ describe('DataSection', () => {
     expect(new Set(tags)).toEqual(new Set(['data']));
   });
 
+  it('deploys the data stack under a name derived from the deploying stack and derives the bucket-name base from that same name', () => {
+    const { stack } = newDeployerTestStack();
+    synthSection(stack);
+
+    const template      = Template.fromStack(stack);
+    const dataStackName = { 'Fn::Join': ['', [{ Ref: 'AWS::StackName' }, '-data']] };
+
+    template.hasResourceProperties('Custom::MailboxDataDeployer', { stackName: dataStackName });
+    template.hasResourceProperties('Custom::StackHelpers', { DataStackName: dataStackName });
+  });
+
   it('keeps its children at the ids the group node used', () => {
     const { stack } = newDeployerTestStack();
 

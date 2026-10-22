@@ -10,24 +10,33 @@ import { ChangelogTable }                                                       
 import { ConfigTable }                                                                    from '../../resources/tables/config-table';
 import { ItemTable }                                                                      from '../../resources/tables/item-table';
 import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
+import { defaultCfnResource }                                                             from '../../utils/cfn-resource';
 import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
-import { MailboxKmsConfig }                                                               from '../kms';
-import { resolveMailboxEncryptionPlan }                                                   from '../mailbox-encryption';
+import type { MailboxKmsConfig }                                                          from '../kms';
+import { MailboxEncryption }                                                              from '../mailbox-encryption';
 
+/** The values the data stack's template parameters take; the keys are the parameter names. */
+export type MailboxDataStackParameters = {
+  /** S3-safe base for bucket names. */
+  readonly nameBase:     string;
+  /** Root (main) CloudFormation stack name. */
+  readonly rootStack:    string;
+  /** Unique id (stack id guid) of the root (main) CloudFormation stack. */
+  readonly rootStackId:  string;
+  /** Deployment mechanism label used for tagging. */
+  readonly deployerType: ServerlessInboxDeployerType;
+};
+
+/** Props of {@link MailboxDataStack}. */
 export interface MailboxDataStackProps extends cdk.StackProps {
   readonly kms?: MailboxKmsConfig;
 }
 
 /**
- * CDK Stack that creates and owns all retained Serverless Inbox data resources:
- * - 5 DynamoDB tables (config, item, changelog, auditlog, mailfeedback)
- * - 1 S3 bucket (email storage)
+ * CDK Stack that creates and owns all retained Serverless Inbox data resources: the DynamoDB tables
+ * (config, item, changelog, auditlog, mailfeedback) and the S3 bucket for email storage.
  *
- * Each resource's ARN is published as an SSM parameter so that the
- * parent mailbox stack can consume them without a hard CloudFormation dependency.
- *
- * CloudFormation outputs are also published so that MailboxDataDeployer can read
- * the actual ARNs from the custom resource Data dict at deploy time.
+ * The ARN of each resource is a CloudFormation output. The parameters are {@link MailboxDataStackParameters}.
  */
 export class MailboxDataStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MailboxDataStackProps = {}) {
@@ -37,59 +46,43 @@ export class MailboxDataStack extends cdk.Stack {
     this.templateOptions.description =
       'Serverless JMAP email server on AWS data tier — DynamoDB tables for configuration and email storage, plus S3 blob store.';
 
-    // S3 name base parameter (required).
-    // Allows sanitized stack name to be passed from parent stack for safe S3 bucket naming.
-    const nameBaseParam = new cdk.CfnParameter(this, 'nameBase', {
+    const nameBaseParam = this.declareParameter('nameBase', {
       type:        'String',
       description: 'S3-safe base for bucket names',
     });
 
-    // Correlation/tagging parameters (mirror the edge stack). The originating (main) stack name and
-    // the deploy metadata flow in from MailboxDataDeployer so this sub-stack's resources carry the
-    // same root-stack correlation tags.
-    const rootStackParam = new cdk.CfnParameter(this, 'root-stack', {
+    const rootStackParam = this.declareParameter('rootStack', {
       type:        'String',
       description: 'Root (main) CloudFormation stack name (regional stack that created this data stack)',
       default:     '',
     });
-    rootStackParam.overrideLogicalId('rootStack');
 
-    const rootStackIdParam = new cdk.CfnParameter(this, 'root-stack-id', {
+    const rootStackIdParam = this.declareParameter('rootStackId', {
       type:        'String',
       description: 'Unique id (stack id guid) of the root (main) CloudFormation stack',
     });
-    rootStackIdParam.overrideLogicalId('rootStackId');
 
-    const deployerTypeParam = new cdk.CfnParameter(this, 'deployerType', {
+    const deployerTypeParam = this.declareParameter('deployerType', {
       type:          'String',
       description:   'Deployment mechanism label (cdk|cfn|marketplace) used for tagging',
       default:       'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     });
-    deployerTypeParam.overrideLogicalId('deployerType');
 
-    // Apply product/correlation tags to everything in this data stack.
-    // root-stack is the main stack name (via rootStack param); the base helper tags this
-    // stack's own name as `stack` (AWS::StackName).
-    applyServerlessInboxBaseTagsWithDeployerType(this, {
-      product:   'mailbox',
-      rootStack: rootStackParam.valueAsString,
-    }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
+    applyServerlessInboxBaseTagsWithDeployerType(
+      this,
+      { rootStack: rootStackParam.valueAsString },
+      deployerTypeParam.valueAsString as ServerlessInboxDeployerType,
+      rootStackIdParam.valueAsString,
+    );
     applyServerlessInboxComponentTag(this, 'data');
 
-    // Name tags + native descriptions for every L1 in this sub-stack. Ids aren't in the main-stack
-    // component map, so supply a data-tier fallback sentence; anchor on this stack's own id.
+    // The ids of the data tier are not in the main stack's component map, so this fallback names them.
     cdk.Aspects.of(this).add(new MailboxResourceDescriptions(this.node.id, {
       fallbackDescription: 'ServerlessInbox data tier - retained DynamoDB tables and S3 blob store.',
     }));
 
-    // Resolve encryption settings once. For aws-managed mode this emits
-    // TableEncryption.AWS_MANAGED / BucketEncryption.KMS_MANAGED without an explicit
-    // encryptionKey, so CloudFormation resolves the key in the deploying account rather
-    // than baking the CDK_DEFAULT_ACCOUNT placeholder (000000000000) into the KMS alias ARN.
-    const encryptionPlan = resolveMailboxEncryptionPlan(this, props.kms);
-
-    // Create resources
+    const encryptionPlan   = MailboxEncryption.plan(props.kms);
     const dynamoEncryption = encryptionPlan.dynamoTables;
     const developmentMode  = isDevelopmentMode(this);
     const dynamoTableProps = {
@@ -111,27 +104,32 @@ export class MailboxDataStack extends cdk.Stack {
     const auditLogTable     = new AuditLogTable(this, dynamoTableProps);
     const mailFeedbackTable = new MailFeedbackTable(this, dynamoTableProps);
 
-    // Set explicit logical IDs for reproducible CloudFormation templates
-    (configTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('configTable');
-    (itemTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('itemTable');
-    (changelogTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('changelogTable');
-    (auditLogTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('auditLogTable');
-    (mailFeedbackTable.node.defaultChild as cdk.CfnResource).overrideLogicalId('mailFeedbackTable');
-    (blobStore.node.defaultChild as cdk.CfnResource).overrideLogicalId('blobStore');
+    defaultCfnResource(configTable).overrideLogicalId('configTable');
+    defaultCfnResource(itemTable).overrideLogicalId('itemTable');
+    defaultCfnResource(changelogTable).overrideLogicalId('changelogTable');
+    defaultCfnResource(auditLogTable).overrideLogicalId('auditLogTable');
+    defaultCfnResource(mailFeedbackTable).overrideLogicalId('mailFeedbackTable');
+    defaultCfnResource(blobStore).overrideLogicalId('blobStore');
     if (!blobStore.policy) {
       throw new Error(
         'BlobStore must have a resource policy (addToResourcePolicy called during construction). ' +
         'If this error occurs, verify BlobStore initializes its policy correctly.',
       );
     }
-    (blobStore.policy.node.defaultChild as cdk.CfnResource).overrideLogicalId('blobStorePolicy');
+    defaultCfnResource(blobStore.policy).overrideLogicalId('blobStorePolicy');
 
-    // CloudFormation outputs — read by MailboxDataDeployer via custom resource Data dict.
     new cdk.CfnOutput(this, 'configTableArn',       { value: configTable.tableArn });
     new cdk.CfnOutput(this, 'itemTableArn',          { value: itemTable.tableArn });
     new cdk.CfnOutput(this, 'changelogTableArn',     { value: changelogTable.tableArn });
     new cdk.CfnOutput(this, 'auditLogTableArn',      { value: auditLogTable.tableArn });
     new cdk.CfnOutput(this, 'mailFeedbackTableArn',  { value: mailFeedbackTable.tableArn });
     new cdk.CfnOutput(this, 'blobStoreArn',          { value: blobStore.bucketArn });
+  }
+
+  /** Declares the parameter `name` under that name, which is also its logical id in the template. */
+  private declareParameter(name: keyof MailboxDataStackParameters, props: cdk.CfnParameterProps): cdk.CfnParameter {
+    const parameter = new cdk.CfnParameter(this, name, props);
+    parameter.overrideLogicalId(name);
+    return parameter;
   }
 }

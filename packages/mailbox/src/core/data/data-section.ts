@@ -2,8 +2,7 @@ import type { IArtifactResolver }                                              f
 import type { BaseQueueProps, ServerlessInboxDeployerType }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                                from 'aws-cdk-lib';
-import { Aws }                                                                 from 'aws-cdk-lib';
+import { Aws, Fn }                                                             from 'aws-cdk-lib';
 import { Construct }                                                           from 'constructs';
 
 import type { IDataBlobStore }                                                 from '../../resources/buckets/data-blob-store';
@@ -28,6 +27,9 @@ export interface DataSectionProps {
 
 /** The retained data resources, the audit writer, and the S3-safe stack names. */
 export class DataSection extends Construct {
+  private static readonly DATA_STACK_HELPERS_ID = 'stack-helpers';
+  private static readonly MAIN_STACK_HELPERS_ID = 'stack-helpers-main-stack';
+
   /** The S3-safe name of the data stack, a deploy-time token. */
   public readonly nameBase: string;
   /** The S3-safe name of the main stack, a deploy-time token. */
@@ -45,19 +47,18 @@ export class DataSection extends Construct {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'data');
 
-    const effectiveDataStackName = cdk.Fn.join('', [cdk.Aws.STACK_NAME, '-data']);
+    const dataStackName = Fn.join('', [Aws.STACK_NAME, '-data']);
 
-    this.nameBase = props.stackHelpers.resolveS3SafeStackName(this, 'stack-helpers', effectiveDataStackName);
+    this.nameBase = props.stackHelpers.resolveS3SafeStackName(this, DataSection.DATA_STACK_HELPERS_ID, dataStackName);
     ComponentDescription.describe(
-      this.node.findChild('stack-helpers'),
+      this.node.findChild(DataSection.DATA_STACK_HELPERS_ID),
       'Deploy-time helper custom resources (e.g. deriving the S3-safe stack names).',
     );
 
-    this.mainStackNameBase = props.stackHelpers.resolveS3SafeStackName(this, 'stack-helpers-main-stack', Aws.STACK_NAME);
+    this.mainStackNameBase = props.stackHelpers.resolveS3SafeStackName(this, DataSection.MAIN_STACK_HELPERS_ID, Aws.STACK_NAME);
 
-    // Retained data resources come from the auto-deployed data stack. Every field on `dataRef` is
-    // an `IDataTable` grant interface; no raw `ITable` reaches this scope.
     const dataRef = new MailboxDataDeployer(this, 'data-deployer', {
+      dataStackName,
       artifactResolver: props.artifactResolver,
       nameBase:         this.nameBase,
       deployerType:     props.deployerType,
