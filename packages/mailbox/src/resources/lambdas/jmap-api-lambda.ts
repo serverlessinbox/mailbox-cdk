@@ -7,18 +7,14 @@ import { Construct }                                                      from '
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../core/apis/websocket';
 import type { IMailboxAuthProviderBase }                                  from '../../core/auth/types';
 import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
-import type { IDataTable }                                                from '../tables/data-tables';
-import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
 import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
+import type { IDataTable }                                                from '../tables/data-tables';
 
 import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
 
-export type JmapOAuthHandlerConfig = {
-  scopeMap: IMailboxAuthProviderBase['scopeMap'];
-};
-
-export interface ApiHandlerLambdaProps {
+export interface JmapApiLambdaProps {
   configTable:          IDataTable;
   itemTable:            IDataTable;
   changelogTable:       IDataTable;
@@ -30,8 +26,8 @@ export interface ApiHandlerLambdaProps {
   apiBaseUrl:           string;
   artifactResolver:     IArtifactResolver;
   identityProvisioner:  IIdentityProvisioner;
-  /** Strongly-typed payload consumed by the Go handler via env.MustGet("OAUTH_HANDLER_CONFIG"). */
-  oauthHandlerConfig: JmapOAuthHandlerConfig;
+  /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
+  scopeMap:             IMailboxAuthProviderBase['scopeMap'];
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;
@@ -39,8 +35,8 @@ export interface ApiHandlerLambdaProps {
   readonly vendorAccountIds: string[];
 }
 
-export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
-  constructor(scope: Construct, id: string, props: ApiHandlerLambdaProps) {
+export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
+  constructor(scope: Construct, id: string, props: JmapApiLambdaProps) {
     super(scope, id, {
       lambdaId:         'jmap-api',
       pipeline:         'jmap',
@@ -60,7 +56,7 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         OAUTH_HANDLER_CONFIG:               JSON.stringify({
           // Go expects map[string][]string; Permission[] is string[] at runtime.
-          scopeMap: props.oauthHandlerConfig.scopeMap,
+          scopeMap: props.scopeMap,
         }),
         OAUTH_PROTECTED_RESOURCE_URL:       props.oauthProtectedResourceUrl ?? '',
       },
@@ -93,6 +89,12 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
     this.grantLicenseApiAccess(props.vendorAccountIds);
   }
 
+  public enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_URL', webSocketUrl);
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
+  }
+
   private grantLicenseApiAccess(vendorAccountIds: string[]) {
     // Required for SigV4-signed cross-account calls to the license API (API Gateway IAM auth).
     // ApiId/Stage/Region stay wildcarded: the vendor's API ID is random and its stage name is a
@@ -104,11 +106,5 @@ export class ApiHandlerLambda extends GoLambda implements IWebSocketPushTargetWi
         `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
     }));
-  }
-
-  public enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
-    this.addEnvironment('WEBSOCKET_URL', webSocketUrl);
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
   }
 }

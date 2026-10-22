@@ -54,6 +54,11 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     new EmailSubmissionsQueueEvent(this, 'email-submissions-queue', { target: this, queue: props.submissionQueue });
   }
 
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
+  }
+
   private grantSesSendRawEmail(sesConfigSetName: string) {
     // Grant SES send permissions for email identities and the configuration set.
     // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.
@@ -67,10 +72,5 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
         ],
       })
     );
-  }
-
-  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
   }
 }

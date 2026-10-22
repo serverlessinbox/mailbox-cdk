@@ -1,18 +1,18 @@
-import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
-import type { Pipeline }                   from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                        from 'aws-cdk-lib';
-import { Construct }                       from 'constructs';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                             from '@serverlessinbox/mailbox-cdk-shared';
+import type { Pipeline }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                             from 'aws-cdk-lib';
+import { Construct }                            from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../../core/auth/types';
-import type { IDataTable }                 from '../tables/data-tables';
-import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
+import type { AuthPolicyName, OAuthClientName } from '../../core/auth/types';
+import type { IAuditEventsQueue }               from '../queues/audit-events-queue';
+import type { IDataTable }                      from '../tables/data-tables';
 
 export interface IdpTokenExchangeLambdaProps {
   configTable:      IDataTable;
   auditEventsQueue: IAuditEventsQueue;
-  authPolicyName?:  AuthPolicyName;
-  oauthClientName?: OAuthClientName;
+  authPolicyName:   AuthPolicyName;
+  oauthClientName:  OAuthClientName;
   artifactResolver: IArtifactResolver;
 
   /** SERVICE_NAME for this physical function; distinguishes it from other IdpTokenExchangeLambda instances sharing the 'idp-token-exchange' lambdaId. */
@@ -33,8 +33,8 @@ export class IdpTokenExchangeLambda extends GoLambda {
       timeout:          Duration.seconds(30),
       environment:      {
         CONFIG_TABLE_NAME:      props.configTable.tableName,
-        AUTH_POLICY_NAME:       props.authPolicyName ?? 'ADMIN_API',
-        OAUTH_CLIENT_NAME:      props.oauthClientName ?? 'ADMIN_UI',
+        AUTH_POLICY_NAME:       props.authPolicyName,
+        OAUTH_CLIENT_NAME:      props.oauthClientName,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
       },
     });

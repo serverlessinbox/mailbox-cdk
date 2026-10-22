@@ -7,7 +7,7 @@ import { IReceiptRuleSet }                           from 'aws-cdk-lib/aws-ses';
 import { CustomResource, Duration }                  from 'aws-cdk-lib';
 import { Construct, IDependable }                    from 'constructs';
 
-import { BOOTSTRAP_LAMBDA_TIMEOUT, BootstrapLambda } from '../../resources/lambdas/bootstrap-lambda';
+import { BootstrapLambda }                           from '../../resources/lambdas/bootstrap-lambda';
 import type { IAuthKeyStoreTable }                   from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                           from '../../resources/tables/data-tables';
 import type { SesReceivingMode }                     from '../email/ses-receiving-mode';
@@ -19,7 +19,8 @@ import type {
   OidcProviderConfig,
 } from './types';
 
-const SERVICE_TIMEOUT_MARGIN = Duration.seconds(30);
+const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
+const SERVICE_TIMEOUT_MARGIN   = Duration.seconds(30);
 
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {
@@ -61,6 +62,7 @@ export class Bootstrap extends Construct {
     ComponentDescription.describe(this, 'Runs one-time deploy-time setup: SES identity/receipt config, OIDC/OAuth client registration, and config/DNS seeding.');
 
     this.handler = new BootstrapLambda(this, 'handler', {
+      timeout:           BOOTSTRAP_LAMBDA_TIMEOUT,
       configTable:       props.configTable,
       authKeyStoreTable: props.authKeyStoreTable,
       artifactResolver:  props.artifactResolver,

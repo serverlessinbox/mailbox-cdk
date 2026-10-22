@@ -30,6 +30,10 @@ import { EmailSendingQueue }                                        from '../../
 import { DataTable }                                                from '../../tables/data-tables';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
 
+function rootStackIdOf(stack: cdk.Stack): unknown {
+  return stack.resolve(StackIdentity.guid);
+}
+
 describe('AdminApiLambda IAM scoping', () => {
   let app: App;
   let stack: cdk.Stack;
@@ -121,13 +125,14 @@ describe('AdminApiLambda IAM scoping', () => {
 
   it('scopes ses:TagResource to its own pair of statements: a request carrying the root stack id, or only its name', () => {
     const template    = Template.fromStack(stack);
+    const rootStackId = rootStackIdOf(stack);
     const identityArn = {
       'Fn::Join': ['', ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
     };
     const tagKeys     = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
     const conditions  = [
       Match.objectEquals({
-        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: rootStackId },
         'ForAllValues:StringEquals': tagKeys,
       }),
       Match.objectEquals({
@@ -149,7 +154,7 @@ describe('AdminApiLambda IAM scoping', () => {
 
   it('sets ROOT_STACK_ID to the stack guid', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ ROOT_STACK_ID: stack.resolve(StackIdentity.guid) }) },
+      Environment: { Variables: Match.objectLike({ ROOT_STACK_ID: rootStackIdOf(stack) }) },
     });
   });
 

@@ -17,8 +17,8 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../tables/data-tables';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
+import { DataTable }                            from '../../tables/data-tables';
 import { AuthorizerLambda }                     from '../authorizer-lambda';
 
 describe('AuthorizerLambda auth-key-store grant', () => {
@@ -52,37 +52,47 @@ describe('AuthorizerLambda auth-key-store grant', () => {
       authKeyStoreTable,
       configTable: new DataTable(configTable),
       artifactResolver,
-      serviceName: 'jmap',
-      pipeline:    'jmap',
+      authPolicyName:  'ADMIN_API',
+      anonymousRoutes: ['GET /first', 'GET /second'],
+      serviceName:     'jmap',
+      pipeline:        'jmap',
     });
 
     template = Template.fromStack(stack);
   });
 
-  function authKeyStoreStatements(): PolicyStatementJson[] {
-    const expectedResource = stack.resolve([
+  function authKeyStoreResources(): unknown {
+    return stack.resolve([
       authKeyStoreTable.tableArn,
       `${authKeyStoreTable.tableArn}/index/*`,
     ]);
+  }
 
-    return statementsForResource(template, expectedResource);
+  function authKeyStoreStatements(): PolicyStatementJson[] {
+    return statementsForResource(template, authKeyStoreResources());
   }
 
   it('grants exactly DynamoDbActions.read, Allow, on the table + index resources', () => {
-    const expectedResource = stack.resolve([
-      authKeyStoreTable.tableArn,
-      `${authKeyStoreTable.tableArn}/index/*`,
-    ]);
-
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
             Action:   Match.arrayEquals([...DynamoDbActions.read]),
             Effect:   'Allow',
-            Resource: expectedResource,
+            Resource: Match.exact(authKeyStoreResources()),
           }),
         ]),
+      },
+    });
+  });
+
+  it('passes the auth policy name and the anonymous routes on as given', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          AUTH_POLICY_NAME:       'ADMIN_API',
+          ALLOW_ANONYMOUS_ROUTES: 'GET /first,GET /second',
+        }),
       },
     });
   });

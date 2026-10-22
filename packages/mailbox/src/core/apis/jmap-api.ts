@@ -21,13 +21,12 @@ import { Construct }                                                      from '
 import type { IDataBlobStore }                                            from '../../resources/buckets/data-blob-store';
 import { AuthorizerLambda }                                               from '../../resources/lambdas/authorizer-lambda';
 import type { IIdentityProvisioner }                                      from '../../resources/lambdas/identity-provisioner-lambda';
-import type { JmapOAuthHandlerConfig }                                    from '../../resources/lambdas/jmap-api-lambda';
-import { ApiHandlerLambda }                                               from '../../resources/lambdas/jmap-api-lambda';
+import { JmapApiLambda }                                                  from '../../resources/lambdas/jmap-api-lambda';
 import type { IAuditEventsQueue }                                         from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                        from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                        from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                from '../../resources/tables/data-tables';
-import { IMailboxAuthProvider }                                           from '../auth/types';
+import { AUTH_POLICY_JMAP_API, IMailboxAuthProvider }                     from '../auth/types';
 
 import type { IJmapApiAddon }                                             from './addons';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from './websocket';
@@ -53,7 +52,7 @@ export interface JMapApiProps {
   readonly artifactResolver: IArtifactResolver;
   readonly authProvider:     IMailboxAuthProvider;
 
-  /** Pre-constructed identity-provisioner function. Passed through to ApiHandlerLambda. */
+  /** Pre-constructed identity-provisioner function. Passed through to JmapApiLambda. */
   readonly identityProvisioner: IIdentityProvisioner;
 
   /** Optional custom domain name for this API (e.g. jmap.example.com). */
@@ -117,6 +116,7 @@ export class JMapApi extends Construct {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable:       props.configTable,
       artifactResolver:  props.artifactResolver,
+      authPolicyName:    AUTH_POLICY_JMAP_API,
       anonymousRoutes:   ['GET /.well-known/jmap'],
       serviceName:       'authorizer-jmap-api',
       pipeline:          'jmap',
@@ -170,7 +170,7 @@ export class JMapApi extends Construct {
 
     this.httpApi = api;
 
-    const apiHandlerLambda = new ApiHandlerLambda(this, 'jmap-api-handler', {
+    const apiHandlerLambda = new JmapApiLambda(this, 'jmap-api-handler', {
       configTable:               props.configTable,
       itemTable:                 props.itemTable,
       changelogTable:            props.changelogTable,
@@ -183,9 +183,7 @@ export class JMapApi extends Construct {
       artifactResolver:          props.artifactResolver,
       identityProvisioner:       props.identityProvisioner,
       vendorAccountIds:          props.vendorAccountIds,
-      oauthHandlerConfig:        {
-        scopeMap: props.authProvider.scopeMap,
-      } satisfies JmapOAuthHandlerConfig,
+      scopeMap:                  props.authProvider.scopeMap,
       oauthProtectedResourceUrl: props.oauthIssuerUrl ? `${this.url}${JMapApi.OAUTH_PROTECTED_RESOURCE_PATH}` : undefined,
     });
     this.apiHandlerLambda  = apiHandlerLambda;

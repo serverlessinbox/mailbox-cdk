@@ -1,9 +1,9 @@
 /// <reference types="jest" />
 
 /**
- * ApiHandlerLambda (jmap-api) auth-key-store grant and OAuth config tests.
+ * JmapApiLambda (jmap-api) auth-key-store grant and OAuth config tests.
  *
- * Verifies ApiHandlerLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
+ * Verifies JmapApiLambda.grantRead grants exactly DynamoDbActions.read on the auth-key-store
  * table (and nothing broader, e.g. no Scan/PartiQL), that the table-name env var is present, and
  * that OAUTH_HANDLER_CONFIG carries the scope map the Go handler reads and no other field.
  */
@@ -22,13 +22,13 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { Permission }                           from '../../../core/auth/jmap-scopes';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { DataTable }                            from '../../tables/data-tables';
-import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
+import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
-import { ApiHandlerLambda }                     from '../jmap-api-lambda';
+import { DataTable }                            from '../../tables/data-tables';
+import { JmapApiLambda }                        from '../jmap-api-lambda';
 
-describe('ApiHandlerLambda auth-key-store grant', () => {
+describe('JmapApiLambda', () => {
   let stack: cdk.Stack;
   let template: Template;
   let authKeyStoreTable: AuthKeyStoreTable;
@@ -69,7 +69,7 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
     );
 
-    new ApiHandlerLambda(stack, 'jmap-api', {
+    new JmapApiLambda(stack, 'jmap-api', {
       configTable,
       itemTable,
       changelogTable,
@@ -81,37 +81,32 @@ describe('ApiHandlerLambda auth-key-store grant', () => {
       apiBaseUrl: 'https://jmap.example.com',
       artifactResolver,
       identityProvisioner: identityProvisionerFunction,
-      oauthHandlerConfig:  {
-        scopeMap: { 'mail.read': [Permission.MAIL_READ] },
-      },
+      scopeMap:            { 'mail.read': [Permission.MAIL_READ] },
       vendorAccountIds:    [VENDOR_ACCOUNT_ID],
     });
 
     template = Template.fromStack(stack);
   });
 
-  function authKeyStoreStatements(): PolicyStatementJson[] {
-    const expectedResource = stack.resolve([
+  function authKeyStoreResources(): unknown {
+    return stack.resolve([
       authKeyStoreTable.tableArn,
       `${authKeyStoreTable.tableArn}/index/*`,
     ]);
+  }
 
-    return statementsForResource(template, expectedResource);
+  function authKeyStoreStatements(): PolicyStatementJson[] {
+    return statementsForResource(template, authKeyStoreResources());
   }
 
   it('grants exactly DynamoDbActions.read, Allow, on the table + index resources', () => {
-    const expectedResource = stack.resolve([
-      authKeyStoreTable.tableArn,
-      `${authKeyStoreTable.tableArn}/index/*`,
-    ]);
-
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectEquals({
             Action:   Match.arrayEquals([...DynamoDbActions.read]),
             Effect:   'Allow',
-            Resource: expectedResource,
+            Resource: Match.exact(authKeyStoreResources()),
           }),
         ]),
       },

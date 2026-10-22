@@ -115,11 +115,12 @@ describe('EmailSenderLambda IAM scoping', () => {
   });
 
   it('instantiates exactly one queue event, sourced from the email-submissions queue', () => {
-    const template = Template.fromStack(stack);
+    const template          = Template.fromStack(stack);
+    const queueArn: unknown = stack.resolve(submissionQueue.queueArn);
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: stack.resolve(submissionQueue.queueArn),
+      EventSourceArn: queueArn,
     });
   });
 
@@ -133,7 +134,7 @@ describe('EmailSenderLambda IAM scoping', () => {
     expect(statement.Effect).toBe('Allow');
     const actionMatch = Match.arrayEquals([...SqsActions.consume]).test(statement.Action);
     expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.objectEquals(stack.resolve(submissionQueue.queueArn)).test(statement.Resource);
+    const resourceMatch = Match.exact(stack.resolve(submissionQueue.queueArn)).test(statement.Resource);
     expect(resourceMatch.hasFailed()).toBe(false);
   });
 });

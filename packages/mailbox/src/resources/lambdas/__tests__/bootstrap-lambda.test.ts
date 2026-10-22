@@ -56,6 +56,7 @@ describe('BootstrapLambda', () => {
 
   function synthBootstrap(overrides: Partial<BootstrapLambdaProps> = {}): Template {
     new BootstrapLambda(stack, 'bootstrap', {
+      timeout: cdk.Duration.seconds(45),
       configTable,
       authKeyStoreTable,
       artifactResolver,
@@ -86,6 +87,20 @@ describe('BootstrapLambda', () => {
     };
   }
 
+  function authKeyStoreResources(): unknown {
+    return stack.resolve([authKeyStoreTable.tableArn, `${authKeyStoreTable.tableArn}/index/*`]);
+  }
+
+  function rootStackId(): unknown {
+    return stack.resolve(StackIdentity.guid);
+  }
+
+  it('runs for the timeout it is given', () => {
+    const template = synthBootstrap();
+
+    template.hasResourceProperties('AWS::Lambda::Function', { Timeout: 45 });
+  });
+
   describe('environment', () => {
     it('sets the table names, the stack identity and the SES rule set name', () => {
       const template = synthBootstrap();
@@ -102,7 +117,7 @@ describe('BootstrapLambda', () => {
     it('sets ROOT_STACK_ID to the stack guid', () => {
       const template = synthBootstrap();
 
-      hasEnvironment(template, { ROOT_STACK_ID: stack.resolve(StackIdentity.guid) });
+      hasEnvironment(template, { ROOT_STACK_ID: rootStackId() });
     });
 
     it('omits SES_RECEIVING_MODE and SES_SEND_ENABLED when their props are not set', () => {
@@ -137,7 +152,7 @@ describe('BootstrapLambda', () => {
             Match.objectEquals({
               Action:   Match.arrayEquals([...DynamoDbActions.readWrite]),
               Effect:   'Allow',
-              Resource: stack.resolve([authKeyStoreTable.tableArn, `${authKeyStoreTable.tableArn}/index/*`]),
+              Resource: Match.exact(authKeyStoreResources()),
             }),
           ]),
         },
@@ -183,7 +198,7 @@ describe('BootstrapLambda', () => {
 
       hasStatement(template, {
         Action:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
-        Resource: 'arn:aws:route53:::hostedzone/Z0123456789',
+        Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z0123456789']] },
       });
     });
 
@@ -220,7 +235,7 @@ describe('BootstrapLambda', () => {
         Action:    'ses:TagResource',
         Resource:  identityArn('example.com'),
         Condition: Match.objectEquals({
-          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: stack.resolve(StackIdentity.guid) },
+          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: rootStackId() },
           'ForAllValues:StringEquals': tagKeys,
         }),
       });

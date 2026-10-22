@@ -1,13 +1,13 @@
-import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, GoLambda }     from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                           from 'aws-cdk-lib';
-import { Construct }                          from 'constructs'
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, GoLambda }                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher }  from '../../core/apis/websocket';
-import type { IDataBlobStore }                from '../buckets/data-blob-store';
-import { EmailProcessingQueueEvent }          from '../events/email-processing-queue-event';
-import type { IEmailProcessingQueueConsumer } from '../queues/email-processing-queue';
-import type { IDataTable }                    from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../core/apis/websocket';
+import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
+import { EmailProcessingQueueEvent }                               from '../events/email-processing-queue-event';
+import type { IEmailProcessingQueueConsumer }                      from '../queues/email-processing-queue';
+import type { IDataTable }                                         from '../tables/data-tables';
 
 export interface EmailProcessorLambdaProps {
   configTable:          IDataTable;
@@ -22,7 +22,7 @@ export interface EmailProcessorLambdaProps {
  * Consumes the email-processing queue via its own SQS event source mapping. Owns both the mapping
  * and the consume grant; no other construct wires this Lambda to a queue.
  */
-export class EmailProcessorLambda extends GoLambda {
+export class EmailProcessorLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: EmailProcessorLambdaProps) {
     super(scope, id, {
       lambdaId:         'email-processor',
@@ -53,7 +53,7 @@ export class EmailProcessorLambda extends GoLambda {
     new EmailProcessingQueueEvent(this, 'email-processing-queue', { target: this, queue: props.emailProcessingQueue });
   }
 
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
     this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
     broadcaster.grantInvoke(this);
   }

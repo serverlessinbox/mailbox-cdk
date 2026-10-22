@@ -17,6 +17,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import type { IWebSocketBroadcastPublisher }    from '../../../core/apis/websocket';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
 import { DataTable }                            from '../../tables/data-tables';
@@ -24,8 +25,8 @@ import { EmailProcessorLambda }                 from '../email-processor-lambda'
 
 describe('EmailProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
-  let template: Template;
   let emailProcessingQueue: EmailProcessingQueue;
+  let processor: EmailProcessorLambda;
 
   beforeEach(() => {
     const app = new App();
@@ -56,7 +57,7 @@ describe('EmailProcessorLambda event-source wiring', () => {
     const blobStore      = new DataBlobStore(new Bucket(stack, 'blob-store'));
     emailProcessingQueue = new EmailProcessingQueue(stack, 'email-processing-queue');
 
-    new EmailProcessorLambda(stack, 'email-processor', {
+    processor = new EmailProcessorLambda(stack, 'email-processor', {
       configTable,
       itemTable,
       changelogTable,
@@ -64,20 +65,20 @@ describe('EmailProcessorLambda event-source wiring', () => {
       emailProcessingQueue,
       artifactResolver,
     });
-
-    template = Template.fromStack(stack);
   });
 
   it('instantiates exactly one queue event, sourced from the email-processing queue', () => {
+    const template          = Template.fromStack(stack);
+    const queueArn: unknown = stack.resolve(emailProcessingQueue.queueArn);
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: stack.resolve(emailProcessingQueue.queueArn),
+      EventSourceArn: queueArn,
     });
   });
 
   it('grants the role exactly the SqsActions.consume statement on the email-processing queue', () => {
-    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
+    const consumeStatements = statementsForAction(Template.fromStack(stack), 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);
     const [statement] = consumeStatements;
@@ -85,7 +86,18 @@ describe('EmailProcessorLambda event-source wiring', () => {
     expect(statement.Effect).toBe('Allow');
     const actionMatch = Match.arrayEquals([...SqsActions.consume]).test(statement.Action);
     expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.objectEquals(stack.resolve(emailProcessingQueue.queueArn)).test(statement.Resource);
+    const resourceMatch = Match.exact(stack.resolve(emailProcessingQueue.queueArn)).test(statement.Resource);
     expect(resourceMatch.hasFailed()).toBe(false);
+  });
+
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+
+    processor.enableWebSocketPush(broadcaster);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' }) },
+    });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(processor);
   });
 });

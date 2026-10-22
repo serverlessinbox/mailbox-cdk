@@ -26,6 +26,7 @@ const TRACKING_CONDITION       = 'IsTracking';
 const ROOT_STACK               = 'my-root-stack';
 const BUCKET_BASE              = 'test-artifacts';
 const ROOT_STACK_ID            = 'guid-1';
+const PROJECT                  = 'acme-project';
 const ROOT_STACK_TAG_KEY       = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
 const ROOT_STACK_ID_TAG_KEY    = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
 const OWNED_BY_ID              = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT_STACK_ID } };
@@ -61,7 +62,7 @@ describe('ArtifactUpdaterLambda', () => {
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
       artifactResolver:   new PinnedArtifactResolver({
         packages,
-        location:         { bucketBase: BUCKET_BASE, project: 'serverlessinbox' },
+        location:         { bucketBase: BUCKET_BASE, project: PROJECT },
         deploymentRegion: stack.region,
       }),
       distTag:            'stable',
@@ -92,7 +93,7 @@ describe('ArtifactUpdaterLambda', () => {
         ARTIFACT_BUCKET_BASE: BUCKET_BASE,
         DIST_TAG:             'stable',
         GRANULARITY:          'minor',
-        PROJECT:              'serverlessinbox',
+        PROJECT,
         ROOT_STACK_TAG_VALUE: ROOT_STACK,
         ROOT_STACK_ID,
       });
@@ -187,7 +188,7 @@ describe('ArtifactUpdaterLambda', () => {
         {
           Action:   's3:GetObject',
           Effect:   'Allow',
-          Resource: `arn:aws:s3:::${BUCKET_BASE}-*/serverlessinbox/packages/*/releases/*`,
+          Resource: `arn:aws:s3:::${BUCKET_BASE}-*/${PROJECT}/packages/*/releases/*`,
         },
       ],
       [

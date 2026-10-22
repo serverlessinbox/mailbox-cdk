@@ -11,9 +11,9 @@ import type { SesReceivingMode }                                                
 import type { IAuthKeyStoreTable }                                                                  from '../tables/auth-key-store-table';
 import type { IDataTable }                                                                          from '../tables/data-tables';
 
-export const BOOTSTRAP_LAMBDA_TIMEOUT = Duration.seconds(30);
-
 export interface BootstrapLambdaProps {
+  /** How long one bootstrap invocation may run. */
+  readonly timeout:           Duration;
   readonly configTable:       IDataTable;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
   readonly artifactResolver:  IArtifactResolver;
@@ -40,7 +40,7 @@ export class BootstrapLambda extends GoLambda {
       lambdaId:         'bootstrap',
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      timeout:          BOOTSTRAP_LAMBDA_TIMEOUT,
+      timeout:          props.timeout,
       environment:      {
         CONFIG_TABLE_NAME:         props.configTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
@@ -62,7 +62,7 @@ export class BootstrapLambda extends GoLambda {
     this.grantSesReceiptRuleSetActivation();
 
     if (props.hostedZone) {
-      this.grantHostedZoneRecordManagement(props.hostedZone.hostedZoneId);
+      this.grantHostedZoneRecordManagement(props.hostedZone);
     }
 
     this.grantSesEmailIdentityRegistration(props.domain);
@@ -117,10 +117,10 @@ export class BootstrapLambda extends GoLambda {
     }));
   }
 
-  private grantHostedZoneRecordManagement(hostedZoneId: string): void {
+  private grantHostedZoneRecordManagement(hostedZone: IHostedZone): void {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['route53:ChangeResourceRecordSets', 'route53:GetHostedZone'],
-      resources: [`arn:aws:route53:::hostedzone/${hostedZoneId}`],
+      resources: [hostedZone.hostedZoneArn],
     }));
   }
 

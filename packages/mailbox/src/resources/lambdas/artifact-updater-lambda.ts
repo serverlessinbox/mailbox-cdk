@@ -26,7 +26,6 @@ export interface ArtifactUpdaterLambdaProps {
  * update needs, each scoped to the root stack by tag wherever the service honours the tag.
  */
 export class ArtifactUpdaterLambda extends TypeScriptLambda {
-  private static readonly project = 'serverlessinbox';
   private static readonly anyFunctionArn = `arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`;
   private static readonly anyDistributionArn = `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`;
 
@@ -42,7 +41,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
         ARTIFACT_BUCKET_BASE: props.artifactBucketBase,
         DIST_TAG:             props.distTag,
         GRANULARITY:          props.granularity,
-        PROJECT:              ArtifactUpdaterLambda.project,
+        PROJECT:              props.artifactResolver.location.project,
         ROOT_STACK_TAG_VALUE: props.rootStackTagValue,
         ROOT_STACK_ID:        props.rootStackId,
       },
@@ -56,7 +55,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantEdgeLambdaAccess(rootStack);
     this.grantCloudFrontManagementAccess(rootStack);
     this.grantCloudFrontTagAccess(rootStack);
-    this.grantArtifactReleaseAccess(props.artifactBucketBase);
+    this.grantArtifactReleaseAccess(props.artifactBucketBase, props.artifactResolver.location.project);
     this.grantParentStackStatusRead();
     this.grantSelfInvoke();
 
@@ -120,11 +119,11 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.grantArtifactVersionTagging('cloudfront:TagResource', ArtifactUpdaterLambda.anyDistributionArn, rootStack);
   }
 
-  private grantArtifactReleaseAccess(artifactBucketBase: string): void {
+  private grantArtifactReleaseAccess(artifactBucketBase: string, project: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   ['s3:GetObject'],
-        resources: [`arn:aws:s3:::${artifactBucketBase}-*/${ArtifactUpdaterLambda.project}/packages/*/releases/*`],
+        resources: [`arn:aws:s3:::${artifactBucketBase}-*/${project}/packages/*/releases/*`],
       }),
     );
   }

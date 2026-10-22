@@ -1,20 +1,20 @@
-import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }                   from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag }      from '@serverlessinbox/mailbox-cdk-shared';
-import type { IBucket }                          from 'aws-cdk-lib/aws-s3';
-import type { IReceiptRuleSet }                  from 'aws-cdk-lib/aws-ses';
-import { Construct }                             from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import type { BaseQueueProps }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag }                        from '@serverlessinbox/mailbox-cdk-shared';
+import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
+import type { IReceiptRuleSet }                                    from 'aws-cdk-lib/aws-ses';
+import { Construct }                                               from 'constructs';
 
-import type { IDataBlobStore }                   from '../../resources/buckets/data-blob-store';
-import { EmailProcessorLambda }                  from '../../resources/lambdas/email-processor-lambda';
-import type { IAuditEventsQueue }                from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }               from '../../resources/queues/email-sending-queue';
-import type { IDataTable }                       from '../../resources/tables/data-tables';
-import type { IWebSocketBroadcastPublisher }     from '../apis/websocket';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import { EmailProcessorLambda }                                    from '../../resources/lambdas/email-processor-lambda';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 
-import { EmailSending }                          from './email-sending';
-import { SESEventProcessing }                    from './ses-event-processing';
-import { SesRules }                              from './ses-rules';
+import { EmailSending }                                            from './email-sending';
+import { SESEventProcessing }                                      from './ses-event-processing';
+import { SesRules }                                                from './ses-rules';
 
 /** What {@link EmailSection} uses of the data section. */
 export interface IEmailDataInputs {
@@ -44,7 +44,7 @@ export class EmailSection extends Construct {
 
   private readonly sesEventProcessing: SESEventProcessing;
   private readonly emailSending: EmailSending;
-  private readonly emailProcessorLambda: EmailProcessorLambda;
+  private readonly emailProcessorLambda: IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: EmailSectionProps) {
     super(scope, id);
@@ -100,7 +100,7 @@ export class EmailSection extends Construct {
 
   /** Enables WebSocket push emission from the ChangeTracker in each Lambda that records changelog state. */
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.emailProcessorLambda.enableWebSocketPublishing(broadcaster);
+    this.emailProcessorLambda.enableWebSocketPush(broadcaster);
     this.emailSending.enableWebSocketPublishing(broadcaster);
     this.sesEventProcessing.enableWebSocketPublishing(broadcaster);
   }
