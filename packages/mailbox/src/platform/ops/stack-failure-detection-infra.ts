@@ -1,13 +1,12 @@
 import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
 import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import * as targets                                      from 'aws-cdk-lib/aws-events-targets';
-import * as events                                       from 'aws-cdk-lib/aws-events';
 import * as iam                                          from 'aws-cdk-lib/aws-iam';
 import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
-import { Fn, Stack, Aws, RemovalPolicy, CfnResource }    from 'aws-cdk-lib';
+import { Fn, Aws, RemovalPolicy, CfnResource }           from 'aws-cdk-lib';
 import { Construct }                                     from 'constructs';
 import type { IConstruct }                               from 'constructs';
 
+import type { IStackFailedEvent }                        from '../../resources/events/stack-failed-event';
 import { StackFailureDetectorLambda }                    from '../../resources/lambdas/stack-failure-detector-lambda';
 
 /** Inputs of the stack-failure detection resources. */
@@ -18,13 +17,11 @@ export interface StackFailureDetectionInfraProps {
 }
 
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
-const RULE_TARGET_ID       = 'Target0';
 
 /**
- * The detector Lambda, its execution role and inline policy, and the EventBridge rule that fires the
- * detector when the stack ends in a failed or rolled-back state. Every resource is retained on update,
- * on delete and when its creating operation is rolled back, so the detector still exists to report that
- * rollback.
+ * The detector Lambda, its execution role and inline policy. The detector's trigger is the retained
+ * stack-failed rule the Lambda creates for itself. Every resource is retained on update, on delete and
+ * when its creating operation is rolled back, so the detector still exists to report that rollback.
  *
  * The role and function names are explicit: `mailbox-diag-role-<position hash>-<guid prefix>` and
  * `mailbox-diag-fn-<position hash>-<guid prefix>`. The position hash is that of this construct, so a
@@ -34,15 +31,11 @@ const RULE_TARGET_ID       = 'Target0';
  * role's own ARN, taken from `role`.
  * `detectorFunctionName` stays pinned because `StackFailureDetectorLambda`'s `functionName` prop is
  * required.
- *
- * The EventBridge rule is deliberately NOT given an explicit name, so a construct-tree move can't
- * collide with a RETAIN'd orphan of the old name.
  */
 export class StackFailureDetectionInfra extends Construct {
   readonly detector: lambda.IFunction;
-  readonly rule: events.IRule;
+  readonly stackFailedEvent: IStackFailedEvent;
   readonly role: iam.IRole;
-  readonly ruleTargetId: string;
   readonly detectorRolePolicyName: string;
 
   constructor(scope: Construct, id: string, props: StackFailureDetectionInfraProps) {
@@ -76,44 +69,12 @@ export class StackFailureDetectionInfra extends Construct {
     });
     this.retainOnEveryOperation(detector, 'detector');
 
-    const rule = this.createStackFailureRule(detector);
-
     this.createDetectorPolicy(detectorRole, infraLogGroup.logGroupArn, props.vendorAccountIds);
 
     this.detector               = detector;
-    this.rule                   = rule;
+    this.stackFailedEvent       = detector.stackFailedEvent;
     this.role                   = detectorRole;
-    this.ruleTargetId           = RULE_TARGET_ID;
     this.detectorRolePolicyName = DETECTOR_POLICY_NAME;
-  }
-
-  private createStackFailureRule(detector: lambda.IFunction): events.Rule {
-    // `CloudFormation Stack Status Change` is a different detail-type from `CloudFormation Resource
-    // Status Change` despite overlapping status spellings — do not conflate the two.
-    // CREATE_FAILED/UPDATE_FAILED are excluded: they are only terminal when rollback is disabled, which
-    // is not the default.
-    const rule = new events.Rule(this, 'rule', {
-      eventPattern: {
-        source: ['aws.cloudformation'],
-        detailType: ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [Stack.of(this).stackId],
-          'status-details': {
-            status: [
-              'ROLLBACK_COMPLETE',
-              'ROLLBACK_FAILED',
-              'UPDATE_ROLLBACK_COMPLETE',
-              'UPDATE_ROLLBACK_FAILED',
-              'DELETE_FAILED',
-            ],
-          },
-        },
-      },
-    });
-    rule.addTarget(new targets.LambdaFunction(detector));
-    this.retainOnEveryOperation(rule, 'rule');
-    this.retainInvokePermission(rule);
-    return rule;
   }
 
   private createDetectorPolicy(detectorRole: iam.IRole, infraLogGroupArn: string, vendorAccountIds: string[]): void {
@@ -147,20 +108,6 @@ export class StackFailureDetectionInfra extends Construct {
     });
     detectorPolicy.attachToRole(detectorRole);
     this.retainOnEveryOperation(detectorPolicy, 'detector-policy');
-  }
-
-  /**
-   * `addTarget` creates the invoke permission under the rule with a generated id, so it is found by
-   * type within the rule's subtree. Throws at synth when there is none.
-   */
-  private retainInvokePermission(rule: events.Rule): void {
-    const invokePermission = rule.node
-      .findAll()
-      .find((c): c is lambda.CfnPermission => c instanceof lambda.CfnPermission);
-    if (!invokePermission) {
-      throw new Error('rule: expected addTarget to create an invoke permission under the rule');
-    }
-    invokePermission.applyRemovalPolicy(RemovalPolicy.RETAIN);
   }
 
   /**

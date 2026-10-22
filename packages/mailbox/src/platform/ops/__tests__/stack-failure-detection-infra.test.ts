@@ -195,13 +195,6 @@ describe('StackFailureDetectionInfra — physical name length', () => {
     ]);
     expect(namesOf(first)).not.toEqual(namesOf(second));
   });
-
-  it('the rule is CDK-auto-named, not pinned', () => {
-    const rules = resourcesOfType(template, 'AWS::Events::Rule');
-
-    expect(rules).toHaveLength(1);
-    expect(rules[0].Properties.Name).toBeUndefined();
-  });
 });
 
 describe('StackFailureDetectionInfra — retention on every operation', () => {
@@ -230,17 +223,6 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
     expect(policies[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
   });
 
-  it('the rule and its invoke permission are retained', () => {
-    const rules       = resourcesOfType(template, 'AWS::Events::Rule');
-    const permissions = resourcesOfType(template, 'AWS::Lambda::Permission');
-
-    expect(rules).toHaveLength(1);
-    expect(permissions.length).toBeGreaterThan(0);
-    for (const resource of [...rules, ...permissions]) {
-      expect(resource).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
-    }
-  });
-
   it('the infra pipeline log group is retained', () => {
     const groups = resourcesOfType(template, 'AWS::Logs::LogGroup').filter((g) =>
       JSON.stringify(g.Properties.LogGroupName).includes('infra'),
@@ -248,25 +230,6 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
 
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' });
-  });
-});
-
-describe('StackFailureDetectionInfra — trigger rule', () => {
-  it('matches the stack-level terminal failure statuses of this stack only', () => {
-    const template = synthesizeDetectionTemplate();
-
-    template.hasResourceProperties('AWS::Events::Rule', {
-      EventPattern: {
-        source: ['aws.cloudformation'],
-        'detail-type': ['CloudFormation Stack Status Change'],
-        detail: {
-          'stack-id': [{ Ref: 'AWS::StackId' }],
-          'status-details': {
-            status: ['ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED', 'DELETE_FAILED'],
-          },
-        },
-      },
-    });
   });
 });
 

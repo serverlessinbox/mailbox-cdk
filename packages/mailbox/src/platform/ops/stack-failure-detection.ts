@@ -1,11 +1,12 @@
 import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
 import { GateOnConditionAspect }      from '@serverlessinbox/mailbox-cdk-shared';
-import * as events                    from 'aws-cdk-lib/aws-events';
 import * as iam                       from 'aws-cdk-lib/aws-iam';
 import * as lambda                    from 'aws-cdk-lib/aws-lambda';
 import * as cdk                       from 'aws-cdk-lib';
 import { Fn }                         from 'aws-cdk-lib';
 import { Construct }                  from 'constructs';
+
+import type { IStackFailedEvent }     from '../../resources/events/stack-failed-event';
 
 import { StackFailureDetectionInfra } from './stack-failure-detection-infra';
 
@@ -26,10 +27,9 @@ export interface StackFailureDetectionProps {
  * without the others.
  */
 export interface StackFailureDetectorSweepTargets {
-  readonly rule: events.IRule;
+  readonly stackFailedEvent: IStackFailedEvent;
   readonly detector: lambda.IFunction;
   readonly role: iam.IRole;
-  readonly ruleTargetId: string;
   readonly detectorRolePolicyName: string;
 }
 
@@ -57,10 +57,9 @@ export class StackFailureDetection extends Construct {
       vendorAccountIds: props.vendorAccountIds,
     });
     this.sweepTargets = {
-      rule: infra.rule,
+      stackFailedEvent: infra.stackFailedEvent,
       detector: infra.detector,
       role: infra.role,
-      ruleTargetId: infra.ruleTargetId,
       detectorRolePolicyName: infra.detectorRolePolicyName,
     };
 

@@ -3,7 +3,6 @@ import type { ArtifactPin, IArtifactResolver }            from '@serverlessinbox
 import { renderLiteralText }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                       from 'aws-cdk-lib/assertions';
 import * as acm                                           from 'aws-cdk-lib/aws-certificatemanager';
-import * as events                                        from 'aws-cdk-lib/aws-events';
 import * as iam                                           from 'aws-cdk-lib/aws-iam';
 import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
 import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
@@ -11,6 +10,7 @@ import * as sfn                                           from 'aws-cdk-lib/aws-
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 import { Construct }                                      from 'constructs';
 
+import { StackFailedEvent }                               from '../../../../resources/events/stack-failed-event';
 import { CertificateRemoval }                             from '../certificate-removal';
 import { EdgeFunctionRemoval }                            from '../edge-function-removal';
 import type { IResourceRemoval }                          from '../removal';
@@ -57,31 +57,30 @@ export function newEdgeFunctionRemoval(scope: Construct): EdgeFunctionRemoval {
 /** A detector removal and the CDK objects it was built over. */
 export interface DetectorRemovalFixture {
   readonly removal: StackFailureDetectorRemoval;
-  readonly rule: events.Rule;
+  readonly stackFailedEvent: StackFailedEvent;
   readonly role: iam.Role;
   readonly detector: lambda.IFunction;
 }
 
 export function newDetectorRemoval(scope: Construct, gracePeriod?: Duration): DetectorRemovalFixture {
-  const rule     = new events.Rule(scope, 'detector-rule', { eventPattern: { source: ['aws.cloudformation'] } });
-  const role     = new iam.Role(scope, 'detector-role', {
+  const role             = new iam.Role(scope, 'detector-role', {
     roleName: 'mailbox-diag-role-test',
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
-  const detector = lambda.Function.fromFunctionArn(
+  const detector         = lambda.Function.fromFunctionArn(
     scope,
     'detector-fn-ref',
     'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
   );
-  const removal  = new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
-    rule,
-    ruleTargetId: 'Target0',
+  const stackFailedEvent = new StackFailedEvent(scope, 'detector-rule', { target: detector });
+  const removal          = new StackFailureDetectorRemoval(scope, 'stack-failure-detector-removal', {
+    stackFailedEvent,
     detector,
     role,
     detectorRolePolicyName: 'stack-failure-detector-policy',
     gracePeriod,
   });
-  return { removal, rule, role, detector };
+  return { removal, stackFailedEvent, role, detector };
 }
 
 /** One of each removal type. */

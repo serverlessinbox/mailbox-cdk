@@ -16,7 +16,7 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { StackFailureDetectorLambda }           from '../stack-failure-detector-lambda';
 
-function createDetector(): { stack: cdk.Stack; role: iam.Role } {
+function createDetector(): { stack: cdk.Stack; role: iam.Role; detector: StackFailureDetectorLambda } {
   const stack            = new cdk.Stack(new App(), 'TestStack', {
     env: { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
@@ -30,14 +30,14 @@ function createDetector(): { stack: cdk.Stack; role: iam.Role } {
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
 
-  new StackFailureDetectorLambda(stack, 'detector', {
+  const detector = new StackFailureDetectorLambda(stack, 'detector', {
     artifactResolver,
     role,
     functionName: 'pinned-detector-name',
     infraLogGroupName: '/test/infra-log-group',
   });
 
-  return { stack, role };
+  return { stack, role, detector };
 }
 
 describe('StackFailureDetectorLambda', () => {
@@ -58,6 +58,18 @@ describe('StackFailureDetectorLambda', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: { INFRA_LOG_GROUP_NAME: '/test/infra-log-group' } },
     });
+  });
+
+  it('creates the stack-failed rule under itself, targeting itself, and exposes it', () => {
+    const { stack, detector } = createDetector();
+    const template            = Template.fromStack(stack);
+    const [ruleId]            = Object.keys(template.findResources('AWS::Events::Rule'));
+
+    expect(ruleId).toMatch(/^detectorstackfailed/);
+    template.hasResourceProperties('AWS::Events::Rule', {
+      Targets: [{ Id: detector.stackFailedEvent.ruleTargetId, Arn: stack.resolve(detector.functionArn) }],
+    });
+    expect(stack.resolve(detector.stackFailedEvent.ruleArn)).toEqual({ 'Fn::GetAtt': [ruleId, 'Arn'] });
   });
 
   it('leaves the given role without any CDK-attached policy', () => {

@@ -4,6 +4,9 @@ import { IRole }                  from 'aws-cdk-lib/aws-iam';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
+import { StackFailedEvent }       from '../events/stack-failed-event';
+import type { IStackFailedEvent } from '../events/stack-failed-event';
+
 /** Inputs of {@link StackFailureDetectorLambda}. */
 export interface StackFailureDetectorLambdaProps {
   readonly artifactResolver: IArtifactResolver;
@@ -19,9 +22,11 @@ export interface StackFailureDetectorLambdaProps {
  * The Go Lambda that detects failed stack operations, running under a pre-created role and an
  * explicit function name.
  *
- * Not responsible for the role's permissions or the rule that triggers it.
+ * Not responsible for the role's permissions.
  */
 export class StackFailureDetectorLambda extends GoLambda {
+  readonly stackFailedEvent: IStackFailedEvent;
+
   constructor(scope: Construct, id: string, props: StackFailureDetectorLambdaProps) {
     super(scope, id, {
       lambdaId: 'stack-failure-detector',
@@ -35,5 +40,7 @@ export class StackFailureDetectorLambda extends GoLambda {
         INFRA_LOG_GROUP_NAME: props.infraLogGroupName,
       },
     });
+
+    this.stackFailedEvent = new StackFailedEvent(this, 'stack-failed', { target: this });
   }
 }

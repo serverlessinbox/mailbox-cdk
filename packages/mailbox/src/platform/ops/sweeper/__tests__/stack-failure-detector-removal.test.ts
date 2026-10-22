@@ -57,11 +57,11 @@ describe('StackFailureDetectorRemoval', () => {
   });
 
   it('puts the rule, function and role of the detector in its ResourceProperties entry', () => {
-    const stack                   = newTestStack('DetectorPropertiesStack');
-    const { removal, rule, role } = newDetectorRemoval(stack);
+    const stack                               = newTestStack('DetectorPropertiesStack');
+    const { removal, stackFailedEvent, role } = newDetectorRemoval(stack);
 
     expect(stack.resolve(removal.crProperties())).toEqual({
-      ruleArn: stack.resolve(rule.ruleArn),
+      ruleArn: stack.resolve(stackFailedEvent.ruleArn),
       ruleTargetId: 'Target0',
       detectorFnArn: 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
       detectorRoleArn: stack.resolve(role.roleArn),

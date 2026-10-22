@@ -62,8 +62,8 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
 
   public crProperties(): StackFailureDetectorRemovalTarget {
     return {
-      ruleArn: this.targets.rule.ruleArn,
-      ruleTargetId: this.targets.ruleTargetId,
+      ruleArn: this.targets.stackFailedEvent.ruleArn,
+      ruleTargetId: this.targets.stackFailedEvent.ruleTargetId,
       detectorFnArn: this.targets.detector.functionArn,
       detectorRoleArn: this.targets.role.roleArn,
       detectorRolePolicyName: this.targets.detectorRolePolicyName,

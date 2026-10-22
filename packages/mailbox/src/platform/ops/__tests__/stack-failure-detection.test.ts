@@ -106,8 +106,8 @@ describe('StackFailureDetection', () => {
 
     it('exposes real sweep-target interfaces and no sweeper knowledge in the detector\'s own IAM policy', () => {
       expect(diag.sweepTargets).toBeDefined();
-      expect(diag.sweepTargets?.rule).toBeDefined();
-      expect(diag.sweepTargets?.ruleTargetId).toBeDefined();
+      expect(diag.sweepTargets?.stackFailedEvent.ruleArn).toBeDefined();
+      expect(diag.sweepTargets?.stackFailedEvent.ruleTargetId).toBeDefined();
       expect(diag.sweepTargets?.detector).toBeDefined();
       expect(diag.sweepTargets?.role).toBeDefined();
       expect(diag.sweepTargets?.detectorRolePolicyName).toBeDefined();
@@ -169,7 +169,7 @@ describe('StackFailureDetection', () => {
       );
 
       expect(policyNamesOnRole).toEqual([targets.detectorRolePolicyName]);
-      expect(ruleTargetIds).toEqual([targets.ruleTargetId]);
+      expect(ruleTargetIds).toEqual([targets.stackFailedEvent.ruleTargetId]);
     });
 
     it('renders DeletionPolicy Retain for every CFN resource under the detector construct, whatever its type', () => {
@@ -224,34 +224,6 @@ describe('StackFailureDetection', () => {
 
       expect(foundFilterEventsMatch).toBe(true);
       expect(foundWriteMatch).toBe(true);
-    });
-
-    it('the rule matches CloudFormation Stack Status Change with exactly the five terminal statuses', () => {
-      const rules    = template.findResources('AWS::Events::Rule');
-      const [, rule] = Object.entries(rules)[0];
-      const pattern  = (rule as any).Properties.EventPattern;
-
-      expect(pattern['detail-type']).toEqual(['CloudFormation Stack Status Change']);
-      expect(pattern.source).toEqual(['aws.cloudformation']);
-
-      const statuses: string[] = pattern.detail['status-details'].status;
-      const statusSet          = new Set(statuses);
-
-      expect(statusSet).toEqual(
-        new Set([
-          'ROLLBACK_COMPLETE',
-          'ROLLBACK_FAILED',
-          'UPDATE_ROLLBACK_COMPLETE',
-          'UPDATE_ROLLBACK_FAILED',
-          'DELETE_FAILED',
-        ])
-      );
-      // Deliberately excluded — see subplan 01: these are only terminal when rollback is disabled,
-      // and would double-fire on an ordinary failed install if AWS also emits them transiently.
-      expect(statusSet.has('CREATE_FAILED')).toBe(false);
-      expect(statusSet.has('UPDATE_FAILED')).toBe(false);
-      // A deliberate successful uninstall ends at DELETE_COMPLETE, never DELETE_FAILED — must never match.
-      expect(statusSet.has('DELETE_COMPLETE')).toBe(false);
     });
   });
 });

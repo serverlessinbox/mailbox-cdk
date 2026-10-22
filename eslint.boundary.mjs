@@ -17,7 +17,7 @@ const platformOnlyLambdas = [
   'support-role-assumption-collector-lambda',
 ];
 
-const platformOnlyEvents = ['artifact-update-schedule', 'license-refresh-schedule', 'support-collection-schedule'];
+const platformOnlyEvents = ['artifact-update-schedule', 'license-refresh-schedule', 'stack-failed-event', 'support-collection-schedule'];
 
 const platformListFiles = [
   ...platformOnlyLambdas.map((name) => `resources/lambdas/${name}.ts`),
@@ -62,7 +62,7 @@ const platformImportsOnlyContracts = {
 // Platform-list files sit in resources/ and name the rest of mailbox by
 // relative path: a sibling (./x) or a parent folder (../x, ../../x).
 const platformListImportsOnlyContracts = {
-  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./events/artifact-update-schedule$|\\.\\./events/license-refresh-schedule$|\\.\\./events/support-collection-schedule$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/)\\.\\.?/',
+  regex: '^(?!\\./identity-provisioner-lambda$|\\.\\./tables/data-tables$|\\.\\./queues/audit-events-queue$|\\.\\./events/artifact-update-schedule$|\\.\\./events/license-refresh-schedule$|\\.\\./events/stack-failed-event$|\\.\\./events/support-collection-schedule$|\\.\\./\\.\\./core/apis/addons$|\\.\\./\\.\\./platform/|\\.\\./\\.\\./utils/|\\.\\./\\.\\./runtime/)\\.\\.?/',
   message: 'platform-list files import the rest of mailbox only through the four contract files (rule 3).',
 };
 
