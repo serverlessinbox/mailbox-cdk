@@ -34,8 +34,8 @@ import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
 
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {
-  packageName: string;
-  objectPath:  string;
+  readonly packageName: string;
+  readonly objectPath:  string;
 };
 
 /** Runtime config of a UI, serialized as-is into the `config.json` that the UI fetches. */
@@ -96,9 +96,6 @@ export class MailboxUi extends Construct {
   readonly distribution: IDistribution;
   readonly distributionDomainName: string;
 
-  /** Name of the static-content bucket; the bucket resource itself stays private. */
-  protected readonly bucketName: string;
-
   private readonly bucket: UiBucket;
 
   constructor(scope: Construct, id: string, props: MailboxUiProps) {
@@ -106,8 +103,7 @@ export class MailboxUi extends Construct {
 
     const artifacts = props.artifactResolver;
 
-    this.bucket     = new UiBucket(this, `ui-${slugifyLabel(props.label)}`);
-    this.bucketName = this.bucket.bucketName;
+    this.bucket = new UiBucket(this, `ui-${slugifyLabel(props.label)}`);
 
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
@@ -173,14 +169,12 @@ export class MailboxUi extends Construct {
     const artifacts = props.artifactResolver;
     const deployer  = StaticContentDeployer.getOrCreate(this, artifacts);
 
-    // Distribution tags: update type
     Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'ui');
 
     const uiResolved = props.uiBundle
       ? artifacts.resolve(props.uiBundle.packageName, props.uiBundle.objectPath)
       : undefined;
 
-    // Distribution tags: artifact metadata
     if (props.uiBundle) {
       const bundleVersion = artifacts.getVersion(props.uiBundle.packageName);
       Tags.of(this.distribution).add(ServerlessInboxTagKeys.artifactPackage, props.uiBundle.packageName);
@@ -189,7 +183,6 @@ export class MailboxUi extends Construct {
       Tags.of(this.distribution).add(ServerlessInboxTagKeys.bucketName, this.bucket.bucketName);
     }
 
-    // Deploy UI bundle (if present)
     if (uiResolved) {
       deployer.deploy(this, 'ui-content', {
         targetBucket: this.bucket,
@@ -199,7 +192,6 @@ export class MailboxUi extends Construct {
       });
     }
 
-    // Deploy UI config (if present)
     if (props.uiConfig) {
       deployer.deploy(this, 'ui-config', {
         targetBucket: this.bucket,
@@ -210,7 +202,6 @@ export class MailboxUi extends Construct {
       });
     }
 
-    // Invalidate CloudFront distribution cache for all UI content
     deployer.invalidate(this, 'ui-invalidate', {
       distribution: this.distribution,
       paths:        ['/*'],
@@ -229,7 +220,6 @@ export class MailboxUi extends Construct {
       pipeline:         props.tokenExchangePipeline,
     });
 
-    // Token exchange API is internal behind CloudFront.
     const hostname    = Fn.select(1, Fn.split('://', tokenExchange.api.apiEndpoint));
     const oauthOrigin = new HttpOrigin(hostname, { originPath: '' });
 

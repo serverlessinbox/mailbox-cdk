@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 /**
- * SESEventProcessorLambda event-source wiring tests.
+ * SesEventProcessorLambda event-source wiring tests.
  *
  * Verifies the Lambda's own SQS event source mapping and consume grant against the SES-events
  * queue it owns the wiring for (grant-concept Phase 2A).
@@ -22,9 +22,9 @@ import { DataBlobStore }                        from '../../buckets/data-blob-st
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { SesEventQueue }                        from '../../queues/ses-event-queue';
 import { DataTable }                            from '../../tables/data-tables';
-import { SESEventProcessorLambda }              from '../ses-event-processor-lambda';
+import { SesEventProcessorLambda }              from '../ses-event-processor-lambda';
 
-describe('SESEventProcessorLambda event-source wiring', () => {
+describe('SesEventProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
   let template: Template;
   let sesEventQueue: SesEventQueue;
@@ -63,7 +63,7 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     const topic             = new Topic(stack, 'ses-notifications-topic');
     sesEventQueue           = new SesEventQueue(stack, 'ses-event-queue', { topic });
 
-    new SESEventProcessorLambda(stack, 'ses-event-processor', {
+    new SesEventProcessorLambda(stack, 'ses-event-processor', {
       itemTable,
       changelogTable,
       mailFeedbackTable,
@@ -78,10 +78,12 @@ describe('SESEventProcessorLambda event-source wiring', () => {
   });
 
   it('instantiates exactly one queue event, sourced from the SES-event queue', () => {
+    const queueArn: unknown = stack.resolve(sesEventQueue.queueArn);
+
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: stack.resolve(sesEventQueue.queueArn),
+      EventSourceArn: Match.exact(queueArn),
     });
   });
 
@@ -94,7 +96,7 @@ describe('SESEventProcessorLambda event-source wiring', () => {
     expect(statement.Effect).toBe('Allow');
     const actionMatch = Match.arrayEquals([...SqsActions.consume]).test(statement.Action);
     expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.objectEquals(stack.resolve(sesEventQueue.queueArn)).test(statement.Resource);
+    const resourceMatch = Match.exact(stack.resolve(sesEventQueue.queueArn)).test(statement.Resource);
     expect(resourceMatch.hasFailed()).toBe(false);
   });
 });

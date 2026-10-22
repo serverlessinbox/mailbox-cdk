@@ -13,7 +13,7 @@ import type { IDataTable }                                         from '../../r
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../apis/websocket';
 
 import { EmailSending }                                            from './email-sending';
-import { SESEventProcessing }                                      from './ses-event-processing';
+import { SesEventProcessing }                                      from './ses-event-processing';
 import { SesRules }                                                from './ses-rules';
 
 /** What {@link EmailSection} uses of the data section. */
@@ -42,7 +42,7 @@ export class EmailSection extends Construct {
   public readonly sesRuleSet: IReceiptRuleSet;
   public readonly submissionQueue: IEmailSendingQueue;
 
-  private readonly sesEventProcessing: SESEventProcessing;
+  private readonly sesEventProcessing: SesEventProcessing;
   private readonly emailSending: EmailSending;
   private readonly emailProcessorLambda: IWebSocketPushTarget;
 
@@ -52,7 +52,7 @@ export class EmailSection extends Construct {
 
     const { data } = props;
 
-    this.sesEventProcessing = new SESEventProcessing(this, 'ses-event-processing', {
+    this.sesEventProcessing = new SesEventProcessing(this, 'ses-event-processing', {
       itemTable:         data.itemTable,
       mailFeedbackTable: data.mailFeedbackTable,
       changelogTable:    data.changelogTable,
@@ -76,11 +76,9 @@ export class EmailSection extends Construct {
     // SES receipt rules and the email-processing queue they feed. Built before the email-processor
     // Lambda so its own event source mapping can reference the queue at construction time.
     const sesRules = new SesRules(this, 'ses-rules', {
-      delivery: {
-        blobStore:        data.blobStoreBucket,
-        artifactResolver: props.artifactResolver,
-        queueProps:       props.queueProps,
-      },
+      blobStoreBucket:  data.blobStoreBucket,
+      artifactResolver: props.artifactResolver,
+      queueProps:       props.queueProps,
     });
 
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {

@@ -122,7 +122,7 @@ export class EdgeSection extends Construct {
   public readonly apiCertificate?: acm.ICertificate;
   /** The certificate of the JMAP API's custom domain: the operator's own, else the regional SAN certificate. */
   public readonly jmapCertificate?: acm.ICertificate;
-  /** The certificate of the WebSocket API's custom domain: the operator's own, else the regional SAN certificate. */
+  /** The certificate of the WebSocket API's custom domain: the operator's own, else the regional SAN certificate; present only when the mailbox has a hosted zone, because only then does the WebSocket API get a custom domain. */
   public readonly wsCertificate?: acm.ICertificate;
 
   private readonly props: EdgeSectionProps;
@@ -154,37 +154,14 @@ export class EdgeSection extends Construct {
     this.edgeCertificate            = this.edgeStack.edgeCertificate;
     this.jmapBlobDownloadVersionArn = this.edgeStack.getOutput('jmapBlobDownloadVersionArn');
 
-    // Regional ACM certificates for regional services (API Gateway).
-    // These must live in the same region as this stack (unlike CloudFront certs in us-east-1).
-    // If either API certificate is missing and there is a hosted zone, one SAN certificate covers
-    // the api, jmap, ws and mcp names and fills the gaps.
-    let regionalSanCertificate: acm.ICertificate | undefined;
-    let cfnCert: acm.CfnCertificate | undefined;
-    if (this.hostedZone && (!provided?.api || !provided.jmap)) {
-      const { hostedZoneId } = this.hostedZone;
-      cfnCert                = new acm.CfnCertificate(this, 'regional-api-certificate', {
-        domainName:              props.addressing.domains.api,
-        subjectAlternativeNames: [props.addressing.domains.jmap, props.addressing.domains.ws, `mcp.${domainName}`],
-        validationMethod:        'DNS',
-        domainValidationOptions: [
-          { domainName: props.addressing.domains.api, hostedZoneId },
-          { domainName: props.addressing.domains.jmap, hostedZoneId },
-          { domainName: props.addressing.domains.ws, hostedZoneId },
-          { domainName: `mcp.${domainName}`, hostedZoneId },
-        ],
-      });
-      ComponentDescription.describe(cfnCert, 'Regional ACM certificate covering the api, jmap, ws and mcp endpoints.');
-      cfnCert.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-      regionalSanCertificate = acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', cfnCert.ref);
-    }
-
-    this.regionalCertificate = regionalSanCertificate;
+    this.regionalCertificate = this.hostedZone && (!provided?.api || !provided.jmap)
+      ? this.createRegionalCertificate(this.hostedZone)
+      : undefined;
 
     this.uiCertificate   = this.resolveUiCertificate();
-    this.apiCertificate  = provided?.api ?? regionalSanCertificate;
-    this.jmapCertificate = provided?.jmap ?? regionalSanCertificate;
-    // WebSocket push uses the explicit override or else the regional SAN cert; it never creates its own.
-    this.wsCertificate = provided?.ws ?? regionalSanCertificate;
+    this.apiCertificate  = provided?.api ?? this.regionalCertificate;
+    this.jmapCertificate = provided?.jmap ?? this.regionalCertificate;
+    this.wsCertificate   = this.hostedZone ? provided?.ws ?? this.regionalCertificate : undefined;
   }
 
   /** Adds the CDN in front of the blob bucket; the UI origins it allows exist only once the UIs are built. */
@@ -241,5 +218,23 @@ export class EdgeSection extends Construct {
     const certificate = this.hostedZone ? this.edgeCertificate : this.props.certificateOverrides?.cloudFront;
 
     return certificate ? { name: this.props.addressing.domains.cdn, certificate } : undefined;
+  }
+
+  /** One SAN certificate for the api, jmap, ws and mcp names; it must live in this stack's region, unlike the CloudFront certificate in us-east-1. */
+  private createRegionalCertificate(hostedZone: route53.IHostedZone): acm.ICertificate {
+    const { domains } = this.props.addressing;
+    const mcpName     = `mcp.${domains.domainName}`;
+    const names       = [domains.api, domains.jmap, domains.ws, mcpName];
+
+    const certificate = new acm.CfnCertificate(this, 'regional-api-certificate', {
+      domainName:              domains.api,
+      subjectAlternativeNames: [domains.jmap, domains.ws, mcpName],
+      validationMethod:        'DNS',
+      domainValidationOptions: names.map((domainName) => ({ domainName, hostedZoneId: hostedZone.hostedZoneId })),
+    });
+    ComponentDescription.describe(certificate, 'Regional ACM certificate covering the api, jmap, ws and mcp endpoints.');
+    certificate.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+
+    return acm.Certificate.fromCertificateArn(this, 'regional-api-certificate-ref', certificate.ref);
   }
 }

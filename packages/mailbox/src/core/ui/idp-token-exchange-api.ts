@@ -1,44 +1,48 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { Pipeline }          from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod }    from 'aws-cdk-lib/aws-apigatewayv2';
-import { Aws }                    from 'aws-cdk-lib';
-import { Construct, IDependable } from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import type { Pipeline }           from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaIntegration }   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod }     from 'aws-cdk-lib/aws-apigatewayv2';
+import { Aws }                     from 'aws-cdk-lib';
+import { Construct, IDependable }  from 'constructs';
 
 import {
   AuthPolicyName,
   OAuthClientName,
-  AUTH_POLICY_ADMIN_API,
 } from '../../core/auth/types';
-import type { IDataTable }        from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
-import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchange-lambda';
+import { IdpTokenExchangeLambda }  from '../../resources/lambdas/idp-token-exchange-lambda';
+import type { IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
+import type { IDataTable }         from '../../resources/tables/data-tables';
 
+/** Props of {@link IdpTokenExchangeApi}. */
 export interface IdpTokenExchangeApiProps {
-  artifactResolver: IArtifactResolver;
-  configTable:      IDataTable;
-  auditEventsQueue: IAuditEventsQueue;
+  readonly artifactResolver: IArtifactResolver;
+  readonly configTable:      IDataTable;
+  readonly auditEventsQueue: IAuditEventsQueue;
 
   /**
    * Name of AUTH_POLICY record to use (e.g. ADMIN_API).
    */
-  authPolicyName?: AuthPolicyName;
+  readonly authPolicyName: AuthPolicyName;
 
   /**
    * Name of OAUTH_CLIENT record to use (e.g. ADMIN_UI).
    */
-  oauthClientName: OAuthClientName;
+  readonly oauthClientName: OAuthClientName;
 
   /** Resources that must be deployed before the token-exchange function is created or updated. */
-  dependsOn?: IDependable[];
+  readonly dependsOn?: IDependable[];
 
   /** SERVICE_NAME for the underlying IdpTokenExchangeLambda; distinguishes callers of this API. */
-  serviceName: string;
+  readonly serviceName: string;
 
   /** Pipeline for the underlying IdpTokenExchangeLambda: 'admin' for Admin UI, 'jmap' for Webmail UI. */
   readonly pipeline: Pipeline;
 }
 
+/**
+ * The HTTP API that serves the `/auth/*` token-exchange routes of a UI, backed by one
+ * {@link IdpTokenExchangeLambda}.
+ */
 export class IdpTokenExchangeApi extends Construct {
   public readonly api: HttpApi;
 
@@ -53,7 +57,7 @@ export class IdpTokenExchangeApi extends Construct {
     const apiHandlerLambda = new IdpTokenExchangeLambda(this, 'idp-token-exchange-lambda', {
       configTable:      props.configTable,
       auditEventsQueue: props.auditEventsQueue,
-      authPolicyName:   props.authPolicyName ?? AUTH_POLICY_ADMIN_API,
+      authPolicyName:   props.authPolicyName,
       oauthClientName:  props.oauthClientName,
       artifactResolver: props.artifactResolver,
       serviceName:      props.serviceName,

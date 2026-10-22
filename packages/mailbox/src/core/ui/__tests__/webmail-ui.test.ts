@@ -9,15 +9,15 @@
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Template }                             from 'aws-cdk-lib/assertions';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
+import { DataTable }                            from '../../../resources/tables/data-tables';
 import { Permission }                           from '../../auth/jmap-scopes';
 import type { IMailboxAuthProvider }            from '../../auth/types';
-import { DataTable }                            from '../../../resources/tables/data-tables';
-import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { WebmailUi }                            from '../webmail-ui';
 
 interface SynthesizedFunction {
@@ -56,6 +56,7 @@ describe('WebmailUi', () => {
         packages:         {
           'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
           'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+          'mailbox-webmail-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         },
         location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
@@ -89,6 +90,14 @@ describe('WebmailUi', () => {
       permissions:  Object.values(Permission),
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
       logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],
+    });
+  });
+
+  it('deploys the Webmail UI bundle published by the mailbox-webmail-ui artifact', () => {
+    createWebmailUi();
+
+    Template.fromStack(stack).hasResourceProperties('Custom::ContentDeployment', {
+      sources: [Match.objectLike({ kind: 'zip', sourceKey: Match.stringLikeRegexp('mailbox-webmail-ui/.*webmail-ui\\.zip$'), targetPrefix: 'content/' })],
     });
   });
 

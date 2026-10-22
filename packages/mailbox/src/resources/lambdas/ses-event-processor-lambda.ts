@@ -10,7 +10,7 @@ import type { IAuditEventsQueue }                                  from '../queu
 import type { ISesEventQueue }                                     from '../queues/ses-event-queue';
 import type { IDataTable }                                         from '../tables/data-tables';
 
-export interface SESEventProcessorLambdaProps {
+export interface SesEventProcessorLambdaProps {
   itemTable:         IDataTable;
   changelogTable:    IDataTable;
   mailFeedbackTable: IDataTable;
@@ -25,8 +25,8 @@ export interface SESEventProcessorLambdaProps {
  * Consumes the SES-notifications queue via its own SQS event source mapping. Owns both the mapping
  * and the consume grant; no other construct wires this Lambda to a queue.
  */
-export class SESEventProcessorLambda extends GoLambda implements IWebSocketPushTarget {
-  constructor(scope: Construct, id: string, props: SESEventProcessorLambdaProps) {
+export class SesEventProcessorLambda extends GoLambda implements IWebSocketPushTarget {
+  constructor(scope: Construct, id: string, props: SesEventProcessorLambdaProps) {
     super(scope, id, {
       lambdaId:         'sqs-ses-event-processor',
       pipeline:         'mail-out',

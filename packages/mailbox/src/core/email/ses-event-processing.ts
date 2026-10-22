@@ -4,15 +4,15 @@ import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws
 import { Construct }                                                   from 'constructs';
 
 import type { IDataBlobStore }                                         from '../../resources/buckets/data-blob-store';
-import { SESEventProcessorLambda }                                     from '../../resources/lambdas/ses-event-processor-lambda';
+import { SesEventProcessorLambda }                                     from '../../resources/lambdas/ses-event-processor-lambda';
 import type { IAuditEventsQueue }                                      from '../../resources/queues/audit-events-queue';
-import { SesEventQueue, type ISesEventQueue }                          from '../../resources/queues/ses-event-queue';
+import { SesEventQueue }                                               from '../../resources/queues/ses-event-queue';
 import type { IDataTable }                                             from '../../resources/tables/data-tables';
-import { SesEventTopic, type ISesEventTopic }                          from '../../resources/topics/ses-event-topic';
+import { SesEventTopic }                                               from '../../resources/topics/ses-event-topic';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../apis/websocket';
 
-/** Props of {@link SESEventProcessing}. */
-export interface SESEventProcessingProps {
+/** Props of {@link SesEventProcessing}. */
+export interface SesEventProcessingProps {
   readonly itemTable:         IDataTable;
   readonly changelogTable:    IDataTable;
   readonly mailFeedbackTable: IDataTable;
@@ -30,20 +30,15 @@ export interface SESEventProcessingProps {
  * reject and delivery-delay events to an SNS topic, a queue subscribed to that topic, and the
  * Lambda that consumes the queue.
  */
-export class SESEventProcessing extends Construct {
-  /** Read-only identity of the SES-notifications SNS topic; no grant surface (see `ISesEventTopic`). */
-  public readonly sesEventTopic: ISesEventTopic;
-  /** Consume handle to the SES-notifications queue; grant methods only, no raw SQS object. */
-  public readonly sesEventQueue: ISesEventQueue;
+export class SesEventProcessing extends Construct {
   public readonly sesConfigSetName: string;
   private readonly sesEventProcessorLambda: IWebSocketPushTarget;
 
-  constructor(scope: Construct, id: string, props: SESEventProcessingProps) {
+  constructor(scope: Construct, id: string, props: SesEventProcessingProps) {
     super(scope, id);
     ComponentDescription.describe(this, 'Handles SES delivery, bounce and complaint notifications and records sender feedback.');
 
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
-    this.sesEventTopic  = sesEventTopic;
 
     // SNS cannot be granted use of the AWS-managed SQS key (alias/aws/sqs), so a queue encrypted
     // with it never receives the topic's messages.
@@ -51,7 +46,6 @@ export class SESEventProcessing extends Construct {
       topic:      sesEventTopic,
       queueProps: props.queueProps,
     });
-    this.sesEventQueue  = sesEventQueue;
 
     const cfnConfigSet    = new CfnConfigurationSet(this, 'ses-configuration-set', {
       name: makePhysicalName(this, 'ses-config', { maxLength: 64 }),
@@ -62,7 +56,7 @@ export class SESEventProcessing extends Construct {
       configurationSetName: this.sesConfigSetName,
       eventDestination:     {
         snsDestination:     {
-          topicArn: this.sesEventTopic.topicArn,
+          topicArn: sesEventTopic.topicArn,
         },
         enabled:            true,
         matchingEventTypes: [
@@ -76,7 +70,7 @@ export class SESEventProcessing extends Construct {
       },
     });
 
-    this.sesEventProcessorLambda = new SESEventProcessorLambda(this, 'ses-event-processor', {
+    this.sesEventProcessorLambda = new SesEventProcessorLambda(this, 'ses-event-processor', {
       itemTable:         props.itemTable,
       changelogTable:    props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
@@ -84,7 +78,7 @@ export class SESEventProcessing extends Construct {
       blobStore:         props.blobStore,
       auditEventsQueue:  props.auditEventsQueue,
       sesEventQueue,
-      artifactResolver: props.artifactResolver,
+      artifactResolver:  props.artifactResolver,
     });
   }
 

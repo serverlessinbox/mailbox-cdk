@@ -7,7 +7,7 @@
  * request because their inputs exist only after the UIs and the APIs.
  */
 import { ServerlessInboxTagKeys }                            from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                   from 'aws-cdk-lib/assertions';
+import { Template }                                          from 'aws-cdk-lib/assertions';
 import * as acm                                              from 'aws-cdk-lib/aws-certificatemanager';
 import { Table }                                             from 'aws-cdk-lib/aws-dynamodb';
 import * as route53                                          from 'aws-cdk-lib/aws-route53';
@@ -85,8 +85,14 @@ describe('EdgeSection', () => {
     const { stack } = newSection();
 
     Template.fromStack(stack).hasResourceProperties('AWS::CertificateManager::Certificate', {
-      SubjectAlternativeNames: Match.arrayWith(['mcp.example.com']),
-      DomainValidationOptions: Match.arrayWith([{ DomainName: 'mcp.example.com', HostedZoneId: 'Z0TESTZONE' }]),
+      DomainName:              'api.example.com',
+      SubjectAlternativeNames: ['jmap.example.com', 'ws.example.com', 'mcp.example.com'],
+      DomainValidationOptions: [
+        { DomainName: 'api.example.com', HostedZoneId: 'Z0TESTZONE' },
+        { DomainName: 'jmap.example.com', HostedZoneId: 'Z0TESTZONE' },
+        { DomainName: 'ws.example.com', HostedZoneId: 'Z0TESTZONE' },
+        { DomainName: 'mcp.example.com', HostedZoneId: 'Z0TESTZONE' },
+      ],
     });
   });
 
@@ -126,6 +132,14 @@ describe('EdgeSection', () => {
     expect(section.apiCertificate).toBe(section.regionalCertificate);
     expect(section.jmapCertificate).toBe(jmap);
     expect(section.wsCertificate).toBe(ws);
+  });
+
+  it('offers no WebSocket certificate without a hosted zone, even when the operator provides one', () => {
+    const { stack: probe } = newDeployerTestStack();
+    const ws               = acm.Certificate.fromCertificateArn(probe, 'ws', 'arn:aws:acm:us-west-2:111122223333:certificate/ws');
+    const { section }      = newSection({ ...WITHOUT_ZONE, certificateOverrides: { ws } });
+
+    expect(section.wsCertificate).toBeUndefined();
   });
 
   it('addBlobCdn serves the CDN on the cdn domain with the edge certificate when the mailbox has a hosted zone', () => {

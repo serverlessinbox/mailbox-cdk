@@ -8,8 +8,11 @@ import * as route53                                                             
 import { Aws, CustomResource, Stack, Token }                                                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                                                    from 'constructs';
 
+import { JmapBlobDownloadLambda }                                                                                                       from '../../resources/lambdas/jmap-blob-download-lambda';
 import { MailboxEdgeDeployerWorkerLambda }                                                                                              from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
 import type { IDataTable }                                                                                                              from '../../resources/tables/data-tables';
+
+import type { MailboxEdgeStackParameters }                                                                                              from './mailbox-edge-stack';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -23,9 +26,6 @@ export interface MailboxEdgeDeployerProps {
 
   /** Route53 hosted zone for DNS validation and certificate creation (optional) */
   readonly hostedZone?: route53.IHostedZone;
-
-  /** Whether to enable termination protection on the edge stack (default: false) */
-  readonly terminationProtection?: boolean;
 
   /** Regional item table; its ARN is passed to the edge stack as a template parameter. */
   readonly itemTable: IDataTable;
@@ -55,8 +55,9 @@ export interface MailboxEdgeDeployerProps {
  */
 export class MailboxEdgeDeployer extends Construct {
   private static readonly EDGE_STACK_RESOURCE_ID = 'edge-stack';
-
-  public readonly edgeStackId: string;
+  private static readonly EDGE_REGION            = 'us-east-1';
+  private static readonly TEMPLATE_OBJECT        = 'edge-stack-template.json';
+  private static readonly BLOB_DOWNLOAD_OBJECT   = `lambdas/${JmapBlobDownloadLambda.ARTIFACT_NAME}.zip`;
 
   /** Published Lambda@Edge version for the JMAP blob download (always present). */
   public readonly jmapBlobDownloadVersion: lambda.IVersion;
@@ -86,7 +87,7 @@ export class MailboxEdgeDeployer extends Construct {
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
     const edgeStack            = new DeployedStack(stack.formatArn({
       service:      'cloudformation',
-      region:       'us-east-1',
+      region:       MailboxEdgeDeployer.EDGE_REGION,
       resource:     'stack',
       resourceName: `${edgeStackNamePattern}/*`,
     }));
@@ -103,9 +104,9 @@ export class MailboxEdgeDeployer extends Construct {
         edgeStack,
         rootStack:               Aws.STACK_NAME,
         rootStackId:             StackIdentity.guid,
-        template:                new ArtifactObject(props.artifactResolver, 'mailbox-cdk-edge', 'edge-stack-template.json'),
+        template:                new ArtifactObject(props.artifactResolver, JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.TEMPLATE_OBJECT),
         artifactObjects:         [
-          new ArtifactObject(props.artifactResolver, 'mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip'),
+          new ArtifactObject(props.artifactResolver, JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.BLOB_DOWNLOAD_OBJECT),
         ],
         hostedZoneId:            props.hostedZone?.hostedZoneId,
         jmapBlobDownloadRoleArn: this.jmapBlobDownloadRole.roleArn,
@@ -114,18 +115,18 @@ export class MailboxEdgeDeployer extends Construct {
 
     this.resource = infra.deployStack(this, MailboxEdgeDeployer.EDGE_STACK_RESOURCE_ID, 'Custom::MailboxEdgeDeployer', {
       stackName:             edgeStackName,
-      templateUrl:           props.artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'),
-      parameters:            this.templateParameters(props, props.artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip')),
+      templateUrl:           props.artifactResolver.getUrl(JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.TEMPLATE_OBJECT),
+      parameters:            {
+        ...this.templateParameters(props, props.artifactResolver.resolve(JmapBlobDownloadLambda.ARTIFACT_PACKAGE, MailboxEdgeDeployer.BLOB_DOWNLOAD_OBJECT)),
+      },
       tags:                  serverlessInboxSubStackTags({
         rootStack:   Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
         stack:       edgeStackName,
       }),
-      terminationProtection: props.terminationProtection ?? false,
-      region:                'us-east-1',
+      terminationProtection: false,
+      region:                MailboxEdgeDeployer.EDGE_REGION,
     });
-
-    this.edgeStackId = this.resource.ref;
 
     this.jmapBlobDownloadVersion = lambda.Version.fromVersionArn(
       this,
@@ -171,7 +172,7 @@ export class MailboxEdgeDeployer extends Construct {
     return role;
   }
 
-  private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): Record<string, string> {
+  private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): MailboxEdgeStackParameters {
     return {
       domainName:                  props.domainName,
       artifactBucket:              jmapBlobDownload.bucket,
@@ -183,7 +184,7 @@ export class MailboxEdgeDeployer extends Construct {
       logGroupName:                props.logGroupName,
       rootStack:                   Aws.STACK_NAME,
       rootStackId:                 StackIdentity.guid,
-      rootRegion:                  Stack.of(this).region,
+      rootRegion:                  Aws.REGION,
       productVersion:              props.productVersion,
       deployerType:                props.deployerType,
       jmapBlobDownloadS3VersionId: jmapBlobDownload.versionId ?? '',

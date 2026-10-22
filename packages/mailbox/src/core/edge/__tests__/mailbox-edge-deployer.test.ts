@@ -83,7 +83,7 @@ function withHostedZone(stack: Stack): Partial<MailboxEdgeDeployerProps> {
 
 describe('MailboxEdgeDeployer', () => {
   describe('custom resource', () => {
-    it('deploys the edge stack template to us-east-1 with termination protection off by default', () => {
+    it('deploys the edge stack template to us-east-1 with termination protection off', () => {
       const { stack, artifactResolver, template } = synthDeployer();
       const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'));
 
@@ -115,12 +115,6 @@ describe('MailboxEdgeDeployer', () => {
       const underAParent = stackNameOf(synthDeployer(() => ({}), 'moved-here'));
 
       expect(underAParent).not.toEqual(atTheRoot);
-    });
-
-    it('turns termination protection on when asked', () => {
-      const { template } = synthDeployer(() => ({ terminationProtection: true }));
-
-      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, { terminationProtection: true });
     });
 
     it('tags the stack with the root stack, and its own name', () => {
@@ -161,6 +155,14 @@ describe('MailboxEdgeDeployer', () => {
           productVersion:       '1.2.3',
           deployerType:         'cfn',
         }),
+      });
+    });
+
+    it('passes the region the stack is deployed in as the root region parameter, not the region it was synthesized for', () => {
+      const { template } = synthDeployer();
+
+      template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
+        parameters: Match.objectLike({ rootRegion: { Ref: 'AWS::Region' } }),
       });
     });
 
@@ -306,12 +308,6 @@ describe('MailboxEdgeDeployer', () => {
       expect(stack.resolve(deployer.getOutput('someOutput'))).toEqual({
         'Fn::GetAtt': [DEPLOYER_RESOURCE_ID, 'someOutput'],
       });
-    });
-
-    it('identifies the edge stack by the custom resource’s physical id', () => {
-      const { stack, deployer } = synthDeployer();
-
-      expect(stack.resolve(deployer.edgeStackId)).toEqual({ Ref: DEPLOYER_RESOURCE_ID });
     });
 
     it('takes the Lambda@Edge version from the edge stack output', () => {

@@ -2,7 +2,6 @@ import type { IArtifactResolver }                                               
 import { applyServerlessInboxComponentTag }                                                 from '@serverlessinbox/mailbox-cdk-shared';
 import type { VendorLink }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
 import type * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
-import type * as route53                                                                    from 'aws-cdk-lib/aws-route53';
 import { Construct }                                                                        from 'constructs';
 
 import type { IDataBlobStore }                                                              from '../../resources/buckets/data-blob-store';
@@ -47,10 +46,9 @@ export interface IApisEmailInputs {
 
 /** What {@link ApisSection.addEndpoints} uses of the edge section. */
 export interface IApisEdgeInputs {
-  /** Present when the mailbox has a hosted zone: the WebSocket and MCP APIs get custom domains only then. */
-  readonly hostedZone?:      route53.IHostedZone;
   readonly apiCertificate?:  acm.ICertificate;
   readonly jmapCertificate?: acm.ICertificate;
+  /** Present only when the mailbox has a hosted zone: the WebSocket API gets a custom domain only then. */
   readonly wsCertificate?:   acm.ICertificate;
   /** The certificate the MCP API is served with; absent when the edge section created none. */
   readonly regionalCertificate?: acm.ICertificate;
@@ -219,7 +217,7 @@ export class ApisSection extends Construct {
       authorizerLambda: jmapApi.authorizerLambda,
       artifactResolver: this.props.artifactResolver,
 
-      customDomain: (props.edge.hostedZone && props.edge.wsCertificate)
+      customDomain: props.edge.wsCertificate
         ? { domainName: props.mailboxDomains.ws, certificate: props.edge.wsCertificate }
         : undefined,
     });

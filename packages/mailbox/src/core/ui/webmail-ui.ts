@@ -1,15 +1,17 @@
 import type { IArtifactResolver }                                                                from '@serverlessinbox/artifact-registry-cdk';
 import { ComponentDescription }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                  from 'aws-cdk-lib/aws-certificatemanager';
-import { Construct, IDependable }                                                                from 'constructs';
+import type * as acm                                                                             from 'aws-cdk-lib/aws-certificatemanager';
+import type { Construct, IDependable }                                                           from 'constructs';
 
 import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
 import { Permission }                                                                            from '../auth/jmap-scopes';
-import { AUTH_POLICY_JMAP_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_WEBMAIL_UI } from '../auth/types';
+import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }                                         from '../auth/types';
+import type { AuthClientConfig, IMailboxAuthProvider }                                           from '../auth/types';
 
-import { MailboxUi, UiBundleSource }                                                             from './mailbox-ui';
+import { MailboxUi }                                                                             from './mailbox-ui';
 
+/** Props of {@link WebmailUi}. */
 export interface WebmailUiProps {
   /**
    * Domain name for the CloudFront distribution (e.g., webmail.example.com)
@@ -33,9 +35,6 @@ export interface WebmailUiProps {
   /** Audit events queue for publishing audit logs from token exchange. */
   readonly auditEventsQueue: IAuditEventsQueue;
 
-  /** Optional UI bundle (zip) published as an artifact. Deployed to `s3://<ui-bucket>/content/` via custom resource. */
-  readonly uiBundle?: UiBundleSource;
-
   /** Base URL for the Webmail UI's backend API. Written into `/config/config.json`. */
   readonly apiUrl?: string;
 
@@ -46,6 +45,10 @@ export interface WebmailUiProps {
   readonly dependsOn?: IDependable[];
 }
 
+/**
+ * The webmail client: a {@link MailboxUi} that serves the Webmail UI bundle and registers the OAuth
+ * client the Webmail UI logs in with.
+ */
 export class WebmailUi extends MailboxUi {
   readonly oauthClient: AuthClientConfig;
   readonly oauthRedirectUri: string;
@@ -62,7 +65,10 @@ export class WebmailUi extends MailboxUi {
       authPolicyName:           AUTH_POLICY_JMAP_API,
       oauthClientName:          OAUTH_CLIENT_WEBMAIL_UI,
       tokenExchangeDependsOn:   props.dependsOn,
-      uiBundle:                 props.uiBundle,
+      uiBundle:                 {
+        packageName: 'mailbox-webmail-ui',
+        objectPath:  'webmail-ui.zip',
+      },
       uiConfig:                 props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
       artifactResolver:         props.artifactResolver,
     });

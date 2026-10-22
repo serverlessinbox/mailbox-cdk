@@ -15,7 +15,7 @@ import type { IMailboxAuthProvider }         from '../auth/types';
 import type { IMailboxDomainNames }          from '../domains/mailbox-domains';
 
 import { AdminUi }                           from './admin-ui';
-import type { MailboxUi }                    from './mailbox-ui';
+import type { MailboxUi, MailboxUiConfig }   from './mailbox-ui';
 import { WebmailUi }                         from './webmail-ui';
 
 /** What {@link UiSection} uses of the data section. */
@@ -107,8 +107,6 @@ export class UiSection extends Construct {
   }
 
   private addAdminUi(props: UiSectionProps): AdminUi {
-    const webmailUiCertificate = props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate;
-
     const adminUi = new AdminUi(this, 'admin-ui', {
       domainName:       props.mailboxDomains.admin,
       certificate:      props.certificateOverrides?.adminUi ?? props.edge.uiCertificate,
@@ -116,7 +114,7 @@ export class UiSection extends Construct {
       auditEventsQueue: props.data.auditEventsQueue,
       authProvider:     props.authProvider,
       apiUrl:           props.edge.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
-      webmailUrl:       props.enableWebmailUi && webmailUiCertificate
+      webmailUrl:       props.enableWebmailUi && this.webmailUiCertificate(props)
         ? `https://${props.mailboxDomains.webmail}`
         : undefined,
       uiConfig:         this.mergeAdminUiConfig(props),
@@ -131,12 +129,11 @@ export class UiSection extends Construct {
   private addWebmailUi(props: UiSectionProps): WebmailUi {
     const webmailUi = new WebmailUi(this, 'webmail-ui', {
       domainName:       props.mailboxDomains.webmail,
-      certificate:      props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate,
+      certificate:      this.webmailUiCertificate(props),
       configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
       authProvider:     props.authProvider,
       apiUrl:           props.edge.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
-      uiBundle:         { packageName: 'mailbox-webmail-ui', objectPath: 'webmail-ui.zip' },
       artifactResolver: props.artifactResolver,
       dependsOn:        [props.auth.oauthClientsProvisioned],
     });
@@ -146,11 +143,15 @@ export class UiSection extends Construct {
     return webmailUi;
   }
 
+  private webmailUiCertificate(props: UiSectionProps): acm.ICertificate | undefined {
+    return props.certificateOverrides?.webmailUi ?? props.edge.uiCertificate;
+  }
+
   /** Builds the admin UI config eagerly by merging the provider's authorization and all addon configs. */
-  private mergeAdminUiConfig(props: UiSectionProps): Record<string, unknown> | undefined {
+  private mergeAdminUiConfig(props: UiSectionProps): MailboxUiConfig | undefined {
     const providerAuthz = props.authProvider.authorizationConfig?.();
 
-    const mergedAdminUiConfig: Record<string, unknown> = {
+    const mergedAdminUiConfig: MailboxUiConfig = {
       ...(providerAuthz
         ? {
           authorization: {

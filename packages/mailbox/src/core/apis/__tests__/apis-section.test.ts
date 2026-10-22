@@ -13,7 +13,6 @@ import { Match, Template }                                        from 'aws-cdk-
 import * as acm                                                   from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                                   from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                             from 'aws-cdk-lib/aws-lambda';
-import * as route53                                               from 'aws-cdk-lib/aws-route53';
 import { Bucket }                                                 from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                   from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, CfnResource, TagManager } from 'aws-cdk-lib';
@@ -171,7 +170,6 @@ describe('ApisSection', () => {
 
     function edgeWithAllCertificates(): IApisEdgeInputs {
       return {
-        hostedZone:      route53.HostedZone.fromHostedZoneAttributes(stack, 'hosted-zone', { hostedZoneId: 'Z0000000000', zoneName: 'example.com' }),
         apiCertificate:  importedCertificate('api-certificate'),
         jmapCertificate: importedCertificate('jmap-certificate'),
         wsCertificate:   importedCertificate('ws-certificate'),
@@ -205,10 +203,10 @@ describe('ApisSection', () => {
       expect(endpoints.webSocketDomainTarget).toBeDefined();
     });
 
-    it('serves the WebSocket API on its domain only when the mailbox has a hosted zone', () => {
+    it('serves the WebSocket API on no custom domain when the edge section offers no WebSocket certificate', () => {
       const section = newSection();
 
-      const endpoints = section.addEndpoints(endpointsProps({ edge: { wsCertificate: importedCertificate('ws-certificate') } }));
+      const endpoints = section.addEndpoints(endpointsProps({ edge: { apiCertificate: importedCertificate('api-certificate') } }));
 
       Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::DomainName', { DomainName: 'ws.example.com' }, 0);
       expect(endpoints.webSocketDomainTarget).toBeUndefined();

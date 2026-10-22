@@ -8,7 +8,9 @@ import type { IDataTable }                                                      
 import { AUTH_POLICY_ADMIN_API, AuthClientConfig, IMailboxAuthProvider, OAUTH_CLIENT_ADMIN_UI } from '../auth/types';
 
 import { MailboxUi }                                                                            from './mailbox-ui';
+import type { MailboxUiConfig }                                                                 from './mailbox-ui';
 
+/** Props of {@link AdminUi}. */
 export interface AdminUiProps {
   /**
    * Domain name for the CloudFront distribution (e.g., admin.example.com)
@@ -45,40 +47,28 @@ export interface AdminUiProps {
   readonly webmailUrl?: string;
 
   /** Additional runtime config written into `/config/config.json` (e.g. feature flags / IdP user management config). */
-  readonly uiConfig?: Record<string, unknown>;
+  readonly uiConfig?: MailboxUiConfig;
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
   readonly artifactResolver: IArtifactResolver;
 }
 
 /**
- * Admin UI Module
+ * The admin dashboard: a {@link MailboxUi} that serves the Admin UI bundle and registers the OAuth
+ * client the Admin UI logs in with.
  *
- * Creates infrastructure for hosting the admin dashboard:
- * - S3 bucket for storing static UI files
- * - CloudFront distribution for global CDN delivery
- * - Origin Access Identity for secure S3 access
- * - Routes /auth/* requests to OAuth API
- * - CSP security headers
- *
- * Example:
- * ```typescript
- * const adminUi = new AdminUi(this, 'admin-ui', {
- *   domainName: 'admin.example.com',
- *   ...
- * });
- *
- * console.log(`Admin UI available at: ${adminUi.distributionDomainName}`);
- * ```
+ * It creates:
+ * - an S3 bucket for the static UI files
+ * - a CloudFront distribution in front of it, reading the bucket through Origin Access Control
+ * - the OAuth token-exchange API behind `/auth/*`
  */
 export class AdminUi extends MailboxUi {
   readonly oauthClient: AuthClientConfig;
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
-    // Build eager config by merging uiConfig with apiUrl and webmailUrl
-    const staticUiConfig = props.uiConfig ? {
-      ...(props.uiConfig ?? {}),
+    const staticUiConfig: MailboxUiConfig | undefined = props.uiConfig ? {
+      ...props.uiConfig,
       ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
       ...(props.webmailUrl ? { webmailUrl: props.webmailUrl } : {}),
     } : undefined;
@@ -109,6 +99,6 @@ export class AdminUi extends MailboxUi {
       logoutUrls:   [`https://${uiHost}/`],
     });
 
-    this.oauthRedirectUri = '/'; // Land on '/' so PortalLanding can route to /welcome (onboarding) vs /home.
+    this.oauthRedirectUri = '/';
   }
 }

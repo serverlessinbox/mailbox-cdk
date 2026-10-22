@@ -31,14 +31,12 @@ describe('SesRules', () => {
     blobStore = new Bucket(stack, 'blob-store');
 
     sut = new SesRules(stack, 'ses-rules', {
-      delivery: {
-        blobStore,
-        artifactResolver: new PinnedArtifactResolver({
-          packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-          location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-          deploymentRegion: stack.region,
-        }),
-      },
+      blobStoreBucket:  blobStore,
+      artifactResolver: new PinnedArtifactResolver({
+        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+        deploymentRegion: stack.region,
+      }),
     });
   });
 

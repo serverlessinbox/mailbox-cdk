@@ -43,7 +43,6 @@ export interface CdnProps {
 export class Cdn extends Construct {
   public readonly distribution: cloudfront.Distribution;
   public readonly host: string;
-  public readonly distributionId: string;
 
   constructor(scope: Construct, id: string, props: CdnProps) {
     super(scope, id);
@@ -52,8 +51,7 @@ export class Cdn extends Construct {
     this.distribution = this.createDistribution(props);
     cdk.Tags.of(this.distribution).add(ServerlessInboxTagKeys.autoUpdateType, 'none');
 
-    this.host           = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
-    this.distributionId = this.distribution.distributionId;
+    this.host = `https://${props.customDomain ? props.customDomain.name : this.distribution.distributionDomainName}`;
   }
 
   private createDistribution(props: CdnProps): cloudfront.Distribution {

@@ -151,12 +151,4 @@ describe('Cdn', () => {
       Tags: Match.arrayWith([{ Key: ServerlessInboxTagKeys.autoUpdateType, Value: 'none' }]),
     });
   });
-
-  it('exposes the id of the distribution it creates', () => {
-    const { stack, cdn, template } = synthesizeCdn();
-
-    const [distributionLogicalId] = Object.keys(template.findResources('AWS::CloudFront::Distribution'));
-
-    expect(stack.resolve(cdn.distributionId)).toEqual({ Ref: distributionLogicalId });
-  });
 });

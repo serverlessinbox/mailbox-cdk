@@ -20,7 +20,7 @@ export interface ISesEventTopic {
  * logical ID. A wrapping construct would insert an extra node in front of it, moving that logical
  * ID (and therefore the deployed topic's identity) the moment this class was introduced.
  *
- * Not responsible for the SQS subscription or the SES configuration set — `SESEventProcessing`
+ * Not responsible for the SQS subscription or the SES configuration set — `SesEventProcessing`
  * wires those around this topic.
  */
 export class SesEventTopic extends Topic implements ISesEventTopic {

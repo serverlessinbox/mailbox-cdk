@@ -9,17 +9,13 @@ import { BlobStore }                                                from '../../
 import { SesReceiptForwarderLambda }                                from '../../resources/lambdas/ses-receipt-forwarder-lambda';
 import { EmailProcessingQueue, type IEmailProcessingQueueConsumer } from '../../resources/queues/email-processing-queue';
 
-/** Where received email is stored and how it is queued for processing. */
-export interface EmailDelivery {
-  readonly blobStore:        IBucket;
+/** Inputs of {@link SesRules}: where received email is stored and how it is queued for processing. */
+export interface SesRulesProps {
+  /** The raw bucket the receipt rule's S3 action stores incoming email in. */
+  readonly blobStoreBucket:  IBucket;
   readonly artifactResolver: IArtifactResolver;
   /** Encryption props forwarded from the mailbox encryption plan. */
   readonly queueProps?: Partial<BaseQueueProps>;
-}
-
-/** Inputs of {@link SesRules}. */
-export interface SesRulesProps {
-  readonly delivery: EmailDelivery;
 }
 
 /**
@@ -41,7 +37,7 @@ export class SesRules extends Construct {
     ComponentDescription.describe(this, 'SES receipt rules that deliver inbound mail to S3 and enqueue it for processing.');
 
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
-      queueProps: props.delivery.queueProps,
+      queueProps: props.queueProps,
     });
     this.emailProcessingQueue  = emailProcessingQueue;
 
@@ -49,7 +45,7 @@ export class SesRules extends Construct {
     // through a forwarder Lambda that enqueues it on SQS instead.
     const forwarder = new SesReceiptForwarderLambda(this, 'ses-receipt-forwarder', {
       emailProcessorQueue: emailProcessingQueue,
-      artifactResolver:    props.delivery.artifactResolver,
+      artifactResolver:    props.artifactResolver,
     });
 
     const ruleSet    = new ReceiptRuleSet(this, 'email-rule-set', {});
@@ -60,7 +56,7 @@ export class SesRules extends Construct {
       ruleSet:     ruleSet,
       actions:     [
         new S3({
-          bucket:          props.delivery.blobStore,
+          bucket:          props.blobStoreBucket,
           objectKeyPrefix: BlobStore.INCOMING_EMAIL_PREFIX,
         }),
         new Lambda({
