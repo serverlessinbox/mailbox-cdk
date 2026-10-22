@@ -1,6 +1,5 @@
 // Lambda runtime utilities: content operations and CloudFront management
-// These are RUNTIME-ONLY exports; do not import from the main barrel in CDK synth-time code
-// Depends on AWS SDK + npm packages that are not needed at synth time
+// Runtime-only exports; they depend on AWS SDK and npm packages that CDK synthesis does not need
 
 export { deployZipToPrefix } from './runtime/handler-kit/content-ops';
 export { invalidateCloudFront } from './runtime/handler-kit/cloudfront-invalidation';

@@ -21,11 +21,11 @@ function parseTruthy(key: string, value: unknown): boolean {
 
 /**
  * Returns true when CDK context enables development mode (`serverlessinbox:development=true`).
- * Absent context is a normal, supported state (falls back to false) — this key is present but
- * malformed (not absent) that throws.
+ * An absent key is a normal, supported state and resolves to false; a present but malformed
+ * value throws.
  */
 export function isDevelopmentMode(scope: Construct): boolean {
-  const value = scope.node.tryGetContext(DEVELOPMENT_CONTEXT_KEY);
+  const value: unknown = scope.node.tryGetContext(DEVELOPMENT_CONTEXT_KEY);
   if (value === undefined || value === null) {return false;}
   return parseTruthy(DEVELOPMENT_CONTEXT_KEY, value);
 }

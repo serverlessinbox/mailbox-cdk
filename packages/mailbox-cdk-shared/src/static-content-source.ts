@@ -32,7 +32,7 @@ export interface IStaticContentSource {
   sourceArns?(): string[];
 }
 
-/** Creates the sources of a `StaticContentDeployer`. */
+/** Factories for the sources of static content. */
 export abstract class StaticContentSource {
   private constructor() {} // static factories only
 

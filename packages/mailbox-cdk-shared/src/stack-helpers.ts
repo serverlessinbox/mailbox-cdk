@@ -3,9 +3,9 @@ import * as cdk                                from 'aws-cdk-lib';
 import { Construct }                           from 'constructs';
 
 import { StackHelpersLambda }                  from './resources/lambdas/stack-helpers-lambda';
+import type { StackHelpersResourceProperties } from './runtime/stack-helpers/resource-properties';
 import { applyServerlessInboxComponentTag }    from './tagging/serverless-inbox-tags';
 import { getOrCreateSharedGroup }              from './tagging/shared-group';
-import type { StackHelpersResourceProperties } from './runtime/stack-helpers/resource-properties';
 
 /**
  * The hosted zone and data stack name that the domain name and S3-safe stack name are derived from.
@@ -36,8 +36,8 @@ export interface StackHelpersSeededNumberProps {
 
 /**
  * Singleton construct for domain name and S3-safe stack name derivation.
- * One shared lookup/sanitization Lambda per Stack, with multiple consumers
- * each attaching their own CfnCustomResource.
+ * One shared lookup/sanitization Lambda per Stack; each resolver call attaches its own
+ * `Custom::StackHelpers` custom resource.
  */
 export class StackHelpers extends Construct {
   private readonly fn: StackHelpersLambda;

@@ -1,6 +1,9 @@
 import { Construct }                      from 'constructs';
+import * as t                             from 'typanion';
 
 import { VENDOR_ACCOUNT_IDS_CONTEXT_KEY } from './context-keys';
+
+const isAccountIdList = t.isArray(t.isString());
 
 /**
  * The vendor-side values a stack is wired to: the vendor AWS accounts that may call into it, and
@@ -12,10 +15,9 @@ export interface VendorLink {
 }
 
 /**
- * Built-in ServerlessInbox production vendor AWS account ID.
- * It appears in the support-hop role's static trust policy (as a :root principal) and is
- * customer-readable in the template. Overridden via the VENDOR_ACCOUNT_IDS_CONTEXT_KEY CDK
- * context key (e.g. so a non-production license-server can also be trusted).
+ * Built-in ServerlessInbox production vendor AWS account ID, used when the
+ * VENDOR_ACCOUNT_IDS_CONTEXT_KEY CDK context key is unset (e.g. so a non-production
+ * license-server can be trusted instead).
  */
 export const VENDOR_ACCOUNT_ID = '791990038981';
 
@@ -29,21 +31,18 @@ export const VENDOR_ACCOUNT_ID = '791990038981';
  * string, throwing when a value is present but malformed — this context is an internal
  * dev-stack testing mechanism, never customer-configurable.
  *
- * Called once from a composition root (`Mailbox`, or an addon's own top-level construct) and
- * threaded down as a prop — never called from a Lambda construct class.
- *
  * @param scope Construct used to read CDK context.
  * @returns Array of validated 12-digit AWS account IDs.
  * @throws Error if the context value is present but not an array of strings, or if any
  *   resolved account ID is not a 12-digit string.
  */
 export function resolveVendorAccountIds(scope: Construct): string[] {
-  const contextValue = scope.node.tryGetContext(VENDOR_ACCOUNT_IDS_CONTEXT_KEY);
+  const contextValue: unknown = scope.node.tryGetContext(VENDOR_ACCOUNT_IDS_CONTEXT_KEY);
 
   let resolved: string[];
   if (contextValue === undefined || contextValue === null) {
     resolved = [VENDOR_ACCOUNT_ID];
-  } else if (Array.isArray(contextValue) && contextValue.every((id) => typeof id === 'string')) {
+  } else if (isAccountIdList(contextValue)) {
     resolved = contextValue.length > 0 ? contextValue : [VENDOR_ACCOUNT_ID];
   } else {
     throw new Error(

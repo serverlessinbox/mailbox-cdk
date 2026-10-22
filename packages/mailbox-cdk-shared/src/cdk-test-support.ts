@@ -1,5 +1,4 @@
-// CDK test support: helpers for reading a synthesized template in tests.
-// TEST-ONLY exports; only test files import this subpath, so it never reaches a package's runtime or bundle.
+// CDK test support: helpers for reading a synthesized template in tests. Test-only exports.
 
 export { sharedWorkerServiceName } from './cdk-test-support/deployer-service-names';
 export { sharedSubStackTagKeys, tagKeysOf } from './cdk-test-support/deployer-tag-keys';

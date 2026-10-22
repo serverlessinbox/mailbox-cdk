@@ -7,6 +7,7 @@ const DEPLOYER_TYPES = ['cdk', 'cfn', 'marketplace'] as const;
 
 const isDeployerType = t.isEnum(DEPLOYER_TYPES);
 
+/** The mechanism a stack is deployed by. */
 export type ServerlessInboxDeployerType = (typeof DEPLOYER_TYPES)[number];
 
 /**
