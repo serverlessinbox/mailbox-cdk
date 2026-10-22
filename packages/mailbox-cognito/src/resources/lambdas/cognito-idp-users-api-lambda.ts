@@ -4,15 +4,12 @@ import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/m
 import { Duration }                                     from 'aws-cdk-lib';
 import { Construct }                                    from 'constructs';
 
-import type { ICognitoIdpUsersPoolConfig }              from '../../cognito-idp-users-addon';
-import { COGNITO_ARTIFACT_PACKAGE }                     from '../../index';
+import { COGNITO_ARTIFACT_PACKAGE }                     from '../../cognito-artifact-package';
+import type { ICognitoIdpUsersPoolConfig }              from '../../cognito-idp-users-pool-config';
 
 /** What `CognitoIdpUsersApiLambda` needs to resolve its code and to reach the pool, queue and Lambda it works with. */
 export interface CognitoIdpUsersApiLambdaProps {
   readonly artifactResolver: IArtifactResolver;
-
-  /** Cognito user pool ID to manage. */
-  readonly userPoolId: string;
 
   /** Send-only handle to the shared audit-events queue; this Lambda grants itself send access. */
   readonly auditEventsQueue: IAuditEventsQueue;
@@ -20,7 +17,7 @@ export interface CognitoIdpUsersApiLambdaProps {
   /** Handle to the shared `identity-provisioner` Lambda; this Lambda grants itself invoke access. */
   readonly identityProvisioner: IIdentityProvisioner;
 
-  /** Cognito pool integration this Lambda grants itself admin access on. */
+  /** Cognito pool whose users this Lambda manages; the Lambda grants itself admin access on it. */
   readonly pool: ICognitoIdpUsersPoolConfig;
 
   /** The names of the groups whose members are admins. Left out when the user pool defines none. */
@@ -41,7 +38,7 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
       timeout: Duration.seconds(15),
       memorySize: 256,
       environment: {
-        USER_POOL_ID: props.userPoolId,
+        USER_POOL_ID: props.pool.userPoolId,
         AUDIT_EVENTS_QUEUE_URL: props.auditEventsQueue.queueUrl,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         ...(props.adminGroups === undefined ? {} : { ADMIN_GROUPS: JSON.stringify(props.adminGroups) }),

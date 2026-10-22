@@ -6,46 +6,8 @@ import { HttpApi, HttpMethod }                                               fro
 import type { IFunction }                                                    from 'aws-cdk-lib/aws-lambda';
 import { Construct }                                                         from 'constructs';
 
+import type { ICognitoIdpUsersPoolConfig }                                   from './cognito-idp-users-pool-config';
 import { CognitoIdpUsersApiLambda }                                          from './resources/lambdas/cognito-idp-users-api-lambda';
-
-/**
- * The Cognito groups that mark admins and regular users for the users API. Pass the names of the groups you
- * created in your user pool for these two roles; names are compared case-insensitively.
- */
-export interface CognitoIdpUsersAuthorizationConfig {
-  /**
-   * The names of the Cognito groups whose members are admins. A user created through the API into one of these
-   * groups is flagged as an admin when its mailbox is provisioned, so an empty list creates no admins.
-   */
-  readonly adminGroups: string[];
-
-  /**
-   * The names of the Cognito groups whose members are regular users. The API reads them to decide which
-   * callers carry the user role.
-   */
-  readonly userGroups: string[];
-}
-
-/**
- * What the users API needs from a Cognito user pool: which pool it is, the permission to administer the users
- * in it, and optionally which groups mark admins and users.
- */
-export interface ICognitoIdpUsersPoolConfig {
-  /** The id of the user pool whose users the API lists, creates, enables, disables and deletes. */
-  readonly userPoolId: string;
-
-  /**
-   * Grants the users API Lambda the permissions to administer users in this pool. It is called once, with the
-   * Lambda; without the grant the Lambda's calls to Cognito are denied.
-   */
-  grantAdminAccess(fn: IFunction): void;
-
-  /**
-   * Returns the groups that mark admins and users. Leave it out when your pool defines no such groups: the API
-   * is then configured with no group names.
-   */
-  authorizationConfig?(): CognitoIdpUsersAuthorizationConfig;
-}
 
 /** What `CognitoIdpUsersAdminApiAddon` needs to mount the users API and create the Lambda behind it. */
 export interface CognitoIdpUsersAdminApiAddonProps {
@@ -102,12 +64,11 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
     const authorization = props.pool.authorizationConfig?.();
     this.lambdaFunction = new CognitoIdpUsersApiLambda(this, 'idp-users', {
       artifactResolver: props.artifactResolver,
-      userPoolId: props.pool.userPoolId,
       auditEventsQueue: props.auditEventsQueue,
       identityProvisioner: props.identityProvisioner,
       pool: props.pool,
-      adminGroups: authorization ? (authorization.adminGroups ?? []) : undefined,
-      userGroups: authorization ? (authorization.userGroups ?? []) : undefined,
+      adminGroups: authorization?.adminGroups,
+      userGroups: authorization?.userGroups,
     });
   }
 

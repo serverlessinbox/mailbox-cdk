@@ -4,7 +4,7 @@ import * as iam                     from 'aws-cdk-lib/aws-iam';
 import { Duration, Stack }          from 'aws-cdk-lib';
 import { Construct }                from 'constructs';
 
-import { COGNITO_ARTIFACT_PACKAGE } from '../../index';
+import { COGNITO_ARTIFACT_PACKAGE } from '../../cognito-artifact-package';
 
 /** What `CognitoBootstrapUserLambda` needs to resolve its code artifact and to scope its grant to the pool it administers. */
 export interface CognitoBootstrapUserLambdaProps {

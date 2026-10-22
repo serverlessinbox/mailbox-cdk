@@ -23,9 +23,8 @@ export type {
 export type {
   CognitoIdpUsersAuthorizationConfig,
   ICognitoIdpUsersPoolConfig,
-} from './cognito-idp-users-addon';
+} from './cognito-idp-users-pool-config';
 
 
 // Artifacts
-/** Package name for mailbox-cognito artifacts. */
-export const COGNITO_ARTIFACT_PACKAGE = 'mailbox-cognito' as const;
+export { COGNITO_ARTIFACT_PACKAGE } from './cognito-artifact-package';

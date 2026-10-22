@@ -12,7 +12,7 @@ import type { IAuditEventsQueue, IIdentityProvisioner }                 from '@s
 import { Template }                                                     from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, Stack }                         from 'aws-cdk-lib';
 
-import type { ICognitoIdpUsersPoolConfig }                              from '../../../cognito-idp-users-addon';
+import type { ICognitoIdpUsersPoolConfig }                              from '../../../cognito-idp-users-pool-config';
 import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '../cognito-idp-users-api-lambda';
 
 describe('CognitoIdpUsersApiLambda', () => {
@@ -39,7 +39,7 @@ describe('CognitoIdpUsersApiLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    const lambda = new CognitoIdpUsersApiLambda(stack, 'idp-users', { artifactResolver, userPoolId: pool.userPoolId, auditEventsQueue, identityProvisioner, pool, ...groups });
+    const lambda = new CognitoIdpUsersApiLambda(stack, 'idp-users', { artifactResolver, auditEventsQueue, identityProvisioner, pool, ...groups });
     return { template: Template.fromStack(stack), lambda };
   }
 

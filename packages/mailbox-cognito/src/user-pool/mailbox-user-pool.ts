@@ -19,7 +19,8 @@ import * as lambda                                                              
 import { Aws, CustomResource, Duration, SecretValue }                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                             from 'constructs';
 
-import { CognitoIdpUsersAdminApiAddon, CognitoIdpUsersAuthorizationConfig }                                      from '../cognito-idp-users-addon';
+import { CognitoIdpUsersAdminApiAddon }                                                                          from '../cognito-idp-users-addon';
+import type { CognitoIdpUsersAuthorizationConfig }                                                               from '../cognito-idp-users-pool-config';
 import { JmapOAuthAddon }                                                                                        from '../jmap-oauth-addon';
 import { MailboxCognitoDataDeployer }                                                                            from '../data-stack/mailbox-cognito-data-deployer';
 import { CognitoBootstrapUserLambda }                                                                            from '../resources/lambdas/bootstrap-user-lambda';

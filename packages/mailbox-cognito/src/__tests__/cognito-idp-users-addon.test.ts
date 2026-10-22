@@ -14,7 +14,8 @@ import { HttpApi }                                                              
 import { Code, Function as LambdaFunction, Runtime }                                                              from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }                                                                   from 'aws-cdk-lib';
 
-import { CognitoIdpUsersAdminApiAddon, type CognitoIdpUsersAuthorizationConfig, type ICognitoIdpUsersPoolConfig } from '../cognito-idp-users-addon';
+import { CognitoIdpUsersAdminApiAddon }                                                                           from '../cognito-idp-users-addon';
+import type { CognitoIdpUsersAuthorizationConfig, ICognitoIdpUsersPoolConfig }                                    from '../cognito-idp-users-pool-config';
 
 const USER_POOL_ID = 'us-west-2_abcdefgh';
 
