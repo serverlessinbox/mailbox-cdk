@@ -145,7 +145,7 @@ export class CfnResponder {
         },
       });
     } catch (failure) {
-      return { retryable: true, message: `Failed to PUT CloudFormation response: ${new CaughtError(failure).describeWithMetadata()}` };
+      return { retryable: true, message: `Failed to PUT CloudFormation response: ${CaughtError.describeWithMetadata(failure)}` };
     }
 
     if (response.ok) {

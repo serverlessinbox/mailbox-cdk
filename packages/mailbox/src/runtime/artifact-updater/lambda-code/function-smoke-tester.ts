@@ -93,7 +93,7 @@ export class FunctionSmokeTester {
     } catch (thrown) {
       this.logger.warn('smoke test unprobeable: failed to parse response payload', {
         functionArn,
-        error: new CaughtError(thrown).message,
+        error: CaughtError.readableMessage(thrown),
       });
       return undefined;
     }

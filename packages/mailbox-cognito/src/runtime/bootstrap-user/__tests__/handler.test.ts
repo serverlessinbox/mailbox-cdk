@@ -256,11 +256,14 @@ describe('bootstrap-user handler', () => {
       expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(1);
     });
 
-    it('answers a request with invalid properties with FAILED and the reason', async () => {
-      const response = await invoke(handler, cfnEvent('Create', { ServiceToken: FUNCTION_ARN }));
+    it('answers a request with invalid properties with FAILED and the properties as the reason, and writes the buffered trace', async () => {
+      const response = await invoke(handler, cfnEvent('Create', { ServiceToken: FUNCTION_ARN, temporaryPassword: 'Sup3rSecret1', kept: 'visible' }));
 
       expect(response.Status).toBe('FAILED');
       expect(response.Reason).toContain('Invalid ResourceProperties');
+      expect(response.Reason).toContain('"kept":"visible"');
+      expect(response.Reason).not.toContain('Sup3rSecret1');
+      expect(loggedErrorMessages()).toContain('Handler failed');
     });
 
     it('answers an expected failure with FAILED without writing the buffered trace that preceded it', async () => {

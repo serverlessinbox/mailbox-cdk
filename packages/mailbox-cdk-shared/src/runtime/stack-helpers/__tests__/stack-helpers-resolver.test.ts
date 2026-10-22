@@ -13,7 +13,7 @@ import { mockClient }                          from 'aws-sdk-client-mock';
 
 import { toStackId }                           from '../../handler-kit/custom-resource/custom-resource-identifiers';
 import type { StackId }                        from '../../handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                     from '../../handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                     from '../../handler-kit/errors/invalid-own-input';
 import { LoggerBuffer }                        from '../../handler-kit/logger-buffer';
 import type { StackHelpersResourceProperties } from '../resource-properties';
 import { StackHelpersResolver }                from '../stack-helpers-resolver';
@@ -230,8 +230,11 @@ describe('StackHelpersResolver', () => {
       await expect(resolveFor(undefined)).rejects.toThrow('Invalid ResourceProperties');
     });
 
-    it('are rejected as an expected failure, which the handler answers without flushing the trace', async () => {
-      await expect(resolveFor({ HostedZoneId: 5 })).rejects.toBeInstanceOf(ExpectedFailure);
+    it('are rejected as an InvalidOwnInput carrying them, which the handler answers after flushing the trace', async () => {
+      const rejection = resolveFor({ HostedZoneId: 5 });
+
+      await expect(rejection).rejects.toBeInstanceOf(InvalidOwnInput);
+      await expect(rejection).rejects.toHaveProperty('input', { HostedZoneId: 5 });
     });
   });
 });

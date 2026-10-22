@@ -1,4 +1,4 @@
-import { ExpectedFailure }            from '../../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }            from '../../../../runtime/handler-kit/errors/invalid-own-input';
 import {
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
@@ -87,7 +87,7 @@ describe('StackDeploymentEventReader', () => {
       expect(reader.readProperties({ stackName: 'only-a-name' }, 'Delete').stackName).toBe('only-a-name');
     });
 
-    it.each(['Create', 'Update'] as const)('rejects a %s without a template URL as an ExpectedFailure naming it', (requestType) => {
+    it.each(['Create', 'Update'] as const)('rejects a %s without a template URL as an InvalidOwnInput naming it and carrying the properties', (requestType) => {
       let thrown: unknown;
       try {
         reader.readProperties({ stackName: 'only-a-name' }, requestType);
@@ -95,11 +95,12 @@ describe('StackDeploymentEventReader', () => {
         thrown = failure;
       }
 
-      expect(thrown).toBeInstanceOf(ExpectedFailure);
-      expect(thrown).toHaveProperty('message', `Invalid ResourceProperties: templateUrl is required for a ${requestType}`);
+      expect(thrown).toBeInstanceOf(InvalidOwnInput);
+      expect(thrown).toHaveProperty('message', `Invalid ResourceProperties: .templateUrl is required for a ${requestType}. Input: {"stackName":"only-a-name"}`);
+      expect(thrown).toHaveProperty('input', { stackName: 'only-a-name' });
     });
 
-    it('rejects a create whose properties are not valid as an ExpectedFailure naming the field', () => {
+    it('rejects a create whose properties are not valid as an InvalidOwnInput naming the field and carrying the properties', () => {
       let thrown: unknown;
       try {
         reader.readProperties({ templateUrl: 'https://example.com/template.json' }, 'Create');
@@ -107,8 +108,8 @@ describe('StackDeploymentEventReader', () => {
         thrown = failure;
       }
 
-      expect(thrown).toBeInstanceOf(ExpectedFailure);
-      expect(thrown).toHaveProperty('message', expect.stringMatching(/Invalid ResourceProperties.*\.stackName/));
+      expect(thrown).toBeInstanceOf(InvalidOwnInput);
+      expect(thrown).toHaveProperty('message', expect.stringMatching(/Invalid ResourceProperties.*\.stackName.*Input: \{"templateUrl":"https:\/\/example\.com\/template\.json"\}/));
     });
 
     it.each(['edge', 'data', 'cognito'] as const)('accepts the properties of the %s deployer resource as CloudFormation sends them, extra keys included', (resource) => {
@@ -135,8 +136,8 @@ describe('StackDeploymentEventReader', () => {
         thrown = failure;
       }
 
-      expect(thrown).toBeInstanceOf(ExpectedFailure);
-      expect(thrown).toHaveProperty('message', expect.stringMatching(/Invalid ResourceProperties.*\.preserveOnDelete/));
+      expect(thrown).toBeInstanceOf(InvalidOwnInput);
+      expect(thrown).toHaveProperty('message', expect.stringMatching(/Invalid ResourceProperties.*\.preserveOnDelete.*Input: .*"preserveOnDelete":"sometimes"/));
     });
 
     it('rejects a Delete that has no stack name, since there is no stack to delete', () => {

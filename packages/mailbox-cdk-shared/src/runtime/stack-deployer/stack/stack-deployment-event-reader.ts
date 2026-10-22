@@ -1,6 +1,6 @@
-import * as t              from 'typanion';
+import * as t               from 'typanion';
 
-import { ExpectedFailure } from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }  from '../../../runtime/handler-kit/errors/invalid-own-input';
 
 import {
   isCfnRequest,
@@ -42,9 +42,10 @@ export class StackDeploymentEventReader {
   }
 
   /**
-   * Reads the properties of a request that can be answered. Invalid properties throw an ExpectedFailure, the
-   * reason the request is answered with, except for a Delete: it proceeds on the properties it needs when
-   * those are valid, so that a stack is still deleted. A Create or an Update without a templateUrl is invalid.
+   * Reads the properties of a request that can be answered. Properties our own template should never have
+   * written throw an `InvalidOwnInput` naming the failing fields and carrying the properties, except for a
+   * Delete: it proceeds on the properties it needs when those are valid, so that a stack is still deleted. A
+   * Create or an Update without a templateUrl is invalid.
    */
   readProperties(properties: unknown, requestType: RequestType): BrandedStackDeployerProperties {
     const read = t.as(properties, isStackDeployerProperties, { errors: true });
@@ -55,7 +56,7 @@ export class StackDeploymentEventReader {
     if (requestType === 'Delete') {
       return this.readDeletionProperties(properties, read.errors);
     }
-    throw new ExpectedFailure(`Invalid ResourceProperties: ${read.errors.join('; ')}`);
+    throw new InvalidOwnInput('Invalid ResourceProperties', read.errors, properties);
   }
 
   readSfnInvokeEvent(event: unknown): SfnInvokeEvent {
@@ -106,14 +107,14 @@ export class StackDeploymentEventReader {
 
   private requireTemplateUrl(properties: BrandedStackDeployerProperties, requestType: RequestType): void {
     if (requestType !== 'Delete' && properties.templateUrl === undefined) {
-      throw new ExpectedFailure(`Invalid ResourceProperties: templateUrl is required for a ${requestType}`);
+      throw new InvalidOwnInput('Invalid ResourceProperties', [`.templateUrl is required for a ${requestType}`], properties);
     }
   }
 
   private readDeletionProperties(properties: unknown, fullErrors: string[]): BrandedStackDeployerProperties {
     const read = t.as(properties, isDeletionProperties, { errors: true });
     if (read.errors) {
-      throw new ExpectedFailure(`Invalid ResourceProperties: ${fullErrors.join('; ')}`);
+      throw new InvalidOwnInput('Invalid ResourceProperties', fullErrors, properties);
     }
     return { stackName: read.value.stackName, region: read.value.region, preserveOnDelete: read.value.preserveOnDelete };
   }

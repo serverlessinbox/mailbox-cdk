@@ -84,12 +84,12 @@ export class FailureAnswerer {
     if (failure instanceof ExpectedFailure || failure instanceof StackOperationFailure) {
       return failure.message;
     }
-    return `Unexpected error: ${new CaughtError(failure).describeWithMetadata()}`;
+    return `Unexpected error: ${CaughtError.describeWithMetadata(failure)}`;
   }
 
   // This class holds no logger, and the line must be written whatever the log level is.
   private unanswerable(failure: unknown): Error {
-    const description = new CaughtError(failure).describeWithMetadata();
+    const description = CaughtError.describeWithMetadata(failure);
     console.error('CloudFormation cannot be answered: the event carries no usable response target', { error: description });
     return new Error(`CloudFormation was not answered: the event carries no usable response target. Failure: ${description}`);
   }

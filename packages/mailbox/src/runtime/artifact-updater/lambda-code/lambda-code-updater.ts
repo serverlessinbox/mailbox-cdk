@@ -49,7 +49,7 @@ export class LambdaCodeUpdater {
       const verdict = await this.smokeTester.probe(scan.lambda, target.arn);
       return await this.settle(scan, target, stale, verdict);
     } catch (thrown) {
-      this.logger.error('failed to update lambda', { lambdaArn: target.arn, error: new CaughtError(thrown).message });
+      this.logger.error('failed to update lambda', { lambdaArn: target.arn, error: CaughtError.readableMessage(thrown) });
       throw thrown;
     }
   }

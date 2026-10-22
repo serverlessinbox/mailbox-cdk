@@ -47,7 +47,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     };
   } catch (thrown) {
     if (!(thrown instanceof ExpectedFailure)) {
-      logger.error(new CaughtError(thrown).readableMessage());
+      logger.error(CaughtError.readableMessage(thrown));
       logger.flush();
     }
     throw thrown;

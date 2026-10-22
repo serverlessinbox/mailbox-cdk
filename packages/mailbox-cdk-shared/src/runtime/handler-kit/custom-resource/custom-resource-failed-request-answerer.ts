@@ -37,7 +37,7 @@ export class FailedRequestAnswerer {
    * answering FAILED to that strands the stack in UPDATE_ROLLBACK_FAILED.
    */
   public async answer(request: CustomResourceRequest, failure: unknown): Promise<SuppressedAnswer | undefined> {
-    const reason = new CaughtError(failure).readableMessage();
+    const reason = CaughtError.readableMessage(failure);
     if (!(failure instanceof ExpectedFailure)) {
       this.logger.error('Handler failed', { error: reason });
     }

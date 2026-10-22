@@ -1,7 +1,8 @@
 /**
  * Pins how content-deployer answers CloudFormation requests: Create and Update replace the content of each
- * source and then invalidate the cache, Delete leaves the bucket untouched, a request it rejects on purpose
- * is an ExpectedFailure (so the handler does not flush a trace for it), and a failing call is not. The S3 and
+ * source and then invalidate the cache, Delete leaves the bucket untouched, properties our template should
+ * not have written are an InvalidOwnInput carrying them, a deployment out of time is an ExpectedFailure (so
+ * the handler does not flush a trace for it), and a failing call is neither. The S3 and
  * CloudFront operations are faked: they are owned by the shared modules.
  */
 
@@ -11,6 +12,7 @@ import { S3Client }                                     from '@aws-sdk/client-s3
 import { invalidateCloudFront }                         from '../../../runtime/handler-kit/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../../../runtime/handler-kit/content-ops';
 import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                              from '../../../runtime/handler-kit/errors/invalid-own-input';
 import { LoggerBuffer }                                 from '../../../runtime/handler-kit/logger-buffer';
 import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
 
@@ -168,7 +170,7 @@ describe('ContentDeployerRequestHandler', () => {
       expect(invalidateCloudFront).not.toHaveBeenCalled();
     });
 
-    it('rejects invalid properties on Create as an expected failure and writes nothing', async () => {
+    it('rejects invalid properties on Create as an InvalidOwnInput naming the field and carrying the properties, and writes nothing', async () => {
       const failure = await rejectionOf(
         requestHandler.handle(
           createRequest({ targetBucket: 'my-bucket', sources: 'not-an-array' }),
@@ -176,19 +178,21 @@ describe('ContentDeployerRequestHandler', () => {
         ),
       );
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
-      expect(failure).toHaveProperty('message', expect.stringContaining('Invalid ResourceProperties'));
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: .*sources.*\. Input: .*"sources":"not-an-array"/));
+      expect(failure).toHaveProperty('input', expect.objectContaining({ targetBucket: 'my-bucket', sources: 'not-an-array' }));
       expect(writeObject).not.toHaveBeenCalled();
     });
 
     it.each([
       ['no targetBucket', { sources: [dataSource()] }],
       ['a blank targetBucket', { targetBucket: '   ', sources: [dataSource()] }],
-    ])('rejects sources with %s as an expected failure', async (_title, properties) => {
+    ])('rejects sources with %s as an InvalidOwnInput naming targetBucket', async (_title, properties) => {
       const failure = await rejectionOf(requestHandler.handle(createRequest(properties), invocation));
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
-      expect(failure).toHaveProperty('message', 'Missing required property: targetBucket');
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: \.targetBucket is required when there are sources\. Input: /));
+      expect(failure).toHaveProperty('input', expect.objectContaining(properties));
       expect(writeObject).not.toHaveBeenCalled();
     });
 

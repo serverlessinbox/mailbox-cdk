@@ -7,7 +7,7 @@ import { CaughtError } from '../../../runtime/handler-kit/errors/caught-error';
  */
 export class StackOperationFailure extends Error {
   constructor(step: string, cause: unknown) {
-    super(`${step}: ${new CaughtError(cause).describeWithMetadata()}`);
+    super(`${step}: ${CaughtError.describeWithMetadata(cause)}`);
     this.name = 'StackOperationFailure';
     Object.setPrototypeOf(this, StackOperationFailure.prototype);
   }

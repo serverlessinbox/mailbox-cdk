@@ -6,7 +6,7 @@ import type {
   UpdateRequest,
 }                                                       from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { CaughtError }                                   from '../../runtime/handler-kit/errors/caught-error';
-import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                               from '../../runtime/handler-kit/errors/invalid-own-input';
 import type { InvocationDeadline }                       from '../../runtime/handler-kit/invocation-deadline';
 import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
 
@@ -29,9 +29,9 @@ export interface BucketAutoEmptyResponse {
 
 /**
  * Answers the custom-resource requests of one bucket-auto-empty invocation: empties the bucket on Delete
- * and does nothing on Create and Update. A request it rejects on purpose is thrown as an
- * `ExpectedFailure`; any other error comes from a failed call and is unexpected. A Delete whose bucket no
- * longer exists is answered as done, because there is nothing left to empty.
+ * and does nothing on Create and Update. Properties our own template should never have written are thrown as an
+ * `InvalidOwnInput`, a defect that carries them; any other error comes from a failed call. Both are unexpected.
+ * A Delete whose bucket is already gone is answered as done, because there is nothing left to empty.
  */
 export class BucketAutoEmptyRequestHandler {
   private readonly bucketEmptier: BucketEmptier;
@@ -59,17 +59,20 @@ export class BucketAutoEmptyRequestHandler {
   }
 
   private rejectInvalidProperties(request: CustomResourceRequest): void {
-    if (!isBucketAutoEmptyResourceProperties(this.readProperties(request))) {
-      throw new ExpectedFailure('Invalid ResourceProperties: bucketName must be a string when present');
+    const properties       = this.readProperties(request);
+    const errors: string[] = [];
+    if (!isBucketAutoEmptyResourceProperties(properties, { errors })) {
+      throw new InvalidOwnInput('Invalid ResourceProperties', errors, properties);
     }
   }
 
   // Without a usable bucket name the bucket cannot be checked, so the Delete fails rather than guessing it is empty.
   private readBucketNameForDelete(request: DeleteRequest): string {
-    const properties = this.readProperties(request);
-    const bucketName = isBucketAutoEmptyDeletionProperties(properties) ? properties.bucketName.trim() : '';
+    const properties       = this.readProperties(request);
+    const errors: string[] = [];
+    const bucketName       = isBucketAutoEmptyDeletionProperties(properties, { errors }) ? properties.bucketName.trim() : '';
     if (!bucketName) {
-      throw new ExpectedFailure('Cannot check the bucket: bucketName is missing, blank or not a string');
+      throw new InvalidOwnInput('Cannot check the bucket', errors.length > 0 ? errors : ['.bucketName is blank'], properties);
     }
     return bucketName;
   }
@@ -97,7 +100,7 @@ export class BucketAutoEmptyRequestHandler {
     bucketName: string,
     failure: unknown,
   ): BucketAutoEmptyResponse {
-    if (!new CaughtError(failure).is('NoSuchBucket')) {
+    if (!CaughtError.is(failure, 'NoSuchBucket')) {
       throw failure;
     }
     this.logger.warn('Bucket no longer exists; nothing to empty', { bucketName });

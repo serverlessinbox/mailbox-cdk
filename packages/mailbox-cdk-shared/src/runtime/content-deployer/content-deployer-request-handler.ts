@@ -6,6 +6,7 @@ import { deletePrefix, deployZipToPrefix, writeObject }  from '../../runtime/han
 import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import type { CustomResourceRequest, DeleteRequest }     from '../../runtime/handler-kit/custom-resource/custom-resource-request';
 import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                               from '../../runtime/handler-kit/errors/invalid-own-input';
 import { hasTimeLeft, type InvocationDeadline }          from '../../runtime/handler-kit/invocation-deadline';
 import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
 
@@ -32,9 +33,10 @@ export interface ContentDeployerResponse {
 
 /**
  * Answers the custom-resource requests of one content-deployer invocation: Create and Update write each
- * source into the target bucket and then invalidate the CloudFront paths, Delete does nothing. A request it
- * rejects on purpose, or a deployment the invocation has too little time left to finish, is thrown as an
- * `ExpectedFailure`; any other error comes from a failed call and is unexpected.
+ * source into the target bucket and then invalidate the CloudFront paths, Delete does nothing. A deployment
+ * the invocation has too little time left to finish is thrown as an `ExpectedFailure`. Properties our own
+ * template should never have written are thrown as an `InvalidOwnInput`, a defect that carries them; any other
+ * error comes from a failed call and is unexpected.
  */
 export class ContentDeployerRequestHandler {
   private readonly s3: S3Client;
@@ -66,9 +68,10 @@ export class ContentDeployerRequestHandler {
   private readProperties(request: CustomResourceRequest): ContentDeployerResourceProperties {
     this.logger.debug('CustomResource event received', { requestType: request.RequestType });
 
-    const properties = request.ResourceProperties ?? {};
-    if (!isContentDeployerResourceProperties(properties)) {
-      throw new ExpectedFailure('Invalid ResourceProperties: malformed sources array or invalid property types');
+    const properties       = request.ResourceProperties ?? {};
+    const errors: string[] = [];
+    if (!isContentDeployerResourceProperties(properties, { errors })) {
+      throw new InvalidOwnInput('Invalid ResourceProperties', errors, properties);
     }
     return properties;
   }
@@ -77,7 +80,7 @@ export class ContentDeployerRequestHandler {
   private readTargetBucket(properties: ContentDeployerResourceProperties): string {
     const targetBucket = (properties.targetBucket ?? '').trim();
     if ((properties.sources ?? []).length > 0 && !targetBucket) {
-      throw new ExpectedFailure('Missing required property: targetBucket');
+      throw new InvalidOwnInput('Invalid ResourceProperties', ['.targetBucket is required when there are sources'], properties);
     }
     return targetBucket;
   }

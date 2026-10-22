@@ -151,7 +151,7 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
 
   private ignoreMissingPolicy(thrown: unknown): void {
     // A policy that is already gone is the state the sweep is after; any other error ends the role step.
-    if (!new CaughtError(thrown).is('NoSuchEntityException')) {
+    if (!CaughtError.is(thrown, 'NoSuchEntityException')) {
       throw thrown;
     }
   }
@@ -168,7 +168,7 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
 
   private resultOfRoleDeletionFailure(thrown: unknown): TargetResult {
     // IAM answers `DeleteConflictException` while an attached policy is still draining, which a later run clears.
-    if (new CaughtError(thrown).is('DeleteConflictException')) {
+    if (CaughtError.is(thrown, 'DeleteConflictException')) {
       this.logger.info('Detector IAM role still has attached policies; will retry');
       return this.results.retry('DeleteConflictException');
     }

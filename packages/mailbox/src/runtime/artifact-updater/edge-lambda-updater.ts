@@ -107,7 +107,7 @@ export class EdgeLambdaUpdater {
     } catch (thrown) {
       this.logger.error('failed to update edge lambda', {
         edgeLambdaArn: target.arn,
-        error:         new CaughtError(thrown).message,
+        error:         CaughtError.readableMessage(thrown),
       });
       throw thrown;
     }

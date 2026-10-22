@@ -89,7 +89,7 @@ export class UpdateCycle {
       }
       this.concludeCycle();
     } catch (thrown) {
-      this.logger.error('artifact update cycle failed', { error: new CaughtError(thrown).message });
+      this.logger.error('artifact update cycle failed', { error: CaughtError.readableMessage(thrown) });
       throw thrown;
     }
   }
@@ -141,7 +141,7 @@ export class UpdateCycle {
     } catch (thrown) {
       this.updatesAttempted += 1;
       this.updatesFailed    += 1;
-      this.logger.error('failed to update resource', { arn: resource.arn, error: new CaughtError(thrown).message });
+      this.logger.error('failed to update resource', { arn: resource.arn, error: CaughtError.readableMessage(thrown) });
     }
   }
 

@@ -59,7 +59,7 @@ export class ParentStackStatus {
   }
 
   private warnUnreadable(failure: unknown): undefined {
-    this.logger?.warn(`Failed to check parent stack status: ${new CaughtError(failure).readableMessage()}`);
+    this.logger?.warn(`Failed to check parent stack status: ${CaughtError.readableMessage(failure)}`);
     return undefined;
   }
 }

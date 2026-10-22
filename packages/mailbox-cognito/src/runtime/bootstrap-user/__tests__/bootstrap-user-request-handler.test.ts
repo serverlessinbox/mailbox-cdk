@@ -12,7 +12,7 @@ import {
   CognitoIdentityProviderClient,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { ExpectedFailure, LoggerBuffer }                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, LoggerBuffer }                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                                                 from 'aws-sdk-client-mock';
 
 import { PASSWORD_SET_AT_INSTALL_TIME }                                               from '../bootstrap-user-answers';
@@ -98,11 +98,15 @@ describe('BootstrapUserRequestHandler', () => {
       expect(groupNames).toEqual(['admin', 'user']);
     });
 
-    it('throws an ExpectedFailure that names the invalid field when the properties are not valid', async () => {
-      const failure: unknown = await requestHandler.handle(request('Create', { ServiceToken: 'x' })).catch((thrown: unknown) => thrown);
+    it('throws an InvalidOwnInput that names the invalid field and carries the properties without the password when they are not valid', async () => {
+      const failure: unknown = await requestHandler
+        .handle(request('Create', { temporaryPassword: SUPPLIED_PASSWORD, kept: 'visible' }))
+        .catch((thrown: unknown) => thrown);
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
-      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: .*userPoolId/));
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: .*userPoolId.*"kept":"visible"/));
+      expect(failure).toHaveProperty('input', expect.objectContaining({ temporaryPassword: '[redacted]', kept: 'visible' }));
+      expect(failure).toHaveProperty('message', expect.not.stringContaining(SUPPLIED_PASSWORD));
     });
   });
 

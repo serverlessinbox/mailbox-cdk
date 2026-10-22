@@ -2,6 +2,7 @@ import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws
 import { mockClient }                                                 from 'aws-sdk-client-mock';
 
 import { ExpectedFailure }                                            from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                                            from '../../../runtime/handler-kit/errors/invalid-own-input';
 import { CfnResponder }                                               from '../answers/cfn-responder';
 import { toStateMachineArn, type StateMachineArn }                    from '../deployer-identifiers';
 import { StackDeployerStarter }                                       from '../stack-deployer-starter';
@@ -101,20 +102,21 @@ describe('StackDeployerStarter', () => {
       expect(sent).toMatchObject({ op: { requestType: 'Update', preserveOnDelete: 'false', terminationProtection: 'true' } });
     });
 
-    it('rejects properties it cannot run as an ExpectedFailure and starts nothing', async () => {
+    it('rejects properties it cannot run as an InvalidOwnInput carrying them and starts nothing', async () => {
       const failure = await failureOf(starterFor().start(cfnRequest({}, { templateUrl: 'https://example.com/template.json' }), replyTarget()));
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
       expect(failure).toHaveProperty('message', expect.stringContaining('Invalid ResourceProperties'));
+      expect(failure).toHaveProperty('input', { templateUrl: 'https://example.com/template.json' });
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
     });
 
-    it('rejects a Delete whose preserveOnDelete is not a switch as an ExpectedFailure, and starts nothing that could delete the stack', async () => {
+    it('rejects a Delete whose preserveOnDelete is not a switch as an InvalidOwnInput, and starts nothing that could delete the stack', async () => {
       const unreadable = { ...stackDeployerProperties(), preserveOnDelete: 'sometimes' };
 
       const failure = await failureOf(starterFor().start(cfnRequest({ RequestType: 'Delete' }, unreadable), replyTarget()));
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
       expect(failure).toHaveProperty('message', expect.stringContaining('preserveOnDelete'));
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
     });

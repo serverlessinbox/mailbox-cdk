@@ -86,7 +86,7 @@ export class UiBucketUpdater {
       this.logger.error('failed to update UI bucket', {
         bucketName: target.bucketName,
         distributionId,
-        error:      new CaughtError(thrown).message,
+        error:      CaughtError.readableMessage(thrown),
       });
       throw thrown;
     }

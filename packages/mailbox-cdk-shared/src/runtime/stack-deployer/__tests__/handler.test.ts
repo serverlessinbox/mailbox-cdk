@@ -3,6 +3,7 @@ import type * as SfnSdk                   from '@aws-sdk/client-sfn';
 import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
 
 import { toPhysicalResourceId }           from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import type * as LoggerBufferModule       from '../../../runtime/handler-kit/logger-buffer';
 import type * as HandlerModule            from '../handler';
 
 import {
@@ -23,6 +24,7 @@ import {
 } from './stack-deployer-helpers';
 
 interface LoadedHandlers {
+  readonly flush:                jest.SpyInstance;
   readonly handlers:             typeof HandlerModule;
   readonly sfn:                  AwsClientStub<SfnSdk.SFNClient>;
   readonly cloudFormation:       AwsClientStub<CloudFormationSdk.CloudFormationClient>;
@@ -70,7 +72,9 @@ describe('stack-deployer handlers', () => {
     jest.isolateModules(() => {
       const sfnSdk            = jest.requireActual<typeof SfnSdk>('@aws-sdk/client-sfn');
       const cloudFormationSdk = jest.requireActual<typeof CloudFormationSdk>('@aws-sdk/client-cloudformation');
+      const loggerBufferClass = jest.requireActual<typeof LoggerBufferModule>('../../../runtime/handler-kit/logger-buffer').LoggerBuffer;
       loaded                  = {
+        flush:                jest.spyOn(loggerBufferClass.prototype, 'flush'),
         handlers:             jest.requireActual<typeof HandlerModule>('../handler'),
         sfn:                  mockClient(sfnSdk.SFNClient),
         cloudFormation:       mockClient(cloudFormationSdk.CloudFormationClient),
@@ -191,15 +195,20 @@ describe('stack-deployer handlers', () => {
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: containingText(':stateMachine/{name}') })]);
     });
 
-    it('answers properties it cannot run FAILED, naming the resource MailboxStack when they name no stack', async () => {
-      const { handlers, sfn } = loadHandlers(starterEnvironment);
+    it('answers properties it cannot run FAILED with the properties in the reason, naming the resource MailboxStack when they name no stack, and writes the buffered trace', async () => {
+      const { handlers, sfn, flush } = loadHandlers(starterEnvironment);
 
-      await handlers.starterHandler(cfnRequest({}, {}), CONTEXT);
+      await handlers.starterHandler(cfnRequest({}, { templateUrl: 'https://example.com/template.json' }), CONTEXT);
 
       expect(endpoint.answers()).toEqual([
-        expect.objectContaining({ Status: 'FAILED', PhysicalResourceId: 'MailboxStack', Reason: containingText('Invalid ResourceProperties') }),
+        expect.objectContaining({
+          Status:             'FAILED',
+          PhysicalResourceId: 'MailboxStack',
+          Reason:             containingText('"templateUrl":"https://example.com/template.json"'),
+        }),
       ]);
       expect(sfn.calls()).toHaveLength(0);
+      expect(flush).toHaveBeenCalledTimes(1);
     });
 
     it('writes the buffered trace and answers FAILED when the execution cannot be started', async () => {

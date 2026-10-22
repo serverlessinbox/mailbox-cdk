@@ -193,12 +193,16 @@ describe('content-deployer handler', () => {
     });
   });
 
-  it('answers FAILED without flushing when the request is rejected on purpose', async () => {
+  it('answers FAILED with the invalid properties and flushes the buffered trace when our template wrote properties it should not', async () => {
     const { response } = await invoke(fakeCreateEvent({ sources: 'not-an-array' }), GOOD_ENVIRONMENT);
 
     expect(response.Status).toBe('FAILED');
     expect(response.Reason).toContain('Invalid ResourceProperties');
-    expect(console.debug).not.toHaveBeenCalled();
+    expect(response.Reason).toContain('"sources":"not-an-array"');
+    expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
+      requestType: 'Create',
+      service:     'content-deployer',
+    });
   });
 
   it('answers SUCCESS to an Update that fails while the parent stack rolls back', async () => {

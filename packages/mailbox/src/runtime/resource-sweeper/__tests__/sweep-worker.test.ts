@@ -4,7 +4,7 @@
  * outcome is the status Step Functions branches on. The sweepers are fakes.
  */
 
-import { ExpectedFailure, LoggerBuffer }                                                                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, LoggerBuffer }                                                                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget, TargetResult, TargetSweeper } from '../removal';
 import { SweepWorker }                                                                                                                                       from '../sweep-worker';
@@ -53,13 +53,14 @@ describe('SweepWorker', () => {
   });
 
   describe('payload', () => {
-    it('rejects a removal type no sweeper handles, as an expected failure naming the field, before any sweep', async () => {
+    it('rejects a removal type no sweeper handles, as an InvalidOwnInput naming the field and carrying the payload, before any sweep', async () => {
       const { worker, cert, edge, detector } = workerWith();
 
       const rejection = worker.handle({ removalType: 'queue', ...CERT_INPUT });
 
-      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toBeInstanceOf(InvalidOwnInput);
       await expect(rejection).rejects.toThrow('removalType');
+      await expect(rejection).rejects.toHaveProperty('input', { removalType: 'queue', ...CERT_INPUT });
       expect(cert.sweep).not.toHaveBeenCalled();
       expect(edge.sweep).not.toHaveBeenCalled();
       expect(detector.sweep).not.toHaveBeenCalled();
@@ -70,7 +71,7 @@ describe('SweepWorker', () => {
 
       const rejection = worker.handle({ removalType: 'detector', target: { ...DETECTOR_TARGET, ruleTargetId: '' }, ...ROOT_STACK });
 
-      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toBeInstanceOf(InvalidOwnInput);
       expect(detector.sweep).not.toHaveBeenCalled();
     });
 

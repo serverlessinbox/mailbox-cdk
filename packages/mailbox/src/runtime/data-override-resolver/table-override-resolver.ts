@@ -110,6 +110,6 @@ export class TableOverrideResolver {
   }
 
   private malformedTableArn(role: TableRole, thrown: unknown): ExpectedFailure {
-    return new ExpectedFailure(`${role}: override is malformed: ${new CaughtError(thrown).readableMessage()}`);
+    return new ExpectedFailure(`${role}: override is malformed: ${CaughtError.readableMessage(thrown)}`);
   }
 }

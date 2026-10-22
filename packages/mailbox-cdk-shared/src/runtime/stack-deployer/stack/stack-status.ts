@@ -11,6 +11,11 @@ export class StackStatus {
     this.value = value;
   }
 
+  /** True for a status from which CloudFormation refuses every update; deleting the stack and creating it again is the recovery. */
+  static requiresRecreate(value: CloudFormationStackStatus | undefined): boolean {
+    return value === 'ROLLBACK_FAILED' || value === 'ROLLBACK_COMPLETE';
+  }
+
   /** A deploy finished well: any `*_COMPLETE` except a rollback or a delete. */
   isTerminalSuccess(): boolean {
     if (!this.value) {
@@ -32,7 +37,7 @@ export class StackStatus {
 
   /** A status from which CloudFormation refuses every update; deleting the stack and creating it again is the recovery. */
   requiresRecreate(): boolean {
-    return this.value === 'ROLLBACK_FAILED' || this.value === 'ROLLBACK_COMPLETE';
+    return StackStatus.requiresRecreate(this.value);
   }
 
   isRollbackInProgress(): boolean {

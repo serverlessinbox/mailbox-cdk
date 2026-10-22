@@ -174,7 +174,7 @@ export class ClientRegistration {
       error: String(failure),
     });
 
-    if (new CaughtError(failure).is(INVALID_PARAMETER_EXCEPTION)) {
+    if (CaughtError.is(failure, INVALID_PARAMETER_EXCEPTION)) {
       return RegistrationAnswers.rejected(400, 'invalid_client_metadata', 'One or more client metadata values were rejected');
     }
     return RegistrationAnswers.rejected(500, 'server_error', 'Failed to create OAuth client');

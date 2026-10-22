@@ -15,6 +15,7 @@ import type * as Https                                         from 'https';
 import { Writable }                                            from 'stream';
 import * as t                                                  from 'typanion';
 
+import type * as LoggerBufferModule                            from '../../handler-kit/logger-buffer';
 import type { SmokeTestProbe }                                 from '../../handler-kit/smoke-test';
 import type * as HandlerModule                                 from '../handler';
 
@@ -149,13 +150,22 @@ describe('stack-helpers handler', () => {
     });
   });
 
-  it('answers FAILED when the resource properties are invalid', async () => {
+  it('answers FAILED with the invalid properties and flushes the trace when our template wrote properties it should not', async () => {
+    let flush: jest.SpyInstance | undefined;
+
     const { response } = await invoke(
       fakeCreateEvent({ HostedZoneId: 5 }),
       { SERVICE_NAME: 'stack-helpers' },
+      () => {
+        // The registry was reset by `invoke`, so this is the LoggerBuffer class the handler is about to load.
+        const loggerBufferModule = require('../../handler-kit/logger-buffer') as typeof LoggerBufferModule;
+        flush                    = jest.spyOn(loggerBufferModule.LoggerBuffer.prototype, 'flush');
+      },
     );
 
     expect(response.Status).toBe('FAILED');
     expect(response.Reason).toContain('Invalid ResourceProperties');
+    expect(response.Reason).toContain('"HostedZoneId":5');
+    expect(flush).toHaveBeenCalledTimes(1);
   });
 });

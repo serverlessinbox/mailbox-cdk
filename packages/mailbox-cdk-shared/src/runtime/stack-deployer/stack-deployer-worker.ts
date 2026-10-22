@@ -169,7 +169,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       await this.stacks.deleteIfExists(op);
     } catch (failure) {
       // A failed delete retry is not an answer: the next check sees the stack's state and tries again.
-      this.logger.warn('Retry DeleteStack failed (will keep polling)', { error: new CaughtError(failure).describeWithMetadata() });
+      this.logger.warn('Retry DeleteStack failed (will keep polling)', { error: CaughtError.describeWithMetadata(failure) });
     }
     return WorkerResult.pollAgain({ deleteRetryCount: retries.deleteRetryCount + 1, createRetryCount: retries.createRetryCount });
   }
@@ -243,7 +243,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       await this.stacks.recreate(op);
     } catch (failure) {
       // A failed recreate still counts as a retry: the next check sees the stack's state.
-      this.logger.error('Recreate CreateStack failed', { error: new CaughtError(failure).describeWithMetadata() });
+      this.logger.error('Recreate CreateStack failed', { error: CaughtError.describeWithMetadata(failure) });
     }
     return WorkerResult.pollAgain({ deleteRetryCount: retries.deleteRetryCount, createRetryCount: retries.createRetryCount + 1 });
   }

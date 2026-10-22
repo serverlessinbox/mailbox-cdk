@@ -1,7 +1,7 @@
 /**
  * Pins how bucket-auto-empty answers CloudFormation requests: only Delete empties a bucket, a request it
- * rejects on purpose is an ExpectedFailure (so the handler does not flush a trace for it), a failure of the
- * emptying call is not. A Delete whose bucket is already gone is answered as done: failing it would leave the
+ * does not recognise as written by our template is an InvalidOwnInput carrying the properties, and a failure of
+ * the emptying call is another unexpected error; neither is an ExpectedFailure. A Delete whose bucket is already gone is answered as done: failing it would leave the
  * stack in DELETE_FAILED over a bucket that needs nothing.
  */
 
@@ -9,6 +9,7 @@ import { NoSuchBucket, S3Client }        from '@aws-sdk/client-s3';
 
 import { readCustomResourceRequest }     from '../../../runtime/handler-kit/custom-resource/custom-resource-request-reader';
 import { ExpectedFailure }               from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }               from '../../../runtime/handler-kit/errors/invalid-own-input';
 import { LoggerBuffer }                  from '../../../runtime/handler-kit/logger-buffer';
 import { BucketAutoEmptyRequestHandler } from '../bucket-auto-empty-request-handler';
 import { BucketEmptier }                 from '../bucket-emptier';
@@ -87,8 +88,9 @@ describe('BucketAutoEmptyRequestHandler', () => {
     ])('fails a Delete with %s, saying the bucket cannot be checked', async (_title, request) => {
       const failure: unknown = await requestHandler.handle(request, deadline).catch((error: unknown) => error);
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
-      expect(failure).toHaveProperty('message', 'Cannot check the bucket: bucketName is missing, blank or not a string');
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Cannot check the bucket: .*bucketName.*\. Input: /));
+      expect(failure).toHaveProperty('input', expect.any(Object));
       expect(emptyBucket).not.toHaveBeenCalled();
     });
 
@@ -100,13 +102,14 @@ describe('BucketAutoEmptyRequestHandler', () => {
       expect(response).toEqual({ PhysicalResourceId: PHYSICAL_RESOURCE_ID, Data: { deleted: '0' } });
     });
 
-    it('rejects invalid resource properties on Create as an expected failure', async () => {
+    it('rejects invalid resource properties on Create as an InvalidOwnInput naming the field and carrying the properties', async () => {
       const failure: unknown = await requestHandler
         .handle(readCustomResourceRequest(fakeCreateEvent({ bucketName: 123 })), deadline)
         .catch((error: unknown) => error);
 
-      expect(failure).toBeInstanceOf(ExpectedFailure);
-      expect(failure).toHaveProperty('message', expect.stringContaining('Invalid ResourceProperties'));
+      expect(failure).toBeInstanceOf(InvalidOwnInput);
+      expect(failure).toHaveProperty('message', expect.stringMatching(/^Invalid ResourceProperties: .*bucketName.*\. Input: .*"bucketName":123/));
+      expect(failure).toHaveProperty('input', expect.objectContaining({ bucketName: 123 }));
     });
 
     it('lets a failure to empty the bucket through as an unexpected error', async () => {

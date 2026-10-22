@@ -40,6 +40,13 @@ describe('StackStatus', () => {
     it.each(['ROLLBACK_IN_PROGRESS', 'CREATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', undefined] as const)('is false for %s', (status) => {
       expect(new StackStatus(status).requiresRecreate()).toBe(false);
     });
+
+    it.each([['ROLLBACK_FAILED', true], ['ROLLBACK_COMPLETE', true], ['CREATE_FAILED', false], [undefined, false]] as const)(
+      'answers the same from the static for %s',
+      (status, expected) => {
+        expect(StackStatus.requiresRecreate(status)).toBe(expected);
+      },
+    );
   });
 
   describe('isRollbackInProgress', () => {

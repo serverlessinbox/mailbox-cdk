@@ -1,4 +1,4 @@
-import { ExpectedFailure, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   isWorkerInput,
@@ -27,7 +27,7 @@ export class SweepWorker {
   /**
    * Sweeps the removal `payload` describes and answers Step Functions with the outcome: `SUCCESS` when
    * the target is gone, `RETRY` when it is not deletable yet, `FAILED` when a retry would not help.
-   * Rejects with an `ExpectedFailure` for a payload that is not a removal of a known type, and otherwise
+   * Rejects with an `InvalidOwnInput` for a payload that is not a removal of a known type, and otherwise
    * only when a sweeper rejects.
    */
   public async handle(payload: unknown): Promise<WorkerOutput> {
@@ -40,7 +40,7 @@ export class SweepWorker {
   private readInput(payload: unknown): WorkerInput {
     const errors: string[] = [];
     if (!isWorkerInput(payload, { errors })) {
-      throw new ExpectedFailure(`Invalid worker payload: ${errors.join('; ')}`);
+      throw new InvalidOwnInput('Invalid worker payload', errors, payload);
     }
     return payload;
   }

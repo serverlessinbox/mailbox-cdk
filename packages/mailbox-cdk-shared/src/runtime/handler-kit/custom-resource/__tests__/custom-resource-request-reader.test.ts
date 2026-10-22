@@ -4,7 +4,7 @@
  * its handlers narrow on the request type and read a physical id only where the variant has one.
  */
 
-import { ExpectedFailure }            from '../../errors/expected-failure';
+import { InvalidOwnInput }            from '../../errors/invalid-own-input';
 import { readCustomResourceRequest }  from '../custom-resource-request-reader';
 
 const IDS = {
@@ -47,28 +47,40 @@ describe('readCustomResourceRequest', () => {
     expect(readCustomResourceRequest(event)).toEqual(event);
   });
 
-  it.each(['Update', 'Delete'])('rejects a %s without a physical id as an expected failure', (requestType) => {
+  it.each(['Update', 'Delete'])('rejects a %s without a physical id as an InvalidOwnInput', (requestType) => {
     const failure = rejectionOf({ ...IDS, RequestType: requestType });
 
-    expect(failure).toBeInstanceOf(ExpectedFailure);
+    expect(failure).toBeInstanceOf(InvalidOwnInput);
     expect(failure).toHaveProperty('message', expect.stringContaining('Invalid custom-resource request'));
   });
 
-  it('rejects a request type CloudFormation does not send as an expected failure', () => {
+  it('rejects a request type CloudFormation does not send as an InvalidOwnInput', () => {
     const failure = rejectionOf({ ...IDS, RequestType: 'Replace', PhysicalResourceId: 'physical-1' });
 
-    expect(failure).toBeInstanceOf(ExpectedFailure);
+    expect(failure).toBeInstanceOf(InvalidOwnInput);
     expect(failure).toHaveProperty('message', expect.stringContaining('Invalid custom-resource request'));
   });
 
-  it.each(['StackId', 'RequestId', 'LogicalResourceId'])('rejects a request without %s as an expected failure', (field) => {
+  it.each(['StackId', 'RequestId', 'LogicalResourceId'])('rejects a request without %s as an InvalidOwnInput naming it', (field) => {
     const failure = rejectionOf({ ...IDS, [field]: undefined, RequestType: 'Create' });
 
-    expect(failure).toBeInstanceOf(ExpectedFailure);
+    expect(failure).toBeInstanceOf(InvalidOwnInput);
     expect(failure).toHaveProperty('message', expect.stringContaining(field));
   });
 
-  it('rejects a value that is not an object as an expected failure', () => {
-    expect(rejectionOf('Create')).toBeInstanceOf(ExpectedFailure);
+  it('rejects a value that is not an object as an InvalidOwnInput', () => {
+    expect(rejectionOf('Create')).toBeInstanceOf(InvalidOwnInput);
+  });
+
+  it('carries the rejected event with its response URL and service token redacted', () => {
+    const failure = rejectionOf({
+      ...IDS,
+      RequestType:  'Replace',
+      ResponseURL:  'https://cloudformation-custom-resource-response.s3.amazonaws.com/signed?X-Amz-Signature=abc',
+      ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:handler',
+    });
+
+    expect(failure).toHaveProperty('input', expect.objectContaining({ RequestType: 'Replace', ResponseURL: '[redacted]', ServiceToken: '[redacted]' }));
+    expect(failure).toHaveProperty('message', expect.not.stringContaining('X-Amz-Signature'));
   });
 });

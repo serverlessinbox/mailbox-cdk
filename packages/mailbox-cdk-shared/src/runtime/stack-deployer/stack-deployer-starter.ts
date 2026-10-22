@@ -109,7 +109,7 @@ export class StackDeployerStarter {
   }
 
   private malformedStackId(failure: unknown): ExpectedFailure {
-    return new ExpectedFailure(`StackId is malformed: ${new CaughtError(failure).readableMessage()}`);
+    return new ExpectedFailure(`StackId is malformed: ${CaughtError.readableMessage(failure)}`);
   }
 
   private rejectSlashStateMachineArn(): void {
@@ -196,7 +196,7 @@ export class StackDeployerStarter {
 
   private async startAfterDescribeFailure(executionName: ExecutionName, input: WorkflowInput, describeFailure: unknown): Promise<void> {
     // The earlier execution cannot be inspected, so it is treated as ended.
-    const describeMessage = new CaughtError(describeFailure).describeWithMetadata();
+    const describeMessage = CaughtError.describeWithMetadata(describeFailure);
     this.logger.warn('DescribeExecution failed; attempting retry with suffixed name', { error: describeMessage });
     if (await this.startWithSuffixedNames(executionName, input)) {
       return;

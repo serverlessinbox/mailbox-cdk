@@ -179,7 +179,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers<AdminAuth
   }
 
   private rethrowUnlessUserIsGone(thrown: unknown): void {
-    if (!new CaughtError(thrown).is('UserNotFoundException')) {
+    if (!CaughtError.is(thrown, 'UserNotFoundException')) {
       throw this.translate(thrown, 'InvalidParameterException');
     }
   }

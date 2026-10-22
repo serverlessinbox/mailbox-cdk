@@ -3,7 +3,7 @@ import { createHash }                                                           
 
 import { sanitizeStackName }                                                     from '../../naming/sanitize-name';
 import type { StackId }                                                          from '../handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                                                       from '../handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                                                       from '../handler-kit/errors/invalid-own-input';
 import type { LoggerBuffer }                                                     from '../handler-kit/logger-buffer';
 
 import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';
@@ -44,7 +44,7 @@ export class StackHelpersResolver {
     this.logger  = logger;
   }
 
-  /** Rejects properties of the wrong shape with an `ExpectedFailure`; a Route 53 failure reaches the caller unchanged. */
+  /** Rejects properties of the wrong shape with an `InvalidOwnInput`; a Route 53 failure reaches the caller unchanged. */
   async resolve(resourceProperties: unknown, stackId: StackId): Promise<StackHelpersData> {
     const properties = this.parseProperties(resourceProperties);
 
@@ -63,7 +63,7 @@ export class StackHelpersResolver {
   private parseProperties(resourceProperties: unknown): StackHelpersResourceProperties {
     const errors: string[] = [];
     if (!isStackHelpersResourceProperties(resourceProperties, { errors })) {
-      throw new ExpectedFailure(`Invalid ResourceProperties: ${errors.join('; ')}`);
+      throw new InvalidOwnInput('Invalid ResourceProperties', errors, resourceProperties);
     }
     return resourceProperties;
   }

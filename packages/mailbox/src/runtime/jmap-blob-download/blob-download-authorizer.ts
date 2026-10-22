@@ -76,7 +76,7 @@ export class BlobDownloadAuthorizer {
       return errorResponse(thrown.status, thrown.message);
     }
 
-    this.logger.error('Authorization error', { error: new CaughtError(thrown).describeWithMetadata() });
+    this.logger.error('Authorization error', { error: CaughtError.describeWithMetadata(thrown) });
     return errorResponse(500, 'Internal server error');
   }
 

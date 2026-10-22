@@ -179,6 +179,13 @@ describe('handler flush', () => {
       expect(flush).toHaveBeenCalledTimes(1);
     });
 
+    it('flushes once and rejects with the payload when Step Functions hands the worker a payload that is not a removal', async () => {
+      const rejection = workerHandler({ removalType: 'queue' });
+
+      await expect(rejection).rejects.toHaveProperty('input', { removalType: 'queue' });
+      expect(flush).toHaveBeenCalledTimes(1);
+    });
+
     it('rethrows the same ExpectedFailure without a flush', async () => {
       const failure = new ExpectedFailure('sweep refused');
       jest.spyOn(SweepWorker.prototype, 'handle').mockRejectedValue(failure);

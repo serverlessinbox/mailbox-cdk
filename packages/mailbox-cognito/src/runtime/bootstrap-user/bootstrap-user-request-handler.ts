@@ -1,5 +1,5 @@
 import {
-  ExpectedFailure,
+  InvalidOwnInput,
   toPhysicalResourceId,
   type CustomResourceRequest,
   type LoggerBuffer,
@@ -28,8 +28,8 @@ export class BootstrapUserRequestHandler {
   }
 
   /**
-   * A Delete is answered without reading its properties. A Create or Update throws an `ExpectedFailure` when the
-   * resource properties are not valid. The password is generated here, once, unless the properties supply one; it
+   * A Delete is answered without reading its properties. A Create or Update throws an `InvalidOwnInput`, with
+   * the password redacted from the properties it carries, when the resource properties are not valid. The password is generated here, once, unless the properties supply one; it
    * is reported only when it was applied to a newly created user.
    */
   public async handle(request: CustomResourceRequest): Promise<BootstrapUserAnswer> {
@@ -51,7 +51,7 @@ export class BootstrapUserRequestHandler {
     const errors: string[] = [];
     const properties       = request.ResourceProperties;
     if (!isBootstrapUserProperties(properties, { errors })) {
-      throw new ExpectedFailure(`Invalid ResourceProperties: ${errors.join('; ')}`);
+      throw new InvalidOwnInput('Invalid ResourceProperties', errors, properties);
     }
 
     this.logger.debug('bootstrap_user_validating', { userPoolIdLength: properties.userPoolId.length });

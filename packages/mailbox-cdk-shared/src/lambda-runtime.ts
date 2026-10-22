@@ -11,6 +11,7 @@ export { LoggerBuffer, type LogEntry } from './runtime/handler-kit/logger-buffer
 export { parseLogLevelStrict, type LogLevel } from './runtime/handler-kit/log-level';
 export { loadBaseConfig, loadLogLevel, type BaseConfig } from './runtime/handler-kit/config/config-base';
 export { ExpectedFailure } from './runtime/handler-kit/errors/expected-failure';
+export { InvalidOwnInput } from './runtime/handler-kit/errors/invalid-own-input';
 export { answerRequestWithBadConfig } from './runtime/handler-kit/custom-resource/custom-resource-bad-config-answer';
 export type { CustomResourceAnswer, CustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request';
 export { readCustomResourceRequest } from './runtime/handler-kit/custom-resource/custom-resource-request-reader';

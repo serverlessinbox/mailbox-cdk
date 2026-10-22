@@ -63,7 +63,7 @@ export class UserEnsurer {
 
   // A user that already exists is the expected outcome of a repeated request; any other failure stands.
   private answerCreateFailure(failure: unknown): boolean {
-    if (new CaughtError(failure).is(USERNAME_EXISTS)) {
+    if (CaughtError.is(failure, USERNAME_EXISTS)) {
       return false;
     }
     throw failure;
@@ -81,7 +81,7 @@ export class UserEnsurer {
     } catch (failure) {
       this.logger.error('bootstrap_user_group_join_failed', {
         groupName,
-        error: new CaughtError(failure).readableMessage(),
+        error: CaughtError.readableMessage(failure),
       });
     }
   }

@@ -56,7 +56,7 @@ export class LambdaCodeRollback {
     } catch (thrown) {
       this.logger.error('rollback settle-wait failed', {
         lambdaArn: target.arn,
-        error:     new CaughtError(thrown).message,
+        error:     CaughtError.readableMessage(thrown),
         note:      'function may still be on failed code; manual intervention may be needed',
       });
       throw thrown;

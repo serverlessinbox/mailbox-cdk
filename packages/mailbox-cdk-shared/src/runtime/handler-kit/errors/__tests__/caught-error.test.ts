@@ -90,4 +90,23 @@ describe('CaughtError', () => {
       expect(new CaughtError(error).describeWithMetadata()).toBe('Error: x');
     });
   });
+
+  describe('statics for a caller that reads one answer from a thrown value', () => {
+    it('is names only a thrown Error', () => {
+      expect(CaughtError.is(sdkError('NoSuchBucket', 'gone'), 'NoSuchBucket')).toBe(true);
+      expect(CaughtError.is(sdkError('NoSuchBucket', 'gone'), 'NoSuchKey')).toBe(false);
+      expect(CaughtError.is({ name: 'NoSuchBucket' }, 'NoSuchBucket')).toBe(false);
+    });
+
+    it('readableMessage is the message of an Error and the string form of anything else', () => {
+      expect(CaughtError.readableMessage(sdkError('E', 'Stack does not exist'))).toBe('Stack does not exist');
+      expect(CaughtError.readableMessage(42)).toBe('42');
+    });
+
+    it('describeWithMetadata adds the metadata the SDK reported and names a nameless value Error', () => {
+      expect(CaughtError.describeWithMetadata(sdkError('ThrottlingException', 'Rate exceeded', { httpStatusCode: 400, requestId: 'req-1' })))
+        .toBe('ThrottlingException: Rate exceeded (http=400 requestId=req-1)');
+      expect(CaughtError.describeWithMetadata('boom')).toBe('Error: boom');
+    });
+  });
 });
